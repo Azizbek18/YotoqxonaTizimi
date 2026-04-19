@@ -1,208 +1,210 @@
-'use client'
+"use client";
 
-import React, { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
-import { createBrowserClient } from '@supabase/ssr' 
-import { Bell, DoorOpen, Clock, Star, Zap, User, MapPin, Phone, LayoutDashboard, Calendar, Shield, LogOut } from 'lucide-react'
+import React from 'react';
+import { 
+  Search, Bell, Zap, Calendar, Clock, 
+  Tv, Megaphone, CheckCircle2, BookOpen,
+  Users, Star, CreditCard, ShieldCheck, ArrowRight,
+  Info, Landmark, Calculator, Cpu
+} from 'lucide-react';
 
-export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          const { data } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle()
-          if (data) setUser(data)
-        }
-      } catch (err) {
-        console.error("Xatolik:", err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchUser()
-  }, [])
-
-  if (loading) return (
-    <div className="h-screen bg-[#020617] flex items-center justify-center">
-       <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
-
+export default function AsosiyQism() {
   return (
-    <div className="min-h-screen bg-[#020617] text-white font-sans selection:bg-blue-500/30 pb-24 lg:pb-8">
+    <div className="w-full max-w-6xl mx-auto p-4 md:py-8 md:px-0 space-y-8 animate-in fade-in duration-1000">
       
-      {/* KONTEYNER: 
-        max-w-7xl - Katta ekranlarda kenglikni cheklaydi (Laptop uchun muhim)
-        mx-auto - Kontentni markazlashtiradi
-      */}
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-10">
+      {/* 1. HEADER */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+          <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em] mb-1">Amaliy matematika va IT fakulteti</p>
+          <h1 className="text-4xl font-black italic text-white tracking-tighter">SHERZOD KARIMOV</h1>
+        </div>
         
-        {/* HEADER */}
-        <header className="flex justify-between items-center mb-10">
-          <div className="space-y-1">
-            <h1 className="text-2xl lg:text-3xl font-black tracking-tighter uppercase">
-              ASOSIY <span className="text-blue-500">PANEL</span>
-            </h1>
-            <p className="text-slate-500 text-[9px] font-bold uppercase tracking-[0.3em]">Dashboard / Talaba</p>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64 group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-indigo-500 transition-colors" size={18} />
+            <input type="text" placeholder="Qidirish..." className="w-full bg-[#0f172a]/40 border border-white/5 rounded-2xl py-2.5 pl-10 pr-4 outline-none text-white text-sm focus:border-indigo-500/50" />
           </div>
+          <button className="p-2.5 bg-[#0f172a]/40 border border-white/5 rounded-2xl relative hover:bg-white/5 transition-all">
+            <Bell size={20} className="text-gray-400" />
+            <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#050810] animate-pulse"></span>
+          </button>
+        </div>
+      </header>
+
+      {/* 2. ASOSIY GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* CHAP USTUN */}
+        <div className="lg:col-span-5 space-y-8">
           
-          <div className="flex items-center gap-4">
-            <div className="hidden md:block text-right">
-              <p className="text-sm font-bold">{user?.full_name}</p>
-              <p className="text-[10px] text-slate-500 uppercase">{user?.faculty}</p>
-            </div>
-            <div className="p-3 bg-white/5 rounded-2xl border border-white/10 relative">
-              <Bell size={20} className="text-slate-400" />
-              <span className="absolute top-3 right-3 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#020617]" />
+          {/* ROOM CARD */}
+          <div className="group relative bg-gradient-to-br from-indigo-600 via-blue-700 to-indigo-900 p-8 rounded-[45px] shadow-2xl shadow-indigo-500/20 overflow-hidden">
+            <div className="absolute -right-4 -top-4 w-40 h-40 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-all duration-700"></div>
+            <p className="text-[10px] font-black tracking-[0.3em] text-white/60 uppercase mb-2">Yotoqxona</p>
+            <h2 className="text-6xl font-black italic text-white drop-shadow-2xl mb-8">#87</h2>
+            <div className="grid grid-cols-4 gap-2 pt-6 border-t border-white/20">
+              <StatMini l="QAVAT" v="3" />
+              <StatMini l="KURS" v="2" />
+              <StatMini l="GURUH" v="AM-22" />
+              <StatMini l="HOLAT" v="Aktiv" active />
             </div>
           </div>
-        </header>
 
-        {/* BENTO GRID SYSTEM:
-          grid-cols-1 - Telda 1ta ustun
-          md:grid-cols-2 - Planshetda 2ta ustun
-          lg:grid-cols-4 - Laptopda 4ta ustun
-        */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-min lg:auto-rows-[200px]">
-          
-          {/* PROFIL (Laptopda 2ta ustun, 2ta qator egallaydi) */}
-          <motion.div 
-            whileHover={{ y: -5 }}
-            className="md:col-span-2 lg:row-span-2 bg-slate-900/40 rounded-[2.5rem] p-6 lg:p-10 border border-white/5 relative overflow-hidden flex flex-col justify-between shadow-2xl backdrop-blur-md"
-          >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] -mr-20 -mt-20" />
-            
-            <div className="relative z-10">
-              <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-6 shadow-xl shadow-blue-500/20">
-                <User size={32} className="text-white" />
-              </div>
-              <h2 className="text-3xl lg:text-5xl font-black tracking-tighter leading-none mb-3">
-                {user?.first_name} <br /> {user?.last_name}
-              </h2>
-              <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
-                <MapPin size={14} className="text-blue-500" />
-                <span>{user?.region}, {user?.district}</span>
-              </div>
+          {/* XONADOSHLAR QISMI - Siz qo'shildingiz */}
+          <div className="bg-[#0f172a]/40 border border-white/5 rounded-[32px] p-6 backdrop-blur-md">
+            <h3 className="text-[10px] font-black text-green-400 tracking-[0.2em] mb-6 flex items-center gap-2 uppercase">
+              <Users size={14} /> Xonadoshlar (4 kishi)
+            </h3>
+            <div className="space-y-3">
+              <Xonadosh name="Sherzod Karimov" role="Men (Siz)" img="SK" me />
+              <Xonadosh name="Asadbek Jumanov" role="Sardor" img="AJ" />
+              <Xonadosh name="Diyorbek Alimov" role="Talaba" img="DA" />
+              <Xonadosh name="Javohir Toshpo'latov" role="Talaba" img="JT" />
             </div>
-
-            <div className="relative z-10 pt-8 grid grid-cols-2 gap-3">
-              <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Kurs</p>
-                <p className="text-xs font-bold text-slate-200">{user?.course}-kurs</p>
-              </div>
-              <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Guruh</p>
-                <p className="text-xs font-bold text-slate-200">Noma'lum</p>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* XONA VIDJETI (Laptopda 2ta ustun joy egallaydi) */}
-          <motion.div 
-            whileHover={{ scale: 1.01 }}
-            className="md:col-span-2 bg-white rounded-[2.5rem] p-6 lg:p-10 flex items-center justify-between relative overflow-hidden group shadow-xl"
-          >
-            <div className="relative z-10 text-slate-900">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Yotoqxona raqami</p>
-              <h3 className="text-6xl lg:text-8xl font-black tracking-tighter my-2">#{user?.room_number || '00'}</h3>
-              <div className="flex items-center gap-2 bg-slate-900/5 w-fit px-3 py-1.5 rounded-full border border-slate-900/10">
-                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                 <span className="text-[9px] font-bold uppercase tracking-wider">Status: Joylashgan</span>
-              </div>
-            </div>
-            
-            <div className="relative z-10 hidden sm:flex w-28 h-28 lg:w-36 lg:h-36 rounded-full border-[10px] border-slate-100 items-center justify-center">
-               <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-blue-600 flex items-center justify-center shadow-2xl shadow-blue-600/40">
-                  <DoorOpen size={32} className="text-white" />
-               </div>
-            </div>
-          </motion.div>
-
-          {/* KICHIK VIDJETLAR */}
-          <div className="grid grid-cols-2 md:col-span-2 gap-6 lg:contents">
-             {/* Navbatchilik */}
-             <motion.div whileHover={{ y: -5 }} className="bg-slate-900/40 rounded-[2rem] p-6 border border-white/5 flex flex-col justify-between">
-                <div className="p-3 bg-amber-500/10 rounded-2xl w-fit text-amber-500 mb-4">
-                   <Clock size={24} />
-                </div>
-                <div>
-                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Navbatchilik</p>
-                   <p className="text-xl font-bold">Shanba</p>
-                </div>
-             </motion.div>
-
-             {/* Reyting */}
-             <motion.div whileHover={{ y: -5 }} className="bg-slate-900/40 rounded-[2rem] p-6 border border-white/5 flex flex-col justify-between">
-                <div className="p-3 bg-purple-500/10 rounded-2xl w-fit text-purple-500 mb-4">
-                   <Star size={24} />
-                </div>
-                <div>
-                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Reyting</p>
-                   <p className="text-xl font-bold">4.9 / 5.0</p>
-                </div>
-             </motion.div>
           </div>
 
-          {/* ALOQA VIDJETI (Laptopda 2ta ustun) */}
-          <motion.div 
-            className="md:col-span-2 bg-blue-600 rounded-[2.5rem] p-6 lg:p-8 flex items-center justify-between group cursor-pointer overflow-hidden relative"
-          >
-            <div className="flex items-center gap-4 lg:gap-6">
-              <div className="p-4 bg-white/20 rounded-[1.5rem] backdrop-blur-md">
-                <Phone size={24} />
-              </div>
-              <div>
-                <p className="text-[9px] font-black uppercase text-blue-100 tracking-widest mb-1">Bog'lanish</p>
-                <p className="text-lg lg:text-xl font-bold">{user?.phone || '+998 -- --- -- --'}</p>
-              </div>
+          {/* TEZKOR AMALLAR */}
+          <div className="bg-[#0f172a]/40 border border-white/5 rounded-[32px] p-6">
+            <h3 className="text-[10px] font-black text-orange-400 tracking-[0.2em] mb-6 flex items-center gap-2 uppercase font-mono">
+              <Zap size={14} fill="currentColor" /> Tezkor amallar
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <QuickAction icon={<Clock className="text-blue-400" />} label="Dush Navbati" />
+              <QuickAction icon={<Calculator className="text-green-400" />} label="Kalkulyator" />
             </div>
-            <Zap size={32} className="opacity-20 group-hover:opacity-100 group-hover:scale-110 transition-all hidden sm:block" />
-          </motion.div>
-
+          </div>
         </div>
 
-        {/* NAVBAR: 
-          Telda pastda (fixed), 
-          Laptopda ham pastda markazda ixcham turadi
-        */}
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-fit px-4">
-          <nav className="bg-slate-900/80 backdrop-blur-2xl border border-white/10 p-2 rounded-full shadow-2xl flex items-center gap-1 overflow-x-auto no-scrollbar">
-            <NavItem icon={<LayoutDashboard size={18}/>} label="Asosiy" active />
-            <NavItem icon={<Calendar size={18}/>} label="E'lonlar" />
-            <NavItem icon={<Clock size={18}/>} label="Navbat" />
-            <NavItem icon={<Shield size={18}/>} label="Qoidalar" />
-            <div className="w-px h-6 bg-white/10 mx-2 hidden sm:block" />
-            <NavItem icon={<LogOut size={18}/>} label="Chiqish" danger />
-          </nav>
-        </div>
+        {/* O'NG USTUN */}
+        <div className="lg:col-span-7 space-y-8">
+          
+          {/* E'LONLAR - Yangi e'lonlar qo'shildi */}
+          <div className="bg-[#0f172a]/40 border border-white/5 rounded-[32px] p-7">
+            <div className="flex justify-between items-center mb-6">
+               <h3 className="text-[10px] font-black text-indigo-400 tracking-[0.2em] flex items-center gap-2 uppercase">
+                <Megaphone size={14} className="animate-pulse" /> Fakultet va TTJ Yangiliklari
+              </h3>
+              <span className="text-[9px] px-2 py-1 bg-indigo-500/10 text-indigo-400 rounded-lg font-bold">YANGI</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              <ElonCard icon={<Users />} title="3-Qavat bollariga majlis" time="Bugun 22:00" desc="3-qavat foyesida barcha talabalar qatnashishi shart." col="text-red-400" bg="bg-red-400/10" />
+              <ElonCard icon={<Cpu />} title="IT Fakultet: Hackathon" time="25-Aprel" desc="Sun'iy intellekt yo'nalishida musobaqa ro'yxatdan o'tish boshlandi." col="text-emerald-400" bg="bg-emerald-400/10" />
+              <ElonCard icon={<BookOpen />} title="Frontend: React JS" time="Bugun 20:00" desc="Ma'naviyat xonasida amaliy loyiha ustida ishlash." col="text-indigo-400" bg="bg-indigo-400/10" />
+              <ElonCard icon={<Calculator />} title="Matematika Olimpiadasi" time="Dushanba" desc="Fakultetlararo olimpiadada qatnashish uchun ariza bering." col="text-yellow-400" bg="bg-yellow-400/10" />
+            </div>
+          </div>
 
+          {/* TO'LOV QISMI - Detallashtirildi */}
+          <div className="bg-[#0f172a]/40 border border-white/5 rounded-[32px] p-8 group">
+             <div className="flex items-center gap-4 mb-8">
+                <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 border border-indigo-500/20 italic font-black text-2xl">₿</div>
+                <div>
+                  <h4 className="text-xl font-black text-white italic">To'lovlar Monitoringi</h4>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Shaxsiy hisob-kitob</p>
+                </div>
+             </div>
+             
+             <div className="grid grid-cols-2 gap-4 mb-6">
+                <PaymentInfo label="Oxirgi to'lov" value="350,000 UZS" date="12.03.2026" color="text-green-400" />
+                <PaymentInfo label="Keyingi to'lov" value="350,000 UZS" date="12.04.2026" color="text-orange-400" />
+             </div>
+
+             <div className="p-5 bg-white/5 rounded-[24px] border border-white/5">
+                <div className="flex justify-between items-center mb-3">
+                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">To'lov muddati (Deadline)</span>
+                   <span className="text-xs font-bold text-red-400">20-Aprel, 2026</span>
+                </div>
+                <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                   <div className="w-[85%] h-full bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500"></div>
+                </div>
+                <p className="text-[9px] text-gray-500 mt-3 italic text-center">* Muddati o'tgan to'lovlar uchun jarima hisoblanishi mumkin.</p>
+             </div>
+          </div>
+
+          {/* JADVAL */}
+          <div className="bg-[#0f172a]/40 border border-white/5 rounded-[32px] p-7">
+            <h3 className="text-[10px] font-black text-white tracking-[0.2em] flex items-center gap-2 uppercase italic mb-6">
+              <Calendar size={14} className="text-indigo-500" /> Kechki Rejalar
+            </h3>
+            <div className="space-y-3">
+              <ScheduleItem t="20:00" task="Frontend kursi" st="Hozir" active />
+              <ScheduleItem t="22:00" task="3-qavat Majlisi" st="Kutilmoqda" warning />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  )
+  );
 }
 
-function NavItem({ icon, label, active = false, danger = false }: any) {
+// --- KOMPONENTLAR ---
+
+function StatMini({ l, v, active = false }: any) {
   return (
-    <div className={`
-      flex items-center gap-2 px-4 py-2.5 rounded-full transition-all cursor-pointer whitespace-nowrap
-      ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-slate-400 hover:bg-white/5'}
-      ${danger ? 'hover:text-rose-500' : ''}
-    `}>
-      {icon}
-      {active && <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">{label}</span>}
+    <div className="text-center">
+      <p className="text-[15px] font-black text-white/40 mb-1">{l}</p>
+      <p className={`text-xl font-black ${active ? 'text-green-300' : 'text-white'}`}>{v}</p>
     </div>
-  )
+  );
+}
+
+function Xonadosh({ name, role, img, me = false }: any) {
+  return (
+    <div className={`flex items-center justify-between p-3 rounded-2xl transition-all border ${me ? 'bg-indigo-600/10 border-indigo-500/30' : 'bg-white/5 border-transparent hover:border-white/10'}`}>
+      <div className="flex items-center gap-3">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-[10px] font-bold border ${me ? 'bg-indigo-600 text-white' : 'bg-indigo-600/20 text-indigo-400 border-indigo-500/20'}`}>{img}</div>
+        <div>
+          <p className="text-xs font-bold text-white leading-none mb-1">{name}</p>
+          <p className={`text-[10px] ${me ? 'text-indigo-300 font-bold' : 'text-gray-500'}`}>{role}</p>
+        </div>
+      </div>
+      <div className={`w-1.5 h-1.5 rounded-full ${me ? 'bg-indigo-400 animate-pulse' : 'bg-green-500'}`}></div>
+    </div>
+  );
+}
+
+function ElonCard({ icon, title, time, desc, col, bg }: any) {
+  return (
+    <div className={`flex items-start gap-4 p-4 rounded-2xl border border-white/5 hover:border-white/10 transition-all ${bg}`}>
+      <div className={`p-2 rounded-xl ${col} bg-white/5`}>{icon}</div>
+      <div className="flex-1">
+        <div className="flex justify-between items-center mb-1">
+          <p className="text-xs font-black text-white uppercase italic">{title}</p>
+          <span className="text-[9px] text-gray-500 font-black tracking-tighter uppercase">{time}</span>
+        </div>
+        <p className="text-[10px] text-gray-400 leading-tight">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+function PaymentInfo({ label, value, date, color }: any) {
+  return (
+    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+      <p className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2">{label}</p>
+      <p className={`text-sm font-black italic mb-1 ${color}`}>{value}</p>
+      <p className="text-[9px] text-gray-600 font-bold">{date}</p>
+    </div>
+  );
+}
+
+function QuickAction({ icon, label }: any) {
+  return (
+    <button className="flex flex-col items-center justify-center p-5 bg-white/5 rounded-[28px] border border-white/5 hover:border-indigo-500/30 transition-all group w-full">
+      <div className="mb-2 group-hover:scale-110 transition-transform">{icon}</div>
+      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
+    </button>
+  );
+}
+
+function ScheduleItem({ t, task, st, active = false, warning = false }: any) {
+  return (
+    <div className={`flex items-center justify-between p-4 rounded-2xl border ${active ? 'bg-indigo-600 border-indigo-400' : warning ? 'bg-red-500/5 border-red-500/20' : 'bg-white/5 border-transparent'}`}>
+      <div className="flex items-center gap-4">
+        <span className={`text-[10px] font-black font-mono ${active ? 'text-white' : 'text-gray-500'}`}>{t}</span>
+        <span className={`text-xs font-bold ${active ? 'text-white' : 'text-gray-300'}`}>{task}</span>
+      </div>
+      <span className={`text-[9px] px-2 py-1 rounded-lg font-black uppercase ${active ? 'bg-white text-indigo-600' : warning ? 'text-red-400 border border-red-500/20' : 'text-gray-500'}`}>{st}</span>
+    </div>
+  );
 }

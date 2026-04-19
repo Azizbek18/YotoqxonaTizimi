@@ -4,12 +4,13 @@ import React, { useState } from 'react';
 import { 
   Search, Clock, X, 
   Plus, CreditCard, Trash2, CheckCircle2, UserPlus, UserMinus,
-  Megaphone, Calendar, MapPin, User
+  Megaphone, Calendar, MapPin, User, FileText, AlertTriangle
 } from 'lucide-react';
 
 export default function TalabaDashboard() {
-  const [showDush, setShowDush] = useState(false);
+  const [showArizalar, setShowArizalar] = useState(false);
   const [selectedElon, setSelectedElon] = useState<any>(null);
+  const [selectedAriza, setSelectedAriza] = useState<any>(null);
   
   const [tasks, setTasks] = useState([
     { id: 1, text: "Matematik analiz topshirig'ini yuklash", completed: true },
@@ -17,27 +18,29 @@ export default function TalabaDashboard() {
   ]);
   const [newTask, setNewTask] = useState("");
 
-  const [navbatlar, setNavbatlar] = useState([
-    { id: 101, name: "Asadbek Jumanov", time: "17:15", isMe: false },
-    { id: 102, name: "Diyorbek Alimov", time: "17:30", isMe: false }
+  const [arizalar, setArizalar] = useState([
+    { 
+      id: 1, 
+      ism: "Sherzod G'apparov", 
+      kurs: "1-kurs", 
+      yonalish: "Amaliy Matematika", 
+      sana: "10.03.2026",
+      matn: "Yotoqxona ichki tartib qoidalarini buzganlik (kech qolish) bo'yicha tushuntirish xati.",
+      daraja: "warning"
+    },
+    { 
+      id: 2, 
+      ism: "Sherzod G'apparov", 
+      kurs: "1-kurs", 
+      yonalish: "Amaliy Matematika", 
+      sana: "15.03.2026",
+      matn: "Xona tozaligi talablariga rioya qilmaganlik uchun rasmiy ogohlantirish.",
+      daraja: "warning"
+    }
   ]);
 
-  const foydalanuvchiNomi = "Sherzod Karimov";
-  const navbatdaBorman = navbatlar.some(n => n.isMe);
-
-  const navbatniBoshqarish = () => {
-    if (navbatdaBorman) {
-      setNavbatlar(navbatlar.filter(n => !n.isMe));
-    } else {
-      const yangiNavbat = {
-        id: Date.now(),
-        name: foydalanuvchiNomi,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isMe: true
-      };
-      setNavbatlar([...navbatlar, yangiNavbat]);
-    }
-  };
+  const arizaSoni = arizalar.length;
+  const haydalishArafasida = arizaSoni >= 3;
 
   return (
     <div className="relative w-full max-w-[1100px] mx-auto p-4 md:p-8 space-y-8 bg-[#050810] min-h-screen text-white font-sans">
@@ -76,17 +79,30 @@ export default function TalabaDashboard() {
             <h3 className="text-[10px] font-black text-green-400 tracking-[0.2em] mb-6 uppercase">Xonadoshlar (4 kishi)</h3>
             <div className="space-y-3">
               <Xonadosh name="Sherzod G'apparov" kurs="1-kurs" img="SG" me />
-              <Xonadosh name="Dilshod Latipov" kurs="3-kurs" img="DL" />
+              <Xonadosh name="Dilshod Latipov" kurs="1-kurs" img="DL" />
               <Xonadosh name="Gaxriman Araznepesov" kurs="1-kurs" img="GA" />
               <Xonadosh name="Melisbek Kulishev" kurs="1-kurs" img="MK" />
             </div>
           </div>
 
-          <div className="bg-[#0f172a]/40 border border-white/5 rounded-[32px] p-6">
+          {/* TALABA ARIZALARI */}
+          <div className={`border rounded-[32px] p-6 transition-all duration-500 ${haydalishArafasida ? 'bg-red-500/20 border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.2)]' : 'bg-[#0f172a]/40 border-white/5'}`}>
+            <h3 className={`text-[10px] font-black tracking-[0.2em] mb-4 uppercase ${haydalishArafasida ? 'text-red-400' : 'text-indigo-400'}`}>
+              Tartib-intizom holati
+            </h3>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <p className="text-2xl font-black italic">{arizaSoni} ta ariza</p>
+                <p className="text-[10px] text-gray-500 font-bold">{haydalishArafasida ? "CHIQARILISH ARAFSIDA!" : "Hozircha xavfsiz"}</p>
+              </div>
+              <div className={`p-3 rounded-2xl ${haydalishArafasida ? 'bg-red-500 text-white' : 'bg-white/5 text-indigo-400'}`}>
+                <AlertTriangle size={24} />
+              </div>
+            </div>
             <ServiceBtn 
-              icon={<Clock className={navbatdaBorman ? "text-green-400" : "text-blue-400"} />} 
-              label={navbatdaBorman ? "Siz navbatdasiz" : "Dush Navbati"} 
-              onClick={() => setShowDush(true)} 
+              icon={<FileText className={haydalishArafasida ? "text-red-400" : "text-blue-400"} />} 
+              label="Arizalarni ko'rish" 
+              onClick={() => setShowArizalar(true)} 
             />
           </div>
         </div>
@@ -108,7 +124,7 @@ export default function TalabaDashboard() {
                   teacher: "Ma'naviyat bo'limi",
                   room: "Fakultet hovlisi",
                   time: "Ertaga, 10:00",
-                  desc: "Milliy taomlar sayli, sport musobaqalari va bayram konserti barchangizni kutmoqda! Ishtirok etish ixtiyoriy."
+                  desc: "Milliy taomlar sayli, sport musobaqalari va bayram konserti barchangizni kutmoqda!"
                 })}
               />
               <ElonCard 
@@ -121,7 +137,7 @@ export default function TalabaDashboard() {
                   teacher: "Mo'minov Azizbek ",
                   room: "302-xona",
                   time: "Bugun, 20:00",
-                  desc: "React.js kutubxonasi bo'yicha amaliy darslar davom etadi. Noutbuklarni olib kelish esdan chiqmasin."
+                  desc: "React.js kutubxonasi bo'yicha amaliy darslar davom etadi."
                 })}
               />
             </div>
@@ -147,7 +163,7 @@ export default function TalabaDashboard() {
             </div>
           </div>
 
-          {/* TO'LOV HOLATI */}
+          {/* TO'LOV HOLATI (JOYIGA QAYTARILDI) */}
           <div className="bg-[#0f172a]/40 border border-white/5 rounded-[32px] p-8 hover:scale-[1.01] transition-all">
              <h4 className="text-xl font-black mb-6 italic flex items-center gap-2">
                <CreditCard className="text-indigo-400" /> To'lov Holati
@@ -182,82 +198,86 @@ export default function TalabaDashboard() {
         </div>
       </div>
 
-      {/* DUSH NAVBATI MODALI */}
-      {showDush && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setShowDush(false)}>
-          <div className="bg-[#0f172a] border border-white/10 p-7 rounded-[40px] shadow-2xl w-full max-w-[420px]" onClick={e => e.stopPropagation()}>
+      {/* ARIZALAR RO'YXATI MODALI */}
+      {showArizalar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setShowArizalar(false)}>
+          <div className="bg-[#0f172a] border border-white/10 p-7 rounded-[40px] shadow-2xl w-full max-w-[450px]" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-8 text-white">
-              <h4 className="text-xl font-black italic flex items-center gap-2 uppercase tracking-tighter">
-                <Clock className="text-indigo-400" /> Navbatlar
+              <h4 className="text-xl font-black italic flex items-center gap-2 uppercase tracking-tighter text-indigo-400">
+                <FileText /> Arizalar va Ogohlantirishlar
               </h4>
-              <button onClick={() => setShowDush(false)} className="p-2 hover:bg-white/5 rounded-full transition-all"><X /></button>
+              <button onClick={() => setShowArizalar(false)} className="p-2 hover:bg-white/5 rounded-full transition-all"><X /></button>
             </div>
-            <div className="space-y-3 mb-8 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-              {navbatlar.map((item, index) => (
-                <div key={item.id} className={`flex justify-between items-center p-4 rounded-2xl border transition-all ${item.isMe ? 'bg-indigo-600/20 border-indigo-500/40' : 'bg-white/5 border-white/5'}`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-black text-gray-500">{index + 1}</span>
-                    <span className={`text-sm font-bold ${item.isMe ? 'text-indigo-400' : 'text-white'}`}>{item.name}</span>
+            <div className="space-y-3 mb-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              {arizalar.map((ariza) => (
+                <div 
+                  key={ariza.id} 
+                  onClick={() => setSelectedAriza(ariza)}
+                  className="p-4 rounded-2xl border bg-white/5 border-white/5 hover:border-indigo-500/50 cursor-pointer transition-all hover:translate-x-1"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{ariza.sana}</span>
+                    <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
                   </div>
-                  <span className="text-[10px] text-gray-500 font-mono font-bold">{item.time}</span>
+                  <p className="text-sm font-bold text-white mb-1">{ariza.ism}</p>
+                  <p className="text-[10px] text-gray-500 uppercase font-black">{ariza.kurs} | {ariza.yonalish}</p>
                 </div>
               ))}
             </div>
-            <button onClick={navbatniBoshqarish} className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${navbatdaBorman ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
-              {navbatdaBorman ? <><UserMinus size={18} /> Navbatdan chiqish</> : <><UserPlus size={18} /> Navbatga yozilish</>}
-            </button>
           </div>
         </div>
       )}
 
-      {/* YANGILANGAN E'LONLAR MODALI */}
+      {/* ARIZA TO'LIQ MATNI MODALI */}
+      {selectedAriza && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-lg p-4" onClick={() => setSelectedAriza(null)}>
+          <div className="bg-[#0f172a] border border-red-500/30 p-8 rounded-[45px] shadow-2xl w-full max-w-[400px]" onClick={e => e.stopPropagation()}>
+             <div className="flex justify-center mb-6">
+                <div className="w-16 h-16 bg-red-500/10 rounded-3xl flex items-center justify-center text-red-500"><AlertTriangle size={32} /></div>
+             </div>
+             <h3 className="text-center text-2xl font-black italic mb-2 uppercase tracking-tighter">Ariza Tafsiloti</h3>
+             <div className="space-y-4 my-8">
+                <div className="bg-white/5 p-4 rounded-2xl border border-white/5 text-center">
+                   <p className="text-[10px] font-black text-gray-500 uppercase mb-1">Talaba</p>
+                   <p className="text-sm font-bold text-white">{selectedAriza.ism}</p>
+                   <p className="text-[10px] text-indigo-400 font-bold">{selectedAriza.yonalish}</p>
+                </div>
+                <div className="bg-white/5 p-6 rounded-2xl border border-white/10 italic text-sm text-gray-300 leading-relaxed">
+                   "{selectedAriza.matn}"
+                </div>
+             </div>
+             <button onClick={() => setSelectedAriza(null)} className="w-full py-4 bg-red-500/20 text-red-400 border border-red-500/20 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500/30 transition-all">Yopish</button>
+          </div>
+        </div>
+      )}
+
+      {/* E'LONLAR MODALI */}
       {selectedElon && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4" onClick={() => setSelectedElon(null)}>
           <div className="bg-[#0f172a] border border-white/10 p-0 rounded-[45px] shadow-2xl w-full max-w-[450px] overflow-hidden animate-in fade-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
             <div className="bg-indigo-600 p-8 text-white relative">
               <div className="absolute top-6 right-6">
-                <button onClick={() => setSelectedElon(null)} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all">
-                  <X size={20} />
-                </button>
+                <button onClick={() => setSelectedElon(null)} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all"><X size={20} /></button>
               </div>
-              <span className="text-[10px] font-black bg-white/20 px-3 py-1 rounded-full uppercase tracking-widest mb-4 inline-block">
-                {selectedElon.type}
-              </span>
+              <span className="text-[10px] font-black bg-white/20 px-3 py-1 rounded-full uppercase tracking-widest mb-4 inline-block">{selectedElon.type}</span>
               <h3 className="text-3xl font-black italic tracking-tighter leading-tight">{selectedElon.title}</h3>
             </div>
-            
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white/5 p-4 rounded-3xl border border-white/5">
-                  <div className="flex items-center gap-2 text-indigo-400 mb-1">
-                    <User size={14} /> <span className="text-[9px] font-black uppercase">Mas'ul</span>
-                  </div>
+                  <div className="flex items-center gap-2 text-indigo-400 mb-1"><User size={14} /><span className="text-[9px] font-black uppercase">Mas'ul</span></div>
                   <p className="text-xs font-bold text-white">{selectedElon.teacher}</p>
                 </div>
                 <div className="bg-white/5 p-4 rounded-3xl border border-white/5">
-                  <div className="flex items-center gap-2 text-indigo-400 mb-1">
-                    <MapPin size={14} /> <span className="text-[9px] font-black uppercase">Joy</span>
-                  </div>
+                  <div className="flex items-center gap-2 text-indigo-400 mb-1"><MapPin size={14} /><span className="text-[9px] font-black uppercase">Joy</span></div>
                   <p className="text-xs font-bold text-white">{selectedElon.room}</p>
                 </div>
               </div>
-
-              <div className="bg-indigo-600/5 p-5 rounded-3xl border border-indigo-500/10 flex items-center gap-4">
-                <Calendar className="text-indigo-400" size={24} />
-                <div>
-                  <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Sana va Vaqt</p>
-                  <p className="text-sm font-black text-white italic">{selectedElon.time}</p>
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Batafsil ma'lumot</p>
                 <p className="text-sm text-gray-300 leading-relaxed italic">"{selectedElon.desc}"</p>
               </div>
-
-              <button onClick={() => setSelectedElon(null)} className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all">
-                Tushunarli
-              </button>
+              <button onClick={() => setSelectedElon(null)} className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all">Tushunarli</button>
             </div>
           </div>
         </div>

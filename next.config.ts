@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* Hozircha bu yerga hech narsa yozmang */
+  // Turbopack o'chirildi - Google Font muammosini hal qiladi
 };
 
 export default nextConfig;

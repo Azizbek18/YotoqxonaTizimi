@@ -14,8 +14,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Yotoqxona tizimi",
+  title: "MTalaba | Yotoqxona tizimi",
   description: "Yotoqxonani kuchli nazorat qiladigan platforma",
+  icons: {
+    icon: '/logo.png', 
+  },
+  openGraph: {
+    title: "Yotoqxona.uz - Aqlli boshqaruv tizimi",
+    description: "Yotoqxonani raqamli boshqarish platformasi",
+    images: [
+      {
+        url: '/rasm.png', 
+        width: 1200,
+        height: 630,
+      }
+    ],
+  }
 };
 
 export default function RootLayout({

@@ -4,17 +4,17 @@ import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  LayoutDashboard, Megaphone, ListOrdered, ShieldCheck, 
-  UserCircle, Bell, Moon, Sun, Zap, Clock 
+import {
+  LayoutDashboard, Megaphone, ListOrdered, ShieldCheck,
+  UserCircle, Bell, Moon, Sun, Zap, Clock
 } from 'lucide-react'
 
 const NAV = [
-  { icon: LayoutDashboard, label: 'Asosiy',   href: '/talaba/dashboard' },
-  { icon: Megaphone,       label: "E'lonlar",  href: '/talaba/elonlar'   },
-  { icon: ListOrdered,     label: 'Navbat',    href: '/talaba/navbat'    },
-  { icon: ShieldCheck,     label: 'Qoidalar',  href: '/talaba/qoidalar'  },
-  { icon: UserCircle,      label: 'Profil',    href: '/talaba/profil'    },
+  { icon: LayoutDashboard, label: 'Asosiy', href: '/talaba/dashboard' },
+  { icon: Megaphone, label: "E'lonlar", href: '/talaba/elonlar' },
+  { icon: ListOrdered, label: 'Navbat', href: '/talaba/navbat' },
+  { icon: ShieldCheck, label: 'Qoidalar', href: '/talaba/qoidalar' },
+  { icon: UserCircle, label: 'Profil', href: '/talaba/profil' },
 ]
 
 const QUICK_ACTIONS = [
@@ -25,26 +25,31 @@ const QUICK_ACTIONS = [
 
 export default function TalabaLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const [mounted, setMounted] = useState(false)
   const [time, setTime] = useState(new Date())
 
+  const [mounted, setMounted] = useState(false)
   useEffect(() => {
-    setMounted(true)
-    const timer = setInterval(() => setTime(new Date()), 60000)
-    return () => clearInterval(timer)
-  }, [])
+    const timeoutId = setTimeout(() => {
+      setMounted(true);
+    }, 0);
+    const timer = setInterval(() => setTime(new Date()), 60000);
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(timer);
+    };
+  }, []);
 
   if (!mounted) return null
 
   return (
     <div className="min-h-screen bg-[#02040a]  text-white selection:bg-cyan-500/30 overflow-x-hidden font-sans">
-      
+
       {/* --- 1. DYNAMIC BACKGROUND LAYER --- */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-15%] left-[-10%] w-[80%] h-[70%] bg-blue-600/10 blur-[140px] rounded-full opacity-60" />
         <div className="absolute bottom-[-10%] right-[-5%] w-[60%] h-[50%] bg-cyan-600/10 blur-[120px] rounded-full opacity-40" />
-        <div className="absolute inset-0 opacity-[0.03]" 
-          style={{ backgroundImage: `radial-gradient(#fff 1.2px, transparent 1px)`, backgroundSize: '40px 40px' }} 
+        <div className="absolute inset-0 opacity-[0.03]"
+          style={{ backgroundImage: `radial-gradient(#fff 1.2px, transparent 1px)`, backgroundSize: '40px 40px' }}
         />
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
       </div>
@@ -65,7 +70,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
               </div>
             </div>
           </div>
-          
+
           <button className="relative p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group">
             <Bell size={20} className="text-slate-400 group-hover:text-white" />
             <span className="absolute top-2 right-2 w-2 h-2 bg-cyan-500 rounded-full border-2 border-[#02040a] animate-pulse" />
@@ -75,7 +80,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
 
       {/* --- 3. MAIN CONTENT --- */}
       <main className="relative z-10 w-full max-w-6xl mx-auto  pt-8 pb-40">
-        
+
         {/* Quick Actions Scrollable Row */}
         <section className="mb-8">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4 ml-1">Tezkor amallar</p>
@@ -116,7 +121,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
         >
           {/* Inner Glossy Glow */}
           <div className="absolute inset-0 rounded-[32px] bg-gradient-to-b from-white/[0.05] to-transparent pointer-events-none" />
-          
+
           {NAV.map((item) => {
             const isActive = pathname === item.href
             return (
@@ -140,21 +145,19 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                     <item.icon
                       size={22}
                       strokeWidth={isActive ? 2.5 : 1.8}
-                      className={`transition-all duration-300 ${
-                        isActive ? 'text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]' : 'text-slate-500 group-hover:text-slate-300'
-                      }`}
+                      className={`transition-all duration-300 ${isActive ? 'text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]' : 'text-slate-500 group-hover:text-slate-300'
+                        }`}
                     />
                   </div>
 
-                  <span className={`text-[9px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
-                    isActive ? 'text-cyan-400 opacity-100' : 'text-slate-500 opacity-0 h-0 overflow-hidden'
-                  }`}>
+                  <span className={`text-[9px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${isActive ? 'text-cyan-400 opacity-100' : 'text-slate-500 opacity-0 h-0 overflow-hidden'
+                    }`}>
                     {item.label}
                   </span>
 
                   {/* Active Bottom Bar */}
                   {isActive && (
-                    <motion.div 
+                    <motion.div
                       layoutId="active-bar"
                       className="absolute -bottom-1 w-4 h-[2px] bg-cyan-400 rounded-full shadow-[0_0_8px_#22d3ee]"
                     />

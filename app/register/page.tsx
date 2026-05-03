@@ -42,7 +42,7 @@ export default function RegisterPage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="flex items-center gap-3 p-4 rounded-xl bg-[#0b1120]/95 backdrop-blur-xl border border-white/10 shadow-2xl max-w-[280px] w-full"
+            className="flex items-center gap-3 p-4 rounded-xl bg-[#0b1120]/95 backdrop-blur-xl border border-white/10 shadow-2xl max-w-70 w-full"
           >
             <div className={`flex items-center justify-center p-2 rounded-lg ${type === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
               {type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
@@ -148,9 +148,9 @@ export default function RegisterPage() {
       </div>
 
       <div className="relative z-10 w-full max-w-[320px] sm:max-w-md my-2">
-        <div className="flex flex-col max-h-[94vh] rounded-[24px] sm:rounded-[32px] border border-white/10 bg-[#111827]/80 backdrop-blur-3xl shadow-2xl overflow-hidden">
+        <div className="flex flex-col max-h-[94vh] rounded-3xl sm:rounded-4xl border border-white/10 bg-[#111827]/80 backdrop-blur-3xl shadow-2xl overflow-hidden">
 
-          <div className="p-4 sm:pt-8 sm:pb-4 pb-2 flex-shrink-0 border-b border-white/5">
+          <div className="p-4 sm:pt-8 sm:pb-4 pb-2 shrink-0 border-b border-white/5">
             <div className="flex gap-1 bg-white/5 rounded-xl p-1 mb-4 border border-white/5">
               <Link href="/login" className="flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-lg text-slate-400">Kirish</Link>
               <div className="flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-lg text-white bg-blue-600 shadow-lg shadow-blue-600/20">Ro'yxatdan o'tish</div>
@@ -164,7 +164,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-8 py-2">
-            <div className="min-h-[280px] flex flex-col justify-start py-4">
+            <div className="min-h-70 flex flex-col justify-start py-4">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={step}
@@ -195,10 +195,10 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <div className="p-4 sm:p-8 pt-2 flex-shrink-0">
+          <div className="p-4 sm:p-8 pt-2 shrink-0">
             <p className="text-center text-[14px] sm:text-[12px] text-slate-500 border-t border-white/5 pt-3">
               Akkauntingiz bormi?{' '}
-              <Link href="/login" className="text-blue-500 font-bold hover:underline">Kirish</Link>
+              <Link href="/login?student=1" className="text-blue-500 font-bold hover:underline">Kirish</Link>
             </p>
           </div>
         </div>

@@ -1,17 +1,7 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import AppProviders from "@/components/providers/AppProviders";
+import { THEME_STORAGE_KEY } from "@/lib/theme/constants";
 import "./globals.css";
-import { Toaster } from "react-hot-toast";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "MTalaba | Yotoqxona tizimi",
@@ -32,6 +22,25 @@ export const metadata: Metadata = {
   }
 };
 
+const themeInitScript = `
+  (function () {
+    try {
+      var saved = localStorage.getItem('${THEME_STORAGE_KEY}');
+      var parsed = saved ? JSON.parse(saved) : null;
+      var theme = parsed && parsed.state && parsed.state.theme ? parsed.state.theme : 'dark';
+      var root = document.documentElement;
+      root.dataset.theme = theme;
+      root.style.colorScheme = theme;
+      root.classList.remove('theme-dark', 'theme-light');
+      root.classList.add(theme === 'light' ? 'theme-light' : 'theme-dark');
+    } catch (error) {
+      document.documentElement.dataset.theme = 'dark';
+      document.documentElement.style.colorScheme = 'dark';
+      document.documentElement.classList.add('theme-dark');
+    }
+  })();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,11 +49,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className="h-full antialiased"
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-full flex flex-col">
-        <Toaster position="top-left" reverseOrder={false} />
-        {children}
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

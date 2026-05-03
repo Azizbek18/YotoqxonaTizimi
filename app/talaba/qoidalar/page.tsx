@@ -3,14 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import React from "react";
-import { 
-  Home, 
-  Bell, 
-  Clock, 
-  FileText, 
-  User, 
-  AlertTriangle, 
-  ChevronDown 
+import {
+  Home,
+  Bell,
+  Clock,
+  FileText,
+  User,
+  AlertTriangle,
+  ChevronDown
 } from "lucide-react";
 
 // ─── Turlar ───────────────────────────────────────────────────────────────────
@@ -102,12 +102,12 @@ export default function QoidalarPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white px-5 py-10 pb-32 font-sans selection:bg-blue-500/30">
-      
+
       {/* BACKGROUND DECORATION */}
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_2px_2px,rgba(59,130,246,0.05)_1px,transparent_0)] bg-[size:32px_32px] pointer-events-none" />
 
       <div className="relative max-w-2xl mx-auto">
-        
+
         {/* HEADER */}
         <div className="text-center mb-10">
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 bg-clip-text text-transparent animate-gradient-x bg-[length:200%_auto]">
@@ -148,9 +148,9 @@ export default function QoidalarPage() {
                       </span>
                     </div>
                   </div>
-                  <ChevronDown 
-                    className={`text-gray-500 transition-transform duration-300 ${isOpen ? 'rotate-180 text-white' : ''}`} 
-                    size={20} 
+                  <ChevronDown
+                    className={`text-gray-500 transition-transform duration-300 ${isOpen ? 'rotate-180 text-white' : ''}`}
+                    size={20}
                   />
                 </div>
 

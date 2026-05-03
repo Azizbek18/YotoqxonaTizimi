@@ -1,15 +1,18 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { findRoleByUserId } from '@/lib/auth-tables'
 import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, ChevronRight, House, CheckCircle, AlertTriangle, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isStudentFlow = searchParams.get('student') === '1'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -43,19 +46,18 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password) return show3DToast('error', "Ma'lumotlarni to'liq kiriting")
-    
+
     setLoading(true)
     try {
       const cleanEmail = email.trim().toLowerCase()
 
       // 1. Birinchi navbatda foydalanuvchi ro'yxatdan o'tganmi yoki yo'qligini tekshiramiz
-      const { data: userExists, error: checkError } = await supabase
-        .from('users')
-        .select('id, email')
-        .eq('email', cleanEmail)
-        .maybeSingle()
+      const [{ data: userExists }, { data: staffExists }] = await Promise.all([
+        supabase.from('users').select('id, email').eq('email', cleanEmail).maybeSingle(),
+        supabase.from('staff').select('id, email, role').eq('email', cleanEmail).maybeSingle(),
+      ])
 
-      if (!userExists) {
+      if (!userExists && !staffExists) {
         throw new Error("Bunday foydalanuvchi ro'yxatdan o'tmagan!")
       }
 
@@ -74,20 +76,23 @@ export default function LoginPage() {
       }
 
       // 3. Tizimga kirish muvaffaqiyatli bo'lsa, rolini aniqlaymiz
-      const { data: userRecord } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', authData.user?.id)
-        .single()
-
+      const userRole = authData.user?.id ? await findRoleByUserId(supabase, authData.user.id) : null
       show3DToast('success', 'Xush kelibsiz!')
-      
+
       setTimeout(() => {
-        router.push(userRecord?.role === 'tarbiyachi' ? '/tarbiyachi/talabalar' : '/talaba/dashboard')
+        // Rol asosida yantiqlash
+        if (userRole === 'admin') {
+          router.push('/admin/dashboard')
+        } else if (userRole === 'tarbiyachi') {
+          router.push('/tarbiyachi/dashboard')
+        } else {
+          router.push('/talaba/dashboard')
+        }
       }, 1000)
 
-    } catch (err: any) {
-      show3DToast('error', err.message)
+    } catch (err) {
+      const error = err as Error
+      show3DToast('error', error.message)
     } finally {
       setLoading(false)
     }
@@ -114,13 +119,14 @@ export default function LoginPage() {
           </h1>
         </div>
 
-        {/* Card Container - No tilt animation */}
+
+
         <div className="relative bg-[#0b1120]/80 backdrop-blur-3xl border border-white/10 rounded-[24px] sm:rounded-[40px] p-3 sm:p-5 sm:p-10 shadow-2xl overflow-hidden">
-          
+
           {/* Tabs */}
           <div className="flex gap-1 bg-white/5 rounded-xl p-1 mb-6 sm:mb-10 border border-white/5">
             <div className="flex-1 py-2 sm:py-3 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg text-white bg-blue-600 shadow-lg">Kirish</div>
-            <Link href="/register" className="flex-1 py-2 sm:py-3 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg text-slate-500 hover:text-white transition-all italic">Ro'yxatdan o'tish</Link>
+            <Link href="/register" className="flex-1 py-2 sm:py-3 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg text-slate-500 hover:text-white transition-all italic">Ro&apos;yxatdan o&apos;tish</Link>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6">
@@ -186,8 +192,28 @@ export default function LoginPage() {
               <Link href="/forgot-password" className="text-blue-500 hover:underline">Tiklash</Link>
             </p>
           </div>
+
+          {!isStudentFlow && (
+            <div className="mt-4 text-center opacity-5 hover:opacity-40 transition-opacity">
+              <Link href="/admin/login" className="text-[8px] text-slate-600 uppercase tracking-widest">Admin panelga kirish</Link>
+            </div>
+          )}
+          {/* Hidden Admin Access Point */}
+          <div
+            className="absolute bottom-2 right-2 w-2 h-2 rounded-full bg-white/5 cursor-pointer opacity-0 hover:opacity-20 transition-opacity duration-300"
+            onClick={() => router.push('/admin/login')}
+            title="Admin Panel"
+          />
         </div>
       </div>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#020617]" />}>
+      <LoginContent />
+    </Suspense>
   )
 }

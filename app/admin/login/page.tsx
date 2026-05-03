@@ -117,11 +117,11 @@ export default function AdminLoginPage() {
                 <div className="absolute bottom-[-10%] right-[-10%] h-[50%] w-[50%] rounded-full bg-indigo-500/10 blur-[100px]" />
             </div>
 
-            <div className="relative z-10 w-full max-w-[320px] sm:max-w-[440px]">
+            <div className="relative z-10 w-full max-w-[320px] sm:max-w-110">
                 <div className="mb-6 text-center sm:mb-10">
-                    <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 p-[1px] shadow-xl sm:h-20 sm:w-20">
+                    <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 p-px shadow-xl sm:h-20 sm:w-20">
                         <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-[#020617] text-blue-500">
-                            <Shield size={28} className="sm:size-[40px]" />
+                            <Shield className="h-7 w-7 sm:h-10 sm:w-10" />
                         </div>
                     </div>
                     <h1 className="text-xl font-black uppercase italic leading-none tracking-tighter text-white sm:text-4xl">
@@ -132,7 +132,7 @@ export default function AdminLoginPage() {
                     </p>
                 </div>
 
-                <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-[#0b1120]/80 p-3 shadow-2xl backdrop-blur-3xl sm:rounded-[40px] sm:p-10">
+                <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b1120]/80 p-3 shadow-2xl backdrop-blur-3xl sm:rounded-4xl sm:p-10">
                     <div className="mb-6 flex gap-1 rounded-xl border border-white/5 bg-white/5 p-1 sm:mb-8">
                         <div className="flex-1 rounded-lg bg-blue-600 py-2 text-center text-[8px] font-black uppercase tracking-widest text-white shadow-lg sm:py-3 sm:text-[10px]">
                             Kirish
@@ -159,7 +159,7 @@ export default function AdminLoginPage() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="admin@system.local"
-                                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 pl-12 text-sm text-white outline-none transition-all focus:border-blue-500/50"
+                                    className="w-full rounded-xl border border-white/10 bg-white/3 p-3 pl-12 text-sm text-white outline-none transition-all focus:border-blue-500/50"
                                     required
                                 />
                             </div>
@@ -178,7 +178,7 @@ export default function AdminLoginPage() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="********"
-                                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 pl-12 pr-12 text-sm text-white outline-none transition-all focus:border-blue-500/50"
+                                    className="w-full rounded-xl border border-white/10 bg-white/3 p-3 pl-12 pr-12 text-sm text-white outline-none transition-all focus:border-blue-500/50"
                                     required
                                 />
                                 <button
@@ -196,7 +196,7 @@ export default function AdminLoginPage() {
                             disabled={loading}
                             className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl font-black uppercase tracking-widest transition-all sm:h-14 sm:rounded-[22px] sm:text-[12px] ${loading
                                 ? 'bg-white/5 text-slate-600'
-                                : 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-xl hover:shadow-blue-600/20 active:scale-[0.98]'
+                                : 'bg-linear-to-r from-blue-600 to-indigo-700 text-white shadow-xl hover:shadow-blue-600/20 active:scale-[0.98]'
                                 } text-[10px]`}
                         >
                             {loading ? (

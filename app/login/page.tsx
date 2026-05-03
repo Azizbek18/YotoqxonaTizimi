@@ -106,12 +106,12 @@ function LoginContent() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-500/10 rounded-full blur-[100px]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-[320px] sm:max-w-[440px]">
+      <div className="relative z-10 w-full max-w-[320px] sm:max-w-110">
         {/* Logo Section */}
         <div className="text-center mb-6 sm:mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-xl mb-4 p-[1px]">
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 shadow-xl mb-4 p-px">
             <div className="w-full h-full bg-[#020617] rounded-[15px] flex items-center justify-center text-blue-500">
-              <House size={28} className="sm:size-[40px]" />
+              <House className="h-7 w-7 sm:h-10 sm:w-10" />
             </div>
           </div>
           <h1 className="text-xl sm:text-4xl font-black text-white tracking-tighter uppercase italic leading-none">
@@ -121,7 +121,7 @@ function LoginContent() {
 
 
 
-        <div className="relative bg-[#0b1120]/80 backdrop-blur-3xl border border-white/10 rounded-[24px] sm:rounded-[40px] p-3 sm:p-5 sm:p-10 shadow-2xl overflow-hidden">
+        <div className="relative bg-[#0b1120]/80 backdrop-blur-3xl border border-white/10 rounded-3xl sm:rounded-4xl p-3 sm:p-10 shadow-2xl overflow-hidden">
 
           {/* Tabs */}
           <div className="flex gap-1 bg-white/5 rounded-xl p-1 mb-6 sm:mb-10 border border-white/5">
@@ -141,7 +141,7 @@ function LoginContent() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="misol@gmail.com"
-                  className="w-full bg-white/[0.03] border border-white/10 p-3 pl-12 rounded-xl text-sm text-white outline-none focus:border-blue-500/50 transition-all font-sans"
+                  className="w-full bg-white/3 border border-white/10 p-3 pl-12 rounded-xl text-sm text-white outline-none focus:border-blue-500/50 transition-all font-sans"
                   required
                 />
               </div>
@@ -158,7 +158,7 @@ function LoginContent() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-white/[0.03] border border-white/10 p-3 pl-12 pr-12 rounded-xl text-sm text-white outline-none focus:border-blue-500/50 transition-all font-sans"
+                  className="w-full bg-white/3 border border-white/10 p-3 pl-12 pr-12 rounded-xl text-sm text-white outline-none focus:border-blue-500/50 transition-all font-sans"
                   required
                 />
                 <button
@@ -173,7 +173,7 @@ function LoginContent() {
 
             <button
               disabled={loading}
-              className={`w-full h-12 sm:h-14 rounded-xl sm:rounded-[22px] font-black text-[10px] sm:text-[12px] tracking-widest uppercase flex items-center justify-center gap-2 transition-all ${loading ? 'bg-white/5 text-slate-600' : 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-xl hover:shadow-blue-600/20 active:scale-[0.98]'}`}
+              className={`w-full h-12 sm:h-14 rounded-xl sm:rounded-[22px] font-black text-[10px] sm:text-[12px] tracking-widest uppercase flex items-center justify-center gap-2 transition-all ${loading ? 'bg-white/5 text-slate-600' : 'bg-linear-to-r from-blue-600 to-indigo-700 text-white shadow-xl hover:shadow-blue-600/20 active:scale-[0.98]'}`}
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />

@@ -24,7 +24,7 @@ export default function ThemeToggle() {
                 : 'border border-white/15 bg-slate-950/80 text-slate-200 shadow-[0_12px_40px_rgba(15,23,42,0.35)]'
             }`}
           >
-            {isLight ? 'Glass Day' : 'Night Shift'}
+            {isLight ? 'Kun' : 'Tun'}
           </div>
         </div>
 
@@ -140,7 +140,7 @@ export default function ThemeToggle() {
             className="absolute bottom-4 left-5 flex items-center gap-2 text-slate-700/75"
           >
             <Waves size={16} />
-            <span className="text-[10px] font-black uppercase tracking-[0.22em]">Glass</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.22em]">Kun</span>
           </motion.div>
 
           <motion.div
@@ -151,7 +151,7 @@ export default function ThemeToggle() {
             className="absolute bottom-4 right-5 flex items-center gap-2 text-sky-50"
           >
             <Moon size={14} />
-            <span className="text-[10px] font-black uppercase tracking-[0.22em]">Night</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.22em]">Tun</span>
           </motion.div>
         </button>
       </motion.div>

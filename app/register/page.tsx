@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
+import ThemeToggle from '@/components/theme/ThemeToggle'
+import { useThemeStore } from '@/lib/stores/theme-store'
 
 import StepProgress from '@/components/register/StepProgress'
 import Step1Passport from '@/components/register/Step1Passport'
@@ -139,21 +141,28 @@ export default function RegisterPage() {
     }
   }
   const stepProps = { data, onChange: update, onNext: next, onBack: back }
+  const theme = useThemeStore((state) => state.theme)
+  const isLight = theme === 'light'
 
   return (
-    <main className="min-h-screen bg-[#020617] flex items-center justify-center p-2 sm:p-6 font-sans overflow-hidden relative">
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-blue-500/10 rounded-full blur-[80px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-500/10 rounded-full blur-[80px]" />
+    <main className={`min-h-screen flex items-center justify-center p-2 sm:p-6 font-sans overflow-hidden relative ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'}`}>
+      {/* Theme Toggle */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
+
+      <div className={`absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden ${isLight ? 'opacity-40' : ''}`}>
+        <div className={`absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[80px] ${isLight ? 'bg-blue-200' : 'bg-blue-500/10'}`} />
+        <div className={`absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full blur-[80px] ${isLight ? 'bg-indigo-200' : 'bg-indigo-500/10'}`} />
       </div>
 
       <div className="relative z-10 w-full max-w-[320px] sm:max-w-md my-2">
-        <div className="flex flex-col max-h-[94vh] rounded-3xl sm:rounded-4xl border border-white/10 bg-[#111827]/80 backdrop-blur-3xl shadow-2xl overflow-hidden">
+        <div className={`flex flex-col max-h-[94vh] rounded-3xl sm:rounded-4xl border backdrop-blur-3xl shadow-2xl overflow-hidden ${isLight ? 'bg-white/90 border-slate-200' : 'bg-[#111827]/80 border-white/10'}`}>
 
-          <div className="p-4 sm:pt-8 sm:pb-4 pb-2 shrink-0 border-b border-white/5">
-            <div className="flex gap-1 bg-white/5 rounded-xl p-1 mb-4 border border-white/5">
-              <Link href="/login" className="flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-lg text-slate-400">Kirish</Link>
-              <div className="flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-lg text-white bg-blue-600 shadow-lg shadow-blue-600/20">Ro'yxatdan o'tish</div>
+          <div className={`p-4 sm:pt-8 sm:pb-4 pb-2 shrink-0 border-b ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5'}`}>
+            <div className={`flex gap-1 rounded-xl p-1 mb-4 border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/5'}`}>
+              <Link href="/login" className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-lg transition-colors ${isLight ? 'text-slate-500 hover:text-slate-700' : 'text-slate-400'}`}>Kirish</Link>
+              <div className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-lg text-white bg-blue-600 shadow-lg ${isLight ? 'shadow-blue-400/30' : 'shadow-blue-600/20'}`}>Ro'yxatdan o'tish</div>
             </div>
 
             <div className="w-full overflow-x-auto no-scrollbar py-2">
@@ -163,7 +172,7 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-8 py-2">
+          <div className={`flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-8 py-2 ${isLight ? '' : ''}`}>
             <div className="min-h-70 flex flex-col justify-start py-4">
               <AnimatePresence mode="wait">
                 <motion.div

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
-import ThemeToggle from '@/components/theme/ThemeToggle'
 import { applyThemeToDocument, useThemeStore } from '@/lib/stores/theme-store'
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
@@ -48,7 +47,6 @@ export default function AppProviders({ children }: { children: React.ReactNode }
       <div id="app-shell" className="min-h-screen transition-[background,color,box-shadow,border-color] duration-500 ease-out">
         {children}
       </div>
-      <ThemeToggle />
       <Toaster position="top-left" reverseOrder={false} />
     </QueryClientProvider>
   )

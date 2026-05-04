@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useThemeStore } from '@/lib/stores/theme-store';
 
 // Ma'lumotlar strukturasi
 const DATA = {
@@ -45,6 +46,8 @@ export default function ElonlarPage() {
   const [view, setView] = useState<'main' | 'fakultetlar' | 'fakultet_ichi'>('main');
   const [selectedFakultet, setSelectedFakultet] = useState<string | null>(null);
   const [selectedElon, setSelectedElon] = useState<any>(null);
+  const theme = useThemeStore((state) => state.theme);
+  const isLight = theme === 'light';
 
   const colors = {
     Muhim: "border-l-red-500 shadow-red-500/10 hover:shadow-red-500/20",
@@ -54,46 +57,53 @@ export default function ElonlarPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#050507] text-white p-6 md:p-12 selection:bg-blue-600/30">
-      <div className="max-w-[1440px] mx-auto">
-        
+    <div className={`min-h-screen w-full p-6 md:p-12 transition-colors ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100 text-slate-900 selection:bg-blue-200' : 'bg-[#050507] text-white selection:bg-blue-600/30'
+      }`}>
+      <div className="max-w-360 mx-auto">
+
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-20 gap-10">
           <div>
             <div className="flex flex-col mb-4">
-              <h1 className="text-3xl font-black tracking-tighter bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">YOTOQXONA</h1>
+              <h1 className="text-3xl font-black tracking-tighter bg-linear-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">YOTOQXONA</h1>
               <span className="text-[10px] text-gray-600 tracking-[0.5em] font-bold uppercase ml-1">Celestial Sanctuary</span>
             </div>
             <div className="flex items-center gap-6">
               {view !== 'main' && (
-                <button onClick={() => setView(view === 'fakultet_ichi' ? 'fakultetlar' : 'main')} className="bg-white/5 p-4 rounded-full hover:bg-white/10 transition-all">
+                <button
+                  onClick={() => setView(view === 'fakultet_ichi' ? 'fakultetlar' : 'main')}
+                  className={`p-4 rounded-full transition-all ${isLight ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-white/5 hover:bg-white/10 text-white'
+                    }`}
+                >
                   <svg className="w-6 h-6 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                 </button>
               )}
-              <h2 className="text-5xl md:text-8xl font-black tracking-tighter">
-                {view === 'main' ? <>Xabarlar <span className="text-blue-600 italic">bo'limi</span></> : 
-                 view === 'fakultetlar' ? "Fakultetlar" : selectedFakultet}
+              <h2 className={`text-5xl md:text-8xl font-black tracking-tighter ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                {view === 'main' ? <>Xabarlar <span className="text-blue-600 italic">bo'limi</span></> :
+                  view === 'fakultetlar' ? "Fakultetlar" : selectedFakultet}
               </h2>
             </div>
           </div>
 
           {/* FAKULTET YANGILIKLARI TUGMASI (O'zMU logosi bilan) */}
           {view === 'main' && (
-            <button 
+            <button
               onClick={() => setView('fakultetlar')}
-              className="group flex items-center gap-6 bg-white/5 border border-white/10 p-3 pr-10 rounded-[2.5rem] hover:bg-white/10 transition-all hover:scale-105 shadow-2xl active:scale-95"
+              className={`group flex items-center gap-6 border p-3 pr-10 rounded-[2.5rem] transition-all hover:scale-105 shadow-2xl active:scale-95 ${isLight ? 'bg-white border-slate-200 hover:bg-slate-50' : 'bg-white/5 border-white/10 hover:bg-white/10'
+                }`}
             >
-              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center p-2 border-4 border-blue-600 shadow-[0_0_30px_rgba(37,99,235,0.4)] overflow-hidden">
-                <img 
-                  src="https://upload.wikimedia.org/wikipedia/uz/b/b2/Uzbekistan_National_University_logo.png" 
-                  alt="O'zMU" 
-                  className="w-full h-full object-contain scale-125" 
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center p-2 border-4 shadow-[0_0_30px_rgba(37,99,235,0.4)] overflow-hidden ${isLight ? 'bg-slate-50 border-blue-500' : 'bg-white border-blue-600'
+                }`}>
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/uz/b/b2/Uzbekistan_National_University_logo.png"
+                  alt="O'zMU"
+                  className="w-full h-full object-contain scale-125"
                   onError={(e) => { e.currentTarget.src = 'https://nuu.uz/wp-content/uploads/2021/05/logo-nuu-1.png' }}
                 />
               </div>
               <div className="text-left">
                 <span className="text-[10px] text-blue-500 font-black tracking-[0.2em] uppercase">O'zMU Tizimi</span>
-                <p className="text-xl font-black leading-none">Fakultet yangiliklari</p>
+                <p className={`text-xl font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>Fakultet yangiliklari</p>
               </div>
               <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center group-hover:translate-x-2 transition-transform">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
@@ -104,36 +114,43 @@ export default function ElonlarPage() {
 
         {/* ASOSIY GRID (10 TA ELON YOKI FAKULTETLAR) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 animate-in fade-in slide-in-from-bottom-10 duration-700">
-          
+
           {/* 1. ASOSIY SAHIFA - 10 TA ELON */}
           {view === 'main' && DATA.umumiy.map((elon) => (
-            <div 
-              key={elon.id} 
+            <div
+              key={elon.id}
               onClick={() => setSelectedElon(elon)}
-              className={`group bg-[#0f0f12] border-l-[10px] ${colors[elon.type as keyof typeof colors]} p-10 rounded-[3.5rem] cursor-pointer transition-all duration-500 hover:scale-[1.05] hover:-translate-y-4 shadow-2xl relative overflow-hidden`}
+              className={`group border-l-10 ${colors[elon.type as keyof typeof colors]} p-10 rounded-[3.5rem] cursor-pointer transition-all duration-500 hover:scale-[1.05] hover:-translate-y-4 shadow-2xl relative overflow-hidden ${isLight ? 'bg-white border-y border-r border-slate-200 shadow-slate-200' : 'bg-[#0f0f12]'
+                }`}
             >
               <div className="flex justify-between items-center mb-8">
-                <span className="bg-white/5 text-[10px] font-black px-4 py-1.5 rounded-xl border border-white/10 uppercase tracking-widest">{elon.type}</span>
-                <span className="text-gray-600 text-xs font-bold italic">{elon.date}</span>
+                <span className={`text-[10px] font-black px-4 py-1.5 rounded-xl border uppercase tracking-widest ${isLight ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-white/5 border-white/10'
+                  }`}>{elon.type}</span>
+                <span className={`text-xs font-bold italic ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>{elon.date}</span>
               </div>
-              <h3 className="text-3xl font-bold mb-5 group-hover:text-blue-500 transition-colors leading-tight">{elon.title}</h3>
-              <p className="text-gray-500 text-lg leading-relaxed line-clamp-2 italic font-medium">"{elon.text}"</p>
+              <h3 className={`text-3xl font-bold mb-5 transition-colors leading-tight ${isLight ? 'text-slate-900 group-hover:text-blue-600' : 'text-white group-hover:text-blue-500'
+                }`}>{elon.title}</h3>
+              <p className={`text-lg leading-relaxed line-clamp-2 italic font-medium ${isLight ? 'text-slate-600' : 'text-gray-500'
+                }`}>"{elon.text}"</p>
               <div className="mt-8 flex items-center gap-3 text-blue-500 text-[10px] font-black tracking-[0.3em] uppercase">
-                Batafsil <div className="h-[2px] w-10 bg-blue-600 group-hover:w-20 transition-all"></div>
+                Batafsil <div className="h-0.5 w-10 bg-blue-600 group-hover:w-20 transition-all"></div>
               </div>
             </div>
           ))}
 
           {/* 2. FAKULTETLAR RO'YXATI (ASOSIY E'LONLAR DIZAYNIDA) */}
           {view === 'fakultetlar' && Object.keys(DATA.fakultetlar).map((name) => (
-            <div 
-              key={name} 
+            <div
+              key={name}
               onClick={() => { setSelectedFakultet(name); setView('fakultet_ichi'); }}
-              className="group bg-[#0f0f12] border border-white/5 border-l-[10px] border-l-purple-600 p-12 rounded-[4rem] cursor-pointer transition-all duration-500 hover:scale-[1.05] hover:shadow-[0_40px_100px_rgba(147,51,234,0.1)] relative"
+              className={`group border-l-10 border-l-purple-600 p-12 rounded-[4rem] cursor-pointer transition-all duration-500 hover:scale-[1.05] hover:shadow-[0_40px_100px_rgba(147,51,234,0.1)] relative ${isLight ? 'bg-white border-y border-r border-slate-200' : 'bg-[#0f0f12] border border-white/5'
+                }`}
             >
               <div className="text-[10px] font-black text-purple-500 tracking-[0.4em] uppercase mb-4">O'zMU Fakulteti</div>
-              <h3 className="text-4xl md:text-5xl font-black mb-8 leading-none tracking-tighter">{name}</h3>
-              <p className="text-gray-500 text-lg mb-10 font-medium italic">Ushbu fakultetga oid so'nggi 2 haftalik yangiliklarni ko'rish uchun bosing.</p>
+              <h3 className={`text-4xl md:text-5xl font-black mb-8 leading-none tracking-tighter ${isLight ? 'text-slate-900' : 'text-white'
+                }`}>{name}</h3>
+              <p className={`text-lg mb-10 font-medium italic ${isLight ? 'text-slate-500' : 'text-gray-500'
+                }`}>Ushbu fakultetga oid so'nggi 2 haftalik yangiliklarni ko'rish uchun bosing.</p>
               <div className="flex items-center gap-4 text-purple-500 font-black tracking-widest text-xs">
                 KIRISH <div className="h-1 w-12 bg-purple-600 group-hover:w-24 transition-all"></div>
               </div>
@@ -142,17 +159,19 @@ export default function ElonlarPage() {
 
           {/* 3. FAKULTET ICHI - 5 TA YANGILIK */}
           {view === 'fakultet_ichi' && DATA.fakultetlar[selectedFakultet as keyof typeof DATA.fakultetlar].map((elon) => (
-            <div 
-              key={elon.id} 
+            <div
+              key={elon.id}
               onClick={() => setSelectedElon(elon)}
-              className={`group bg-[#0f0f12] border-l-[10px] ${colors[elon.type as keyof typeof colors]} p-10 rounded-[3.5rem] cursor-pointer transition-all duration-500 hover:scale-[1.05] shadow-2xl`}
+              className={`group border-l-10 ${colors[elon.type as keyof typeof colors]} p-10 rounded-[3.5rem] cursor-pointer transition-all duration-500 hover:scale-[1.05] shadow-2xl ${isLight ? 'bg-white border-y border-r border-slate-200 shadow-slate-200' : 'bg-[#0f0f12]'
+                }`}
             >
               <div className="flex justify-between mb-8">
-                <span className="text-[10px] font-black px-4 py-1.5 bg-white/5 rounded-xl border border-white/10 uppercase">{elon.type}</span>
-                <span className="text-gray-600 text-xs font-bold">{elon.date}</span>
+                <span className={`text-[10px] font-black px-4 py-1.5 rounded-xl border uppercase ${isLight ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-white/5 border-white/10'
+                  }`}>{elon.type}</span>
+                <span className={`text-xs font-bold ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>{elon.date}</span>
               </div>
-              <h3 className="text-3xl font-bold mb-4">{elon.title}</h3>
-              <p className="text-gray-500 italic mb-6">"{elon.text}"</p>
+              <h3 className={`text-3xl font-bold mb-4 ${isLight ? 'text-slate-900' : 'text-white'}`}>{elon.title}</h3>
+              <p className={`italic mb-6 ${isLight ? 'text-slate-600' : 'text-gray-500'}`}>"{elon.text}"</p>
               <div className="text-blue-500 font-black text-[10px] tracking-widest uppercase">Batafsil o'qish →</div>
             </div>
           ))}
@@ -161,14 +180,19 @@ export default function ElonlarPage() {
 
         {/* MODAL OYNA */}
         {selectedElon && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-3xl animate-in zoom-in-95 duration-300">
-            <div className="bg-[#0f0f12] w-full max-w-3xl rounded-[4rem] p-12 md:p-20 border border-white/10 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600"></div>
-              <h3 className="text-5xl md:text-7xl font-black mb-10 tracking-tighter leading-[0.9]">{selectedElon.title}</h3>
-              <p className="text-gray-400 text-2xl md:text-3xl leading-relaxed mb-16 font-medium italic opacity-90">"{selectedElon.text}"</p>
-              <button 
+          <div className={`fixed inset-0 z-100 flex items-center justify-center p-6 backdrop-blur-3xl animate-in zoom-in-95 duration-300 ${isLight ? 'bg-white/70' : 'bg-black/95'
+            }`}>
+            <div className={`w-full max-w-3xl rounded-[4rem] p-12 md:p-20 border shadow-2xl relative overflow-hidden ${isLight ? 'bg-white border-slate-200' : 'bg-[#0f0f12] border-white/10'
+              }`}>
+              <div className="absolute top-0 left-0 w-full h-4 bg-linear-to-r from-blue-600 via-purple-600 to-pink-600"></div>
+              <h3 className={`text-5xl md:text-7xl font-black mb-10 tracking-tighter leading-[0.9] ${isLight ? 'text-slate-900' : 'text-white'
+                }`}>{selectedElon.title}</h3>
+              <p className={`text-2xl md:text-3xl leading-relaxed mb-16 font-medium italic opacity-90 ${isLight ? 'text-slate-600' : 'text-gray-400'
+                }`}>"{selectedElon.text}"</p>
+              <button
                 onClick={() => setSelectedElon(null)}
-                className="w-full bg-white text-black py-8 rounded-[2.5rem] font-black text-2xl hover:bg-gray-200 transition-all active:scale-95 shadow-2xl shadow-white/10"
+                className={`w-full py-8 rounded-[2.5rem] font-black text-2xl transition-all active:scale-95 shadow-2xl ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20' : 'bg-white text-black hover:bg-gray-200 shadow-white/10'
+                  }`}
               >
                 TUSHUNARLI
               </button>

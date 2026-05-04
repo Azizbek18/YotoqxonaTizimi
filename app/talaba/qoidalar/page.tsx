@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   ChevronDown
 } from "lucide-react";
+import { useThemeStore } from '@/lib/stores/theme-store';
 
 // ─── Turlar ───────────────────────────────────────────────────────────────────
 interface QoidaItem {
@@ -87,7 +88,14 @@ const qoidalarData: QoidaItem[] = [
 ];
 
 // ─── Nav tugmasi Komponenti ───────────────────────────────────────────────────
-function NavItem({ href, label, icon: Icon, isActive = false }: any) {
+type NavItemProps = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number }>
+  isActive?: boolean;
+};
+
+function NavItem({ href, label, icon: Icon, isActive = false }: NavItemProps) {
   return (
     <Link href={href} className={`flex flex-col items-center gap-1 transition-colors ${isActive ? 'text-blue-500' : 'text-gray-400'}`}>
       <Icon size={24} />
@@ -98,28 +106,35 @@ function NavItem({ href, label, icon: Icon, isActive = false }: any) {
 }
 
 export default function QoidalarPage() {
+  const theme = useThemeStore((state) => state.theme);
+  const isLight = theme === 'light';
   const [openId, setOpenId] = useState<string | null>(null);
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e] text-white px-5 py-10 pb-32 font-sans selection:bg-blue-500/30">
+    <div className={`min-h-screen px-5 py-10 pb-32 font-sans transition-colors ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100 text-slate-900 selection:bg-blue-200' : 'bg-[#0a0f1e] text-white selection:bg-blue-500/30'
+      }`}>
 
       {/* BACKGROUND DECORATION */}
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_2px_2px,rgba(59,130,246,0.05)_1px,transparent_0)] bg-[size:32px_32px] pointer-events-none" />
+      {!isLight && (
+        <div className="fixed inset-0 bg-[radial-gradient(circle_at_2px_2px,rgba(59,130,246,0.05)_1px,transparent_0)] bg-size-[32px_32px] pointer-events-none" />
+      )}
 
       <div className="relative max-w-2xl mx-auto">
 
         {/* HEADER */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 bg-clip-text text-transparent animate-gradient-x bg-[length:200%_auto]">
+          <h1 className={`text-4xl md:text-5xl font-extrabold tracking-tight bg-clip-text ${isLight ? 'text-blue-600' : 'bg-linear-to-r from-blue-500 via-purple-500 to-blue-500 text-transparent animate-gradient-x bg-size-[200%_auto]'
+            }`}>
             QOIDALAR
           </h1>
-          <p className="text-gray-500 text-sm mt-2 font-medium tracking-wide">YOTOQXONA ICHKI TARTIBI</p>
+          <p className={`text-sm mt-2 font-medium tracking-wide ${isLight ? 'text-slate-500' : 'text-gray-500'}`}>YOTOQXONA ICHKI TARTIBI</p>
         </div>
 
         {/* WARNING CARD */}
-        <div className="flex items-center gap-4 p-4 bg-red-500/10 border-l-4 border-red-500 rounded-xl mb-8 animate-pulse-subtle">
-          <AlertTriangle className="text-red-500 shrink-0" size={20} />
-          <p className="text-red-400 text-xs md:text-sm font-bold italic leading-tight">
+        <div className={`flex items-center gap-4 p-4 border-l-4 rounded-xl mb-8 animate-pulse-subtle ${isLight ? 'bg-red-100 border-red-300 text-red-600' : 'bg-red-500/10 border-red-500 text-red-400'
+          }`}>
+          <AlertTriangle className={isLight ? 'text-red-600 shrink-0' : 'text-red-500 shrink-0'} size={20} />
+          <p className="text-xs md:text-sm font-bold italic leading-tight">
             Qoidalarni buzish talaba reytingiga va yashash huquqiga ta&apos;sir qiladi!
           </p>
         </div>

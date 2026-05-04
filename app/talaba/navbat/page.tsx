@@ -328,7 +328,7 @@ export default function NavbatPage() {
 
       setMening(meningData || [])
     } catch (error) {
-        console.error("Xatolik:", error)
+      console.error("Xatolik:", error)
     } finally {
       setLoading(false)
     }
@@ -368,7 +368,7 @@ export default function NavbatPage() {
         </header>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 bg-white/[0.03] p-1.5 rounded-2xl border border-white/5">
+        <div className="flex gap-2 mb-6 bg-white/3 p-1.5 rounded-2xl border border-white/5">
           {tabs.map(tab => (
             <button
               key={tab.key}
@@ -402,7 +402,7 @@ export default function NavbatPage() {
             >
               {/* Mening navbatim kartasi */}
               {mening.length > 0 && (
-                <div className={`rounded-[1.5rem] p-5 border ${tabColor[activeTab].glow} border-white/10`}>
+                <div className={`rounded-3xl p-5 border ${tabColor[activeTab].glow} border-white/10`}>
                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">Mening navbatlarim</p>
                   <div className="space-y-2">
                     {mening.slice(0, 3).map(n => (
@@ -454,7 +454,7 @@ function NavbatSection({
   showDate?: boolean
 }) {
   return (
-    <div className="bg-slate-900/40 rounded-[1.5rem] p-5 border border-white/5">
+    <div className="bg-slate-900/40 rounded-3xl p-5 border border-white/5">
       <div className="flex items-center gap-2 mb-4">
         {icon}
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{title}</p>
@@ -475,7 +475,7 @@ function NavbatSection({
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="flex items-center gap-3 bg-white/[0.03] rounded-2xl px-4 py-3 border border-white/5"
+              className="flex items-center gap-3 bg-white/3 rounded-2xl px-4 py-3 border border-white/5"
             >
               <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-[11px] font-black text-slate-400">
                 {i + 1}

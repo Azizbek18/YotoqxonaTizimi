@@ -23,11 +23,11 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
-            className="relative z-[9999] w-[92vw] max-w-[400px] mx-auto"
+            className="relative z-9999 w-[92vw] max-w-100 mx-auto"
           >
             <div className={`absolute -inset-1 rounded-2xl blur-md opacity-30 ${type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
             <div className="relative bg-[#1e293b]/95 backdrop-blur-2xl border border-white/10 p-4 rounded-2xl flex items-center gap-3">
-              <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border ${type === 'success' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'}`}>
+              <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border ${type === 'success' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'}`}>
                 {type === 'success' ? <Sparkles size={20} /> : <ShieldAlert size={20} />}
               </div>
               <div className="flex-1">
@@ -77,8 +77,8 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
       className="space-y-4 font-sans px-1"
     >
       {/* Header */}
-      <div className="flex items-center gap-3 bg-white/[0.03] p-2.5 rounded-2xl border border-white/[0.05]">
-        <div className="p-2 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl border border-indigo-500/20 text-indigo-400">
+      <div className="flex items-center gap-3 bg-white/3 p-2.5 rounded-2xl border border-white/5">
+        <div className="p-2 bg-linear-to-br from-indigo-500/20 to-purple-500/20 rounded-xl border border-indigo-500/20 text-indigo-400">
           <User size={18} />
         </div>
         <div>
@@ -139,7 +139,7 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
           <div className="grid grid-cols-3 gap-2">
             {/* Kun */}
             <div className="relative group/date">
-              <div className="absolute -inset-0.5 bg-gradient-to-b from-indigo-500/20 to-transparent rounded-xl blur opacity-0 group-hover/date:opacity-100 transition duration-500" />
+              <div className="absolute -inset-0.5 bg-linear-to-b from-indigo-500/20 to-transparent rounded-xl blur opacity-0 group-hover/date:opacity-100 transition duration-500" />
               <select
                 className={`${glassInput} pl-3 text-center appearance-none cursor-pointer relative`}
                 value={data.birthDate?.split('-')[2] || ''}
@@ -157,7 +157,7 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
 
             {/* Oy */}
             <div className="relative group/date">
-              <div className="absolute -inset-0.5 bg-gradient-to-b from-purple-500/20 to-transparent rounded-xl blur opacity-0 group-hover/date:opacity-100 transition duration-500" />
+              <div className="absolute -inset-0.5 bg-linear-to-b from-purple-500/20 to-transparent rounded-xl blur opacity-0 group-hover/date:opacity-100 transition duration-500" />
               <select
                 className={`${glassInput} pl-3 text-center appearance-none cursor-pointer relative`}
                 value={data.birthDate?.split('-')[1] || ''}
@@ -175,7 +175,7 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
 
             {/* Yil */}
             <div className="relative group/date">
-              <div className="absolute -inset-0.5 bg-gradient-to-b from-blue-500/20 to-transparent rounded-xl blur opacity-0 group-hover/date:opacity-100 transition duration-500" />
+              <div className="absolute -inset-0.5 bg-linear-to-b from-blue-500/20 to-transparent rounded-xl blur opacity-0 group-hover/date:opacity-100 transition duration-500" />
               <select
                 className={`${glassInput} pl-3 text-center appearance-none cursor-pointer relative`}
                 value={data.birthDate?.split('-')[0] || ''}
@@ -204,7 +204,7 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
             </div>
             <input
               type="tel"
-              className={`${glassInput} pl-[80px]`}
+              className={`${glassInput} pl-20`}
               placeholder="912461050"
               maxLength={9}
               value={data.phone || ''}
@@ -228,9 +228,9 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
           onClick={validate}
-          className="flex-1 relative overflow-hidden group p-[1px] rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-800"
+          className="flex-1 relative overflow-hidden group p-px rounded-xl bg-linear-to-r from-indigo-600 to-indigo-800"
         >
-          <div className="relative bg-[#0f172a]/30 backdrop-blur-sm h-[46px] rounded-[11px] flex items-center justify-center gap-2">
+          <div className="relative bg-[#0f172a]/30 backdrop-blur-sm h-11.5 rounded-[11px] flex items-center justify-center gap-2">
             <span className="text-white font-bold text-[11px] tracking-widest uppercase">Davom Etish</span>
             <ArrowRight className="text-white group-hover:translate-x-1 transition-transform" size={16} />
           </div>

@@ -24,11 +24,11 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                         initial={{ opacity: 0, y: 50, scale: 0.9, rotateX: -15 }}
                         animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
                         exit={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
-                        className="relative z-[9999] w-[92vw] max-w-[400px] mx-auto"
+                        className="relative z-9999 w-[92vw] max-w-100 mx-auto"
                     >
                         <div className={`absolute -inset-1 rounded-2xl blur-md opacity-30 ${type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                         <div className="relative bg-[#1e293b]/95 backdrop-blur-2xl border border-white/10 p-4 rounded-2xl shadow-2xl flex items-center gap-3">
-                            <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border ${type === 'success' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'}`}>
+                            <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border ${type === 'success' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'}`}>
                                 {type === 'success' ? <Sparkles size={20} /> : <ShieldAlert size={20} />}
                             </div>
                             <div className="flex-1">
@@ -63,8 +63,8 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
 
     return (
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 font-sans px-1">
-            <div className="flex items-center gap-3 bg-white/[0.03] p-2.5 rounded-2xl border border-white/[0.05]">
-                <div className="p-2 bg-gradient-to-br from-sky-500/20 to-indigo-500/20 rounded-xl border border-sky-500/20">
+            <div className="flex items-center gap-3 bg-white/3 p-2.5 rounded-2xl border border-white/5">
+                <div className="p-2 bg-linear-to-br from-sky-500/20 to-indigo-500/20 rounded-xl border border-sky-500/20">
                     <Sparkles className="text-sky-400" size={18} />
                 </div>
                 <div>
@@ -130,7 +130,7 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                                 type="date"
                                 onFocus={() => setFocusedField('date')}
                                 onBlur={() => setFocusedField(null)}
-                                className={`${glassInput} appearance-none [color-scheme:dark]`}
+                                className={`${glassInput} appearance-none scheme-dark`}
                                 value={data.passportDate || ''}
                                 onChange={e => onChange({ passportDate: e.target.value })}
                             />
@@ -156,12 +156,12 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                                 </motion.div>
                             )}
                         </AnimatePresence>
-                        <MapPin className="absolute left-4 top-[14px] z-10 text-slate-500 group-focus-within:text-sky-400 transition-colors" size={17} />
+                        <MapPin className="absolute left-4 top-3.5 z-10 text-slate-500 group-focus-within:text-sky-400 transition-colors" size={17} />
                         <textarea
                             rows={1}
                             onFocus={() => setFocusedField('place')}
                             onBlur={() => setFocusedField(null)}
-                            className={`${glassInput} resize-none min-h-[48px] pt-[13px]`}
+                            className={`${glassInput} resize-none min-h-12 pt-3.25`}
                             placeholder="Masalan: Toshkent sh. IIBB..."
                             value={data.passportPlace || ''}
                             onChange={e => onChange({ passportPlace: e.target.value })}
@@ -174,7 +174,7 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={validate}
-                className="w-full relative overflow-hidden group p-[1px] rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 mt-2"
+                className="w-full relative overflow-hidden group p-px rounded-xl bg-linear-to-r from-sky-600 to-indigo-600 mt-2"
             >
                 <div className="relative bg-[#0f172a]/80 backdrop-blur-sm py-3.5 rounded-[11px] flex items-center justify-center gap-2">
                     <span className="text-white font-bold text-[12px] tracking-widest uppercase">Davom etish</span>

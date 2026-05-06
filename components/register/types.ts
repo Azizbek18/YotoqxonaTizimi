@@ -22,6 +22,7 @@ export interface RegisterData {
   region: string
   district: string
   mahalla: string
+  qishloq: string
   street: string
   houseNumber: string
   // Step 6
@@ -60,14 +61,15 @@ export const initialData: RegisterData = {
   region: '',
   district: '',
   mahalla: '',
+  qishloq: '',
   street: '',
   houseNumber: '',
   father_full_name: '',
   father_workplace: '',
-  father_phone : '',
+  father_phone: '',
   mother_full_name: '',
-  mother_workplace : '',
-  mother_phone : '',
+  mother_workplace: '',
+  mother_phone: '',
   entryDate: '',
   password: '',
   room_number: '',

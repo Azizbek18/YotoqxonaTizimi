@@ -48,10 +48,10 @@ export default function AdminLayout({
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut()
-      toast.success('Chiqib ketdingiz!')
+      toast.success("Chiqib ketdingiz!")
       router.push('/login')
     } catch {
-      toast.error('Chiqib ketishda xato!')
+      toast.error("Chiqib ketishda xato!")
     }
   }
 

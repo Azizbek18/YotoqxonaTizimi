@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Users, FileText, Home, TrendingUp } from 'lucide-react'
+import { Users, FileText, TrendingUp } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 interface DashboardStats {
@@ -21,38 +21,38 @@ export default function AdminDashboard() {
   })
 
   useEffect(() => {
+    async function loadStats() {
+      try {
+        // Talabalar soni
+        const { count: studentCount } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'talaba')
+
+        // Arizalar soni
+        const { count: requestCount } = await supabase
+          .from('arizalar')
+          .select('*', { count: 'exact', head: true })
+
+        // Jami foydalanuvchilar
+        const { count: userCount } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+
+        setStats({
+          totalStudents: studentCount || 0,
+          totalRequests: requestCount || 0,
+          totalUsers: userCount || 0,
+          loading: false,
+        })
+      } catch (error) {
+        console.error('Statistika yuklashda xato:', error)
+        setStats(prev => ({ ...prev, loading: false }))
+      }
+    }
+
     loadStats()
   }, [])
-
-  const loadStats = async () => {
-    try {
-      // Talabalar soni
-      const { count: studentCount } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'talaba')
-
-      // Arizalar soni
-      const { count: requestCount } = await supabase
-        .from('arizalar')
-        .select('*', { count: 'exact', head: true })
-
-      // Jami foydalanuvchilar
-      const { count: userCount } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-
-      setStats({
-        totalStudents: studentCount || 0,
-        totalRequests: requestCount || 0,
-        totalUsers: userCount || 0,
-        loading: false,
-      })
-    } catch (error) {
-      console.error('Statistika yuklashda xato:', error)
-      setStats(prev => ({ ...prev, loading: false }))
-    }
-  }
 
   const statCards = [
     {
@@ -82,7 +82,7 @@ export default function AdminDashboard() {
         <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tighter">
           Admin Dashboard
         </h1>
-        <p className="text-slate-400 mt-2">Yotoqxona boshqaruvish tizimiga xush kelibsiz</p>
+        <p className="text-slate-400 mt-2">Yotoqxona boshqaruv tizimiga xush kelibsiz</p>
       </div>
 
       {/* Stats Grid */}
@@ -122,12 +122,12 @@ export default function AdminDashboard() {
         <h2 className="text-xl font-black text-white mb-4">Tezkor Amallar</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <button className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-left transition-all group">
-            <p className="text-sm text-slate-400 group-hover:text-white transition-colors">Yangi Admin Taklifi</p>
-            <p className="text-lg font-black text-white mt-2">Taklif Kodi Yaratish →</p>
+            <p className="text-sm text-slate-400 group-hover:text-white transition-colors">Ma&apos;lumotlarni Yangilash</p>
+            <p className="text-lg font-black text-white mt-2">Barcha Statistikalarni Yangilash &rarr;</p>
           </button>
           <button className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-left transition-all group">
-            <p className="text-sm text-slate-400 group-hover:text-white transition-colors">Tizimdan Chiqish</p>
-            <p className="text-lg font-black text-white mt-2">Foydalanuvchini O'chirish →</p>
+            <p className="text-sm text-slate-400 group-hover:text-white transition-colors">Tizim holati</p>
+            <p className="text-lg font-black text-white mt-2">Server Holatini Tekshirish &rarr;</p>
           </button>
         </div>
       </div>

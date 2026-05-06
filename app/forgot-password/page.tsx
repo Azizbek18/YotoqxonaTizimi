@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, ArrowLeft, Send, Sparkles, ExternalLink, Orbit, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Mail, ArrowLeft, Send, Sparkles, Orbit, CheckCircle, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -79,10 +79,11 @@ export default function ForgotPassword() {
       setIsSent(true)
       show3DToast('success', "Parolni tiklash signali yuborildi!")
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Xatolikni konsolga chiqaramiz (F12 ni bosib ko'rish uchun)
+      const errorMessage = error instanceof Error ? error.message : 'Noma\'lum xatolik'
       console.error("Login xatosi:", error)
-      show3DToast('error', error.message || "Xatolik yuz berdi")
+      show3DToast('error', errorMessage || "Xatolik yuz berdi")
     } finally {
       setLoading(false)
     }

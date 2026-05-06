@@ -107,7 +107,7 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
             {ROLE_META[role].icon}
           </div>
           <h1 className="text-xl font-black">{ROLE_META[role].title}</h1>
-          <p className="mt-1 text-xs text-slate-400">Talaba formasisiz tezkor ro'yxatdan o'tish</p>
+          <p className="mt-1 text-xs text-slate-400">Talaba formasisiz tezkor ro&apos;yxatdan o&apos;tish</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -166,7 +166,7 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
             disabled={loading}
             className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-blue-700 px-4 py-3 text-xs font-black uppercase tracking-widest disabled:opacity-60"
           >
-            {loading ? 'Yuborilmoqda...' : "Ro'yxatdan o'tish"}
+            {loading ? 'Yuborilmoqda...' : 'Ro‘yxatdan o‘tish'}
           </button>
         </form>
 

@@ -1,10 +1,20 @@
 "use client";
 
+import Image from 'next/image';
 import React, { useState } from 'react';
 import { useThemeStore } from '@/lib/stores/theme-store';
 
+// Elon turini aniqlash
+interface Elon {
+  id: number;
+  title: string;
+  text: string;
+  date: string;
+  type: 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish';
+}
+
 // Ma'lumotlar strukturasi
-const DATA = {
+const DATA: { umumiy: Elon[]; fakultetlar: Record<string, Elon[]> } = {
   umumiy: [
     { id: 1, title: "Internet tezligi 100 Mbit/s", text: "Yotoqxona bo'ylab barcha routerlar 5G standartiga o'tkazildi.", date: "Bugun", type: "Yangilik" },
     { id: 2, title: "Liftlar yangilandi", text: "Barcha bloklardagi liftlar Germaniya texnologiyasi asosida to'liq modernizatsiya qilindi.", date: "Bugun", type: "Muhim" },
@@ -45,7 +55,7 @@ const DATA = {
 export default function ElonlarPage() {
   const [view, setView] = useState<'main' | 'fakultetlar' | 'fakultet_ichi'>('main');
   const [selectedFakultet, setSelectedFakultet] = useState<string | null>(null);
-  const [selectedElon, setSelectedElon] = useState<any>(null);
+  const [selectedElon, setSelectedElon] = useState<Elon | null>(null);
   const theme = useThemeStore((state) => state.theme);
   const isLight = theme === 'light';
 
@@ -79,7 +89,7 @@ export default function ElonlarPage() {
                 </button>
               )}
               <h2 className={`text-5xl md:text-8xl font-black tracking-tighter ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                {view === 'main' ? <>Xabarlar <span className="text-blue-600 italic">bo'limi</span></> :
+                {view === 'main' ? <>Xabarlar <span className="text-blue-600 italic">bo&apos;limi</span></> :
                   view === 'fakultetlar' ? "Fakultetlar" : selectedFakultet}
               </h2>
             </div>
@@ -94,15 +104,17 @@ export default function ElonlarPage() {
             >
               <div className={`w-20 h-20 rounded-full flex items-center justify-center p-2 border-4 shadow-[0_0_30px_rgba(37,99,235,0.4)] overflow-hidden ${isLight ? 'bg-slate-50 border-blue-500' : 'bg-white border-blue-600'
                 }`}>
-                <img
+                <Image
                   src="https://upload.wikimedia.org/wikipedia/uz/b/b2/Uzbekistan_National_University_logo.png"
                   alt="O'zMU"
+                  width={80}
+                  height={80}
+                  unoptimized
                   className="w-full h-full object-contain scale-125"
-                  onError={(e) => { e.currentTarget.src = 'https://nuu.uz/wp-content/uploads/2021/05/logo-nuu-1.png' }}
                 />
               </div>
               <div className="text-left">
-                <span className="text-[10px] text-blue-500 font-black tracking-[0.2em] uppercase">O'zMU Tizimi</span>
+                <span className="text-[10px] text-blue-500 font-black tracking-[0.2em] uppercase">O&apos;zMU Tizimi</span>
                 <p className={`text-xl font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>Fakultet yangiliklari</p>
               </div>
               <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center group-hover:translate-x-2 transition-transform">
@@ -131,7 +143,7 @@ export default function ElonlarPage() {
               <h3 className={`text-3xl font-bold mb-5 transition-colors leading-tight ${isLight ? 'text-slate-900 group-hover:text-blue-600' : 'text-white group-hover:text-blue-500'
                 }`}>{elon.title}</h3>
               <p className={`text-lg leading-relaxed line-clamp-2 italic font-medium ${isLight ? 'text-slate-600' : 'text-gray-500'
-                }`}>"{elon.text}"</p>
+                }`}>&quot;{elon.text}&quot;</p>
               <div className="mt-8 flex items-center gap-3 text-blue-500 text-[10px] font-black tracking-[0.3em] uppercase">
                 Batafsil <div className="h-0.5 w-10 bg-blue-600 group-hover:w-20 transition-all"></div>
               </div>
@@ -146,11 +158,11 @@ export default function ElonlarPage() {
               className={`group border-l-10 border-l-purple-600 p-12 rounded-[4rem] cursor-pointer transition-all duration-500 hover:scale-[1.05] hover:shadow-[0_40px_100px_rgba(147,51,234,0.1)] relative ${isLight ? 'bg-white border-y border-r border-slate-200' : 'bg-[#0f0f12] border border-white/5'
                 }`}
             >
-              <div className="text-[10px] font-black text-purple-500 tracking-[0.4em] uppercase mb-4">O'zMU Fakulteti</div>
+              <div className="text-[10px] font-black text-purple-500 tracking-[0.4em] uppercase mb-4">O&apos;zMU Fakulteti</div>
               <h3 className={`text-4xl md:text-5xl font-black mb-8 leading-none tracking-tighter ${isLight ? 'text-slate-900' : 'text-white'
                 }`}>{name}</h3>
               <p className={`text-lg mb-10 font-medium italic ${isLight ? 'text-slate-500' : 'text-gray-500'
-                }`}>Ushbu fakultetga oid so'nggi 2 haftalik yangiliklarni ko'rish uchun bosing.</p>
+                }`}>Ushbu fakultetga oid so&apos;nggi 2 haftalik yangiliklarni ko&apos;rish uchun bosing.</p>
               <div className="flex items-center gap-4 text-purple-500 font-black tracking-widest text-xs">
                 KIRISH <div className="h-1 w-12 bg-purple-600 group-hover:w-24 transition-all"></div>
               </div>
@@ -171,8 +183,8 @@ export default function ElonlarPage() {
                 <span className={`text-xs font-bold ${isLight ? 'text-slate-400' : 'text-gray-600'}`}>{elon.date}</span>
               </div>
               <h3 className={`text-3xl font-bold mb-4 ${isLight ? 'text-slate-900' : 'text-white'}`}>{elon.title}</h3>
-              <p className={`italic mb-6 ${isLight ? 'text-slate-600' : 'text-gray-500'}`}>"{elon.text}"</p>
-              <div className="text-blue-500 font-black text-[10px] tracking-widest uppercase">Batafsil o'qish →</div>
+              <p className={`italic mb-6 ${isLight ? 'text-slate-600' : 'text-gray-500'}`}>&quot;{elon.text}&quot;</p>
+              <div className="text-blue-500 font-black text-[10px] tracking-widest uppercase">Batafsil o&apos;qish -&gt;</div>
             </div>
           ))}
 
@@ -188,7 +200,7 @@ export default function ElonlarPage() {
               <h3 className={`text-5xl md:text-7xl font-black mb-10 tracking-tighter leading-[0.9] ${isLight ? 'text-slate-900' : 'text-white'
                 }`}>{selectedElon.title}</h3>
               <p className={`text-2xl md:text-3xl leading-relaxed mb-16 font-medium italic opacity-90 ${isLight ? 'text-slate-600' : 'text-gray-400'
-                }`}>"{selectedElon.text}"</p>
+                }`}>&quot;{selectedElon.text}&quot;</p>
               <button
                 onClick={() => setSelectedElon(null)}
                 className={`w-full py-8 rounded-[2.5rem] font-black text-2xl transition-all active:scale-95 shadow-2xl ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20' : 'bg-white text-black hover:bg-gray-200 shadow-white/10'

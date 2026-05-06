@@ -1,6 +1,8 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+
 export type AppRole = 'admin' | 'tarbiyachi' | 'talaba' | null
 
-export async function findRoleByUserId(supabase: any, userId: string): Promise<AppRole> {
+export async function findRoleByUserId(supabase: SupabaseClient, userId: string): Promise<AppRole> {
   const { data: staffData } = await supabase
     .from('staff')
     .select('role')

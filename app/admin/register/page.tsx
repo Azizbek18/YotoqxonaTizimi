@@ -43,19 +43,17 @@ export default function AdminRegisterPage() {
               className="flex w-full max-w-[90vw] items-center gap-3 rounded-2xl border border-white/10 bg-[#0b1120]/95 p-4 shadow-2xl backdrop-blur-xl sm:max-w-md"
             >
               <div
-                className={`flex items-center justify-center rounded-xl p-2 ${
-                  type === 'success'
+                className={`flex items-center justify-center rounded-xl p-2 ${type === 'success'
                     ? 'bg-emerald-500/10 text-emerald-400'
                     : 'bg-rose-500/10 text-rose-400'
-                }`}
+                  }`}
               >
                 {type === 'success' ? <CheckCircle size={20} /> : <AlertTriangle size={20} />}
               </div>
               <div className="flex-1">
                 <p
-                  className={`text-[10px] font-black uppercase tracking-wider ${
-                    type === 'success' ? 'text-emerald-400' : 'text-rose-400'
-                  }`}
+                  className={`text-[10px] font-black uppercase tracking-wider ${type === 'success' ? 'text-emerald-400' : 'text-rose-400'
+                    }`}
                 >
                   {type === 'success' ? 'Muvaffaqiyat' : 'Tizim xabari'}
                 </p>
@@ -100,7 +98,7 @@ export default function AdminRegisterPage() {
       }
 
       if (inviteExists.used) {
-        throw new Error('Bu taklif kodi allaqachon ishlatilgan!')
+        throw new Error("Bu taklif kodi allaqachon ishlatilgan!")
       }
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -314,11 +312,10 @@ export default function AdminRegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl font-black uppercase tracking-widest transition-all sm:h-14 sm:rounded-[22px] sm:text-[12px] ${
-                loading
+              className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl font-black uppercase tracking-widest transition-all sm:h-14 sm:rounded-[22px] sm:text-[12px] ${loading
                   ? 'bg-white/5 text-slate-600'
                   : 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-xl hover:shadow-blue-600/20 active:scale-[0.98]'
-              } text-[10px]`}
+                } text-[10px]`}
             >
               {loading ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white" />

@@ -10,7 +10,7 @@ export const BottomNav = () => {
       </Link>
       <Link href="/talaba/elonlar" className="flex flex-col items-center group text-gray-400 hover:text-white transition-colors">
         <span className="text-2xl">📢</span>
-        <span className="text-[10px]">E'lonlar</span>
+        <span className="text-[10px]">E&apos;lonlar</span>
       </Link>
       <Link href="/talaba/navbat" className="flex flex-col items-center group text-gray-400 hover:text-white transition-colors">
         <span className="text-2xl">⏳</span>

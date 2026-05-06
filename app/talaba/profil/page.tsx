@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import {
@@ -7,7 +8,6 @@ import {
     ShieldCheck, LogOut, Camera, Edit2, Lock,
 } from 'lucide-react'
 import { motion, Variants } from 'framer-motion'
-import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -165,7 +165,7 @@ export default function StudentProfile() {
                     group: "412"
                 })
 
-            } catch (err: unknown) {
+            } catch {
                 console.log("Hozircha offline rejimda ishlayapmiz")
             } finally {
                 setLoading(false)
@@ -239,10 +239,12 @@ export default function StudentProfile() {
                             <div className={`w-full h-full rounded-full flex items-center justify-center overflow-hidden ${isLight ? 'bg-slate-100' : 'bg-[#020617]'
                                 }`}>
                                 {profile?.avatar_url ? (
-                                    <img
+                                    <Image
                                         src={profile.avatar_url}
                                         alt={fullName}
-                                        className="w-full h-full object-cover"
+                                        fill
+                                        unoptimized
+                                        className="object-cover"
                                     />
                                 ) : (
                                     <span className={`text-2xl font-black select-none ${isLight ? 'text-blue-300' : 'text-indigo-400/50'
@@ -380,7 +382,7 @@ export default function StudentProfile() {
                 <h3 className={`text-[9px] font-black uppercase tracking-[0.3em] flex items-center gap-1.5 mb-5 ${isLight ? 'text-slate-600' : 'text-slate-500'
                     }`}>
                     <span className={`block w-0.5 h-3 rounded-full ${isLight ? 'bg-violet-600' : 'bg-violet-500'}`} />
-                    Ta'lim davri
+                    Ta&apos;lim davri
                 </h3>
                 <Timeline course={course} isLight={isLight} />
             </motion.div>

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { motion } from 'framer-motion'
-import { Users, Search, Trash2, Edit2 } from 'lucide-react'
+import { Search, Trash2, Edit2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type UserRow = {
@@ -46,7 +46,7 @@ export default function AdminUsersPage() {
       setUsers((data ?? []) as UserRow[])
     } catch (error) {
       console.error('Foydalanuvchilarni yuklashda xato:', error)
-      toast.error('Foydalanuvchilarni yuklashda xato!')
+      toast.error("Foydalanuvchilarni yuklashda xato!")
     } finally {
       setLoading(false)
     }
@@ -69,15 +69,15 @@ export default function AdminUsersPage() {
         prev.map((user) => (user.id === id ? { ...user, role } : user))
       )
       setEditingId(null)
-      toast.success('Rol muvaffaqiyatli o\'zgartirildi!')
+      toast.success("Rol muvaffaqiyatli o'zgartirildi!")
     } catch (error) {
-      console.error('Rolni o\'zgartirishda xato:', error)
-      toast.error('Rolni o\'zgartirishda xato!')
+      console.error("Rolni o'zgartirishda xato:", error)
+      toast.error("Rolni o'zgartirishda xato!")
     }
   }
 
   const deleteUser = async (id: string) => {
-    if (!window.confirm('Siz foydalanuvchini o\'chirishni xohlaysizmi?')) return
+    if (!window.confirm("Siz foydalanuvchini o'chirishni xohlaysizmi?")) return
 
     try {
       const { error } = await supabase
@@ -88,17 +88,17 @@ export default function AdminUsersPage() {
       if (error) throw error
 
       setUsers((prev) => prev.filter((user) => user.id !== id))
-      toast.success('Foydalanuvchi muvaffaqiyatli o\'chirildi!')
+      toast.success("Foydalanuvchi muvaffaqiyatli o'chirildi!")
     } catch (error) {
-      console.error('Foydalanuvchini o\'chirishda xato:', error)
-      toast.error('Foydalanuvchini o\'chirishda xato!')
+      console.error("Foydalanuvchini o'chirishda xato:", error)
+      toast.error("Foydalanuvchini o'chirishda xato!")
     }
   }
 
   const filteredUsers = users.filter(
     (user) =>
-      user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+      (user.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (user.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   )
 
   return (
@@ -108,7 +108,7 @@ export default function AdminUsersPage() {
         <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tighter">
           Foydalanuvchilar
         </h1>
-        <p className="text-slate-400 mt-2">Barcha foydalanuvchilarni boshqarish va rol o'zgartirishI</p>
+        <p className="text-slate-400 mt-2">Barcha foydalanuvchilarni boshqarish va rol o&apos;zgartirish</p>
       </div>
 
       {/* Search */}
@@ -146,7 +146,7 @@ export default function AdminUsersPage() {
                     Rol
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-400 uppercase tracking-wider">
-                    Ro'yxatdan O'tish Sanasi
+                    Ro&apos;yxatdan O&apos;tish Sanasi
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-400 uppercase tracking-wider">
                     Amallar

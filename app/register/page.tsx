@@ -133,8 +133,9 @@ export default function RegisterPage() {
       // 2 soniyadan keyin login sahifasiga yuborish
       setTimeout(() => router.push('/login?registered=1'), 2000)
 
-    } catch (err: any) {
-      show3DToast('error', err.message)
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Noma\'lum xatolik'
+      show3DToast('error', errorMessage)
       console.error("Xatolik tafsiloti:", err)
     } finally {
       setLoading(false)
@@ -162,7 +163,7 @@ export default function RegisterPage() {
           <div className={`p-4 sm:pt-8 sm:pb-4 pb-2 shrink-0 border-b ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5'}`}>
             <div className={`flex gap-1 rounded-xl p-1 mb-4 border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/5'}`}>
               <Link href="/login" className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-lg transition-colors ${isLight ? 'text-slate-500 hover:text-slate-700' : 'text-slate-400'}`}>Kirish</Link>
-              <div className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-lg text-white bg-blue-600 shadow-lg ${isLight ? 'shadow-blue-400/30' : 'shadow-blue-600/20'}`}>Ro'yxatdan o'tish</div>
+              <div className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-lg text-white bg-blue-600 shadow-lg ${isLight ? 'shadow-blue-400/30' : 'shadow-blue-600/20'}`}>Ro&apos;yxatdan o&apos;tish</div>
             </div>
 
             <div className="w-full overflow-x-auto no-scrollbar py-2">

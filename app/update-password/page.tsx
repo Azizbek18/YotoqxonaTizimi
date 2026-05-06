@@ -77,8 +77,9 @@ export default function UpdatePassword() {
             }
             show3DToast('success', "Parolingiz muvaffaqiyatli yangilandi!")
             setTimeout(() => router.push('/login'), 2000)
-        } catch (err: any) {
-            show3DToast('error', err.message || "Xatolik yuz berdi")
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Xatolik yuz berdi'
+            show3DToast('error', errorMessage || "Xatolik yuz berdi")
         } finally {
             setLoading(false)
         }

@@ -254,7 +254,7 @@
 // }
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createBrowserClient } from '@supabase/ssr'
 import {
@@ -278,20 +278,7 @@ export default function NavbatPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  useEffect(() => {
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) setUserId(session.user.id)
-    }
-    init()
-  }, [supabase]) // supabase dependensiyaga qo'shildi
-
-  useEffect(() => {
-    if (!userId) return
-    fetchNavbat()
-  }, [userId, activeTab])
-
-  const fetchNavbat = async () => {
+  const fetchNavbat = useCallback(async () => {
     setLoading(true)
     try {
       const { data: userData } = await supabase
@@ -332,7 +319,20 @@ export default function NavbatPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeTab, userId, supabase])
+
+  useEffect(() => {
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) setUserId(session.user.id)
+    }
+    init()
+  }, [supabase])
+
+  useEffect(() => {
+    if (!userId) return
+    fetchNavbat()
+  }, [userId, activeTab, fetchNavbat])
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode; color: string }[] = [
     { key: 'kunlik', label: 'Kunlik', icon: <Clock size={16} />, color: 'blue' },

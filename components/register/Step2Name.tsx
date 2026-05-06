@@ -5,6 +5,7 @@ import { RegisterData } from './types'
 import toast from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 import { User, UserCircle, Users, ArrowRight, Sparkles, ShieldAlert, Phone } from 'lucide-react'
+import { useThemeStore } from '@/lib/stores/theme-store'
 
 interface Props {
   data: RegisterData
@@ -14,6 +15,8 @@ interface Props {
 }
 
 export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
+  const theme = useThemeStore((state) => state.theme)
+  const isLight = theme === 'light'
 
   const show3DToast = (message: string, type: 'success' | 'error' = 'error') => {
     toast.custom((t) => (
@@ -51,7 +54,7 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
     if (!firstName.trim()) return show3DToast("Ismingizni kiriting")
     if (!middleName.trim()) return show3DToast("Otasining ismini kiriting")
 
-    if (!birthDate || birthDate.includes('undefined')) return show3DToast("Tug'ilgan sanangizni tanlang")
+    if (!birthDate || birthDate.includes('undefined')) return show3DToast('Tug‘ilgan sanangizni tanlang')
     // Telefon raqami validatsiyasi
     if (!phone) return show3DToast("Telefon raqamingizni kiriting")
     if (!phoneRegex.test(phone)) return show3DToast("Telefon raqami 9 ta raqam bo'lishi shart")
@@ -82,7 +85,7 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
           <User size={18} />
         </div>
         <div>
-          <h2 className="text-[14px] font-bold text-white uppercase tracking-tight">Shaxsiy ma'lumotlar</h2>
+          <h2 className="text-[14px] font-bold text-white uppercase tracking-tight">Shaxsiy ma&apos;lumotlar</h2>
           <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">Qadam 02 / 08</p>
         </div>
       </div>
@@ -96,7 +99,7 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
             <input
               type="text"
               className={glassInput}
-              placeholder="Mo'minov"
+              placeholder="Mo‘minov"
               value={data.lastName || ''}
               onChange={e => onChange({ lastName: e.target.value })}
             />
@@ -135,7 +138,7 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
 
         {/* Tug'ilgan sana - 3D Interaktiv Element */}
         <div className="space-y-1.5 group">
-          <label className={labelClass}>Tug'ilgan sana</label>
+          <label className={labelClass}>Tug&apos;ilgan sana</label>
           <div className="grid grid-cols-3 gap-2">
             {/* Kun */}
             <div className="relative group/date">
@@ -219,7 +222,7 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={onBack}
-          className="h-12 w-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10 transition-all shadow-inner text-lg"
+          className={`h-12 w-12 flex items-center justify-center rounded-xl border transition-all shadow-inner text-lg ${isLight ? 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200 hover:text-slate-900' : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'}`}
         >
           ←
         </motion.button>
@@ -228,11 +231,11 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
           onClick={validate}
-          className="flex-1 relative overflow-hidden group p-px rounded-xl bg-linear-to-r from-indigo-600 to-indigo-800"
+          className={`flex-1 relative overflow-hidden group p-px rounded-xl ${isLight ? 'bg-linear-to-r from-sky-500 to-indigo-500' : 'bg-linear-to-r from-indigo-600 to-indigo-800'}`}
         >
-          <div className="relative bg-[#0f172a]/30 backdrop-blur-sm h-11.5 rounded-[11px] flex items-center justify-center gap-2">
-            <span className="text-white font-bold text-[11px] tracking-widest uppercase">Davom Etish</span>
-            <ArrowRight className="text-white group-hover:translate-x-1 transition-transform" size={16} />
+          <div className={`relative backdrop-blur-sm h-11.5 rounded-[11px] flex items-center justify-center gap-2 ${isLight ? 'bg-white/90' : 'bg-[#0f172a]/30'}`}>
+            <span className={`font-bold text-[11px] tracking-widest uppercase ${isLight ? 'text-slate-900' : 'text-white'}`}>Davom Etish</span>
+            <ArrowRight className={`${isLight ? 'text-blue-600' : 'text-white'} group-hover:translate-x-1 transition-transform`} size={16} />
           </div>
         </motion.button>
       </div>

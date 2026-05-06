@@ -5,6 +5,7 @@ import { RegisterData } from './types'
 import toast from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Fingerprint, MapPin, CreditCard, Sparkles, ArrowRight, ShieldAlert, Info, Calendar as CalendarIcon } from 'lucide-react'
+import { useThemeStore } from '@/lib/stores/theme-store'
 
 interface Props {
     data: RegisterData
@@ -15,6 +16,8 @@ interface Props {
 export default function Step1Passport({ data, onChange, onNext }: Props) {
     // Har bir maydon uchun alohida focus holati
     const [focusedField, setFocusedField] = useState<'place' | 'date' | null>(null)
+    const theme = useThemeStore((state) => state.theme)
+    const isLight = theme === 'light'
 
     const show3DToast = (message: string, type: 'success' | 'error' = 'error') => {
         toast.custom((t) => (
@@ -149,7 +152,7 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                                 >
                                     <div className="bg-[#1e293b]/95 border border-sky-500/30 p-2.5 rounded-xl shadow-2xl backdrop-blur-md">
                                         <p className="text-sky-100 text-[10px] flex items-center gap-2">
-                                            <Info size={12} className="text-sky-400" /> Passportingizning orqa tarafidagi "Berilgan joyi" qismidagi matnni kiriting.
+                                            <Info size={12} className="text-sky-400" /> Passportingizning orqa tarafidagi &quot;Berilgan joyi&quot; qismidagi matnni kiriting.
                                         </p>
                                     </div>
                                     <div className="absolute -bottom-1 left-6 w-2 h-2 bg-[#1e293b] border-r border-b border-sky-500/30 rotate-45" />
@@ -174,11 +177,11 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={validate}
-                className="w-full relative overflow-hidden group p-px rounded-xl bg-linear-to-r from-sky-600 to-indigo-600 mt-2"
+                className={`w-full relative overflow-hidden group p-px rounded-xl mt-2 ${isLight ? 'bg-linear-to-r from-sky-500 to-indigo-500' : 'bg-linear-to-r from-sky-600 to-indigo-600'}`}
             >
-                <div className="relative bg-[#0f172a]/80 backdrop-blur-sm py-3.5 rounded-[11px] flex items-center justify-center gap-2">
-                    <span className="text-white font-bold text-[12px] tracking-widest uppercase">Davom etish</span>
-                    <ArrowRight className="text-white group-hover:translate-x-1 transition-transform" size={16} />
+                <div className={`relative backdrop-blur-sm py-3.5 rounded-[11px] flex items-center justify-center gap-2 ${isLight ? 'bg-white/90' : 'bg-[#0f172a]/80'}`}>
+                    <span className={`font-bold text-[12px] tracking-widest uppercase ${isLight ? 'text-slate-900' : 'text-white'}`}>Davom etish</span>
+                    <ArrowRight className={`${isLight ? 'text-blue-600' : 'text-white'} group-hover:translate-x-1 transition-transform`} size={16} />
                 </div>
             </motion.button>
         </motion.div>

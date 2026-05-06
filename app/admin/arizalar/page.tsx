@@ -6,22 +6,25 @@ import { motion } from 'framer-motion'
 import { Search, Eye } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-interface Request {
-  id: string
-  talaba_id: string
-  title: string
-  description: string
-  status: string
-  created_at: string
-  updated_at: string
-  user?: {
-    full_name: string
-    email: string
-  }
+interface ApplicationUser {
+  full_name: string;
+  email: string;
+}
+
+interface ApplicationRequest {
+  id: string;
+  talaba_id: string;
+  title: string;
+  description: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  users?: ApplicationUser;
+  user: ApplicationUser;
 }
 
 export default function AdminArizalar() {
-  const [requests, setRequests] = useState<Request[]>([])
+  const [requests, setRequests] = useState<ApplicationRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -29,39 +32,38 @@ export default function AdminArizalar() {
   const loadRequests = useCallback(async () => {
     try {
       setLoading(true)
-      let query = supabase
+      // Arizalarni talaba ma'lumotlari bilan birga bitta so'rovda olish
+      const { data, error } = await supabase
         .from('arizalar')
-        .select('id, talaba_id, title, description, status, created_at, updated_at')
+        .select(`
+          id, 
+          talaba_id, 
+          title, 
+          description, 
+          status, 
+          created_at, 
+          updated_at,
+          users:talaba_id (full_name, email)
+        `)
         .order('created_at', { ascending: false })
-
-      if (filterStatus !== 'all') {
-        query = query.eq('status', filterStatus)
-      }
-
-      const { data, error } = await query
 
       if (error) throw error
 
-      // Har bir arizaga talabaning ma'lumotlarini qo'shish
-      const enrichedRequests = await Promise.all(
-        (data || []).map(async (request) => {
-          const { data: userData } = await supabase
-            .from('users')
-            .select('full_name, email')
-            .eq('id', request.talaba_id)
-            .single()
+      const rawData = (data || []) as unknown as (Omit<ApplicationRequest, 'user'> & { users: ApplicationUser })[];
+      const formattedRequests: ApplicationRequest[] = rawData.map((request) => ({
+        ...request,
+        user: request.users || { full_name: 'Nomalum', email: '' },
+      }))
 
-          return {
-            ...request,
-            user: userData || { full_name: 'Nomalum', email: '' },
-          }
-        })
-      )
-
-      setRequests(enrichedRequests)
+      if (filterStatus !== 'all') {
+        const filtered = formattedRequests.filter((r) => r.status === filterStatus)
+        setRequests(filtered)
+      } else {
+        setRequests(formattedRequests)
+      }
     } catch (error) {
       console.error('Arizalarni yuklashda xato:', error)
-      toast.error('Arizalarni yuklashda xato!')
+      toast.error("Arizalarni yuklashda xato!")
     } finally {
       setLoading(false)
     }

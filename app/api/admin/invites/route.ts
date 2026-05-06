@@ -17,7 +17,7 @@ async function createServerSupabaseClient() {
                 set(name: string, value: string, options: CookieOptions) {
                     cookieStore.set({ name, value, ...options })
                 },
-                remove(name: string, options: CookieOptions) {
+                remove(name: string) {
                     cookieStore.delete(name)
                 },
             },
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
         const supabase = await createServerSupabaseClient()
 

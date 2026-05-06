@@ -260,6 +260,7 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
     () => (villageOptions.length > 0 ? villageOptions : FALLBACK_SETTLEMENTS.map(toOption)),
     [villageOptions]
   )
+
   const hasVillageOptions = villageOptions.length > 0
   const isVillageLoading = isLoadingData && villageOptions.length === 0
 
@@ -410,15 +411,18 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
                   )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_100px] gap-4">
-                    <Custom3DSelect
-                      label="Ko'cha"
-                      value={data.street}
-                      options={STREETS.map(toOption)}
-                      icon={Navigation}
-                      placeholder="Ko'cha"
-                      onChange={(v: string) => onChange({ street: v })}
-                      isLight={isLight}
-                    />
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block">Ko'cha</label>
+                      <div className="relative flex items-center">
+                        <Navigation className={`absolute left-4 z-10 pointer-events-none ${isLight ? 'text-slate-400' : 'text-slate-600'}`} size={14} />
+                        <input
+                          className={`w-full p-3 pl-11 rounded-xl text-[13px] font-semibold outline-none transition-all ${isLight ? 'bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400' : 'bg-white/2 border border-white/8 text-white placeholder:text-slate-600 focus:border-sky-500/40'}`}
+                          placeholder="Ko'cha nomi"
+                          value={data.street}
+                          onChange={e => onChange({ street: e.target.value })}
+                        />
+                      </div>
+                    </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block">Uy</label>
                       <div className="relative flex items-center">

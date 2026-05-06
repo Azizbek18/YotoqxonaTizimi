@@ -188,15 +188,6 @@ export default function QoidalarPage() {
         </div>
       </div>
 
-      {/* MOBILE NAVIGATION */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-[#0a0f1e]/80 backdrop-blur-xl border-t border-white/5 flex justify-around items-center px-4 z-50">
-        <NavItem href="/talaba/dashboard" label="Asosiy" icon={Home} />
-        <NavItem href="/talaba/elonlar" label="E'lonlar" icon={Bell} />
-        <NavItem href="/talaba/navbat" label="Navbat" icon={Clock} />
-        <NavItem href="/talaba/qoidalar" label="Qoidalar" icon={FileText} isActive />
-        <NavItem href="/talaba/profil" label="Profil" icon={User} />
-      </nav>
-
       {/* TAILWIND ANIMATIONS (Config faylda yoki bu yerda) */}
       <style jsx global>{`
         @keyframes gradient-x {

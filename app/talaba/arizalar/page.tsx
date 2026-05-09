@@ -387,7 +387,8 @@ Sana: 2026-05-07`,
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation()
-                                                setEditingApp(app)
+                                                setSelectedApp(app)
+                                                setShowDetailModal(true)
                                             }}
                                             className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${isLight ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-yellow-900/30 text-yellow-400 hover:bg-yellow-900/50'}`}
                                         >

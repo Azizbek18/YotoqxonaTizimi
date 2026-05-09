@@ -1,0 +1,15 @@
+.git
+.gitignore
+README.md
+README_DEMO.md
+DEMO_SETUP_INFO.md
+DEMO_ACCOUNT_SETUP.sql
+DEMO_LOGIN_GUIDE.md
+ADMIN_LOGIN_ENHANCEMENTS.md
+PROFILE_SETUP.md
+.env.local
+.env.*.local
+node_modules
+.next
+dist
+build

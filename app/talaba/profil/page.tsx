@@ -807,12 +807,12 @@ export default function StudentProfile() {
             {/* ── Edit Modal ── */}
             {
                 showEditModal && profile && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowEditModal(false)}>
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pb-32 bg-black/50 backdrop-blur-sm overflow-y-auto" onClick={() => setShowEditModal(false)}>
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             onClick={(e) => e.stopPropagation()}
-                            className={`rounded-3xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto ${isLight ? 'bg-white' : 'bg-[#0b1120]'}`}
+                            className={`rounded-3xl p-6 w-full max-w-sm my-auto ${isLight ? 'bg-white' : 'bg-[#0b1120]'} shadow-2xl`}
                         >
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className={`text-xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>

@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
         if (updateError) {
             console.error('Profile update xatosi:', updateError)
             // Storage-dan fayl o'chirish agarda profile update bo'lmasa
-            await supabase.storage.from('AVATAR').remove([data.path])
+            await supabase.storage.from('avatar').remove([data.path])
 
             return NextResponse.json(
                 { error: `Profil yangilashida xato: ${updateError.message}` },

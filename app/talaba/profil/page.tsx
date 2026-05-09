@@ -149,11 +149,11 @@ function RoommateCard({ roommate, isLight }: RoommateCardProps) {
                     <div className={`w-full h-full rounded-lg flex items-center justify-center overflow-hidden ${isLight ? 'bg-slate-100' : 'bg-white/10'}`}>
                         {roommate.avatar_url ? (
                             <Image
-                                src={roommate.avatar_url}
+                                src={`${roommate.avatar_url}?t=${Date.now()}`}
                                 alt={roommate.full_name}
                                 width={56}
                                 height={56}
-                                unoptimized
+                                priority
                                 className="object-cover"
                             />
                         ) : (
@@ -275,6 +275,24 @@ export default function StudentProfile() {
         fetchProfile()
     }, [])
 
+    // Profile-ni refresh qilish (avatar upload/delete qilingandan keyin)
+    const refreshProfile = async () => {
+        if (!profile) return
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', profile.id)
+                .single()
+
+            if (!error && data) {
+                setProfile(data)
+            }
+        } catch (error) {
+            console.error('Profile refresh xatosi:', error)
+        }
+    }
+
     const handleAvatarClick = () => {
         fileInputRef.current?.click()
     }
@@ -308,7 +326,8 @@ export default function StudentProfile() {
                 return
             }
 
-            setProfile({ ...profile, avatar_url: undefined })
+            // Profil-ni refresh qilish
+            await refreshProfile()
             setMessage({ type: 'success', text: 'Avatar muvaffaqiyatli o\'chirildi' })
             setTimeout(() => setMessage(null), 3000)
         } catch (error) {
@@ -363,13 +382,10 @@ export default function StudentProfile() {
                 return
             }
 
-            if (data.url) {
-                setProfile({ ...profile, avatar_url: data.url })
-                setMessage({ type: 'success', text: 'Rasm muvaffaqiyatli yuklanildi' })
-                setTimeout(() => setMessage(null), 3000)
-            } else {
-                setMessage({ type: 'error', text: 'Rasm URL olinmadi' })
-            }
+            // Profil-ni refresh qilish
+            await refreshProfile()
+            setMessage({ type: 'success', text: 'Rasm muvaffaqiyatli yuklanildi' })
+            setTimeout(() => setMessage(null), 3000)
         } catch (error) {
             console.error('Upload xatosi:', error)
             setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Xato yuz berdi' })
@@ -508,11 +524,11 @@ export default function StudentProfile() {
                                 }`}>
                                 {profile?.avatar_url ? (
                                     <Image
-                                        src={profile.avatar_url}
+                                        src={`${profile.avatar_url}?t=${Date.now()}`}
                                         alt={fullName}
                                         width={96}
                                         height={96}
-                                        unoptimized
+                                        priority
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (

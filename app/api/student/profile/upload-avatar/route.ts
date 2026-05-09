@@ -198,6 +198,13 @@ export async function POST(request: NextRequest) {
             .eq('id', userId)
             .select()
 
+        console.log('📝 Database Update:', {
+            userId,
+            publicUrl,
+            updateData,
+            updateError: updateError?.message || 'No error'
+        })
+
         if (updateError) {
             console.error('Profile update xatosi:', updateError)
             // Storage-dan fayl o'chirish agarda profile update bo'lmasa

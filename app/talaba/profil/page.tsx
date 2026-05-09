@@ -149,11 +149,12 @@ function RoommateCard({ roommate, isLight }: RoommateCardProps) {
                     <div className={`w-full h-full rounded-lg flex items-center justify-center overflow-hidden ${isLight ? 'bg-slate-100' : 'bg-white/10'}`}>
                         {roommate.avatar_url ? (
                             <Image
-                                src={`${roommate.avatar_url}?t=${Date.now()}`}
+                                key={`${roommate.avatar_url}-${Date.now()}`}
+                                src={roommate.avatar_url}
                                 alt={roommate.full_name}
                                 width={56}
                                 height={56}
-                                priority
+                                unoptimized
                                 className="object-cover"
                             />
                         ) : (
@@ -377,6 +378,13 @@ export default function StudentProfile() {
 
             const data = await response.json()
 
+            console.log('✅ Upload Response:', {
+                success: data.success,
+                url: data.url,
+                message: data.message,
+                fullResponse: data
+            })
+
             if (!response.ok) {
                 setMessage({ type: 'error', text: data.error || 'Rasm yuklanishida xato' })
                 return
@@ -526,12 +534,23 @@ export default function StudentProfile() {
                                 }`}>
                                 {profile?.avatar_url ? (
                                     <Image
-                                        src={`${profile.avatar_url}?t=${Date.now()}`}
+                                        key={`${profile.avatar_url}-${Date.now()}`}
+                                        src={profile.avatar_url}
                                         alt={fullName}
                                         width={96}
                                         height={96}
-                                        priority onLoad={() => console.log('✅ Avatar image loaded:', profile.avatar_url)}
-                                        onError={(error) => console.error('❌ Avatar image error:', { src: profile.avatar_url, error })} className="w-full h-full object-cover"
+                                        priority
+                                        unoptimized
+                                        onLoad={() => console.log('✅ Avatar image loaded:', profile.avatar_url)}
+                                        onError={(error) => {
+                                            console.error('❌ Avatar image error:', {
+                                                src: profile.avatar_url,
+                                                error,
+                                                errorType: error?.type,
+                                                errorStatus: (error as any)?.status
+                                            })
+                                        }}
+                                        className="w-full h-full object-cover"
                                     />
                                 ) : (
                                     <span className={`text-2xl font-black select-none ${isLight ? 'text-blue-300' : 'text-indigo-400/50'

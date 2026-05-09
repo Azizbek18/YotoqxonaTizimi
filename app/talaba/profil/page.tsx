@@ -47,6 +47,60 @@ function getInitials(name: string) {
         .toUpperCase()
 }
 
+// ─── 3D Creative Toast ────────────────────────────────────────────────────────
+interface Toast3DProps {
+    message: { type: 'success' | 'error'; text: string } | null
+    isLight: boolean
+}
+
+function Toast3D({ message, isLight }: Toast3DProps) {
+    if (!message) return null
+
+    const isSuccess = message.type === 'success'
+    const bgColor = isSuccess
+        ? isLight ? 'from-green-400 to-emerald-600' : 'from-emerald-500 to-teal-600'
+        : isLight ? 'from-red-400 to-pink-600' : 'from-red-500 to-pink-600'
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.8 }}
+            animate={{ opacity: 1, y: 20, scale: 1 }}
+            exit={{ opacity: 0, y: -50, scale: 0.8 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-[999]"
+        >
+            <div className={`bg-gradient-to-r ${bgColor} rounded-2xl px-6 py-4 shadow-2xl backdrop-blur-xl border border-white/30`}
+                style={{
+                    boxShadow: `
+                        0 20px 40px rgba(0, 0, 0, 0.3),
+                        0 0 60px ${isSuccess ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'},
+                        inset 0 1px 0 rgba(255, 255, 255, 0.4)
+                    `,
+                    transform: 'perspective(1000px) rotateX(0deg)',
+                }}
+            >
+                <div className="flex items-center gap-3">
+                    <motion.div
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 0.6, repeat: Infinity }}
+                        className="flex-shrink-0"
+                    >
+                        {isSuccess ? (
+                            <div className="w-6 h-6 rounded-full bg-white/30 flex items-center justify-center">
+                                <Check size={16} className="text-white" />
+                            </div>
+                        ) : (
+                            <div className="w-6 h-6 rounded-full bg-white/30 flex items-center justify-center">
+                                <X size={16} className="text-white" />
+                            </div>
+                        )}
+                    </motion.div>
+                    <span className="text-white font-bold text-sm">{message.text}</span>
+                </div>
+            </div>
+        </motion.div>
+    )
+}
+
 // ─── Timeline ─────────────────────────────────────────────────────────────────
 type StepState = 'done' | 'active' | 'todo'
 
@@ -330,7 +384,7 @@ export default function StudentProfile() {
             // Profil-ni refresh qilish
             await refreshProfile()
             setMessage({ type: 'success', text: 'Avatar muvaffaqiyatli o\'chirildi' })
-            setTimeout(() => setMessage(null), 3000)
+            setTimeout(() => setMessage(null), 4000)
         } catch (error) {
             console.error('Delete xatosi:', error)
             setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Xato yuz berdi' })
@@ -395,7 +449,7 @@ export default function StudentProfile() {
             // Profil-ni refresh qilish
             await refreshProfile()
             setMessage({ type: 'success', text: 'Rasm muvaffaqiyatli yuklanildi' })
-            setTimeout(() => setMessage(null), 3000)
+            setTimeout(() => setMessage(null), 4000)
         } catch (error) {
             console.error('Upload xatosi:', error)
             setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Xato yuz berdi' })
@@ -445,7 +499,7 @@ export default function StudentProfile() {
             setShowEditModal(false)
             setMessage({ type: 'success', text: 'Profil muvaffaqiyatli yangilandi' })
 
-            setTimeout(() => setMessage(null), 3000)
+            setTimeout(() => setMessage(null), 4000)
         } catch {
             setMessage({ type: 'error', text: 'Xato yuz berdi' })
         } finally {
@@ -474,21 +528,8 @@ export default function StudentProfile() {
     return (
         <div className={`space-y-4 transition-colors ${isLight ? 'text-slate-900' : 'text-white'}`}>
 
-            {/* ── Message ── */}
-            {message && (
-                <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className={`p-3 rounded-lg text-sm font-semibold flex items-center gap-2 ${message.type === 'success'
-                        ? isLight ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-green-500/10 text-green-400 border border-green-500/20'
-                        : isLight ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                        }`}
-                >
-                    {message.type === 'success' ? <Check size={18} /> : <X size={18} />}
-                    {message.text}
-                </motion.div>
-            )}
+            {/* ── 3D Creative Toast ── */}
+            <Toast3D message={message} isLight={isLight} />
 
             {/* ── Header ── */}
             <motion.div
@@ -775,14 +816,75 @@ export default function StudentProfile() {
                         >
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className={`text-xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                                    Profilni Tahrirlash
+                                    ✨ Profilni Tahrirlash
                                 </h2>
                                 <button onClick={() => setShowEditModal(false)} className={`p-2 rounded-lg ${isLight ? 'hover:bg-slate-100' : 'hover:bg-white/10'}`}>
                                     <X size={20} />
                                 </button>
                             </div>
 
-                            <div className="space-y-4">
+                            {/* Image Section */}
+                            <div className={`p-4 rounded-2xl mb-4 ${isLight ? 'bg-slate-50 border border-slate-200' : 'bg-white/5 border border-white/10'}`}>
+                                <p className={`text-xs font-black uppercase mb-3 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                                    📸 Avatar
+                                </p>
+                                <div className="flex items-center gap-4">
+                                    {/* Avatar Preview */}
+                                    <div
+                                        className="w-16 h-16 rounded-2xl p-0.5 flex-shrink-0"
+                                        style={{ background: 'linear-gradient(135deg, #2563eb, #6366f1)' }}
+                                    >
+                                        <div className={`w-full h-full rounded-xl flex items-center justify-center overflow-hidden ${isLight ? 'bg-slate-100' : 'bg-white/10'}`}>
+                                            {profile?.avatar_url ? (
+                                                <Image
+                                                    key={`${profile.avatar_url}-modal`}
+                                                    src={profile.avatar_url}
+                                                    alt="Avatar preview"
+                                                    width={64}
+                                                    height={64}
+                                                    unoptimized
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <span className="text-lg font-black text-blue-300">
+                                                    {getInitials(profile?.full_name || '')}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Upload/Delete Buttons */}
+                                    <div className="flex flex-col gap-2 flex-1">
+                                        <button
+                                            onClick={handleAvatarClick}
+                                            disabled={uploading}
+                                            className={`w-full px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${isLight
+                                                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:opacity-50'
+                                                : 'bg-blue-600/30 text-blue-400 hover:bg-blue-600/50 disabled:opacity-50'
+                                                }`}
+                                        >
+                                            {uploading ? <Loader size={14} className="animate-spin" /> : <Camera size={14} />}
+                                            {uploading ? 'Yuklanyapti...' : "O'zgartirish"}
+                                        </button>
+                                        {profile?.avatar_url && (
+                                            <button
+                                                onClick={handleDeleteAvatar}
+                                                disabled={uploading}
+                                                className={`w-full px-3 py-2 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${isLight
+                                                    ? 'bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50'
+                                                    : 'bg-red-600/30 text-red-400 hover:bg-red-600/50 disabled:opacity-50'
+                                                    }`}
+                                            >
+                                                <X size={14} />
+                                                O'chirish
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Form Fields */}
+                            <div className="space-y-3">
                                 {[
                                     { key: 'full_name', label: "To'liq Ism", placeholder: "Ismingiz" },
                                     { key: 'phone', label: 'Telefon', placeholder: '+998 90 123 45 67' },
@@ -791,7 +893,7 @@ export default function StudentProfile() {
                                     { key: 'room_number', label: 'Xona', placeholder: '204-xona' },
                                 ].map(({ key, label, placeholder }) => (
                                     <div key={key}>
-                                        <label className={`block text-xs font-black uppercase mb-2 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                                        <label className={`block text-xs font-black uppercase mb-1.5 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                                             {label}
                                         </label>
                                         <input
@@ -799,7 +901,7 @@ export default function StudentProfile() {
                                             placeholder={placeholder}
                                             value={editForm[key as keyof Profile] || ''}
                                             onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
-                                            className={`w-full px-4 py-2.5 rounded-lg border outline-none transition-all ${isLight
+                                            className={`w-full px-3 py-2 rounded-lg border text-sm outline-none transition-all ${isLight
                                                 ? 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-500 focus:bg-white'
                                                 : 'bg-white/5 border-white/10 text-white focus:border-blue-500/50 focus:bg-white/10'
                                                 }`}
@@ -811,17 +913,17 @@ export default function StudentProfile() {
                             <div className="flex gap-3 mt-6">
                                 <button
                                     onClick={() => setShowEditModal(false)}
-                                    className={`flex-1 py-3 rounded-lg font-black transition-all ${isLight ? 'bg-slate-100 text-slate-900 hover:bg-slate-200' : 'bg-white/5 text-white hover:bg-white/10'}`}
+                                    className={`flex-1 py-3 rounded-xl font-black transition-all text-sm ${isLight ? 'bg-gradient-to-r from-slate-100 to-slate-200 text-slate-900 hover:from-slate-200 hover:to-slate-300 shadow-lg' : 'bg-gradient-to-r from-slate-800 to-slate-700 text-white hover:from-slate-700 hover:to-slate-600 shadow-lg'}`}
                                 >
-                                    Bekor Qilish
+                                    ✕ Bekor Qilish
                                 </button>
                                 <button
                                     onClick={handleEditSave}
                                     disabled={savingEdit}
-                                    className={`flex-1 py-3 rounded-lg font-black transition-all flex items-center justify-center gap-2 ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50' : 'bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50'}`}
+                                    className={`flex-1 py-3 rounded-xl font-black transition-all flex items-center justify-center gap-2 text-sm shadow-lg ${isLight ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 disabled:opacity-50' : 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:from-blue-500 hover:to-cyan-600 disabled:opacity-50'}`}
                                 >
                                     {savingEdit ? <Loader size={16} className="animate-spin" /> : <Check size={16} />}
-                                    {savingEdit ? 'Saqlanmoqda...' : 'Saqlash'}
+                                    {savingEdit ? 'Saqlanmoqda...' : '✓ Saqlash'}
                                 </button>
                             </div>
                         </motion.div>

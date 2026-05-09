@@ -1,11 +1,11 @@
 'use client'
 
 import Image from 'next/image'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import {
     Mail, Phone, GraduationCap, Home,
-    ShieldCheck, LogOut, Camera, Edit2, Lock,
+    ShieldCheck, LogOut, Camera, Edit2, Lock, X, Check, Loader
 } from 'lucide-react'
 import { motion, Variants } from 'framer-motion'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -124,10 +124,76 @@ function Skeleton() {
     )
 }
 
+// ─── Roommate Card ─────────────────────────────────────────────────────────────
+interface RoommateCardProps {
+    roommate: Profile
+    isLight: boolean
+}
+
+function RoommateCard({ roommate, isLight }: RoommateCardProps) {
+    const initials = getInitials(roommate.full_name)
+    const course = Number(roommate.course ?? 1)
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className={`border rounded-2xl p-3.5 transition-all hover:scale-[1.02] ${isLight ? 'bg-slate-50 border-slate-300' : 'bg-white/5 border-white/10'}`}
+        >
+            <div className="flex items-center gap-3">
+                {/* Avatar */}
+                <div
+                    className="w-14 h-14 rounded-xl p-0.5 shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #10b981, #34d399)' }}
+                >
+                    <div className={`w-full h-full rounded-lg flex items-center justify-center overflow-hidden ${isLight ? 'bg-slate-100' : 'bg-white/10'}`}>
+                        {roommate.avatar_url ? (
+                            <Image
+                                src={roommate.avatar_url}
+                                alt={roommate.full_name}
+                                width={56}
+                                height={56}
+                                unoptimized
+                                className="object-cover"
+                            />
+                        ) : (
+                            <span className={`text-sm font-black ${isLight ? 'text-green-300' : 'text-emerald-300/60'}`}>
+                                {initials}
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Info */}
+                <div className="min-w-0 flex-1">
+                    <p className={`font-black text-sm truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                        {roommate.full_name}
+                    </p>
+                    <p className={`text-[11px] font-bold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                        {course}-kurs · {roommate.group || '—'}
+                    </p>
+                </div>
+
+                {/* Status badge */}
+                <div className={`px-2 py-1 rounded-lg text-[9px] font-black whitespace-nowrap ${isLight ? 'bg-emerald-100 text-emerald-600' : 'bg-emerald-500/15 text-emerald-400'}`}>
+                    Faol
+                </div>
+            </div>
+        </motion.div>
+    )
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function StudentProfile() {
     const [profile, setProfile] = useState<Profile | null>(null)
+    const [roommates, setRoommates] = useState<Profile[]>([])
     const [loading, setLoading] = useState(true)
+    const [uploading, setUploading] = useState(false)
+    const [showEditModal, setShowEditModal] = useState(false)
+    const [editForm, setEditForm] = useState<Partial<Profile>>({})
+    const [savingEdit, setSavingEdit] = useState(false)
+    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
 
@@ -135,24 +201,35 @@ export default function StudentProfile() {
         async function fetchProfile() {
             try {
                 setLoading(true)
-                // Supabase'dan ma'lumot olishga urinib ko'ramiz
                 const { data: { user } } = await supabase.auth.getUser()
 
                 if (user) {
                     const { data, error } = await supabase
-                        .from('profiles')
+                        .from('users')
                         .select('*')
                         .eq('id', user.id)
                         .single()
 
                     if (!error && data) {
                         setProfile(data)
-                        return // Agar ma'lumot kelsa, shu yerda to'xtaydi
+
+                        // Xonadoshlarni olish - shu xonada yashovchi boshqa talabalar
+                        if (data.room_number) {
+                            const { data: roommatesData, error: roommatesError } = await supabase
+                                .from('users')
+                                .select('id, full_name, email, phone, faculty, role, room_number, course, group, avatar_url')
+                                .eq('room_number', data.room_number)
+                                .neq('id', user.id)
+                                .order('full_name', { ascending: true })
+
+                            if (!roommatesError && roommatesData) {
+                                setRoommates(roommatesData)
+                            }
+                        }
+                        return
                     }
                 }
 
-                // AGAR XATO BO'LSA YOKI USER TOPILMASA:
-                // O'zingizning ma'lumotlaringizni qo'lda yozib qo'yamiz
                 setProfile({
                     id: '1',
                     full_name: "Azizbek Karimov",
@@ -164,6 +241,30 @@ export default function StudentProfile() {
                     course: "3",
                     group: "412"
                 })
+                setRoommates([
+                    {
+                        id: '2',
+                        full_name: "Dilshod Latipov",
+                        email: "dilshod@univer.uz",
+                        phone: "+998 90 234 56 78",
+                        faculty: "Dasturiy Injiniring",
+                        role: "Talaba",
+                        room_number: "204-xona",
+                        course: "1",
+                        group: "412"
+                    },
+                    {
+                        id: '3',
+                        full_name: "Gaxriman Araznepesov",
+                        email: "gaxriman@univer.uz",
+                        phone: "+998 90 345 67 89",
+                        faculty: "Dasturiy Injiniring",
+                        role: "Talaba",
+                        room_number: "204-xona",
+                        course: "1",
+                        group: "412"
+                    }
+                ])
 
             } catch {
                 console.log("Hozircha offline rejimda ishlayapmiz")
@@ -173,6 +274,158 @@ export default function StudentProfile() {
         }
         fetchProfile()
     }, [])
+
+    const handleAvatarClick = () => {
+        fileInputRef.current?.click()
+    }
+
+    const handleDeleteAvatar = async () => {
+        if (!profile) return
+
+        setUploading(true)
+        try {
+            // Auth token'ni olish
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session?.access_token) {
+                setMessage({ type: 'error', text: 'Autentifikatsiya xatosi' })
+                return
+            }
+
+            const response = await fetch(
+                `/api/student/profile/upload-avatar?userId=${profile.id}`,
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`
+                    }
+                }
+            )
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                setMessage({ type: 'error', text: data.error || 'Avatar o\'chirilishida xato' })
+                return
+            }
+
+            setProfile({ ...profile, avatar_url: undefined })
+            setMessage({ type: 'success', text: 'Avatar muvaffaqiyatli o\'chirildi' })
+            setTimeout(() => setMessage(null), 3000)
+        } catch (error) {
+            console.error('Delete xatosi:', error)
+            setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Xato yuz berdi' })
+        } finally {
+            setUploading(false)
+        }
+    }
+
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file || !profile) return
+
+        // File validatsiya
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+        if (!validTypes.includes(file.type)) {
+            setMessage({ type: 'error', text: 'Faqat JPEG, PNG, WebP yoki GIF formatida rasm qabul qilinadi' })
+            return
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            setMessage({ type: 'error', text: 'Rasm 5MB dan katta bo\'lmasligi kerak' })
+            return
+        }
+
+        setUploading(true)
+        try {
+            // Auth token'ni olish
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session?.access_token) {
+                setMessage({ type: 'error', text: 'Autentifikatsiya xatosi' })
+                return
+            }
+
+            const formData = new FormData()
+            formData.append('file', file)
+            formData.append('userId', profile.id)
+
+            const response = await fetch('/api/student/profile/upload-avatar', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: formData,
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                setMessage({ type: 'error', text: data.error || 'Rasm yuklanishida xato' })
+                return
+            }
+
+            if (data.url) {
+                setProfile({ ...profile, avatar_url: data.url })
+                setMessage({ type: 'success', text: 'Rasm muvaffaqiyatli yuklanildi' })
+                setTimeout(() => setMessage(null), 3000)
+            } else {
+                setMessage({ type: 'error', text: 'Rasm URL olinmadi' })
+            }
+        } catch (error) {
+            console.error('Upload xatosi:', error)
+            setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Xato yuz berdi' })
+        } finally {
+            setUploading(false)
+            if (fileInputRef.current) {
+                fileInputRef.current.value = ''
+            }
+        }
+    }
+
+    const handleEditOpen = () => {
+        if (profile) {
+            setEditForm({
+                full_name: profile.full_name,
+                phone: profile.phone,
+                faculty: profile.faculty,
+                group: profile.group,
+                room_number: profile.room_number,
+            })
+            setShowEditModal(true)
+        }
+    }
+
+    const handleEditSave = async () => {
+        if (!profile) return
+
+        setSavingEdit(true)
+        try {
+            const response = await fetch('/api/student/profile/update', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: profile.id,
+                    ...editForm,
+                }),
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                setMessage({ type: 'error', text: data.error || 'Yangilashda xato' })
+                return
+            }
+
+            setProfile(data.data)
+            setShowEditModal(false)
+            setMessage({ type: 'success', text: 'Profil muvaffaqiyatli yangilandi' })
+
+            setTimeout(() => setMessage(null), 3000)
+        } catch {
+            setMessage({ type: 'error', text: 'Xato yuz berdi' })
+        } finally {
+            setSavingEdit(false)
+        }
+    }
 
     const handleLogout = async () => {
         await supabase.auth.signOut()
@@ -193,8 +446,23 @@ export default function StudentProfile() {
     const initials = getInitials(fullName)
 
     return (
-        // layout.tsx already sets pb-24 px-4 max-w-md mx-auto — no need to repeat
         <div className={`space-y-4 transition-colors ${isLight ? 'text-slate-900' : 'text-white'}`}>
+
+            {/* ── Message ── */}
+            {message && (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className={`p-3 rounded-lg text-sm font-semibold flex items-center gap-2 ${message.type === 'success'
+                        ? isLight ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-green-500/10 text-green-400 border border-green-500/20'
+                        : isLight ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                        }`}
+                >
+                    {message.type === 'success' ? <Check size={18} /> : <X size={18} />}
+                    {message.text}
+                </motion.div>
+            )}
 
             {/* ── Header ── */}
             <motion.div
@@ -233,7 +501,7 @@ export default function StudentProfile() {
                     {/* Avatar */}
                     <div className="relative shrink-0">
                         <div
-                            className="w-24 h-24 rounded-full p-0.5"
+                            className="w-24 h-24 rounded-full p-0.5 flex items-center justify-center"
                             style={{ background: 'linear-gradient(135deg, #2563eb, #6366f1)' }}
                         >
                             <div className={`w-full h-full rounded-full flex items-center justify-center overflow-hidden ${isLight ? 'bg-slate-100' : 'bg-[#020617]'
@@ -242,9 +510,10 @@ export default function StudentProfile() {
                                     <Image
                                         src={profile.avatar_url}
                                         alt={fullName}
-                                        fill
+                                        width={96}
+                                        height={96}
                                         unoptimized
-                                        className="object-cover"
+                                        className="w-full h-full object-cover"
                                     />
                                 ) : (
                                     <span className={`text-2xl font-black select-none ${isLight ? 'text-blue-300' : 'text-indigo-400/50'
@@ -254,13 +523,39 @@ export default function StudentProfile() {
                                 )}
                             </div>
                         </div>
-                        <button
-                            aria-label="Rasm yuklash"
-                            className={`absolute bottom-0.5 right-0.5 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110 ${isLight ? 'bg-blue-600 hover:bg-blue-700 border-white' : 'bg-blue-600 hover:bg-blue-500 border-[#0b1120]'
-                                }`}
-                        >
-                            <Camera size={13} className="text-white" />
-                        </button>
+
+                        <div className="absolute bottom-0.5 right-0.5 flex gap-1">
+                            {/* Upload button */}
+                            <button
+                                onClick={handleAvatarClick}
+                                disabled={uploading}
+                                aria-label="Rasm yuklash"
+                                className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110 disabled:opacity-50 ${isLight ? 'bg-blue-600 hover:bg-blue-700 border-white' : 'bg-blue-600 hover:bg-blue-500 border-[#0b1120]'
+                                    }`}
+                            >
+                                {uploading ? <Loader size={13} className="text-white animate-spin" /> : <Camera size={13} className="text-white" />}
+                            </button>
+
+                            {/* Delete button - faqat avatar bo'lsa */}
+                            {profile?.avatar_url && (
+                                <button
+                                    onClick={handleDeleteAvatar}
+                                    disabled={uploading}
+                                    aria-label="Rasmni o'chirish"
+                                    className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110 disabled:opacity-50 ${isLight ? 'bg-red-600 hover:bg-red-700 border-white' : 'bg-red-600 hover:bg-red-500 border-[#0b1120]'
+                                        }`}
+                                >
+                                    <X size={13} className="text-white" />
+                                </button>
+                            )}
+                        </div>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                            className="hidden"
+                        />
                     </div>
 
                     {/* Info */}
@@ -282,47 +577,50 @@ export default function StudentProfile() {
                         </p>
                     </div>
                 </div>
-            </motion.div>
+            </motion.div >
 
             {/* ── Stat cards ── */}
-            <motion.div
+            < motion.div
                 custom={2} variants={fadeUp} initial="hidden" animate="show"
                 className="grid grid-cols-3 gap-2.5"
             >
-                {[
-                    { val: course, label: 'Kurs', color: '#60a5fa' },
-                    { val: group, label: 'Guruh', color: '#34d399' },
-                    { val: roomNumber, label: 'Xona', color: '#fcd34d' },
-                ].map((s) => (
-                    <div
-                        key={s.label}
-                        className={`border rounded-2xl p-3.5 text-center transition-colors ${isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#0b1120] border-white/6'
-                            }`}
-                    >
-                        <p
-                            className="font-black leading-tight mb-1 truncate"
-                            style={{
-                                color: s.color,
-                                fontSize: String(s.val).length > 5 ? '13px' : '22px',
-                            }}
+                {
+                    [
+                        { val: course, label: 'Kurs', color: '#60a5fa' },
+                        { val: group, label: 'Guruh', color: '#34d399' },
+                        { val: roomNumber, label: 'Xona', color: '#fcd34d' },
+                    ].map((s) => (
+                        <div
+                            key={s.label}
+                            className={`border rounded-2xl p-3.5 text-center transition-colors ${isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#0b1120] border-white/6'
+                                }`}
                         >
-                            {s.val}
-                        </p>
-                        <p className={`text-[9px] font-bold uppercase tracking-[0.18em] ${isLight ? 'text-slate-500' : 'text-slate-600'
-                            }`}>
-                            {s.label}
-                        </p>
-                    </div>
-                ))}
-            </motion.div>
+                            <p
+                                className="font-black leading-tight mb-1 truncate"
+                                style={{
+                                    color: s.color,
+                                    fontSize: String(s.val).length > 5 ? '13px' : '22px',
+                                }}
+                            >
+                                {s.val}
+                            </p>
+                            <p className={`text-[9px] font-bold uppercase tracking-[0.18em] ${isLight ? 'text-slate-500' : 'text-slate-600'
+                                }`}>
+                                {s.label}
+                            </p>
+                        </div>
+                    ))
+                }
+            </motion.div >
 
             {/* ── Info sections ── */}
-            <div className="grid grid-cols-2 gap-2.5">
+            < div className="grid grid-cols-2 gap-2.5" >
                 {/* Aloqa */}
-                <motion.section
+                < motion.section
                     custom={3} variants={fadeUp} initial="hidden" animate="show"
                     className={`group border rounded-[20px] p-4 transition-colors space-y-4 ${isLight ? 'bg-slate-100 border-slate-300 hover:border-blue-400' : 'bg-[#0b1120] border-white/[0.07] hover:border-blue-500/25'
-                        }`}
+                        }`
+                    }
                 >
                     <h3 className={`text-[9px] font-black uppercase tracking-[0.3em] flex items-center gap-1.5 ${isLight ? 'text-slate-600' : 'text-slate-500'
                         }`}>
@@ -343,10 +641,10 @@ export default function StudentProfile() {
                         bg={isLight ? "rgba(79,70,229,0.1)" : "rgba(99,102,241,0.1)"}
                         color={isLight ? "#4f46e5" : "#a5b4fc"}
                     />
-                </motion.section>
+                </motion.section >
 
                 {/* Turar joy */}
-                <motion.section
+                < motion.section
                     custom={4} variants={fadeUp} initial="hidden" animate="show"
                     className={`group border rounded-[20px] p-4 transition-colors space-y-4 ${isLight ? 'bg-slate-100 border-slate-300 hover:border-green-400' : 'bg-[#0b1120] border-white/[0.07] hover:border-emerald-500/25'
                         }`}
@@ -370,11 +668,11 @@ export default function StudentProfile() {
                         bg={isLight ? "rgba(217,119,6,0.1)" : "rgba(245,158,11,0.1)"}
                         color={isLight ? "#d97706" : "#fcd34d"}
                     />
-                </motion.section>
-            </div>
+                </motion.section >
+            </div >
 
             {/* ── Timeline ── */}
-            <motion.div
+            < motion.div
                 custom={5} variants={fadeUp} initial="hidden" animate="show"
                 className={`border rounded-[20px] p-4 transition-colors ${isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#0b1120] border-white/[0.07]'
                     }`}
@@ -385,15 +683,39 @@ export default function StudentProfile() {
                     Ta&apos;lim davri
                 </h3>
                 <Timeline course={course} isLight={isLight} />
-            </motion.div>
+            </motion.div >
+
+            {/* ── Xonadoshlar (Roommates) ── */}
+            {
+                roommates.length > 0 && (
+                    <motion.div
+                        custom={6} variants={fadeUp} initial="hidden" animate="show"
+                        className={`border rounded-[20px] p-4 transition-colors ${isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#0b1120] border-white/[0.07]'
+                            }`}
+                    >
+                        <h3 className={`text-[9px] font-black uppercase tracking-[0.3em] flex items-center gap-1.5 mb-4 ${isLight ? 'text-slate-600' : 'text-slate-500'
+                            }`}>
+                            <span className={`block w-0.5 h-3 rounded-full ${isLight ? 'bg-green-600' : 'bg-emerald-500'}`} />
+                            Xonadoshlar ({roommates.length} kishi)
+                        </h3>
+                        <div className="space-y-2.5">
+                            {roommates.map((roommate) => (
+                                <RoommateCard key={roommate.id} roommate={roommate} isLight={isLight} />
+                            ))}
+                        </div>
+                    </motion.div>
+                )
+            }
 
             {/* ── Actions ── */}
             <motion.div
-                custom={6} variants={fadeUp} initial="hidden" animate="show"
+                custom={roommates.length > 0 ? 7 : 6} variants={fadeUp} initial="hidden" animate="show"
                 className="flex gap-2.5"
             >
-                <button className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all hover:-translate-y-0.5 active:scale-95 ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-white text-[#020617] hover:bg-blue-500 hover:text-white'
-                    }`}>
+                <button
+                    onClick={handleEditOpen}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all hover:-translate-y-0.5 active:scale-95 ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-white text-[#020617] hover:bg-blue-500 hover:text-white'
+                        }`}>
                     <Edit2 size={15} />
                     Tahrirlash
                 </button>
@@ -404,6 +726,72 @@ export default function StudentProfile() {
                 </button>
             </motion.div>
 
-        </div>
+            {/* ── Edit Modal ── */}
+            {
+                showEditModal && profile && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowEditModal(false)}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`rounded-3xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto ${isLight ? 'bg-white' : 'bg-[#0b1120]'}`}
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className={`text-xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                    Profilni Tahrirlash
+                                </h2>
+                                <button onClick={() => setShowEditModal(false)} className={`p-2 rounded-lg ${isLight ? 'hover:bg-slate-100' : 'hover:bg-white/10'}`}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                {[
+                                    { key: 'full_name', label: "To'liq Ism", placeholder: "Ismingiz" },
+                                    { key: 'phone', label: 'Telefon', placeholder: '+998 90 123 45 67' },
+                                    { key: 'faculty', label: 'Fakultet', placeholder: 'Fakultetingiz' },
+                                    { key: 'group', label: 'Guruh', placeholder: '412' },
+                                    { key: 'room_number', label: 'Xona', placeholder: '204-xona' },
+                                ].map(({ key, label, placeholder }) => (
+                                    <div key={key}>
+                                        <label className={`block text-xs font-black uppercase mb-2 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                                            {label}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder={placeholder}
+                                            value={editForm[key as keyof Profile] || ''}
+                                            onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
+                                            className={`w-full px-4 py-2.5 rounded-lg border outline-none transition-all ${isLight
+                                                ? 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-500 focus:bg-white'
+                                                : 'bg-white/5 border-white/10 text-white focus:border-blue-500/50 focus:bg-white/10'
+                                                }`}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => setShowEditModal(false)}
+                                    className={`flex-1 py-3 rounded-lg font-black transition-all ${isLight ? 'bg-slate-100 text-slate-900 hover:bg-slate-200' : 'bg-white/5 text-white hover:bg-white/10'}`}
+                                >
+                                    Bekor Qilish
+                                </button>
+                                <button
+                                    onClick={handleEditSave}
+                                    disabled={savingEdit}
+                                    className={`flex-1 py-3 rounded-lg font-black transition-all flex items-center justify-center gap-2 ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50' : 'bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50'}`}
+                                >
+                                    {savingEdit ? <Loader size={16} className="animate-spin" /> : <Check size={16} />}
+                                    {savingEdit ? 'Saqlanmoqda...' : 'Saqlash'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )
+            }
+
+        </div >
     )
 }

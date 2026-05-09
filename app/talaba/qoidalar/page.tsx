@@ -1,14 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import React from "react";
 import {
-  Home,
-  Bell,
-  Clock,
-  FileText,
-  User,
   AlertTriangle,
   ChevronDown
 } from "lucide-react";
@@ -87,23 +81,7 @@ const qoidalarData: QoidaItem[] = [
   },
 ];
 
-// ─── Nav tugmasi Komponenti ───────────────────────────────────────────────────
-type NavItemProps = {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ size?: number }>
-  isActive?: boolean;
-};
 
-function NavItem({ href, label, icon: Icon, isActive = false }: NavItemProps) {
-  return (
-    <Link href={href} className={`flex flex-col items-center gap-1 transition-colors ${isActive ? 'text-blue-500' : 'text-gray-400'}`}>
-      <Icon size={24} />
-      <span className="text-[10px] font-medium">{label}</span>
-      {isActive && <div className="w-1 h-1 rounded-full bg-blue-500" />}
-    </Link>
-  );
-}
 
 export default function QoidalarPage() {
   const theme = useThemeStore((state) => state.theme);

@@ -8,8 +8,9 @@
   --border-soft: rgba(148, 163, 184, 0.2);
   --page-glow-a: rgba(59, 130, 246, 0.18);
   --page-glow-b: rgba(99, 102, 241, 0.14);
-  --app-font-sans: "Segoe UI", "Trebuchet MS", Arial, sans-serif;
+  --app-font-sans: var(--font-exo2), sans-serif;
   --app-font-mono: "Consolas", "SFMono-Regular", "Courier New", monospace;
+  --app-font-display: var(--font-fugaz-one), sans-serif;
 }
 
 @theme inline {
@@ -17,6 +18,46 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--app-font-sans);
   --font-mono: var(--app-font-mono);
+  --font-display: var(--app-font-display);
+}
+
+@layer components {
+  .font-display {
+    font-family: var(--app-font-display);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--app-font-display);
+  }
+
+  .heading-1 {
+    @apply text-4xl font-black font-display;
+  }
+
+  .heading-2 {
+    @apply text-3xl font-bold font-display;
+  }
+
+  .heading-3 {
+    @apply text-2xl font-bold font-display;
+  }
+
+  .heading-4 {
+    @apply text-xl font-bold font-display;
+  }
+
+  .heading-5 {
+    @apply text-lg font-semibold font-display;
+  }
+
+  .heading-6 {
+    @apply text-base font-semibold font-display;
+  }
 }
 
 html.theme-dark {

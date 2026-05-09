@@ -21,7 +21,6 @@ const FALLBACK_DISTRICTS: Record<string, string[]> = {
 }
 
 const FALLBACK_SETTLEMENTS = ['1-mahalla', '2-mahalla', 'Bog\'iston mahallasi', 'Markaziy mahalla']
-const STREETS = ["Mustaqillik ko'chasi", "Navoi ko'chasi", "Amir Temur shoh ko'chasi"]
 const REGION_DATA_URL = 'https://raw.githubusercontent.com/MIMAXUZ/uzbekistan-regions-data/master/JSON/regions.json'
 const DISTRICT_DATA_URL = 'https://raw.githubusercontent.com/MIMAXUZ/uzbekistan-regions-data/master/JSON/districts.json'
 const VILLAGE_DATA_URL = 'https://raw.githubusercontent.com/MIMAXUZ/uzbekistan-regions-data/master/JSON/villages.json'
@@ -412,7 +411,7 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
 
                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_100px] gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block">Ko'cha</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block">Ko&apos;cha</label>
                       <div className="relative flex items-center">
                         <Navigation className={`absolute left-4 z-10 pointer-events-none ${isLight ? 'text-slate-400' : 'text-slate-600'}`} size={14} />
                         <input

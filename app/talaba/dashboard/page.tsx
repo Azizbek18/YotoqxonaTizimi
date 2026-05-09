@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search, X,
   Plus, CreditCard, Trash2, CheckCircle2,
   Megaphone, MapPin, User, FileText, AlertTriangle
 } from 'lucide-react';
 import { useThemeStore } from '@/lib/stores/theme-store';
+import { supabase } from '@/lib/supabase';
 
 interface Task {
   id: number;
@@ -33,19 +34,43 @@ interface Elon {
   desc: string;
 }
 
+interface Profile {
+  id: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  faculty?: string;
+  role?: string;
+  room_number?: string;
+  course?: string | number;
+  group?: string | number;
+  avatar_url?: string;
+}
+
 export default function TalabaDashboard() {
+  // State - Profile va Roommates
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [roommates, setRoommates] = useState<Profile[]>([]);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  // State - UI
   const [showArizalar, setShowArizalar] = useState(false);
   const [selectedElon, setSelectedElon] = useState<Elon | null>(null);
   const [selectedAriza, setSelectedAriza] = useState<Ariza | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // State - Theme
   const theme = useThemeStore((state) => state.theme);
   const isLight = theme === 'light';
 
+  // State - Tasks
   const [tasks, setTasks] = useState<Task[]>([
     { id: 1, text: "Matematik analiz topshirig'ini yuklash", completed: true },
     { id: 2, text: "3-qavat majlisiga borish", completed: false }
   ]);
   const [newTask, setNewTask] = useState("");
 
+  // State - Applications (Demo data - keyin database dan olinadi)
   const [arizalar] = useState<Ariza[]>([
     {
       id: 1,
@@ -67,8 +92,118 @@ export default function TalabaDashboard() {
     }
   ]);
 
+  // Fetch Profile and Roommates
+  useEffect(() => {
+    async function fetchProfileData() {
+      try {
+        setLoadingProfile(true);
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (user) {
+          // Profil ma'lumotlarini olish
+          const { data: profileData, error: profileError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+          if (!profileError && profileData) {
+            setProfile(profileData);
+
+            // Xonadoshlarni olish
+            if (profileData.room_number) {
+              const { data: roommatesData, error: roommatesError } = await supabase
+                .from('users')
+                .select('id, full_name, email, phone, faculty, role, room_number, course, group, avatar_url')
+                .eq('room_number', profileData.room_number)
+                .neq('id', user.id)
+                .order('full_name', { ascending: true });
+
+              if (!roommatesError && roommatesData) {
+                setRoommates(roommatesData as Profile[]);
+              }
+            }
+            return;
+          }
+        }
+
+        // Demo ma'lumotlar
+        setProfile({
+          id: '1',
+          full_name: "Sherzod G'apparov",
+          email: "sherzod@univer.uz",
+          phone: "+998 90 123 45 67",
+          faculty: "Amaliy Matematika & IT",
+          role: "Talaba",
+          room_number: "87-xona",
+          course: "1",
+          group: "TMI-03"
+        });
+
+        setRoommates([
+          {
+            id: '2',
+            full_name: "Dilshod Latipov",
+            email: "dilshod@univer.uz",
+            phone: "+998 90 234 56 78",
+            faculty: "Amaliy Matematika",
+            role: "Talaba",
+            room_number: "87-xona",
+            course: "1",
+            group: "TMI-03"
+          },
+          {
+            id: '3',
+            full_name: "Gaxriman Araznepesov",
+            email: "gaxriman@univer.uz",
+            phone: "+998 90 345 67 89",
+            faculty: "Amaliy Matematika",
+            role: "Talaba",
+            room_number: "87-xona",
+            course: "1",
+            group: "TMI-03"
+          },
+          {
+            id: '4',
+            full_name: "Melisbek Kulishev",
+            email: "melisbek@univer.uz",
+            phone: "+998 90 456 78 90",
+            faculty: "Amaliy Matematika",
+            role: "Talaba",
+            room_number: "87-xona",
+            course: "1",
+            group: "TMI-03"
+          }
+        ]);
+      } catch (error) {
+        console.error('Profil yuklashda xato:', error);
+      } finally {
+        setLoadingProfile(false);
+      }
+    }
+
+    fetchProfileData();
+  }, []);
+
   const arizaSoni = arizalar.length;
   const haydalishArafasida = arizaSoni >= 3;
+
+  // Xona raqamini ajratish (masalan: "87-xona" dan "87" olish)
+  const roomNumber = profile?.room_number?.split('-')[0] || '—';
+  const floor = calculateFloor(Number(roomNumber) || 0);
+  const fullName = profile?.full_name || 'Talaba';
+  const faculty = profile?.faculty || 'Fakultet';
+  const course = Number(profile?.course ?? 1);
+  const group = profile?.group || '—';
+  const status = 'Aktiv';
+
+  if (loadingProfile) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#050810]'}`}>
+        <div className={`w-10 h-10 border-4 rounded-full animate-spin ${isLight ? 'border-blue-200 border-t-blue-600' : 'border-blue-500/20 border-t-blue-500'}`} />
+      </div>
+    );
+  }
 
   return (
     <div className={`relative w-full max-w-275 mx-auto p-4 md:p-8 space-y-8 min-h-screen font-sans transition-colors ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100 text-slate-900' : 'bg-[#050810] text-white'
@@ -77,14 +212,20 @@ export default function TalabaDashboard() {
       {/* 1. HEADER */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`}>Amaliy Matematika & IT</p>
-          <h1 className="text-4xl font-black italic tracking-tighter uppercase">Sherzod G&apos;apparov</h1>
+          <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`}>{faculty}</p>
+          <h1 className="text-4xl font-black italic tracking-tighter uppercase">{fullName}</h1>
         </div>
 
         <div className="relative w-full md:w-72">
           <Search className={`absolute left-3 top-1/2 -translate-y-1/2 size-4.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`} />
-          <input type="text" placeholder="Qidirish..." className={`w-full border rounded-2xl py-3 pl-10 pr-4 outline-none text-sm transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200' : 'bg-[#0f172a]/60 border-white/5 text-white'
-            }`} />
+          <input
+            type="text"
+            placeholder="Qidirish..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={`w-full border rounded-2xl py-3 pl-10 pr-4 outline-none text-sm transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200' : 'bg-[#0f172a]/60 border-white/5 text-white'
+              }`}
+          />
         </div>
       </header>
 
@@ -94,29 +235,42 @@ export default function TalabaDashboard() {
           <div className={`p-8 rounded-[45px] shadow-2xl hover:scale-[1.02] transition-all duration-300 ${isLight ? 'bg-linear-to-br from-blue-500 via-blue-600 to-blue-700 text-white' : 'bg-linear-to-br from-indigo-600 via-blue-700 to-indigo-900 text-white'
             }`}>
             <div className="flex items-baseline gap-2 mb-8">
-              <h2 className="text-6xl font-black italic text-white tracking-tighter">#87</h2>
+              <h2 className="text-6xl font-black italic text-white tracking-tighter">{roomNumber}</h2>
               <span className="text-sm font-black uppercase tracking-[0.2em] text-white/40 italic">XONA</span>
             </div>
             <div className="grid grid-cols-4 gap-2 pt-6 border-t border-white/20">
-              <StatMini l="QAVAT" v="3" />
-              <StatMini l="KURS" v="1" />
-              <StatMini l="GURUH" v="TMI-03" />
-              <StatMini l="HOLAT" v="Aktiv" active />
+              <StatMini l="QAVAT" v={floor === 0 ? '—' : String(floor)} />
+              <StatMini l="KURS" v={String(course)} />
+              <StatMini l="GURUH" v={String(group)} />
+              <StatMini l="HOLAT" v={status} active />
             </div>
           </div>
 
           {/* XONADOSHLAR */}
-          <div className={`border rounded-4xl p-6 hover:scale-[1.01] transition-all ${isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#0f172a]/40 border-white/5'
-            }`}>
-            <h3 className={`text-[10px] font-black tracking-[0.2em] mb-6 uppercase ${isLight ? 'text-blue-600' : 'text-green-400'
-              }`}>Xonadoshlar (4 kishi)</h3>
-            <div className="space-y-3">
-              <Xonadosh name="Sherzod G'apparov" kurs="1-kurs" img="SG" me isLight={isLight} />
-              <Xonadosh name="Dilshod Latipov" kurs="1-kurs" img="DL" isLight={isLight} />
-              <Xonadosh name="Gaxriman Araznepesov" kurs="1-kurs" img="GA" isLight={isLight} />
-              <Xonadosh name="Melisbek Kulishev" kurs="1-kurs" img="MK" isLight={isLight} />
+          {roommates.length > 0 ? (
+            <div className={`border rounded-4xl p-6 hover:scale-[1.01] transition-all ${isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#0f172a]/40 border-white/5'
+              }`}>
+              <h3 className={`text-[10px] font-black tracking-[0.2em] mb-6 uppercase ${isLight ? 'text-blue-600' : 'text-green-400'
+                }`}>Xonadoshlar ({roommates.length} kishi)</h3>
+              <div className="space-y-3">
+                {roommates.map((roommate) => (
+                  <Xonadosh
+                    key={roommate.id}
+                    name={roommate.full_name}
+                    kurs={`${roommate.course || 1}-kurs`}
+                    img={roommate.full_name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                    isLight={isLight}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className={`border rounded-4xl p-6 ${isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#0f172a]/40 border-white/5'}`}>
+              <p className={`text-sm text-center ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                Xonadoshlar ma&apos;lumoti kiyin yuklanadi...
+              </p>
+            </div>
+          )}
 
           {/* TALABA ARIZALARI */}
           <div className={`border rounded-4xl p-6 transition-all duration-500 ${haydalishArafasida
@@ -272,20 +426,24 @@ export default function TalabaDashboard() {
               <button onClick={() => setShowArizalar(false)} className="p-2 hover:bg-white/5 rounded-full transition-all"><X /></button>
             </div>
             <div className="space-y-3 mb-4 max-h-100 overflow-y-auto pr-2 custom-scrollbar">
-              {arizalar.map((ariza) => (
-                <div
-                  key={ariza.id}
-                  onClick={() => setSelectedAriza(ariza)}
-                  className="p-4 rounded-2xl border bg-white/5 border-white/5 hover:border-indigo-500/50 cursor-pointer transition-all hover:translate-x-1"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{ariza.sana}</span>
-                    <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
+              {arizalar.length > 0 ? (
+                arizalar.map((ariza) => (
+                  <div
+                    key={ariza.id}
+                    onClick={() => setSelectedAriza(ariza)}
+                    className="p-4 rounded-2xl border bg-white/5 border-white/5 hover:border-indigo-500/50 cursor-pointer transition-all hover:translate-x-1"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{ariza.sana}</span>
+                      <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
+                    </div>
+                    <p className="text-sm font-bold text-white mb-1">{ariza.ism}</p>
+                    <p className="text-[10px] text-gray-500 uppercase font-black">{ariza.kurs} | {ariza.yonalish}</p>
                   </div>
-                  <p className="text-sm font-bold text-white mb-1">{ariza.ism}</p>
-                  <p className="text-[10px] text-gray-500 uppercase font-black">{ariza.kurs} | {ariza.yonalish}</p>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-center text-gray-400 py-8">Arizalar topilmadi</p>
+              )}
             </div>
           </div>
         </div>
@@ -348,6 +506,17 @@ export default function TalabaDashboard() {
 
     </div>
   );
+}
+
+// ─── Helper Functions ──────────────────────────────────────────────────────
+
+function calculateFloor(roomNumber: number): number {
+  if (roomNumber === 0 || isNaN(roomNumber)) return 0;
+  if (roomNumber < 100) return 1;
+  if (roomNumber < 200) return 2;
+  if (roomNumber < 300) return 3;
+  if (roomNumber < 400) return 4;
+  return 5;
 }
 
 interface StatMiniProps {

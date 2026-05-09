@@ -7,6 +7,12 @@ const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 )
 
+// Service role client - database updates uchun
+const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+)
+
 // GET - foydalanuvchining avatar URLsini olish
 export async function GET(request: NextRequest) {
     try {
@@ -178,9 +184,15 @@ export async function POST(request: NextRequest) {
 
         const publicUrl = publicData.publicUrl
         console.log('🔗 Public URL:', publicUrl)
+        console.log('📋 Public URL Details:', {
+            path: data.path,
+            publicUrl,
+            isHttps: publicUrl.startsWith('https'),
+            bucket: 'avatar'
+        })
 
-        // Users jadvalida avatar_url ni update qilish
-        const { data: updateData, error: updateError } = await supabase
+        // Users jadvalida avatar_url ni update qilish (Service Role)
+        const { data: updateData, error: updateError } = await supabaseAdmin
             .from('users')
             .update({ avatar_url: publicUrl })
             .eq('id', userId)
@@ -285,8 +297,8 @@ export async function DELETE(request: NextRequest) {
             console.warn('Fayl o\'chirilishida xato:', e)
         }
 
-        // avatar_url-ni null qilish
-        const { error: updateError } = await supabase
+        // avatar_url-ni null qilish (Service Role)
+        const { error: updateError } = await supabaseAdmin
             .from('users')
             .update({ avatar_url: null })
             .eq('id', userId)

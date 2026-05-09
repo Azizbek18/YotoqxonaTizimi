@@ -382,6 +382,8 @@ export default function StudentProfile() {
                 return
             }
 
+            console.log('✅ API Response:', { url: data.url, data })
+
             // Profil-ni refresh qilish
             await refreshProfile()
             setMessage({ type: 'success', text: 'Rasm muvaffaqiyatli yuklanildi' })
@@ -528,8 +530,8 @@ export default function StudentProfile() {
                                         alt={fullName}
                                         width={96}
                                         height={96}
-                                        priority
-                                        className="w-full h-full object-cover"
+                                        priority onLoad={() => console.log('✅ Avatar image loaded:', profile.avatar_url)}
+                                        onError={(error) => console.error('❌ Avatar image error:', { src: profile.avatar_url, error })} className="w-full h-full object-cover"
                                     />
                                 ) : (
                                     <span className={`text-2xl font-black select-none ${isLight ? 'text-blue-300' : 'text-indigo-400/50'

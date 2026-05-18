@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Users, FileText, Activity, Clock, CheckCircle, Cube } from 'lucide-react'
+import { Users, FileText, Activity, Clock, CheckCircle, Boxes } from 'lucide-react'
 import { motion } from 'framer-motion'
 import {
   LineChart,
@@ -33,7 +33,6 @@ interface DashboardStats {
   loading: boolean
 }
 
-// Mock data for charts
 const mockMonthlyData = [
   { month: 'Yanvar', students: 45, applications: 24 },
   { month: 'Fevral', students: 52, applications: 28 },
@@ -66,42 +65,35 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function loadStats() {
       try {
-        // Talabalar soni
         const { count: studentCount } = await supabase
           .from('users')
           .select('*', { count: 'exact', head: true })
           .eq('role', 'talaba')
 
-        // Tarbiyachilar soni
         const { count: educatorCount } = await supabase
           .from('users')
           .select('*', { count: 'exact', head: true })
           .eq('role', 'tarbiyachi')
 
-        // Arizalar soni
         const { count: requestCount } = await supabase
           .from('arizalar')
           .select('*', { count: 'exact', head: true })
 
-        // Tasdiqlangan arizalar
         const { count: approvedCount } = await supabase
           .from('arizalar')
           .select('*', { count: 'exact', head: true })
           .eq('status', 'approved')
 
-        // Kutish holati arizalar
         const { count: pendingCount } = await supabase
           .from('arizalar')
           .select('*', { count: 'exact', head: true })
           .eq('status', 'pending')
 
-        // Rad etilgan arizalar
         const { count: rejectedCount } = await supabase
           .from('arizalar')
           .select('*', { count: 'exact', head: true })
           .eq('status', 'rejected')
 
-        // Jami foydalanuvchilar
         const { count: userCount } = await supabase
           .from('users')
           .select('*', { count: 'exact', head: true })
@@ -124,7 +116,7 @@ export default function AdminDashboard() {
         ])
       } catch (error) {
         console.error('Statistika yuklashda xato:', error)
-        setStats(prev => ({ ...prev, loading: false }))
+        setStats((prev) => ({ ...prev, loading: false }))
       }
     }
 
@@ -184,7 +176,6 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      {/* Header with Language Switcher */}
       <div className="flex items-start justify-between mb-8">
         <div>
           <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tighter">
@@ -194,31 +185,30 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Tab Navigation */}
       <div className="flex gap-2 mb-8 border-b border-white/10 overflow-x-auto">
         {['overview', 'analytics', 'reports', '3d-xonalar'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-3 font-semibold text-sm border-b-2 transition-all whitespace-nowrap ${activeTab === tab
-              ? 'border-purple-500 text-purple-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
+            className={`px-4 py-3 font-semibold text-sm border-b-2 transition-all whitespace-nowrap ${
+              activeTab === tab
+                ? 'border-purple-500 text-purple-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
           >
             {tab === 'overview' && 'Umumiy ko\'rinish'}
             {tab === 'analytics' && 'Tahlil'}
             {tab === 'reports' && 'Hisobotlar'}
             {tab === '3d-xonalar' && (
-              <div className="flex items-center gap-2">
-                <Cube className="w-4 h-4" />
+              <span className="flex items-center gap-2">
+                <Boxes className="w-4 h-4" />
                 3D Xonalar
-              </div>
+              </span>
             )}
           </button>
         ))}
       </div>
 
-      {/* Stats Grid */}
       {activeTab === 'overview' && (
         <div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -236,7 +226,6 @@ export default function AdminDashboard() {
             ))}
           </div>
 
-          {/* Quick Actions */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -249,7 +238,7 @@ export default function AdminDashboard() {
                   Ma&apos;lumotlarni Yangilash
                 </p>
                 <p className="text-lg font-black text-white mt-2">
-                  Barcha Statistikalarni Yangilash →
+                  Barcha Statistikalarni Yangilash -&gt;
                 </p>
               </button>
               <button className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-left transition-all group">
@@ -257,7 +246,7 @@ export default function AdminDashboard() {
                   Tizim holati
                 </p>
                 <p className="text-lg font-black text-white mt-2">
-                  Server Holatini Tekshirish →
+                  Server Holatini Tekshirish -&gt;
                 </p>
               </button>
               <button className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-left transition-all group">
@@ -265,7 +254,7 @@ export default function AdminDashboard() {
                   Yangi Talaba
                 </p>
                 <p className="text-lg font-black text-white mt-2">
-                  Foydalanuvchi Qo&apos;shish →
+                  Foydalanuvchi Qo&apos;shish -&gt;
                 </p>
               </button>
             </div>
@@ -273,10 +262,8 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Analytics Tab */}
       {activeTab === 'analytics' && (
         <div className="space-y-6">
-          {/* Line Chart */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -286,7 +273,7 @@ export default function AdminDashboard() {
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={mockMonthlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis stroke="rgba(255,255,255,0.5)" style={{ fontSize: '12px' }} />
+                <XAxis dataKey="month" stroke="rgba(255,255,255,0.5)" style={{ fontSize: '12px' }} />
                 <YAxis stroke="rgba(255,255,255,0.5)" style={{ fontSize: '12px' }} />
                 <Tooltip
                   contentStyle={{
@@ -301,9 +288,7 @@ export default function AdminDashboard() {
             </ResponsiveContainer>
           </motion.div>
 
-          {/* Bar Chart and Pie Chart */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Bar Chart */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -314,7 +299,7 @@ export default function AdminDashboard() {
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={mockMonthlyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                  <XAxis stroke="rgba(255,255,255,0.5)" style={{ fontSize: '12px' }} />
+                  <XAxis dataKey="month" stroke="rgba(255,255,255,0.5)" style={{ fontSize: '12px' }} />
                   <YAxis stroke="rgba(255,255,255,0.5)" style={{ fontSize: '12px' }} />
                   <Tooltip
                     contentStyle={{
@@ -329,7 +314,6 @@ export default function AdminDashboard() {
               </ResponsiveContainer>
             </motion.div>
 
-            {/* Pie Chart */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -367,7 +351,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Reports Tab */}
       {activeTab === 'reports' && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -378,21 +361,20 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <button className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-left transition-all">
               <p className="text-sm text-slate-400">Talabalar hisoboti</p>
-              <p className="text-base font-bold text-white mt-2">PDF sifatida Eksport →</p>
+              <p className="text-base font-bold text-white mt-2">PDF sifatida Eksport -&gt;</p>
             </button>
             <button className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-left transition-all">
               <p className="text-sm text-slate-400">Arizalar hisoboti</p>
-              <p className="text-base font-bold text-white mt-2">Excel sifatida Eksport →</p>
+              <p className="text-base font-bold text-white mt-2">Excel sifatida Eksport -&gt;</p>
             </button>
             <button className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-left transition-all">
               <p className="text-sm text-slate-400">Tizim statistikasi</p>
-              <p className="text-base font-bold text-white mt-2">CSV sifatida Eksport →</p>
+              <p className="text-base font-bold text-white mt-2">CSV sifatida Eksport -&gt;</p>
             </button>
           </div>
         </motion.div>
       )}
 
-      {/* 3D Rooms Tab */}
       {activeTab === '3d-xonalar' && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -408,7 +390,6 @@ export default function AdminDashboard() {
             />
           </div>
 
-          {/* Selected Room Info */}
           {selectedRoom && selectedFloor && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -426,7 +407,7 @@ export default function AdminDashboard() {
                   <p className="text-2xl font-black text-white">#{selectedRoom.number}</p>
                 </div>
                 <div className="bg-white/5 p-4 rounded-lg">
-                  <p className="text-sm text-slate-400 mb-1">Sig'im</p>
+                  <p className="text-sm text-slate-400 mb-1">Sig&apos;im</p>
                   <p className="text-2xl font-black text-white">
                     {selectedRoom.occupied}/{selectedRoom.capacity}
                   </p>
@@ -434,17 +415,18 @@ export default function AdminDashboard() {
                 <div className="bg-white/5 p-4 rounded-lg">
                   <p className="text-sm text-slate-400 mb-1">Holat</p>
                   <div
-                    className={`inline-block px-3 py-1 rounded-full font-bold text-sm ${selectedRoom.status === 'empty'
-                      ? 'bg-green-500/20 text-green-400'
-                      : selectedRoom.status === 'full'
-                        ? 'bg-red-500/20 text-red-400'
-                        : 'bg-yellow-500/20 text-yellow-400'
-                      }`}
+                    className={`inline-block px-3 py-1 rounded-full font-bold text-sm ${
+                      selectedRoom.status === 'empty'
+                        ? 'bg-green-500/20 text-green-400'
+                        : selectedRoom.status === 'full'
+                          ? 'bg-red-500/20 text-red-400'
+                          : 'bg-yellow-500/20 text-yellow-400'
+                    }`}
                   >
                     {selectedRoom.status === 'empty'
-                      ? "Bo'sh"
+                      ? 'Bo&apos;sh'
                       : selectedRoom.status === 'full'
-                        ? 'To\'la'
+                        ? 'To&apos;la'
                         : 'Qisman'}
                   </div>
                 </div>
@@ -456,5 +438,3 @@ export default function AdminDashboard() {
     </div>
   )
 }
-
-

@@ -151,9 +151,9 @@ export default function AdminArizalar() {
       key: 'student_name',
       label: 'Talaba',
       sortable: true,
-      render: (value: string, row: ApplicationRequest) => (
+      render: (value: unknown, row: ApplicationRequest) => (
         <div className="cursor-pointer hover:text-purple-400 transition-colors" onClick={() => setDetailModal({ isOpen: true, request: row })}>
-          <p className="font-semibold text-white">{value}</p>
+          <p className="font-semibold text-white">{String(value ?? '')}</p>
           <p className="text-xs text-slate-400 line-clamp-1">{row.text}</p>
         </div>
       ),
@@ -170,9 +170,9 @@ export default function AdminArizalar() {
       key: 'level',
       label: 'Holat',
       sortable: true,
-      render: (value: ApplicationRequest['level']) => (
-        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[value]}`}>
-          {STATUS_LABELS[value]}
+      render: (value: unknown) => (
+        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[String(value)]}`}>
+          {STATUS_LABELS[String(value)]}
         </span>
       ),
     },
@@ -180,7 +180,8 @@ export default function AdminArizalar() {
       key: 'created_at',
       label: 'Yaratilgan',
       sortable: true,
-      render: (value: string) => new Date(value).toLocaleDateString('uz-UZ'),
+      render: (value: unknown) =>
+        value ? new Date(String(value)).toLocaleDateString('uz-UZ') : '-',
     },
     {
       key: 'actions',
@@ -315,7 +316,7 @@ export default function AdminArizalar() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <AdminTable
+        <AdminTable<ApplicationRequest>
           columns={columns}
           data={paginatedRequests}
           isLoading={loading}

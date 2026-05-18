@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Search, Trash2, Edit2, Filter, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
-import AdminTable from '@/components/admin/AdminTable'
+import AdminTable, { type TableColumn } from '@/components/admin/AdminTable'
 import AdminModal from '@/components/admin/AdminModal'
 
 type UserRow = {
@@ -176,14 +176,14 @@ export default function AdminUsersPage() {
     }
   }
 
-  const columns = [
+  const columns: TableColumn<UserRow>[] = [
     {
       key: 'full_name',
       label: 'Ism',
       sortable: true,
-      render: (value: string, row: UserRow) => (
+      render: (value: unknown, row: UserRow) => (
         <div>
-          <p className="font-semibold text-white">{value}</p>
+          <p className="font-semibold text-white">{String(value ?? '')}</p>
           <p className="text-xs text-slate-400">{row.email}</p>
         </div>
       ),
@@ -192,9 +192,9 @@ export default function AdminUsersPage() {
       key: 'role',
       label: 'Rol',
       sortable: true,
-      render: (value: UserRow['role']) => (
-        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${ROLE_COLORS[value]}`}>
-          {ROLE_LABELS[value]}
+      render: (value: unknown) => (
+        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${ROLE_COLORS[String(value)]}`}>
+          {ROLE_LABELS[String(value)]}
         </span>
       ),
     },
@@ -202,7 +202,7 @@ export default function AdminUsersPage() {
       key: 'created_at',
       label: 'Yaratilgan',
       sortable: true,
-      render: (value: string) => new Date(value).toLocaleDateString('uz-UZ'),
+      render: (value: unknown) => (value ? new Date(String(value)).toLocaleDateString('uz-UZ') : '-'),
     },
     {
       key: 'actions',
@@ -323,7 +323,7 @@ export default function AdminUsersPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <AdminTable
+        <AdminTable<UserRow>
           columns={columns}
           data={paginatedUsers}
           isLoading={loading}

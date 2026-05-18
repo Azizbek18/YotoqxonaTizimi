@@ -28,7 +28,7 @@ interface AdminTableProps<T> {
     }
 }
 
-export default function AdminTable<T extends Record<string, unknown>>({
+export default function AdminTable<T extends object>({
     columns,
     data,
     isLoading = false,
@@ -42,11 +42,13 @@ export default function AdminTable<T extends Record<string, unknown>>({
         if (!sortBy || !onSort) return data
 
         return [...data].sort((a, b) => {
-            const aVal = a[sortBy]
-            const bVal = b[sortBy]
+            const aVal = (a as Record<string, unknown>)[sortBy]
+            const bVal = (b as Record<string, unknown>)[sortBy]
+            const normalizedA = typeof aVal === 'number' ? aVal : String(aVal ?? '')
+            const normalizedB = typeof bVal === 'number' ? bVal : String(bVal ?? '')
 
-            if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1
-            if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1
+            if (normalizedA < normalizedB) return sortOrder === 'asc' ? -1 : 1
+            if (normalizedA > normalizedB) return sortOrder === 'asc' ? 1 : -1
             return 0
         })
     }, [data, sortBy, sortOrder, onSort])
@@ -105,11 +107,15 @@ export default function AdminTable<T extends Record<string, unknown>>({
                                         }`}
                                     onClick={() => onRowClick?.(row)}
                                 >
-                                    {columns.map((col) => (
+                                    {columns.map((col) => {
+                                        const value = (row as Record<string, unknown>)[col.key]
+
+                                        return (
                                         <td key={col.key} className={`px-6 py-4 text-sm text-slate-300 ${col.width || ''}`}>
-                                            {col.render ? col.render(row[col.key], row) : row[col.key]}
+                                            {col.render ? col.render(value, row) : value as React.ReactNode}
                                         </td>
-                                    ))}
+                                        )
+                                    })}
                                 </motion.tr>
                             ))
                         )}

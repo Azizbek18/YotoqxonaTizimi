@@ -1,0 +1,112 @@
+{
+    "admin": {
+        "dashboard": {
+            "title": "Панель администратора",
+            "welcome": "Добро пожаловать в систему управления общежитием",
+            "total_students": "Всего студентов",
+            "total_applications": "Приложения",
+            "total_users": "Всего пользователей",
+            "this_month": "В этом месяце",
+            "quick_actions": "Быстрые действия",
+            "refresh_stats": "Обновить всю статистику",
+            "refresh_stats_desc": "Обновить данные",
+            "system_status": "Проверить статус системы",
+            "system_status_desc": "Статус системы"
+        },
+        "navigation": {
+            "dashboard": "Панель управления",
+            "applications": "Приложения",
+            "users": "Пользователи",
+            "reports": "Отчеты",
+            "settings": "Параметры",
+            "logout": "Выход"
+        },
+        "users": {
+            "title": "Управление пользователями",
+            "search_placeholder": "Поиск по имени, электронной почте...",
+            "total_users": "Всего пользователей",
+            "filter": "Фильтр",
+            "filter_by_role": "Фильтр по роли",
+            "role": "Роль",
+            "email": "Электронная почта",
+            "name": "Имя",
+            "created": "Создано",
+            "actions": "Действия",
+            "edit": "Редактировать",
+            "delete": "Удалить",
+            "roles": {
+                "talaba": "Студент",
+                "tarbiyachi": "Педагог",
+                "admin": "Администратор"
+            },
+            "confirm_delete": "Вы уверены, что хотите удалить этого пользователя?",
+            "delete_success": "Пользователь удален!",
+            "delete_error": "Ошибка при удалении!",
+            "edit_role": "Изменить роль",
+            "save": "Сохранить",
+            "cancel": "Отмена"
+        },
+        "applications": {
+            "title": "Управление приложениями",
+            "search_placeholder": "Поиск приложений...",
+            "status_all": "Все",
+            "status_new": "Новое",
+            "status_approved": "Одобрено",
+            "status_rejected": "Отклонено",
+            "status_pending": "В ожидании",
+            "student": "Студент",
+            "title_label": "Название приложения",
+            "description": "Описание",
+            "status": "Статус",
+            "date": "Дата",
+            "actions": "Действия",
+            "view": "Просмотр",
+            "approve": "Утвердить",
+            "reject": "Отклонить",
+            "comment": "Комментарий",
+            "approve_success": "Приложение одобрено!",
+            "reject_success": "Приложение отклонено!"
+        },
+        "reports": {
+            "title": "Отчеты и аналитика",
+            "students_by_faculty": "Студенты по факультетам",
+            "monthly_applications": "Ежемесячные приложения",
+            "user_growth": "Рост пользователей",
+            "system_performance": "Производительность системы",
+            "export": "Экспорт",
+            "export_pdf": "Экспорт в PDF",
+            "export_excel": "Экспорт в Excel",
+            "export_csv": "Экспорт в CSV"
+        },
+        "settings": {
+            "title": "Параметры системы",
+            "system": "Система",
+            "security": "Безопасность",
+            "notifications": "Уведомления",
+            "maintenance_mode": "Режим обслуживания",
+            "maintenance_mode_desc": "Пользователи не могут получить доступ к системе",
+            "enable": "Включить",
+            "disable": "Отключить",
+            "enable_notifications": "Включить уведомления",
+            "two_factor": "Двухфакторная аутентификация",
+            "ip_whitelist": "Белый список IP",
+            "session_timeout": "Время ожидания сеанса (минуты)",
+            "save_settings": "Сохранить параметры",
+            "save_success": "Параметры сохранены!",
+            "save_error": "Ошибка при сохранении!"
+        },
+        "common": {
+            "loading": "Загрузка...",
+            "error": "Ошибка",
+            "success": "Успех",
+            "confirm": "Подтвердить",
+            "cancel": "Отмена",
+            "close": "Закрыть",
+            "yes": "Да",
+            "no": "Нет",
+            "select": "Выберите",
+            "no_data": "Данные не найдены",
+            "page": "Страница"
+        }
+    }
+}

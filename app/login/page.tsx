@@ -80,7 +80,9 @@ function LoginContent() {
       }
 
       // 3. Tizimga kirish muvaffaqiyatli bo'lsa, rolini aniqlaymiz
-      const userRole = authData.user?.id ? await findRoleByUserId(supabase, authData.user.id) : null
+      const userRole = authData.user?.id
+        ? await findRoleByUserId(supabase, authData.user.id, authData.user.email)
+        : null
       show3DToast('success', 'Xush kelibsiz!')
 
       setTimeout(() => {

@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type SyntheticEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 import {
     Mail, Phone, GraduationCap, Home,
@@ -203,7 +203,6 @@ function RoommateCard({ roommate, isLight }: RoommateCardProps) {
                     <div className={`w-full h-full rounded-lg flex items-center justify-center overflow-hidden ${isLight ? 'bg-slate-100' : 'bg-white/10'}`}>
                         {roommate.avatar_url ? (
                             <Image
-                                key={`${roommate.avatar_url}-${Date.now()}`}
                                 src={roommate.avatar_url}
                                 alt={roommate.full_name}
                                 width={56}
@@ -575,7 +574,6 @@ export default function StudentProfile() {
                                 }`}>
                                 {profile?.avatar_url ? (
                                     <Image
-                                        key={`${profile.avatar_url}-${Date.now()}`}
                                         src={profile.avatar_url}
                                         alt={fullName}
                                         width={96}
@@ -583,12 +581,12 @@ export default function StudentProfile() {
                                         priority
                                         unoptimized
                                         onLoad={() => console.log('✅ Avatar image loaded:', profile.avatar_url)}
-                                        onError={(error) => {
+                                        onError={(error: SyntheticEvent<HTMLImageElement, Event>) => {
                                             console.error('❌ Avatar image error:', {
                                                 src: profile.avatar_url,
                                                 error,
-                                                errorType: error?.type,
-                                                errorStatus: (error as any)?.status
+                                                errorType: error.type,
+                                                errorStatus: error.currentTarget.dataset.status
                                             })
                                         }}
                                         className="w-full h-full object-cover"
@@ -876,7 +874,7 @@ export default function StudentProfile() {
                                                     }`}
                                             >
                                                 <X size={14} />
-                                                O'chirish
+                                                O&apos;chirish
                                             </button>
                                         )}
                                     </div>

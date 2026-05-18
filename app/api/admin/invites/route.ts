@@ -1,36 +1,11 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import crypto from 'crypto'
-
-async function createServerSupabaseClient() {
-    const cookieStore = await cookies()
-
-    return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                get(name: string) {
-                    return cookieStore.get(name)?.value
-                },
-                set(name: string, value: string, options: CookieOptions) {
-                    cookieStore.set({ name, value, ...options })
-                },
-                remove(name: string) {
-                    cookieStore.delete(name)
-                },
-            },
-        }
-    )
-}
+import { createServerSupabaseClient, getAdminSession } from '@/lib/server-admin'
 
 export async function POST(request: NextRequest) {
     try {
         const supabase = await createServerSupabaseClient()
-
-        // Session-ni tekshirish
-        const { data: { session } } = await supabase.auth.getSession()
+        const { session, isAdmin } = await getAdminSession()
 
         if (!session?.user?.id) {
             return NextResponse.json(
@@ -39,14 +14,7 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Admin ekanligini tekshirish
-        const { data: userData } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', session.user.id)
-            .single()
-
-        if (userData?.role !== 'admin') {
+        if (!isAdmin) {
             return NextResponse.json(
                 { error: 'Admin huquqlari talab etiladi' },
                 { status: 403 }
@@ -96,9 +64,7 @@ export async function POST(request: NextRequest) {
 export async function GET() {
     try {
         const supabase = await createServerSupabaseClient()
-
-        // Session-ni tekshirish
-        const { data: { session } } = await supabase.auth.getSession()
+        const { session, isAdmin } = await getAdminSession()
 
         if (!session?.user?.id) {
             return NextResponse.json(
@@ -107,14 +73,7 @@ export async function GET() {
             )
         }
 
-        // Admin ekanligini tekshirish
-        const { data: userData } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', session.user.id)
-            .single()
-
-        if (userData?.role !== 'admin') {
+        if (!isAdmin) {
             return NextResponse.json(
                 { error: 'Admin huquqlari talab etiladi' },
                 { status: 403 }

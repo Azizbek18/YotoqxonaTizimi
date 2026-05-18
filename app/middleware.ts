@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
 
     // Agar sessiya bo'lsa, foydalanuvchi rolini olish
     if (session?.user?.id) {
-      userRole = await findRoleByUserId(supabase, session.user.id)
+      userRole = await findRoleByUserId(supabase, session.user.id, session.user.email)
     }
   } catch {
     session = null

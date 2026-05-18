@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { findRoleByUserId } from '@/lib/auth-tables'
+import { getServiceSupabase } from '@/lib/server-supabase'
 
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies()
@@ -25,28 +25,48 @@ export async function createServerSupabaseClient() {
 }
 
 export async function getAdminSession() {
-  const supabase = await createServerSupabaseClient()
+  const authSupabase = await createServerSupabaseClient()
+  const serviceSupabase = getServiceSupabase()
 
   try {
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { session } } = await authSupabase.auth.getSession()
 
     if (!session?.user?.id) {
       return { session: null, user: null, isAdmin: false }
     }
 
-    const { data: userData } = await supabase
+    // Check both staff and users tables
+    const { data: staffData } = await serviceSupabase
       .from('staff')
       .select('id, email, full_name, role')
-      .eq('id', session.user.id)
+      .eq('role', 'admin')
+      .or(`id.eq.${session.user.id},email.eq.${session.user.email?.trim().toLowerCase() ?? ''}`)
       .maybeSingle()
 
-    const isAdmin = (await findRoleByUserId(supabase, session.user.id)) === 'admin'
-
-    return {
-      session,
-      user: userData,
-      isAdmin,
+    if (staffData) {
+      return {
+        session,
+        user: staffData,
+        isAdmin: true,
+      }
     }
+
+    const { data: userData } = await serviceSupabase
+      .from('users')
+      .select('id, email, full_name, role')
+      .eq('role', 'admin')
+      .or(`id.eq.${session.user.id},email.eq.${session.user.email?.trim().toLowerCase() ?? ''}`)
+      .maybeSingle()
+
+    if (userData?.role === 'admin') {
+      return {
+        session,
+        user: userData,
+        isAdmin: true,
+      }
+    }
+
+    return { session, user: userData || staffData || null, isAdmin: false }
   } catch {
     return { session: null, user: null, isAdmin: false }
   }

@@ -71,21 +71,7 @@ export default function AdminLoginPage() {
         try {
             const cleanEmail = email.trim().toLowerCase()
 
-            const { data: userExists } = await supabase
-                .from('staff')
-                .select('id, email, role')
-                .eq('email', cleanEmail)
-                .maybeSingle()
-
-            if (!userExists) {
-                throw new Error("Bunday foydalanuvchi ro'yxatdan o'tmagan!")
-            }
-
-            if (userExists.role !== 'admin') {
-                throw new Error("Siz admin huquqlari bilan ro'yxatdan o'tmagansiz!")
-            }
-
-            const { error: authError } = await supabase.auth.signInWithPassword({
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email: cleanEmail,
                 password,
             })
@@ -95,6 +81,27 @@ export default function AdminLoginPage() {
                     throw new Error("Xato parol kiritildi! Tekshirib qaytadan kiriting.")
                 }
                 throw new Error(authError.message)
+            }
+
+            const roleResponse = await fetch('/api/auth/resolve-role', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: authData.user?.email ?? cleanEmail,
+                }),
+            })
+            const roleResult: { ok: boolean; role?: 'admin' | 'tarbiyachi' | 'talaba' | null; error?: string } = await roleResponse.json()
+
+            if (!roleResponse.ok || !roleResult.ok) {
+                await supabase.auth.signOut()
+                throw new Error(roleResult.error ?? "Foydalanuvchi rolini aniqlab bo'lmadi")
+            }
+
+            if (roleResult.role !== 'admin') {
+                await supabase.auth.signOut()
+                throw new Error("Sizning akkauntingiz admin sifatida biriktirilmagan!")
             }
 
             show3DToast('success', 'Admin paneliga xush kelibsiz!')

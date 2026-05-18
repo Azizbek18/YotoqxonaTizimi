@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -30,6 +30,9 @@ export default function AdminRegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [inviteCode, setInviteCode] = useState('')
+  const [bootstrapCode, setBootstrapCode] = useState('')
+  const [bootstrapMode, setBootstrapMode] = useState(false)
+  const [checkingBootstrap, setCheckingBootstrap] = useState(true)
 
   const show3DToast = (type: 'success' | 'error', message: string) => {
     toast.custom(
@@ -67,10 +70,28 @@ export default function AdminRegisterPage() {
     )
   }
 
+  useEffect(() => {
+    async function checkBootstrap() {
+      try {
+        const response = await fetch('/api/admin/bootstrap')
+        const result = await response.json()
+        if (response.ok && result.ok) {
+          setBootstrapMode(Boolean(result.needsBootstrap))
+        }
+      } finally {
+        setCheckingBootstrap(false)
+      }
+    }
+
+    void checkBootstrap()
+  }, [])
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!name || !email || !password || !confirmPassword || !inviteCode) {
+    const requiredCode = bootstrapMode ? bootstrapCode : inviteCode
+
+    if (!name || !email || !password || !confirmPassword || !requiredCode) {
       return show3DToast('error', "Barcha maydonlarni to'liq kiriting")
     }
 
@@ -85,6 +106,33 @@ export default function AdminRegisterPage() {
     setLoading(true)
     try {
       const cleanEmail = email.trim().toLowerCase()
+
+      if (bootstrapMode) {
+        const response = await fetch('/api/admin/bootstrap', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fullName: name,
+            email: cleanEmail,
+            password,
+            confirmPassword,
+            bootstrapCode,
+          }),
+        })
+        const result: { ok: boolean; error?: string } = await response.json()
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error ?? "Birinchi adminni yaratishda xatolik")
+        }
+
+        show3DToast('success', 'Birinchi admin akkaunti muvaffaqiyatli yaratildi!')
+        setTimeout(() => {
+          router.push('/admin/login')
+        }, 1200)
+        return
+      }
 
       const { data: inviteExists } = await supabase
         .from('admin_invites')
@@ -166,7 +214,7 @@ export default function AdminRegisterPage() {
             Admin Portali
           </h1>
           <p className="mt-2 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 sm:text-xs">
-            Taklif kodi orqali ro&apos;yxatdan o&apos;tish
+            {bootstrapMode ? 'Birinchi adminni ishga tushirish' : 'Taklif kodi orqali ro‘yxatdan o‘tish'}
           </p>
         </div>
 
@@ -190,10 +238,12 @@ export default function AdminRegisterPage() {
               </div>
               <div className="space-y-1">
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-400">
-                  Faqat taklif bilan
+                  {checkingBootstrap ? 'Tekshirilmoqda' : bootstrapMode ? 'Bootstrap rejimi' : 'Faqat taklif bilan'}
                 </p>
                 <p className="text-xs leading-5 text-slate-300">
-                  Admin akkaunt ochish uchun emailingizga biriktirilgan taklif kodini kiriting.
+                  {bootstrapMode
+                    ? 'Tizimda hali admin yo‘q. Birinchi adminni yaratish uchun bootstrap koddan foydalaning.'
+                    : 'Admin akkaunt ochish uchun emailingizga biriktirilgan taklif kodini kiriting. Agar sizda kod bo‘lmasa, mavjud admin uni Sozlamalar bo‘limidan yaratib beradi.'}
                 </p>
               </div>
             </div>
@@ -240,7 +290,7 @@ export default function AdminRegisterPage() {
 
             <div className="space-y-2">
               <label className="ml-2 block text-[9px] font-black uppercase tracking-widest text-slate-500">
-                Taklif kodi
+                {bootstrapMode ? 'Bootstrap kodi' : 'Taklif kodi'}
               </label>
               <div className="group relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 transition-colors group-focus-within:text-blue-500">
@@ -248,9 +298,9 @@ export default function AdminRegisterPage() {
                 </div>
                 <input
                   type="text"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value)}
-                  placeholder="INVITE-2026"
+                  value={bootstrapMode ? bootstrapCode : inviteCode}
+                  onChange={(e) => bootstrapMode ? setBootstrapCode(e.target.value) : setInviteCode(e.target.value)}
+                  placeholder={bootstrapMode ? 'ADMIN-BOOTSTRAP-CODE' : 'INVITE-2026'}
                   className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 pl-12 text-sm text-white outline-none transition-all focus:border-blue-500/50"
                   required
                 />

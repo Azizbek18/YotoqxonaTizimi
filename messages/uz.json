@@ -1,0 +1,112 @@
+{
+    "admin": {
+        "dashboard": {
+            "title": "Admin Dashboard",
+            "welcome": "Yotoqxona boshqaruv tizimiga xush kelibsiz",
+            "total_students": "Jami Talabalar",
+            "total_applications": "Arizalar",
+            "total_users": "Jami Foydalanuvchilar",
+            "this_month": "Bu oyda",
+            "quick_actions": "Tezkor Amallar",
+            "refresh_stats": "Barcha Statistikalarni Yangilash",
+            "refresh_stats_desc": "Ma'lumotlarni Yangilash",
+            "system_status": "Server Holatini Tekshirish",
+            "system_status_desc": "Tizim holati"
+        },
+        "navigation": {
+            "dashboard": "Dashboard",
+            "applications": "Arizalar",
+            "users": "Foydalanuvchilar",
+            "reports": "Hisobotlar",
+            "settings": "Sozlamalar",
+            "logout": "Chiqib ketish"
+        },
+        "users": {
+            "title": "Foydalanuvchilar Boshqaruvi",
+            "search_placeholder": "Ism, email bo'yicha izlash...",
+            "total_users": "Jami foydalanuvchilar",
+            "filter": "Filtr",
+            "filter_by_role": "Rol bo'yicha filtr",
+            "role": "Rol",
+            "email": "Email",
+            "name": "Ism",
+            "created": "Yaratilgan",
+            "actions": "Amallar",
+            "edit": "Tahrir",
+            "delete": "O'chirish",
+            "roles": {
+                "talaba": "Talaba",
+                "tarbiyachi": "Tarbiyachi",
+                "admin": "Admin"
+            },
+            "confirm_delete": "Olingan foydalanuvchini o'chirmoqchisiz?",
+            "delete_success": "Foydalanuvchi o'chirildi!",
+            "delete_error": "O'chirishda xato!",
+            "edit_role": "Rolini o'zgartiring",
+            "save": "Saqlash",
+            "cancel": "Bekor qilish"
+        },
+        "applications": {
+            "title": "Arizalarni Boshqarish",
+            "search_placeholder": "Ariza bo'yicha izlash...",
+            "status_all": "Barcha",
+            "status_new": "Yangi",
+            "status_approved": "Tasdiqlangan",
+            "status_rejected": "Rad etilgan",
+            "status_pending": "Kutish",
+            "student": "Talaba",
+            "title_label": "Ariza nomi",
+            "description": "Tavsif",
+            "status": "Holat",
+            "date": "Sana",
+            "actions": "Amallar",
+            "view": "Ko'rish",
+            "approve": "Tasdiqlash",
+            "reject": "Rad etish",
+            "comment": "Izoh",
+            "approve_success": "Ariza tasdiqlandi!",
+            "reject_success": "Ariza rad etildi!"
+        },
+        "reports": {
+            "title": "Hisobotlar va Tahlil",
+            "students_by_faculty": "Fakulties bo'yicha talabalar",
+            "monthly_applications": "Oylik arizalar",
+            "user_growth": "Foydalanuvchilar o'sishi",
+            "system_performance": "Tizim ishlashi",
+            "export": "Eksport qilish",
+            "export_pdf": "PDF sifatida eksport",
+            "export_excel": "Excel sifatida eksport",
+            "export_csv": "CSV sifatida eksport"
+        },
+        "settings": {
+            "title": "Tizim Sozlamalari",
+            "system": "Tizim",
+            "security": "Xavfsizlik",
+            "notifications": "Bildirishnomalar",
+            "maintenance_mode": "Tekshiruv rejimi",
+            "maintenance_mode_desc": "Foydalanuvchilar tizimdan foydalana olmaydi",
+            "enable": "Faollashtirish",
+            "disable": "O'chirish",
+            "enable_notifications": "Bildirishnomalarni faollashtirish",
+            "two_factor": "Ikki omildan autentifikatsiya",
+            "ip_whitelist": "IP ro'yxati",
+            "session_timeout": "Sessiya vaqti (minutlarda)",
+            "save_settings": "Sozlamalarni saqlash",
+            "save_success": "Sozlamalar saqlandi!",
+            "save_error": "Saqlanishda xato!"
+        },
+        "common": {
+            "loading": "Yuklanimoqda...",
+            "error": "Xato",
+            "success": "Muvaffaqiyat",
+            "confirm": "Tasdiqlash",
+            "cancel": "Bekor qilish",
+            "close": "Yopish",
+            "yes": "Ha",
+            "no": "Yo'q",
+            "select": "Tanlang",
+            "no_data": "Ma'lumot topilmadi",
+            "page": "Sahifa"
+        }
+    }
+}

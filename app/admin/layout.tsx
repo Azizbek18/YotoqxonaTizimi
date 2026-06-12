@@ -6,11 +6,13 @@ import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
   BarChart3,
+  Boxes,
   ChevronLeft,
   ChevronRight,
   FileText,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Menu,
   Settings,
   ShieldCheck,
@@ -70,11 +72,25 @@ export default function AdminLayout({
       accent: 'from-amber-500 to-orange-600',
     },
     {
+      label: "E'lonlar",
+      caption: 'Talabalarga xabar',
+      href: '/admin/elonlar',
+      icon: Megaphone,
+      accent: 'from-violet-500 to-purple-600',
+    },
+    {
       label: 'Hisobotlar',
       caption: 'Tahlil va eksport',
       href: '/admin/reports',
       icon: BarChart3,
       accent: 'from-fuchsia-500 to-pink-600',
+    },
+    {
+      label: '3D Xonalar',
+      caption: 'Qavatlar va bandlik',
+      href: '/admin/3d-xonalar',
+      icon: Boxes,
+      accent: 'from-cyan-500 to-teal-600',
     },
     {
       label: 'Sozlamalar',

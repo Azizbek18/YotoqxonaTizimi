@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { supabase } from '@/lib/supabase';
+import { getSafeUser } from '@/lib/auth-session';
 
 interface Task {
   id: number;
@@ -97,7 +98,7 @@ export default function TalabaDashboard() {
     async function fetchProfileData() {
       try {
         setLoadingProfile(true);
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getSafeUser();
 
         if (user) {
           // Profil ma'lumotlarini olish

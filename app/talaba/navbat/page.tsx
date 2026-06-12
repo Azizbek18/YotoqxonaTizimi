@@ -256,13 +256,14 @@
 
 import React, { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createBrowserClient } from '@supabase/ssr'
 import {
   ListOrdered, Calendar, CalendarDays, CalendarRange,
   Clock, CheckCircle2, XCircle, Loader2, Building2, Users
 } from 'lucide-react'
 // Eslatma: @/lib/navbat fayli mavjudligiga ishonch hosil qiling
 import { NavbatEntry, NavbatTuri, bugunSana, holatRangi, turLabel } from '@/lib/navbat'
+import { supabase } from '@/lib/supabase'
+import { getSafeSession } from '@/lib/auth-session'
 
 type Tab = NavbatTuri
 
@@ -272,11 +273,6 @@ export default function NavbatPage() {
   const [mening, setMening] = useState<NavbatEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
 
   const fetchNavbat = useCallback(async () => {
     setLoading(true)
@@ -319,15 +315,15 @@ export default function NavbatPage() {
     } finally {
       setLoading(false)
     }
-  }, [activeTab, userId, supabase])
+  }, [activeTab, userId])
 
   useEffect(() => {
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      const session = await getSafeSession()
       if (session) setUserId(session.user.id)
     }
     init()
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
     if (!userId) return

@@ -1,29 +1,36 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { Search } from 'lucide-react'
 import type { Student } from '@/lib/types'
 
 export default function TarbiyachiTalabalarPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [query, setQuery] = useState('')
+  const [scope, setScope] = useState<{ assigned_floor?: number | null; assigned_gender?: string | null }>({})
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from('users')
-        .select('*')
-        .eq('role', 'talaba')
-        .order('created_at', { ascending: false })
-      setStudents((data ?? []) as Student[])
+      const response = await fetch('/api/staff/students')
+      const result = (await response.json()) as {
+        ok: boolean
+        students?: Student[]
+        scope?: { assigned_floor?: number | null; assigned_gender?: string | null }
+      }
+
+      if (response.ok && result.ok) {
+        setStudents(result.students ?? [])
+        setScope(result.scope ?? {})
+      }
     }
+
     load()
   }, [])
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase()
     if (!normalized) return students
+
     return students.filter(
       (student) =>
         student.full_name?.toLowerCase().includes(normalized) ||
@@ -35,12 +42,17 @@ export default function TarbiyachiTalabalarPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-2xl font-black">Talabalar ro&apos;yxati</h2>
+        <div>
+          <h2 className="text-2xl font-black">Talabalar ro&apos;yxati</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            {scope.assigned_floor ? `${scope.assigned_floor}-qavat` : 'Barcha qavatlar'} | {scope.assigned_gender || 'barcha jinslar'}
+          </p>
+        </div>
         <div className="relative w-full max-w-sm">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(event) => setQuery(event.target.value)}
             className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-sm outline-none"
             placeholder="Ism, fakultet yoki xona..."
           />

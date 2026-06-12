@@ -17,4 +17,5 @@ export interface Student {
   email?: string
   role?: string
   created_at?: string
+  gender?: string
 }

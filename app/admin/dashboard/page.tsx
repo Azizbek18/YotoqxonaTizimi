@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Users, FileText, Activity, Clock, CheckCircle, Boxes } from 'lucide-react'
+import { Users, FileText, Activity, Clock, CheckCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import {
   LineChart,
@@ -19,8 +19,6 @@ import {
   Cell,
 } from 'recharts'
 import StatCard from '@/components/admin/StatCard'
-import RoomViewer3D from '@/components/admin/RoomViewer3D'
-import { Room3D, Floor3D } from '@/lib/3d-utils'
 
 interface DashboardStats {
   totalStudents: number
@@ -54,8 +52,6 @@ export default function AdminDashboard() {
     loading: true,
   })
   const [activeTab, setActiveTab] = useState('overview')
-  const [selectedRoom, setSelectedRoom] = useState<Room3D | null>(null)
-  const [selectedFloor, setSelectedFloor] = useState<Floor3D | null>(null)
   const [applicationStatusData, setApplicationStatusData] = useState([
     { name: 'Tasdiqlangan', value: 0, color: '#10b981' },
     { name: 'Kutish', value: 0, color: '#f59e0b' },
@@ -114,6 +110,7 @@ export default function AdminDashboard() {
           { name: 'Kutish', value: pendingCount || 0, color: '#f59e0b' },
           { name: 'Rad etilgan', value: rejectedCount || 0, color: '#ef4444' },
         ])
+
       } catch (error) {
         console.error('Statistika yuklashda xato:', error)
         setStats((prev) => ({ ...prev, loading: false }))
@@ -186,7 +183,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="flex gap-2 mb-8 border-b border-white/10 overflow-x-auto">
-        {['overview', 'analytics', 'reports', '3d-xonalar'].map((tab) => (
+        {['overview', 'analytics', 'reports'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -199,12 +196,6 @@ export default function AdminDashboard() {
             {tab === 'overview' && 'Umumiy ko\'rinish'}
             {tab === 'analytics' && 'Tahlil'}
             {tab === 'reports' && 'Hisobotlar'}
-            {tab === '3d-xonalar' && (
-              <span className="flex items-center gap-2">
-                <Boxes className="w-4 h-4" />
-                3D Xonalar
-              </span>
-            )}
           </button>
         ))}
       </div>
@@ -372,67 +363,6 @@ export default function AdminDashboard() {
               <p className="text-base font-bold text-white mt-2">CSV sifatida Eksport -&gt;</p>
             </button>
           </div>
-        </motion.div>
-      )}
-
-      {activeTab === '3d-xonalar' && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6 h-[70vh]"
-        >
-          <div className="h-full">
-            <RoomViewer3D
-              onRoomSelect={(room, floor) => {
-                setSelectedRoom(room)
-                setSelectedFloor(floor)
-              }}
-            />
-          </div>
-
-          {selectedRoom && selectedFloor && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-[#0b1120]/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6"
-            >
-              <h3 className="text-lg font-black text-white mb-4">Tanlangan Xona Tafsilotlari</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white/5 p-4 rounded-lg">
-                  <p className="text-sm text-slate-400 mb-1">Qavat</p>
-                  <p className="text-2xl font-black text-white">{selectedFloor.name}</p>
-                </div>
-                <div className="bg-white/5 p-4 rounded-lg">
-                  <p className="text-sm text-slate-400 mb-1">Xona raqami</p>
-                  <p className="text-2xl font-black text-white">#{selectedRoom.number}</p>
-                </div>
-                <div className="bg-white/5 p-4 rounded-lg">
-                  <p className="text-sm text-slate-400 mb-1">Sig&apos;im</p>
-                  <p className="text-2xl font-black text-white">
-                    {selectedRoom.occupied}/{selectedRoom.capacity}
-                  </p>
-                </div>
-                <div className="bg-white/5 p-4 rounded-lg">
-                  <p className="text-sm text-slate-400 mb-1">Holat</p>
-                  <div
-                    className={`inline-block px-3 py-1 rounded-full font-bold text-sm ${
-                      selectedRoom.status === 'empty'
-                        ? 'bg-green-500/20 text-green-400'
-                        : selectedRoom.status === 'full'
-                          ? 'bg-red-500/20 text-red-400'
-                          : 'bg-yellow-500/20 text-yellow-400'
-                    }`}
-                  >
-                    {selectedRoom.status === 'empty'
-                      ? 'Bo&apos;sh'
-                      : selectedRoom.status === 'full'
-                        ? 'To&apos;la'
-                        : 'Qisman'}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
         </motion.div>
       )}
     </div>

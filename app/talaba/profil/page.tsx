@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { useState, useEffect, useRef, type SyntheticEvent } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getSafeSession, getSafeUser } from '@/lib/auth-session'
 import {
     Mail, Phone, GraduationCap, Home,
     ShieldCheck, LogOut, Camera, Edit2, Lock, X, Check, Loader
@@ -255,7 +256,7 @@ export default function StudentProfile() {
         async function fetchProfile() {
             try {
                 setLoading(true)
-                const { data: { user } } = await supabase.auth.getUser()
+                const user = await getSafeUser()
 
                 if (user) {
                     const { data, error } = await supabase
@@ -357,7 +358,7 @@ export default function StudentProfile() {
         setUploading(true)
         try {
             // Auth token'ni olish
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSafeSession()
             if (!session?.access_token) {
                 setMessage({ type: 'error', text: 'Autentifikatsiya xatosi' })
                 return
@@ -411,7 +412,7 @@ export default function StudentProfile() {
         setUploading(true)
         try {
             // Auth token'ni olish
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSafeSession()
             if (!session?.access_token) {
                 setMessage({ type: 'error', text: 'Autentifikatsiya xatosi' })
                 return

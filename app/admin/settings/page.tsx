@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Settings as SettingsIcon, Lock, Bell, Server, Shield, Copy, KeyRound, MailPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useThemeStore } from '@/lib/stores/theme-store'
 
 type SettingsState = {
     maintenanceMode: boolean
@@ -44,6 +45,16 @@ type AdminInvite = {
 }
 
 export default function AdminSettingsPage() {
+    const theme = useThemeStore((state) => state.theme)
+    const isLight = theme === 'light'
+
+    const surfaceBg = isLight ? 'bg-white/80 border-slate-200 shadow-md' : 'bg-[#0b1120]/50 border-white/10 shadow-[0_0_20px_rgba(168,85,247,0.05)]'
+    const cardBg = isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'
+    const textMuted = isLight ? 'text-slate-500' : 'text-slate-400'
+    const textStrong = isLight ? 'text-slate-900' : 'text-white'
+    const inputBg = isLight ? 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-500/50' : 'bg-white/5 border-white/10 text-white placeholder-slate-500 focus:border-purple-500/50'
+    const borderCol = isLight ? 'border-slate-200' : 'border-white/10'
+
     const [settings, setSettings] = useState<SettingsState>({
         maintenanceMode: false,
         enableNotifications: true,
@@ -212,15 +223,17 @@ export default function AdminSettingsPage() {
     ]
 
     return (
-        <div>
+        <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-start justify-between mb-8">
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tighter flex items-center gap-2">
-                        <SettingsIcon size={32} />
-                        Tizim Sozlamalari
+                    <h1 className={`flex items-center gap-3 text-3xl font-black tracking-tighter sm:text-4xl ${textStrong}`}>
+                        <div className="rounded-2xl bg-purple-500/10 p-2 text-purple-400 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
+                            <SettingsIcon size={30} />
+                        </div>
+                        Tizim sozlamalari
                     </h1>
-                    <p className="text-slate-400 mt-2">Yotoqxona boshqaruv tizimining sozlama va konfiguratsiyasi</p>
+                    <p className={`mt-2 text-sm ${textMuted}`}>Yotoqxona boshqaruv tizimining sozlama va konfiguratsiyasi</p>
                 </div>
             </div>
 
@@ -228,14 +241,14 @@ export default function AdminSettingsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08 }}
-                className="mb-6 overflow-hidden rounded-2xl border border-white/10 bg-[#0b1120]/50 backdrop-blur-xl"
+                className={`mb-6 overflow-hidden rounded-2xl border backdrop-blur-xl ${surfaceBg}`}
             >
-                <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-6">
+                <div className="bg-linear-to-r from-purple-600 to-indigo-600 p-6 shadow-md">
                     <div className="flex items-center gap-3">
                         <KeyRound size={28} className="text-white" />
                         <div>
                             <h2 className="text-xl font-black text-white">Admin taklif kodi</h2>
-                            <p className="mt-1 text-sm text-blue-100">
+                            <p className="mt-1 text-sm text-purple-100">
                                 Yangi admin ro&apos;yxatdan o&apos;tishi uchun shu yerda bir martalik taklif kodi yarating.
                             </p>
                         </div>
@@ -245,17 +258,17 @@ export default function AdminSettingsPage() {
                 <div className="space-y-6 p-6">
                     <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
                         <div className="space-y-2">
-                            <label className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">
+                            <label className={`text-xs font-black uppercase tracking-[0.2em] ${textMuted}`}>
                                 Admin email
                             </label>
-                            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                            <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all ${inputBg}`}>
                                 <MailPlus size={18} className="text-slate-500" />
                                 <input
                                     type="email"
                                     value={inviteEmail}
                                     onChange={(e) => setInviteEmail(e.target.value)}
                                     placeholder="new-admin@example.com"
-                                    className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
+                                    className={`w-full bg-transparent text-sm outline-none ${textStrong} placeholder:text-slate-500`}
                                 />
                             </div>
                         </div>
@@ -264,7 +277,7 @@ export default function AdminSettingsPage() {
                             type="button"
                             onClick={handleCreateInvite}
                             disabled={creatingInvite}
-                            className="mt-auto h-12 rounded-xl bg-linear-to-r from-indigo-500 to-blue-600 px-5 text-sm font-black uppercase tracking-widest text-white transition-all hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="mt-auto h-12 rounded-xl bg-linear-to-r from-purple-500 to-fuchsia-600 hover:from-purple-600 hover:to-fuchsia-700 px-5 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-purple-500/10 transition-all hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60 active:scale-95"
                         >
                             {creatingInvite ? 'Yaratilmoqda...' : 'Kod yaratish'}
                         </button>
@@ -275,12 +288,12 @@ export default function AdminSettingsPage() {
                             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-300">
                                 Oxirgi yaratilgan kod
                             </p>
-                            <div className="mt-3 flex flex-col gap-3 rounded-xl border border-white/10 bg-[#020617]/60 p-4 sm:flex-row sm:items-center sm:justify-between">
-                                <code className="break-all text-sm text-white">{generatedInviteCode}</code>
+                            <div className={`mt-3 flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${cardBg}`}>
+                                <code className={`break-all text-sm font-bold ${textStrong}`}>{generatedInviteCode}</code>
                                 <button
                                     type="button"
                                     onClick={() => void handleCopy(generatedInviteCode)}
-                                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold uppercase tracking-widest text-slate-200 transition-all hover:bg-white/5"
+                                    className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-widest transition-all ${isLight ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'}`}
                                 >
                                     <Copy size={14} />
                                     Nusxalash
@@ -290,63 +303,63 @@ export default function AdminSettingsPage() {
                     )}
 
                     <div>
-                        <div className="mb-3 flex items-center justify-between">
+                        <div className="mb-4 flex items-center justify-between">
                             <div>
-                                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-300">
+                                <h3 className={`text-sm font-black uppercase tracking-[0.2em] ${textStrong}`}>
                                     Yaratilgan takliflar
                                 </h3>
-                                <p className="mt-1 text-xs text-slate-500">
+                                <p className={`mt-1 text-xs ${textMuted}`}>
                                     Admin ro&apos;yxatdan o&apos;tish sahifasida shu kod email bilan birga ishlatiladi.
                                 </p>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => void loadInvites()}
-                                className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold uppercase tracking-widest text-slate-300 transition-all hover:bg-white/5"
+                                className={`rounded-xl border px-3.5 py-2 text-xs font-bold uppercase tracking-widest transition-all ${isLight ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
                             >
                                 Yangilash
                             </button>
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="space-y-3 max-h-[35vh] overflow-y-auto pr-1 no-scrollbar">
                             {loadingInvites ? (
-                                <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400">
+                                <div className={`rounded-xl border p-4 text-sm ${borderCol} ${textMuted} animate-pulse`}>
                                     Taklif kodlari yuklanmoqda...
                                 </div>
                             ) : invites.length === 0 ? (
-                                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] p-4 text-sm text-slate-500">
+                                <div className={`rounded-xl border border-dashed p-4 text-sm text-center ${borderCol} ${textMuted}`}>
                                     Hozircha taklif kodlari yo&apos;q.
                                 </div>
                             ) : (
                                 invites.map((invite) => (
                                     <div
                                         key={invite.id}
-                                        className="grid gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 lg:grid-cols-[1.2fr_1fr_auto]"
+                                        className={`grid gap-3 rounded-xl border p-4 lg:grid-cols-[1.2fr_1fr_auto] ${cardBg}`}
                                     >
                                         <div className="min-w-0">
-                                            <p className="truncate text-sm font-semibold text-white">{invite.email}</p>
-                                            <p className="mt-1 break-all font-mono text-xs text-slate-400">{invite.code}</p>
+                                            <p className={`truncate text-sm font-semibold ${textStrong}`}>{invite.email}</p>
+                                            <p className={`mt-1 break-all font-mono text-xs ${textMuted}`}>{invite.code}</p>
                                         </div>
-                                        <div className="text-xs text-slate-400">
+                                        <div className={`text-xs ${textMuted} space-y-0.5`}>
                                             <p>Yaratilgan: {new Date(invite.created_at).toLocaleString('uz-UZ')}</p>
                                             <p>Ishlatilgan: {invite.used_at ? new Date(invite.used_at).toLocaleString('uz-UZ') : 'Yo‘q'}</p>
                                         </div>
                                         <div className="flex items-start justify-between gap-3 lg:justify-end">
-                                            <span className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-widest ${invite.used ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
+                                            <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${invite.used ? 'bg-amber-500/15 text-amber-500 border border-amber-500/20' : 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/20'}`}>
                                                 {invite.used ? 'Ishlatilgan' : 'Faol'}
                                             </span>
                                             <button
                                                 type="button"
                                                 onClick={() => void handleCopy(invite.code)}
-                                                className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-300 transition-all hover:bg-white/5"
+                                                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all ${isLight ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
                                             >
-                                                <Copy size={14} />
+                                                <Copy size={12} />
                                                 Kod
                                             </button>
                                         </div>
                                     </div>
-                                ))
-                            )}
+                                    ))
+                                )}
                         </div>
                     </div>
                 </div>
@@ -362,12 +375,12 @@ export default function AdminSettingsPage() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.1 }}
-                            className="bg-[#0b1120]/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden"
+                            className={`backdrop-blur-xl border rounded-2xl overflow-hidden ${surfaceBg}`}
                         >
                             {/* Section Header */}
-                            <div className={`bg-gradient-to-r ${section.color} p-6 flex items-center gap-3`}>
-                                <Icon size={28} className="text-white" />
-                                <h2 className="text-xl font-black text-white">{section.title}</h2>
+                            <div className={`bg-gradient-to-r ${section.color} p-6 flex items-center gap-3 shadow-md`}>
+                                <Icon size={24} className="text-white" />
+                                <h2 className="text-lg font-black text-white">{section.title}</h2>
                             </div>
 
                             {/* Settings */}
@@ -378,11 +391,11 @@ export default function AdminSettingsPage() {
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: (idx * 0.1) + (setIdx * 0.05) }}
-                                        className="flex items-start justify-between pb-6 border-b border-white/5 last:pb-0 last:border-b-0"
+                                        className={`flex items-start justify-between pb-6 border-b border-white/5 last:pb-0 last:border-b-0 ${borderCol}`}
                                     >
                                         <div className="flex-1">
-                                            <h3 className="text-white font-semibold">{setting.label}</h3>
-                                            <p className="text-sm text-slate-400 mt-1">{setting.description}</p>
+                                            <h3 className={`font-semibold ${textStrong}`}>{setting.label}</h3>
+                                            <p className={`text-xs mt-1 ${textMuted}`}>{setting.description}</p>
                                         </div>
 
                                         <div className="ml-4">
@@ -390,12 +403,12 @@ export default function AdminSettingsPage() {
                                                 <button
                                                     onClick={() => handleToggle(setting.key as keyof typeof settings)}
                                                     className={`relative inline-flex h-8 w-14 items-center rounded-full transition-all ${settings[setting.key as keyof typeof settings]
-                                                            ? 'bg-green-500'
-                                                            : 'bg-slate-700'
+                                                            ? 'bg-emerald-500'
+                                                            : isLight ? 'bg-slate-300' : 'bg-slate-700'
                                                         }`}
                                                 >
                                                     <span
-                                                        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${settings[setting.key as keyof typeof settings]
+                                                        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform shadow-md ${settings[setting.key as keyof typeof settings]
                                                                 ? 'translate-x-7'
                                                                 : 'translate-x-1'
                                                             }`}
@@ -412,7 +425,7 @@ export default function AdminSettingsPage() {
                                                             setting.inputType === 'number' ? parseInt(e.target.value) : e.target.value
                                                         )
                                                     }
-                                                    className="w-32 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500 text-sm"
+                                                    className={`w-32 px-3 py-2 rounded-xl border text-sm outline-none transition-all ${inputBg}`}
                                                 />
                                             )}
                                             {setting.type === 'textarea' && (
@@ -422,7 +435,7 @@ export default function AdminSettingsPage() {
                                                         handleInputChange(setting.key as keyof typeof settings, e.target.value)
                                                     }
                                                     rows={3}
-                                                    className="w-64 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500 text-sm placeholder-slate-500"
+                                                    className={`w-64 px-3 py-2 rounded-xl border text-sm outline-none transition-all placeholder-slate-500 ${inputBg}`}
                                                     placeholder="127.0.0.1, 192.168.1.1"
                                                 />
                                             )}
@@ -442,13 +455,13 @@ export default function AdminSettingsPage() {
                 transition={{ delay: 0.4 }}
                 className="mt-8 flex gap-4 justify-end"
             >
-                <button className="px-6 py-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold transition-all">
+                <button className={`px-6 py-3 rounded-xl border font-bold text-xs uppercase tracking-widest transition-all ${isLight ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}>
                     Bekor qilish
                 </button>
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="px-6 py-3 rounded-lg bg-purple-500 hover:bg-purple-600 text-white font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-3 rounded-xl bg-linear-to-r from-purple-500 to-fuchsia-600 hover:from-purple-600 hover:to-fuchsia-700 text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-purple-500/10 transition-all disabled:opacity-50 active:scale-95 disabled:cursor-not-allowed"
                 >
                     {saving ? 'Saqlanmoqda...' : 'Sozlamalarni Saqlash'}
                 </button>
@@ -459,22 +472,22 @@ export default function AdminSettingsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="mt-8 bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6"
+                className={`mt-8 border rounded-2xl p-6 bg-blue-500/5 ${isLight ? 'border-blue-500/20 text-blue-800' : 'border-blue-500/30 text-blue-300'}`}
             >
-                <h3 className="text-lg font-black text-blue-300 mb-2 flex items-center gap-2">
+                <h3 className="text-lg font-black mb-2 flex items-center gap-2">
                     <Lock size={20} />
                     Xavfsizlik Xususiyatlari
                 </h3>
-                <p className="text-sm text-blue-200 mb-3">
+                <p className="text-sm mb-3 opacity-90">
                     Tizim quyidagi xavfsizlik xususiyatlarini qo&apos;llab-quvvatlaydi:
                 </p>
-                <ul className="text-sm text-blue-200 space-y-1 ml-4">
-                    <li>✓ SSL/TLS Enkriptlash</li>
-                    <li>✓ Parolning Qat&apos;iy Tahlilchisi</li>
-                    <li>✓ SQL Injection Himoyasi</li>
-                    <li>✓ XSS Himoyasi</li>
-                    <li>✓ CSRF Tokenlari</li>
-                    <li>✓ Rate Limiting</li>
+                <ul className="text-sm space-y-1 ml-4 opacity-80 list-disc">
+                    <li>SSL/TLS Enkriptlash</li>
+                    <li>Parolning Qat&apos;iy Tahlilchisi</li>
+                    <li>SQL Injection Himoyasi</li>
+                    <li>XSS Himoyasi</li>
+                    <li>CSRF Tokenlari</li>
+                    <li>Rate Limiting</li>
                 </ul>
             </motion.div>
         </div>

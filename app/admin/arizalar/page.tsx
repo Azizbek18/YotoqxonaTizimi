@@ -2,10 +2,11 @@
 
 import React, { useCallback, useEffect, useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Search, Eye, Edit2, Trash2, FileText, Filter } from 'lucide-react'
+import { Search, Eye, Edit2, Trash2, FileText, Filter, RotateCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import AdminTable, { type TableColumn } from '@/components/admin/AdminTable'
 import AdminModal from '@/components/admin/AdminModal'
+import { useThemeStore } from '@/lib/stores/theme-store'
 
 interface ApplicationRequest {
   id: string
@@ -29,6 +30,15 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export default function AdminArizalar() {
+  const theme = useThemeStore((state) => state.theme)
+  const isLight = theme === 'light'
+
+  const cardBg = isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'
+  const textMuted = isLight ? 'text-slate-500' : 'text-slate-400'
+  const textStrong = isLight ? 'text-slate-900' : 'text-white'
+  const textBody = isLight ? 'text-slate-700' : 'text-slate-300'
+  const inputBg = isLight ? 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-500/50' : 'bg-white/5 border-white/10 text-white placeholder-slate-500 focus:border-purple-500/50'
+
   const [requests, setRequests] = useState<ApplicationRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -140,10 +150,9 @@ export default function AdminArizalar() {
   // Stats
   const stats = {
     total: requests.length,
-    new: requests.filter(r => r.level === 'info').length,
-    approved: requests.filter(r => r.level === 'warning').length,
-    rejected: requests.filter(r => r.level === 'critical').length,
-    pending: 0,
+    info: requests.filter(r => r.level === 'info').length,
+    warning: requests.filter(r => r.level === 'warning').length,
+    critical: requests.filter(r => r.level === 'critical').length,
   }
 
   const columns: TableColumn<ApplicationRequest>[] = [
@@ -153,8 +162,8 @@ export default function AdminArizalar() {
       sortable: true,
       render: (value: unknown, row: ApplicationRequest) => (
         <div className="cursor-pointer hover:text-purple-400 transition-colors" onClick={() => setDetailModal({ isOpen: true, request: row })}>
-          <p className="font-semibold text-white">{String(value ?? '')}</p>
-          <p className="text-xs text-slate-400 line-clamp-1">{row.text}</p>
+          <p className={`font-semibold ${textStrong}`}>{String(value ?? '')}</p>
+          <p className={`text-xs ${textMuted} line-clamp-1`}>{row.text}</p>
         </div>
       ),
     },
@@ -163,7 +172,7 @@ export default function AdminArizalar() {
       label: 'Matn',
       sortable: false,
       render: (value: unknown) => (
-        <p className="text-sm text-slate-300 line-clamp-2">{String(value ?? '')}</p>
+        <p className={`text-sm ${textBody} line-clamp-2`}>{String(value ?? '')}</p>
       ),
     },
     {
@@ -190,124 +199,152 @@ export default function AdminArizalar() {
         <div className="flex gap-2">
           <button
             onClick={() => setDetailModal({ isOpen: true, request: row })}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-blue-300"
+            className={`rounded-xl border p-2.5 text-blue-400 transition-all hover:bg-blue-400/10 hover:border-blue-400/20 active:scale-95 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-white/5'}`}
             title="Ko'rish"
           >
-            <Eye size={16} />
+            <Eye size={15} />
           </button>
           <button
             onClick={() => {
               setStatusModal({ isOpen: true, request: row })
               setNewStatus(row.level)
             }}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-amber-400 hover:text-amber-300"
+            className={`rounded-xl border p-2.5 text-amber-400 transition-all hover:bg-amber-400/10 hover:border-amber-400/20 active:scale-95 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-white/5'}`}
             title="Holat o'zgartirish"
           >
-            <Edit2 size={16} />
+            <Edit2 size={15} />
           </button>
           <button
             onClick={() => handleDelete(row.id)}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-red-400 hover:text-red-300"
+            className={`rounded-xl border p-2.5 text-red-400 transition-all hover:bg-red-400/10 hover:border-red-400/20 active:scale-95 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-white/5'}`}
             title="O'chirish"
           >
-            <Trash2 size={16} />
+            <Trash2 size={15} />
           </button>
         </div>
       ),
     },
   ]
 
+  const statCards = [
+    { title: 'Jami Arizalar', count: stats.total, color: 'from-slate-500 to-slate-600', glow: 'rgba(148,163,184,0.15)', textColor: 'text-slate-400', barColor: 'bg-slate-500', percentage: 100, icon: FileText },
+    { title: 'Ma\'lumot (Info)', count: stats.info, color: 'from-blue-500 to-indigo-600', glow: 'rgba(59,130,246,0.15)', textColor: 'text-blue-400', barColor: 'bg-blue-500', percentage: stats.total > 0 ? Math.round((stats.info / stats.total) * 100) : 0, icon: FileText },
+    { title: 'Ogohlantirish', count: stats.warning, color: 'from-amber-500 to-orange-600', glow: 'rgba(245,158,11,0.15)', textColor: 'text-amber-400', barColor: 'bg-amber-500', percentage: stats.total > 0 ? Math.round((stats.warning / stats.total) * 100) : 0, icon: Filter },
+    { title: 'Muhim (Critical)', count: stats.critical, color: 'from-rose-500 to-red-600', glow: 'rgba(244,63,94,0.15)', textColor: 'text-rose-400', barColor: 'bg-rose-500', percentage: stats.total > 0 ? Math.round((stats.critical / stats.total) * 100) : 0, icon: FileText },
+  ]
+
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tighter flex items-center gap-2">
-            <FileText size={32} />
-            Arizalar Boshqaruvi
+          <h1 className={`flex items-center gap-3 text-3xl font-black tracking-tighter sm:text-4xl ${textStrong}`}>
+            <div className="rounded-2xl bg-purple-500/10 p-2 text-purple-400 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
+              <FileText size={30} />
+            </div>
+            Arizalar boshqaruvi
           </h1>
-          <p className="text-slate-400 mt-2">Jami: {filteredRequests.length} ta ariza</p>
+          <p className={`mt-2 text-sm ${textMuted}`}>Talabalar tomonidan yuborilgan murojaat va arizalar ro&apos;yxati</p>
         </div>
+        
+        <button
+          onClick={loadRequests}
+          disabled={loading}
+          className="inline-flex items-center justify-center p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all disabled:opacity-50 self-start sm:self-auto"
+          title="Yangilash"
+        >
+          <motion.div
+            animate={loading ? { rotate: 360 } : {}}
+            transition={loading ? { repeat: Infinity, duration: 1.2, ease: 'linear' } : {}}
+          >
+            <RotateCcw size={18} />
+          </motion.div>
+        </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-500/10 border border-slate-500/30 rounded-lg p-3 text-center"
-        >
-          <p className="text-xs text-slate-400 mb-1">Jami</p>
-          <p className="text-xl font-bold text-white">{stats.total}</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center"
-        >
-          <p className="text-xs text-blue-400 mb-1">Yangi</p>
-          <p className="text-xl font-bold text-blue-300">{stats.new}</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-center"
-        >
-          <p className="text-xs text-yellow-400 mb-1">Ogohlantirish</p>
-          <p className="text-xl font-bold text-yellow-300">{stats.approved}</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-center"
-        >
-          <p className="text-xs text-green-400 mb-1">Info</p>
-          <p className="text-xl font-bold text-green-300">{stats.new}</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-center"
-        >
-          <p className="text-xs text-red-400 mb-1">Muhim</p>
-          <p className="text-xl font-bold text-red-300">{stats.rejected}</p>
-        </motion.div>
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {statCards.map((card, index) => {
+          const Icon = card.icon;
+          return (
+            <motion.div
+              key={card.title}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.08 }}
+              whileHover={{ y: -5, scale: 1.01 }}
+              className={`relative overflow-hidden rounded-2xl border p-5 shadow-xl transition-all group ${
+                isLight ? 'bg-white/80 border-slate-200 shadow-slate-100/50' : 'bg-[#0b1120]/60 border-white/10'
+              }`}
+              style={{
+                boxShadow: isLight ? undefined : `0 10px 30px -10px ${card.glow}`,
+              }}
+            >
+              <div className="absolute -right-4 -top-4 w-20 h-20 bg-linear-to-br from-white/10 to-transparent rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className={`text-xs font-bold uppercase tracking-wider ${textMuted}`}>{card.title}</p>
+                  <p className={`mt-2 text-3xl font-black leading-none ${textStrong}`}>
+                    {loading ? '...' : card.count}
+                  </p>
+                </div>
+                <div className={`rounded-xl p-3 bg-linear-to-br ${card.color} text-white shadow-lg`}>
+                  <Icon size={20} />
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold mb-1">
+                  <span>ULUSH</span>
+                  <span>{loading ? '...' : `${card.percentage}%`}</span>
+                </div>
+                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: loading ? 0 : `${card.percentage}%` }}
+                    transition={{ duration: 1, ease: 'easeOut' }}
+                    className={`h-full ${card.barColor} rounded-full`}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        <div className="relative col-span-1 sm:col-span-1">
-          <Search className="absolute left-3 top-3 text-slate-400" size={20} />
-          <input
-            type="text"
-            placeholder="Arizani qidirish..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value)
-              setCurrentPage(1)
-            }}
-            className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 transition-colors"
-          />
-        </div>
-        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-4 py-2">
-          <Filter size={20} className="text-slate-400" />
-          <select
-            value={filterStatus}
-            onChange={(e) => {
-              setFilterStatus(e.target.value as 'all' | ApplicationRequest['level'])
-              setCurrentPage(1)
-            }}
-            className="flex-1 bg-transparent text-white focus:outline-none text-sm"
-          >
-            <option value="all">Barcha holatlar</option>
-            <option value="info">Info</option>
-            <option value="warning">Ogohlantirish</option>
-            <option value="critical">Muhim</option>
-          </select>
+      <div className={`mb-6 rounded-2xl border p-4 backdrop-blur-md ${isLight ? 'bg-white/60 border-slate-200 shadow-sm' : 'bg-[#0b1120]/40 border-white/5'}`}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-3.5 text-slate-400" size={18} />
+            <input
+              type="text"
+              placeholder="Talaba ismi yoki murojaat matni bo'yicha qidirish..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                setCurrentPage(1)
+              }}
+              className={`w-full rounded-xl border py-3 pl-10 pr-4 text-sm outline-none transition-all ${inputBg}`}
+            />
+          </div>
+          <div className="relative">
+            <Filter className="absolute left-3 top-3.5 text-slate-400 pointer-events-none" size={18} />
+            <select
+              value={filterStatus}
+              onChange={(e) => {
+                setFilterStatus(e.target.value as 'all' | ApplicationRequest['level'])
+                setCurrentPage(1)
+              }}
+              className={`w-full rounded-xl border py-3 pl-10 pr-4 text-sm outline-none transition-all appearance-none cursor-pointer ${inputBg}`}
+            >
+              <option value="all" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Barcha arizalar</option>
+              <option value="info" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Info</option>
+              <option value="warning" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Ogohlantirish</option>
+              <option value="critical" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Muhim</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -342,29 +379,40 @@ export default function AdminArizalar() {
       {/* Detail Modal */}
       <AdminModal
         isOpen={detailModal.isOpen}
-        title={detailModal.request?.student_name || 'Ariza Tafsilotlari'}
+        title=""
         onClose={() => setDetailModal({ isOpen: false })}
       >
         {detailModal.request && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-300 mb-1">Talaba:</h3>
-              <p className="text-white font-medium">{detailModal.request.student_name}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-300 mb-1">Matn:</h3>
-              <p className="text-white text-sm">{detailModal.request.text}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-300 mb-1">Holat:</h3>
-                <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[detailModal.request.level]}`}>
-                  {STATUS_LABELS[detailModal.request.level]}
-                </span>
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-4 border-b border-white/5">
+              <div className="rounded-xl bg-purple-500/10 p-2.5 text-purple-400">
+                <FileText size={22} />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-300 mb-1">Sana:</h3>
-                <p className="text-white text-sm">{detailModal.request.created_at ? new Date(detailModal.request.created_at).toLocaleDateString('uz-UZ') : '-'}</p>
+                <h2 className={`text-xl font-black tracking-tight ${textStrong}`}>{detailModal.request.student_name}</h2>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">Murojaat tafsilotlari</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className={`p-4 rounded-xl border ${cardBg}`}>
+                <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted} mb-2`}>Murojaat matni</h3>
+                <p className={`text-sm leading-relaxed ${textBody}`}>{detailModal.request.text}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className={`p-4 rounded-xl border ${cardBg}`}>
+                  <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted} mb-2`}>Daraja / Holat</h3>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[detailModal.request.level]}`}>
+                    {STATUS_LABELS[detailModal.request.level]}
+                  </span>
+                </div>
+                <div className={`p-4 rounded-xl border ${cardBg}`}>
+                  <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted} mb-2`}>Yuborilgan sana</h3>
+                  <p className={`text-sm font-semibold ${textStrong}`}>
+                    {detailModal.request.created_at ? new Date(detailModal.request.created_at).toLocaleString('uz-UZ') : '-'}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -383,19 +431,19 @@ export default function AdminArizalar() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-white mb-2">Yangi holat:</label>
+            <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>Yangi holat:</label>
             <select
               value={newStatus}
               onChange={(e) => setNewStatus(e.target.value as ApplicationRequest['level'])}
-              className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-purple-500"
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputBg}`}
             >
-              <option value="info">Info</option>
-              <option value="warning">Ogohlantirish</option>
-              <option value="critical">Muhim</option>
+              <option value="info" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Info</option>
+              <option value="warning" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Ogohlantirish</option>
+              <option value="critical" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Muhim</option>
             </select>
           </div>
-          <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-            <p className="text-sm text-blue-300">
+          <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+            <p className="text-xs text-blue-300 font-semibold">
               Hozirgi holat: <span className="font-bold">{STATUS_LABELS[statusModal.request?.level || 'info']}</span>
             </p>
           </div>

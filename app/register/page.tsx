@@ -96,7 +96,7 @@ export default function RegisterPage() {
         passport_series: data.passportSeries.toUpperCase().replace(/\s/g, ''),
         jshshir: data.jshshir,
         passport_date: data.passportDate,
-        birth_date: data.entryDate, // Agar interface'da alohida birthDate bo'lsa o'shani qo'ying
+        birth_date: data.birthDate,
 
         // 9-10-11. O'qish ma'lumotlari
         faculty: data.faculty,
@@ -107,7 +107,7 @@ export default function RegisterPage() {
         nationality: data.nationality,
         study_type: data.study_type, // Grand yoki Kontrakt
         gender: data.gender,
-        phoneNumber: data.phone,
+        phone_number: data.phone,
 
         // 16-17-18. Ota ma'lumotlari
         father_full_name: data.father_full_name,

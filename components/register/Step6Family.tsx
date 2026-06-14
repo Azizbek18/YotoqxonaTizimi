@@ -109,7 +109,7 @@ export default function Step6Family({ data, onChange, onNext, onBack }: Props) {
         </div>
         <div>
           <h2 className={`text-[14px] font-bold uppercase tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Oila ma&apos;lumotlari</h2>
-          <p className={`text-[9px] font-black uppercase tracking-widest ${isLight ? 'text-sky-600/80' : 'text-sky-400/80'}`}>Qadam 06 / 08</p>
+          <p className={`text-[9px] font-black uppercase tracking-widest ${isLight ? 'text-sky-600/80' : 'text-sky-400/80'}`}>Qadam 06 / 09</p>
         </div>
       </div>
 

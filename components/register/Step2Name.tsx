@@ -86,7 +86,7 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
         </div>
         <div>
           <h2 className="text-[14px] font-bold text-white uppercase tracking-tight">Shaxsiy ma&apos;lumotlar</h2>
-          <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">Qadam 02 / 08</p>
+          <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">Qadam 02 / 09</p>
         </div>
       </div>
 

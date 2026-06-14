@@ -49,10 +49,10 @@ export default function AdminModal({
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full ${maxWidthClass} bg-[#0b1120] border border-white/10 rounded-2xl shadow-2xl z-50`}
+                        className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full ${maxWidthClass} max-h-[90vh] flex flex-col bg-[#0b1120] border border-white/10 rounded-2xl shadow-2xl z-50`}
                     >
                         {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-white/10">
+                        <div className="flex items-center justify-between p-6 border-b border-white/10 shrink-0">
                             <div>
                                 <h2 className="text-xl font-bold text-white">{title}</h2>
                                 {description && <p className="text-sm text-slate-400 mt-1">{description}</p>}
@@ -66,11 +66,11 @@ export default function AdminModal({
                         </div>
 
                         {/* Content */}
-                        <div className="p-6">{children}</div>
+                        <div className="p-6 overflow-y-auto flex-1 no-scrollbar">{children}</div>
 
                         {/* Actions */}
                         {onConfirm && (
-                            <div className="flex gap-3 p-6 border-t border-white/10">
+                            <div className="flex gap-3 p-6 border-t border-white/10 shrink-0">
                                 <button
                                     onClick={onClose}
                                     disabled={isLoading}
@@ -81,10 +81,11 @@ export default function AdminModal({
                                 <button
                                     onClick={onConfirm}
                                     disabled={isLoading}
-                                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all disabled:opacity-50 ${confirmVariant === 'danger'
+                                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all disabled:opacity-50 ${
+                                        confirmVariant === 'danger'
                                             ? 'bg-red-500 hover:bg-red-600 text-white'
                                             : 'bg-purple-500 hover:bg-purple-600 text-white'
-                                        }`}
+                                    }`}
                                 >
                                     {isLoading ? 'Jarayonda...' : confirmText}
                                 </button>

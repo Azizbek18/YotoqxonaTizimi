@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { Download, BarChart3, TrendingUp, Users, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import XLSX from 'xlsx-js-style'
 
 const mockMonthlyData = [
     { month: 'Yanvar', students: 45, applications: 24, approved: 18 },
@@ -66,13 +67,159 @@ export default function AdminReportsPage() {
         toast.error("PDF eksport funksiyasi ko'p yaqinda mavjud bo'ladi")
     }
 
-    const exportToExcel = () => {
-        toast.error("Excel eksport funksiyasi ko'p yaqinda mavjud bo'ladi")
+    const downloadUsersData = async (format: 'excel' | 'csv') => {
+        const toastId = toast.loading("Ma'lumotlar tayyorlanmoqda...")
+        try {
+            // Barcha foydalanuvchilarni xona raqami bo'yicha saralab olish
+            const { data: users, error } = await supabase
+                .from('users')
+                .select('full_name, email, role, room_number, phone_number, faculty, direction, course, status')
+
+            if (error) throw error
+
+            if (!users || users.length === 0) {
+                toast.error("Ma'lumot topilmadi", { id: toastId })
+                return
+            }
+
+            // Xona raqami bo'yicha tabiiy (1, 2, 10...) saralash
+            const sortedUsers = [...users].sort((a, b) => {
+                const roomA = a.room_number || '';
+                const roomB = b.room_number || '';
+                return roomA.localeCompare(roomB, undefined, { numeric: true, sensitivity: 'base' });
+            });
+
+            // Matnni tozalash funksiyasi (apostroflar va ortiqcha bo'shliqlar uchun)
+            const cleanText = (val: unknown) => String(val ?? '')
+                .replace(/[ʻʼ‘’`‘]/g, "'")
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            // CSV/Excel formati uchun sarlavhalar
+            const headers = ["Xona", "F.I.Sh.", "Email", "Rol", "Telefon", "Fakultet", "Yo'nalish", "Kurs", "Holat"]
+
+            // Ma'lumotlarni shakllantirish
+            const rawRows = sortedUsers.map(u => [
+                cleanText(u.room_number || '-'),
+                cleanText(u.full_name),
+                cleanText(u.email),
+                cleanText(u.role),
+                cleanText(u.phone_number || '-'),
+                cleanText(u.faculty || '-'),
+                cleanText(u.direction || '-'),
+                cleanText(u.course || '-'),
+                cleanText(u.status || '-')
+            ])
+
+            // Bir xil xonalarni guruhlash (vizual birlashtirish)
+            const displayRows = JSON.parse(JSON.stringify(rawRows));
+            const excelMerges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+
+            if (displayRows.length > 0) {
+                let i = 0;
+                while (i < displayRows.length) {
+                    const roomValue = displayRows[i][0];
+                    if (roomValue === '-' || !roomValue) {
+                        i++;
+                        continue;
+                    }
+
+                    let j = i + 1;
+                    while (j < displayRows.length && rawRows[j][0] === roomValue) {
+                        displayRows[j][0] = ""; // Takrorlanmasligi uchun bo'shatish
+                        j++;
+                    }
+
+                    if (j - i > 1) {
+                        excelMerges.push({
+                            s: { r: i + 1, c: 0 }, // s: start (header dan keyin)
+                            e: { r: j, c: 0 }      // e: end
+                        });
+                    }
+                    i = j;
+                }
+            }
+
+            if (format === 'excel') {
+                // Excel (.xlsx) yaratish
+                const worksheet = XLSX.utils.aoa_to_sheet([headers, ...displayRows]);
+                worksheet['!merges'] = excelMerges;
+
+                // Sarlavhalarni (birinchi qator) formatlash
+                const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const address = XLSX.utils.encode_cell({ r: 0, c: C });
+                    if (!worksheet[address]) continue;
+
+                    worksheet[address].s = {
+                        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 12 },
+                        fill: { fgColor: { rgb: "4F46E5" } }, // Indigo fon rangi
+                        alignment: { horizontal: "center", vertical: "center" },
+                        border: {
+                            top: { style: "thin" }, bottom: { style: "thin" },
+                            left: { style: "thin" }, right: { style: "thin" }
+                        }
+                    };
+                }
+
+                // Ma'lumotlar kataklarini formatlash (Xona ustunini markazlash)
+                for (let R = range.s.r + 1; R <= range.e.r; R++) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: R, c: 0 });
+                    if (worksheet[cellAddress]) {
+                        worksheet[cellAddress].s = {
+                            alignment: { vertical: "center", horizontal: "center" },
+                            border: {
+                                bottom: { style: "thin", color: { rgb: "E2E8F0" } },
+                                right: { style: "thin", color: { rgb: "E2E8F0" } }
+                            }
+                        };
+                    }
+                }
+
+                // Ustun kengliklarini avtomatik hisoblash
+                const colWidths = headers.map((h, i) => {
+                    const column = [h, ...rawRows.map(row => String(row[i]))];
+                    const maxLen = Math.max(...column.map(v => v.length));
+                    return { wch: maxLen + 5 }; // +5 bo'sh joy qo'shish uchun
+                });
+                worksheet['!cols'] = colWidths;
+
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Hisobot");
+
+                // Faylni yuklab olish
+                XLSX.writeFile(workbook, `foydalanuvchilar_${new Date().toISOString().slice(0, 10)}.xlsx`);
+                toast.success("Excel fayl yuklab olindi", { id: toastId });
+                return;
+            }
+
+            // CSV formati (oldingidek qoladi)
+            const content = [
+                'sep=,',
+                headers.join(','),
+                ...displayRows.map((row: string[]) => row.map((cell: string) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            ].join('\n')
+
+            const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' })
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.setAttribute('download', `foydalanuvchilar_xonalar_boyicha_${new Date().toISOString().slice(0, 10)}.csv`)
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+
+            toast.success("Fayl yuklab olindi", { id: toastId })
+        } catch (error) {
+            console.error('Export error full object:', JSON.parse(JSON.stringify(error)))
+            const supabaseError = error as { message?: string; details?: string }
+            const errorMessage = supabaseError?.message || supabaseError?.details || (error instanceof Error ? error.message : "Noma'lum xatolik")
+            toast.error(`Eksportda xatolik: ${errorMessage}`, { id: toastId, duration: 5000 })
+        }
     }
 
-    const exportToCSV = () => {
-        toast.error("CSV eksport funksiyasi ko'p yaqinda mavjud bo'ladi")
-    }
+    const exportToExcel = () => downloadUsersData('excel')
+    const exportToCSV = () => downloadUsersData('csv')
 
     return (
         <div>

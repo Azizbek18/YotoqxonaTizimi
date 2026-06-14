@@ -113,13 +113,14 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
         </section>
 
         {/* Page Content with Animation */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={pathname}
-            initial={{ opacity: 0, scale: 0.98, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 1.02, y: -10 }}
-            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18, ease: [0.25, 1, 0.5, 1] }}
+            style={{ willChange: 'transform, opacity' }}
           >
             {children}
           </motion.div>
@@ -145,15 +146,13 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                   className="flex flex-col items-center justify-center py-2 sm:py-2.5 relative z-10 px-1"
                 >
                   {/* Active Indicator (Liquid Pill) */}
-                  <AnimatePresence>
-                    {isActive && (
-                      <motion.div
-                        layoutId="nav-active-pill"
-                        className={`absolute inset-0 rounded-xl sm:rounded-[20px] border shadow-inner transition-all ${isLight ? 'bg-linear-to-tr from-blue-500/15 via-blue-500/5 to-transparent border-blue-500/15' : 'bg-linear-to-tr from-cyan-500/20 via-blue-500/10 to-transparent border-cyan-500/20'}`}
-                        transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-                      />
-                    )}
-                  </AnimatePresence>
+                  {isActive && (
+                    <motion.div
+                      layoutId="nav-active-pill"
+                      className={`absolute inset-0 rounded-xl sm:rounded-[20px] border shadow-inner transition-all ${isLight ? 'bg-linear-to-tr from-blue-500/15 via-blue-500/5 to-transparent border-blue-500/15' : 'bg-linear-to-tr from-cyan-500/20 via-blue-500/10 to-transparent border-cyan-500/20'}`}
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    />
+                  )}
 
                   <div className="relative mb-0.5 sm:mb-1">
                     <item.icon

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { createServerSupabaseClient, getAdminSession } from '@/lib/server-admin'
+import { getAdminSession } from '@/lib/server-admin'
+import { getServiceSupabase } from '@/lib/server-supabase'
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = await createServerSupabaseClient()
         const { session, isAdmin } = await getAdminSession()
 
         if (!session?.user?.id) {
@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
         // Taklif kodini yaratish
         const inviteCode = crypto.randomBytes(16).toString('hex')
 
-        const { error: insertError } = await supabase
+        const serviceSupabase = getServiceSupabase()
+        const { error: insertError } = await serviceSupabase
             .from('admin_invites')
             .insert({
                 code: inviteCode,
@@ -63,7 +64,6 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
     try {
-        const supabase = await createServerSupabaseClient()
         const { session, isAdmin } = await getAdminSession()
 
         if (!session?.user?.id) {
@@ -80,8 +80,9 @@ export async function GET() {
             )
         }
 
-        // Taklif kodlarini olish
-        const { data: invites, error } = await supabase
+        // Taklif kodlarini olish (Service Role orqali - RLS'ni aylanib o'tish uchun)
+        const serviceSupabase = getServiceSupabase()
+        const { data: invites, error } = await serviceSupabase
             .from('admin_invites')
             .select('*')
             .order('created_at', { ascending: false })

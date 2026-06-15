@@ -13,6 +13,7 @@ interface ApplicationRequest {
   student_name: string
   text: string
   level: 'info' | 'warning' | 'critical'
+  status?: string
   created_at?: string | null
   updated_at?: string | null
 }
@@ -27,6 +28,18 @@ const STATUS_COLORS: Record<string, string> = {
   info: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   warning: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
   critical: 'bg-red-500/20 text-red-400 border-red-500/30',
+}
+
+const REAL_STATUS_LABELS: Record<string, string> = {
+  pending: 'Kutilmoqda',
+  approved: 'Tasdiqlangan',
+  rejected: 'Rad etilgan',
+}
+
+const REAL_STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  approved: 'bg-green-500/20 text-green-400 border-green-500/30',
+  rejected: 'bg-red-500/20 text-red-400 border-red-500/30',
 }
 
 export default function AdminArizalar() {
@@ -48,6 +61,7 @@ export default function AdminArizalar() {
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; request?: ApplicationRequest }>({ isOpen: false })
   const [statusModal, setStatusModal] = useState<{ isOpen: boolean; request?: ApplicationRequest }>({ isOpen: false })
   const [newStatus, setNewStatus] = useState<ApplicationRequest['level']>('info')
+  const [newRealStatus, setNewRealStatus] = useState<string>('pending')
   const [isUpdating, setIsUpdating] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
@@ -107,6 +121,7 @@ export default function AdminArizalar() {
         body: JSON.stringify({
           id: statusModal.request.id,
           level: newStatus,
+          status: newRealStatus,
         }),
       })
       const result = await response.json() as { ok: boolean; error?: string }
@@ -114,7 +129,7 @@ export default function AdminArizalar() {
         throw new Error(result.error ?? 'Yangilashda xato!')
       }
 
-      setRequests(requests.map(r => r.id === statusModal.request?.id ? { ...r, level: newStatus } : r))
+      setRequests(requests.map(r => r.id === statusModal.request?.id ? { ...r, level: newStatus, status: newRealStatus } : r))
       setStatusModal({ isOpen: false })
       toast.success("Holat yangilandi!")
     } catch (error) {
@@ -177,11 +192,21 @@ export default function AdminArizalar() {
     },
     {
       key: 'level',
-      label: 'Holat',
+      label: 'Daraja',
       sortable: true,
       render: (value: unknown) => (
         <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[String(value)]}`}>
           {STATUS_LABELS[String(value)]}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Holat',
+      sortable: true,
+      render: (value: unknown) => (
+        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${REAL_STATUS_COLORS[String(value ?? 'pending')]}`}>
+          {REAL_STATUS_LABELS[String(value ?? 'pending')]}
         </span>
       ),
     },
@@ -208,6 +233,7 @@ export default function AdminArizalar() {
             onClick={() => {
               setStatusModal({ isOpen: true, request: row })
               setNewStatus(row.level)
+              setNewRealStatus(row.status || 'pending')
             }}
             className={`rounded-xl border p-2.5 text-amber-400 transition-all hover:bg-amber-400/10 hover:border-amber-400/20 active:scale-95 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-white/5'}`}
             title="Holat o'zgartirish"
@@ -400,17 +426,23 @@ export default function AdminArizalar() {
                 <p className={`text-sm leading-relaxed ${textBody}`}>{detailModal.request.text}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className={`p-4 rounded-xl border ${cardBg}`}>
-                  <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted} mb-2`}>Daraja / Holat</h3>
+                  <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted} mb-2`}>Daraja</h3>
                   <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[detailModal.request.level]}`}>
                     {STATUS_LABELS[detailModal.request.level]}
                   </span>
                 </div>
                 <div className={`p-4 rounded-xl border ${cardBg}`}>
+                  <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted} mb-2`}>Holat</h3>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${REAL_STATUS_COLORS[detailModal.request.status || 'pending']}`}>
+                    {REAL_STATUS_LABELS[detailModal.request.status || 'pending']}
+                  </span>
+                </div>
+                <div className={`p-4 rounded-xl border ${cardBg}`}>
                   <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted} mb-2`}>Yuborilgan sana</h3>
                   <p className={`text-sm font-semibold ${textStrong}`}>
-                    {detailModal.request.created_at ? new Date(detailModal.request.created_at).toLocaleString('uz-UZ') : '-'}
+                    {detailModal.request.created_at ? new Date(detailModal.request.created_at).toLocaleDateString('uz-UZ') : '-'}
                   </p>
                 </div>
               </div>
@@ -431,7 +463,7 @@ export default function AdminArizalar() {
       >
         <div className="space-y-4">
           <div>
-            <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>Yangi holat:</label>
+            <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>Yangi daraja:</label>
             <select
               value={newStatus}
               onChange={(e) => setNewStatus(e.target.value as ApplicationRequest['level'])}
@@ -442,9 +474,24 @@ export default function AdminArizalar() {
               <option value="critical" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Muhim</option>
             </select>
           </div>
-          <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-            <p className="text-xs text-blue-300 font-semibold">
-              Hozirgi holat: <span className="font-bold">{STATUS_LABELS[statusModal.request?.level || 'info']}</span>
+          <div>
+            <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>Yangi holat:</label>
+            <select
+              value={newRealStatus}
+              onChange={(e) => setNewRealStatus(e.target.value)}
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputBg}`}
+            >
+              <option value="pending" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Kutilmoqda</option>
+              <option value="approved" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Tasdiqlangan</option>
+              <option value="rejected" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Rad etilgan</option>
+            </select>
+          </div>
+          <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl space-y-1">
+            <p className="text-xs text-purple-300 font-semibold">
+              Hozirgi daraja: <span className="font-bold text-white">{STATUS_LABELS[statusModal.request?.level || 'info']}</span>
+            </p>
+            <p className="text-xs text-purple-300 font-semibold">
+              Hozirgi holat: <span className="font-bold text-white">{REAL_STATUS_LABELS[statusModal.request?.status || 'pending']}</span>
             </p>
           </div>
         </div>

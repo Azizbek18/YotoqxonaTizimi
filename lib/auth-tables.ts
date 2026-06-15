@@ -41,11 +41,14 @@ export async function findRoleByIdentity(supabase: SupabaseClient, identity: Ide
   if (identity.id) {
     const { data: userById } = await supabase
       .from('users')
-      .select('role')
+      .select('role, status')
       .eq('id', identity.id)
       .maybeSingle()
 
     if (userById?.role === 'talaba') {
+      if (userById.status === 'pending') {
+        return null
+      }
       return 'talaba'
     }
   }
@@ -53,11 +56,14 @@ export async function findRoleByIdentity(supabase: SupabaseClient, identity: Ide
   if (cleanEmail) {
     const { data: userByEmail } = await supabase
       .from('users')
-      .select('role')
+      .select('role, status')
       .eq('email', cleanEmail)
       .maybeSingle()
 
     if (userByEmail?.role === 'talaba') {
+      if (userByEmail.status === 'pending') {
+        return null
+      }
       return 'talaba'
     }
   }

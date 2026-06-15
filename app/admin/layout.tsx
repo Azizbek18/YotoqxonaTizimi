@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
+  CreditCard,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -33,10 +34,12 @@ export default function AdminLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [waitingCount, setWaitingCount] = useState(0)
+
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
-  React.useEffect(() => {
+  useEffect(() => {
     // Initial check
     setIsMobile(window.innerWidth < 1024)
 
@@ -47,6 +50,26 @@ export default function AdminLayout({
 
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  useEffect(() => {
+    async function fetchWaitingPayments() {
+      try {
+        const { count, error } = await supabase
+          .from('tolovlar')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'waiting')
+        
+        if (!error && count !== null) {
+          setWaitingCount(count)
+        }
+      } catch (err) {
+        console.error('Error fetching waiting payments count:', err)
+      }
+    }
+    fetchWaitingPayments()
+    const interval = setInterval(fetchWaitingPayments, 15000)
+    return () => clearInterval(interval)
   }, [])
 
   const menuItems = useMemo(() => ([
@@ -63,6 +86,13 @@ export default function AdminLayout({
       href: '/admin/arizalar',
       icon: FileText,
       accent: 'from-emerald-500 to-green-600',
+    },
+    {
+      label: 'To‘lovlar',
+      caption: 'Kvitansiyalar',
+      href: '/admin/tolovlar',
+      icon: CreditCard,
+      accent: 'from-cyan-500 to-blue-600',
     },
     {
       label: 'Foydalanuvchilar',
@@ -199,7 +229,7 @@ export default function AdminLayout({
                     : 'border-white/5 text-slate-400 hover:border-white/15 hover:bg-white/[0.06] hover:text-white'
                   } ${compact ? 'justify-center px-2' : ''}`}
               >
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-all backdrop-blur ${isActive
+                <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-all backdrop-blur ${isActive
                   ? isLight
                     ? 'border-sky-300 bg-white text-sky-700 shadow-sm shadow-sky-300/25'
                     : 'border-cyan-400/30 bg-white/[0.06] text-cyan-300'
@@ -208,6 +238,9 @@ export default function AdminLayout({
                     : 'border-white/10 bg-white/[0.02] text-slate-400 group-hover:bg-white/[0.05] group-hover:text-white'
                   }`}>
                   <Icon size={18} strokeWidth={2} />
+                  {item.href === '/admin/tolovlar' && waitingCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900 shadow-[0_0_6px_rgba(239,68,68,0.6)] animate-pulse" />
+                  )}
                 </div>
 
                 {!compact && (
@@ -217,6 +250,12 @@ export default function AdminLayout({
                       {item.caption}
                     </p>
                   </div>
+                )}
+
+                {!compact && item.href === '/admin/tolovlar' && waitingCount > 0 && (
+                  <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-black text-white shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse mr-1">
+                    {waitingCount}
+                  </span>
                 )}
 
                 {!compact && (

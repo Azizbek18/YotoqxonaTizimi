@@ -1,0 +1,108 @@
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function POST(req: NextRequest) {
+  try {
+    const { message, history } = await req.json()
+    if (!message) {
+      return NextResponse.json({ error: 'message kiritilishi shart' }, { status: 400 })
+    }
+
+    const geminiApiKey = process.env.GEMINI_API_KEY
+
+    // Dormitory rules context for AI System Instructions
+    const systemInstruction = `Siz Farg'ona Davlat Universiteti Talabalar Yotoqxonasining aqlli virtual yordamchisisiz (ismingiz "Yotoqxona AI").
+Vazifangiz talabalarga yotoqxona tartib-qoidalari, to'lovlar, arizalar, ma'muriyat bilan aloqa va kundalik masalalarda yordam berishdir.
+Siz faqat o'zbek tilida, do'stona, aniq va xushmuomala ohangda javob berishingiz kerak.
+
+Mavjud ma'lumotlar ro'yxati (savollarga javob berishda foydalaning):
+1. **Kirish-chiqish tartibi**: Yotoqxonaga kirish-chiqish 06:00 dan 22:00 gacha ochiq. Turniketlar soat 22:00 da avtomatik yopiladi va kechikkan talabalar intizomiy javobgarlikka tortiladi.
+2. **To'lovlar**: Bir oylik turarjoy to'lovi 300,000 UZS. Yillik shartnoma summasi 3,000,000 UZS (10 oy uchun). To'lov cheklarini talaba "To'lov qilish" sahifasida yuklab, tasdiqlash uchun yuborishi mumkin. AI chekni 1 daqiqada tekshiradi va admin tasdiqlaydi.
+3. **Ma'muriyat**: Komendant (boshliq) - Qodirov Sardor (tel: +998 93 111 22 33), navbatchi tarbiyachi - Mo'minov Azizbek (tel: +998 90 999 88 77).
+4. **Tibbiy yordam**: Shifokor xonasi A binoning 1-qavatida joylashgan. Shifokor: Sultonova Ra'no (tel: +998 94 444 55 66).
+5. **Tozalik va navbatchilik**: Dushanba/Payshanba kunlari - Dilshod Latipov, Seshanba/Juma kunlari - Sherzod G'apparov, Chorshanba/Shanba kunlari - Gaxriman Araznepesov xonani tozalashga mas'ul. Yakshanba - hamma birgalikda tozalaydi. Namunali xonalar rag'batlantiriladi.
+6. **Arizalar**: Talaba o'z arizalarini (masalan: xonani o'zgartirish, texnik ta'mir, tushuntirish xati) dashboarddagi "Ariza Yozish" bo'limida yozib yuborishi mumkin. AI arizani chiroyli va rasmiy tilda yozishga yordam beradi.
+7. **Taqiqlar**: Yotoqxona hududida spirtli ichimliklar, tamaki mahsulotlari, ruxsatsiz isitgichlar, elektr plitkalaridan foydalanish taqiqlanadi. Tartibni buzganlarning "Salomatlik Indeksi" tushib ketadi. 3 ta ogohlantirish olgan talaba yotoqxonadan chiqariladi.
+
+Javoblaringizni iloji boricha qisqa, tushunarli va chiroyli emojilar bilan bezab bering.`
+
+    if (geminiApiKey) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`
+
+        // Format conversational history for Gemini
+        const formattedContents = []
+
+        // If there's prior history, map it to Gemini structure (user/model)
+        if (Array.isArray(history)) {
+          for (const msg of history) {
+            formattedContents.push({
+              role: msg.role === 'user' ? 'user' : 'model',
+              parts: [{ text: msg.text }]
+            })
+          }
+        }
+
+        // Add the current user message
+        formattedContents.push({
+          role: 'user',
+          parts: [{ text: message }]
+        })
+
+        const apiResponse = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            contents: formattedContents,
+            systemInstruction: {
+              parts: [{ text: systemInstruction }]
+            }
+          })
+        })
+
+        if (!apiResponse.ok) {
+          const errText = await apiResponse.text()
+          throw new Error(`Gemini API Error: ${errText}`)
+        }
+
+        const apiData = await apiResponse.json()
+        const aiReply = apiData?.candidates?.[0]?.content?.parts?.[0]?.text || 'Kechirasiz, javobni shakllantirishda xatolik yuz berdi.'
+
+        return NextResponse.json({ reply: aiReply })
+
+      } catch (error: any) {
+        console.error('Gemini chat failed, using fallback:', error)
+        return NextResponse.json({
+          reply: `🤖 Salom! [Gemini ulanish xatosi] Hozirda serverda texnik ishlar ketmoqda. Ammo men sizga quyidagicha yordam bera olaman:
+- 🚪 Kirish-chiqish 22:00 gacha.
+- 💳 To'lov oyiga 300,000 UZS.
+- 📞 Komendant Sardor aka: +998 93 111 22 33.
+Sizga qanday yordam bera olaman?`
+        })
+      }
+    } else {
+      // Offline fallback simulator if GEMINI_API_KEY is not defined
+      let reply = '🤖 Salom! Men sizning yotoqxona AI yordamchingizman. Loyihada GEMINI_API_KEY sozlanmaganligi sababli cheklangan rejimda javob beryapman. Qanday yordam kerak?'
+      const lower = message.toLowerCase()
+      if (lower.includes('to\'lov') || lower.includes('tolov') || lower.includes('pul') || lower.includes('kontrakt')) {
+        reply = '💳 Yotoqxona to\'lovi oyiga **300,000 UZS**ni tashkil etadi. Yillik jami shartnoma 10 oy uchun **3,000,000 UZS**. To\'lov chekini shaxsiy kabinetingizdagi "To\'lov qilish" bo\'limidan yuklashingiz mumkin.'
+      } else if (lower.includes('kirish') || lower.includes('chiqish') || lower.includes('vaqt') || lower.includes('yopiladi')) {
+        reply = '🚪 Yotoqxonaga kirish-chiqish vaqti soat **06:00 dan 22:00 gacha**. Soat 22:00 dan keyin turniketlar yopiladi. Iltimos, vaqtida yetib keling!'
+      } else if (lower.includes('komendant') || lower.includes('sardor') || lower.includes('boshliq')) {
+        reply = '📞 Komendantimiz: **Qodirov Sardor**. Telefon raqami: **+998 93 111 22 33**. Xonasi A bino 1-qavatda joylashgan.'
+      } else if (lower.includes('tarbiyachi') || lower.includes('azizbek') || lower.includes('navbatchi')) {
+        reply = '📞 Navbatchi tarbiyachimiz: **Mo\'minov Azizbek**. Telefon raqami: **+998 90 999 88 77**.'
+      } else if (lower.includes('shifokor') || lower.includes('kasal') || lower.includes('tibbiy') || lower.includes('doktor')) {
+        reply = '🏥 Tibbiy yordam xonasi A binoning 1-qavatida joylashgan. Shifokor: **Sultonova Ra\'no** (tel: **+998 94 444 55 66**).'
+      } else if (lower.includes('navbatchilik') || lower.includes('tozalik') || lower.includes('supur')) {
+        reply = '🧹 Xona tozaligi navbatchilik jadvali:\n- Dushanba/Payshanba: Dilshod Latipov\n- Seshanba/Juma: Sherzod G\'apparov (Siz)\n- Chorshanba/Shanba: Gaxriman Araznepesov.'
+      }
+      return NextResponse.json({ reply })
+    }
+
+  } catch (error: any) {
+    console.error('Chat API Error:', error)
+    return NextResponse.json({ error: error.message || 'Ichki server xatoligi' }, { status: 500 })
+  }
+}

@@ -24,10 +24,12 @@ interface Elon {
   text: string;
   date: string;
   type: 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish';
-  audience: 'all' | 'faculty';
+  audience: 'all' | 'faculty' | 'floor';
   faculty: string | null;
   teacher: string;
   room: string;
+  is_from_captain?: boolean;
+  captain_floor?: number;
 }
 
 interface DbElon {
@@ -35,13 +37,15 @@ interface DbElon {
   title: string;
   text: string;
   type: Elon['type'];
-  audience: 'all' | 'faculty';
+  audience: 'all' | 'faculty' | 'floor';
   faculty: string | null;
   is_published: boolean;
   created_at: string;
   published_at: string | null;
   author_name?: string | null;
   location?: string | null;
+  is_from_captain?: boolean;
+  captain_floor?: number;
 }
 
 type ViewMode = 'dorm' | 'faculty';
@@ -116,7 +120,9 @@ function mapDbElon(elon: DbElon): Elon {
     faculty: elon.faculty,
     date: formatElonDate(elon.published_at ?? elon.created_at),
     teacher: elon.author_name || "Tizim ma'muri",
-    room: elon.location || "4-bino",
+    room: elon.is_from_captain ? `${elon.captain_floor}-qavat sardori` : (elon.location || "4-bino"),
+    is_from_captain: elon.is_from_captain,
+    captain_floor: elon.captain_floor
   };
 }
 
@@ -130,6 +136,18 @@ export default function ElonlarPage() {
   const [filter, setFilter] = useState<FilterType>('Barchasi');
   const theme = useThemeStore((state) => state.theme);
   const isLight = theme === 'light';
+
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    if (selectedElon) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedElon]);
 
   useEffect(() => {
     let isMounted = true;
@@ -384,9 +402,16 @@ export default function ElonlarPage() {
                     {/* Header info */}
                     <div className="space-y-2.5 w-full">
                       <div className="flex justify-between items-center gap-2">
-                        <span className={`rounded-md border px-2.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${styles.badge}`}>
-                          {elon.type}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`rounded-md border px-2.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${styles.badge}`}>
+                            {elon.type}
+                          </span>
+                          {elon.is_from_captain && (
+                            <span className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-purple-400">
+                              🌟 Qavat Sardori
+                            </span>
+                          )}
+                        </div>
                         <div className={`flex items-center gap-1 text-[10px] font-semibold ${textMuted}`}>
                           <Clock3 size={11} />
                           <span>{elon.date}</span>

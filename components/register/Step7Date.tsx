@@ -5,6 +5,7 @@ import { RegisterData } from './types'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Check, ArrowRight } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import toast from 'react-hot-toast'
 
 interface Props {
   data: RegisterData
@@ -21,9 +22,9 @@ export default function Step6Date({ data, onChange, onNext, onBack }: Props) {
 
   const monthNames = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"]
 
-  // Yillar ro'yxati (Kattaroq diapazon)
+  // Yillar ro'yxati (Kelajak yillar olib tashlandi)
   const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 12 }, (_, i) => currentYear - 5 + i)
+  const years = Array.from({ length: 6 }, (_, i) => currentYear - 5 + i)
 
   // Kalendar hisob-kitoblari
   const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay()
@@ -35,17 +36,43 @@ export default function Step6Date({ data, onChange, onNext, onBack }: Props) {
   const formatDate = (day: number, month: number, year: number) => {
     const d = day < 10 ? `0${day}` : day
     const m = (month + 1) < 10 ? `0${month + 1}` : month + 1
-    return `${d}.${m}.${year}`
+    return `${year}-${m}-${d}` // YYYY-MM-DD
+  }
+
+  const displayDate = (dateStr?: string) => {
+    if (!dateStr) return ''
+    const parts = dateStr.split('-')
+    if (parts.length === 3) {
+      return `${parts[2]}.${parts[1]}.${parts[0]}` // DD.MM.YYYY for display
+    }
+    return dateStr
+  }
+
+  const isFutureDate = (day: number) => {
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return date > today
   }
 
   const handleDateClick = (day: number) => {
+    if (isFutureDate(day)) {
+      toast.error("Kelajakdagi sanani tanlab bo'lmaydi!")
+      return
+    }
     const formattedDate = formatDate(day, currentMonth.getMonth(), currentMonth.getFullYear())
     onChange({ entryDate: formattedDate })
   }
 
   const changeMonth = (offset: number) => {
-    const newDate = new Date(currentMonth.setMonth(currentMonth.getMonth() + offset))
-    setCurrentMonth(new Date(newDate))
+    const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + offset, 1)
+    const today = new Date()
+    const currentLimit = new Date(today.getFullYear(), today.getMonth(), 1)
+    if (newMonth > currentLimit) {
+      toast.error("Kelajakdagi oylarni tanlab bo'lmaydi!")
+      return
+    }
+    setCurrentMonth(newMonth)
   }
 
   const isSelected = (day: number) => {
@@ -110,59 +137,74 @@ export default function Step6Date({ data, onChange, onNext, onBack }: Props) {
                   </div>
                   <div className="grid grid-cols-7 gap-1">
                     {blanks.map(i => <div key={`b-${i}`} />)}
-                    {days.map(day => (
-                      <button
-                        key={day}
-                        onClick={() => handleDateClick(day)}
-                        className={`aspect-square rounded-lg flex items-center justify-center text-[13px] font-bold transition-all
-                          ${isSelected(day)
-                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                            : (isLight ? 'text-slate-700 bg-white/90 hover:bg-slate-100 hover:text-slate-900' : 'text-slate-400 hover:bg-white/5 hover:text-white')
-                          }
-                        `}
-                      >
-                        {day}
-                      </button>
-                    ))}
+                    {days.map(day => {
+                      const disabled = isFutureDate(day)
+                      return (
+                        <button
+                          key={day}
+                          disabled={disabled}
+                          onClick={() => handleDateClick(day)}
+                          className={`aspect-square rounded-lg flex items-center justify-center text-[13px] font-bold transition-all
+                            ${isSelected(day)
+                              ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                              : disabled
+                                ? 'opacity-20 cursor-not-allowed text-slate-500'
+                                : (isLight ? 'text-slate-700 bg-white/90 hover:bg-slate-100 hover:text-slate-900' : 'text-slate-400 hover:bg-white/5 hover:text-white')
+                            }
+                          `}
+                        >
+                          {day}
+                        </button>
+                      )
+                    })}
                   </div>
                 </motion.div>
               )}
 
               {view === 'months' && (
                 <motion.div key="months" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="grid grid-cols-3 gap-2">
-                  {monthNames.map((m, i) => (
-                    <button
-                      key={m}
-                      onClick={() => {
-                        const nextDate = new Date(currentMonth);
-                        nextDate.setMonth(i);
-                        setCurrentMonth(nextDate);
-                        setView('days');
-                      }}
-                      className={`py-3 rounded-xl text-[11px] font-bold uppercase transition-all ${currentMonth.getMonth() === i ? 'bg-emerald-500 text-white' : (isLight ? 'text-slate-700 bg-white/90 hover:bg-slate-100' : 'text-slate-500 bg-white/5 hover:bg-white/10')}`}
-                    >
-                      {m.substring(0, 3)}
-                    </button>
-                  ))}
+                  {monthNames.map((m, i) => {
+                    const today = new Date()
+                    const isFutureMonth = new Date(currentMonth.getFullYear(), i, 1) > new Date(today.getFullYear(), today.getMonth(), 1)
+                    return (
+                      <button
+                        key={m}
+                        disabled={isFutureMonth}
+                        onClick={() => {
+                          const nextDate = new Date(currentMonth);
+                          nextDate.setMonth(i);
+                          setCurrentMonth(nextDate);
+                          setView('days');
+                        }}
+                        className={`py-3 rounded-xl text-[11px] font-bold uppercase transition-all ${isFutureMonth ? 'opacity-20 cursor-not-allowed text-slate-500' : ''} ${currentMonth.getMonth() === i ? 'bg-emerald-500 text-white' : (isLight ? 'text-slate-700 bg-white/90 hover:bg-slate-100' : 'text-slate-500 bg-white/5 hover:bg-white/10')}`}
+                      >
+                        {m.substring(0, 3)}
+                      </button>
+                    )
+                  })}
                 </motion.div>
               )}
 
               {view === 'years' && (
                 <motion.div key="years" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="grid grid-cols-3 gap-2">
-                  {years.map(y => (
-                    <button
-                      key={y}
-                      onClick={() => {
-                        const nextDate = new Date(currentMonth);
-                        nextDate.setFullYear(y);
-                        setCurrentMonth(nextDate);
-                        setView('days');
-                      }}
-                      className={`py-3 rounded-xl text-[12px] font-bold transition-all ${currentMonth.getFullYear() === y ? 'bg-emerald-500 text-white' : (isLight ? 'text-slate-700 bg-white/90 hover:bg-slate-100' : 'text-slate-500 bg-white/5 hover:bg-white/10')}`}
-                    >
-                      {y}
-                    </button>
-                  ))}
+                  {years.map(y => {
+                    const isFutureYear = y > new Date().getFullYear()
+                    return (
+                      <button
+                        key={y}
+                        disabled={isFutureYear}
+                        onClick={() => {
+                          const nextDate = new Date(currentMonth);
+                          nextDate.setFullYear(y);
+                          setCurrentMonth(nextDate);
+                          setView('days');
+                        }}
+                        className={`py-3 rounded-xl text-[12px] font-bold transition-all ${isFutureYear ? 'opacity-20 cursor-not-allowed text-slate-500' : ''} ${currentMonth.getFullYear() === y ? 'bg-emerald-500 text-white' : (isLight ? 'text-slate-700 bg-white/90 hover:bg-slate-100' : 'text-slate-500 bg-white/5 hover:bg-white/10')}`}
+                      >
+                        {y}
+                      </button>
+                    )
+                  })}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -176,7 +218,7 @@ export default function Step6Date({ data, onChange, onNext, onBack }: Props) {
           {data.entryDate && (
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={`${isLight ? 'bg-emerald-50 border-emerald-100' : 'bg-emerald-500/10 border border-emerald-500/20'} px-4 py-1.5 rounded-full flex items-center gap-2`}>
               <span className={`text-[10px] font-black uppercase tracking-widest ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>Sana:</span>
-              <span className={`font-bold text-[13px] ${isLight ? 'text-slate-900' : 'text-white'}`}>{data.entryDate}</span>
+              <span className={`font-bold text-[13px] ${isLight ? 'text-slate-900' : 'text-white'}`}>{displayDate(data.entryDate)}</span>
               <Check size={12} className={`${isLight ? 'text-emerald-600' : 'text-emerald-400'}`} />
             </motion.div>
           )}

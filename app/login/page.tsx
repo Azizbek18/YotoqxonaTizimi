@@ -57,12 +57,16 @@ function LoginContent() {
 
       // 1. Birinchi navbatda foydalanuvchi ro'yxatdan o'tganmi yoki yo'qligini tekshiramiz
       const [{ data: userExists }, { data: staffExists }] = await Promise.all([
-        supabase.from('users').select('id, email').eq('email', cleanEmail).maybeSingle(),
+        supabase.from('users').select('id, email, status').eq('email', cleanEmail).maybeSingle(),
         supabase.from('staff').select('id, email, role').eq('email', cleanEmail).maybeSingle(),
       ])
 
       if (!userExists && !staffExists) {
         throw new Error("Bunday foydalanuvchi ro'yxatdan o'tmagan!")
+      }
+
+      if (userExists && userExists.status === 'pending') {
+        throw new Error("Sizning arizangiz kutilmoqda. Admin tasdiqlagandan so'ng tizimga kira olasiz.")
       }
 
       // 2. Foydalanuvchi bor bo'lsa, endi tizimga kirishga urinib ko'ramiz

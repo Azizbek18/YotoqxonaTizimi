@@ -50,6 +50,10 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
         if (!passportSeries || passportSeries.trim().length < 9) return show3DToast("Passport seriyasini to'liq kiriting", 'error')
         if (!jshshir || jshshir.length !== 14) return show3DToast("JSHSHIR 14 ta raqam bo'lishi shart", 'error')
         if (!passportDate) return show3DToast("Passport berilgan sanasini tanlang", 'error')
+
+        const todayStr = new Date().toISOString().split('T')[0]
+        if (passportDate > todayStr) return show3DToast("Passport berilgan sanasi kelajakda bo'lishi mumkin emas!", 'error')
+
         if (!passportPlace || passportPlace.trim().length < 5) return show3DToast("Berilgan joyni aniqroq kiriting", 'error')
 
         show3DToast("Ma'lumotlar tasdiqlandi!", 'success')
@@ -135,6 +139,7 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                                 onBlur={() => setFocusedField(null)}
                                 className={`${glassInput} appearance-none scheme-dark`}
                                 value={data.passportDate || ''}
+                                max={new Date().toISOString().split('T')[0]}
                                 onChange={e => onChange({ passportDate: e.target.value })}
                             />
                         </div>

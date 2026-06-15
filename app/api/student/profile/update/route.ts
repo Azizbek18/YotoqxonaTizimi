@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function PATCH(request: NextRequest) {
     try {
         const body = await request.json()
-        const { userId, full_name, phone_number, faculty, room_number } = body
+        const { userId, full_name, phone, faculty, room_number } = body
         const groupVal = typeof body.group === 'string' ? body.group : undefined
 
         if (!userId) {
@@ -22,7 +22,7 @@ export async function PATCH(request: NextRequest) {
         const updates: Record<string, string | number> = {}
 
         if (full_name) updates.full_name = full_name
-        if (phone_number) updates.phone_number = phone_number
+        if (phone) updates.phone_number = phone
         if (faculty) updates.faculty = faculty
         if (groupVal) updates.group = groupVal
         if (room_number) updates.room_number = room_number

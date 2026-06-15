@@ -79,12 +79,14 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    if (userRole === 'admin') {
-      return NextResponse.redirect(new URL('/admin/dashboard', request.url))
-    }
-
-    if (userRole === 'tarbiyachi') {
-      return NextResponse.redirect(new URL('/tarbiyachi/dashboard', request.url))
+    if (userRole !== 'talaba') {
+      if (userRole === 'admin') {
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+      }
+      if (userRole === 'tarbiyachi') {
+        return NextResponse.redirect(new URL('/tarbiyachi/dashboard', request.url))
+      }
+      return NextResponse.redirect(new URL('/login', request.url))
     }
   }
 
@@ -101,6 +103,25 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/admin/dashboard', request.url))
       }
       return NextResponse.redirect(new URL('/talaba/dashboard', request.url))
+    }
+  }
+
+  // ========================
+  // SARDOR ROUTES HIMOYASI
+  // ========================
+  if (path.startsWith('/sardor')) {
+    if (!session) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    if (userRole !== 'talaba') {
+      if (userRole === 'admin') {
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+      }
+      if (userRole === 'tarbiyachi') {
+        return NextResponse.redirect(new URL('/tarbiyachi/dashboard', request.url))
+      }
+      return NextResponse.redirect(new URL('/login', request.url))
     }
   }
 
@@ -122,5 +143,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/talaba/:path*', '/tarbiyachi/:path*', '/admin/:path*', '/login', '/register', '/'],
+  matcher: ['/talaba/:path*', '/tarbiyachi/:path*', '/admin/:path*', '/sardor/:path*', '/login', '/register', '/'],
 }

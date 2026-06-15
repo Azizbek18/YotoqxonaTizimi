@@ -277,6 +277,17 @@ export default function StudentProfile() {
 
   // Last login
   const [lastLogin, setLastLogin] = useState<string | null>(null)
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    if (showEditModal || showPasswordModal || showDeleteConfirm) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showEditModal, showPasswordModal, showDeleteConfirm]);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -298,19 +309,37 @@ export default function StudentProfile() {
             .single()
 
           if (!error && data) {
-            setProfile(data)
+            setProfile({
+              ...data,
+              phone: data.phone_number
+            })
 
             // Roommates load
             if (data.room_number) {
               const { data: roommatesData, error: roommatesError } = await supabase
                 .from('users')
-                .select('id, full_name, email, phone, faculty, role, room_number, course, group, avatar_url')
+                .select('id, full_name, email, phone_number, faculty, role, room_number, course, group, avatar_url')
                 .eq('room_number', data.room_number)
                 .neq('id', user.id)
                 .order('full_name', { ascending: true })
 
               if (!roommatesError && roommatesData) {
-                setRoommates(roommatesData)
+                const mappedRoommates = roommatesData.map((r: {
+                  id: string
+                  full_name: string
+                  email: string
+                  phone_number?: string
+                  faculty?: string
+                  role?: string
+                  room_number?: string
+                  course?: string | number
+                  group?: string | number
+                  avatar_url?: string
+                }) => ({
+                  ...r,
+                  phone: r.phone_number
+                }))
+                setRoommates(mappedRoommates)
               }
             }
             return

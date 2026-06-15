@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
   Search, X, Plus, CreditCard, Trash2, CheckCircle2,
@@ -10,6 +11,9 @@ import {
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { supabase } from '@/lib/supabase';
 import { getSafeUser } from '@/lib/auth-session';
+import toast, { Toaster } from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
+
 
 interface Task {
   id: number;
@@ -37,17 +41,49 @@ interface Elon {
   desc: string;
 }
 
+interface Elon {
+  id: string | number;
+  title: string;
+  type: 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish';
+  teacher: string;
+  room: string;
+  time: string;
+  desc: string;
+  is_from_captain?: boolean;
+}
+
 interface Profile {
   id: string;
   full_name: string;
   email: string;
   phone?: string;
+  phone_number?: string;
   faculty?: string;
   role?: string;
   room_number?: string;
   course?: string | number;
   group?: string | number;
   avatar_url?: string;
+  is_floor_captain?: boolean;
+  assigned_floor?: number;
+  gender?: string;
+}
+
+interface PaymentRecord {
+  id?: string | number;
+  month?: string;
+  year?: number;
+  amount: number;
+  status: string;
+  created_at?: string;
+}
+
+interface MyApplication {
+  id: string | number;
+  type: 'ariza' | 'tushuntirish';
+  title: string;
+  createdDate: string;
+  status: 'draft' | 'submitted' | 'pending' | 'approved' | 'rejected';
 }
 
 function formatElonDate(value: string | null | undefined) {
@@ -63,10 +99,23 @@ function formatElonDate(value: string | null | undefined) {
 }
 
 export default function TalabaDashboard() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  interface CaptainInfo {
+    full_name: string;
+    phone_number?: string;
+    email?: string;
+  }
+
   // State - Profile va Roommates
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roommates, setRoommates] = useState<Profile[]>([]);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [floorCaptain, setFloorCaptain] = useState<CaptainInfo | null>(null);
+
 
   // State - UI
   const [showArizalar, setShowArizalar] = useState(false);
@@ -89,6 +138,338 @@ export default function TalabaDashboard() {
   // State - Dynamic Data
   const [elonlar, setElonlar] = useState<Elon[]>([]);
   const [arizalar, setArizalar] = useState<Ariza[]>([]);
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [myApplications, setMyApplications] = useState<MyApplication[]>([]);
+
+  const getAppStatusInfo = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return {
+          label: 'Qoralama (Draft)',
+          badgeClass: isLight 
+            ? 'text-slate-600 bg-slate-100 border-slate-200' 
+            : 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+          icon: FileText
+        };
+      case 'submitted':
+      case 'pending':
+        return {
+          label: 'Ko\'rib chiqilmoqda',
+          badgeClass: isLight 
+            ? 'text-amber-600 bg-amber-50 border-amber-200' 
+            : 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+          icon: Clock
+        };
+      case 'approved':
+        return {
+          label: 'Qabul qilindi',
+          badgeClass: isLight 
+            ? 'text-emerald-600 bg-emerald-50 border-emerald-200' 
+            : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+          icon: CheckCircle2
+        };
+      case 'rejected':
+        return {
+          label: 'Rad etildi',
+          badgeClass: isLight 
+            ? 'text-rose-600 bg-rose-50 border-rose-200' 
+            : 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+          icon: AlertTriangle
+        };
+      default:
+        return {
+          label: status,
+          badgeClass: isLight 
+            ? 'text-slate-600 bg-slate-100 border-slate-200' 
+            : 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+          icon: FileText
+        };
+    }
+  };
+
+  const DUTY_SLOTS = useMemo(() => [
+    "Dushanba / Payshanba",
+    "Seshanba / Juma",
+    "Chorshanba / Shanba",
+    "Yakshanba"
+  ], []);
+
+  const allResidents = useMemo(() => {
+    if (!profile) return [];
+    const list = [
+      { id: profile.id, name: `${profile.full_name} (Siz)`, isSelf: true }
+    ];
+    roommates.forEach(r => {
+      list.push({ id: r.id, name: r.full_name, isSelf: false });
+    });
+    return list;
+  }, [profile, roommates]);
+
+  // States for interactive cleaning duty schedule
+  const [cleaningSchedule, setCleaningSchedule] = useState<Record<string, { id: string; name: string } | null>>({});
+  const [draftSchedule, setDraftSchedule] = useState<Record<string, { id: string; name: string } | null>>({});
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [selectedResidentId, setSelectedResidentId] = useState<string | null>(null);
+  const [activeDragOverDay, setActiveDragOverDay] = useState<string | null>(null);
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
+
+  const WEEKDAYS = useMemo(() => [
+    "Dushanba",
+    "Seshanba",
+    "Chorshanba",
+    "Payshanba",
+    "Juma",
+    "Shanba",
+    "Yakshanba"
+  ], []);
+
+  const todayName = useMemo(() => {
+    const days = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
+    const todayIdx = new Date().getDay();
+    return days[todayIdx];
+  }, []);
+
+  const todayDutyPerson = useMemo(() => {
+    return cleaningSchedule[todayName] || null;
+  }, [cleaningSchedule, todayName]);
+
+
+  const getDefaultSchedule = (residents: Array<{ id: string; name: string; isSelf: boolean }>) => {
+    const defaultSched: Record<string, { id: string; name: string } | null> = {};
+    const WEEKDAYS_LIST = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba", "Yakshanba"];
+    WEEKDAYS_LIST.forEach((day, idx) => {
+      if (residents.length > 0) {
+        const resident = residents[idx % residents.length];
+        defaultSched[day] = { id: resident.id, name: resident.name };
+      } else {
+        defaultSched[day] = null;
+      }
+    });
+    return defaultSched;
+  };
+
+  // Load cleaning schedule
+  useEffect(() => {
+    if (!profile || !profile.room_number || allResidents.length === 0) return;
+
+    async function loadSchedule() {
+      const roomNum = profile!.room_number!;
+      try {
+        const { data, error } = await supabase
+          .from('cleaning_schedule')
+          .select('*')
+          .eq('room_number', roomNum)
+          .maybeSingle();
+
+        if (!error && data && data.schedule) {
+          setCleaningSchedule(data.schedule);
+          return;
+        }
+      } catch (err) {
+        console.log("Supabase fetch failed or table doesn't exist, falling back to local storage.", err);
+      }
+
+      // Check localStorage
+      const localSaved = localStorage.getItem(`cleaning_schedule_${roomNum}`);
+      if (localSaved) {
+        try {
+          setCleaningSchedule(JSON.parse(localSaved));
+          return;
+        } catch (e) {
+          console.error("Local storage schedule parse error:", e);
+        }
+      }
+
+      // Default schedule fallback
+      const defaultSched = getDefaultSchedule(allResidents);
+      setCleaningSchedule(defaultSched);
+    }
+
+    loadSchedule();
+  }, [profile, roommates, allResidents]);
+
+  // Sync draft with confirmed schedule when modal opens
+  useEffect(() => {
+    if (isScheduleModalOpen) {
+      setDraftSchedule({ ...cleaningSchedule });
+      setSelectedResidentId(null);
+      setActiveDragOverDay(null);
+    }
+  }, [isScheduleModalOpen, cleaningSchedule]);
+
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    const isAnyModalOpen = isScheduleModalOpen || !!selectedElon || !!selectedAriza || showArizalar;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isScheduleModalOpen, selectedElon, selectedAriza, showArizalar]);
+
+  // Drag start handler
+  const handleDragStart = (e: React.DragEvent, residentId: string) => {
+    e.dataTransfer.setData("text/plain", residentId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  // Drag over target
+  const handleDragOver = (e: React.DragEvent, day: string) => {
+    e.preventDefault();
+  };
+
+  // Drag enter target
+  const handleDragEnter = (e: React.DragEvent, day: string) => {
+    e.preventDefault();
+    setActiveDragOverDay(day);
+  };
+
+  // Drag leave target
+  const handleDragLeave = (e: React.DragEvent, day: string) => {
+    e.preventDefault();
+    if (activeDragOverDay === day) {
+      setActiveDragOverDay(null);
+    }
+  };
+
+  // Drop handler
+  const handleDrop = (e: React.DragEvent, day: string) => {
+    e.preventDefault();
+    setActiveDragOverDay(null);
+    const residentId = e.dataTransfer.getData("text/plain");
+    const resident = allResidents.find(r => r.id === residentId);
+    if (resident) {
+      setDraftSchedule(prev => ({
+        ...prev,
+        [day]: { id: resident.id, name: resident.name }
+      }));
+    }
+  };
+
+  // Click handler for click-to-assign
+  const handleResidentClick = (residentId: string) => {
+    if (selectedResidentId === residentId) {
+      setSelectedResidentId(null);
+    } else {
+      setSelectedResidentId(residentId);
+    }
+  };
+
+  const handleDayClick = (day: string) => {
+    if (selectedResidentId) {
+      const resident = allResidents.find(r => r.id === selectedResidentId);
+      if (resident) {
+        setDraftSchedule(prev => ({
+          ...prev,
+          [day]: { id: resident.id, name: resident.name }
+        }));
+        setSelectedResidentId(null);
+      }
+    }
+  };
+
+  // Unassign resident from a day
+  const handleUnassign = (day: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent trigger click-to-assign on the day box
+    setDraftSchedule(prev => ({
+      ...prev,
+      [day]: null
+    }));
+  };
+
+  // Reset draft to sequential default
+  const handleResetDraft = () => {
+    const defaultSched = getDefaultSchedule(allResidents);
+    setDraftSchedule(defaultSched);
+    toast.success("Jadval standart holatga qaytarildi");
+  };
+
+  // Save the schedule to DB/localStorage
+  const handleSaveSchedule = async () => {
+    if (!profile || !profile.room_number) return;
+    setIsSavingSchedule(true);
+    const roomNum = profile.room_number;
+    try {
+      const { error } = await supabase
+        .from('cleaning_schedule')
+        .upsert({
+          room_number: roomNum,
+          schedule: draftSchedule,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'room_number' });
+
+      if (error) {
+        throw error;
+      }
+
+      setCleaningSchedule(draftSchedule);
+      localStorage.setItem(`cleaning_schedule_${roomNum}`, JSON.stringify(draftSchedule));
+      toast.success("Navbatchilik jadvali muvaffaqiyatli saqlandi!");
+      setIsScheduleModalOpen(false);
+    } catch (err) {
+      console.warn("Supabase upsert failed, saving to localStorage as fallback:", err);
+      // Fallback
+      setCleaningSchedule(draftSchedule);
+      localStorage.setItem(`cleaning_schedule_${roomNum}`, JSON.stringify(draftSchedule));
+      toast.success("Navbatchilik jadvali qurilmada saqlandi (mahalliy rejim)!");
+      setIsScheduleModalOpen(false);
+    } finally {
+      setIsSavingSchedule(false);
+    }
+  };
+
+
+  // State - AI Chatbot
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'model'; text: string }>>([
+    {
+      role: 'model',
+      text: "Salom! Men yotoqxona AI yordamchisiman. Yotoqxona qoidalari, to'lovlar, komendant telefon raqami yoki tozalik navbatchiligi bo'yicha qanday savolingiz bor? 😊"
+    }
+  ]);
+  const [userMessage, setUserMessage] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+
+  const handleSendMessage = async (textToSend?: string) => {
+    const messageText = textToSend || userMessage;
+    if (!messageText.trim() || chatLoading) return;
+
+    const newMsg = { role: 'user' as const, text: messageText };
+    const updatedMessages = [...chatMessages, newMsg];
+    setChatMessages(updatedMessages);
+    setUserMessage("");
+    setChatLoading(true);
+
+    try {
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: messageText,
+          history: chatMessages.slice(-10)
+        })
+      });
+      const data = await res.json();
+      if (data.reply) {
+        setChatMessages(prev => [...prev, { role: 'model' as const, text: data.reply }]);
+      } else {
+        throw new Error(data.error || "Tahlil qilishda xato");
+      }
+    } catch (err) {
+      console.error("Chat error:", err);
+      setChatMessages(prev => [...prev, {
+        role: 'model' as const,
+        text: "Kechirasiz, javob olishda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring. 🔌"
+      }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   // Load Tasks and Settings on Mount
   useEffect(() => {
@@ -144,6 +525,17 @@ export default function TalabaDashboard() {
   // Fetch Profile, Roommates, Announcements, and Disciplinary Writeups
   useEffect(() => {
     async function fetchData() {
+      // Helper function to extract floor
+      function extractFloor(roomNumber: string | null | undefined): number | null {
+        if (!roomNumber) return null
+        const num = parseInt(roomNumber.trim().replace(/\D/g, ''))
+        if (isNaN(num)) return null
+        if (num >= 100) {
+          return Math.floor(num / 100)
+        }
+        return num
+      }
+
       try {
         setLoadingProfile(true);
         const user = await getSafeUser();
@@ -173,6 +565,23 @@ export default function TalabaDashboard() {
 
               if (!roommatesError && roommatesData) {
                 setRoommates(roommatesData as Profile[]);
+              }
+            }
+
+            // 2b. Qavat sardorini yuklash
+            const userFloor = profileData.assigned_floor || extractFloor(profileData.room_number);
+            const userGender = profileData.gender;
+            if (userFloor && userGender) {
+              const { data: captainData } = await supabase
+                .from('users')
+                .select('full_name, phone_number, email')
+                .eq('is_floor_captain', true)
+                .eq('assigned_floor', userFloor)
+                .eq('gender', userGender)
+                .maybeSingle();
+              
+              if (captainData) {
+                setFloorCaptain(captainData);
               }
             }
           }
@@ -220,32 +629,30 @@ export default function TalabaDashboard() {
           ]);
         }
 
-        // 3. Real E'lonlarni Yuklash (elonlar table)
-        const { data: elonData, error: elonError } = await supabase
-          .from('elonlar')
-          .select('*')
-          .eq('is_published', true)
-          .order('published_at', { ascending: false })
-          .limit(8);
+        // 3. Real E'lonlarni Yuklash (API orqali filterlangan holda)
+        const resElon = await fetch('/api/elonlar');
+        const resultElon = await resElon.json();
 
-        if (!elonError && elonData && elonData.length > 0) {
-          const mappedElons = elonData.map((e: {
+        if (resElon.ok && Array.isArray(resultElon.elonlar)) {
+          const mappedElons = resultElon.elonlar.map((e: {
             id: string | number;
             title: string;
-            type: string;
+            type: 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish';
             author_name?: string;
-            location?: string;
+            is_from_captain?: boolean;
+            captain_floor?: number | string;
             published_at?: string;
             created_at?: string;
             text: string;
           }) => ({
             id: e.id,
             title: e.title,
-            type: e.type as Elon['type'],
+            type: e.type,
             teacher: e.author_name || "Tizim ma'muri",
-            room: e.location || "4-bino",
+            room: e.is_from_captain ? `${e.captain_floor}-qavat sardori` : "Ma'muriyat",
             time: formatElonDate(e.published_at ?? e.created_at),
             desc: e.text,
+            is_from_captain: e.is_from_captain,
           }));
           setElonlar(mappedElons);
         } else {
@@ -287,6 +694,7 @@ export default function TalabaDashboard() {
             .from('arizalar')
             .select('*')
             .eq('student_name', currentProfile.full_name)
+            .neq('status', 'draft')
             .order('created_at', { ascending: false });
 
           if (!arizalarError && arizalarData && arizalarData.length > 0) {
@@ -307,18 +715,51 @@ export default function TalabaDashboard() {
             }));
             setArizalar(mappedArizalar);
           } else {
-            // Mock disciplinary records if DB is empty
-            setArizalar([
-              {
-                id: 1,
-                ism: currentProfile.full_name,
-                kurs: `${currentProfile.course || 1}-kurs`,
-                yonalish: currentProfile.faculty || "IT & Amaliy Matematika",
-                sana: "10.05.2026",
-                matn: "Yotoqxona ichki tartib qoidalarini buzganlik (kech qolish) bo'yicha tushuntirish xati.",
-                daraja: "warning"
-              }
-            ]);
+            setArizalar([]);
+          }
+        }
+
+        // 4b. Real Murojaat va Arizalarim Statusini Yuklash (arizalar table)
+        if (user) {
+          const { data: myAppsData, error: myAppsError } = await supabase
+            .from('arizalar')
+            .select('*')
+            .eq('student_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(3);
+
+          if (!myAppsError && myAppsData && myAppsData.length > 0) {
+            const mappedMyApps = myAppsData.map((app: {
+              id: string | number;
+              type?: string;
+              title?: string;
+              date?: string;
+              created_at?: string;
+              status?: string;
+            }) => ({
+              id: app.id,
+              type: (app.type || 'ariza') as 'ariza' | 'tushuntirish',
+              title: app.title || 'Sarlavhasiz',
+              createdDate: app.date || app.created_at || new Date().toISOString(),
+              status: (app.status || 'pending') as 'draft' | 'submitted' | 'pending' | 'approved' | 'rejected',
+            }));
+            setMyApplications(mappedMyApps);
+          } else {
+            setMyApplications([]);
+          }
+        } else {
+          setMyApplications([]);
+        }
+
+        // 5. Real Tolovlarni Yuklash (tolovlar table)
+        if (user) {
+          const { data: tolovData, error: tolovError } = await supabase
+            .from('tolovlar')
+            .select('*')
+            .eq('student_id', user.id);
+
+          if (!tolovError && tolovData) {
+            setPayments(tolovData);
           }
         }
 
@@ -367,6 +808,15 @@ export default function TalabaDashboard() {
   const textStrong = isLight ? 'text-slate-900' : 'text-white';
   const cardBorder = isLight ? 'border-slate-100' : 'border-white/5';
   const cardInnerBg = isLight ? 'bg-slate-50/70 hover:bg-slate-100/50' : 'bg-white/5 hover:bg-white/10';
+
+  // Payment Calculations
+  const totalContractFee = 3000000; // 3,000,000 UZS total contract fee
+  const paidAmount = payments
+    .filter(p => p.status === 'paid' || p.status === 'approved')
+    .reduce((sum, p) => sum + p.amount, 0);
+  const remainingAmount = Math.max(0, totalContractFee - paidAmount);
+  const progressPercent = Math.min(100, Math.round((paidAmount / totalContractFee) * 100));
+  const strokeDashoffset = Math.max(0, 213 - (213 * progressPercent) / 100);
 
   if (loadingProfile) {
     return (
@@ -474,18 +924,28 @@ export default function TalabaDashboard() {
                 </div>
                 
                 <div className="space-y-2 text-xs font-semibold text-white/90">
-                  <div className="flex justify-between items-center py-1 border-b border-white/5">
-                    <span className="opacity-60">Dushanba / Payshanba</span>
-                    <span className="font-bold">Dilshod Latipov</span>
+                  <div className="flex flex-col gap-1.5 p-3 rounded-2xl bg-white/5 border border-white/5">
+                    <div className="flex justify-between items-center text-[10px] opacity-60 font-semibold uppercase tracking-wider">
+                      <span>Bugun ({todayName})</span>
+                      <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                    </div>
+                    <div className="text-sm font-black tracking-tight text-white mt-1">
+                      {todayDutyPerson ? (
+                        <span className={todayDutyPerson.id === profile?.id ? "text-cyan-200" : ""}>
+                          {todayDutyPerson.id === profile?.id ? `${profile?.full_name} (Siz)` : todayDutyPerson.name}
+                        </span>
+                      ) : (
+                        <span className="text-white/50 italic">Bugun hech kim biriktirilmagan</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center py-1 border-b border-white/5">
-                    <span className="opacity-60">Seshanba / Juma</span>
-                    <span className="font-bold text-cyan-200">Sherzod G&apos;apparov (Siz)</span>
-                  </div>
-                  <div className="flex justify-between items-center py-1">
-                    <span className="opacity-60">Chorshanba / Shanba</span>
-                    <span className="font-bold">Gaxriman Araznepesov</span>
-                  </div>
+
+                  <button 
+                    onClick={() => setIsScheduleModalOpen(true)}
+                    className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-1.5 mt-2"
+                  >
+                    <span>📋 Hamma navbatchilikni ko&apos;rish</span>
+                  </button>
                 </div>
               </div>
 
@@ -508,6 +968,76 @@ export default function TalabaDashboard() {
               </div>
             </div>
           </div>
+
+          {/* Sardorlik Paneli Card */}
+          {profile?.is_floor_captain && (
+            <div className="relative overflow-hidden p-6 rounded-[32px] border border-purple-500/20 bg-purple-500/5 shadow-2xl transition-all duration-300">
+              <div className="absolute right-[-10%] top-[-10%] w-[50%] h-[50%] rounded-full blur-[80px] bg-purple-500/20" />
+              <div className="relative z-10 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 font-bold">
+                    ⭐
+                  </div>
+                  <div>
+                    <h4 className={`text-base font-black tracking-tight ${textStrong}`}>Sardorlik Faoliyati</h4>
+                    <p className={`text-[10px] uppercase font-bold tracking-widest text-purple-400`}>
+                      {profile.assigned_floor}-qavat sardori
+                    </p>
+                  </div>
+                </div>
+                <p className={`text-xs leading-relaxed ${textMuted}`}>
+                  Siz ushbu qavatning sardori etib tayinlangansiz. Talabalarni ko&apos;rish va yangi e&apos;lon yuborish uchun boshqaruv paneliga o&apos;ting.
+                </p>
+                <Link
+                  href="/sardor/dashboard"
+                  className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-lg shadow-purple-500/20 active:scale-98"
+                >
+                  Sardor paneliga o&apos;tish
+                  <ArrowRight size={14} />
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Floor Captain Card for normal students */}
+          {floorCaptain && (
+            <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg} relative overflow-hidden`}>
+              <div className="absolute right-[-10%] top-[-10%] w-[40%] h-[40%] rounded-full blur-[60px] bg-cyan-500/10" />
+              <div className="relative z-10">
+                <h3 className={`text-[10px] font-black tracking-[0.2em] mb-4 uppercase ${
+                  isLight ? 'text-blue-600' : 'text-cyan-400'
+                }`}>
+                  Qavat Sardori
+                </h3>
+                <div className="flex items-center gap-4">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${isLight ? 'bg-cyan-50 text-cyan-600' : 'bg-cyan-500/10 text-cyan-400'}`}>
+                    {floorCaptain.full_name?.split(' ').map((n: string) => n[0]).join('').substring(0, 2) || 'QS'}
+                  </div>
+                  <div>
+                    <p className={`text-sm font-black tracking-tight ${textStrong}`}>{floorCaptain.full_name}</p>
+                    <p className={`text-[10px] ${textMuted} font-semibold mt-0.5`}>
+                      Sizning qavatingiz ({profile?.room_number ? Math.floor(parseInt(profile.room_number.replace(/\D/g, '')) / 100) : ''}-qavat) sardori
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/5">
+                  <div className={`p-3 rounded-2xl border ${cardBorder} ${cardInnerBg} text-center`}>
+                    <p className={`text-[8px] font-bold uppercase tracking-wider text-slate-500 mb-0.5`}>Telefon</p>
+                    <a href={`tel:${floorCaptain.phone_number || ''}`} className={`text-[10px] font-black ${textStrong} hover:text-cyan-400 transition-colors`}>
+                      {floorCaptain.phone_number || 'Kiritilmagan'}
+                    </a>
+                  </div>
+                  <div className={`p-3 rounded-2xl border ${cardBorder} ${cardInnerBg} text-center`}>
+                    <p className={`text-[8px] font-bold uppercase tracking-wider text-slate-500 mb-0.5`}>Email</p>
+                    <p className={`text-[10px] font-black ${textStrong} truncate`}>
+                      {floorCaptain.email}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Turniket Logs (Gate Passes) */}
           <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg}`}>
@@ -684,7 +1214,7 @@ export default function TalabaDashboard() {
 
           {/* E'lonlar Bo'limi (RE-DESIGNED NOTICE BOARD - TIMELINE CARDS) */}
           <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg}`}>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div className="flex flex-col gap-3.5 mb-6">
               <div>
                 <h3 className={`text-base font-black uppercase tracking-wider flex items-center gap-2 ${
                   isLight ? 'text-blue-600' : 'text-indigo-400'
@@ -694,12 +1224,12 @@ export default function TalabaDashboard() {
                 <p className={`text-[10px] mt-1 ${textMuted}`}>Yotoqxona ma&apos;muriyati tomonidan chop etilgan so&apos;nggi yangiliklar.</p>
               </div>
               
-              <div className="flex flex-wrap gap-1">
+              <div className="flex overflow-x-auto no-scrollbar gap-1.5 max-w-full pb-1 flex-nowrap shrink-0">
                 {['Barchasi', 'Muhim', 'Tadbir', 'Yangilik', 'Ogohlantirish'].map(cat => (
                   <button 
                     key={cat}
                     onClick={() => setElonCategory(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all duration-200 ${
+                    className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all duration-200 shrink-0 ${
                       elonCategory === cat 
                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' 
                         : isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-white/5 hover:bg-white/10 text-gray-300'
@@ -737,6 +1267,11 @@ export default function TalabaDashboard() {
                         <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${typeStyles.badge}`}>
                           {elon.type}
                         </span>
+                        {elon.is_from_captain && (
+                          <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border border-purple-500/30 bg-purple-500/10 text-purple-400">
+                            🌟 Qavat Sardori
+                          </span>
+                        )}
                         <div className={`flex items-center gap-1 text-[10px] ${textMuted}`}>
                           <Clock size={11} />
                           <span>{elon.time}</span>
@@ -793,50 +1328,79 @@ export default function TalabaDashboard() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Card 1 */}
-              <div className={`p-4 rounded-2xl border ${cardBorder} ${cardInnerBg} flex flex-col justify-between gap-3`}>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[9px] font-black uppercase text-indigo-400">Ariza</span>
-                    <span className="text-[9px] font-bold text-gray-500">12.06.2026</span>
-                  </div>
-                  <h4 className={`text-xs font-bold ${textStrong}`}>Turarjoyni o&apos;zgartirish haqida ariza</h4>
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg self-start">
-                  <Clock size={10} />
-                  <span>Ko&apos;rib chiqilmoqda</span>
-                </div>
-              </div>
+              {myApplications.map((app) => {
+                const typeLabel = app.type === 'tushuntirish' ? 'Tushuntirish' : 'Ariza';
+                const formattedDate = formatElonDate(app.createdDate);
+                const statusInfo = getAppStatusInfo(app.status);
+                const StatusIcon = statusInfo.icon;
 
-              {/* Card 2 */}
-              <div className={`p-4 rounded-2xl border ${cardBorder} ${cardInnerBg} flex flex-col justify-between gap-3`}>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[9px] font-black uppercase text-indigo-400">Tushuntirish</span>
-                    <span className="text-[9px] font-bold text-gray-500">08.06.2026</span>
+                return (
+                  <div key={app.id} className={`p-4 rounded-2xl border ${cardBorder} ${cardInnerBg} flex flex-col justify-between gap-3`}>
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[9px] font-black uppercase text-indigo-400">{typeLabel}</span>
+                        <span className="text-[9px] font-bold text-gray-500">{formattedDate}</span>
+                      </div>
+                      <h4 className={`text-xs font-bold line-clamp-2 ${textStrong}`}>
+                        {app.title}
+                      </h4>
+                    </div>
+                    <div className={`flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-lg self-start border ${statusInfo.badgeClass}`}>
+                      <StatusIcon size={10} />
+                      <span>{statusInfo.label}</span>
+                    </div>
                   </div>
-                  <h4 className={`text-xs font-bold ${textStrong}`}>Dars qoldirish bo&apos;yicha tushuntirish xati</h4>
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg self-start">
-                  <CheckCircle2 size={10} />
-                  <span>Qabul qilindi</span>
-                </div>
-              </div>
+                );
+              })}
+              {myApplications.length === 0 && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className={`col-span-1 sm:col-span-3 flex flex-col items-center justify-center py-10 px-6 border border-dashed rounded-3xl transition-all duration-300 relative overflow-hidden group ${
+                    isLight 
+                      ? 'border-slate-200 bg-white/50 hover:border-blue-400' 
+                      : 'border-white/10 bg-slate-950/20 hover:border-indigo-500/40'
+                  }`}
+                >
+                  {/* Decorative background glow */}
+                  <div className="absolute -inset-10 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                  
+                  {/* Floating Icon Wrapper */}
+                  <motion.div 
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                    className={`p-4 rounded-2xl mb-4 relative ${
+                      isLight ? 'bg-blue-50 text-blue-600' : 'bg-indigo-500/10 text-indigo-400'
+                    }`}
+                  >
+                    <ClipboardList className="size-8 relative z-10" />
+                    <span className="absolute inset-0 rounded-2xl bg-current opacity-10 blur-sm animate-pulse" />
+                  </motion.div>
 
-              {/* Card 3 */}
-              <div className={`p-4 rounded-2xl border ${cardBorder} ${cardInnerBg} flex flex-col justify-between gap-3`}>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[9px] font-black uppercase text-indigo-400">Ariza</span>
-                    <span className="text-[9px] font-bold text-gray-500">Bugun</span>
-                  </div>
-                  <h4 className={`text-xs font-bold ${textStrong}`}>Texnik yordam: Xona rozetkasini ta&apos;mirlash</h4>
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-slate-500/10 border border-slate-500/20 px-2.5 py-1 rounded-lg self-start">
-                  <FileText size={10} />
-                  <span>Qoralama (Draft)</span>
-                </div>
-              </div>
+                  <h4 className={`text-sm font-black mb-1 text-center tracking-wide uppercase ${textStrong}`}>
+                    Murojaatlar mavjud emas
+                  </h4>
+                  <p className={`text-xs text-center max-w-[280px] mb-5 leading-relaxed ${textMuted}`}>
+                    Sizda hali hech qanday ariza yoki tushuntirish xati yo&apos;q. Hozir yangi ariza yuborishingiz mumkin!
+                  </p>
+
+                  <Link 
+                    href="/talaba/arizalar"
+                    className={`relative overflow-hidden px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-300 transform active:scale-95 shadow-lg ${
+                      isLight 
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/20 hover:shadow-blue-500/30' 
+                        : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-indigo-500/20 hover:shadow-indigo-500/30'
+                    }`}
+                  >
+                    <span className="absolute inset-0 bg-white/10 translate-y-full hover:translate-y-0 transition-transform duration-300" />
+                    <span className="relative flex items-center gap-1.5">
+                      <Plus size={14} className="animate-spin-slow" />
+                      <span>Ariza Yozish</span>
+                    </span>
+                  </Link>
+                </motion.div>
+              )}
             </div>
           </div>
 
@@ -864,14 +1428,33 @@ export default function TalabaDashboard() {
             {/* Health Bar */}
             <div className="relative w-full h-3 rounded-full bg-white/5 overflow-hidden mb-6 border border-white/5">
               <div 
-                className={`h-full rounded-full transition-all duration-1000 ${healthColor}`}
+                className={`h-full rounded-full transition-all duration-1000 relative overflow-hidden ${healthColor}`}
                 style={{ width: `${healthPercent}%` }}
-              />
+              >
+                {healthPercent === 100 && (
+                  <motion.div 
+                    animate={{ x: ['-100%', '100%'] }}
+                    transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                  />
+                )}
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <p className={`text-2xl font-black italic ${textStrong}`}>{arizaSoni} ta faol ogohlantirish</p>
+                <div className="flex items-center gap-2">
+                  <p className={`text-2xl font-black italic ${textStrong}`}>{arizaSoni} ta faol ogohlantirish</p>
+                  {arizaSoni === 0 && (
+                    <motion.span 
+                      animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
+                      transition={{ repeat: Infinity, duration: 4, repeatDelay: 2 }}
+                      className="text-emerald-500 font-bold"
+                    >
+                      ✓
+                    </motion.span>
+                  )}
+                </div>
                 <p className={`text-[10px] font-bold mt-1 ${
                   arizaSoni >= 3 ? 'text-red-500 animate-pulse' : textMuted
                 }`}>
@@ -907,30 +1490,39 @@ export default function TalabaDashboard() {
                   <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
                     <svg className="w-full h-full transform -rotate-90">
                       <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" className={isLight ? "text-slate-100" : "text-white/5"} />
-                      <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="213" strokeDashoffset="142" className={isLight ? "text-blue-600" : "text-indigo-500"} style={{ transition: 'all 1000ms' }} />
+                      <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="213" strokeDashoffset={strokeDashoffset} className={isLight ? "text-blue-600" : "text-indigo-500"} style={{ transition: 'all 1000ms' }} />
                     </svg>
                     <div className={`absolute flex flex-col items-center ${textStrong}`}>
-                      <span className="text-sm font-black italic">33%</span>
+                      <span className="text-sm font-black italic">{progressPercent}%</span>
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <p className={`text-xs font-bold ${textStrong}`}>1,000,000 UZS to&apos;landi</p>
-                    <p className={`text-[10px] ${textMuted}`}>Jami summa: 3,000,000 UZS</p>
+                    <p className={`text-xs font-bold ${textStrong}`}>{paidAmount.toLocaleString('uz-UZ')} UZS to&apos;landi</p>
+                    <p className={`text-[10px] ${textMuted}`}>Shartnoma: {totalContractFee.toLocaleString('uz-UZ')} UZS</p>
                   </div>
                 </div>
 
                 <div className="space-y-2.5">
                   <div className={`flex justify-between items-center p-3 rounded-xl border ${cardBorder} ${cardInnerBg}`}>
                     <span className={`text-[9px] font-black uppercase ${textMuted}`}>Qolgan to&apos;lov</span>
-                    <span className={`text-xs font-black ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>2,000,000 UZS</span>
+                    <span className={`text-xs font-black ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>{remainingAmount.toLocaleString('uz-UZ')} UZS</span>
                   </div>
-                  <div className={`flex justify-between items-center p-3 rounded-xl border animate-pulse ${
-                    isLight ? 'bg-red-50 border-red-200' : 'bg-red-500/10 border-red-500/20'
-                  }`}>
-                    <span className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-red-600' : 'text-red-400'}`}>Muddati</span>
-                    <span className={`text-xs font-black ${isLight ? 'text-red-600' : 'text-red-400'}`}>8 kun ichida</span>
-                  </div>
+                  {remainingAmount > 0 ? (
+                    <div className={`flex justify-between items-center p-3 rounded-xl border animate-pulse ${
+                      isLight ? 'bg-red-50 border-red-200' : 'bg-red-500/10 border-red-500/20'
+                    }`}>
+                      <span className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-red-600' : 'text-red-400'}`}>Muddati</span>
+                      <span className={`text-xs font-black ${isLight ? 'text-red-600' : 'text-red-400'}`}>Kutilmoqda</span>
+                    </div>
+                  ) : (
+                    <div className={`flex justify-between items-center p-3 rounded-xl border ${
+                      isLight ? 'bg-green-50 border-green-200 text-green-700' : 'bg-green-500/10 border-green-500/20 text-green-400'
+                    }`}>
+                      <span className={`text-[9px] font-black uppercase tracking-wider`}>Holat</span>
+                      <span className="text-xs font-black">To&apos;liq to&apos;langan ✅</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -938,7 +1530,7 @@ export default function TalabaDashboard() {
                 href="/talaba/tolova" 
                 className="w-full mt-5 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-center text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-500/25 transition-all"
               >
-                Kvitansiya Yuklash
+                Kvitansiya Boshqaruvi
               </Link>
             </div>
 
@@ -1035,14 +1627,14 @@ export default function TalabaDashboard() {
       </div>
 
       {/* 2. ARIZALAR RO'YXATI MODALI */}
-      {showArizalar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setShowArizalar(false)}>
-          <div className="bg-[#0b0f19] border border-white/5 p-7 rounded-[40px] shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6">
+      {mounted && typeof document !== 'undefined' && showArizalar && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setShowArizalar(false)}>
+          <div className="bg-[#0b0f19] border border-white/5 p-4 sm:p-7 rounded-2xl sm:rounded-[40px] shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 sm:mb-6">
               <h4 className="text-xl font-black italic flex items-center gap-2 uppercase tracking-tighter text-indigo-400">
                 <FileText /> Arizalar & Ogohlantirishlar
               </h4>
-              <button onClick={() => setShowArizalar(false)} className="p-2 hover:bg-white/5 rounded-full transition-all text-gray-400"><X /></button>
+              <button onClick={() => setShowArizalar(false)} className="p-2 hover:bg-white/5 rounded-full transition-all text-gray-400 cursor-pointer"><X /></button>
             </div>
             
             <div className="space-y-3 mb-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
@@ -1071,18 +1663,33 @@ export default function TalabaDashboard() {
                 );
               })}
               {arizalar.length === 0 && (
-                <p className="text-center text-gray-500 py-8 italic">Ogohlantirishlar topilmadi.</p>
+                <div className="text-center py-10 flex flex-col items-center justify-center">
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ repeat: Infinity, duration: 2.5 }}
+                    className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 mb-4"
+                  >
+                    <CheckCircle2 size={32} />
+                  </motion.div>
+                  <p className="text-sm font-black text-white uppercase tracking-wider mb-1">
+                    Ogohlantirishlar mavjud emas
+                  </p>
+                  <p className="text-xs text-gray-400 max-w-[280px] leading-relaxed">
+                    Siz intizom qoidalariga to&apos;liq rioya etyapsiz. Rahmat! 🌟
+                  </p>
+                </div>
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* 3. ARIZA TO'LIQ MATNI MODALI */}
-      {selectedAriza && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/90 backdrop-blur-lg p-4" onClick={() => setSelectedAriza(null)}>
-          <div className="bg-[#0b0f19] border border-red-500/20 p-8 rounded-[40px] shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-center mb-5">
+      {mounted && typeof document !== 'undefined' && selectedAriza && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 backdrop-blur-lg p-4" onClick={() => setSelectedAriza(null)}>
+          <div className="bg-[#0b0f19] border border-red-500/20 p-5 sm:p-8 rounded-2xl sm:rounded-[40px] shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-center mb-4 sm:mb-5">
               <div className="w-14 h-14 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500"><AlertTriangle size={28} /></div>
             </div>
             
@@ -1100,29 +1707,30 @@ export default function TalabaDashboard() {
             
             <button 
               onClick={() => setSelectedAriza(null)} 
-              className="w-full py-3.5 bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-500/30 transition-all"
+              className="w-full py-3.5 bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-500/30 transition-all cursor-pointer"
             >
               Yopish
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* 4. E'LONLAR MODALI */}
-      {selectedElon && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4" onClick={() => setSelectedElon(null)}>
-          <div className="bg-[#0b0f19] border border-white/5 p-0 rounded-[40px] shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-white relative">
-              <div className="absolute top-6 right-6">
-                <button onClick={() => setSelectedElon(null)} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white"><X size={16} /></button>
+      {mounted && typeof document !== 'undefined' && selectedElon && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-md p-4" onClick={() => setSelectedElon(null)}>
+          <div className="bg-[#0b0f19] border border-white/5 p-0 rounded-2xl sm:rounded-[40px] shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 sm:p-8 text-white relative">
+              <div className="absolute top-4 sm:top-6 right-4 sm:right-6">
+                <button onClick={() => setSelectedElon(null)} className="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white cursor-pointer"><X size={14} /></button>
               </div>
-              <span className="text-[9px] font-black bg-white/20 px-3 py-1 rounded-full uppercase tracking-widest mb-3 inline-block">
+              <span className="text-[9px] font-black bg-white/20 px-3 py-1 rounded-full uppercase tracking-widest mb-2 sm:mb-3 inline-block">
                 {selectedElon.type}
               </span>
-              <h3 className="text-2xl sm:text-3xl font-black italic tracking-tight leading-tight">{selectedElon.title}</h3>
+              <h3 className="text-xl sm:text-3xl font-black italic tracking-tight leading-tight">{selectedElon.title}</h3>
             </div>
             
-            <div className="p-7 space-y-6">
+            <div className="p-5 sm:p-7 space-y-4 sm:space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
                   <div className="flex items-center gap-2 text-indigo-400 mb-1">
@@ -1149,18 +1757,400 @@ export default function TalabaDashboard() {
               
               <button 
                 onClick={() => setSelectedElon(null)} 
-                className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all text-white"
+                className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all text-white cursor-pointer"
               >
                 Tushunarli
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 5. FLOATING AI ASSISTANT BUTTON & CHAT DRAWER */}
+      {mounted && typeof document !== 'undefined' && createPortal(
+        <>
+          <div className="fixed bottom-24 sm:bottom-28 right-6 z-[9999] pointer-events-auto">
+            <button
+              onClick={() => setIsChatOpen(true)}
+              className={`flex items-center justify-center p-4 rounded-full border shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 group ${
+                isLight
+                  ? 'bg-blue-600 border-blue-500 text-white hover:bg-blue-700 shadow-blue-500/20'
+                  : 'bg-gradient-to-r from-cyan-500 to-indigo-600 border-cyan-400/30 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)]'
+              }`}
+            >
+              <Sparkles className="size-6 animate-pulse" />
+            </button>
+          </div>
+
+          {/* 6. AI CHAT SIDEBAR/DRAWER */}
+          {isChatOpen && (
+            <div className="fixed inset-0 z-[10000] flex justify-end bg-black/60 backdrop-blur-xs">
+              {/* Backdrop Click */}
+              <div className="absolute inset-0 pointer-events-auto" onClick={() => setIsChatOpen(false)} />
+              
+              <div className={`relative w-full max-w-md h-full shadow-2xl border-l flex flex-col justify-between backdrop-blur-2xl transition-all duration-300 pointer-events-auto ${
+                isLight
+                  ? 'bg-white/95 border-slate-200 text-slate-900'
+                  : 'bg-[#0b101d]/95 border-white/5 text-white'
+              }`}>
+                {/* Header */}
+                <div className="p-5 border-b border-white/5 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={20} className={isLight ? 'text-blue-600' : 'text-cyan-400'} />
+                    <div>
+                      <h3 className={`text-sm font-black uppercase tracking-wider ${textStrong}`}>🤖 Yotoqxona AI</h3>
+                      <p className={`text-[10px] ${textMuted}`}>Savollarga real vaqtda javob beradi</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsChatOpen(false)}
+                    className={`p-2 rounded-xl transition-all border ${
+                      isLight ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'
+                    }`}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Chat History */}
+                <div className="flex-1 overflow-y-auto p-5 space-y-4 pr-3 custom-scrollbar text-xs sm:text-sm">
+                  {chatMessages.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-[85%] p-3.5 rounded-2xl border ${
+                        msg.role === 'user'
+                          ? isLight
+                            ? 'bg-blue-600 border-blue-500 text-white rounded-br-none shadow-md shadow-blue-500/10'
+                            : 'bg-indigo-600 border-indigo-500 text-white rounded-br-none shadow-md shadow-indigo-600/10'
+                          : isLight
+                            ? 'bg-slate-100 border-slate-200 text-slate-900 rounded-bl-none'
+                            : 'bg-white/5 border-white/5 text-white rounded-bl-none'
+                      }`}>
+                        {msg.text}
+                      </div>
+                    </div>
+                  ))}
+                  {chatLoading && (
+                    <div className="flex justify-start">
+                      <div className={`p-3.5 rounded-2xl border rounded-bl-none flex items-center gap-2 ${
+                        isLight ? 'bg-slate-100 border-slate-200 text-slate-900' : 'bg-white/5 border-white/5 text-white'
+                      }`}>
+                        <div className="flex gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce delay-75" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce delay-150" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Quick Chips & Input Footer */}
+                <div className="p-4 border-t border-white/5 space-y-3.5 shrink-0 bg-white/[0.01]">
+                  {/* Quick Reply Chips */}
+                  <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+                    {[
+                      '🚪 Kirish-chiqish vaqti',
+                      '💳 To\'lov narxi',
+                      '🧹 Navbatchiligim qachon?',
+                      '📞 Komendant raqami'
+                    ].map((chip) => (
+                      <button
+                        key={chip}
+                        onClick={() => handleSendMessage(chip)}
+                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all border ${
+                          isLight
+                            ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+                            : 'bg-white/5 border-white/5 text-gray-300 hover:bg-white/10 hover:border-white/15'
+                        }`}
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Chat Input */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Savolingizni kiriting..."
+                      value={userMessage}
+                      onChange={(e) => setUserMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSendMessage()
+                      }}
+                      className={`flex-1 border rounded-xl px-4 py-3 text-xs outline-none transition-all ${
+                        isLight
+                          ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-500 focus:bg-white'
+                          : 'bg-white/5 border-white/5 text-white focus:border-indigo-500/30'
+                      }`}
+                    />
+                    <button
+                      onClick={() => handleSendMessage()}
+                      disabled={chatLoading || !userMessage.trim()}
+                      className={`px-4 rounded-xl transition-all flex items-center justify-center ${
+                        isLight
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'
+                      }`}
+                    >
+                      <ArrowRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>,
+        document.body
+      )}
+
+      {/* Toaster for notifications */}
+      <Toaster position="top-center" reverseOrder={false} />
+
+      {/* 3. CLEANING SCHEDULE MODAL */}
+      {mounted && typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isScheduleModalOpen && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+              {/* Backdrop with Blur */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsScheduleModalOpen(false)}
+                className="absolute inset-0 bg-[#02040a]/60 backdrop-blur-md"
+              />
+
+              {/* 3D Premium Modal Card */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, rotateX: -8, y: 20 }}
+                animate={{ opacity: 1, scale: 1, rotateX: 0, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, rotateX: 8, y: -20 }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                style={{ transformStyle: 'preserve-3d', perspective: 1000 }}
+                className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-[32px] border p-4 sm:p-8 shadow-[0_0_50px_rgba(30,58,138,0.4)] ${
+                  isLight 
+                    ? 'bg-white/95 border-slate-200 text-slate-900 shadow-slate-200/50' 
+                    : 'bg-[#0f172a]/90 border-white/10 text-white shadow-indigo-950/50'
+                }`}
+              >
+                {/* Premium Background Glows */}
+                <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full blur-[100px] bg-blue-600/10 pointer-events-none" />
+                <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full blur-[100px] bg-purple-600/10 pointer-events-none" />
+
+                {/* Modal Header */}
+                <div className="relative z-10 flex justify-between items-center mb-6 border-b border-white/5 pb-4">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black italic uppercase tracking-tight flex items-center gap-2">
+                      🧹 Tozalik Navbatchiligi
+                    </h2>
+                    <p className={`text-xs mt-1 ${textMuted}`}>
+                      Xona {profile?.room_number || '—'} uchun hafta kunlariga navbatchilarni biriktiring.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setIsScheduleModalOpen(false)}
+                    className={`p-2 rounded-full border transition-all cursor-pointer ${
+                      isLight 
+                        ? 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200' 
+                        : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'
+                    }`}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Top Section: Weekdays List */}
+                <div className="relative z-10 mb-8">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-blue-500 mb-4">
+                    📅 Hafta Kunlari (Navbatchilik Slotlari)
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
+                    {WEEKDAYS.map((day) => {
+                      const assigned = draftSchedule[day];
+                      const isDragOver = activeDragOverDay === day;
+                      return (
+                        <div
+                          key={day}
+                          onClick={() => handleDayClick(day)}
+                          onDragOver={(e) => handleDragOver(e, day)}
+                          onDragEnter={(e) => handleDragEnter(e, day)}
+                          onDragLeave={(e) => handleDragLeave(e, day)}
+                          onDrop={(e) => handleDrop(e, day)}
+                          className={`group relative flex flex-col justify-between p-3.5 min-h-[110px] rounded-2xl border transition-all duration-300 cursor-pointer select-none ${
+                            isDragOver 
+                              ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_15px_rgba(34,211,238,0.25)] scale-[1.02]' 
+                              : assigned 
+                                ? isLight 
+                                  ? 'border-blue-200 bg-blue-50/70 hover:border-blue-300' 
+                                  : 'border-indigo-500/30 bg-indigo-500/5 hover:border-indigo-500/50'
+                                : isLight
+                                  ? 'border-dashed border-slate-300 bg-slate-50/50 hover:bg-slate-100/50 hover:border-slate-400'
+                                  : 'border-dashed border-white/10 bg-slate-950/20 hover:bg-white/5 hover:border-white/20'
+                          }`}
+                        >
+                          <span className={`text-[10px] font-black uppercase tracking-wider mb-2 ${
+                            assigned 
+                              ? isLight ? 'text-blue-600' : 'text-cyan-400' 
+                              : textMuted
+                          }`}>
+                            {day}
+                          </span>
+
+                          {assigned ? (
+                            <div className="flex flex-col justify-between flex-1">
+                              <span className="text-xs font-bold leading-tight line-clamp-2">
+                                {assigned.name}
+                              </span>
+                              <div className="flex justify-end mt-2">
+                                <button
+                                  onClick={(e) => handleUnassign(day, e)}
+                                  className={`p-1 rounded-md transition-all opacity-80 hover:opacity-100 hover:scale-105 cursor-pointer ${
+                                    isLight 
+                                      ? 'bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-100' 
+                                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20'
+                                  }`}
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className={`text-[9px] font-medium leading-normal italic ${textMuted} flex-1 flex items-center justify-center text-center`}>
+                              {selectedResidentId ? "Biriktirish uchun bosing" : "Tortib keling"}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Bottom Section: Roommates (4 Draggable Cards) */}
+                <div className="relative z-10 mb-8">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-indigo-500">
+                      👥 Xonadoshlar (Ushlab torting yoki Tanlang)
+                    </h3>
+                    <span className={`text-[10px] font-semibold ${textMuted}`}>
+                      {selectedResidentId ? "💡 Biriktirish uchun hafta kunini bosing" : "💡 Kunlarga tortib olib boring"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {allResidents.map((resident) => {
+                      const isSelected = selectedResidentId === resident.id;
+                      const isSelf = resident.isSelf;
+                      return (
+                        <div
+                          key={resident.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, resident.id)}
+                          onClick={() => handleResidentClick(resident.id)}
+                          className={`group relative flex flex-col justify-between p-4 rounded-2xl cursor-grab active:cursor-grabbing select-none transition-all duration-300 transform preserve-3d ${
+                            isSelected
+                              ? 'border-2 border-yellow-500 bg-yellow-500/10 shadow-[0_0_20px_rgba(234,179,8,0.25)] scale-[1.03] -translate-y-1'
+                              : isLight
+                                ? 'bg-white border border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5'
+                                : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 hover:-translate-y-0.5 shadow-lg'
+                          }`}
+                          style={{
+                            boxShadow: isSelected 
+                              ? '0 10px 20px rgba(234,179,8,0.15)' 
+                              : isLight 
+                                ? '0 4px 6px rgba(0,0,0,0.02), 0 10px 15px -3px rgba(0,0,0,0.03)' 
+                                : '0 4px 6px rgba(0,0,0,0.1), 0 10px 15px -3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)',
+                          }}
+                        >
+                          {/* Draggable Icon indicator */}
+                          <div className="flex justify-between items-center mb-3">
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                              isSelf 
+                                ? 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20' 
+                                : isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/5 text-slate-400'
+                            }`}>
+                              {isSelf ? "Siz" : "Xonadosh"}
+                            </span>
+                            <div className={`flex flex-col gap-0.5 opacity-50 group-hover:opacity-100 transition-opacity`}>
+                              <span className="w-2.5 h-0.5 bg-current rounded-full" />
+                              <span className="w-2.5 h-0.5 bg-current rounded-full" />
+                              <span className="w-2.5 h-0.5 bg-current rounded-full" />
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-black tracking-tight leading-tight mb-1">
+                              {resident.name.replace(" (Siz)", "")}
+                            </p>
+                            <p className={`text-[10px] ${textMuted} font-semibold`}>
+                              Ushlab torting
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Modal Footer / Actions */}
+                <div className="relative z-10 flex justify-between items-center border-t border-white/5 pt-6 gap-4">
+                  <button
+                    onClick={handleResetDraft}
+                    className={`px-4 py-2.5 rounded-xl border text-xs font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer ${
+                      isLight
+                        ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+                        : 'bg-white/5 border-white/5 text-gray-300 hover:bg-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    🔄 Asliga Qaytarish
+                  </button>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setIsScheduleModalOpen(false)}
+                      className={`px-5 py-2.5 rounded-xl border text-xs font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer ${
+                        isLight
+                          ? 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                          : 'bg-white/0 border-white/5 text-gray-400 hover:bg-white/5'
+                      }`}
+                    >
+                      Bekor Qilish
+                    </button>
+                    <button
+                      onClick={handleSaveSchedule}
+                      disabled={isSavingSchedule}
+                      className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white shadow-lg active:scale-95 transition-all duration-300 disabled:opacity-50 cursor-pointer ${
+                        isLight
+                          ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
+                          : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
+                      }`}
+                    >
+                      {isSavingSchedule ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                          Saqlanmoqda...
+                        </>
+                      ) : (
+                        "Saqlash"
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
 
     </div>
   );
 }
+
 
 // ─── Helper Functions ──────────────────────────────────────────────────────
 

@@ -23,7 +23,8 @@ export async function GET() {
     const supabase = getServiceSupabase()
     const { data: requests, error } = await supabase
       .from('arizalar')
-      .select('id, student_name, text, level, created_at')
+      .select('id, student_name, text, level, status, created_at')
+      .neq('status', 'draft')
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -35,6 +36,7 @@ export async function GET() {
       student_name: request.student_name ?? 'Noma\'lum',
       text: request.text ?? '',
       level: (request.level ?? 'info') as ApplicationLevel,
+      status: request.status ?? 'pending',
       created_at: request.created_at ?? null,
       updated_at: null,
     }))
@@ -60,16 +62,30 @@ export async function PATCH(request: Request) {
 
     const body = await request.json()
     const id = typeof body.id === 'string' ? body.id : ''
-    const level = body.level as ApplicationLevel
+    const level = body.level as ApplicationLevel | undefined
+    const status = body.status as string | undefined
 
-    if (!id || !level) {
+    if (!id) {
       return jsonError("So'rov ma'lumotlari noto'g'ri", 400)
+    }
+
+    const updateFields: any = {}
+    if (level !== undefined) updateFields.level = level
+    if (status !== undefined) {
+      updateFields.status = status
+      if (status !== 'pending') {
+        updateFields.response_date = new Date().toISOString()
+      }
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+      return jsonError("Yangilash uchun ma'lumot yo'q", 400)
     }
 
     const supabase = getServiceSupabase()
     const { error } = await supabase
       .from('arizalar')
-      .update({ level })
+      .update(updateFields)
       .eq('id', id)
 
     if (error) {

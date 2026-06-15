@@ -70,6 +70,32 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       const userEmail = data.email.trim().toLowerCase()
+      const passportSeriesClean = data.passportSeries.toUpperCase().replace(/\s/g, '')
+      const jshshirClean = data.jshshir.trim()
+
+      // 0. Email, Pasport seriyasi va JShSHIR takrorlanishini tekshirish
+      const { data: duplicateUser, error: checkError } = await supabase
+        .from('users')
+        .select('id, email, passport_series, jshshir')
+        .or(`email.eq.${userEmail},passport_series.eq.${passportSeriesClean},jshshir.eq.${jshshirClean}`)
+        .maybeSingle()
+
+      if (checkError) {
+        throw new Error("Tizimda ma'lumotlarni tekshirishda xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.")
+      }
+
+      if (duplicateUser) {
+        if (duplicateUser.email === userEmail) {
+          throw new Error("Ushbu Email manzili tizimda allaqachon ro'yxatdan o'tgan!")
+        }
+        if (duplicateUser.passport_series === passportSeriesClean) {
+          throw new Error("Ushbu Pasport seriyasi bilan ro'yxatdan o'tgan foydalanuvchi allaqachon mavjud!")
+        }
+        if (duplicateUser.jshshir === jshshirClean) {
+          throw new Error("Ushbu JShSHIR bilan ro'yxatdan o'tgan foydalanuvchi allaqachon mavjud!")
+        }
+        throw new Error("Ushbu foydalanuvchi tizimda allaqachon ro'yxatdan o'tgan!")
+      }
 
       // 1. Supabase Auth-da foydalanuvchi yaratish
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -77,7 +103,13 @@ export default function RegisterPage() {
         password: data.password
       })
 
-      if (authError || !authData.user) throw new Error(authError?.message ?? "Ro'yxatdan o'tishda xatolik")
+      if (authError || !authData.user) {
+        let msg = authError?.message ?? "Ro'yxatdan o'tishda xatolik"
+        if (msg.includes("already registered") || msg.toLowerCase().includes("user already exists")) {
+          msg = "Ushbu email manziliga ega foydalanuvchi allaqachon ro'yxatdan o'tgan!"
+        }
+        throw new Error(msg)
+      }
 
       // 2. 'users' jadvaliga siz aytgan 21 ta ustun bo'yicha ma'lumot yozish
       const { error: dbError } = await supabase.from('users').insert({

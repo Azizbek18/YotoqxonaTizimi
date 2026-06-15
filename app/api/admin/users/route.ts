@@ -41,6 +41,7 @@ type AdminUserRow = {
   entry_date?: string | null
   assigned_floor?: number | null
   assigned_gender?: string | null
+  is_floor_captain?: boolean | null
 }
 
 type RawStudentRow = Record<string, unknown> & {
@@ -117,6 +118,8 @@ function mapStudentRow(user: RawStudentRow): AdminUserRow {
     mother_workplace: (user.mother_workplace as string | null | undefined) ?? null,
     mother_phone: (user.mother_phone as string | null | undefined) ?? null,
     entry_date: (user.entry_date as string | null | undefined) ?? null,
+    assigned_floor: (user.assigned_floor as number | null | undefined) ?? null,
+    is_floor_captain: (user.is_floor_captain as boolean | null | undefined) ?? false,
   }
 }
 
@@ -162,7 +165,7 @@ function normalizeOptionalNumber(value: unknown) {
 }
 
 function buildStudentUpdates(body: Record<string, unknown>) {
-  const updates: Record<string, string | number | null> = {}
+  const updates: Record<string, string | number | boolean | null> = {}
 
   const stringFields: Array<keyof AdminUserUpdates> = [
     'full_name',
@@ -212,6 +215,15 @@ function buildStudentUpdates(body: Record<string, unknown>) {
     if (normalizedCourse !== undefined) {
       updates.course = normalizedCourse
     }
+  }
+
+  if ('is_floor_captain' in body) {
+    updates.is_floor_captain = Boolean(body.is_floor_captain)
+  }
+
+  if ('assigned_floor' in body) {
+    const normalizedFloor = normalizeOptionalNumber(body.assigned_floor)
+    updates.assigned_floor = normalizedFloor ?? null
   }
 
   return updates
@@ -337,6 +349,24 @@ export async function PATCH(request: Request) {
 
     if (Object.keys(updates).length === 0) {
       return jsonError("Yangilash uchun ma'lumot topilmadi", 400)
+    }
+
+    if (source === 'users' && updates.is_floor_captain === true && updates.assigned_floor) {
+      const { data: genderData } = await supabase
+        .from('users')
+        .select('gender')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (genderData?.gender) {
+        await supabase
+          .from('users')
+          .update({ is_floor_captain: false })
+          .eq('is_floor_captain', true)
+          .eq('assigned_floor', updates.assigned_floor)
+          .eq('gender', genderData.gender)
+          .neq('id', id)
+      }
     }
 
     const { error } = await supabase

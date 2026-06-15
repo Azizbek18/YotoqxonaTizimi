@@ -30,6 +30,44 @@ export async function POST(request: Request) {
     }
 
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey)
+
+    const passportSeriesClean = typeof userPayload?.passport_series === 'string'
+      ? userPayload.passport_series.toUpperCase().replace(/\s/g, '')
+      : ''
+    const jshshirClean = typeof userPayload?.jshshir === 'string'
+      ? userPayload.jshshir.trim()
+      : ''
+
+    const orConditions: string[] = []
+    if (email) orConditions.push(`email.eq.${email}`)
+    if (passportSeriesClean) orConditions.push(`passport_series.eq.${passportSeriesClean}`)
+    if (jshshirClean) orConditions.push(`jshshir.eq.${jshshirClean}`)
+
+    if (orConditions.length > 0) {
+      const { data: duplicateUser, error: checkError } = await supabase
+        .from('users')
+        .select('id, email, passport_series, jshshir')
+        .or(orConditions.join(','))
+        .maybeSingle()
+
+      if (checkError) {
+        return NextResponse.json({ ok: false, error: "Tekshirishda xatolik yuz berdi" }, { status: 500 })
+      }
+
+      if (duplicateUser) {
+        if (duplicateUser.email === email) {
+          return NextResponse.json({ ok: false, error: "Ushbu Email manzili tizimda allaqachon ro'yxatdan o'tgan!" }, { status: 400 })
+        }
+        if (duplicateUser.passport_series === passportSeriesClean) {
+          return NextResponse.json({ ok: false, error: "Ushbu Pasport seriyasi bilan ro'yxatdan o'tgan foydalanuvchi allaqachon mavjud!" }, { status: 400 })
+        }
+        if (duplicateUser.jshshir === jshshirClean) {
+          return NextResponse.json({ ok: false, error: "Ushbu JShSHIR bilan ro'yxatdan o'tgan foydalanuvchi allaqachon mavjud!" }, { status: 400 })
+        }
+        return NextResponse.json({ ok: false, error: "Ushbu foydalanuvchi tizimda allaqachon ro'yxatdan o'tgan!" }, { status: 400 })
+      }
+    }
+
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
@@ -38,7 +76,11 @@ export async function POST(request: Request) {
     })
 
     if (authError || !authData.user) {
-      return NextResponse.json({ ok: false, error: "Ro'yxatdan o'tishda xatolik" }, { status: 400 })
+      let msg = authError?.message ?? "Ro'yxatdan o'tishda xatolik"
+      if (msg.includes("already registered") || msg.toLowerCase().includes("user already exists")) {
+        msg = "Ushbu email manziliga ega foydalanuvchi allaqachon ro'yxatdan o'tgan!"
+      }
+      return NextResponse.json({ ok: false, error: msg }, { status: 400 })
     }
 
     const { error: dbError } = await supabase.from('users').insert({

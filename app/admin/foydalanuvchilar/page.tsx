@@ -18,6 +18,7 @@ import {
   UserRound,
   Users,
   X,
+  Check,
   RotateCcw,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -59,6 +60,7 @@ type UserRow = {
   entry_date?: string | null
   assigned_floor?: number | null
   assigned_gender?: string | null
+  is_floor_captain?: boolean | null
 }
 
 const ROLE_OPTIONS: UserRow['role'][] = ['talaba', 'tarbiyachi', 'admin']
@@ -116,6 +118,7 @@ export default function AdminUsersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRoom, setFilterRoom] = useState('')
   const [filterRole, setFilterRole] = useState<'all' | UserRow['role']>('all')
+  const [filterStatus, setFilterStatus] = useState<string>('all')
   const [sortBy, setSortBy] = useState<string>('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; userId?: string }>({ isOpen: false })
@@ -156,6 +159,7 @@ export default function AdminUsersPage() {
     entry_date: '',
     assigned_floor: '',
     assigned_gender: '',
+    is_floor_captain: false as boolean,
   })
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -274,9 +278,11 @@ export default function AdminUsersPage() {
         user.email.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesRole = filterRole === 'all' || user.role === filterRole
       const matchesRoom = !filterRoom || (user.room_number?.toLowerCase().includes(filterRoom.toLowerCase()))
-      return matchesSearch && matchesRole && matchesRoom
+      const userStatus = user.status || 'active'
+      const matchesStatus = filterStatus === 'all' || userStatus === filterStatus
+      return matchesSearch && matchesRole && matchesRoom && matchesStatus
     })
-  }, [users, searchTerm, filterRole, filterRoom])
+  }, [users, searchTerm, filterRole, filterRoom, filterStatus])
 
   const paginatedUsers = useMemo(() => {
     const start = (currentPage - 1) * pageSize
@@ -298,6 +304,7 @@ export default function AdminUsersPage() {
       { icon: ShieldCheck, label: 'Kurs', value: user.course ? `${user.course}-kurs` : undefined },
       { icon: Home, label: 'Xona', value: user.room_number },
       { icon: Home, label: 'Biriktirilgan qavat', value: user.assigned_floor ? `${user.assigned_floor}-qavat` : undefined },
+      { icon: ShieldCheck, label: 'Sardorlik holati', value: user.is_floor_captain ? 'Qavat sardori' : undefined },
       { icon: ShieldCheck, label: 'Holat', value: user.status },
       { icon: UserRound, label: 'Biriktirilgan jins', value: user.assigned_gender },
       { icon: CalendarDays, label: "Tug'ilgan sana", value: formatDate(user.birth_date) !== '-' ? formatDate(user.birth_date) : undefined },
@@ -361,6 +368,67 @@ export default function AdminUsersPage() {
     }
   }
 
+  const handleApprove = async (id: string) => {
+    try {
+      setIsUpdating(true)
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          source: 'users',
+          status: 'active',
+        }),
+      })
+
+      const result = (await response.json()) as { ok: boolean; error?: string }
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error ?? "Tasdiqlashda xato!")
+      }
+
+      setUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, status: 'active' } : u))
+      )
+      toast.success("Talaba muvaffaqiyatli tasdiqlandi!")
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Tasdiqlashda xato!"
+      toast.error(message)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleReject = async (id: string) => {
+    if (!window.confirm("Ushbu talabaning ro'yxatdan o'tish arizasini rad etib, tizimdan butunlay o'chirib tashlaysizmi?")) {
+      return
+    }
+
+    try {
+      setIsDeleting(true)
+      const response = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          source: 'users',
+        }),
+      })
+
+      const result = (await response.json()) as { ok: boolean; error?: string }
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error ?? "Rad etishda xato!")
+      }
+
+      setUsers((prev) => prev.filter((u) => u.id !== id))
+      toast.success("Talaba arizasi rad etildi va o'chirildi!")
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Rad etishda xato!"
+      toast.error(message)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const handleEditClick = (user: UserRow) => {
     setEditModal({ isOpen: true, user })
     setEditingRole(user.role)
@@ -393,6 +461,7 @@ export default function AdminUsersPage() {
       entry_date: user.entry_date ? String(user.entry_date).slice(0, 10) : '',
       assigned_floor: user.assigned_floor ? String(user.assigned_floor) : '',
       assigned_gender: user.assigned_gender || '',
+      is_floor_captain: user.is_floor_captain || false,
     })
   }
 
@@ -417,6 +486,7 @@ export default function AdminUsersPage() {
             phone_number: editForm.phone,
             course: editForm.course ? Number(editForm.course) : null,
             assigned_floor: editForm.assigned_floor ? Number(editForm.assigned_floor) : null,
+            is_floor_captain: editForm.is_floor_captain || false,
           } : {
             full_name: editForm.full_name,
             phone_number: editForm.phone,
@@ -441,6 +511,7 @@ export default function AdminUsersPage() {
             phone_number: editForm.phone,
             course: editForm.course ? Number(editForm.course) : null,
             assigned_floor: editForm.assigned_floor ? Number(editForm.assigned_floor) : null,
+            is_floor_captain: editForm.is_floor_captain || false,
           }
           : {
             full_name: editForm.full_name || editModal.user.full_name,
@@ -506,31 +577,62 @@ export default function AdminUsersPage() {
       key: 'role',
       label: 'Rol',
       sortable: true,
-      render: (value: unknown) => {
+      render: (value: unknown, row: UserRow) => {
         const roleStr = String(value)
+        const isCaptain = row.source === 'users' && row.is_floor_captain
         return (
-          <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${ROLE_COLORS[roleStr]}`}>
-            {roleStr === 'tarbiyachi' && (
-              <span className="relative flex h-1.5 w-1.5 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+          <div className="flex flex-col gap-1.5">
+            <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${ROLE_COLORS[roleStr]}`}>
+              {roleStr === 'tarbiyachi' && (
+                <span className="relative flex h-1.5 w-1.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                </span>
+              )}
+              {roleStr === 'admin' && (
+                <span className="relative flex h-1.5 w-1.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-500"></span>
+                </span>
+              )}
+              {roleStr === 'talaba' && (
+                <span className="relative flex h-1.5 w-1.5 shrink-0">
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
+                </span>
+              )}
+              {ROLE_LABELS[roleStr]}
+            </span>
+            {isCaptain && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-purple-400 w-fit">
+                ⭐ {row.assigned_floor}-qavat sardori
               </span>
             )}
-            {roleStr === 'admin' && (
-              <span className="relative flex h-1.5 w-1.5 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-500"></span>
-              </span>
-            )}
-            {roleStr === 'talaba' && (
-              <span className="relative flex h-1.5 w-1.5 shrink-0">
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
-              </span>
-            )}
-            {ROLE_LABELS[roleStr]}
-          </span>
+          </div>
         )
       },
+    },
+    {
+      key: 'status',
+      label: 'Holat',
+      sortable: true,
+      render: (value: unknown, row: UserRow) => {
+        const statusStr = String(value ?? 'active')
+        let color = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+        let label = 'Faol'
+        if (statusStr === 'pending') {
+          color = 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+          label = 'Kutilmoqda'
+        } else if (statusStr === 'rejected') {
+          color = 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+          label = 'Rad etilgan'
+        }
+        return (
+          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${color}`}>
+            {statusStr === 'pending' && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
+            {label}
+          </span>
+        )
+      }
     },
     {
       key: 'created_at',
@@ -543,6 +645,30 @@ export default function AdminUsersPage() {
       label: 'Amallar',
       render: (_value: unknown, row: UserRow) => (
         <div className="flex gap-2">
+          {row.role === 'talaba' && row.status === 'pending' && (
+            <>
+              <button
+                onClick={(event) => {
+                  event.stopPropagation()
+                  handleApprove(row.id)
+                }}
+                className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-2.5 text-emerald-400 transition-all hover:bg-emerald-500/20 hover:border-emerald-500/30 active:scale-95"
+                title="Tasdiqlash"
+              >
+                <Check size={15} />
+              </button>
+              <button
+                onClick={(event) => {
+                  event.stopPropagation()
+                  handleReject(row.id)
+                }}
+                className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-2.5 text-rose-400 transition-all hover:bg-rose-500/20 hover:border-rose-500/30 active:scale-95"
+                title="Rad etish (O'chirish)"
+              >
+                <X size={15} />
+              </button>
+            </>
+          )}
           <button
             onClick={(event) => {
               event.stopPropagation()
@@ -559,6 +685,7 @@ export default function AdminUsersPage() {
               handleDeleteClick(row.id)
             }}
             className="rounded-xl border border-white/5 bg-white/5 p-2.5 text-red-400 transition-all hover:bg-red-400/10 hover:border-red-400/20 active:scale-95"
+            title="O'chirish"
           >
             <Trash2 size={15} />
           </button>
@@ -571,7 +698,8 @@ export default function AdminUsersPage() {
   const talabaCount = users.filter((u) => u.role === 'talaba').length;
   const tarbiyachiCount = users.filter((u) => u.role === 'tarbiyachi').length;
   const adminCount = users.filter((u) => u.role === 'admin').length;
-
+  const pendingCount = users.filter((u) => u.role === 'talaba' && u.status === 'pending').length;
+ 
   const statCards = [
     {
       title: 'Talabalar',
@@ -582,6 +710,7 @@ export default function AdminUsersPage() {
       textColor: 'text-blue-400',
       barColor: 'bg-blue-500',
       icon: GraduationCap,
+      description: pendingCount > 0 ? `${pendingCount} ta tasdiqlash kutilmoqda` : undefined,
     },
     {
       title: 'Tarbiyachilar',
@@ -695,6 +824,13 @@ export default function AdminUsersPage() {
                   />
                 </div>
               </div>
+
+              {'description' in card && card.description && !loading && (
+                <div className="mt-2 text-[10px] text-amber-400 font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                  {card.description}
+                </div>
+              )}
             </motion.div>
           );
         })}
@@ -747,6 +883,22 @@ export default function AdminUsersPage() {
               }}
               className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white transition-all placeholder-slate-400 focus:border-purple-500/50 outline-none"
             />
+          </div>
+
+          <div className="relative">
+            <Filter className="absolute left-3 top-3.5 text-slate-400 pointer-events-none" size={18} />
+            <select
+              value={filterStatus}
+              onChange={(event) => {
+                setFilterStatus(event.target.value)
+                setCurrentPage(1)
+              }}
+              className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white transition-all outline-none focus:border-purple-500/50 appearance-none cursor-pointer"
+            >
+              <option value="all" className="bg-slate-950">Barcha holatlar</option>
+              <option value="active" className="bg-slate-950">Faol</option>
+              <option value="pending" className="bg-slate-950">Kutilmoqda</option>
+            </select>
           </div>
         </div>
       </div>
@@ -939,6 +1091,33 @@ export default function AdminUsersPage() {
                   Ro&apos;yxatdan o&apos;tgan sana: {formatDate(detailModal.user.created_at)}
                 </p>
               </div>
+
+              {detailModal.user.role === 'talaba' && detailModal.user.status === 'pending' && (
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={async () => {
+                      await handleApprove(detailModal.user!.id)
+                      setDetailModal({ isOpen: false })
+                    }}
+                    disabled={isUpdating}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-3 text-sm font-black text-white transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg"
+                  >
+                    <Check size={18} />
+                    <span>Tasdiqlash</span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleReject(detailModal.user!.id)
+                      setDetailModal({ isOpen: false })
+                    }}
+                    disabled={isDeleting}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 py-3 text-sm font-black text-white transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg"
+                  >
+                    <X size={18} />
+                    <span>Rad etish</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -986,6 +1165,39 @@ export default function AdminUsersPage() {
             </p>
           </div>
           {editModal.user?.source === 'users' && (
+            <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-purple-300">Qavat Sardori sifatida tayinlash</p>
+                  <p className="text-xs text-purple-300/60 mt-0.5">Ushbu talabani qavat sardori qilib belgilash va qo&apos;shimcha huquqlar berish</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={Boolean(editForm.is_floor_captain)}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, is_floor_captain: e.target.checked }))}
+                  className="w-5 h-5 accent-purple-500 cursor-pointer rounded"
+                />
+              </div>
+              {editForm.is_floor_captain && (
+                <div className="space-y-1.5 pt-2 border-t border-purple-500/10">
+                  <label className="block text-xs font-bold text-purple-300 uppercase tracking-wider">Biriktirilgan qavat:</label>
+                  <select
+                    value={editForm.assigned_floor || ''}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, assigned_floor: e.target.value }))}
+                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-white outline-none focus:border-purple-500"
+                  >
+                    <option value="">Qavatni tanlang</option>
+                    <option value="1">1-qavat</option>
+                    <option value="2">2-qavat</option>
+                    <option value="3">3-qavat</option>
+                    <option value="4">4-qavat</option>
+                    <option value="5">5-qavat</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+          {editModal.user?.source === 'users' && (
             <>
               <div className="mb-6 flex gap-1 rounded-xl border border-white/5 bg-white/5 p-1">
                 {([
@@ -1019,7 +1231,7 @@ export default function AdminUsersPage() {
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">{field.label}</label>
                     <input
                       type={field.type}
-                      value={editForm[field.key as keyof typeof editForm] || ''}
+                      value={(editForm[field.key as keyof typeof editForm] as string | number) || ''}
                       onChange={(event) =>
                         setEditForm((current) => ({
                           ...current,
@@ -1045,7 +1257,7 @@ export default function AdminUsersPage() {
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{field.label}</label>
                   <input
                     type={field.type}
-                    value={editForm[field.key as keyof typeof editForm] || ''}
+                    value={(editForm[field.key as keyof typeof editForm] as string | number) || ''}
                     onChange={(event) => setEditForm((c) => ({ ...c, [field.key]: event.target.value }))}
                     className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition-all focus:border-cyan-500/50 outline-none"
                   />

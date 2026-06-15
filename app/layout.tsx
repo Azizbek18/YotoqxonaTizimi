@@ -5,21 +5,35 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
-  title: "MTalaba | Yotoqxona tizimi",
-  description: "Yotoqxonani kuchli nazorat qiladigan platforma",
+  title: "Yotoqxona.uz — Aqlli talabalar yotoqxonasi boshqaruv tizimi",
+  description: "Talabalar yotoqxonasi boshqaruvini avtomatlashtirish, arizalar yuborish, to'lovlarni amalga oshirish va navbatchilik jadvallarini real vaqt rejimida boshqarish platformasi.",
+  keywords: ["yotoqxona", "talaba", "tizim", "aqlli boshqaruv", "arizalar", "navbatchilik", "yotoqxona boshqaruvi", "supabase", "nextjs", "AI yordamchi"],
   icons: {
     icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
   },
   openGraph: {
-    title: "Yotoqxona.uz - Aqlli boshqaruv tizimi",
-    description: "Yotoqxonani raqamli boshqarish platformasi",
+    title: "Yotoqxona.uz — Aqlli talabalar yotoqxonasi boshqaruv tizimi",
+    description: "Yotoqxonadagi barcha jarayonlar: arizalar, to'lovlar va navbatchilikni elektron boshqarish. AI yordamchi bilan tezkor muloqot.",
+    url: 'https://yotoqxona.uz',
+    siteName: 'Yotoqxona.uz',
+    locale: 'uz_UZ',
+    type: 'website',
     images: [
       {
         url: '/rasm.png',
         width: 1200,
         height: 630,
+        alt: "Yotoqxona.uz — Aqlli yotoqxona boshqaruv tizimi namoyishi",
       }
     ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "Yotoqxona.uz — Aqlli yotoqxona boshqaruv tizimi",
+    description: "Yotoqxonadagi barcha jarayonlarni (arizalar, to'lovlar, navbatchilik) elektron va AI orqali boshqarish platformasi.",
+    images: ['/rasm.png'],
   }
 };
 

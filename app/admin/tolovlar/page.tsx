@@ -336,14 +336,14 @@ export default function AdminTolovlarPage() {
         </div>
 
         {/* Tabs */}
-        <div className={`flex p-0.5 rounded-xl border shrink-0 ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/60 border-white/5'}`}>
+        <div className={`flex p-0.5 rounded-xl border shrink-0 max-w-full overflow-x-auto no-scrollbar flex-nowrap ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/60 border-white/5'}`}>
           {(['waiting', 'approved', 'rejected', 'all'] as const).map((tab) => {
             const isActive = activeTab === tab
             return (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
+                className={`px-4 py-2 rounded-lg text-xs font-black transition-all shrink-0 whitespace-nowrap ${
                   isActive
                     ? isLight ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'bg-white/[0.08] text-cyan-400 border border-cyan-400/20'
                     : isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
@@ -546,7 +546,7 @@ export default function AdminTolovlarPage() {
                 <p className={`text-[10px] font-black uppercase tracking-wider ${textMuted}`}>Kvitansiya fayli (Chek)</p>
                 
                 {selectedGroup.receipt_url ? (
-                  <div className={`p-2 rounded-2xl border flex flex-col justify-center items-center relative overflow-hidden min-h-[300px] ${
+                  <div className={`p-2 rounded-2xl border flex flex-col justify-center items-center relative overflow-hidden min-h-[180px] sm:min-h-[300px] ${
                     isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/50 border-white/5'
                   }`}>
                     {selectedGroup.receipt_url.toLowerCase().endsWith('.pdf') ? (
@@ -571,7 +571,7 @@ export default function AdminTolovlarPage() {
                         <img
                           src={selectedGroup.receipt_url}
                           alt="Chek tasviri"
-                          className="max-h-[350px] object-contain rounded-xl shadow-md border"
+                          className="max-h-[180px] sm:max-h-[350px] object-contain rounded-xl shadow-md border"
                         />
                         <button
                           onClick={() => viewReceipt(selectedGroup.receipt_url)}

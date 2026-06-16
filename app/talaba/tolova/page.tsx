@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     Upload, Check, Clock, AlertCircle, Download, Eye,
@@ -84,6 +85,11 @@ export default function TolovaPage() {
     const [validating, setValidating] = useState(false)
     const [validationResult, setValidationResult] = useState<ValidationResult | null>(null)
     const [showValidationModal, setShowValidationModal] = useState(false)
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     // Load payments from Supabase
     const loadPayments = async (userId: string) => {
@@ -367,9 +373,20 @@ export default function TolovaPage() {
     }
 
     // Helper to get status of a month
-    const getMonthStatus = (monthName: string, year: number) => {
-        const record = payments.find(p => p.month === monthName && p.year === year)
-        return record ? record.status : 'unpaid'
+    const getMonthStatus = (monthName: string, year: number): PaymentRecord['status'] | 'unpaid' => {
+        const records = payments.filter(p => p.month === monthName && p.year === year)
+        if (records.length === 0) return 'unpaid'
+        
+        const approvedRecord = records.find(p => p.status === 'paid' || p.status === 'approved')
+        if (approvedRecord) return approvedRecord.status
+
+        const waitingRecord = records.find(p => p.status === 'waiting' || p.status === 'pending')
+        if (waitingRecord) return waitingRecord.status
+
+        const rejectedRecord = records.find(p => p.status === 'rejected')
+        if (rejectedRecord) return rejectedRecord.status
+        
+        return 'unpaid'
     }
 
     // Calculations for the dashboard card
@@ -826,295 +843,296 @@ export default function TolovaPage() {
                     </div>
 
                     {/* AI Validation Result Modal — 3D Premium Glassmorphic */}
-                    {showValidationModal && validationResult && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setShowValidationModal(false); setValidationResult(null) }}>
-                            {/* Animated backdrop */}
-                            <div className="absolute inset-0 bg-black/70 backdrop-blur-xl" />
+                    {mounted && typeof document !== 'undefined' && createPortal(
+                        <AnimatePresence>
+                            {showValidationModal && validationResult && (
+                                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={() => { setShowValidationModal(false); setValidationResult(null) }}>
+                                    {/* Animated backdrop */}
+                                    <div className="absolute inset-0 bg-black/70 backdrop-blur-xl" />
 
-                            {/* Floating ambient glow orbs */}
-                            <div className={`absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-[120px] opacity-30 animate-pulse ${validationResult.is_duplicate ? 'bg-rose-600' : validationResult.amount_match === false ? 'bg-amber-500' : validationResult.confidence < 50 ? 'bg-rose-500' : 'bg-emerald-500'
-                                }`} />
-                            <div className={`absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full blur-[100px] opacity-20 animate-pulse ${validationResult.is_duplicate ? 'bg-red-500' : validationResult.amount_match === false ? 'bg-orange-400' : validationResult.confidence < 50 ? 'bg-pink-500' : 'bg-cyan-400'
-                                }`} style={{ animationDelay: '1s' }} />
-
-                            {/* Modal Card */}
-                            <div
-                                onClick={(e) => e.stopPropagation()}
-                                className={`relative w-full max-w-md rounded-[32px] overflow-hidden shadow-2xl ${isLight ? 'shadow-black/20' : 'shadow-black/60'
-                                    }`}
-                                style={{
-                                    transform: 'perspective(1200px) rotateX(1deg)',
-                                    transformStyle: 'preserve-3d'
-                                }}
-                            >
-                                {/* Gradient Header Strip */}
-                                <div className={`relative h-2 w-full ${validationResult.is_duplicate
-                                    ? 'bg-gradient-to-r from-red-600 via-rose-500 to-red-700'
-                                    : validationResult.amount_match === false
-                                        ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500'
-                                        : validationResult.confidence < 50
-                                            ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-red-600'
-                                            : 'bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500'
-                                    }`} />
-
-                                {/* Main content area */}
-                                <div className={`relative p-7 ${isLight
-                                    ? 'bg-gradient-to-b from-white via-white to-slate-50'
-                                    : 'bg-gradient-to-b from-slate-900 via-[#0c1222] to-slate-950'
-                                    }`}>
-                                    {/* Inner decorative elements */}
-                                    <div className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-[80px] opacity-10 ${validationResult.is_duplicate ? 'bg-rose-500' : validationResult.amount_match === false ? 'bg-amber-400' : validationResult.confidence < 50 ? 'bg-rose-400' : 'bg-emerald-400'
+                                    {/* Floating ambient glow orbs */}
+                                    <div className={`absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-[120px] opacity-30 animate-pulse ${validationResult.is_duplicate ? 'bg-rose-600' : validationResult.amount_match === false ? 'bg-amber-500' : validationResult.confidence < 50 ? 'bg-rose-500' : 'bg-emerald-500'
                                         }`} />
-                                    <div className={`absolute bottom-0 left-0 w-32 h-32 rounded-full blur-[60px] opacity-[0.06] ${isLight ? 'bg-blue-500' : 'bg-cyan-400'
-                                        }`} />
+                                    <div className={`absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full blur-[100px] opacity-20 animate-pulse ${validationResult.is_duplicate ? 'bg-red-500' : validationResult.amount_match === false ? 'bg-orange-400' : validationResult.confidence < 50 ? 'bg-pink-500' : 'bg-cyan-400'
+                                        }`} style={{ animationDelay: '1s' }} />
 
-                                    {/* Close Button */}
-                                    <button
-                                        onClick={() => { setShowValidationModal(false); setValidationResult(null) }}
-                                        className={`absolute top-5 right-5 p-2 rounded-2xl border backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:rotate-90 z-10 ${isLight
-                                            ? 'bg-slate-100/80 border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-200/80'
-                                            : 'bg-white/5 border-white/10 text-slate-500 hover:text-white hover:bg-white/10'
+                                    {/* Modal Card */}
+                                    <div
+                                        onClick={(e) => e.stopPropagation()}
+                                        className={`relative w-full max-w-md max-h-[85vh] sm:max-h-[90vh] overflow-y-auto rounded-[32px] shadow-2xl custom-scrollbar ${isLight ? 'shadow-black/20' : 'shadow-black/60'
                                             }`}
                                     >
-                                        <X size={16} />
-                                    </button>
+                                        {/* Gradient Header Strip */}
+                                        <div className={`relative h-2 w-full ${validationResult.is_duplicate
+                                            ? 'bg-gradient-to-r from-red-600 via-rose-500 to-red-700'
+                                            : validationResult.amount_match === false
+                                                ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500'
+                                                : validationResult.confidence < 50
+                                                    ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-red-600'
+                                                    : 'bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500'
+                                            }`} />
 
-                                    {/* 3D Floating Icon */}
-                                    <div className="flex justify-center mb-6">
-                                        <div className="relative">
-                                            {/* Glow ring behind icon */}
-                                            <div className={`absolute inset-0 rounded-3xl blur-xl opacity-40 animate-pulse ${validationResult.is_duplicate ? 'bg-rose-600'
-                                                : validationResult.amount_match === false ? 'bg-amber-500'
-                                                    : validationResult.confidence < 50 ? 'bg-rose-500' : 'bg-emerald-500'
+                                        {/* Main content area */}
+                                        <div className={`relative p-7 ${isLight
+                                            ? 'bg-gradient-to-b from-white via-white to-slate-50'
+                                            : 'bg-gradient-to-b from-slate-900 via-[#0c1222] to-slate-950'
+                                            }`}>
+                                            {/* Inner decorative elements */}
+                                            <div className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-[80px] opacity-10 ${validationResult.is_duplicate ? 'bg-rose-500' : validationResult.amount_match === false ? 'bg-amber-400' : validationResult.confidence < 50 ? 'bg-rose-400' : 'bg-emerald-400'
                                                 }`} />
-                                            <div
-                                                className={`relative p-5 rounded-3xl border-2 ${validationResult.is_duplicate
-                                                    ? isLight
-                                                        ? 'bg-gradient-to-br from-rose-50 to-red-100 border-rose-400/50 text-rose-600 shadow-[0_20px_40px_-10px_rgba(225,29,72,0.4)]'
-                                                        : 'bg-gradient-to-br from-rose-500/20 to-red-500/10 border-rose-500/40 text-rose-400 shadow-[0_20px_40px_-10px_rgba(225,29,72,0.3)]'
-                                                    : validationResult.amount_match === false
-                                                        ? isLight
-                                                            ? 'bg-gradient-to-br from-amber-50 to-orange-100 border-amber-300/50 text-amber-600 shadow-[0_20px_40px_-10px_rgba(245,158,11,0.35)]'
-                                                            : 'bg-gradient-to-br from-amber-500/15 to-orange-500/10 border-amber-500/30 text-amber-400 shadow-[0_20px_40px_-10px_rgba(245,158,11,0.25)]'
-                                                        : validationResult.confidence < 50
-                                                            ? isLight
-                                                                ? 'bg-gradient-to-br from-rose-50 to-pink-100 border-rose-300/50 text-rose-600 shadow-[0_20px_40px_-10px_rgba(244,63,94,0.35)]'
-                                                                : 'bg-gradient-to-br from-rose-500/15 to-pink-500/10 border-rose-500/30 text-rose-400 shadow-[0_20px_40px_-10px_rgba(244,63,94,0.25)]'
-                                                            : isLight
-                                                                ? 'bg-gradient-to-br from-emerald-50 to-cyan-100 border-emerald-300/50 text-emerald-600 shadow-[0_20px_40px_-10px_rgba(16,185,129,0.35)]'
-                                                                : 'bg-gradient-to-br from-emerald-500/15 to-cyan-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_20px_40px_-10px_rgba(16,185,129,0.25)]'
+                                            <div className={`absolute bottom-0 left-0 w-32 h-32 rounded-full blur-[60px] opacity-[0.06] ${isLight ? 'bg-blue-500' : 'bg-cyan-400'
+                                                }`} />
+
+                                            {/* Close Button */}
+                                            <button
+                                                onClick={() => { setShowValidationModal(false); setValidationResult(null) }}
+                                                className={`absolute top-5 right-5 p-2 rounded-2xl border backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:rotate-90 z-10 ${isLight
+                                                    ? 'bg-slate-100/80 border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-200/80'
+                                                    : 'bg-white/5 border-white/10 text-slate-500 hover:text-white hover:bg-white/10'
                                                     }`}
-                                                style={{ transform: 'translateZ(30px)' }}
                                             >
-                                                {validationResult.is_duplicate
-                                                    ? <ShieldAlert size={32} strokeWidth={2.5} />
-                                                    : validationResult.amount_match === false
-                                                        ? <AlertTriangle size={32} strokeWidth={2.5} />
-                                                        : validationResult.confidence < 50
+                                                <X size={16} />
+                                            </button>
+
+                                            {/* 3D Floating Icon */}
+                                            <div className="flex justify-center mb-6">
+                                                <div className="relative">
+                                                    {/* Glow ring behind icon */}
+                                                    <div className={`absolute inset-0 rounded-3xl blur-xl opacity-40 animate-pulse ${validationResult.is_duplicate ? 'bg-rose-600'
+                                                        : validationResult.amount_match === false ? 'bg-amber-500'
+                                                            : validationResult.confidence < 50 ? 'bg-rose-500' : 'bg-emerald-500'
+                                                        }`} />
+                                                    <div
+                                                        className={`relative p-5 rounded-3xl border-2 ${validationResult.is_duplicate
+                                                            ? isLight
+                                                                ? 'bg-gradient-to-br from-rose-50 to-red-100 border-rose-400/50 text-rose-600 shadow-[0_20px_40px_-10px_rgba(225,29,72,0.4)]'
+                                                                : 'bg-gradient-to-br from-rose-500/20 to-red-500/10 border-rose-500/40 text-rose-400 shadow-[0_20px_40px_-10px_rgba(225,29,72,0.3)]'
+                                                            : validationResult.amount_match === false
+                                                                ? isLight
+                                                                    ? 'bg-gradient-to-br from-amber-50 to-orange-100 border-amber-300/50 text-amber-600 shadow-[0_20px_40px_-10px_rgba(245,158,11,0.35)]'
+                                                                    : 'bg-gradient-to-br from-amber-500/15 to-orange-500/10 border-amber-500/30 text-amber-400 shadow-[0_20px_40px_-10px_rgba(245,158,11,0.25)]'
+                                                                : validationResult.confidence < 50
+                                                                    ? isLight
+                                                                        ? 'bg-gradient-to-br from-rose-50 to-pink-100 border-rose-300/50 text-rose-600 shadow-[0_20px_40px_-10px_rgba(244,63,94,0.35)]'
+                                                                        : 'bg-gradient-to-br from-rose-500/15 to-pink-500/10 border-rose-500/30 text-rose-400 shadow-[0_20px_40px_-10px_rgba(244,63,94,0.25)]'
+                                                                    : isLight
+                                                                        ? 'bg-gradient-to-br from-emerald-50 to-cyan-100 border-emerald-300/50 text-emerald-600 shadow-[0_20px_40px_-10px_rgba(16,185,129,0.35)]'
+                                                                        : 'bg-gradient-to-br from-emerald-500/15 to-cyan-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_20px_40px_-10px_rgba(16,185,129,0.25)]'
+                                                            }`}
+                                                        style={{ transform: 'translateZ(30px)' }}
+                                                    >
+                                                        {validationResult.is_duplicate
                                                             ? <ShieldAlert size={32} strokeWidth={2.5} />
-                                                            : <CheckCircle2 size={32} strokeWidth={2.5} />
-                                                }
+                                                            : validationResult.amount_match === false
+                                                                ? <AlertTriangle size={32} strokeWidth={2.5} />
+                                                                : validationResult.confidence < 50
+                                                                    ? <ShieldAlert size={32} strokeWidth={2.5} />
+                                                                    : <CheckCircle2 size={32} strokeWidth={2.5} />
+                                                        }
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </div>
 
-                                    {/* Title */}
-                                    <div className="text-center mb-6">
-                                        <h3 className={`text-xl font-black tracking-tight mb-1 ${isLight ? 'text-slate-900' : 'text-white'
-                                            }`}>
-                                            {validationResult.is_duplicate
-                                                ? '🚫 Takroriy chek aniqlandi!'
-                                                : validationResult.amount_match === false
-                                                    ? 'Summa mos kelmaydi!'
-                                                    : validationResult.confidence < 50
-                                                        ? 'Chek shubhali!'
-                                                        : 'Tekshiruv muvaffaqiyatli'
-                                            }
-                                        </h3>
-                                        <p className={`text-xs font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                                            {validationResult.is_duplicate
-                                                ? '🛡️ Bu chek oldin tizimga yuklangan'
-                                                : '🤖 AI real-vaqt tekshiruvi yakunlandi'
-                                            }
-                                        </p>
-                                    </div>
-
-                                    {/* 3D Comparison Cards */}
-                                    <div className="grid grid-cols-2 gap-3 mb-5">
-                                        {/* User declared amount */}
-                                        <div
-                                            className={`relative p-4 rounded-2xl border overflow-hidden ${isLight
-                                                ? 'bg-gradient-to-br from-blue-50 to-indigo-50/50 border-blue-200/60 shadow-[0_8px_24px_-6px_rgba(59,130,246,0.15)]'
-                                                : 'bg-gradient-to-br from-blue-500/[0.08] to-indigo-500/[0.04] border-blue-500/20 shadow-[0_8px_24px_-6px_rgba(59,130,246,0.15)]'
-                                                }`}
-                                        >
-                                            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-400/10 rounded-full blur-xl" />
-                                            <div className="flex items-center gap-1.5 mb-2">
-                                                <div className={`w-1.5 h-1.5 rounded-full ${isLight ? 'bg-blue-500' : 'bg-blue-400'}`} />
-                                                <p className={`text-[8px] font-black uppercase tracking-widest ${isLight ? 'text-blue-600' : 'text-blue-400'
-                                                    }`}>Siz kiritgan</p>
-                                            </div>
-                                            <p className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                                                {amount.toLocaleString('uz-UZ')}
-                                            </p>
-                                            <p className={`text-[9px] font-bold mt-0.5 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>UZS</p>
-                                        </div>
-
-                                        {/* AI extracted amount */}
-                                        <div
-                                            className={`relative p-4 rounded-2xl border overflow-hidden ${validationResult.amount_match === false
-                                                ? isLight
-                                                    ? 'bg-gradient-to-br from-amber-50 to-orange-50/50 border-amber-300/60 shadow-[0_8px_24px_-6px_rgba(245,158,11,0.2)]'
-                                                    : 'bg-gradient-to-br from-amber-500/[0.08] to-orange-500/[0.04] border-amber-500/25 shadow-[0_8px_24px_-6px_rgba(245,158,11,0.2)]'
-                                                : isLight
-                                                    ? 'bg-gradient-to-br from-emerald-50 to-teal-50/50 border-emerald-200/60 shadow-[0_8px_24px_-6px_rgba(16,185,129,0.15)]'
-                                                    : 'bg-gradient-to-br from-emerald-500/[0.08] to-teal-500/[0.04] border-emerald-500/20 shadow-[0_8px_24px_-6px_rgba(16,185,129,0.15)]'
-                                                }`}
-                                        >
-                                            <div className={`absolute top-0 right-0 w-16 h-16 rounded-full blur-xl ${validationResult.amount_match === false ? 'bg-amber-400/10' : 'bg-emerald-400/10'
-                                                }`} />
-                                            <div className="flex items-center gap-1.5 mb-2">
-                                                <div className={`w-1.5 h-1.5 rounded-full ${validationResult.amount_match === false
-                                                    ? 'bg-amber-500 animate-pulse'
-                                                    : isLight ? 'bg-emerald-500' : 'bg-emerald-400'
-                                                    }`} />
-                                                <p className={`text-[8px] font-black uppercase tracking-widest ${validationResult.amount_match === false
-                                                    ? 'text-amber-600'
-                                                    : isLight ? 'text-emerald-600' : 'text-emerald-400'
-                                                    }`}>Chekdagi (AI)</p>
-                                            </div>
-                                            <p className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                                                {validationResult.extracted_amount
-                                                    ? validationResult.extracted_amount.toLocaleString('uz-UZ')
-                                                    : '—'
-                                                }
-                                            </p>
-                                            <p className={`text-[9px] font-bold mt-0.5 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>UZS</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Mismatch difference banner */}
-                                    {validationResult.amount_match === false && validationResult.extracted_amount && (
-                                        <div className={`mb-5 p-3.5 rounded-2xl border flex items-center gap-3 ${isLight
-                                            ? 'bg-gradient-to-r from-rose-50 to-amber-50 border-rose-200/60'
-                                            : 'bg-gradient-to-r from-rose-500/[0.06] to-amber-500/[0.04] border-rose-500/15'
-                                            }`}>
-                                            <div className={`p-2 rounded-xl shrink-0 ${isLight ? 'bg-rose-100 text-rose-600' : 'bg-rose-500/15 text-rose-400'
-                                                }`}>
-                                                <AlertCircle size={16} />
-                                            </div>
-                                            <div>
-                                                <p className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-rose-600' : 'text-rose-400'
-                                                    }`}>Farq aniqlandi</p>
-                                                <p className={`text-sm font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                                                    {Math.abs(validationResult.extracted_amount - amount).toLocaleString('uz-UZ')} UZS
+                                            {/* Title */}
+                                            <div className="text-center mb-6">
+                                                <h3 className={`text-xl font-black tracking-tight mb-1 ${isLight ? 'text-slate-900' : 'text-white'
+                                                    }`}>
+                                                    {validationResult.is_duplicate
+                                                        ? '🚫 Takroriy chek aniqlandi!'
+                                                        : validationResult.amount_match === false
+                                                            ? 'Summa mos kelmaydi!'
+                                                            : validationResult.confidence < 50
+                                                                ? 'Chek shubhali!'
+                                                                : 'Tekshiruv muvaffaqiyatli'
+                                                    }
+                                                </h3>
+                                                <p className={`text-xs font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    {validationResult.is_duplicate
+                                                        ? '🛡️ Bu chek oldin tizimga yuklangan'
+                                                        : '🤖 AI real-vaqt tekshiruvi yakunlandi'
+                                                    }
                                                 </p>
                                             </div>
-                                        </div>
-                                    )}
 
-                                    {/* 3D Confidence Gauge */}
-                                    <div className={`relative p-4 rounded-2xl border mb-5 overflow-hidden ${isLight
-                                        ? 'bg-gradient-to-br from-slate-50 to-white border-slate-200/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)]'
-                                        : 'bg-gradient-to-br from-white/[0.03] to-white/[0.01] border-white/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]'
-                                        }`}>
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center gap-2">
-                                                <ShieldCheck size={13} className={
-                                                    validationResult.confidence >= 80 ? 'text-emerald-500' :
-                                                        validationResult.confidence >= 50 ? 'text-amber-500' : 'text-rose-500'
-                                                } />
-                                                <span className={`text-[9px] font-black uppercase tracking-widest ${isLight ? 'text-slate-500' : 'text-slate-400'
-                                                    }`}>Ishonchlilik darajasi</span>
+                                            {/* 3D Comparison Cards */}
+                                            <div className="grid grid-cols-2 gap-3 mb-5">
+                                                {/* User declared amount */}
+                                                <div
+                                                    className={`relative p-4 rounded-2xl border overflow-hidden ${isLight
+                                                        ? 'bg-gradient-to-br from-blue-50 to-indigo-50/50 border-blue-200/60 shadow-[0_8px_24px_-6px_rgba(59,130,246,0.15)]'
+                                                        : 'bg-gradient-to-br from-blue-500/[0.08] to-indigo-500/[0.04] border-blue-500/20 shadow-[0_8px_24px_-6px_rgba(59,130,246,0.15)]'
+                                                        }`}
+                                                >
+                                                    <div className="absolute top-0 right-0 w-16 h-16 bg-blue-400/10 rounded-full blur-xl" />
+                                                    <div className="flex items-center gap-1.5 mb-2">
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${isLight ? 'bg-blue-500' : 'bg-blue-400'}`} />
+                                                        <p className={`text-[8px] font-black uppercase tracking-widest ${isLight ? 'text-blue-600' : 'text-blue-400'
+                                                            }`}>Siz kiritgan</p>
+                                                    </div>
+                                                    <p className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                                        {amount.toLocaleString('uz-UZ')}
+                                                    </p>
+                                                    <p className={`text-[9px] font-bold mt-0.5 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>UZS</p>
+                                                </div>
+
+                                                {/* AI extracted amount */}
+                                                <div
+                                                    className={`relative p-4 rounded-2xl border overflow-hidden ${validationResult.amount_match === false
+                                                        ? isLight
+                                                            ? 'bg-gradient-to-br from-amber-50 to-orange-50/50 border-amber-300/60 shadow-[0_8px_24px_-6px_rgba(245,158,11,0.2)]'
+                                                            : 'bg-gradient-to-br from-amber-500/[0.08] to-orange-500/[0.04] border-amber-500/25 shadow-[0_8px_24px_-6px_rgba(245,158,11,0.2)]'
+                                                        : isLight
+                                                            ? 'bg-gradient-to-br from-emerald-50 to-teal-50/50 border-emerald-200/60 shadow-[0_8px_24px_-6px_rgba(16,185,129,0.15)]'
+                                                            : 'bg-gradient-to-br from-emerald-500/[0.08] to-teal-500/[0.04] border-emerald-500/20 shadow-[0_8px_24px_-6px_rgba(16,185,129,0.15)]'
+                                                        }`}
+                                                >
+                                                    <div className={`absolute top-0 right-0 w-16 h-16 rounded-full blur-xl ${validationResult.amount_match === false ? 'bg-amber-400/10' : 'bg-emerald-400/10'
+                                                        }`} />
+                                                    <div className="flex items-center gap-1.5 mb-2">
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${validationResult.amount_match === false
+                                                            ? 'bg-amber-500 animate-pulse'
+                                                            : isLight ? 'bg-emerald-500' : 'bg-emerald-400'
+                                                            }`} />
+                                                        <p className={`text-[8px] font-black uppercase tracking-widest ${validationResult.amount_match === false
+                                                            ? 'text-amber-600'
+                                                            : isLight ? 'text-emerald-600' : 'text-emerald-400'
+                                                            }`}>Chekdagi (AI)</p>
+                                                    </div>
+                                                    <p className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                                        {validationResult.extracted_amount
+                                                            ? validationResult.extracted_amount.toLocaleString('uz-UZ')
+                                                            : '—'
+                                                        }
+                                                    </p>
+                                                    <p className={`text-[9px] font-bold mt-0.5 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>UZS</p>
+                                                </div>
                                             </div>
-                                            <div className={`px-2.5 py-1 rounded-xl text-xs font-black ${validationResult.confidence >= 80
-                                                ? isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-500/15 text-emerald-400'
-                                                : validationResult.confidence >= 50
-                                                    ? isLight ? 'bg-amber-100 text-amber-700' : 'bg-amber-500/15 text-amber-400'
-                                                    : isLight ? 'bg-rose-100 text-rose-700' : 'bg-rose-500/15 text-rose-400'
+
+                                            {/* Mismatch difference banner */}
+                                            {validationResult.amount_match === false && validationResult.extracted_amount && (
+                                                <div className={`mb-5 p-3.5 rounded-2xl border flex items-center gap-3 ${isLight
+                                                    ? 'bg-gradient-to-r from-rose-50 to-amber-50 border-rose-200/60'
+                                                    : 'bg-gradient-to-r from-rose-500/[0.06] to-amber-500/[0.04] border-rose-500/15'
+                                                    }`}>
+                                                    <div className={`p-2 rounded-xl shrink-0 ${isLight ? 'bg-rose-100 text-rose-600' : 'bg-rose-500/15 text-rose-400'
+                                                        }`}>
+                                                        <AlertCircle size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-rose-600' : 'text-rose-400'
+                                                            }`}>Farq aniqlandi</p>
+                                                        <p className={`text-sm font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                                            {Math.abs(validationResult.extracted_amount - amount).toLocaleString('uz-UZ')} UZS
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* 3D Confidence Gauge */}
+                                            <div className={`relative p-4 rounded-2xl border mb-5 overflow-hidden ${isLight
+                                                ? 'bg-gradient-to-br from-slate-50 to-white border-slate-200/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)]'
+                                                : 'bg-gradient-to-br from-white/[0.03] to-white/[0.01] border-white/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]'
                                                 }`}>
-                                                {validationResult.confidence}%
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <ShieldCheck size={13} className={
+                                                            validationResult.confidence >= 80 ? 'text-emerald-500' :
+                                                                validationResult.confidence >= 50 ? 'text-amber-500' : 'text-rose-500'
+                                                        } />
+                                                        <span className={`text-[9px] font-black uppercase tracking-widest ${isLight ? 'text-slate-500' : 'text-slate-400'
+                                                            }`}>Ishonchlilik darajasi</span>
+                                                    </div>
+                                                    <div className={`px-2.5 py-1 rounded-xl text-xs font-black ${validationResult.confidence >= 80
+                                                        ? isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-500/15 text-emerald-400'
+                                                        : validationResult.confidence >= 50
+                                                            ? isLight ? 'bg-amber-100 text-amber-700' : 'bg-amber-500/15 text-amber-400'
+                                                            : isLight ? 'bg-rose-100 text-rose-700' : 'bg-rose-500/15 text-rose-400'
+                                                        }`}>
+                                                        {validationResult.confidence}%
+                                                    </div>
+                                                </div>
+                                                {/* Track */}
+                                                <div className={`w-full h-3 rounded-full overflow-hidden ${isLight ? 'bg-slate-200/80' : 'bg-white/[0.06]'
+                                                    }`}>
+                                                    <div
+                                                        className={`h-full rounded-full transition-all duration-1000 ease-out relative ${validationResult.confidence >= 80
+                                                            ? 'bg-gradient-to-r from-emerald-500 to-cyan-400 shadow-[0_0_12px_rgba(16,185,129,0.5)]'
+                                                            : validationResult.confidence >= 50
+                                                                ? 'bg-gradient-to-r from-amber-500 to-orange-400 shadow-[0_0_12px_rgba(245,158,11,0.5)]'
+                                                                : 'bg-gradient-to-r from-rose-500 to-pink-400 shadow-[0_0_12px_rgba(244,63,94,0.5)]'
+                                                            }`}
+                                                        style={{ width: `${validationResult.confidence}%` }}
+                                                    >
+                                                        {/* Shine effect */}
+                                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent rounded-full" />
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                        {/* Track */}
-                                        <div className={`w-full h-3 rounded-full overflow-hidden ${isLight ? 'bg-slate-200/80' : 'bg-white/[0.06]'
-                                            }`}>
-                                            <div
-                                                className={`h-full rounded-full transition-all duration-1000 ease-out relative ${validationResult.confidence >= 80
-                                                    ? 'bg-gradient-to-r from-emerald-500 to-cyan-400 shadow-[0_0_12px_rgba(16,185,129,0.5)]'
-                                                    : validationResult.confidence >= 50
-                                                        ? 'bg-gradient-to-r from-amber-500 to-orange-400 shadow-[0_0_12px_rgba(245,158,11,0.5)]'
-                                                        : 'bg-gradient-to-r from-rose-500 to-pink-400 shadow-[0_0_12px_rgba(244,63,94,0.5)]'
+
+                                            {/* AI Analysis — frosted panel */}
+                                            {validationResult.analysis && (
+                                                <div className={`relative p-4 rounded-2xl border mb-6 overflow-hidden ${isLight
+                                                    ? 'bg-gradient-to-br from-indigo-50/40 to-blue-50/30 border-indigo-200/40'
+                                                    : 'bg-gradient-to-br from-indigo-500/[0.04] to-blue-500/[0.02] border-indigo-500/10'
+                                                    }`}>
+                                                    <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-indigo-400/20 to-transparent" />
+                                                    <div className="flex items-center gap-2 mb-2.5">
+                                                        <div className={`p-1.5 rounded-lg ${isLight ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-500/15 text-indigo-400'
+                                                            }`}>
+                                                            <ShieldCheck size={11} />
+                                                        </div>
+                                                        <p className={`text-[8px] font-black uppercase tracking-widest ${isLight ? 'text-indigo-500' : 'text-indigo-400'
+                                                            }`}>AI xulosasi</p>
+                                                    </div>
+                                                    <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'
+                                                        }`}>{validationResult.analysis}</p>
+                                                </div>
+                                            )}
+
+                                            {/* Instruction text for mismatch or duplicate */}
+                                            {(validationResult.is_duplicate || validationResult.amount_match === false || validationResult.confidence < 50) && (
+                                                <div className={`text-center mb-5 p-3.5 rounded-2xl ${validationResult.is_duplicate
+                                                    ? isLight ? 'bg-rose-50/80' : 'bg-rose-500/[0.06]'
+                                                    : isLight ? 'bg-amber-50/60' : 'bg-amber-500/[0.04]'
+                                                    }`}>
+                                                    <p className={`text-[11px] font-bold leading-relaxed ${validationResult.is_duplicate
+                                                        ? isLight ? 'text-rose-800' : 'text-rose-300/90'
+                                                        : isLight ? 'text-amber-800' : 'text-amber-300/90'
+                                                        }`}>
+                                                        {validationResult.is_duplicate
+                                                            ? '🚫 Bu chek oldin yuklangan! Boshqa chekni tanlang yoki to\'lov haqida ma\'muriyatga murojaat qiling.'
+                                                            : '⚠️ Iltimos, to\'lov summasini to\'g\'rilab qayta yuklang yoki to\'g\'ri chekni tanlang.'
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Single Close Button — 3D style */}
+                                            <button
+                                                onClick={() => { setShowValidationModal(false); setValidationResult(null) }}
+                                                className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 border ${validationResult.amount_match === false || validationResult.confidence < 50
+                                                    ? isLight
+                                                        ? 'bg-gradient-to-b from-slate-100 to-slate-200 border-slate-300 text-slate-700 hover:from-slate-200 hover:to-slate-300 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)]'
+                                                        : 'bg-gradient-to-b from-white/10 to-white/5 border-white/10 text-slate-200 hover:from-white/15 hover:to-white/10 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.05)]'
+                                                    : isLight
+                                                        ? 'bg-gradient-to-b from-blue-500 to-blue-600 border-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-[0_8px_24px_-4px_rgba(59,130,246,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]'
+                                                        : 'bg-gradient-to-b from-cyan-400 to-cyan-500 border-cyan-500/50 text-slate-950 hover:from-cyan-300 hover:to-cyan-400 shadow-[0_8px_24px_-4px_rgba(34,211,238,0.35),inset_0_1px_0_rgba(255,255,255,0.3)]'
                                                     }`}
-                                                style={{ width: `${validationResult.confidence}%` }}
+                                                style={{ transform: 'perspective(500px) translateZ(0)', transition: 'all 0.3s, transform 0.2s' }}
+                                                onMouseEnter={(e) => e.currentTarget.style.transform = 'perspective(500px) translateZ(4px)'}
+                                                onMouseLeave={(e) => e.currentTarget.style.transform = 'perspective(500px) translateZ(0)'}
                                             >
-                                                {/* Shine effect */}
-                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent rounded-full" />
-                                            </div>
+                                                {validationResult.amount_match === false || validationResult.confidence < 50
+                                                    ? 'Tushundim, yopish'
+                                                    : 'Yaxshi, yopish ✓'
+                                                }
+                                            </button>
                                         </div>
                                     </div>
-
-                                    {/* AI Analysis — frosted panel */}
-                                    {validationResult.analysis && (
-                                        <div className={`relative p-4 rounded-2xl border mb-6 overflow-hidden ${isLight
-                                            ? 'bg-gradient-to-br from-indigo-50/40 to-blue-50/30 border-indigo-200/40'
-                                            : 'bg-gradient-to-br from-indigo-500/[0.04] to-blue-500/[0.02] border-indigo-500/10'
-                                            }`}>
-                                            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-indigo-400/20 to-transparent" />
-                                            <div className="flex items-center gap-2 mb-2.5">
-                                                <div className={`p-1.5 rounded-lg ${isLight ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-500/15 text-indigo-400'
-                                                    }`}>
-                                                    <ShieldCheck size={11} />
-                                                </div>
-                                                <p className={`text-[8px] font-black uppercase tracking-widest ${isLight ? 'text-indigo-500' : 'text-indigo-400'
-                                                    }`}>AI xulosasi</p>
-                                            </div>
-                                            <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'
-                                                }`}>{validationResult.analysis}</p>
-                                        </div>
-                                    )}
-
-                                    {/* Instruction text for mismatch or duplicate */}
-                                    {(validationResult.is_duplicate || validationResult.amount_match === false || validationResult.confidence < 50) && (
-                                        <div className={`text-center mb-5 p-3.5 rounded-2xl ${validationResult.is_duplicate
-                                            ? isLight ? 'bg-rose-50/80' : 'bg-rose-500/[0.06]'
-                                            : isLight ? 'bg-amber-50/60' : 'bg-amber-500/[0.04]'
-                                            }`}>
-                                            <p className={`text-[11px] font-bold leading-relaxed ${validationResult.is_duplicate
-                                                ? isLight ? 'text-rose-800' : 'text-rose-300/90'
-                                                : isLight ? 'text-amber-800' : 'text-amber-300/90'
-                                                }`}>
-                                                {validationResult.is_duplicate
-                                                    ? '🚫 Bu chek oldin yuklangan! Boshqa chekni tanlang yoki to\'lov haqida ma\'muriyatga murojaat qiling.'
-                                                    : '⚠️ Iltimos, to\'lov summasini to\'g\'rilab qayta yuklang yoki to\'g\'ri chekni tanlang.'
-                                                }
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    {/* Single Close Button — 3D style */}
-                                    <button
-                                        onClick={() => { setShowValidationModal(false); setValidationResult(null) }}
-                                        className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 border ${validationResult.amount_match === false || validationResult.confidence < 50
-                                            ? isLight
-                                                ? 'bg-gradient-to-b from-slate-100 to-slate-200 border-slate-300 text-slate-700 hover:from-slate-200 hover:to-slate-300 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)]'
-                                                : 'bg-gradient-to-b from-white/10 to-white/5 border-white/10 text-slate-200 hover:from-white/15 hover:to-white/10 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.05)]'
-                                            : isLight
-                                                ? 'bg-gradient-to-b from-blue-500 to-blue-600 border-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-[0_8px_24px_-4px_rgba(59,130,246,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]'
-                                                : 'bg-gradient-to-b from-cyan-400 to-cyan-500 border-cyan-500/50 text-slate-950 hover:from-cyan-300 hover:to-cyan-400 shadow-[0_8px_24px_-4px_rgba(34,211,238,0.35),inset_0_1px_0_rgba(255,255,255,0.3)]'
-                                            }`}
-                                        style={{ transform: 'perspective(500px) translateZ(0)', transition: 'all 0.3s, transform 0.2s' }}
-                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'perspective(500px) translateZ(4px)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'perspective(500px) translateZ(0)'}
-                                    >
-                                        {validationResult.amount_match === false || validationResult.confidence < 50
-                                            ? 'Tushundim, yopish'
-                                            : 'Yaxshi, yopish ✓'
-                                        }
-                                    </button>
                                 </div>
-                            </div>
-                        </div>
+                            )}
+                        </AnimatePresence>,
+                        document.body
                     )}
                 </motion.div>
             )}

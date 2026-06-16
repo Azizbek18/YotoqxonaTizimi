@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import { callGemini } from '@/lib/gemini'
 
 export async function POST(req: NextRequest) {
   try {
@@ -59,41 +60,26 @@ Quyidagi JSON formatda javob qaytaring:
 MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown formatlash yoki qo'shimcha tushuntirish qo'shmang.`
 
         // 4. Call Gemini 2.5 Flash API via fetch
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`
-
-        const apiResponse = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: systemPrompt
-                  },
-                  {
-                    inlineData: {
-                      mimeType: mimeType,
-                      data: base64Data
-                    }
+        const apiData = await callGemini({
+          contents: [
+            {
+              parts: [
+                {
+                  text: systemPrompt
+                },
+                {
+                  inlineData: {
+                    mimeType: mimeType,
+                    data: base64Data
                   }
-                ]
-              }
-            ],
-            generationConfig: {
-              responseMimeType: 'application/json'
+                }
+              ]
             }
-          })
-        })
-
-        if (!apiResponse.ok) {
-          const errText = await apiResponse.text()
-          throw new Error(`Gemini API Error (${apiResponse.status}): ${errText}`)
-        }
-
-        const apiData = await apiResponse.json()
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json'
+          }
+        }, geminiApiKey)
         const textResponse = apiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
         // 5. Parse Gemini response

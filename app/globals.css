@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #020617;
   --foreground: #e2e8f0;
@@ -237,4 +239,14 @@ html.theme-light #app-shell [class*="border-white/5"] {
 ::selection {
   background: rgba(59, 130, 246, 0.28);
   color: #fff;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }

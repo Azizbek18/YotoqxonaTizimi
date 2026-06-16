@@ -1,5 +1,6 @@
 'use client'
 
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Bell, ClipboardList, LayoutDashboard, LogOut, Users } from 'lucide-react'
@@ -18,6 +19,19 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
   const pathname = usePathname()
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center text-white">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-cyan-500" />
+      </div>
+    )
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()

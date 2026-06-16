@@ -42,6 +42,7 @@ type AdminUserRow = {
   assigned_floor?: number | null
   assigned_gender?: string | null
   is_floor_captain?: boolean | null
+  warning_count?: number | null
 }
 
 type RawStudentRow = Record<string, unknown> & {
@@ -120,6 +121,7 @@ function mapStudentRow(user: RawStudentRow): AdminUserRow {
     entry_date: (user.entry_date as string | null | undefined) ?? null,
     assigned_floor: (user.assigned_floor as number | null | undefined) ?? null,
     is_floor_captain: (user.is_floor_captain as boolean | null | undefined) ?? false,
+    warning_count: (user.warning_count as number | null | undefined) ?? 0,
   }
 }
 
@@ -224,6 +226,11 @@ function buildStudentUpdates(body: Record<string, unknown>) {
   if ('assigned_floor' in body) {
     const normalizedFloor = normalizeOptionalNumber(body.assigned_floor)
     updates.assigned_floor = normalizedFloor ?? null
+  }
+
+  if ('warning_count' in body) {
+    const normalizedWarning = normalizeOptionalNumber(body.warning_count)
+    updates.warning_count = normalizedWarning ?? 0
   }
 
   return updates

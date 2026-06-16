@@ -20,7 +20,7 @@ function extractFloor(roomNumber?: string | null) {
   if (!matched) return null
   const parsed = Number(matched[0])
   if (!Number.isFinite(parsed)) return null
-  return Math.max(1, Math.floor(parsed / 100))
+  return Math.max(1, Math.floor((parsed - 1) / 30) + 1)
 }
 
 export async function GET() {

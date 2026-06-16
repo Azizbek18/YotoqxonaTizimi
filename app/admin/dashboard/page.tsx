@@ -70,6 +70,27 @@ export default function AdminDashboard() {
     { name: 'Kutish', value: 0, color: '#f59e0b' },
     { name: 'Rad etilgan', value: 0, color: '#ef4444' },
   ])
+  const [monthlyData, setMonthlyData] = useState<any[]>(() => {
+    const monthsUz = [
+      'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 
+      'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'
+    ]
+    const result: any[] = []
+    const now = new Date()
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      result.push({
+        month: monthsUz[d.getMonth()],
+        monthIdx: d.getMonth(),
+        year: d.getFullYear(),
+        students: 0,
+        applications: 0,
+        approved: 0,
+        rejected: 0
+      })
+    }
+    return result
+  })
 
   // Tezkor amallar uchun holatlar
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -171,6 +192,67 @@ export default function AdminDashboard() {
       if (!studentsError && studentsData) {
         setAllStudents(studentsData)
       }
+
+      // Arizalar ma'lumotlarini olish
+      const { data: arizalarData, error: arizalarError } = await supabase
+        .from('arizalar')
+        .select('created_at, status')
+
+      // 6 oylik statistika massivini tayyorlash
+      const monthsUz = [
+        'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 
+        'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'
+      ]
+      const currentMonths: any[] = []
+      const now = new Date()
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        currentMonths.push({
+          month: monthsUz[d.getMonth()],
+          monthIdx: d.getMonth(),
+          year: d.getFullYear(),
+          students: 0,
+          applications: 0,
+          approved: 0,
+          rejected: 0
+        })
+      }
+
+      // Talabalarni joriy oylar bo'yicha guruhlash
+      if (studentsData) {
+        studentsData.forEach((student: any) => {
+          if (!student.created_at) return
+          const date = new Date(student.created_at)
+          const m = date.getMonth()
+          const y = date.getFullYear()
+          const match = currentMonths.find(item => item.monthIdx === m && item.year === y)
+          if (match) {
+            match.students++
+          }
+        })
+      }
+
+      // Arizalarni joriy oylar bo'yicha guruhlash
+      if (!arizalarError && arizalarData) {
+        arizalarData.forEach((ariza: any) => {
+          if (!ariza.created_at) return
+          const date = new Date(ariza.created_at)
+          const m = date.getMonth()
+          const y = date.getFullYear()
+          const match = currentMonths.find(item => item.monthIdx === m && item.year === y)
+          if (match) {
+            match.applications++
+            const status = String(ariza.status).toLowerCase()
+            if (status === 'approved' || status === 'tasdiqlangan') {
+              match.approved++
+            } else if (status === 'rejected' || status === 'rad etilgan') {
+              match.rejected++
+            }
+          }
+        })
+      }
+
+      setMonthlyData(currentMonths)
 
     } catch (error) {
       console.error('Statistika yuklashda xato:', error)
@@ -306,7 +388,7 @@ export default function AdminDashboard() {
         if (!s.room_number) return false
         const roomInt = parseInt(s.room_number)
         if (Number.isNaN(roomInt)) return false
-        const floorOfRoom = Math.floor(roomInt / 100)
+        const floorOfRoom = Math.floor((roomInt - 1) / 30) + 1
         return floorOfRoom === targetFloor
       })
     }
@@ -492,7 +574,7 @@ export default function AdminDashboard() {
       )}
 
       {/* Pill Styled Glassmorphic Tabs */}
-      <div className={`inline-flex p-1 rounded-2xl gap-1 border backdrop-blur-xl transition-all ${
+      <div className={`inline-flex max-w-full overflow-x-auto no-scrollbar flex-nowrap p-1 rounded-2xl gap-1 border backdrop-blur-xl transition-all ${
         isLight 
           ? 'bg-slate-100/80 border-slate-200/80' 
           : 'bg-[#0f172a]/60 border-white/5'
@@ -503,7 +585,7 @@ export default function AdminDashboard() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`relative z-10 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all duration-300 ${
+              className={`relative z-10 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all duration-300 shrink-0 whitespace-nowrap ${
                 isActive
                   ? isLight ? 'text-purple-700' : 'text-white'
                   : isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
@@ -570,7 +652,7 @@ export default function AdminDashboard() {
                 <button 
                   onClick={handleRefreshStats}
                   disabled={isRefreshing}
-                  className={`relative overflow-hidden p-5 text-left transition-all duration-300 group border rounded-2xl backdrop-blur-xl flex items-center justify-between gap-4 ${
+                  className={`relative overflow-hidden p-4 sm:p-5 text-left transition-all duration-300 group border rounded-2xl backdrop-blur-xl flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 ${
                     isRefreshing ? 'opacity-80 cursor-not-allowed' : ''
                   } ${
                     isLight 
@@ -580,15 +662,15 @@ export default function AdminDashboard() {
                 >
                   <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-blue-500 to-indigo-500" />
                   <div className="pl-2 flex-1">
-                    <p className={`text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${textMuted} group-hover:text-purple-500 flex items-center gap-1.5`}>
+                    <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${textMuted} group-hover:text-purple-500 flex items-center gap-1.5`}>
                       {isRefreshing && <Loader className="animate-spin" size={12} />}
                       Ma&apos;lumotlarni Yangilash
                     </p>
-                    <p className={`text-base sm:text-lg font-black mt-2 transition-transform duration-300 group-hover:translate-x-1 ${textStrong}`}>
+                    <p className={`text-sm sm:text-base md:text-lg font-black mt-1.5 transition-transform duration-300 group-hover:translate-x-1 ${textStrong}`}>
                       Barcha Statistikalarni Yangilash &rarr;
                     </p>
                   </div>
-                  <div className="relative w-14 h-14 shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
+                  <div className="relative w-12 h-12 sm:w-14 sm:h-14 self-end sm:self-auto shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
                     <img 
                       src="https://img.icons8.com/3d-fluency/94/synchronize.png" 
                       alt="Yangilash" 
@@ -601,7 +683,7 @@ export default function AdminDashboard() {
                 <button 
                   onClick={handleCheckStatus}
                   disabled={isCheckingStatus}
-                  className={`relative overflow-hidden p-5 text-left transition-all duration-300 group border rounded-2xl backdrop-blur-xl flex items-center justify-between gap-4 ${
+                  className={`relative overflow-hidden p-4 sm:p-5 text-left transition-all duration-300 group border rounded-2xl backdrop-blur-xl flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 ${
                     isCheckingStatus ? 'opacity-80 cursor-not-allowed' : ''
                   } ${
                     isLight 
@@ -611,15 +693,15 @@ export default function AdminDashboard() {
                 >
                   <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-purple-500 to-pink-500" />
                   <div className="pl-2 flex-1">
-                    <p className={`text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${textMuted} group-hover:text-purple-500 flex items-center gap-1.5`}>
+                    <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${textMuted} group-hover:text-purple-500 flex items-center gap-1.5`}>
                       {isCheckingStatus && <Loader className="animate-spin" size={12} />}
                       Tizim holati
                     </p>
-                    <p className={`text-base sm:text-lg font-black mt-2 transition-transform duration-300 group-hover:translate-x-1 ${textStrong}`}>
+                    <p className={`text-sm sm:text-base md:text-lg font-black mt-1.5 transition-transform duration-300 group-hover:translate-x-1 ${textStrong}`}>
                       Server Holatini Tekshirish &rarr;
                     </p>
                   </div>
-                  <div className="relative w-14 h-14 shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
+                  <div className="relative w-12 h-12 sm:w-14 sm:h-14 self-end sm:self-auto shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
                     <img 
                       src="https://img.icons8.com/3d-fluency/94/server.png" 
                       alt="Server holati" 
@@ -631,7 +713,7 @@ export default function AdminDashboard() {
                 {/* 3. Yangi Talaba */}
                 <button 
                   onClick={() => setInviteModalOpen(true)}
-                  className={`relative overflow-hidden p-5 text-left transition-all duration-300 group border rounded-2xl backdrop-blur-xl flex items-center justify-between gap-4 ${
+                  className={`relative overflow-hidden p-4 sm:p-5 text-left transition-all duration-300 group border rounded-2xl backdrop-blur-xl flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 ${
                     isLight 
                       ? 'bg-slate-50/50 border-slate-200/80 hover:bg-white hover:border-purple-300 hover:shadow-lg hover:shadow-purple-500/5' 
                       : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-purple-500/30 hover:shadow-[0_0_35px_rgba(168,85,247,0.08)]'
@@ -639,14 +721,14 @@ export default function AdminDashboard() {
                 >
                   <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-emerald-500 to-green-500" />
                   <div className="pl-2 flex-1">
-                    <p className={`text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${textMuted} group-hover:text-purple-500`}>
+                    <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${textMuted} group-hover:text-purple-500`}>
                       Yangi Talaba
                     </p>
-                    <p className={`text-base sm:text-lg font-black mt-2 transition-transform duration-300 group-hover:translate-x-1 ${textStrong}`}>
+                    <p className={`text-sm sm:text-base md:text-lg font-black mt-1.5 transition-transform duration-300 group-hover:translate-x-1 ${textStrong}`}>
                       Foydalanuvchi Qo&apos;shish &rarr;
                     </p>
                   </div>
-                  <div className="relative w-14 h-14 shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
+                  <div className="relative w-12 h-12 sm:w-14 sm:h-14 self-end sm:self-auto shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
                     <img 
                       src="https://img.icons8.com/3d-fluency/94/student-male.png" 
                       alt="Talaba" 
@@ -677,7 +759,7 @@ export default function AdminDashboard() {
             >
               <h3 className={`text-lg font-black mb-6 ${textStrong}`}>Oylik Statistika</h3>
               <ResponsiveContainer width="100%" height={320}>
-                <AreaChart data={mockMonthlyData}>
+                <AreaChart data={monthlyData}>
                   <defs>
                     <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
@@ -718,15 +800,15 @@ export default function AdminDashboard() {
               >
                 <h3 className={`text-lg font-black mb-6 ${textStrong}`}>Qabul va Rad etishlar</h3>
                 <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={mockMonthlyData}>
+                  <BarChart data={monthlyData}>
                     <defs>
-                      <linearGradient id="barStudents" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={1}/>
-                        <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.6}/>
+                      <linearGradient id="barApproved" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity={1}/>
+                        <stop offset="100%" stopColor="#047857" stopOpacity={0.6}/>
                       </linearGradient>
-                      <linearGradient id="barApplications" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#a855f7" stopOpacity={1}/>
-                        <stop offset="100%" stopColor="#7e22ce" stopOpacity={0.6}/>
+                      <linearGradient id="barRejected" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ef4444" stopOpacity={1}/>
+                        <stop offset="100%" stopColor="#b91c1c" stopOpacity={0.6}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)"} />
@@ -742,8 +824,8 @@ export default function AdminDashboard() {
                         boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
                       }}
                     />
-                    <Bar dataKey="students" fill="url(#barStudents)" radius={[6, 6, 0, 0]} name="Talabalar" />
-                    <Bar dataKey="applications" fill="url(#barApplications)" radius={[6, 6, 0, 0]} name="Arizalar" />
+                    <Bar dataKey="approved" fill="url(#barApproved)" radius={[6, 6, 0, 0]} name="Tasdiqlangan" />
+                    <Bar dataKey="rejected" fill="url(#barRejected)" radius={[6, 6, 0, 0]} name="Rad etilgan" />
                   </BarChart>
                 </ResponsiveContainer>
               </motion.div>
@@ -919,7 +1001,7 @@ export default function AdminDashboard() {
                           type="number"
                           value={reportFilters.roomStart}
                           onChange={(e) => setReportFilters(prev => ({ ...prev, roomStart: e.target.value }))}
-                          placeholder={`${reportFilters.floor}01`}
+                          placeholder={String((parseInt(reportFilters.floor) - 1) * 30 + 1)}
                           className={`w-full px-4 py-3 rounded-xl border outline-none text-sm transition-all ${
                             isLight 
                               ? 'bg-white border-slate-200 text-slate-800 focus:border-purple-500' 
@@ -935,7 +1017,7 @@ export default function AdminDashboard() {
                           type="number"
                           value={reportFilters.roomEnd}
                           onChange={(e) => setReportFilters(prev => ({ ...prev, roomEnd: e.target.value }))}
-                          placeholder={`${reportFilters.floor}20`}
+                          placeholder={String(parseInt(reportFilters.floor) * 30)}
                           className={`w-full px-4 py-3 rounded-xl border outline-none text-sm transition-all ${
                             isLight 
                               ? 'bg-white border-slate-200 text-slate-800 focus:border-purple-500' 

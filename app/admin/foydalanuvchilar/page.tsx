@@ -20,10 +20,18 @@ import {
   X,
   Check,
   RotateCcw,
+  ArrowLeft,
+  MessageSquare,
+  DollarSign,
+  Eye,
+  CheckCircle2,
+  Clock,
+  FileText,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import AdminTable, { type TableColumn } from '@/components/admin/AdminTable'
 import AdminModal from '@/components/admin/AdminModal'
+import { useThemeStore } from '@/lib/stores/theme-store'
+import { supabase } from '@/lib/supabase'
 
 type UserRow = {
   id: string
@@ -61,6 +69,28 @@ type UserRow = {
   assigned_floor?: number | null
   assigned_gender?: string | null
   is_floor_captain?: boolean | null
+  warning_count?: number | null
+}
+
+type StudentPayment = {
+  id: string
+  month: string
+  year: number
+  amount: number
+  status: 'paid' | 'pending' | 'rejected' | 'waiting' | 'approved'
+  receipt_url?: string
+  admin_message?: string
+  created_at?: string
+}
+
+type ChatMessage = {
+  id: string
+  student_id: string
+  type: string
+  title: 'admin' | 'talaba'
+  reason: string
+  status: string
+  created_at: string
 }
 
 const ROLE_OPTIONS: UserRow['role'][] = ['talaba', 'tarbiyachi', 'admin']
@@ -77,7 +107,6 @@ const ROLE_COLORS: Record<string, string> = {
   admin: 'bg-red-500/20 text-red-400 border-red-500/30',
 }
 
-
 const ASOSIY_FIELDS = [
   { key: 'full_name', label: "To'liq ism", type: 'text' },
   { key: 'middle_name', label: 'Sharifi', type: 'text' },
@@ -92,6 +121,7 @@ const ASOSIY_FIELDS = [
   { key: 'nationality', label: 'Millati', type: 'text' },
   { key: 'study_type', label: "Ta'lim turi", type: 'text' },
   { key: 'entry_date', label: 'Yotoqxonaga kirgan sana', type: 'date' },
+  { key: 'warning_count', label: 'Ogohlantirishlar soni', type: 'number' },
 ] as const
 
 const HUJJAT_FIELDS = [
@@ -113,24 +143,35 @@ const OILA_FIELDS = [
 ] as const
 
 export default function AdminUsersPage() {
+  const theme = useThemeStore((state) => state.theme)
+  const isLight = theme === 'light'
+
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRoom, setFilterRoom] = useState('')
-  const [filterRole, setFilterRole] = useState<'all' | UserRow['role']>('all')
-  const [filterStatus, setFilterStatus] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<string>('created_at')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [activeFolder, setActiveFolder] = useState<'all' | 'talaba' | 'tarbiyachi' | 'admin' | 'pending'>('all')
+
+  const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
+  const [detailTab, setDetailTab] = useState<'profil' | 'hujjatlar' | 'oila' | 'tolovlar' | 'chat'>('profil')
+  const [payments, setPayments] = useState<StudentPayment[]>([])
+  const [paymentsLoading, setPaymentsLoading] = useState(false)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [loadingChat, setLoadingChat] = useState(false)
+  const [sendingChat, setSendingChat] = useState(false)
+  const [chatInput, setChatInput] = useState('')
+
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; userId?: string }>({ isOpen: false })
   const [editModal, setEditModal] = useState<{ isOpen: boolean; user?: UserRow }>({ isOpen: false })
-  const [detailModal, setDetailModal] = useState<{ isOpen: boolean; user?: UserRow }>({ isOpen: false })
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null)
   const [editingRole, setEditingRole] = useState<UserRow['role']>('talaba')
   const [activeEditTab, setActiveEditTab] = useState<'asosiy' | 'hujjatlar' | 'oila'>('asosiy')
+  
   const [inviteModalOpen, setInviteModalOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [generatedInviteCode, setGeneratedInviteCode] = useState('')
   const [creatingInvite, setCreatingInvite] = useState(false)
+
   const [editForm, setEditForm] = useState({
     full_name: '',
     phone: '',
@@ -160,11 +201,11 @@ export default function AdminUsersPage() {
     assigned_floor: '',
     assigned_gender: '',
     is_floor_captain: false as boolean,
+    warning_count: '',
   })
+
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const pageSize = 10
 
   const getAllowedRoles = (user: UserRow): UserRow['role'][] => {
     return user.source === 'staff' ? ['tarbiyachi', 'admin'] : ['talaba']
@@ -208,6 +249,13 @@ export default function AdminUsersPage() {
 
       const usersList = result.users ?? []
       setUsers(usersList)
+
+      if (selectedUser) {
+        const updated = usersList.find((u) => u.id === selectedUser.id)
+        if (updated) {
+          setSelectedUser(updated)
+        }
+      }
       return usersList
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Foydalanuvchilarni yuklashda xato!"
@@ -263,7 +311,7 @@ export default function AdminUsersPage() {
         if (userId && loaded.length > 0) {
           const user = loaded.find((u) => u.id === userId)
           if (user) {
-            setDetailModal({ isOpen: true, user })
+            setSelectedUser(user)
           }
         }
       }
@@ -271,62 +319,132 @@ export default function AdminUsersPage() {
     void init()
   }, [])
 
+  const loadStudentPayments = async (studentId: string) => {
+    try {
+      setPaymentsLoading(true)
+      const { data, error } = await supabase
+        .from('tolovlar')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('year', { ascending: false })
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setPayments(data || [])
+    } catch (error) {
+      console.error('To\'lovlarni yuklashda xatolik:', error)
+      toast.error('To\'lov ma\'lumotlarini yuklab bo\'lmadi')
+    } finally {
+      setPaymentsLoading(false)
+    }
+  }
+
+  const loadChatMessages = async (studentId: string) => {
+    try {
+      setLoadingChat(true)
+      const { data, error } = await supabase
+        .from('arizalar')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('type', 'chat')
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+      setChatMessages(data || [])
+    } catch (error) {
+      console.error('Chat yuklashda xato:', error)
+    } finally {
+      setLoadingChat(false)
+    }
+  }
+
+  useEffect(() => {
+    if (selectedUser && selectedUser.role === 'talaba') {
+      void loadStudentPayments(selectedUser.id)
+      if (detailTab === 'chat') {
+        void loadChatMessages(selectedUser.id)
+      }
+    } else {
+      setPayments([])
+      setChatMessages([])
+    }
+  }, [selectedUser, detailTab])
+
+  const handleSendChatMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedUser || !chatInput.trim() || sendingChat) return
+
+    const messageText = chatInput.trim()
+    setChatInput('')
+    setSendingChat(true)
+
+    try {
+      const response = await fetch('/api/admin/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: selectedUser.id,
+          message: messageText
+        })
+      })
+
+      const result = await response.json()
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || 'Xabar yuborishda xatolik')
+      }
+
+      setChatMessages(prev => [...prev, result.message])
+    } catch (error: any) {
+      toast.error(error.message)
+      setChatInput(messageText)
+    } finally {
+      setSendingChat(false)
+    }
+  }
+
+  const paymentStats = useMemo(() => {
+    const totalContractFee = 3000000
+    const approvedPayments = payments.filter(p => p.status === 'paid' || p.status === 'approved')
+    const waitingPayments = payments.filter(p => p.status === 'waiting' || p.status === 'pending')
+    
+    const paidAmount = approvedPayments.reduce((sum, p) => sum + p.amount, 0)
+    const waitingAmount = waitingPayments.reduce((sum, p) => sum + p.amount, 0)
+    const remainingAmount = Math.max(0, totalContractFee - paidAmount)
+    const progressPercent = Math.round((paidAmount / totalContractFee) * 100) || 0
+
+    return {
+      totalContractFee,
+      paidAmount,
+      waitingAmount,
+      remainingAmount,
+      progressPercent
+    }
+  }, [payments])
+
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       const matchesSearch =
         user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesRole = filterRole === 'all' || user.role === filterRole
+      
       const matchesRoom = !filterRoom || (user.room_number?.toLowerCase().includes(filterRoom.toLowerCase()))
-      const userStatus = user.status || 'active'
-      const matchesStatus = filterStatus === 'all' || userStatus === filterStatus
-      return matchesSearch && matchesRole && matchesRoom && matchesStatus
-    })
-  }, [users, searchTerm, filterRole, filterRoom, filterStatus])
+      
+      let matchesFolder = true
+      if (activeFolder === 'pending') {
+        matchesFolder = user.status === 'pending'
+      } else if (activeFolder !== 'all') {
+        matchesFolder = user.role === activeFolder
+      }
 
-  const paginatedUsers = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return filteredUsers.slice(start, start + pageSize)
-  }, [filteredUsers, currentPage])
+      return matchesSearch && matchesRoom && matchesFolder
+    })
+  }, [users, searchTerm, filterRoom, activeFolder])
 
   const roommates = useMemo(() => {
-    const activeUser = detailModal.user
+    const activeUser = selectedUser
     if (!activeUser?.room_number) return []
     return users.filter((u) => u.room_number === activeUser.room_number && u.id !== activeUser.id)
-  }, [users, detailModal.user])
-
-  const studentInfoItems = (user: UserRow) =>
-    [
-      { icon: Mail, label: 'Email', value: user.email },
-      { icon: Phone, label: 'Telefon', value: user.phone_number },
-      { icon: GraduationCap, label: 'Fakultet', value: user.faculty },
-      { icon: GraduationCap, label: "Yo'nalish", value: user.direction },
-      { icon: ShieldCheck, label: 'Kurs', value: user.course ? `${user.course}-kurs` : undefined },
-      { icon: Home, label: 'Xona', value: user.room_number },
-      { icon: Home, label: 'Biriktirilgan qavat', value: user.assigned_floor ? `${user.assigned_floor}-qavat` : undefined },
-      { icon: ShieldCheck, label: 'Sardorlik holati', value: user.is_floor_captain ? 'Qavat sardori' : undefined },
-      { icon: ShieldCheck, label: 'Holat', value: user.status },
-      { icon: UserRound, label: 'Biriktirilgan jins', value: user.assigned_gender },
-      { icon: CalendarDays, label: "Tug'ilgan sana", value: formatDate(user.birth_date) !== '-' ? formatDate(user.birth_date) : undefined },
-      { icon: CalendarDays, label: 'Passport sanasi', value: formatDate(user.passport_date) !== '-' ? formatDate(user.passport_date) : undefined },
-      { icon: CalendarDays, label: 'Yotoqxonaga kirgan sana', value: formatDate(user.entry_date) !== '-' ? formatDate(user.entry_date) : undefined },
-      { icon: MapPin, label: 'Hudud', value: [user.region, user.district, user.mahalla].filter(Boolean).join(', ') || undefined },
-      { icon: UserRound, label: 'Millati', value: user.nationality },
-      { icon: UserRound, label: 'Jinsi', value: user.gender },
-      { icon: ShieldCheck, label: "Ta'lim turi", value: user.study_type },
-      { icon: ShieldCheck, label: 'Passport seriya', value: user.passport_series },
-      { icon: ShieldCheck, label: 'JSHSHIR', value: user.jshshir },
-    ].filter((item) => item.value)
-
-  const familyInfoItems = (user: UserRow) =>
-    [
-      { label: 'Ota F.I.Sh.', value: user.father_full_name },
-      { label: 'Ota ish joyi', value: user.father_workplace },
-      { label: 'Ota telefoni', value: user.father_phone },
-      { label: 'Ona F.I.Sh.', value: user.mother_full_name },
-      { label: 'Ona ish joyi', value: user.mother_workplace },
-      { label: 'Ona telefoni', value: user.mother_phone },
-    ].filter((item) => item.value)
+  }, [users, selectedUser])
 
   const handleDeleteClick = (userId: string) => {
     setDeleteModal({ isOpen: true, userId })
@@ -357,6 +475,9 @@ export default function AdminUsersPage() {
       }
 
       setUsers(users.filter((userItem) => userItem.id !== deleteModal.userId))
+      if (selectedUser?.id === deleteModal.userId) {
+        setSelectedUser(null)
+      }
       setDeleteModal({ isOpen: false })
       toast.success("Foydalanuvchi o'chirildi!")
     } catch (error: unknown) {
@@ -389,6 +510,9 @@ export default function AdminUsersPage() {
       setUsers((prev) =>
         prev.map((u) => (u.id === id ? { ...u, status: 'active' } : u))
       )
+      if (selectedUser?.id === id) {
+        setSelectedUser(prev => prev ? { ...prev, status: 'active' } : null)
+      }
       toast.success("Talaba muvaffaqiyatli tasdiqlandi!")
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Tasdiqlashda xato!"
@@ -420,6 +544,9 @@ export default function AdminUsersPage() {
       }
 
       setUsers((prev) => prev.filter((u) => u.id !== id))
+      if (selectedUser?.id === id) {
+        setSelectedUser(null)
+      }
       toast.success("Talaba arizasi rad etildi va o'chirildi!")
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Rad etishda xato!"
@@ -462,11 +589,8 @@ export default function AdminUsersPage() {
       assigned_floor: user.assigned_floor ? String(user.assigned_floor) : '',
       assigned_gender: user.assigned_gender || '',
       is_floor_captain: user.is_floor_captain || false,
+      warning_count: user.warning_count !== undefined && user.warning_count !== null ? String(user.warning_count) : '0',
     })
-  }
-
-  const handleDetailOpen = (user: UserRow) => {
-    setDetailModal({ isOpen: true, user })
   }
 
   const handleEditConfirm = async () => {
@@ -487,13 +611,14 @@ export default function AdminUsersPage() {
             course: editForm.course ? Number(editForm.course) : null,
             assigned_floor: editForm.assigned_floor ? Number(editForm.assigned_floor) : null,
             is_floor_captain: editForm.is_floor_captain || false,
+            warning_count: editForm.warning_count ? Number(editForm.warning_count) : 0,
           } : {
             full_name: editForm.full_name,
             phone_number: editForm.phone,
             status: editForm.status,
             assigned_floor: editForm.assigned_floor ? Number(editForm.assigned_floor) : null,
             assigned_gender: editForm.assigned_gender || null
-          }), // Only include fields present in staff table
+          }),
         }),
       })
 
@@ -512,6 +637,7 @@ export default function AdminUsersPage() {
             course: editForm.course ? Number(editForm.course) : null,
             assigned_floor: editForm.assigned_floor ? Number(editForm.assigned_floor) : null,
             is_floor_captain: editForm.is_floor_captain || false,
+            warning_count: editForm.warning_count ? Number(editForm.warning_count) : 0,
           }
           : {
             full_name: editForm.full_name || editModal.user.full_name,
@@ -524,11 +650,8 @@ export default function AdminUsersPage() {
 
       setUsers(users.map((u) => (u.id === updatedUser.id ? updatedUser : u)))
 
-      if (detailModal.user?.id === updatedUser.id) {
-        setDetailModal({
-          isOpen: true,
-          user: updatedUser,
-        })
+      if (selectedUser?.id === updatedUser.id) {
+        setSelectedUser(updatedUser)
       }
       setEditModal({ isOpen: false })
       toast.success('Foydalanuvchi yangilandi!')
@@ -541,165 +664,45 @@ export default function AdminUsersPage() {
     }
   }
 
-  const columns: TableColumn<UserRow>[] = [
-    {
-      key: 'full_name',
-      label: 'Ism',
-      sortable: true,
-      render: (value: unknown, row: UserRow) => (
-        <div className="flex items-center gap-3">
-          <div className="relative h-11 w-11 overflow-hidden rounded-full border-2 border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.05)] bg-[#0b1120]">
-            {row.avatar_url ? (
-              <Image
-                src={row.avatar_url}
-                alt={row.full_name}
-                fill
-                sizes="44px"
-                unoptimized
-                className="object-cover transition-transform duration-300 hover:scale-110"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-purple-500/20 to-pink-500/10 text-sm font-black text-purple-300">
-                {getInitials(row.full_name)}
-              </div>
-            )}
-          </div>
-          <div>
-            <p className="font-bold text-white transition-colors hover:text-purple-400 cursor-pointer" onClick={() => handleDetailOpen(row)}>
-              {String(value ?? '')}
-            </p>
-            <p className="text-xs text-slate-400 mt-0.5">{row.email}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'role',
-      label: 'Rol',
-      sortable: true,
-      render: (value: unknown, row: UserRow) => {
-        const roleStr = String(value)
-        const isCaptain = row.source === 'users' && row.is_floor_captain
-        return (
-          <div className="flex flex-col gap-1.5">
-            <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${ROLE_COLORS[roleStr]}`}>
-              {roleStr === 'tarbiyachi' && (
-                <span className="relative flex h-1.5 w-1.5 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                </span>
-              )}
-              {roleStr === 'admin' && (
-                <span className="relative flex h-1.5 w-1.5 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-500"></span>
-                </span>
-              )}
-              {roleStr === 'talaba' && (
-                <span className="relative flex h-1.5 w-1.5 shrink-0">
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
-                </span>
-              )}
-              {ROLE_LABELS[roleStr]}
-            </span>
-            {isCaptain && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-purple-400 w-fit">
-                ⭐ {row.assigned_floor}-qavat sardori
-              </span>
-            )}
-          </div>
-        )
-      },
-    },
-    {
-      key: 'status',
-      label: 'Holat',
-      sortable: true,
-      render: (value: unknown, row: UserRow) => {
-        const statusStr = String(value ?? 'active')
-        let color = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-        let label = 'Faol'
-        if (statusStr === 'pending') {
-          color = 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-          label = 'Kutilmoqda'
-        } else if (statusStr === 'rejected') {
-          color = 'bg-rose-500/20 text-rose-400 border-rose-500/30'
-          label = 'Rad etilgan'
-        }
-        return (
-          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${color}`}>
-            {statusStr === 'pending' && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
-            {label}
-          </span>
-        )
-      }
-    },
-    {
-      key: 'created_at',
-      label: 'Yaratilgan',
-      sortable: true,
-      render: (value: unknown) => (value ? new Date(String(value)).toLocaleDateString('uz-UZ') : '-'),
-    },
-    {
-      key: 'actions',
-      label: 'Amallar',
-      render: (_value: unknown, row: UserRow) => (
-        <div className="flex gap-2">
-          {row.role === 'talaba' && row.status === 'pending' && (
-            <>
-              <button
-                onClick={(event) => {
-                  event.stopPropagation()
-                  handleApprove(row.id)
-                }}
-                className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-2.5 text-emerald-400 transition-all hover:bg-emerald-500/20 hover:border-emerald-500/30 active:scale-95"
-                title="Tasdiqlash"
-              >
-                <Check size={15} />
-              </button>
-              <button
-                onClick={(event) => {
-                  event.stopPropagation()
-                  handleReject(row.id)
-                }}
-                className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-2.5 text-rose-400 transition-all hover:bg-rose-500/20 hover:border-rose-500/30 active:scale-95"
-                title="Rad etish (O'chirish)"
-              >
-                <X size={15} />
-              </button>
-            </>
-          )}
-          <button
-            onClick={(event) => {
-              event.stopPropagation()
-              handleEditClick(row)
-            }}
-            className="rounded-xl border border-white/5 bg-white/5 p-2.5 text-amber-400 transition-all hover:bg-amber-400/10 hover:border-amber-400/20 active:scale-95"
-            title="Tahrir qilish"
-          >
-            <Edit2 size={15} />
-          </button>
-          <button
-            onClick={(event) => {
-              event.stopPropagation()
-              handleDeleteClick(row.id)
-            }}
-            className="rounded-xl border border-white/5 bg-white/5 p-2.5 text-red-400 transition-all hover:bg-red-400/10 hover:border-red-400/20 active:scale-95"
-            title="O'chirish"
-          >
-            <Trash2 size={15} />
-          </button>
-        </div>
-      ),
-    },
-  ]
+  const studentInfoItems = (user: UserRow) =>
+    [
+      { icon: Mail, label: 'Email', value: user.email },
+      { icon: Phone, label: 'Telefon', value: user.phone_number },
+      { icon: GraduationCap, label: 'Fakultet', value: user.faculty },
+      { icon: GraduationCap, label: "Yo'nalish", value: user.direction },
+      { icon: ShieldCheck, label: 'Kurs', value: user.course ? `${user.course}-kurs` : undefined },
+      { icon: Home, label: 'Xona', value: user.room_number },
+      { icon: Home, label: 'Biriktirilgan qavat', value: user.assigned_floor ? `${user.assigned_floor}-qavat` : undefined },
+      { icon: ShieldCheck, label: 'Sardorlik holati', value: user.is_floor_captain ? 'Qavat sardori' : undefined },
+      { icon: ShieldCheck, label: 'Holat', value: user.status },
+      { icon: UserRound, label: 'Biriktirilgan jins', value: user.assigned_gender },
+      { icon: CalendarDays, label: "Tug'ilgan sana", value: formatDate(user.birth_date) !== '-' ? formatDate(user.birth_date) : undefined },
+      { icon: CalendarDays, label: 'Passport sanasi', value: formatDate(user.passport_date) !== '-' ? formatDate(user.passport_date) : undefined },
+      { icon: CalendarDays, label: 'Yotoqxonaga kirgan sana', value: formatDate(user.entry_date) !== '-' ? formatDate(user.entry_date) : undefined },
+      { icon: MapPin, label: 'Hudud', value: [user.region, user.district, user.mahalla].filter(Boolean).join(', ') || undefined },
+      { icon: UserRound, label: 'Millati', value: user.nationality },
+      { icon: UserRound, label: 'Jinsi', value: user.gender },
+      { icon: ShieldCheck, label: "Ta'lim turi", value: user.study_type },
+      { icon: ShieldCheck, label: 'Passport seriya', value: user.passport_series },
+      { icon: ShieldCheck, label: 'JSHSHIR', value: user.jshshir },
+    ].filter((item) => item.value)
 
-  const totalCount = users.length || 1;
-  const talabaCount = users.filter((u) => u.role === 'talaba').length;
-  const tarbiyachiCount = users.filter((u) => u.role === 'tarbiyachi').length;
-  const adminCount = users.filter((u) => u.role === 'admin').length;
-  const pendingCount = users.filter((u) => u.role === 'talaba' && u.status === 'pending').length;
- 
+  const familyInfoItems = (user: UserRow) =>
+    [
+      { label: 'Ota F.I.Sh.', value: user.father_full_name },
+      { label: 'Ota ish joyi', value: user.father_workplace },
+      { label: 'Ota telefoni', value: user.father_phone },
+      { label: 'Ona F.I.Sh.', value: user.mother_full_name },
+      { label: 'Ona ish joyi', value: user.mother_workplace },
+      { label: 'Ona telefoni', value: user.mother_phone },
+    ].filter((item) => item.value)
+
+  const totalCount = users.length || 1
+  const talabaCount = users.filter((u) => u.role === 'talaba').length
+  const tarbiyachiCount = users.filter((u) => u.role === 'tarbiyachi').length
+  const adminCount = users.filter((u) => u.role === 'admin').length
+  const pendingCount = users.filter((u) => u.role === 'talaba' && u.status === 'pending').length
+
   const statCards = [
     {
       title: 'Talabalar',
@@ -742,21 +745,22 @@ export default function AdminUsersPage() {
       barColor: 'bg-purple-500',
       icon: Users,
     },
-  ];
+  ]
 
   return (
     <div>
+      {/* Title Header */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="flex items-center gap-3 text-3xl font-black tracking-tighter text-white sm:text-4xl">
+          <h1 className="flex items-center gap-3 text-3xl font-black tracking-tighter text-slate-900 dark:text-white sm:text-4xl">
             <div className="rounded-2xl bg-purple-500/10 p-2 text-purple-400 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
               <Users size={30} />
             </div>
             Foydalanuvchilar boshqaruvi
           </h1>
-          <p className="mt-2 text-slate-400">Tizimdagi barcha foydalanuvchilar va xodimlar ro&apos;yxati</p>
+          <p className="mt-2 text-slate-600 dark:text-slate-400">Tizimdagi barcha foydalanuvchilar va xodimlar ro&apos;yxati</p>
         </div>
-        
+
         <div className="flex gap-2">
           <button
             onClick={() => setInviteModalOpen(true)}
@@ -781,9 +785,10 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      {/* Stats Section */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card, index) => {
-          const Icon = card.icon;
+          const Icon = card.icon
           return (
             <motion.div
               key={card.title}
@@ -832,106 +837,727 @@ export default function AdminUsersPage() {
                 </div>
               )}
             </motion.div>
-          );
+          )
         })}
       </div>
 
-      <div className="mb-6 rounded-2xl border border-white/5 bg-[#0b1120]/40 p-4 backdrop-blur-md">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="relative col-span-1 sm:col-span-2">
-            <Search className="absolute left-3 top-3.5 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder="Ism yoki email bo'yicha izlash..."
-              value={searchTerm}
-              onChange={(event) => {
-                setSearchTerm(event.target.value)
-                setCurrentPage(1)
-              }}
-              className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white transition-all placeholder-slate-400 focus:border-purple-500/50 focus:bg-white/[0.07] outline-none"
-            />
+      {/* Telegram Split Chat Layout */}
+      <div className={`grid grid-cols-1 md:grid-cols-12 rounded-3xl border ${
+        isLight ? 'bg-white border-slate-200 shadow-xl' : 'bg-[#0f172a]/30 border-white/10 shadow-2xl shadow-black/40'
+      } overflow-hidden h-[620px]`}>
+        
+        {/* Left Side: Users List */}
+        <div className={`col-span-12 md:col-span-4 lg:col-span-3 border-r h-full min-h-0 ${
+          isLight ? 'border-slate-200 bg-[#f8fafc]' : 'border-white/5 bg-[#17212b]'
+        } ${selectedUser ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}>
+          
+          {/* List Search inputs */}
+          <div className="p-4 space-y-2.5">
+            <div className="relative">
+              <Search className={`absolute left-3 top-3.5 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} size={16} />
+              <input
+                type="text"
+                placeholder="Ism yoki email bo'yicha..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`w-full rounded-2xl py-3 pl-10 pr-4 text-xs outline-none transition-all ${
+                  isLight
+                    ? 'bg-slate-100 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500'
+                    : 'bg-[#24303f] border border-transparent text-white focus:bg-[#1f2936] focus:border-purple-500/50'
+                }`}
+              />
+            </div>
+            <div className="relative">
+              <Home className={`absolute left-3 top-3.5 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} size={16} />
+              <input
+                type="text"
+                placeholder="Xona raqami bo'yicha..."
+                value={filterRoom}
+                onChange={(e) => setFilterRoom(e.target.value)}
+                className={`w-full rounded-2xl py-3 pl-10 pr-4 text-xs outline-none transition-all ${
+                  isLight
+                    ? 'bg-slate-100 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500'
+                    : 'bg-[#24303f] border border-transparent text-white focus:bg-[#1f2936] focus:border-purple-500/50'
+                }`}
+              />
+            </div>
           </div>
 
-          <div className="relative">
-            <Filter className="absolute left-3 top-3.5 text-slate-400 pointer-events-none" size={18} />
-            <select
-              value={filterRole}
-              onChange={(event) => {
-                setFilterRole(event.target.value as 'all' | UserRow['role'])
-                setCurrentPage(1)
-              }}
-              className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white transition-all outline-none focus:border-purple-500/50 appearance-none cursor-pointer"
-            >
-              <option value="all" className="bg-slate-950">Barcha rollar</option>
-              {ROLE_OPTIONS.map((role) => (
-                <option key={role} value={role} className="bg-slate-950">
-                  {ROLE_LABELS[role]}
-                </option>
-              ))}
-            </select>
+          {/* Folder Tabs (Horizontally scrollable list filters) */}
+          <div className={`flex gap-1 overflow-x-auto px-4 pb-2 border-b no-scrollbar ${
+            isLight ? 'border-slate-100' : 'border-white/5'
+          }`}>
+            {([
+              { key: 'all', label: 'Barchasi' },
+              { key: 'talaba', label: 'Talabalar' },
+              { key: 'tarbiyachi', label: 'Tarbiyachilar' },
+              { key: 'admin', label: 'Adminlar' },
+              { key: 'pending', label: 'Kutilayotgan' }
+            ] as const).map((folder) => {
+              const isActive = activeFolder === folder.key
+              const count = folder.key === 'all' 
+                ? users.length 
+                : folder.key === 'pending'
+                  ? users.filter(u => u.status === 'pending').length
+                  : users.filter(u => u.role === folder.key).length
+              return (
+                <button
+                  key={folder.key}
+                  onClick={() => setActiveFolder(folder.key)}
+                  className={`relative shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    isActive
+                      ? isLight
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'bg-[#2b5278] text-white'
+                      : isLight
+                        ? 'text-slate-500 hover:bg-slate-100'
+                        : 'text-slate-400 hover:bg-[#202b36]'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {folder.label}
+                    {count > 0 && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black ${
+                        isActive
+                          ? isLight ? 'bg-blue-600 text-white' : 'bg-[#182533] text-[#4f9ed9]'
+                          : isLight ? 'bg-slate-200 text-slate-600' : 'bg-[#24303f] text-slate-400'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              )
+            })}
           </div>
 
-          <div className="relative">
-            <Home className="absolute left-3 top-3.5 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder="Xona raqami..."
-              value={filterRoom}
-              onChange={(event) => {
-                setFilterRoom(event.target.value)
-                setCurrentPage(1)
-              }}
-              className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white transition-all placeholder-slate-400 focus:border-purple-500/50 outline-none"
-            />
-          </div>
+          {/* List items */}
+          <div className="flex-1 overflow-y-auto min-h-0 no-scrollbar">
+            {loading ? (
+              <div className="p-8 text-center text-xs text-slate-400">Yuklanmoqda...</div>
+            ) : filteredUsers.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">Foydalanuvchi topilmadi</div>
+            ) : (
+              filteredUsers.map((user) => {
+                const isActive = selectedUser?.id === user.id && selectedUser?.source === user.source
+                const initials = getInitials(user.full_name)
+                
+                return (
+                  <button
+                    key={`${user.id}-${user.source}`}
+                    onClick={() => setSelectedUser(user)}
+                    className={`w-full text-left p-3 flex items-center gap-3 transition-colors border-b ${
+                      isLight 
+                        ? 'border-slate-100/50' 
+                        : 'border-white/5'
+                    } ${
+                      isActive
+                        ? isLight
+                          ? 'bg-[#2f8ccf] text-white'
+                          : 'bg-[#2b5278] text-white'
+                        : isLight
+                          ? 'hover:bg-slate-100 text-slate-900'
+                          : 'hover:bg-[#202b36] text-white'
+                    }`}
+                  >
+                    <div className="relative shrink-0">
+                      <div className="relative h-11 w-11 overflow-hidden rounded-full bg-slate-800 border border-white/10">
+                        {user.avatar_url ? (
+                          <Image
+                            src={user.avatar_url}
+                            alt={user.full_name}
+                            fill
+                            sizes="44px"
+                            unoptimized
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className={`flex h-full w-full items-center justify-center text-xs font-black ${
+                            isActive
+                              ? 'bg-white/10 text-white'
+                              : isLight
+                                ? 'bg-blue-100 text-blue-600'
+                                : 'bg-[#24303f] text-[#4f9ed9]'
+                          }`}>
+                            {initials}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Status Dot */}
+                      <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 ${
+                        isLight ? 'border-white' : 'border-[#17212b]'
+                      } ${
+                        user.status === 'pending'
+                          ? 'bg-amber-400 animate-pulse'
+                          : 'bg-emerald-500'
+                      }`} />
+                    </div>
 
-          <div className="relative">
-            <Filter className="absolute left-3 top-3.5 text-slate-400 pointer-events-none" size={18} />
-            <select
-              value={filterStatus}
-              onChange={(event) => {
-                setFilterStatus(event.target.value)
-                setCurrentPage(1)
-              }}
-              className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white transition-all outline-none focus:border-purple-500/50 appearance-none cursor-pointer"
-            >
-              <option value="all" className="bg-slate-950">Barcha holatlar</option>
-              <option value="active" className="bg-slate-950">Faol</option>
-              <option value="pending" className="bg-slate-950">Kutilmoqda</option>
-            </select>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="font-bold text-xs truncate leading-none">{user.full_name}</p>
+                        <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                          isActive
+                            ? 'bg-white/20 text-white border-transparent'
+                            : ROLE_COLORS[user.role]
+                        }`}>
+                          {ROLE_LABELS[user.role]}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between mt-1 gap-2">
+                        <p className={`text-[10px] truncate ${
+                          isActive
+                            ? 'text-sky-100'
+                            : isLight ? 'text-slate-500' : 'text-slate-400'
+                        }`}>
+                          {user.room_number ? `Xona: ${user.room_number}` : user.email}
+                        </p>
+                        {user.role === 'talaba' && (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1 border shrink-0 ${
+                            isActive
+                              ? 'bg-white/20 text-white border-white/10'
+                              : (user.warning_count ?? 0) === 0
+                                ? 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20'
+                                : (user.warning_count ?? 0) <= 2
+                                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 animate-pulse'
+                          }`}>
+                            {(user.warning_count ?? 0) === 0 ? (
+                              <>
+                                <span className={`w-1 h-1 rounded-full ${isActive ? 'bg-white' : 'bg-emerald-500'}`} />
+                                A&apos;lo
+                              </>
+                            ) : (
+                              <>
+                                <span className={`w-1 h-1 rounded-full ${isActive ? 'bg-white' : (user.warning_count ?? 0) <= 2 ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                                {user.warning_count} ta
+                              </>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })
+            )}
           </div>
+        </div>
+
+        {/* Right Side: Chat / User Details View */}
+        <div className={`col-span-12 md:col-span-8 lg:col-span-9 h-full overflow-hidden min-h-0 ${
+          isLight ? 'bg-slate-50' : 'bg-[#0e1621]'
+        } ${!selectedUser ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}>
+          
+          {!selectedUser ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-radial-gradient from-white/[0.02] to-transparent">
+              <div className={`rounded-full p-6 ${
+                isLight ? 'bg-slate-200 text-slate-400' : 'bg-[#182533] text-slate-500 border border-white/5'
+              } mb-4`}>
+                <MessageSquare size={48} />
+              </div>
+              <p className={`text-sm max-w-xs ${
+                isLight ? 'text-slate-500' : 'text-slate-400'
+              }`}>
+                Foydalanuvchining to&apos;liq ma&apos;lumotlari va boshqaruv amallarini ko&apos;rish uchun chap ro&apos;yxatdan tanlang
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Active User Header */}
+              <div className={`p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                isLight ? 'border-slate-200 bg-white' : 'border-white/5 bg-[#17212b]'
+              }`}>
+                <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+                  <button
+                    onClick={() => setSelectedUser(null)}
+                    className="p-2 -ml-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 md:hidden"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  
+                  <div
+                    className="relative h-11 w-11 overflow-hidden rounded-full bg-slate-800 cursor-pointer border border-white/10 shrink-0"
+                    onClick={() => selectedUser.avatar_url && setFullScreenImage(selectedUser.avatar_url)}
+                  >
+                    {selectedUser.avatar_url ? (
+                      <Image
+                        src={selectedUser.avatar_url}
+                        alt={selectedUser.full_name}
+                        fill
+                        sizes="44px"
+                        unoptimized
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className={`flex h-full w-full items-center justify-center text-xs font-black bg-purple-500/20 text-purple-300`}>
+                        {getInitials(selectedUser.full_name)}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight break-words">{selectedUser.full_name}</h2>
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                      <p className="text-[10px] text-slate-400">
+                        {selectedUser.status === 'active' ? (
+                          <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                            Tizimda faol
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            Kutilmoqda
+                          </span>
+                        )}
+                      </p>
+                      {selectedUser.role === 'talaba' && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border shrink-0 whitespace-nowrap ${
+                          (selectedUser.warning_count ?? 0) === 0
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                            : (selectedUser.warning_count ?? 0) <= 2
+                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                              : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 animate-pulse'
+                        }`}>
+                          {(selectedUser.warning_count ?? 0) === 0 ? (
+                            <>
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              Ogohlantirish yo&apos;q (A&apos;lo)
+                            </>
+                          ) : (
+                            <>
+                              <span className={`w-1.5 h-1.5 rounded-full ${(selectedUser.warning_count ?? 0) <= 2 ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                              {selectedUser.warning_count} ta ogohlantirish
+                            </>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Header Actions */}
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end shrink-0">
+                  {selectedUser.role === 'talaba' && selectedUser.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleApprove(selectedUser.id)}
+                        className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-1 shadow-md shadow-emerald-500/10"
+                      >
+                        <Check size={14} />
+                        Tasdiqlash
+                      </button>
+                      <button
+                        onClick={() => handleReject(selectedUser.id)}
+                        className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center gap-1 shadow-md shadow-rose-500/10"
+                      >
+                        <X size={14} />
+                        Rad etish
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => handleEditClick(selectedUser)}
+                    className={`p-2 rounded-lg border transition-all ${
+                      isLight 
+                        ? 'border-slate-200 bg-white hover:bg-slate-50 text-amber-500' 
+                        : 'border-white/10 bg-white/5 hover:bg-white/10 text-amber-400'
+                    }`}
+                    title="Tahrirlash"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(selectedUser.id)}
+                    className={`p-2 rounded-lg border transition-all ${
+                      isLight 
+                        ? 'border-slate-200 bg-white hover:bg-slate-50 text-rose-500' 
+                        : 'border-white/10 bg-white/5 hover:bg-white/10 text-red-400'
+                    }`}
+                    title="O'chirish"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Details Pane Body */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                
+                 {/* Details Tab Menu */}
+                <div className={`flex gap-1 rounded-xl p-1 border overflow-x-auto no-scrollbar flex-nowrap ${
+                  isLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/5'
+                }`}>
+                  {([
+                    { key: 'profil', label: 'Profil' },
+                    { key: 'hujjatlar', label: 'Hujjat & Manzil' },
+                    ...(selectedUser.role === 'talaba' ? [
+                      { key: 'oila', label: 'Oila' },
+                      { key: 'tolovlar', label: 'To\'lovlar' },
+                      { key: 'chat', label: 'Xabarlar' }
+                    ] : []),
+                  ] as const).map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setDetailTab(tab.key as 'profil' | 'hujjatlar' | 'oila' | 'tolovlar' | 'chat')}
+                      className={`flex-1 shrink-0 whitespace-nowrap py-2 px-3 sm:px-4 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                        detailTab === tab.key
+                          ? 'bg-purple-600 text-white shadow-lg'
+                          : `${isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-white'}`
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tab: Profil (Basic Info) */}
+                {detailTab === 'profil' && (
+                  <div className={`rounded-2xl border p-4 shadow-md space-y-3.5 ${
+                    isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                  }`}>
+                    <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-2">Asosiy ma&apos;lumotlar</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {studentInfoItems(selectedUser)
+                        .filter(item => !['Passport seriya', 'JSHSHIR', 'Passport sanasi', 'Hudud', 'Millati', 'Jinsi'].includes(item.label))
+                        .map((item, idx) => {
+                          const Icon = item.icon
+                          return (
+                            <div key={idx} className="flex items-center gap-3">
+                              <div className="rounded-lg p-2.5 bg-slate-800/40 text-slate-400 shrink-0">
+                                <Icon size={16} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-white text-xs font-semibold truncate">{item.value}</p>
+                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{item.label}</p>
+                              </div>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab: Hujjatlar */}
+                {detailTab === 'hujjatlar' && (
+                  <div className={`rounded-2xl border p-4 shadow-md space-y-3.5 ${
+                    isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                  }`}>
+                    <h3 className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-2">Hujjat va manzillar</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {studentInfoItems(selectedUser)
+                        .filter(item => ['Passport seriya', 'JSHSHIR', 'Passport sanasi', 'Hudud', 'Millati', 'Jinsi'].includes(item.label))
+                        .map((item, idx) => {
+                          const Icon = item.icon
+                          return (
+                            <div key={idx} className="flex items-center gap-3">
+                              <div className="rounded-lg p-2.5 bg-slate-800/40 text-slate-400 shrink-0">
+                                <Icon size={16} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-white text-xs font-semibold truncate">{item.value}</p>
+                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{item.label}</p>
+                              </div>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab: Oila */}
+                {detailTab === 'oila' && selectedUser.role === 'talaba' && (
+                  <div className={`rounded-2xl border p-4 shadow-md space-y-3.5 ${
+                    isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                  }`}>
+                    <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-2">Oila a&apos;zolari</h3>
+                    {familyInfoItems(selectedUser).length === 0 ? (
+                      <p className="text-xs text-slate-400">Kiritilmagan</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {familyInfoItems(selectedUser).map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)] shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-white text-xs font-semibold truncate">{item.value}</p>
+                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{item.label}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tab: To'lovlar */}
+                {detailTab === 'tolovlar' && selectedUser.role === 'talaba' && (
+                  <div className="space-y-4">
+                    {/* Summary cards grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Paid card */}
+                      <div className={`rounded-2xl border p-4 shadow-md flex items-center gap-3 ${
+                        isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                      }`}>
+                        <div className="rounded-lg p-2.5 bg-emerald-500/10 text-emerald-500 shrink-0">
+                          <CheckCircle2 size={20} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                            {paymentStats.paidAmount.toLocaleString('uz-UZ')} UZS
+                          </p>
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">To&apos;langan summa</p>
+                        </div>
+                      </div>
+
+                      {/* Remaining card */}
+                      <div className={`rounded-2xl border p-4 shadow-md flex items-center gap-3 ${
+                        isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                      }`}>
+                        <div className="rounded-lg p-2.5 bg-rose-500/10 text-rose-500 shrink-0">
+                          <DollarSign size={20} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                            {paymentStats.remainingAmount.toLocaleString('uz-UZ')} UZS
+                          </p>
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Qolgan summa</p>
+                        </div>
+                      </div>
+
+                      {/* Contract Fee card */}
+                      <div className={`rounded-2xl border p-4 shadow-md flex items-center gap-3 ${
+                        isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                      }`}>
+                        <div className="rounded-lg p-2.5 bg-purple-500/10 text-purple-400 shrink-0">
+                          <FileText size={20} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                            {paymentStats.totalContractFee.toLocaleString('uz-UZ')} UZS
+                          </p>
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Shartnoma miqdori</p>
+                        </div>
+                      </div>
+
+                      {/* Waiting Approval card */}
+                      <div className={`rounded-2xl border p-4 shadow-md flex items-center gap-3 ${
+                        isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                      }`}>
+                        <div className="rounded-lg p-2.5 bg-amber-500/10 text-amber-500 shrink-0">
+                          <Clock size={20} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                            {paymentStats.waitingAmount.toLocaleString('uz-UZ')} UZS
+                          </p>
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Kutilayotgan to&apos;lovlar</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar Card */}
+                    <div className={`rounded-2xl border p-4 shadow-md ${
+                      isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                    }`}>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">To&apos;lov progressi</span>
+                        <span className="text-xs font-black text-emerald-500">{paymentStats.progressPercent}%</span>
+                      </div>
+                      <div className="w-full bg-slate-800/40 rounded-full h-2.5 overflow-hidden border border-white/5">
+                        <div 
+                          className="bg-linear-to-r from-emerald-500 to-teal-500 h-2.5 rounded-full transition-all duration-500" 
+                          style={{ width: `${paymentStats.progressPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Payments list / history */}
+                    <div className={`rounded-2xl border p-4 shadow-md ${
+                      isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                    }`}>
+                      <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-4">To&apos;lov kvitansiyalari tarixi</h3>
+                      
+                      {paymentsLoading ? (
+                        <p className="text-center text-xs text-slate-500 py-4">Yuklanmoqda...</p>
+                      ) : payments.length === 0 ? (
+                        <p className="text-center text-xs text-slate-500 py-4">To&apos;lovlar kvitansiyalari mavjud emas</p>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {payments.map((record) => {
+                            const isApproved = record.status === 'paid' || record.status === 'approved'
+                            const isWaiting = record.status === 'waiting' || record.status === 'pending'
+                            const isRejected = record.status === 'rejected'
+
+                            return (
+                              <div 
+                                key={record.id} 
+                                className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs ${
+                                  isLight ? 'bg-slate-50 border-slate-100' : 'bg-[#1b2836] border-white/5'
+                                }`}
+                              >
+                                <div className="min-w-0">
+                                  <p className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                    {record.month}, {record.year}
+                                  </p>
+                                  <p className="text-[10px] text-slate-400 mt-0.5">
+                                    Summa: {record.amount.toLocaleString('uz-UZ')} UZS
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                                    isApproved
+                                      ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                      : isWaiting
+                                        ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                        : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                                  }`}>
+                                    {isApproved ? 'Tasdiqlangan' : isWaiting ? 'Kutilmoqda' : 'Rad etilgan'}
+                                  </span>
+
+                                  {record.receipt_url && (
+                                    <button
+                                      onClick={() => setFullScreenImage(record.receipt_url || null)}
+                                      className={`p-1.5 rounded-lg border transition-all ${
+                                        isLight
+                                          ? 'border-slate-200 bg-white hover:bg-slate-100 text-slate-600'
+                                          : 'border-white/10 bg-white/5 hover:bg-white/10 text-slate-300'
+                                      }`}
+                                      title="Kvitansiyani ko'rish"
+                                    >
+                                      <Eye size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab: Chat */}
+                {detailTab === 'chat' && selectedUser.role === 'talaba' && (
+                  <div className={`rounded-2xl border p-4 shadow-md flex flex-col h-[420px] ${
+                    isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                  }`}>
+                    <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-3 shrink-0">Talaba bilan suhbat</h3>
+                    
+                    {/* Chat bubbles container */}
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-1 mb-3 custom-scrollbar flex flex-col min-h-0">
+                      {loadingChat ? (
+                        <p className="text-center text-xs text-slate-500 my-auto">Yuklanmoqda...</p>
+                      ) : chatMessages.length === 0 ? (
+                        <p className="text-center text-xs text-slate-500 my-auto">Xabarlar mavjud emas. Birinchi xabarni yuboring.</p>
+                      ) : (
+                        chatMessages.map((msg) => {
+                          const isAdminSender = msg.title === 'admin'
+                          return (
+                            <div
+                              key={msg.id}
+                              className={`flex flex-col max-w-[80%] rounded-2xl p-3 text-xs ${
+                                isAdminSender
+                                  ? 'self-end bg-purple-600 text-white rounded-br-none'
+                                  : isLight
+                                    ? 'self-start bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200'
+                                    : 'self-start bg-slate-800 text-slate-100 rounded-bl-none border border-white/5'
+                              }`}
+                            >
+                              <p className="whitespace-pre-wrap break-words font-medium">{msg.reason}</p>
+                              <span className={`text-[8px] self-end mt-1 font-bold ${
+                                isAdminSender ? 'text-purple-200' : 'text-slate-400'
+                              }`}>
+                                {formatDate(msg.created_at) !== '-' ? new Date(msg.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}
+                              </span>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+
+                    {/* Chat composer form */}
+                    <form onSubmit={handleSendChatMessage} className="flex gap-2 shrink-0 border-t border-white/5 pt-3">
+                      <input
+                        type="text"
+                        placeholder="Xabar yozing..."
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        className={`flex-1 rounded-xl px-4 py-2.5 text-xs outline-none transition-all ${
+                          isLight
+                            ? 'bg-slate-100 border border-slate-200 text-slate-900 focus:bg-white focus:border-purple-500'
+                            : 'bg-white/5 border border-white/10 text-white focus:bg-[#1f2936] focus:border-purple-500/50'
+                        }`}
+                        disabled={sendingChat}
+                      />
+                      <button
+                        type="submit"
+                        disabled={sendingChat || !chatInput.trim()}
+                        className="px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50"
+                      >
+                        {sendingChat ? '...' : 'Yuborish'}
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {/* Roommates Card (If student and roommates exist) */}
+                {selectedUser.role === 'talaba' && roommates.length > 0 && (
+                  <div className={`rounded-2xl border p-4 shadow-md ${
+                    isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                  }`}>
+                    <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-4">Xonadoshlar</h3>
+                    <div className="flex flex-wrap gap-4">
+                      {roommates.map((roommate) => (
+                        <div
+                          key={`${roommate.id}-${roommate.source}`}
+                          className="flex flex-col items-center gap-1.5 group cursor-pointer"
+                          title={roommate.full_name}
+                          onClick={() => setSelectedUser(roommate)}
+                        >
+                          <div className="relative h-12 w-12 overflow-hidden rounded-xl border border-white/10 bg-white/5 transition-all group-hover:scale-105 group-hover:border-emerald-500/50">
+                            {roommate.avatar_url ? (
+                              <Image
+                                src={roommate.avatar_url}
+                                alt={roommate.full_name}
+                                fill
+                                sizes="48px"
+                                unoptimized
+                                className="object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-emerald-500/20 to-teal-500/20 text-[10px] font-black text-emerald-200">
+                                {getInitials(roommate.full_name)}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[9px] text-slate-400 font-bold max-w-[64px] truncate">{roommate.full_name.split(' ')[0]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className={`rounded-2xl border p-4 text-center ${
+                  isLight ? 'bg-slate-100 border-slate-200/50' : 'bg-[#182533]/50 border-white/5'
+                }`}>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                    Ro&apos;yxatdan o&apos;tgan sana: {formatDate(selectedUser.created_at)}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <AdminTable<UserRow>
-          columns={columns}
-          data={paginatedUsers}
-          isLoading={loading}
-          onRowClick={handleDetailOpen}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSort={(key) => {
-            if (sortBy === key) {
-              setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-            } else {
-              setSortBy(key)
-              setSortOrder('asc')
-            }
-          }}
-          pagination={{
-            current: currentPage,
-            total: filteredUsers.length,
-            pageSize,
-            onPageChange: setCurrentPage,
-          }}
-        />
-      </motion.div>
-
+      {/* Delete Confirmation Modal */}
       <AdminModal
         isOpen={deleteModal.isOpen}
         title="Foydalanuvchini o'chirish"
-        description="Ushbu amalni qaytarib bo'lmaydi. Tizimdan butunlay o'chirishni tasdiqlaysizmi?"
+        description="Ushbu amalni qaytarib bo'lmaydi. Tizimdan o'chirishni tasdiqlaysizmi?"
         onClose={() => setDeleteModal({ isOpen: false })}
         onConfirm={handleDeleteConfirm}
         confirmText="O'chirish"
@@ -939,190 +1565,7 @@ export default function AdminUsersPage() {
         isLoading={isDeleting}
       />
 
-      <AdminModal
-        isOpen={detailModal.isOpen}
-        title=""
-        maxWidthClass="max-w-lg"
-        onClose={() => setDetailModal({ isOpen: false })}
-      >
-        {detailModal.user && (
-          <div className="max-h-[80vh] overflow-y-auto no-scrollbar -m-6">
-            <div className="relative h-60 w-full bg-linear-to-b from-purple-700 to-indigo-900 overflow-hidden">
-              <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-slate-950/20 to-transparent z-10" />
-              {detailModal.user.avatar_url ? (
-                <Image
-                  src={detailModal.user.avatar_url}
-                  alt={detailModal.user.full_name}
-                  fill
-                  unoptimized
-                  className="object-cover cursor-pointer transition-transform duration-500 hover:scale-105"
-                  onClick={() => setFullScreenImage(detailModal.user!.avatar_url!)}
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-purple-600 to-indigo-800 text-6xl font-black text-white/20">
-                  {getInitials(detailModal.user.full_name)}
-                </div>
-              )}
-              
-              <div className="absolute bottom-0 left-0 w-full p-6 z-20">
-                <span className={`inline-block mb-2 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${ROLE_COLORS[detailModal.user.role]}`}>
-                  {ROLE_LABELS[detailModal.user.role]}
-                </span>
-                <h2 className="text-2xl font-black text-white tracking-tight">{detailModal.user.full_name}</h2>
-                <p className="text-slate-300 text-xs mt-1">
-                  {detailModal.user.status === 'active' ? (
-                    <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                      Tizimda faol
-                    </span>
-                  ) : (
-                    `Oxirgi faollik: ${formatDate(detailModal.user.updated_at || detailModal.user.created_at)}`
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <div className="p-3 space-y-3 bg-[#020617]/40">
-              <div className="bg-[#0b1120]/80 rounded-2xl p-4 border border-white/5 shadow-xl space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="rounded-xl p-2.5 bg-blue-500/10 text-blue-400">
-                    <Phone size={18} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white text-sm font-semibold">{detailModal.user.phone_number || 'Kiritilmagan'}</p>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Telefon raqami</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="rounded-xl p-2.5 bg-purple-500/10 text-purple-400">
-                    <Mail size={18} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white text-sm font-semibold">{detailModal.user.email}</p>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Elektron pochta</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="rounded-xl p-2.5 bg-emerald-500/10 text-emerald-400">
-                    <UserRound size={18} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white text-sm font-semibold">@{detailModal.user.email.split('@')[0]}</p>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Foydalanuvchi nomi</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-[#0b1120]/80 rounded-2xl p-4 border border-white/5 shadow-xl">
-                <h3 className="text-xs font-black text-blue-400 uppercase tracking-[0.2em] mb-4">O&apos;qish va Yashash joyi</h3>
-                <div className="grid grid-cols-1 gap-4">
-                  {studentInfoItems(detailModal.user).filter(i => !['Email', 'Telefon'].includes(i.label)).map((item, idx) => {
-                    const Icon = item.icon;
-                    return (
-                      <div key={idx} className="flex items-center gap-4">
-                        <div className="rounded-lg p-2 bg-slate-800/50 text-slate-400">
-                          <Icon size={16} />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-white text-sm font-medium">{item.value}</p>
-                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">{item.label}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {familyInfoItems(detailModal.user).length > 0 && (
-                <div className="bg-[#0b1120]/80 rounded-2xl p-4 border border-white/5 shadow-xl">
-                  <h3 className="text-xs font-black text-purple-400 uppercase tracking-[0.2em] mb-4">Oila ma&apos;lumotlari</h3>
-                  <div className="space-y-4">
-                    {familyInfoItems(detailModal.user).map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)] shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-white text-sm font-medium">{item.value}</p>
-                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">{item.label}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {roommates.length > 0 && (
-                <div className="bg-[#0b1120]/80 rounded-2xl p-4 border border-white/5 shadow-xl">
-                  <h3 className="text-xs font-black text-emerald-400 uppercase tracking-[0.2em] mb-4">Xonadoshlar</h3>
-                  <div className="flex flex-wrap gap-4">
-                    {roommates.map((roommate) => (
-                      <div
-                        key={roommate.id}
-                        className="flex flex-col items-center gap-1.5 group cursor-pointer"
-                        title={roommate.full_name}
-                        onClick={() => setDetailModal({ isOpen: true, user: roommate })}
-                      >
-                        <div className="relative h-12 w-12 overflow-hidden rounded-xl border border-white/10 bg-white/5 transition-all group-hover:scale-105 group-hover:border-emerald-500/50">
-                          {roommate.avatar_url ? (
-                            <Image
-                              src={roommate.avatar_url}
-                              alt={roommate.full_name}
-                              fill
-                              sizes="48px"
-                              unoptimized
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-emerald-500/20 to-teal-500/20 text-[10px] font-black text-emerald-200">
-                              {getInitials(roommate.full_name)}
-                            </div>
-                          )}
-                        </div>
-                        <span className="text-[9px] text-slate-400 font-bold max-w-[64px] truncate">{roommate.full_name.split(' ')[0]}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="bg-[#0b1120]/50 rounded-2xl p-4 border border-white/5 text-center">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                  Ro&apos;yxatdan o&apos;tgan sana: {formatDate(detailModal.user.created_at)}
-                </p>
-              </div>
-
-              {detailModal.user.role === 'talaba' && detailModal.user.status === 'pending' && (
-                <div className="flex gap-3 mt-4">
-                  <button
-                    onClick={async () => {
-                      await handleApprove(detailModal.user!.id)
-                      setDetailModal({ isOpen: false })
-                    }}
-                    disabled={isUpdating}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-3 text-sm font-black text-white transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg"
-                  >
-                    <Check size={18} />
-                    <span>Tasdiqlash</span>
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await handleReject(detailModal.user!.id)
-                      setDetailModal({ isOpen: false })
-                    }}
-                    disabled={isDeleting}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 py-3 text-sm font-black text-white transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg"
-                  >
-                    <X size={18} />
-                    <span>Rad etish</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </AdminModal>
-
+      {/* Edit User Modal */}
       <AdminModal
         isOpen={editModal.isOpen}
         title={editModal.user?.source === 'users' ? "Talaba ma'lumotlarini tahrirlash" : "Xodim ma'lumotlarini tahrirlash"}
@@ -1285,6 +1728,7 @@ export default function AdminUsersPage() {
         </div>
       </AdminModal>
 
+      {/* Staff Invite Creation Modal */}
       <AdminModal
         isOpen={inviteModalOpen}
         title="Yangi Xodim Taklif Yaratish"
@@ -1373,6 +1817,7 @@ export default function AdminUsersPage() {
         </div>
       </AdminModal>
 
+      {/* Full Screen Image Modal */}
       <AnimatePresence>
         {fullScreenImage && (
           <motion.div

@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { useState, useEffect, useRef, type SyntheticEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
 import { getSafeSession, getSafeUser } from '@/lib/auth-session'
 import {
@@ -277,6 +278,12 @@ export default function StudentProfile() {
 
   // Last login
   const [lastLogin, setLastLogin] = useState<string | null>(null)
+  
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Lock body scroll when any modal is open
   useEffect(() => {
     if (showEditModal || showPasswordModal || showDeleteConfirm) {
@@ -1087,17 +1094,18 @@ export default function StudentProfile() {
       </div>
 
       {/* ═══════ Full-Screen Glassmorphism Edit Modal ═══════ */}
-      <AnimatePresence>
-        {showEditModal && profile && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[9999] overflow-y-auto"
-          >
-            {/* Animated Background */}
-            <div className={`fixed inset-0 ${isLight ? 'bg-gradient-to-br from-blue-50/95 via-white/95 to-violet-50/95' : 'bg-[#020409]/95'}`}>
+      {mounted && typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showEditModal && profile && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed inset-0 z-[9999] overflow-y-auto"
+            >
+              {/* Animated Background */}
+              <div className={`fixed inset-0 ${isLight ? 'bg-gradient-to-br from-blue-50/95 via-white/95 to-violet-50/95' : 'bg-[#020409]/95'}`}>
               {!isLight && (
                 <>
                   <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-blue-600/8 blur-[150px] rounded-full animate-pulse" />
@@ -1335,14 +1343,17 @@ export default function StudentProfile() {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
 
       {/* ─── Password Change Modal ─────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {showPasswordModal && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto" onClick={() => setShowPasswordModal(false)}>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      {mounted && typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showPasswordModal && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto" onClick={() => setShowPasswordModal(false)}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
@@ -1514,11 +1525,14 @@ export default function StudentProfile() {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
 
       {/* ─── Delete Account Confirmation Modal ─────────────────────────────────── */}
-      <AnimatePresence>
-        {showDeleteConfirm && (
+      {mounted && typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showDeleteConfirm && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" onClick={() => setShowDeleteConfirm(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -1567,7 +1581,9 @@ export default function StudentProfile() {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
 
     </div>
   )

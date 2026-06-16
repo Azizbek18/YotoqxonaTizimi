@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { callGemini } from '@/lib/gemini'
 
 export async function POST(req: NextRequest) {
   try {
@@ -47,28 +48,16 @@ Agar rasmda inson yuzi aniqlanmasa, yoki u profil rasmi uchun butunlay mos kelma
 
 MUHIM: Faqat va faqat toza JSON formatida javob bering. Hech qanday markdown (masalan \`\`\`json ...) bloklarisiz.`
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`
+    const apiData = await callGemini({
+      contents: [{
+        parts: [
+          { text: systemPrompt },
+          { inlineData: { mimeType, data: base64Data } }
+        ]
+      }],
+      generationConfig: { responseMimeType: 'application/json' }
+    }, geminiApiKey)
 
-    const apiResponse = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: systemPrompt },
-            { inlineData: { mimeType, data: base64Data } }
-          ]
-        }],
-        generationConfig: { responseMimeType: 'application/json' }
-      })
-    })
-
-    if (!apiResponse.ok) {
-      const errText = await apiResponse.text()
-      throw new Error(`Gemini API xatoligi (${apiResponse.status}): ${errText}`)
-    }
-
-    const apiData = await apiResponse.json()
     const textResponse = apiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
     
     // Parse response

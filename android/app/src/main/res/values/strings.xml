@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MTalaba</string>
+    <string name="title_activity_main">MTalaba</string>
+    <string name="package_name">com.mtalaba.app</string>
+    <string name="custom_url_scheme">com.mtalaba.app</string>
+</resources>

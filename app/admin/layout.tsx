@@ -35,12 +35,13 @@ export default function AdminLayout({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [waitingCount, setWaitingCount] = useState(0)
+  const [mounted, setMounted] = useState(false)
 
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
   useEffect(() => {
-    // Initial check
+    setMounted(true)
     setIsMobile(window.innerWidth < 1024)
 
     // Listen to resize
@@ -141,10 +142,18 @@ export default function AdminLayout({
     }
   }
 
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center text-white">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-cyan-500" />
+      </div>
+    )
+  }
+
   const shellBg = isLight ? 'bg-[#f3f6fb]' : 'bg-[#020617]'
   const sidebarSurface = isLight
-    ? 'border-slate-200 bg-white/88 text-slate-900'
-    : 'border-white/10 bg-[#06101f]/88 text-white'
+    ? 'border-slate-200 bg-white/90 text-slate-900'
+    : 'border-white/10 bg-[#06101f]/90 text-white'
   const panelSurface = isLight
     ? 'border-slate-200 bg-white/80'
     : 'border-white/10 bg-white/[0.03]'
@@ -222,7 +231,7 @@ export default function AdminLayout({
                 onClick={() => setMobileSidebarOpen(false)}
                 className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border px-3 py-2.5 transition-all duration-200 backdrop-blur-sm ${isActive
                   ? isLight
-                    ? 'border-sky-300 bg-gradient-to-r from-sky-100/70 to-blue-100/50 text-sky-800 shadow-sm shadow-sky-300/30'
+                    ? 'border-sky-300 bg-sky-100/80 text-sky-800 shadow-sm shadow-sky-300/30'
                     : 'border-cyan-400/30 bg-gradient-to-r from-cyan-500/[0.12] to-blue-500/[0.08] text-white shadow-sm shadow-cyan-500/10'
                   : isLight
                     ? 'border-slate-200/30 text-slate-600 hover:border-slate-300/50 hover:bg-slate-100/30'
@@ -299,10 +308,11 @@ export default function AdminLayout({
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 h-screen border-r backdrop-blur-3xl transition-all duration-300 ${sidebarSurface} ${sidebarOpen ? 'w-[310px]' : 'w-[92px]'
-          } ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+        className={`fixed left-0 top-0 z-50 h-screen border-r backdrop-blur-3xl transition-all duration-300 ${sidebarSurface} ${
+          isMobile ? 'w-[280px]' : sidebarOpen ? 'w-[310px]' : 'w-[92px]'
+        } ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
       >
-        {renderNavContent(!sidebarOpen)}
+        {renderNavContent(isMobile ? false : !sidebarOpen)}
       </aside>
 
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-[310px]' : 'lg:ml-[92px]'}`}>
@@ -362,8 +372,8 @@ export default function AdminLayout({
           </div>
         </header>
 
-        <div className={`min-h-screen p-4 sm:p-6 lg:p-8 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-          <div className={`min-h-[calc(100vh-7rem)] rounded-[28px] border p-4 shadow-[0_20px_60px_rgba(15,23,42,0.08)] sm:p-6 lg:p-8 ${panelSurface}`}>
+        <div className={`min-h-screen p-2.5 sm:p-6 lg:p-8 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+          <div className={`min-h-[calc(100vh-7rem)] rounded-2xl sm:rounded-[28px] border p-3 sm:p-6 lg:p-8 shadow-[0_20px_60px_rgba(15,23,42,0.08)] ${panelSurface}`}>
             {children}
           </div>
         </div>

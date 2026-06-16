@@ -1,0 +1,789 @@
+-- ==========================================================
+-- YOTOQXONA TIZIMI - DATABASE SCHEMA CONSOLIDATION
+-- This file combines all database tables, policies, and setups.
+-- ==========================================================
+
+-- ==========================================================
+-- Migration: 001_add_profile_avatar.sql
+-- ==========================================================
+-- Migration: Add avatar_url and other profile columns if they don't exist
+-- This migration ensures the profiles table has all necessary columns for the new features
+
+-- Step 1: Create or ensure profiles table exists with necessary columns
+CREATE TABLE IF NOT EXISTS profiles (
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name text,
+  email text,
+  phone text,
+  faculty text,
+  role text,
+  room_number text,
+  course integer,
+  "group" text,
+  avatar_url text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+
+-- Step 2: Add missing columns if they don't exist (for existing tables)
+ALTER TABLE profiles 
+ADD COLUMN IF NOT EXISTS avatar_url text,
+ADD COLUMN IF NOT EXISTS created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone DEFAULT timezone('utc'::text, now());
+
+-- Step 3: Create storage bucket for avatars if it doesn't exist
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('avatars', 'avatars', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Step 4: Set up storage policies for avatars bucket
+CREATE POLICY "Avatar images are publicly accessible"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'avatars');
+
+CREATE POLICY "Anyone can upload an avatar"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'avatars');
+
+CREATE POLICY "Users can update their own avatar"
+ON storage.objects FOR UPDATE
+USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
+WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Users can delete their own avatar"
+ON storage.objects FOR DELETE
+USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Step 5: Enable RLS
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies for profiles table
+CREATE POLICY "Users can view their own profile"
+ON profiles FOR SELECT
+USING (auth.uid() = id);
+
+CREATE POLICY "Users can update their own profile"
+ON profiles FOR UPDATE
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
+
+-- ==========================================================
+-- Migration: 002_add_staff_floor_scope.sql
+-- ==========================================================
+ALTER TABLE staff
+ADD COLUMN IF NOT EXISTS assigned_floor integer,
+ADD COLUMN IF NOT EXISTS assigned_gender text;
+
+-- ==========================================================
+-- Migration: 003_create_elonlar.sql
+-- ==========================================================
+-- Migration: Create announcements table for admin-to-student messages
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS elonlar (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL CHECK (char_length(trim(title)) >= 3),
+  text text NOT NULL CHECK (char_length(trim(text)) >= 5),
+  type text NOT NULL DEFAULT 'Yangilik'
+    CHECK (type IN ('Muhim', 'Tadbir', 'Yangilik', 'Ogohlantirish')),
+  audience text NOT NULL DEFAULT 'all'
+    CHECK (audience IN ('all', 'faculty')),
+  faculty text,
+  is_published boolean NOT NULL DEFAULT true,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now()),
+  published_at timestamptz DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS elonlar_published_created_idx
+ON elonlar (is_published, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS elonlar_audience_faculty_idx
+ON elonlar (audience, faculty);
+
+CREATE OR REPLACE FUNCTION set_elonlar_updated_at()
+RETURNS trigger AS $$
+BEGIN
+  NEW.updated_at = timezone('utc'::text, now());
+  IF NEW.is_published = true AND OLD.is_published = false THEN
+    NEW.published_at = timezone('utc'::text, now());
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS elonlar_set_updated_at ON elonlar;
+CREATE TRIGGER elonlar_set_updated_at
+BEFORE UPDATE ON elonlar
+FOR EACH ROW
+EXECUTE FUNCTION set_elonlar_updated_at();
+
+ALTER TABLE elonlar ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Published elonlar are readable"
+ON elonlar FOR SELECT
+USING (is_published = true);
+
+CREATE POLICY "Admins can view all elonlar"
+ON elonlar FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM staff
+    WHERE staff.id = auth.uid() AND staff.role = 'admin'
+  )
+  OR EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+);
+
+CREATE POLICY "Admins can insert elonlar"
+ON elonlar FOR INSERT
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM staff
+    WHERE staff.id = auth.uid() AND staff.role = 'admin'
+  )
+  OR EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+);
+
+CREATE POLICY "Admins can update elonlar"
+ON elonlar FOR UPDATE
+USING (
+  EXISTS (
+    SELECT 1 FROM staff
+    WHERE staff.id = auth.uid() AND staff.role = 'admin'
+  )
+  OR EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM staff
+    WHERE staff.id = auth.uid() AND staff.role = 'admin'
+  )
+  OR EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+);
+
+CREATE POLICY "Admins can delete elonlar"
+ON elonlar FOR DELETE
+USING (
+  EXISTS (
+    SELECT 1 FROM staff
+    WHERE staff.id = auth.uid() AND staff.role = 'admin'
+  )
+  OR EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+);
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE elonlar;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+  WHEN undefined_object THEN NULL;
+END;
+$$;
+
+-- ==========================================================
+-- Migration: 004_create_invites.sql
+-- ==========================================================
+-- Migration: Create admin_invites and staff_invites tables with correct RLS policies
+-- Run this in the Supabase SQL Editor to resolve the missing tables issue.
+
+-- 1. Create admin_invites table
+CREATE TABLE IF NOT EXISTS admin_invites (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    code text UNIQUE NOT NULL,
+    email text NOT NULL,
+    created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+    used boolean DEFAULT false NOT NULL,
+    used_at timestamp with time zone
+);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE admin_invites ENABLE ROW LEVEL SECURITY;
+
+-- Policy to allow SELECT for anyone (needed for registration check client-side)
+CREATE POLICY "Allow public select on admin_invites" 
+ON admin_invites 
+FOR SELECT 
+TO anon, authenticated
+USING (true);
+
+-- Policy to allow ALL other actions only for admins
+CREATE POLICY "Admins have full control over admin_invites" 
+ON admin_invites 
+FOR ALL 
+TO authenticated 
+USING (
+    EXISTS (
+        SELECT 1 FROM staff 
+        WHERE staff.id = auth.uid() AND staff.role = 'admin'
+    ) OR EXISTS (
+        SELECT 1 FROM users 
+        WHERE users.id = auth.uid() AND users.role = 'admin'
+    )
+)
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM staff 
+        WHERE staff.id = auth.uid() AND staff.role = 'admin'
+    ) OR EXISTS (
+        SELECT 1 FROM users 
+        WHERE users.id = auth.uid() AND users.role = 'admin'
+    )
+);
+
+-- 2. Create staff_invites table
+CREATE TABLE IF NOT EXISTS staff_invites (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    token_hash text UNIQUE NOT NULL,
+    role text NOT NULL,
+    allowed_staff_id text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+    used_at timestamp with time zone
+);
+
+-- Enable RLS
+ALTER TABLE staff_invites ENABLE ROW LEVEL SECURITY;
+
+-- Policy to allow SELECT for anyone (needed for staff verification check)
+CREATE POLICY "Allow public select on staff_invites" 
+ON staff_invites 
+FOR SELECT 
+TO anon, authenticated
+USING (true);
+
+-- Policy to allow ALL other actions only for admins
+CREATE POLICY "Admins have full control over staff_invites" 
+ON staff_invites 
+FOR ALL 
+TO authenticated 
+USING (
+    EXISTS (
+        SELECT 1 FROM staff 
+        WHERE staff.id = auth.uid() AND staff.role = 'admin'
+    ) OR EXISTS (
+        SELECT 1 FROM users 
+        WHERE users.id = auth.uid() AND users.role = 'admin'
+    )
+)
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM staff 
+        WHERE staff.id = auth.uid() AND staff.role = 'admin'
+    ) OR EXISTS (
+        SELECT 1 FROM users 
+        WHERE users.id = auth.uid() AND users.role = 'admin'
+    )
+);
+
+-- ==========================================================
+-- Migration: 005_add_group_to_users.sql
+-- ==========================================================
+-- Migration: Add 'group' column to users table
+-- The 'group' column stores the student's academic group number
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS "group" text;
+
+-- ==========================================================
+-- Migration: 006_update_arizalar_table.sql
+-- ==========================================================
+-- Migration: Update arizalar table to support status, title, type, reason, and admin responses
+-- Run this in your Supabase SQL Editor to apply the schema updates
+
+-- 1. Add status column (required for admin dashboard stats and student application tracking)
+ALTER TABLE arizalar ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'submitted';
+
+-- 2. Add additional columns for rich student application details
+ALTER TABLE arizalar ADD COLUMN IF NOT EXISTS title text;
+ALTER TABLE arizalar ADD COLUMN IF NOT EXISTS type text NOT NULL DEFAULT 'ariza';
+ALTER TABLE arizalar ADD COLUMN IF NOT EXISTS reason text;
+ALTER TABLE arizalar ADD COLUMN IF NOT EXISTS ai_generated boolean NOT NULL DEFAULT false;
+ALTER TABLE arizalar ADD COLUMN IF NOT EXISTS admin_response text;
+ALTER TABLE arizalar ADD COLUMN IF NOT EXISTS response_date timestamp without time zone;
+
+-- ==========================================================
+-- Migration: 007_arizalar_rls_policies.sql
+-- ==========================================================
+-- Migration: Setup RLS policies for arizalar table
+-- Run this in your Supabase SQL Editor to grant proper permissions
+
+-- Enable RLS on arizalar table (if not already enabled)
+ALTER TABLE arizalar ENABLE ROW LEVEL SECURITY;
+
+-- Clean up any existing policies to avoid duplication errors
+DROP POLICY IF EXISTS "Students can insert their own applications" ON arizalar;
+DROP POLICY IF EXISTS "Students can view their own applications" ON arizalar;
+DROP POLICY IF EXISTS "Students can update their own applications" ON arizalar;
+DROP POLICY IF EXISTS "Students can delete their own applications" ON arizalar;
+DROP POLICY IF EXISTS "Admins can view all applications" ON arizalar;
+DROP POLICY IF EXISTS "Admins can update all applications" ON arizalar;
+DROP POLICY IF EXISTS "Admins can delete all applications" ON arizalar;
+DROP POLICY IF EXISTS "Staff can view all applications" ON arizalar;
+
+-- 1. Student Policies
+-- Allows authenticated students to insert applications where student_id matches their own user ID
+CREATE POLICY "Students can insert their own applications"
+ON arizalar FOR INSERT
+TO authenticated
+WITH CHECK (
+  auth.uid() = student_id
+);
+
+-- Allows authenticated students to view only their own applications
+CREATE POLICY "Students can view their own applications"
+ON arizalar FOR SELECT
+TO authenticated
+USING (
+  auth.uid() = student_id
+);
+
+-- Allows authenticated students to update their own applications (e.g. submit draft)
+CREATE POLICY "Students can update their own applications"
+ON arizalar FOR UPDATE
+TO authenticated
+USING (
+  auth.uid() = student_id
+)
+WITH CHECK (
+  auth.uid() = student_id
+);
+
+-- Allows authenticated students to delete their own applications
+CREATE POLICY "Students can delete their own applications"
+ON arizalar FOR DELETE
+TO authenticated
+USING (
+  auth.uid() = student_id
+);
+
+-- 2. Admin & Staff Policies
+-- Allows Admins (users with 'admin' role) to view all applications
+CREATE POLICY "Admins can view all applications"
+ON arizalar FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+);
+
+-- Allows Staff members or users with 'tarbiyachi' role to view all applications
+CREATE POLICY "Staff can view all applications"
+ON arizalar FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM staff
+    WHERE staff.id = auth.uid()
+  )
+  OR EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'tarbiyachi'
+  )
+);
+
+-- Allows Admins to update (moderate/respond to) any application
+CREATE POLICY "Admins can update all applications"
+ON arizalar FOR UPDATE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+);
+
+-- Allows Admins to delete any application
+CREATE POLICY "Admins can delete all applications"
+ON arizalar FOR DELETE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+);
+
+-- ==========================================================
+-- Migration: 008_fix_arizalar_rls_recursion.sql
+-- ==========================================================
+-- Migration: Fix RLS infinite recursion on arizalar table by bypassing staff table
+-- Run this in your Supabase SQL Editor to apply the fix
+
+-- 1. Drop existing policies to clean up
+DROP POLICY IF EXISTS "Students can insert their own applications" ON arizalar;
+DROP POLICY IF EXISTS "Students can view their own applications" ON arizalar;
+DROP POLICY IF EXISTS "Students can update their own applications" ON arizalar;
+DROP POLICY IF EXISTS "Students can delete their own applications" ON arizalar;
+DROP POLICY IF EXISTS "Admins can view all applications" ON arizalar;
+DROP POLICY IF EXISTS "Admins can update all applications" ON arizalar;
+DROP POLICY IF EXISTS "Admins can delete all applications" ON arizalar;
+DROP POLICY IF EXISTS "Staff can view all applications" ON arizalar;
+DROP POLICY IF EXISTS "Users can view relevant applications" ON arizalar;
+DROP POLICY IF EXISTS "Users can update relevant applications" ON arizalar;
+DROP POLICY IF EXISTS "Users can delete relevant applications" ON arizalar;
+
+-- 2. Enable RLS
+ALTER TABLE arizalar ENABLE ROW LEVEL SECURITY;
+
+-- 3. Student Insert Policy
+CREATE POLICY "Students can insert their own applications"
+ON arizalar FOR INSERT
+TO authenticated
+WITH CHECK (
+  auth.uid() = student_id
+);
+
+-- 4. Select Policy for Student, Admin, and Tarbiyachi
+CREATE POLICY "Users can view relevant applications"
+ON arizalar FOR SELECT
+TO authenticated
+USING (
+  auth.uid() = student_id
+  OR EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role IN ('admin', 'tarbiyachi')
+  )
+);
+
+-- 5. Update Policy for Student and Admin
+CREATE POLICY "Users can update relevant applications"
+ON arizalar FOR UPDATE
+TO authenticated
+USING (
+  auth.uid() = student_id
+  OR EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+)
+WITH CHECK (
+  auth.uid() = student_id
+  OR EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+);
+
+-- 6. Delete Policy for Student and Admin
+CREATE POLICY "Users can delete relevant applications"
+ON arizalar FOR DELETE
+TO authenticated
+USING (
+  auth.uid() = student_id
+  OR EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+);
+
+-- ==========================================================
+-- Migration: 009_create_tolovlar_table.sql
+-- ==========================================================
+-- Migration: Create tolovlar (payments) table, receipts bucket, and RLS policies
+-- Run this in your Supabase SQL Editor to apply the changes
+
+-- 1. Create payments table
+CREATE TABLE IF NOT EXISTS tolovlar (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  student_name text NOT NULL,
+  month text NOT NULL,
+  year integer NOT NULL,
+  amount integer NOT NULL DEFAULT 500000,
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('paid', 'pending', 'rejected', 'waiting', 'approved')),
+  receipt_url text,
+  admin_message text,
+  created_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- Index for fast queries
+CREATE INDEX IF NOT EXISTS tolovlar_student_id_idx ON tolovlar(student_id);
+
+-- Enable RLS on payments table
+ALTER TABLE tolovlar ENABLE ROW LEVEL SECURITY;
+
+-- Clean up any existing policies
+DROP POLICY IF EXISTS "Students can view their own payments" ON tolovlar;
+DROP POLICY IF EXISTS "Students can update their own payments" ON tolovlar;
+DROP POLICY IF EXISTS "Students can insert their own payments" ON tolovlar;
+DROP POLICY IF EXISTS "Admins can manage all payments" ON tolovlar;
+DROP POLICY IF EXISTS "Staff can view all payments" ON tolovlar;
+
+-- 1. Student Policies
+CREATE POLICY "Students can view their own payments"
+ON tolovlar FOR SELECT
+TO authenticated
+USING (
+  auth.uid() = student_id
+);
+
+CREATE POLICY "Students can insert their own payments"
+ON tolovlar FOR INSERT
+TO authenticated
+WITH CHECK (
+  auth.uid() = student_id
+);
+
+CREATE POLICY "Students can update their own payments"
+ON tolovlar FOR UPDATE
+TO authenticated
+USING (
+  auth.uid() = student_id
+)
+WITH CHECK (
+  auth.uid() = student_id
+);
+
+-- 2. Admin & Staff Policies
+CREATE POLICY "Admins can manage all payments"
+ON tolovlar FOR ALL
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'admin'
+  )
+);
+
+CREATE POLICY "Staff can view all payments"
+ON tolovlar FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM staff
+    WHERE staff.id = auth.uid()
+  )
+  OR EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role = 'tarbiyachi'
+  )
+);
+
+-- 3. Storage Bucket Creation for Receipts
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('receipts', 'receipts', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Clean up existing storage policies for 'receipts'
+DROP POLICY IF EXISTS "Anyone can upload receipts" ON storage.objects;
+DROP POLICY IF EXISTS "Anyone can view receipts" ON storage.objects;
+
+-- Create storage policies
+CREATE POLICY "Anyone can upload receipts" 
+ON storage.objects FOR INSERT 
+TO authenticated 
+WITH CHECK (bucket_id = 'receipts');
+
+CREATE POLICY "Anyone can view receipts" 
+ON storage.objects FOR SELECT 
+TO authenticated 
+USING (bucket_id = 'receipts');
+
+-- ==========================================================
+-- Migration: 010_fix_tolovlar_rls_recursion.sql
+-- ==========================================================
+-- Migration: Fix RLS infinite recursion on tolovlar table by bypassing staff table
+-- Run this in your Supabase SQL Editor to apply the fix
+
+-- 1. Drop the recursive policy
+DROP POLICY IF EXISTS "Staff can view all payments" ON tolovlar;
+
+-- 2. Re-create the policy checking users.role directly
+CREATE POLICY "Staff can view all payments"
+ON tolovlar FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid() AND users.role IN ('admin', 'tarbiyachi')
+  )
+);
+
+-- ==========================================================
+-- Migration: 011_add_ai_fields_to_tolovlar.sql
+-- ==========================================================
+-- Migration: Add AI audit fields to tolovlar table
+-- Run this in your Supabase SQL Editor to add AI analysis support
+
+-- 1. Add new columns for AI audit
+ALTER TABLE tolovlar 
+ADD COLUMN IF NOT EXISTS ai_confidence integer,
+ADD COLUMN IF NOT EXISTS ai_extracted_amount integer,
+ADD COLUMN IF NOT EXISTS ai_analysis text;
+
+-- 2. Comments explaining the columns
+COMMENT ON COLUMN tolovlar.ai_confidence IS 'AI-determined authenticity percentage (0-100)';
+COMMENT ON COLUMN tolovlar.ai_extracted_amount IS 'Amount extracted from the receipt by AI (in UZS)';
+COMMENT ON COLUMN tolovlar.ai_analysis IS 'Detailed analysis and feedback generated by AI';
+
+-- ==========================================================
+-- Migration: 012_add_transaction_id_to_tolovlar.sql
+-- ==========================================================
+-- Migration: Add transaction_id column to tolovlar table
+-- Run this in your Supabase SQL Editor to support duplicate check detection
+
+-- 1. Add transaction_id column
+ALTER TABLE tolovlar 
+ADD COLUMN IF NOT EXISTS transaction_id text;
+
+-- 2. Add index for fast duplicate lookups
+CREATE INDEX IF NOT EXISTS tolovlar_transaction_id_idx ON tolovlar(transaction_id);
+
+-- 3. Comment explaining the column
+COMMENT ON COLUMN tolovlar.transaction_id IS 'Unique transaction reference ID extracted from receipt by AI to prevent duplicate submissions';
+
+-- ==========================================================
+-- Migration: 013_add_floor_captain.sql
+-- ==========================================================
+-- Migration: Add Floor Captain support for students and floor-specific announcements
+-- This migration should be executed in your Supabase SQL Editor.
+
+-- 1. Add Floor Captain columns to the users table
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS is_floor_captain boolean DEFAULT false,
+ADD COLUMN IF NOT EXISTS assigned_floor integer DEFAULT NULL;
+
+-- 2. Add target_floor and target_gender to announcements (elonlar) table
+ALTER TABLE elonlar 
+ADD COLUMN IF NOT EXISTS target_floor integer DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS target_gender text DEFAULT NULL;
+
+-- 3. Update the check constraint on audience to allow floor-specific targeting
+ALTER TABLE elonlar DROP CONSTRAINT IF EXISTS elonlar_audience_check;
+ALTER TABLE elonlar ADD CONSTRAINT elonlar_audience_check 
+CHECK (audience IN ('all', 'faculty', 'floor'));
+
+-- ==========================================================
+-- Migration: 014_create_cleaning_schedule.sql
+-- ==========================================================
+-- Migration: Create cleaning schedule table for room cleaning duty assignments
+-- Run this in your Supabase SQL Editor.
+
+CREATE TABLE IF NOT EXISTS cleaning_schedule (
+    room_number text PRIMARY KEY,
+    schedule jsonb NOT NULL,
+    updated_at timestamptz DEFAULT NOW()
+);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE cleaning_schedule ENABLE ROW LEVEL SECURITY;
+
+-- Create Policies for RLS
+-- 1. Allow everyone to read the cleaning schedule
+CREATE POLICY "Allow public read access" ON cleaning_schedule
+    FOR SELECT TO public USING (true);
+
+-- 2. Allow authenticated users to insert/update schedule
+CREATE POLICY "Allow authenticated insert/update" ON cleaning_schedule
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- ==========================================================
+-- Setup: DEMO_ACCOUNT_SETUP.sql
+-- ==========================================================
+-- Demo Account Setup Script for Supabase
+-- Run this in your Supabase SQL Editor to create a demo admin account
+
+-- 1. First, create the demo user in auth.users (this is done through Supabase Auth API)
+-- You need to use Supabase Dashboard to create the auth user or use the following approach
+
+-- 2. Create the user in the users table
+-- Note: The UUID below should match the auth user ID. You can get it from Supabase Auth Dashboard
+
+INSERT INTO users (id, email, role, full_name, created_at)
+VALUES (
+    'demo-admin-uuid-here', -- Replace with actual UUID from Supabase Auth
+    'admin@demo.com',
+    'admin',
+    'Demo Admin User',
+    NOW()
+)
+ON CONFLICT (id) DO UPDATE SET
+    role = 'admin';
+
+-- Alternative: If you want to create via the Auth API (JavaScript)
+-- You can use the code below in your browser console or in a setup script
+
+/*
+import { supabase } from '@/lib/supabase'
+
+async function createDemoAccount() {
+    try {
+        // 1. Create auth user
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+            email: 'admin@demo.com',
+            password: 'demo123456',
+            email_confirm: true,
+            user_metadata: {
+                name: 'Demo Admin',
+                role: 'admin'
+            }
+        })
+
+        if (authError) {
+            console.error('Auth error:', authError)
+            return
+        }
+
+        const userId = authData.user.id
+        console.log('Created auth user:', userId)
+
+        // 2. Create user in users table
+        const { error: dbError } = await supabase
+            .from('users')
+            .insert({
+                id: userId,
+                email: 'admin@demo.com',
+                role: 'admin',
+                full_name: 'Demo Admin User'
+            })
+
+        if (dbError) {
+            console.error('Database error:', dbError)
+            return
+        }
+
+        console.log('Demo account created successfully!')
+        console.log('Email: admin@demo.com')
+        console.log('Password: demo123456')
+    } catch (error) {
+        console.error('Error:', error)
+    }
+}
+
+createDemoAccount()
+*/
+

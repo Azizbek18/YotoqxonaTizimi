@@ -8,6 +8,12 @@ export const metadata: Metadata = {
   title: "Yotoqxona.uz — Aqlli talabalar yotoqxonasi boshqaruv tizimi",
   description: "Talabalar yotoqxonasi boshqaruvini avtomatlashtirish, arizalar yuborish, to'lovlarni amalga oshirish va navbatchilik jadvallarini real vaqt rejimida boshqarish platformasi.",
   keywords: ["yotoqxona", "talaba", "tizim", "aqlli boshqaruv", "arizalar", "navbatchilik", "yotoqxona boshqaruvi", "supabase", "nextjs", "AI yordamchi"],
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: "MTalaba",
+  },
   icons: {
     icon: '/logo.png',
     shortcut: '/logo.png',
@@ -46,12 +52,14 @@ const themeInitScript = `
       var root = document.documentElement;
       root.dataset.theme = theme;
       root.style.colorScheme = theme;
-      root.classList.remove('theme-dark', 'theme-light');
+      root.classList.remove('theme-dark', 'theme-light', 'dark', 'light');
       root.classList.add(theme === 'light' ? 'theme-light' : 'theme-dark');
+      root.classList.add(theme);
     } catch (error) {
       document.documentElement.dataset.theme = 'dark';
       document.documentElement.style.colorScheme = 'dark';
-      document.documentElement.classList.add('theme-dark');
+      document.documentElement.classList.remove('theme-dark', 'theme-light', 'dark', 'light');
+      document.documentElement.classList.add('theme-dark', 'dark');
     }
   })();
 `;

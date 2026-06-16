@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏢 Talabalar Yotoqxonasi Tizimi (YotoqxonaTizimi)
 
-## Getting Started
+Ushbu loyiha O'zbekiston Milliy Universiteti talabalari yotoqxonasi faoliyatini raqamlashtirish, xonalar bandligini 3D formatda vizuallashtirish, to'lovlar monitoringini amalga oshirish, arizalar qabul qilish hamda admin va talabalar o'rtasida shaxsiy chat almashinuvini ta'minlash uchun mo'ljallangan zamonaviy boshqaruv tizimidir.
 
-First, run the development server:
+---
 
+## 🛠 Texnologik Stak (Tech Stack)
+
+Loyihaning asosi quyidagi zamonaviy texnologiyalar ustiga qurilgan:
+- **Karkas**: [Next.js 16 (App Router)](https://nextjs.org/) (Turbopack bilan)
+- **Frontend / UI**: [React 19](https://react.dev/), [Tailwind CSS v4](https://tailwindcss.com/) (Dinamik Light/Dark mode va premium animatsiyalar bilan)
+- **Ma'lumotlar bazasi va Auth**: [Supabase](https://supabase.com/) (PostgreSQL, Row Level Security xavfsizlik qoidalari bilan)
+- **3D Render**: [Three.js](https://threejs.org/) va [BabylonJS](https://www.babylonjs.com/) (Xonalarni interaktiv 3D formatda ko'rish uchun)
+- **Tahlil va Grafika**: [Recharts](https://recharts.org/) (Hisobotlar sahifasidagi oylik dinamika, qabul va rad etishlar, rollar taqsimotini vizuallashtirish uchun)
+- **Hisobotlarni Yuklash**: [XLSX (xlsx-js-style)](https://sheetjs.com/) (Excel formatiga moslashtirilgan chiroyli dizayndagi eksportlar)
+
+---
+
+## 🚀 Loyihaning Asosiy Imkoniyatlari (Key Features)
+
+### 1. 🎯 Interaktiv 3D Xonalar Vizuallashuvi
+- Yotoqxonaning barcha qavatlari va xonalari sxemasini interaktiv 3D makonda ko'rish.
+- Har bir xonaning to'liqlik darajasi (bo'sh, qisman band, to'la band) ranglar orqali ko'rsatiladi.
+- Xona ustiga bosilganda o'sha xonada yashovchi talabalar ro'yxati va ma'lumotlari ochiladi.
+
+### 2. 👤 Talaba Profili va Avatar Yuklash
+- Talabalar o'z profillarini to'ldirishlari, shaxsiy ma'lumotlari, oilasi va hujjatlarini ko'rishlari mumkin.
+- Profil rasmini (avatar) serverga (Supabase Storage) yuklash va real vaqtda yangilash imkoniyati.
+
+### 3. 💳 To'lovlar Tahlili va Monitoring
+- Talabalar to'lov kvitansiyasi (cheklar) rasmini yuklaydilar.
+- Gemini AI orqali to'lov cheklari avtomatik tahlil qilinadi (summa mosligi, takroriylik, soxtalik tekshiruvi).
+- Admin panelda talabaning to'lov tarixi, umumiy to'langan summa va qolgan qarzdorlik dynamic progress-bar ko'rinishida ko'rsatiladi.
+
+### 4. 💬 Shaxsiy Chat Tizimi
+- Admin har bir talaba bilan o'zaro Telegram uslubidagi split-screen chat orqali yozisha oladi.
+- Xabarlar faqat yuborilgan talaba va adminga ko'rinadi (RLS qoidalari orqali himoyalangan).
+- Talaba o'z profilidan tezkor chat modalini ochib adminga murojaat yo'llashi va javob olishi mumkin.
+
+### 5. 📊 Hisobotlar va Analitika
+- Tizim statistikasi (jami foydalanuvchilar, arizalar soni, tasdiqlash foizi) real ma'lumotlarda ishlaydi.
+- Oylar bo'yicha dinamik grafiklar (LineChart, BarChart) va rollar taqsimoti (Donut Chart) mavjud.
+- Barcha talabalar ma'lumotlarini xona raqamlari bo'yicha tabiiy saralab, dizaynlangan chiroyli Excel (.xlsx) va CSV formatlarida yuklab olish.
+
+---
+
+## ⚙️ Mahalliy Ishga Tushirish (Local Setup)
+
+### 1. Loyihani yuklab olish va o'rnatish
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Loyihaga kiring
+cd yotoqxonatizimi
+
+# Kutubxonalarni o'rnating
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Environment o'zgaruvchilarini sozlash
+Loyihaning ildiz papkasida `.env.local` faylini yarating va quyidagi ma'lumotlarni kiriting:
+```env
+NEXT_PUBLIC_SUPABASE_URL=Sizning_Supabase_URLingiz
+NEXT_PUBLIC_SUPABASE_ANON_KEY=Sizning_Supabase_Anon_Kalitingiz
+SUPABASE_SERVICE_ROLE_KEY=Sizning_Supabase_Service_Role_Kalitingiz
+GEMINI_API_KEY=Sizning_Gemini_AI_API_Kalitingiz
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Tizimni ishga tushirish
+```bash
+npm run dev
+```
+Tizim avtomatik ravishda [http://localhost:3000](http://localhost:3000) manzilida ishga tushadi.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🗄 Ma'lumotlar Bazasini Sozlash (Database Setup)
 
-To learn more about Next.js, take a look at the following resources:
+Loyihadagi ma'lumotlar bazasini noldan sozlash uchun loyiha ildizidagi `DATABASE_SCHEMA.sql` fayli ichidagi barcha SQL buyruqlarini Supabase SQL Editor-ga nusxalab, ishga tushirish (Run) kifoya.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Ushbu SQL fayl quyidagi jarayonlarni amalga oshiradi:
+1. `profiles`, `arizalar` (va chatlar), `elonlar`, `invites`, `tolovlar`, `cleaning_schedule` jadvallarini yaratadi.
+2. Jadvallar xavfsizligini ta'minlash uchun Row Level Security (RLS) qoidalarini o'rnatadi.
+3. Rolga asoslangan middleware uchun foydalanuvchi rollarini avtomatik hal qiluvchi funksiyalarni yaratadi.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🔑 Demo Kirish Ma'lumotlari (Demo Accounts)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Admin portaliga kirishni osonlashtirish uchun tizimda **Demo rejim** mavjud. Tizim login sahifasida "Demo Admin" tugmasi orqali quyidagi demo hisoblarga bir bosishda kirish mumkin:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Tizim Admini**: `muminovazizbek1050@gmail.com`
+- **Parol**: `muminov1050`
+
+---
+
+## ☁️ Vercel-ga Yuklash (Deployment Guide)
+
+Loyiha Vercel platformasida ishlashga 100% tayyorlangan. Yuklash uchun quyidagi ketma-ketlikni bajaring:
+
+1. GitHub-da yangi repository ochib, loyihani yuklang.
+2. Vercel dashboardiga kiring, loyihani bog'lang.
+3. **Environment Variables** bo'limida `.env.local` ichidagi barcha o'zgaruvchilarni Vercelga kiriting.
+4. **Deploy** tugmasini bosing. Vercel loyihani avtomatik tarzda build qilib ishga tushiradi.

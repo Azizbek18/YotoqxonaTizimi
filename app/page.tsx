@@ -11,8 +11,13 @@ import { useThemeStore } from '@/lib/stores/theme-store';
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     setMounted(true);
+    setIsMobile(window.innerWidth < 640);
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const theme = useThemeStore((state) => state.theme);
@@ -32,7 +37,7 @@ export default function Home() {
       title: "Qavat Sardori",
       desc: "Qavatdagi navbatchilik jadvalini boshqarish, talabalar davomati va tezkor e'lonlar tarqatish paneli.",
       icon: "/3d-icons/user_3d_v4.png",
-      route: "/sardor/dashboard",
+      route: "/login",
       color: "from-indigo-600 to-purple-500",
       glow: "shadow-indigo-500/20 hover:shadow-indigo-500/30 border-indigo-500/20",
       badge: "Nazorat va Intizom"
@@ -41,7 +46,7 @@ export default function Home() {
       title: "Tarbiyachi",
       desc: "Talabalar arizalarini ko'rib chiqish, ogohlantirishlar yozish va umumiy yotoqxona tartibini kuzatish.",
       icon: "/3d-icons/educator_3d_v4.png",
-      route: "/kirish/tarbiyachi",
+      route: "/login",
       color: "from-emerald-600 to-teal-500",
       glow: "shadow-emerald-500/20 hover:shadow-emerald-500/30 border-emerald-500/20",
       badge: "Pedagogik Boshqaruv"
@@ -49,8 +54,8 @@ export default function Home() {
     {
       title: "Tizim Admini",
       desc: "Foydalanuvchilar bazasi, to'lov kvitansiyalari, 3D xonalar xaritasi va tizim sozlamalarini boshqarish.",
-      icon: "/3d-icons/server_3d.png",
-      route: "/kirish/admin",
+      icon: "https://img.icons8.com/3d-fluency/188/laptop.png",
+      route: "/login",
       color: "from-rose-600 to-orange-500",
       glow: "shadow-rose-500/20 hover:shadow-rose-500/30 border-rose-500/20",
       badge: "To'liq Nazorat"
@@ -181,24 +186,24 @@ export default function Home() {
         >
           <div className="absolute w-[250px] h-[250px] bg-indigo-500/10 rounded-full blur-[80px] -z-10 animate-pulse" />
           <motion.img 
-            animate={{ y: [0, -10, 0] }}
+            animate={isMobile ? {} : { y: [0, -10, 0] }}
             transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-            src="/3d-icons/server_3d.png" 
+            src="https://img.icons8.com/3d-fluency/188/laptop.png" 
             alt="Dashboard 3D"
-            className="w-48 sm:w-64 drop-shadow-[0_15px_50px_rgba(99,102,241,0.25)] relative z-10"
+            className="w-48 sm:w-64 drop-shadow-[0_15px_50px_rgba(99,102,241,0.25)] relative z-10 transform-gpu"
           />
           {/* Floating icons around */}
           <motion.img 
-            animate={{ y: [0, 8, 0], rotate: [0, 5, 0] }}
+            animate={isMobile ? {} : { y: [0, 8, 0], rotate: [0, 5, 0] }}
             transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut" }}
             src="/3d-icons/student_3d_v4.png"
-            className="absolute left-[10%] top-[40%] w-16 sm:w-20 opacity-90 drop-shadow-lg"
+            className="absolute left-[10%] top-[40%] w-16 sm:w-20 opacity-90 drop-shadow-lg transform-gpu"
           />
           <motion.img 
-            animate={{ y: [0, -8, 0], rotate: [0, -5, 0] }}
+            animate={isMobile ? {} : { y: [0, -8, 0], rotate: [0, -5, 0] }}
             transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
             src="/3d-icons/educator_3d_v4.png"
-            className="absolute right-[10%] top-[30%] w-16 sm:w-20 opacity-90 drop-shadow-lg"
+            className="absolute right-[10%] top-[30%] w-16 sm:w-20 opacity-90 drop-shadow-lg transform-gpu"
           />
         </motion.div>
       </section>
@@ -219,11 +224,11 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: idx * 0.1 }}
-              whileHover={{ y: -6 }}
-              className={`backdrop-blur-xl border p-6 rounded-[32px] flex flex-col justify-between min-h-[360px] shadow-2xl relative overflow-hidden group transition-all duration-300 ${
+              whileHover={isMobile ? {} : { y: -6 }}
+              className={`backdrop-blur-none sm:backdrop-blur-xl border p-6 rounded-[32px] flex flex-col justify-between min-h-[360px] shadow-2xl relative overflow-hidden group transition-all duration-300 ${
                 isLight
-                  ? 'bg-white/80 border-slate-200/80 shadow-slate-200/50 shadow-lg'
-                  : `bg-white/[0.02] border-white/5 ${role.glow}`
+                  ? 'bg-white border-slate-200/80 shadow-slate-200/50 shadow-lg'
+                  : `bg-[#0b1224]/95 border-white/5 sm:bg-white/[0.02] ${role.glow}`
               }`}
             >
               {/* Colored Glow behind icon */}
@@ -238,11 +243,11 @@ export default function Home() {
 
                 <div className="h-32 flex items-center justify-center pt-2">
                   <motion.img 
-                    animate={{ y: [0, -4, 0] }}
+                    animate={isMobile ? {} : { y: [0, -4, 0] }}
                     transition={{ repeat: Infinity, duration: 3 + idx * 0.3, ease: "easeInOut" }}
                     src={role.icon} 
                     alt={role.title}
-                    className="h-28 object-contain drop-shadow-[0_10px_20px_rgba(255,255,255,0.05)]"
+                    className="h-28 object-contain drop-shadow-[0_10px_20px_rgba(255,255,255,0.05)] transform-gpu"
                   />
                 </div>
 

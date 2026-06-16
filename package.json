@@ -6,9 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "mobile:sync": "npx cap sync",
+    "mobile:open-android": "npx cap open android",
+    "mobile:open-ios": "npx cap open ios"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
+    "@capacitor/ios": "^8.4.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.0",
     "@tanstack/react-query": "^5.100.8",
@@ -16,6 +23,7 @@
     "framer-motion": "^12.38.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.8.0",
+    "marked": "^18.0.5",
     "next": "16.2.0",
     "next-intl": "^4.11.1",
     "next-themes": "^0.4.6",

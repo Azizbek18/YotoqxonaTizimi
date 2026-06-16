@@ -51,6 +51,7 @@ export default function SardorDashboard() {
   const [students, setStudents] = useState<Student[]>([])
   const [elonlar, setElonlar] = useState<Elon[]>([])
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<'students' | 'elonlar' | 'navbatchilik'>('students')
 
   // Search and Filter States
@@ -161,6 +162,7 @@ export default function SardorDashboard() {
   }
 
   useEffect(() => {
+    setMounted(true)
     loadDashboardData()
   }, [])
 
@@ -273,6 +275,16 @@ export default function SardorDashboard() {
     } finally {
       setSavingDuty(false)
     }
+  }
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#070b13] text-white">
+        <div className="relative w-16 h-16 animate-spin">
+          <div className="absolute inset-0 rounded-full border-t-2 border-purple-500" />
+        </div>
+      </div>
+    )
   }
 
   if (loading) {

@@ -18,8 +18,9 @@ export function applyThemeToDocument(theme: ThemeMode) {
   const root = document.documentElement
   root.dataset.theme = theme
   root.style.colorScheme = theme
-  root.classList.remove('theme-dark', 'theme-light')
+  root.classList.remove('theme-dark', 'theme-light', 'dark', 'light')
   root.classList.add(theme === 'light' ? 'theme-light' : 'theme-dark')
+  root.classList.add(theme)
 }
 
 export const useThemeStore = create<ThemeState>()(

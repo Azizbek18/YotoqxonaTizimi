@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
     Plus, Download, Edit2, Trash2, Send, Sparkles,
     FileText, CheckCircle, Clock, AlertCircle
@@ -55,6 +56,11 @@ export default function ArizalarContent() {
     const [selectedApp, setSelectedApp] = useState<Application | null>(null)
     const [showDetailModal, setShowDetailModal] = useState(false)
     const [isGenerating, setIsGenerating] = useState(false)
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const [newAppForm, setNewAppForm] = useState({
         type: 'ariza' as 'ariza' | 'tushuntirish',
@@ -63,7 +69,7 @@ export default function ArizalarContent() {
     })
 
     useEffect(() => {
-        if (showDetailModal || showNewForm) {
+        if (showDetailModal) {
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = '';
@@ -71,7 +77,7 @@ export default function ArizalarContent() {
         return () => {
             document.body.style.overflow = '';
         };
-    }, [showDetailModal, showNewForm]);
+    }, [showDetailModal]);
 
     useEffect(() => {
         async function loadData() {
@@ -208,8 +214,8 @@ export default function ArizalarContent() {
         const email = studentProfile?.email || '__________'
 
         const prefix = form.type === 'ariza'
-            ? `Farg'ona Davlat Universiteti Rektori bilan\n\nIltimos!\n\nMen, ${fullName}, talaba (${email}), sizga murojaat qilyapman.\n\n${form.title} haqida ariza topshiryapman.`
-            : `Farg'ona Davlat Universiteti Rektori bilan\n\nIltimos!\n\nMen, ${fullName}, talaba (${email}), sizga murojaat qilyapman.\n\n${form.title} haqida tushuntirish taqdim qilyapman.`
+            ? `O'zbekiston Milliy Universiteti Rektori bilan\n\nIltimos!\n\nMen, ${fullName}, talaba (${email}), sizga murojaat qilyapman.\n\n${form.title} haqida ariza topshiryapman.`
+            : `O'zbekiston Milliy Universiteti Rektori bilan\n\nIltimos!\n\nMen, ${fullName}, talaba (${email}), sizga murojaat qilyapman.\n\n${form.title} haqida tushuntirish taqdim qilyapman.`
 
         return `${prefix}\n\nSabablari:\n${form.reason}\n\nBundan keyin barcha qoidalarga amal qilishimni kafolatlayman.\n\nHurmat bilan,\nMurojaatchi: ${fullName}\nSana: ${new Date().toISOString().split('T')[0]}`
     }
@@ -547,9 +553,9 @@ export default function ArizalarContent() {
             </div>
 
             {/* Detail Modal */}
-            {showDetailModal && selectedApp && (
+            {mounted && typeof document !== 'undefined' && showDetailModal && selectedApp && createPortal(
                 <div
-                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
                     onClick={() => setShowDetailModal(false)}
                 >
                     <div
@@ -592,7 +598,8 @@ export default function ArizalarContent() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     )

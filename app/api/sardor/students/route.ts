@@ -6,10 +6,7 @@ function extractFloor(roomNumber: string | null | undefined): number | null {
   if (!roomNumber) return null
   const num = parseInt(roomNumber.trim().replace(/\D/g, ''))
   if (isNaN(num)) return null
-  if (num >= 100) {
-    return Math.floor(num / 100)
-  }
-  return num
+  return Math.floor((num - 1) / 30) + 1
 }
 
 export async function GET() {

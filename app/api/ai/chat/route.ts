@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { callGemini } from '@/lib/gemini'
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
     const geminiApiKey = process.env.GEMINI_API_KEY
 
     // Dormitory rules context for AI System Instructions
-    const systemInstruction = `Siz Farg'ona Davlat Universiteti Talabalar Yotoqxonasining aqlli virtual yordamchisisiz (ismingiz "Yotoqxona AI").
+    const systemInstruction = `Siz O'zbekiston Milliy Universiteti Talabalar Yotoqxonasining aqlli virtual yordamchisisiz (ismingiz "Yotoqxona AI").
 Vazifangiz talabalarga yotoqxona tartib-qoidalari, to'lovlar, arizalar, ma'muriyat bilan aloqa va kundalik masalalarda yordam berishdir.
 Siz faqat o'zbek tilida, do'stona, aniq va xushmuomala ohangda javob berishingiz kerak.
 
@@ -27,8 +28,6 @@ Javoblaringizni iloji boricha qisqa, tushunarli va chiroyli emojilar bilan bezab
 
     if (geminiApiKey) {
       try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`
-
         // Format conversational history for Gemini
         const formattedContents = []
 
@@ -48,25 +47,13 @@ Javoblaringizni iloji boricha qisqa, tushunarli va chiroyli emojilar bilan bezab
           parts: [{ text: message }]
         })
 
-        const apiResponse = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            contents: formattedContents,
-            systemInstruction: {
-              parts: [{ text: systemInstruction }]
-            }
-          })
-        })
+        const apiData = await callGemini({
+          contents: formattedContents,
+          systemInstruction: {
+            parts: [{ text: systemInstruction }]
+          }
+        }, geminiApiKey)
 
-        if (!apiResponse.ok) {
-          const errText = await apiResponse.text()
-          throw new Error(`Gemini API Error: ${errText}`)
-        }
-
-        const apiData = await apiResponse.json()
         const aiReply = apiData?.candidates?.[0]?.content?.parts?.[0]?.text || 'Kechirasiz, javobni shakllantirishda xatolik yuz berdi.'
 
         return NextResponse.json({ reply: aiReply })

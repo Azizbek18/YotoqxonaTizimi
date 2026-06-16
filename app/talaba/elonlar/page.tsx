@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Bell,
   CalendarDays,
@@ -136,6 +137,11 @@ export default function ElonlarPage() {
   const [filter, setFilter] = useState<FilterType>('Barchasi');
   const theme = useThemeStore((state) => state.theme);
   const isLight = theme === 'light';
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Lock body scroll when any modal is open
   useEffect(() => {
@@ -515,8 +521,8 @@ export default function ElonlarPage() {
       </div>
 
       {/* Frosted Detail Modal */}
-      {selectedElon && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" onClick={() => setSelectedElon(null)}>
+      {mounted && typeof document !== 'undefined' && selectedElon && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" onClick={() => setSelectedElon(null)}>
           <div 
             className={`relative w-full max-w-lg overflow-hidden rounded-[36px] border p-0 shadow-2xl ${panel}`}
             onClick={(e) => e.stopPropagation()}
@@ -574,7 +580,8 @@ export default function ElonlarPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

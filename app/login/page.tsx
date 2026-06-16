@@ -3,7 +3,6 @@
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { findRoleByUserId } from '@/lib/auth-tables'
 import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, ChevronRight, House, CheckCircle, AlertTriangle, Eye, EyeOff } from 'lucide-react'
@@ -84,13 +83,29 @@ function LoginContent() {
       }
 
       // 3. Tizimga kirish muvaffaqiyatli bo'lsa, rolini aniqlaymiz
-      const userRole = authData.user?.id
-        ? await findRoleByUserId(supabase, authData.user.id, authData.user.email)
-        : null
+      let userRole: string | null = null
+      try {
+        const roleResponse = await fetch('/api/auth/resolve-role', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: authData.user?.email ?? cleanEmail,
+          }),
+        })
+        const roleResult = await roleResponse.json()
+        if (roleResponse.ok && roleResult.ok) {
+          userRole = roleResult.role
+        }
+      } catch (roleError) {
+        console.error('Role resolution error:', roleError)
+      }
+
       show3DToast('success', 'Xush kelibsiz!')
 
       setTimeout(() => {
-        // Rol asosida yantiqlash
+        // Rol asosida yo'naltirish
         if (userRole === 'admin') {
           router.push('/admin/dashboard')
         } else if (userRole === 'tarbiyachi') {

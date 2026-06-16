@@ -8,7 +8,8 @@ import { createPortal } from 'react-dom'
 import {
   LayoutDashboard, Megaphone, ListOrdered, ShieldCheck,
   UserCircle, Bell, Moon, Zap, Clock, CreditCard, FileText,
-  X, AlertTriangle, CheckCircle2, AlertCircle, Upload, Sparkles
+  X, AlertTriangle, CheckCircle2, AlertCircle, Upload, Sparkles,
+  Code, Send, Phone, ExternalLink
 } from 'lucide-react'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -72,6 +73,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
   const [isNightPermOpen, setIsNightPermOpen] = useState(false)
   const [isQueueSwapOpen, setIsQueueSwapOpen] = useState(false)
   const [isCleanAuditOpen, setIsCleanAuditOpen] = useState(false)
+  const [isDevModalOpen, setIsDevModalOpen] = useState(false)
 
   // Notifications state
   const [notifications, setNotifications] = useState<any[]>([])
@@ -281,6 +283,17 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
           <div className="flex items-center gap-2 shrink-0">
             <ThemeToggle />
             <button
+              onClick={() => setIsDevModalOpen(true)}
+              className={`relative p-2 sm:p-2.5 rounded-xl transition-all group flex items-center justify-center ${
+                isLight 
+                  ? 'bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-600 hover:text-slate-900' 
+                  : 'bg-white/5 border border-white/10 hover:bg-white/10 text-slate-400 hover:text-white'
+              }`}
+              title="Dasturchi va takliflar"
+            >
+              <Sparkles size={18} className="animate-pulse text-amber-500" />
+            </button>
+            <button
               onClick={handleOpenNotifications}
               className={`relative p-2 sm:p-2.5 rounded-xl transition-all group ${isLight ? 'bg-slate-100 border border-slate-300 hover:bg-slate-200' : 'bg-white/5 border border-white/10 hover:bg-white/10'}`}
             >
@@ -342,7 +355,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
         <motion.div
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className={`relative flex items-center gap-0.5 sm:gap-1 w-full max-w-full sm:max-w-4xl backdrop-blur-[30px] rounded-3xl sm:rounded-4xl p-1.5 sm:p-2 transition-all overflow-x-auto no-scrollbar pointer-events-auto ${isLight ? 'bg-white/80 border border-slate-300 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'bg-slate-950/60 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)]'}`}
+          className={`relative flex items-center gap-0.5 sm:gap-1 w-full max-w-full sm:max-w-4xl backdrop-blur-none sm:backdrop-blur-[30px] rounded-3xl sm:rounded-4xl p-1.5 sm:p-2 transition-all overflow-x-auto no-scrollbar pointer-events-auto ${isLight ? 'bg-white/95 sm:bg-white/80 border border-slate-300 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'bg-slate-950/95 sm:bg-slate-950/60 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)]'}`}
         >
           {/* Inner Glossy Glow */}
           <div className={`absolute inset-0 rounded-3xl sm:rounded-4xl pointer-events-none ${isLight ? 'bg-linear-to-b from-white to-transparent' : 'bg-linear-to-b from-white/5 to-transparent'}`} />
@@ -413,6 +426,9 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
         )}
         {isCleanAuditOpen && (
           <CleanAuditModal onClose={() => setIsCleanAuditOpen(false)} profile={profile} isLight={isLight} />
+        )}
+        {isDevModalOpen && (
+          <DeveloperModal onClose={() => setIsDevModalOpen(false)} profile={profile} isLight={isLight} />
         )}
       </AnimatePresence>
 
@@ -1352,5 +1368,185 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
         </div>
       </div>
     </div>
+  )
+}
+
+function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
+  const [feedback, setFeedback] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!profile) {
+      toast.error('Profil yuklanmagan. Qaytadan urinib ko\'ring.')
+      return
+    }
+    if (!feedback.trim()) {
+      toast.error('Iltimos, taklif yoki xabaringizni yozib qoldiring.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const appDate = new Date().toISOString()
+      const { error } = await supabase.from('arizalar').insert({
+        student_id: profile.id,
+        student_name: profile.full_name,
+        faculty: profile.faculty || '',
+        direction: profile.direction || '',
+        course: profile.course ? parseInt(String(profile.course)) : 1,
+        date: appDate,
+        text: feedback.trim(),
+        level: 'info',
+        status: 'pending',
+        title: 'Talab va taklif (Dasturchiga)',
+        type: 'taklif',
+        reason: 'Dasturchi uchun talab va takliflar',
+        ai_generated: false
+      })
+
+      if (error) throw error
+
+      toast.success('Talab va taklifingiz muvaffaqiyatli yuborildi! Rahmat!')
+      setFeedback('')
+      onClose()
+    } catch (err) {
+      console.error(err)
+      const errMsg = err instanceof Error ? err.message : 'Xatolik yuz berdi.'
+      toast.error(errMsg)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+      />
+
+      {/* Modal Container */}
+      <motion.div
+        initial={{ scale: 0.9, y: 20, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.9, y: 20, opacity: 0 }}
+        transition={{ type: 'spring', duration: 0.5 }}
+        className={`relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-[24px] border backdrop-blur-2xl shadow-2xl p-4 sm:p-6 ${
+          isLight
+            ? 'bg-white/95 border-slate-200 text-slate-900 shadow-slate-200/50'
+            : 'bg-slate-950/85 border-white/10 text-white shadow-black/80'
+        }`}
+      >
+        {/* Header */}
+        <div className="flex justify-between items-center mb-5 flex-row">
+          <div className="flex items-center gap-2">
+            <div className={`p-2 rounded-xl ${isLight ? 'bg-amber-100 text-amber-600' : 'bg-amber-500/20 text-amber-400'}`}>
+              <Code size={20} />
+            </div>
+            <h3 className="text-lg font-black tracking-tight">Dasturchi & Takliflar</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className={`p-1.5 rounded-lg transition-colors ${
+              isLight ? 'hover:bg-slate-100 text-slate-500' : 'hover:bg-white/10 text-slate-400'
+            }`}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Developer Info Card */}
+        <div className={`rounded-xl border p-4 mb-5 flex flex-col gap-4 items-center sm:items-start sm:flex-row ${
+          isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/5'
+        }`}>
+          {/* Developer Photo */}
+          <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-purple-500/50 shrink-0 shadow-md">
+            <img 
+              src="https://qgnjhkvmuywlfdnjfpqg.supabase.co/storage/v1/object/public/avatar/005d251c-5116-4e1e-926f-4cdb97915743/1781451759533.jpg" 
+              alt="Azizbek Mo'minov" 
+              className="w-full h-full object-cover"
+            />
+          </div>
+          {/* Details */}
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <h4 className="text-sm font-black tracking-tight leading-tight">Mo&apos;minov Azizbek</h4>
+            <p className="text-[10px] text-purple-400 font-bold uppercase tracking-wider mt-0.5">Senior Full-Stack Developer</p>
+            <div className="mt-2.5 space-y-1.5 text-xs">
+              <a 
+                href="tel:+998912461050" 
+                className={`flex items-center justify-center sm:justify-start gap-1.5 font-medium transition-colors ${
+                  isLight ? 'text-slate-650 hover:text-blue-600' : 'text-slate-300 hover:text-cyan-400'
+                }`}
+              >
+                <Phone size={12} className="shrink-0" />
+                +998 (91) 246-10-50
+              </a>
+              <a 
+                href="https://t.me/Azizbek_04_18" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className={`flex items-center justify-center sm:justify-start gap-1.5 font-medium transition-colors ${
+                  isLight ? 'text-slate-650 hover:text-blue-600' : 'text-slate-300 hover:text-cyan-400'
+                }`}
+              >
+                <Send size={12} className="rotate-45 shrink-0" />
+                Telegram: @Azizbek_04_18
+                <ExternalLink size={10} className="shrink-0" />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Team MTalaba info */}
+        <div className="space-y-1.5 mb-5 text-xs text-left">
+          <h5 className={`font-black uppercase tracking-wider text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>MTalaba Jamoasi</h5>
+          <p className={`leading-relaxed ${isLight ? 'text-slate-650' : 'text-slate-400'}`}>
+            MTalaba jamoasi - oliy ta&apos;lim muassasalari va yotoqxona hayotini raqamlashtirish uchun zamonaviy dasturiy yechimlar yaratadigan talaba-dasturchilar va dizaynerlar jamoasidir.
+          </p>
+        </div>
+
+        {/* Suggestion Form */}
+        <div className="border-t border-dashed pt-4 border-slate-700/30 dark:border-white/10 text-left">
+          <h5 className={`font-black uppercase tracking-wider text-[10px] mb-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Taklif yuborish</h5>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <p className={`text-[10px] leading-relaxed mb-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                Ilova haqida taklifingiz, xatoliklar yoki yangi g&apos;oyalaringiz bormi? Fikringizni qoldiring:
+              </p>
+              <textarea
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                placeholder="Taklifingiz yoki fikringizni yozing..."
+                rows={3}
+                className={`w-full rounded-xl p-3 text-xs outline-none transition-all resize-none border ${
+                  isLight
+                    ? 'bg-slate-50 border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500'
+                    : 'bg-white/5 border-white/5 text-white focus:bg-white/10 focus:border-cyan-500'
+                }`}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting || !feedback.trim()}
+              className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-gradient-to-r text-white flex items-center justify-center gap-1.5 ${
+                isLight
+                  ? 'from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md shadow-blue-500/10'
+                  : 'from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 shadow-md shadow-cyan-500/15'
+              } disabled:opacity-30 disabled:cursor-not-allowed`}
+            >
+              <Send size={12} />
+              {submitting ? "Yuborilmoqda..." : "Taklifni Yuborish"}
+            </button>
+          </form>
+        </div>
+      </motion.div>
+    </div>,
+    document.body
   )
 }

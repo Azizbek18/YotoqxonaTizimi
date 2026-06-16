@@ -49,8 +49,8 @@ const ROOM_DEPTH = 2.6
 const CORRIDOR_WIDTH = 2.4
 const ROOM_GAP = 0.35
 const FLOOR_HEIGHT = 3.4
-const DEFAULT_FLOORS = [1, 2, 3]
-const DEFAULT_ROOM_COUNT_PER_FLOOR = 12
+const DEFAULT_FLOORS = [1, 2, 3, 4, 5]
+const DEFAULT_ROOM_COUNT_PER_FLOOR = 30
 const DEFAULT_ROOM_CAPACITY = 4
 
 const occupiedPattern = [0, 1, 2, 4, 3, 2, 4, 1, 0, 3, 2, 4]
@@ -71,7 +71,7 @@ const parseRoomNumber = (value: string | number): number | null => {
 
 const buildDefaultRoomNumbers = () =>
   DEFAULT_FLOORS.flatMap((floorNumber) =>
-    Array.from({ length: DEFAULT_ROOM_COUNT_PER_FLOOR }, (_, index) => floorNumber * 100 + index + 1)
+    Array.from({ length: DEFAULT_ROOM_COUNT_PER_FLOOR }, (_, index) => (floorNumber - 1) * DEFAULT_ROOM_COUNT_PER_FLOOR + index + 1)
   )
 
 export const generateSampleFloors = (roomSnapshots: RoomOccupancySnapshot[] = []): Floor3D[] => {
@@ -90,7 +90,7 @@ export const generateSampleFloors = (roomSnapshots: RoomOccupancySnapshot[] = []
 
   const knownRoomNumbers = new Set<number>(buildDefaultRoomNumbers())
   occupancyByRoom.forEach((_, roomNumber) => {
-    if (roomNumber >= 100) {
+    if (roomNumber > 0) {
       knownRoomNumbers.add(roomNumber)
     }
   })
@@ -99,7 +99,7 @@ export const generateSampleFloors = (roomSnapshots: RoomOccupancySnapshot[] = []
   Array.from(knownRoomNumbers)
     .sort((left, right) => left - right)
     .forEach((roomNumber) => {
-      const floorNumber = Math.max(1, Math.floor(roomNumber / 100))
+      const floorNumber = Math.max(1, Math.floor((roomNumber - 1) / 30) + 1)
       const roomNumbers = floorsByNumber.get(floorNumber) ?? []
       roomNumbers.push(roomNumber)
       floorsByNumber.set(floorNumber, roomNumbers)

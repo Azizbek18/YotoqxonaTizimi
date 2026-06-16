@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronUp, ChevronDown } from 'lucide-react'
+import { useThemeStore } from '@/lib/stores/theme-store'
 
 export interface TableColumn<T> {
     key: string
@@ -38,6 +39,9 @@ export default function AdminTable<T extends object>({
     onSort,
     pagination,
 }: AdminTableProps<T>) {
+    const theme = useThemeStore((state) => state.theme)
+    const isLight = theme === 'light'
+
     const sortedData = useMemo(() => {
         if (!sortBy || !onSort) return data
 
@@ -54,17 +58,22 @@ export default function AdminTable<T extends object>({
     }, [data, sortBy, sortOrder, onSort])
 
     return (
-        <div className="bg-[#0b1120]/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
+        <div className={`backdrop-blur-xl border rounded-2xl overflow-hidden ${
+            isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0b1120]/50 border-white/10'
+        }`}>
             {/* Table */}
             <div className="overflow-x-auto">
                 <table className="w-full">
                     <thead>
-                        <tr className="border-b border-white/10 bg-white/5">
+                        <tr className={`border-b ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-white/5'}`}>
                             {columns.map((col) => (
                                 <th
                                     key={col.key}
-                                    className={`px-6 py-4 text-left text-sm font-semibold text-slate-300 ${col.width || ''} ${col.sortable ? 'cursor-pointer hover:text-white transition-colors' : ''
-                                        }`}
+                                    className={`px-6 py-4 text-left text-sm font-bold ${
+                                        isLight ? 'text-slate-700' : 'text-slate-300'
+                                    } ${col.width || ''} ${
+                                        col.sortable ? 'cursor-pointer hover:text-purple-600 transition-colors' : ''
+                                    }`}
                                     onClick={() => col.sortable && onSort?.(col.key)}
                                 >
                                     <div className="flex items-center gap-2">
@@ -86,13 +95,13 @@ export default function AdminTable<T extends object>({
                     <tbody>
                         {isLoading ? (
                             <tr>
-                                <td colSpan={columns.length} className="px-6 py-4 text-center text-slate-400">
-                                    <span className="animate-pulse">Yuklanimoqda...</span>
+                                <td colSpan={columns.length} className={`px-6 py-4 text-center ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                                    <span className="animate-pulse">Yuklanmoqda...</span>
                                 </td>
                             </tr>
                         ) : sortedData.length === 0 ? (
                             <tr>
-                                <td colSpan={columns.length} className="px-6 py-4 text-center text-slate-400">
+                                <td colSpan={columns.length} className={`px-6 py-4 text-center ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                                     Ma&apos;lumot topilmadi
                                 </td>
                             </tr>
@@ -103,17 +112,20 @@ export default function AdminTable<T extends object>({
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     transition={{ delay: idx * 0.05 }}
-                                    className={`border-b border-white/5 hover:bg-white/5 transition-colors ${onRowClick ? 'cursor-pointer' : ''
-                                        }`}
+                                    className={`border-b transition-colors ${
+                                        isLight ? 'border-slate-100 hover:bg-slate-50/50' : 'border-white/5 hover:bg-white/5'
+                                    } ${onRowClick ? 'cursor-pointer' : ''}`}
                                     onClick={() => onRowClick?.(row)}
                                 >
                                     {columns.map((col) => {
                                         const value = (row as Record<string, unknown>)[col.key]
 
                                         return (
-                                        <td key={col.key} className={`px-6 py-4 text-sm text-slate-300 ${col.width || ''}`}>
-                                            {col.render ? col.render(value, row) : value as React.ReactNode}
-                                        </td>
+                                            <td key={col.key} className={`px-6 py-4 text-sm ${
+                                                isLight ? 'text-slate-800' : 'text-slate-300'
+                                            } ${col.width || ''}`}>
+                                                {col.render ? col.render(value, row) : value as React.ReactNode}
+                                            </td>
                                         )
                                     })}
                                 </motion.tr>
@@ -125,22 +137,32 @@ export default function AdminTable<T extends object>({
 
             {/* Pagination */}
             {pagination && (
-                <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between">
-                    <span className="text-sm text-slate-400">
+                <div className={`px-6 py-4 border-t flex items-center justify-between ${
+                    isLight ? 'border-slate-200' : 'border-white/10'
+                }`}>
+                    <span className={`text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                         Sahifa {pagination.current} / {Math.ceil(pagination.total / pagination.pageSize)}
                     </span>
                     <div className="flex gap-2">
                         <button
                             onClick={() => pagination.onPageChange(pagination.current - 1)}
                             disabled={pagination.current === 1}
-                            className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-slate-300 transition-all"
+                            className={`px-3 py-1.5 rounded-lg text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                                isLight
+                                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                    : 'bg-white/5 hover:bg-white/10 text-slate-300'
+                            }`}
                         >
                             Oldingi
                         </button>
                         <button
                             onClick={() => pagination.onPageChange(pagination.current + 1)}
                             disabled={pagination.current >= Math.ceil(pagination.total / pagination.pageSize)}
-                            className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-slate-300 transition-all"
+                            className={`px-3 py-1.5 rounded-lg text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                                isLight
+                                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                    : 'bg-white/5 hover:bg-white/10 text-slate-300'
+                            }`}
                         >
                             Keyingi
                         </button>

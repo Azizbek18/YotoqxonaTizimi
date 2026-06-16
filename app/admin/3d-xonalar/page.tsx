@@ -125,15 +125,9 @@ export default function Admin3DXonalarPage() {
       if (progress >= 100) {
         clearInterval(interval)
         
-        // Generate rooms specifically for the selected floor (e.g. 101-106, 201-206)
-        const parsedRooms = [
-          `${activeFloor}01`,
-          `${activeFloor}02`,
-          `${activeFloor}03`,
-          `${activeFloor}04`,
-          `${activeFloor}05`,
-          `${activeFloor}06`
-        ]
+        // Generate rooms specifically for the selected floor (e.g. 1-6 for floor 1, 31-36 for floor 2, etc.)
+        const startRoom = (activeFloor - 1) * 30 + 1
+        const parsedRooms = Array.from({ length: 6 }, (_, idx) => String(startRoom + idx))
 
         setFloorStructures(prev => ({ ...prev, [activeFloor]: parsedRooms }))
         setFloorAnalyzing(prev => ({ ...prev, [activeFloor]: false }))
@@ -199,6 +193,19 @@ export default function Admin3DXonalarPage() {
     renderer.setSize(width, height, false)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     rendererRef.current = renderer
+
+    // Resize Observer for dynamic container sizing (fluid adjustment on panel resize/window resize)
+    const resizeObserver = new ResizeObserver(() => {
+      if (!canvas || !rendererRef.current) return
+      const w = canvas.clientWidth
+      const h = canvas.clientHeight
+      camera.aspect = w / h
+      camera.updateProjectionMatrix()
+      rendererRef.current.setSize(w, h, false)
+    })
+    if (canvas.parentElement) {
+      resizeObserver.observe(canvas.parentElement)
+    }
 
     // 4. Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
@@ -374,6 +381,7 @@ export default function Admin3DXonalarPage() {
 
     // 11. Cleanup function
     return () => {
+      resizeObserver.disconnect()
       cancelAnimationFrame(animationFrameId)
       canvas.removeEventListener('mousedown', onMouseDown)
       canvas.removeEventListener('mousemove', onMouseMove)

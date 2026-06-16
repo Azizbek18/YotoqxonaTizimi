@@ -6,13 +6,15 @@ import Link from 'next/link';
 import {
   Search, X, Plus, CreditCard, Trash2, CheckCircle2,
   Megaphone, MapPin, User, FileText, AlertTriangle,
-  Sparkles, ArrowRight, Phone, Heart, Calendar, Clock, ClipboardList, CheckCircle
+  Sparkles, ArrowRight, Phone, Heart, Calendar, Clock, ClipboardList, CheckCircle,
+  MessageSquare
 } from 'lucide-react';
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { supabase } from '@/lib/supabase';
 import { getSafeUser } from '@/lib/auth-session';
 import toast, { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { marked } from 'marked';
 
 
 interface Task {
@@ -98,6 +100,19 @@ function formatElonDate(value: string | null | undefined) {
   return date.toLocaleDateString('uz-UZ');
 }
 
+const ChatMarkdownMessage = React.memo(({ text }: { text: string }) => {
+  const html = useMemo(() => {
+    return String(marked.parse(text, { async: false }))
+  }, [text])
+  return (
+    <div 
+      className="break-words space-y-1 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_a]:text-blue-500 [&_a]:underline [&_p]:my-1 [&_code]:bg-slate-200/50 [&_code]:dark:bg-white/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:font-mono"
+      dangerouslySetInnerHTML={{ __html: html }} 
+    />
+  )
+})
+ChatMarkdownMessage.displayName = 'ChatMarkdownMessage'
+
 export default function TalabaDashboard() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -140,6 +155,11 @@ export default function TalabaDashboard() {
   const [arizalar, setArizalar] = useState<Ariza[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [myApplications, setMyApplications] = useState<MyApplication[]>([]);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [adminChatMessages, setAdminChatMessages] = useState<any[]>([]);
+  const [loadingAdminChat, setLoadingAdminChat] = useState(false);
+  const [sendingAdminChat, setSendingAdminChat] = useState(false);
+  const [adminChatInput, setAdminChatInput] = useState('');
 
   const getAppStatusInfo = (status: string) => {
     switch (status) {
@@ -299,7 +319,7 @@ export default function TalabaDashboard() {
 
   // Lock body scroll when any modal is open
   useEffect(() => {
-    const isAnyModalOpen = isScheduleModalOpen || !!selectedElon || !!selectedAriza || showArizalar;
+    const isAnyModalOpen = isScheduleModalOpen || !!selectedElon || !!selectedAriza || showArizalar || isChatModalOpen;
     if (isAnyModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -308,7 +328,69 @@ export default function TalabaDashboard() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isScheduleModalOpen, selectedElon, selectedAriza, showArizalar]);
+  }, [isScheduleModalOpen, selectedElon, selectedAriza, showArizalar, isChatModalOpen]);
+
+  const loadChatMessages = async (studentId: string) => {
+    try {
+      setLoadingAdminChat(true);
+      const { data, error } = await supabase
+        .from('arizalar')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('type', 'chat')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setAdminChatMessages(data || []);
+    } catch (error) {
+      console.error('Chat yuklashda xatolik:', error);
+    } finally {
+      setLoadingAdminChat(false);
+    }
+  };
+
+  useEffect(() => {
+    if (profile && isChatModalOpen) {
+      void loadChatMessages(profile.id);
+    }
+  }, [profile, isChatModalOpen]);
+
+  const handleSendChatMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile || !adminChatInput.trim() || sendingAdminChat) return;
+
+    const messageText = adminChatInput.trim();
+    setAdminChatInput('');
+    setSendingAdminChat(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('arizalar')
+        .insert({
+          student_id: profile.id,
+          student_name: profile.full_name,
+          faculty: profile.faculty || '',
+          course: profile.course ? parseInt(String(profile.course)) : 1,
+          type: 'chat',
+          title: 'talaba',
+          reason: messageText,
+          status: 'submitted',
+          text: messageText,
+          level: 'info',
+          date: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setAdminChatMessages(prev => [...prev, data]);
+    } catch (error: any) {
+      toast.error(error.message || 'Xabar yuborishda xatolik');
+      setAdminChatInput(messageText);
+    } finally {
+      setSendingAdminChat(false);
+    }
+  };
 
   // Drag start handler
   const handleDragStart = (e: React.DragEvent, residentId: string) => {
@@ -530,10 +612,7 @@ export default function TalabaDashboard() {
         if (!roomNumber) return null
         const num = parseInt(roomNumber.trim().replace(/\D/g, ''))
         if (isNaN(num)) return null
-        if (num >= 100) {
-          return Math.floor(num / 100)
-        }
-        return num
+        return Math.floor((num - 1) / 30) + 1
       }
 
       try {
@@ -1016,7 +1095,7 @@ export default function TalabaDashboard() {
                   <div>
                     <p className={`text-sm font-black tracking-tight ${textStrong}`}>{floorCaptain.full_name}</p>
                     <p className={`text-[10px] ${textMuted} font-semibold mt-0.5`}>
-                      Sizning qavatingiz ({profile?.room_number ? Math.floor(parseInt(profile.room_number.replace(/\D/g, '')) / 100) : ''}-qavat) sardori
+                      Sizning qavatingiz ({profile?.room_number ? Math.floor((parseInt(profile.room_number.replace(/\D/g, '')) - 1) / 30) + 1 : ''}-qavat) sardori
                     </p>
                   </div>
                 </div>
@@ -1181,7 +1260,7 @@ export default function TalabaDashboard() {
               Tezkor Xizmatlar
             </h3>
             
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
               <Link href="/talaba/arizalar" className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
                 isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
               }`}>
@@ -1209,6 +1288,16 @@ export default function TalabaDashboard() {
                 <AlertTriangle className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
                 <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Tizim qoidalari</span>
               </Link>
+
+              <button 
+                onClick={() => setIsChatModalOpen(true)}
+                className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
+                  isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
+                }`}
+              >
+                <MessageSquare className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
+                <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Xabarlar</span>
+              </button>
             </div>
           </div>
 
@@ -1829,7 +1918,11 @@ export default function TalabaDashboard() {
                             ? 'bg-slate-100 border-slate-200 text-slate-900 rounded-bl-none'
                             : 'bg-white/5 border-white/5 text-white rounded-bl-none'
                       }`}>
-                        {msg.text}
+                        {msg.role === 'model' ? (
+                          <ChatMarkdownMessage text={msg.text} />
+                        ) : (
+                          msg.text
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1981,7 +2074,7 @@ export default function TalabaDashboard() {
                           onDragEnter={(e) => handleDragEnter(e, day)}
                           onDragLeave={(e) => handleDragLeave(e, day)}
                           onDrop={(e) => handleDrop(e, day)}
-                          className={`group relative flex flex-col justify-between p-3.5 min-h-[110px] rounded-2xl border transition-all duration-300 cursor-pointer select-none ${
+                          className={`group relative flex flex-col justify-between p-3.5 min-h-[105px] rounded-2xl border transition-all duration-300 cursor-pointer select-none ${
                             isDragOver 
                               ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_15px_rgba(34,211,238,0.25)] scale-[1.02]' 
                               : assigned 
@@ -2001,29 +2094,42 @@ export default function TalabaDashboard() {
                             {day}
                           </span>
 
-                          {assigned ? (
-                            <div className="flex flex-col justify-between flex-1">
-                              <span className="text-xs font-bold leading-tight line-clamp-2">
-                                {assigned.name}
-                              </span>
-                              <div className="flex justify-end mt-2">
-                                <button
-                                  onClick={(e) => handleUnassign(day, e)}
-                                  className={`p-1 rounded-md transition-all opacity-80 hover:opacity-100 hover:scale-105 cursor-pointer ${
-                                    isLight 
-                                      ? 'bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-100' 
-                                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20'
-                                  }`}
-                                >
-                                  <Trash2 size={11} />
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <span className={`text-[9px] font-medium leading-normal italic ${textMuted} flex-1 flex items-center justify-center text-center`}>
-                              {selectedResidentId ? "Biriktirish uchun bosing" : "Tortib keling"}
-                            </span>
-                          )}
+                          <div className="flex-grow flex items-end">
+                            <select
+                              value={assigned ? assigned.id : ''}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val) {
+                                  const resident = allResidents.find(r => r.id === val);
+                                  if (resident) {
+                                    setDraftSchedule(prev => ({
+                                      ...prev,
+                                      [day]: { id: resident.id, name: resident.name }
+                                    }));
+                                  }
+                                } else {
+                                  setDraftSchedule(prev => {
+                                    const next = { ...prev };
+                                    delete next[day];
+                                    return next;
+                                  });
+                                }
+                              }}
+                              className={`w-full text-xs font-bold py-1.5 px-2 rounded-xl border focus:outline-hidden transition-all cursor-pointer ${
+                                isLight
+                                  ? 'bg-white border-slate-200 text-slate-800 focus:border-blue-400 shadow-xs'
+                                  : 'bg-slate-900 border-white/5 text-white focus:border-cyan-400 shadow-md shadow-black/20'
+                              }`}
+                            >
+                              <option value="">— Bo'sh —</option>
+                              {allResidents.map((r) => (
+                                <option key={r.id} value={r.id}>
+                                  {r.name.replace(" (Siz)", "")}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       );
                     })}
@@ -2087,7 +2193,7 @@ export default function TalabaDashboard() {
                               {resident.name.replace(" (Siz)", "")}
                             </p>
                             <p className={`text-[10px] ${textMuted} font-semibold`}>
-                              Ushlab torting
+                              Tanlang yoki torting
                             </p>
                           </div>
                         </div>
@@ -2143,6 +2249,107 @@ export default function TalabaDashboard() {
               </motion.div>
             </div>
           )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* Student Chat Modal */}
+      {mounted && isChatModalOpen && createPortal(
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsChatModalOpen(false)}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`relative flex flex-col w-full max-w-lg h-[500px] overflow-hidden rounded-3xl border shadow-2xl ${
+                isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-[#0f172a] border-white/10 text-white'
+              }`}
+            >
+              {/* Modal Header */}
+              <div className={`p-4 border-b flex items-center justify-between shrink-0 ${
+                isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-[#1e293b]/50'
+              }`}>
+                <div>
+                  <h3 className="text-sm font-bold leading-none">Admin bilan yozishuv</h3>
+                  <p className="text-[10px] text-slate-400 mt-1">Shaxsiy xabarlar va javoblar</p>
+                </div>
+                <button
+                  onClick={() => setIsChatModalOpen(false)}
+                  className={`p-1.5 rounded-lg border transition-all ${
+                    isLight 
+                      ? 'border-slate-200 hover:bg-slate-100 text-slate-500' 
+                      : 'border-white/10 hover:bg-white/5 text-slate-400'
+                  }`}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Chat bubbles container */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar flex flex-col min-h-0">
+                {loadingAdminChat ? (
+                  <p className="text-center text-xs text-slate-500 my-auto">Yuklanmoqda...</p>
+                ) : adminChatMessages.length === 0 ? (
+                  <p className="text-center text-xs text-slate-500 my-auto">Xabarlar mavjud emas. Adminga xabar yuborishingiz mumkin.</p>
+                ) : (
+                  adminChatMessages.map((msg) => {
+                    const isStudentSender = msg.title === 'talaba'
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex flex-col max-w-[80%] rounded-2xl p-3 text-xs ${
+                          isStudentSender
+                            ? 'self-end bg-purple-600 text-white rounded-br-none'
+                            : isLight
+                              ? 'self-start bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200'
+                              : 'self-start bg-slate-800 text-slate-100 rounded-bl-none border border-white/5'
+                        }`}
+                      >
+                        <p className="whitespace-pre-wrap break-words font-medium">{msg.reason}</p>
+                        <span className={`text-[8px] self-end mt-1 font-bold ${
+                          isStudentSender ? 'text-purple-200' : 'text-slate-400'
+                        }`}>
+                          {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </span>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+
+              {/* Composer form */}
+              <form onSubmit={handleSendChatMessage} className={`p-4 border-t flex gap-2 shrink-0 ${
+                isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-[#1e293b]/30'
+              }`}>
+                <input
+                  type="text"
+                  placeholder="Xabar yozing..."
+                  value={adminChatInput}
+                  onChange={(e) => setAdminChatInput(e.target.value)}
+                  className={`flex-1 rounded-xl px-4 py-2.5 text-xs outline-none transition-all ${
+                    isLight
+                      ? 'bg-white border border-slate-200 text-slate-900 focus:border-purple-500'
+                      : 'bg-slate-900 border border-white/10 text-white focus:border-purple-500/50'
+                  }`}
+                  disabled={sendingAdminChat}
+                />
+                <button
+                  type="submit"
+                  disabled={sendingAdminChat || !adminChatInput.trim()}
+                  className="px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50"
+                >
+                  {sendingAdminChat ? '...' : 'Yuborish'}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
         </AnimatePresence>,
         document.body
       )}

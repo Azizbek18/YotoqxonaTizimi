@@ -72,7 +72,7 @@ export default function NavbatPage() {
         if (!userData) return
         setProfile(userData as Profile)
 
-        const floor = userData.room_number ? Math.floor(parseInt(userData.room_number) / 100) : null
+        const floor = userData.room_number ? Math.floor((parseInt(userData.room_number) - 1) / 30) + 1 : null
         
         if (floor) {
           // Fetch Floor Captains
@@ -125,7 +125,7 @@ export default function NavbatPage() {
     )
   }
 
-  const floorNumber = profile?.room_number ? Math.floor(parseInt(profile.room_number) / 100) : '—'
+  const floorNumber = profile?.room_number ? Math.floor((parseInt(profile.room_number) - 1) / 30) + 1 : '—'
 
   return (
     <div className={`min-h-screen font-sans overflow-x-hidden relative pb-24 transition-colors duration-300 ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#020617] text-white'}`}>

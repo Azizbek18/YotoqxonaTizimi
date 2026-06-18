@@ -3,6 +3,140 @@
 -- This file combines all database tables, policies, and setups.
 -- ==========================================================
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- ==========================================================
+-- Core tables required by the application
+-- ==========================================================
+CREATE TABLE IF NOT EXISTS users (
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email text UNIQUE,
+  full_name text,
+  middle_name text,
+  phone text,
+  phone_number text,
+  faculty text,
+  direction text,
+  role text DEFAULT 'talaba',
+  status text DEFAULT 'pending',
+  room_number text,
+  course integer,
+  "group" text,
+  gender text,
+  nationality text,
+  region text,
+  district text,
+  mahalla text,
+  study_type text,
+  entry_date date,
+  passport_series text UNIQUE,
+  jshshir text UNIQUE,
+  avatar_url text,
+  is_floor_captain boolean DEFAULT false,
+  assigned_floor integer,
+  warning_count integer DEFAULT 0,
+  blacklisted boolean DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE TABLE IF NOT EXISTS staff (
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email text UNIQUE NOT NULL,
+  full_name text NOT NULL,
+  staff_id text UNIQUE,
+  role text NOT NULL CHECK (role IN ('admin', 'tarbiyachi')),
+  status text DEFAULT 'active',
+  assigned_floor integer,
+  assigned_gender text,
+  created_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE TABLE IF NOT EXISTS arizalar (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  student_name text,
+  faculty text,
+  direction text,
+  course integer,
+  title text,
+  type text DEFAULT 'ariza',
+  reason text,
+  text text NOT NULL,
+  level text DEFAULT 'info' CHECK (level IN ('info', 'warning', 'critical')),
+  status text DEFAULT 'pending',
+  ai_generated boolean DEFAULT false,
+  date timestamptz DEFAULT timezone('utc'::text, now()),
+  response_date timestamptz,
+  created_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS users_role_idx ON users(role);
+CREATE INDEX IF NOT EXISTS users_status_idx ON users(status);
+CREATE INDEX IF NOT EXISTS arizalar_student_id_idx ON arizalar(student_id);
+CREATE INDEX IF NOT EXISTS arizalar_status_idx ON arizalar(status);
+
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
+ALTER TABLE arizalar ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own user profile" ON users;
+DROP POLICY IF EXISTS "Users can update own user profile" ON users;
+DROP POLICY IF EXISTS "Staff can view students" ON users;
+DROP POLICY IF EXISTS "Admins can manage users" ON users;
+DROP POLICY IF EXISTS "Staff can view own staff profile" ON staff;
+
+CREATE POLICY "Users can view own user profile"
+ON users FOR SELECT
+TO authenticated
+USING (auth.uid() = id);
+
+CREATE POLICY "Users can update own user profile"
+ON users FOR UPDATE
+TO authenticated
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Staff can view students"
+ON users FOR SELECT
+TO authenticated
+USING (
+  role = 'talaba'
+  AND EXISTS (
+    SELECT 1 FROM staff
+    WHERE staff.id = auth.uid()
+      AND staff.role IN ('admin', 'tarbiyachi')
+      AND staff.status = 'active'
+  )
+);
+
+CREATE POLICY "Admins can manage users"
+ON users FOR ALL
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM staff
+    WHERE staff.id = auth.uid()
+      AND staff.role = 'admin'
+      AND staff.status = 'active'
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM staff
+    WHERE staff.id = auth.uid()
+      AND staff.role = 'admin'
+      AND staff.status = 'active'
+  )
+);
+
+CREATE POLICY "Staff can view own staff profile"
+ON staff FOR SELECT
+TO authenticated
+USING (auth.uid() = id);
+
 -- ==========================================================
 -- Migration: 001_add_profile_avatar.sql
 -- ==========================================================
@@ -31,28 +165,38 @@ ADD COLUMN IF NOT EXISTS avatar_url text,
 ADD COLUMN IF NOT EXISTS created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
 ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone DEFAULT timezone('utc'::text, now());
 
--- Step 3: Create storage bucket for avatars if it doesn't exist
+-- Step 3: Create storage buckets for avatars if they don't exist.
+-- The application uses the singular "avatar" bucket; "avatars" is kept for older installs.
 INSERT INTO storage.buckets (id, name, public) 
+VALUES ('avatar', 'avatar', true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.buckets (id, name, public)
 VALUES ('avatars', 'avatars', true)
 ON CONFLICT (id) DO NOTHING;
 
--- Step 4: Set up storage policies for avatars bucket
+-- Step 4: Set up storage policies for avatar buckets
+DROP POLICY IF EXISTS "Avatar images are publicly accessible" ON storage.objects;
+DROP POLICY IF EXISTS "Anyone can upload an avatar" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their own avatar" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their own avatar" ON storage.objects;
+
 CREATE POLICY "Avatar images are publicly accessible"
 ON storage.objects FOR SELECT
-USING (bucket_id = 'avatars');
+USING (bucket_id IN ('avatar', 'avatars'));
 
 CREATE POLICY "Anyone can upload an avatar"
 ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'avatars');
+WITH CHECK (bucket_id IN ('avatar', 'avatars'));
 
 CREATE POLICY "Users can update their own avatar"
 ON storage.objects FOR UPDATE
-USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
-WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+USING (bucket_id IN ('avatar', 'avatars') AND (storage.foldername(name))[1] = auth.uid()::text)
+WITH CHECK (bucket_id IN ('avatar', 'avatars') AND (storage.foldername(name))[1] = auth.uid()::text);
 
 CREATE POLICY "Users can delete their own avatar"
 ON storage.objects FOR DELETE
-USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+USING (bucket_id IN ('avatar', 'avatars') AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Step 5: Enable RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -786,4 +930,3 @@ async function createDemoAccount() {
 
 createDemoAccount()
 */
-

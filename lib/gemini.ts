@@ -1,8 +1,8 @@
 import 'server-only'
 
-export async function callGemini(payload: any, apiKey: string) {
+export async function callGemini(payload: unknown, apiKey: string) {
   const models = ['gemini-2.5-flash', 'gemini-flash-latest']
-  let lastError = null
+  let lastError: unknown = null
 
   for (const model of models) {
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
@@ -32,12 +32,12 @@ export async function callGemini(payload: any, apiKey: string) {
         // Fail immediately on client errors (400, etc.)
         throw lastError
 
-      } catch (e: any) {
+      } catch (e: unknown) {
         lastError = e
         await new Promise(resolve => setTimeout(resolve, 500))
       }
     }
   }
 
-  throw lastError || new Error("Gemini API so'rovini bajarib bo'lmadi")
+  throw lastError instanceof Error ? lastError : new Error("Gemini API so'rovini bajarib bo'lmadi")
 }

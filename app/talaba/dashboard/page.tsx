@@ -88,6 +88,17 @@ interface MyApplication {
   status: 'draft' | 'submitted' | 'pending' | 'approved' | 'rejected';
 }
 
+type AdminChatMessage = {
+  id?: string | number;
+  title?: string;
+  text?: string;
+  reason?: string;
+  status?: string;
+  created_at?: string;
+  date?: string;
+  sender_role?: string;
+}
+
 function formatElonDate(value: string | null | undefined) {
   if (!value) return 'Bugun';
   const date = new Date(value);
@@ -156,7 +167,7 @@ export default function TalabaDashboard() {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [myApplications, setMyApplications] = useState<MyApplication[]>([]);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
-  const [adminChatMessages, setAdminChatMessages] = useState<any[]>([]);
+  const [adminChatMessages, setAdminChatMessages] = useState<AdminChatMessage[]>([]);
   const [loadingAdminChat, setLoadingAdminChat] = useState(false);
   const [sendingAdminChat, setSendingAdminChat] = useState(false);
   const [adminChatInput, setAdminChatInput] = useState('');
@@ -384,8 +395,9 @@ export default function TalabaDashboard() {
 
       if (error) throw error;
       setAdminChatMessages(prev => [...prev, data]);
-    } catch (error: any) {
-      toast.error(error.message || 'Xabar yuborishda xatolik');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Xabar yuborishda xatolik';
+      toast.error(message);
       setAdminChatInput(messageText);
     } finally {
       setSendingAdminChat(false);
@@ -2122,7 +2134,7 @@ export default function TalabaDashboard() {
                                   : 'bg-slate-900 border-white/5 text-white focus:border-cyan-400 shadow-md shadow-black/20'
                               }`}
                             >
-                              <option value="">— Bo'sh —</option>
+                              <option value="">— Bo&apos;sh —</option>
                               {allResidents.map((r) => (
                                 <option key={r.id} value={r.id}>
                                   {r.name.replace(" (Siz)", "")}

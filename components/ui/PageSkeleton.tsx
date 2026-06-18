@@ -64,7 +64,7 @@ export default function PageSkeleton() {
             Yotoqxona Yuklanmoqda...
           </h3>
           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider animate-pulse">
-            Xonalar va ma'lumotlar tayyorlanmoqda
+            Xonalar va ma&apos;lumotlar tayyorlanmoqda
           </p>
         </div>
       </div>

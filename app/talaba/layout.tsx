@@ -37,6 +37,39 @@ interface Profile {
   direction?: string
 }
 
+type NotificationLevel = 'info' | 'warning' | 'danger' | 'success'
+
+type NotificationItem = {
+  id: string
+  title: string
+  desc: string
+  time: string
+  type: 'elon' | 'ariza'
+  level: NotificationLevel
+}
+
+type ElonNotificationRow = {
+  id: string | number
+  title?: string | null
+  desc?: string | null
+  created_at?: string | null
+  type?: string | null
+}
+
+type ArizaNotificationRow = {
+  id: string | number
+  title?: string | null
+  text?: string | null
+  reason?: string | null
+  date?: string | null
+  type?: string | null
+  status?: string | null
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback
+}
+
 const NAV = [
   { icon: LayoutDashboard, label: 'Asosiy', href: '/talaba/dashboard' },
   { icon: Megaphone, label: "E'lonlar", href: '/talaba/elonlar' },
@@ -76,7 +109,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
   const [isDevModalOpen, setIsDevModalOpen] = useState(false)
 
   // Notifications state
-  const [notifications, setNotifications] = useState<any[]>([])
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
 
@@ -137,13 +170,13 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                 .order('date', { ascending: false })
                 .limit(5)
 
-              const combinedList: any[] = []
+              const combinedList: NotificationItem[] = []
 
               if (elonData) {
-                elonData.forEach((el: any) => {
+                ;(elonData as ElonNotificationRow[]).forEach((el) => {
                   combinedList.push({
                     id: `elon-${el.id}`,
-                    title: el.title,
+                    title: el.title || 'E\'lon',
                     desc: el.desc || '',
                     time: el.created_at || new Date().toISOString(),
                     type: 'elon',
@@ -153,7 +186,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
               }
 
               if (arizalarData) {
-                arizalarData.forEach((ar: any) => {
+                ;(arizalarData as ArizaNotificationRow[]).forEach((ar) => {
                   if (ar.type === 'tushuntirish' || ar.status === 'rejected' || ar.status === 'approved') {
                     combinedList.push({
                       id: `ariza-${ar.id}`,
@@ -449,7 +482,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                 <Bell size={20} className={isLight ? 'text-blue-600' : 'text-cyan-400'} />
                 <div>
                   <h3 className="text-sm font-black uppercase tracking-wider">🔔 Bildirishnomalar</h3>
-                  <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Tizimdagi so'nggi yangiliklar</p>
+                  <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Tizimdagi so&apos;nggi yangiliklar</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -462,7 +495,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                         : 'bg-white/5 border-white/5 text-gray-300 hover:bg-white/10'
                     }`}
                   >
-                    O'qilgan
+                    O&apos;qilgan
                   </button>
                 )}
                 <button
@@ -484,9 +517,9 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                     <CheckCircle2 size={40} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-black uppercase tracking-wider mb-1">Yangi xabarlar yo'q</h4>
+                    <h4 className="text-sm font-black uppercase tracking-wider mb-1">Yangi xabarlar yo&apos;q</h4>
                     <p className={`text-[10px] max-w-[240px] leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Siz yotoqxona tizimidagi barcha bildirishnomalarni ko'rib bo'ldingiz!
+                      Siz yotoqxona tizimidagi barcha bildirishnomalarni ko&apos;rib bo&apos;ldingiz!
                     </p>
                   </div>
                 </div>
@@ -1147,9 +1180,9 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
       } else {
         toast.success("AI Rasmni tasdiqladi!")
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      setErrorMsg(err.message || "Ulanish xatosi. Iltimos, qayta urinib ko'ring.")
+      setErrorMsg(getErrorMessage(err, "Ulanish xatosi. Iltimos, qayta urinib ko'ring."))
       toast.error("Rasm tekshirishda xatolik yuz berdi")
       setFile(null)
       setPreview(null)
@@ -1200,7 +1233,8 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
       const updateRes = await fetch('/api/student/profile/update', {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           userId: profile.id,
@@ -1215,9 +1249,9 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
 
       toast.success("Profil sozlamalari muvaffaqiyatli saqlandi!")
       onComplete()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      toast.error(err.message || "Ma'lumotlarni saqlashda xato yuz berdi")
+      toast.error(getErrorMessage(err, "Ma'lumotlarni saqlashda xato yuz berdi"))
     } finally {
       setSubmitting(false)
     }

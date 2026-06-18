@@ -1,15 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { callGemini } from '@/lib/gemini'
+import { getRequestUser } from '@/lib/server-auth'
+import { checkRateLimit, getClientIp } from '@/lib/security'
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getRequestUser(req)
+    if (!user) {
+      return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
+    }
+
+    const throttle = checkRateLimit(`ai-tekshiruv:${user.id}:${getClientIp(req)}`, 12, 60_000)
+    if (!throttle.allowed) {
+      return NextResponse.json({ error: 'Juda ko‘p chek tekshirildi. Keyinroq urinib ko‘ring.' }, { status: 429 })
+    }
+
     const formData = await req.formData()
     const file = formData.get('file') as File | null
     const declaredAmount = Number(formData.get('amount') || 0)
 
     if (!file) {
       return NextResponse.json({ error: 'Fayl yuklanmadi' }, { status: 400 })
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json({ error: 'Faqat rasm yoki PDF chek qabul qilinadi' }, { status: 400 })
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Chek hajmi 8MB dan kichik bo‘lishi kerak' }, { status: 400 })
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY
@@ -107,7 +128,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
           analysis = duplicateInfo
           amountMatch = false // Force invalid
         }
-      } catch (dbErr: any) {
+      } catch (dbErr: unknown) {
         console.error('Duplicate check DB error:', dbErr)
         // Don't block the validation if DB check fails
       }
@@ -139,7 +160,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
             }
           }
         }
-      } catch (dbErr: any) {
+      } catch (dbErr: unknown) {
         console.error('Similar check DB error:', dbErr)
       }
     }
@@ -156,14 +177,15 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       duplicate_info: duplicateInfo || null
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('AI tekshiruv xatoligi:', error)
+    const message = error instanceof Error ? error.message : 'Noma\'lum xatolik'
     return NextResponse.json({
-      error: error.message || 'Ichki server xatoligi',
+      error: message || 'Ichki server xatoligi',
       valid: false,
       confidence: 0,
       extracted_amount: null,
-      analysis: 'AI tekshiruvda xatolik yuz berdi: ' + (error.message || 'Noma\'lum xatolik'),
+      analysis: 'AI tekshiruvda xatolik yuz berdi: ' + message,
       is_duplicate: false
     }, { status: 500 })
   }

@@ -1,13 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callGemini } from '@/lib/gemini'
+import { getRequestUser } from '@/lib/server-auth'
+import { checkRateLimit, getClientIp } from '@/lib/security'
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getRequestUser(req)
+    if (!user) {
+      return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
+    }
+
+    const throttle = checkRateLimit(`ai-photo:${user.id}:${getClientIp(req)}`, 12, 60_000)
+    if (!throttle.allowed) {
+      return NextResponse.json({ error: 'Juda ko‘p rasm tekshirildi. Keyinroq urinib ko‘ring.' }, { status: 429 })
+    }
+
     const formData = await req.formData()
     const file = formData.get('file') as File | null
 
     if (!file) {
       return NextResponse.json({ error: 'Rasm yuklanmadi' }, { status: 400 })
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json({ error: 'Faqat JPEG, PNG yoki WebP rasmlar qabul qilinadi' }, { status: 400 })
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Rasm hajmi 5MB dan kichik bo‘lishi kerak' }, { status: 400 })
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY
@@ -75,13 +96,14 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering. Hech qanday markdown (ma
       reason: jsonResult.reason || null
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('AI rasm tekshiruv xatoligi:', error)
+    const message = error instanceof Error ? error.message : 'Noma\'lum xatolik'
     return NextResponse.json({
-      error: error.message || 'Ichki server xatoligi',
+      error: message || 'Ichki server xatoligi',
       is_human: false,
       confidence: 0,
-      description: 'AI tekshiruvda xatolik yuz berdi: ' + (error.message || 'Noma\'lum xatolik'),
+      description: 'AI tekshiruvda xatolik yuz berdi: ' + message,
       reason: 'Tizim xatoligi'
     }, { status: 500 })
   }

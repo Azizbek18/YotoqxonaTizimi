@@ -38,7 +38,8 @@ export default function AdminModal({
     const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
-        setMounted(true)
+        const mountId = window.setTimeout(() => setMounted(true), 0)
+        return () => window.clearTimeout(mountId)
     }, [])
 
     if (!mounted) return null

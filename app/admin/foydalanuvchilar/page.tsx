@@ -394,8 +394,8 @@ export default function AdminUsersPage() {
       }
 
       setChatMessages(prev => [...prev, result.message])
-    } catch (error: any) {
-      toast.error(error.message)
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Xabar yuborishda xatolik')
       setChatInput(messageText)
     } finally {
       setSendingChat(false)

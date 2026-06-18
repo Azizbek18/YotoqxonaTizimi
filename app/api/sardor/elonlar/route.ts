@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/server-admin'
 import { getServiceSupabase } from '@/lib/server-supabase'
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Server xatoligi'
+}
+
 export async function GET() {
   try {
     const authSupabase = await createServerSupabaseClient()
@@ -36,8 +40,8 @@ export async function GET() {
     }
 
     return NextResponse.json({ ok: true, elonlar: elonlar ?? [] })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Server xatoligi' }, { status: 500 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 })
   }
 }
 
@@ -98,8 +102,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ ok: true, elon: newElon })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Server xatoligi' }, { status: 500 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 })
   }
 }
 
@@ -144,7 +148,7 @@ export async function DELETE(request: Request) {
     }
 
     return NextResponse.json({ ok: true })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Server xatoligi' }, { status: 500 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 })
   }
 }

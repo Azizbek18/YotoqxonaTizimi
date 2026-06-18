@@ -69,7 +69,7 @@ export async function PATCH(request: Request) {
       return jsonError("So'rov ma'lumotlari noto'g'ri", 400)
     }
 
-    const updateFields: any = {}
+    const updateFields: { level?: ApplicationLevel; status?: string; response_date?: string } = {}
     if (level !== undefined) updateFields.level = level
     if (status !== undefined) {
       updateFields.status = status

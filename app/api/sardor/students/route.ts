@@ -57,7 +57,8 @@ export async function GET() {
     })
 
     return NextResponse.json({ ok: true, students: floorStudents, floor: captainFloor, gender: captainGender })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Server xatoligi' }, { status: 500 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Server xatoligi'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

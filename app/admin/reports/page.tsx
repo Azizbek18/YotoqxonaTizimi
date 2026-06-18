@@ -9,6 +9,22 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import XLSX from 'xlsx-js-style'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
+type MonthlyReportRow = {
+    year: number
+    monthIndex: number
+    monthName: string
+    studentsCount: number
+    applications: number
+    approved: number
+}
+
+type MonthlyChartRow = {
+    month: string
+    students: number
+    applications: number
+    approved: number
+}
+
 export default function AdminReportsPage() {
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
@@ -24,11 +40,12 @@ export default function AdminReportsPage() {
         { name: 'Tarbiyachilar', value: 0, color: '#10b981' },
         { name: 'Adminlar', value: 0, color: '#ef4444' },
     ])
-    const [monthlyData, setMonthlyData] = useState<any[]>([])
+    const [monthlyData, setMonthlyData] = useState<MonthlyChartRow[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        setMounted(true)
+        const mountId = window.setTimeout(() => setMounted(true), 0)
+        return () => window.clearTimeout(mountId)
     }, [])
 
     useEffect(() => {
@@ -86,7 +103,7 @@ export default function AdminReportsPage() {
                 ])
 
                 // Initialize the 6-month array
-                const monthsList: any[] = []
+                const monthsList: MonthlyReportRow[] = []
                 for (let i = 5; i >= 0; i--) {
                     const tempDate = new Date(d.getFullYear(), d.getMonth() - i, 1)
                     monthsList.push({

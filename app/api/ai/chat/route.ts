@@ -1,9 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callGemini } from '@/lib/gemini'
+import { getRequestUser } from '@/lib/server-auth'
+import { checkRateLimit, getClientIp } from '@/lib/security'
+
+type ChatMessage = {
+  role?: string
+  text?: string
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, history } = await req.json()
+    const user = await getRequestUser(req)
+    if (!user) {
+      return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
+    }
+
+    const throttle = checkRateLimit(`ai-chat:${user.id}:${getClientIp(req)}`, 20, 60_000)
+    if (!throttle.allowed) {
+      return NextResponse.json({ error: 'Juda ko‘p so‘rov. Keyinroq urinib ko‘ring.' }, { status: 429 })
+    }
+
+    const { message, history } = await req.json() as { message?: string; history?: ChatMessage[] }
     if (!message) {
       return NextResponse.json({ error: 'message kiritilishi shart' }, { status: 400 })
     }
@@ -29,11 +46,12 @@ Javoblaringizni iloji boricha qisqa, tushunarli va chiroyli emojilar bilan bezab
     if (geminiApiKey) {
       try {
         // Format conversational history for Gemini
-        const formattedContents = []
+        const formattedContents: Array<{ role: 'user' | 'model'; parts: { text: string }[] }> = []
 
         // If there's prior history, map it to Gemini structure (user/model)
         if (Array.isArray(history)) {
           for (const msg of history) {
+            if (!msg.text) continue
             formattedContents.push({
               role: msg.role === 'user' ? 'user' : 'model',
               parts: [{ text: msg.text }]
@@ -58,7 +76,7 @@ Javoblaringizni iloji boricha qisqa, tushunarli va chiroyli emojilar bilan bezab
 
         return NextResponse.json({ reply: aiReply })
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Gemini chat failed, using fallback:', error)
         return NextResponse.json({
           reply: `🤖 Salom! [Gemini ulanish xatosi] Hozirda serverda texnik ishlar ketmoqda. Ammo men sizga quyidagicha yordam bera olaman:
@@ -88,8 +106,9 @@ Sizga qanday yordam bera olaman?`
       return NextResponse.json({ reply })
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Chat API Error:', error)
-    return NextResponse.json({ error: error.message || 'Ichki server xatoligi' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Ichki server xatoligi'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

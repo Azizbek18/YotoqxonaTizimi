@@ -43,6 +43,10 @@ interface GroupedPayment {
   ai_analysis?: string
 }
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Noma\'lum xato'
+}
+
 export default function AdminTolovlarPage() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
@@ -86,9 +90,9 @@ export default function AdminTolovlarPage() {
       } else {
         throw new Error(data.error || "Noma'lum xato")
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("AI run error:", err)
-      toast.error("AI tahlilida xatolik: " + err.message)
+      toast.error("AI tahlilida xatolik: " + getErrorMessage(err))
     } finally {
       setAnalyzing(false)
     }
@@ -106,7 +110,7 @@ export default function AdminTolovlarPage() {
 
       if (error) throw error
       setRecords(data || [])
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching payments:', err)
       toast.error('To\'lovlarni yuklashda xatolik yuz berdi')
     } finally {
@@ -136,7 +140,7 @@ export default function AdminTolovlarPage() {
       toast.success(`${group.student_name} — ${group.months.join(', ')} to'lovi tasdiqlandi!`)
       setSelectedGroup(null)
       await loadPayments()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error approving payment:', err)
       toast.error('To\'lovni tasdiqlashda xatolik yuz berdi')
     } finally {
@@ -169,7 +173,7 @@ export default function AdminTolovlarPage() {
       setRejectMode(false)
       setRejectReason('')
       await loadPayments()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error rejecting payment:', err)
       toast.error('To\'lovni rad etishda xatolik yuz berdi')
     } finally {

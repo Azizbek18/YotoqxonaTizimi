@@ -1,13 +1,17 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-)
+import { getRequestUser } from '@/lib/server-auth'
+import { getServiceSupabase } from '@/lib/server-supabase'
 
 export async function PATCH(request: NextRequest) {
     try {
+        const user = await getRequestUser(request)
+        if (!user) {
+            return NextResponse.json(
+                { error: 'Avtentifikatsiya talab qilinadi' },
+                { status: 401 }
+            )
+        }
+
         const body = await request.json()
         const { userId, full_name, phone, faculty, room_number } = body
         const groupVal = typeof body.group === 'string' ? body.group : undefined
@@ -16,6 +20,13 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json(
                 { error: 'User ID topilmadi' },
                 { status: 400 }
+            )
+        }
+
+        if (userId !== user.id) {
+            return NextResponse.json(
+                { error: 'Faqat o‘z profilingizni yangilashingiz mumkin' },
+                { status: 403 }
             )
         }
 
@@ -34,6 +45,7 @@ export async function PATCH(request: NextRequest) {
             )
         }
 
+        const supabase = getServiceSupabase()
         const { data, error } = await supabase
             .from('users')
             .update(updates)

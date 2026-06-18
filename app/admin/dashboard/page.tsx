@@ -36,14 +36,43 @@ interface DashboardStats {
   loading: boolean
 }
 
-const mockMonthlyData = [
-  { month: 'Yanvar', students: 45, applications: 24 },
-  { month: 'Fevral', students: 52, applications: 28 },
-  { month: 'Mart', students: 48, applications: 32 },
-  { month: 'Aprel', students: 61, applications: 35 },
-  { month: 'May', students: 55, applications: 38 },
-  { month: 'Iyun', students: 67, applications: 42 },
-]
+type MonthlyStat = {
+  month: string
+  monthIdx: number
+  year: number
+  students: number
+  applications: number
+  approved: number
+  rejected: number
+}
+
+type StudentReportRow = {
+  id?: string
+  full_name?: string | null
+  middle_name?: string | null
+  email?: string | null
+  phone?: string | null
+  phone_number?: string | null
+  faculty?: string | null
+  direction?: string | null
+  course?: number | string | null
+  group?: number | string | null
+  room_number?: string | null
+  gender?: string | null
+  nationality?: string | null
+  region?: string | null
+  district?: string | null
+  mahalla?: string | null
+  study_type?: string | null
+  entry_date?: string | null
+  status?: string | null
+  created_at?: string | null
+}
+
+type ArizaStatRow = {
+  created_at?: string | null
+  status?: string | null
+}
 
 export default function AdminDashboard() {
   const theme = useThemeStore((state) => state.theme)
@@ -70,12 +99,12 @@ export default function AdminDashboard() {
     { name: 'Kutish', value: 0, color: '#f59e0b' },
     { name: 'Rad etilgan', value: 0, color: '#ef4444' },
   ])
-  const [monthlyData, setMonthlyData] = useState<any[]>(() => {
+  const [monthlyData, setMonthlyData] = useState<MonthlyStat[]>(() => {
     const monthsUz = [
       'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 
       'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'
     ]
-    const result: any[] = []
+    const result: MonthlyStat[] = []
     const now = new Date()
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -112,7 +141,7 @@ export default function AdminDashboard() {
 
   // Hisobotlar uchun filterlar va eksport
   const [exporting, setExporting] = useState(false)
-  const [allStudents, setAllStudents] = useState<any[]>([])
+  const [allStudents, setAllStudents] = useState<StudentReportRow[]>([])
   const [reportFilters, setReportFilters] = useState({
     gender: 'all',
     nationality: 'all',
@@ -203,7 +232,7 @@ export default function AdminDashboard() {
         'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 
         'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'
       ]
-      const currentMonths: any[] = []
+      const currentMonths: MonthlyStat[] = []
       const now = new Date()
       for (let i = 5; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -220,7 +249,7 @@ export default function AdminDashboard() {
 
       // Talabalarni joriy oylar bo'yicha guruhlash
       if (studentsData) {
-        studentsData.forEach((student: any) => {
+        ;(studentsData as StudentReportRow[]).forEach((student) => {
           if (!student.created_at) return
           const date = new Date(student.created_at)
           const m = date.getMonth()
@@ -234,7 +263,7 @@ export default function AdminDashboard() {
 
       // Arizalarni joriy oylar bo'yicha guruhlash
       if (!arizalarError && arizalarData) {
-        arizalarData.forEach((ariza: any) => {
+        ;(arizalarData as ArizaStatRow[]).forEach((ariza) => {
           if (!ariza.created_at) return
           const date = new Date(ariza.created_at)
           const m = date.getMonth()
@@ -1145,7 +1174,7 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <p className="text-sm font-bold">Supabase Database</p>
-                      <p className={`text-xs ${textMuted}`}>Ma'lumotlar ombori ulanishi</p>
+                      <p className={`text-xs ${textMuted}`}>Ma&apos;lumotlar ombori ulanishi</p>
                     </div>
                   </div>
                   <div className="text-right">

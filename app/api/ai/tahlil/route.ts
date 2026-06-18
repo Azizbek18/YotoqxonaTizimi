@@ -1,10 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { callGemini } from '@/lib/gemini'
+import { getRequestUser } from '@/lib/server-auth'
+import { checkRateLimit, getClientIp } from '@/lib/security'
+
+async function canAnalyzePayment(userId: string, email: string | undefined, studentId: string) {
+  if (userId === studentId) return true
+
+  const supabase = getServiceSupabase()
+  const cleanEmail = email?.trim().toLowerCase() ?? ''
+  const identityFilter = cleanEmail ? `id.eq.${userId},email.eq.${cleanEmail}` : `id.eq.${userId}`
+
+  const { data: staff } = await supabase
+    .from('staff')
+    .select('role')
+    .or(identityFilter)
+    .maybeSingle()
+
+  if (staff?.role === 'admin') return true
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('role')
+    .or(identityFilter)
+    .maybeSingle()
+
+  return user?.role === 'admin'
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { paymentId } = await req.json()
+    const user = await getRequestUser(req)
+    if (!user) {
+      return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
+    }
+
+    const throttle = checkRateLimit(`ai-tahlil:${user.id}:${getClientIp(req)}`, 20, 60_000)
+    if (!throttle.allowed) {
+      return NextResponse.json({ error: 'Juda ko‘p AI tahlil so‘rovi. Keyinroq urinib ko‘ring.' }, { status: 429 })
+    }
+
+    const { paymentId } = await req.json() as { paymentId?: string }
     if (!paymentId) {
       return NextResponse.json({ error: 'paymentId kiritilishi shart' }, { status: 400 })
     }
@@ -20,6 +56,10 @@ export async function POST(req: NextRequest) {
 
     if (fetchError || !record) {
       return NextResponse.json({ error: 'To\'lov yozuvi topilmadi' }, { status: 404 })
+    }
+
+    if (!(await canAnalyzePayment(user.id, user.email, record.student_id))) {
+      return NextResponse.json({ error: 'Ushbu to‘lovni tahlil qilishga ruxsat yo‘q' }, { status: 403 })
     }
 
     const receiptUrl = record.receipt_url
@@ -89,7 +129,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown for
         aiTransactionId = jsonResult.transaction_id ? String(jsonResult.transaction_id) : null
         aiAnalysis = jsonResult.analysis || 'Tahlil muvaffaqiyatli yakunlandi.'
 
-      } catch (geminiError: any) {
+      } catch (geminiError: unknown) {
         console.error('Gemini processing failed, falling back to mock:', geminiError)
         // If Gemini fails, fallback to simulated analysis
         aiConfidence = 88
@@ -166,8 +206,9 @@ Summa mos keladi (${record.amount.toLocaleString()} UZS).`
       ai_analysis: aiAnalysis
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('AI analysis API error:', error)
-    return NextResponse.json({ error: error.message || 'Ichki server xatoligi' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Ichki server xatoligi'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

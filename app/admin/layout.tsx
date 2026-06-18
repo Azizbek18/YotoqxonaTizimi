@@ -41,8 +41,10 @@ export default function AdminLayout({
   const isLight = theme === 'light'
 
   useEffect(() => {
-    setMounted(true)
-    setIsMobile(window.innerWidth < 1024)
+    const mountId = window.setTimeout(() => {
+      setMounted(true)
+      setIsMobile(window.innerWidth < 1024)
+    }, 0)
 
     // Listen to resize
     const handleResize = () => {
@@ -50,7 +52,10 @@ export default function AdminLayout({
     }
 
     window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    return () => {
+      window.clearTimeout(mountId)
+      window.removeEventListener('resize', handleResize)
+    }
   }, [])
 
   useEffect(() => {

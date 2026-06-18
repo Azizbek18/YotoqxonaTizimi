@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { 
-  Sparkles, ArrowRight, ShieldCheck, Cpu, Layers, Activity 
+  Sparkles, ArrowRight, ShieldCheck, Cpu, Activity 
 } from 'lucide-react';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { useThemeStore } from '@/lib/stores/theme-store';
@@ -13,11 +13,16 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    setMounted(true);
-    setIsMobile(window.innerWidth < 640);
+    const mountId = window.setTimeout(() => {
+      setMounted(true);
+      setIsMobile(window.innerWidth < 640);
+    }, 0);
     const handleResize = () => setIsMobile(window.innerWidth < 640);
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.clearTimeout(mountId);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const theme = useThemeStore((state) => state.theme);

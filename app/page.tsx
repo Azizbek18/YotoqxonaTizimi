@@ -115,7 +115,7 @@ export default function Home() {
         isLight ? 'border-slate-200' : 'border-white/5'
       }`}>
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/20">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/20">
             S
           </div>
           <span className={`text-base font-black uppercase tracking-widest bg-clip-text text-transparent bg-gradient-to-r transition-colors duration-300 ${

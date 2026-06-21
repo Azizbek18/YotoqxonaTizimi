@@ -183,7 +183,7 @@ export default function AdminLayout({
           {/* Logo Section */}
           <div className={`flex items-center gap-3 min-w-0 ${compact ? 'justify-center w-full' : ''}`}>
             {/* Icon Container */}
-            <div className={`shrink-0 flex items-center justify-center h-10 w-10 rounded-xl backdrop-blur-md border transition-all ${isLight ? 'bg-white/80 border-sky-200 text-sky-600 shadow-lg shadow-sky-200/20' : 'bg-white/[0.08] border-cyan-400/30 text-cyan-300 shadow-lg shadow-cyan-500/10'}`}>
+            <div className={`shrink-0 flex items-center justify-center h-10 w-10 rounded-full backdrop-blur-md border transition-all ${isLight ? 'bg-white/80 border-sky-200 text-sky-600 shadow-lg shadow-sky-200/20' : 'bg-white/[0.08] border-cyan-400/30 text-cyan-300 shadow-lg shadow-cyan-500/10'}`}>
               <ShieldCheck size={20} strokeWidth={2.5} />
             </div>
 

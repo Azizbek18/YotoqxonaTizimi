@@ -139,8 +139,8 @@ function LoginContent() {
       <div className="relative z-10 w-full max-w-[320px] sm:max-w-110">
         {/* Logo Section */}
         <div className="text-center mb-6 sm:mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 shadow-xl mb-4 p-px">
-            <div className={`w-full h-full rounded-[15px] flex items-center justify-center ${isLight ? 'bg-white text-blue-600' : 'bg-[#020617] text-blue-500'}`}>
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 shadow-xl mb-4 p-px">
+            <div className={`w-full h-full rounded-full flex items-center justify-center ${isLight ? 'bg-white text-blue-600' : 'bg-[#020617] text-blue-500'}`}>
               <House className="h-7 w-7 sm:h-10 sm:w-10" />
             </div>
           </div>

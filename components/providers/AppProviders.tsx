@@ -25,6 +25,13 @@ export default function AppProviders({ children }: { children: React.ReactNode }
   )
 
   useEffect(() => {
+    // Register PWA service worker
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => console.log('ServiceWorker registered:', reg.scope))
+        .catch((err) => console.error('ServiceWorker registration failed:', err))
+    }
+
     if (useThemeStore.persist.hasHydrated()) {
       applyThemeToDocument(useThemeStore.getState().theme)
       return

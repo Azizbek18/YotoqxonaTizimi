@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.mtalaba.app',
   appName: 'MTalaba',
-  webDir: 'public',
+  webDir: 'capacitor-dummy-web',
   server: {
     // Mobil ilova yuklaydigan jonli server manzili.
     // Next.js API maruzalari, Supabase Middleware va barcha server-side funksiyalarni

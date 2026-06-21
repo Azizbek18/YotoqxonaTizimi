@@ -3,8 +3,14 @@ import AppProviders from "@/components/providers/AppProviders";
 import { THEME_STORAGE_KEY } from "@/lib/theme/constants";
 import "./globals.css";
 
+const getBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'http://localhost:3000';
+};
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
+  metadataBase: new URL(getBaseUrl()),
   title: "Yotoqxona.uz — Aqlli talabalar yotoqxonasi boshqaruv tizimi",
   description: "Talabalar yotoqxonasi boshqaruvini avtomatlashtirish, arizalar yuborish, to'lovlarni amalga oshirish va navbatchilik jadvallarini real vaqt rejimida boshqarish platformasi.",
   keywords: ["yotoqxona", "talaba", "tizim", "aqlli boshqaruv", "arizalar", "navbatchilik", "yotoqxona boshqaruvi", "supabase", "nextjs", "AI yordamchi"],
@@ -22,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Yotoqxona.uz — Aqlli talabalar yotoqxonasi boshqaruv tizimi",
     description: "Yotoqxonadagi barcha jarayonlar: arizalar, to'lovlar va navbatchilikni elektron boshqarish. AI yordamchi bilan tezkor muloqot.",
-    url: 'https://yotoqxona.uz',
+    url: getBaseUrl(),
     siteName: 'Yotoqxona.uz',
     locale: 'uz_UZ',
     type: 'website',

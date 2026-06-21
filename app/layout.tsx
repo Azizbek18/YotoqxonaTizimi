@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import AppProviders from "@/components/providers/AppProviders";
+import PwaInstallPrompt from "@/components/pwa/PwaInstallPrompt";
 import { THEME_STORAGE_KEY } from "@/lib/theme/constants";
 import "./globals.css";
 
@@ -85,7 +86,10 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full flex flex-col">
-        <AppProviders>{children}</AppProviders>
+        <AppProviders>
+          {children}
+          <PwaInstallPrompt />
+        </AppProviders>
       </body>
     </html>
   );

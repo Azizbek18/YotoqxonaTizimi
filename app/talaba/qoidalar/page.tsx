@@ -339,7 +339,6 @@ export default function QoidalarPage() {
       animate={{ opacity: 1 }}
       className="relative min-h-[85vh] w-full pb-24 font-sans"
     >
-      <Toaster position="top-center" reverseOrder={false} />
 
       {/* 3D Background Glow Containers */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">

@@ -167,6 +167,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                 .from('arizalar')
                 .select('*')
                 .eq('student_id', user.id)
+                .in('type', ['ariza', 'tushuntirish'])
                 .order('date', { ascending: false })
                 .limit(5)
 
@@ -269,7 +270,6 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className={`min-h-screen overflow-x-hidden font-sans transition-colors ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100 text-slate-900 selection:bg-blue-200' : 'bg-[#02040a] text-white selection:bg-cyan-500/30'}`}>
-      <Toaster position="top-center" reverseOrder={false} />
 
       {/* --- 1. DYNAMIC BACKGROUND LAYER --- */}
       <div className="fixed inset-0 pointer-events-none z-0">

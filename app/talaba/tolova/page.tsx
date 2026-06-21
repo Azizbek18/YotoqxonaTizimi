@@ -473,7 +473,6 @@ export default function TolovaPage() {
 
     return (
         <AnimatePresence mode="wait">
-            <Toaster position="top-center" />
             {loading ? (
                 <PageSkeleton key="skeleton" />
             ) : (

@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: staffError.message }, { status: 500 })
     }
 
-    if (staffUser?.role === 'admin' || staffUser?.role === 'tarbiyachi') {
+    if (staffUser?.role === 'admin' || staffUser?.role === 'tarbiyachi' || staffUser?.role === 'zamdekan') {
       return NextResponse.json({ ok: true, role: staffUser.role })
     }
 

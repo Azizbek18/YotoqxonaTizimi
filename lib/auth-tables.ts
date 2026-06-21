@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export type AppRole = 'admin' | 'tarbiyachi' | 'talaba' | null
+export type AppRole = 'admin' | 'tarbiyachi' | 'zamdekan' | 'talaba' | null
 
 type Identity = {
   id?: string | null
@@ -21,7 +21,7 @@ export async function findRoleByIdentity(supabase: SupabaseClient, identity: Ide
       .eq('id', identity.id)
       .maybeSingle()
 
-    if (staffById?.role === 'admin' || staffById?.role === 'tarbiyachi') {
+    if (staffById?.role === 'admin' || staffById?.role === 'tarbiyachi' || staffById?.role === 'zamdekan') {
       return staffById.role
     }
   }
@@ -33,7 +33,7 @@ export async function findRoleByIdentity(supabase: SupabaseClient, identity: Ide
       .eq('email', cleanEmail)
       .maybeSingle()
 
-    if (staffByEmail?.role === 'admin' || staffByEmail?.role === 'tarbiyachi') {
+    if (staffByEmail?.role === 'admin' || staffByEmail?.role === 'tarbiyachi' || staffByEmail?.role === 'zamdekan') {
       return staffByEmail.role
     }
   }

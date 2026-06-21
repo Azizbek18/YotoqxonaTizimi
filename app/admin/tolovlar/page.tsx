@@ -266,7 +266,6 @@ export default function AdminTolovlarPage() {
 
   return (
     <div className="space-y-8 pb-12">
-      <Toaster position="top-center" />
 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

@@ -22,28 +22,11 @@ function LoginContent() {
   const [loading, setLoading] = useState(false)
 
   const show3DToast = (type: 'success' | 'error', message: string) => {
-    toast.custom((t) => (
-      <AnimatePresence>
-        {t.visible && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="flex items-center gap-3 p-4 rounded-2xl bg-[#0b1120]/95 backdrop-blur-xl border border-white/10 shadow-2xl max-w-[90vw] sm:max-w-md w-full"
-          >
-            <div className={`flex items-center justify-center p-2 rounded-xl ${type === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-              {type === 'success' ? <CheckCircle size={20} /> : <AlertTriangle size={20} />}
-            </div>
-            <div className="flex-1">
-              <p className={`text-[10px] font-black uppercase tracking-wider ${type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {type === 'success' ? 'Muvaffaqiyat' : 'Tizim xabari'}
-              </p>
-              <p className="text-xs font-medium text-slate-200 mt-0.5">{message}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    ), { duration: 4000 });
+    if (type === 'success') {
+      toast.success(message)
+    } else {
+      toast.error(message)
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -110,6 +93,8 @@ function LoginContent() {
           router.push('/admin/dashboard')
         } else if (userRole === 'tarbiyachi') {
           router.push('/tarbiyachi/dashboard')
+        } else if (userRole === 'zamdekan') {
+          router.push('/zamdekan/dashboard')
         } else {
           router.push('/talaba/dashboard')
         }

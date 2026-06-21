@@ -69,6 +69,7 @@ interface Profile {
   is_floor_captain?: boolean;
   assigned_floor?: number;
   gender?: string;
+  warning_count?: number;
 }
 
 interface PaymentRecord {
@@ -786,6 +787,7 @@ export default function TalabaDashboard() {
             .select('*')
             .eq('student_name', currentProfile.full_name)
             .neq('status', 'draft')
+            .in('level', ['warning', 'critical'])
             .order('created_at', { ascending: false });
 
           if (!arizalarError && arizalarData && arizalarData.length > 0) {
@@ -816,6 +818,7 @@ export default function TalabaDashboard() {
             .from('arizalar')
             .select('*')
             .eq('student_id', user.id)
+            .in('type', ['ariza', 'tushuntirish'])
             .order('created_at', { ascending: false })
             .limit(3);
 
@@ -864,7 +867,7 @@ export default function TalabaDashboard() {
     fetchData();
   }, []);
 
-  const arizaSoni = arizalar.length;
+  const arizaSoni = typeof profile?.warning_count === 'number' ? Math.max(profile.warning_count, arizalar.length) : arizalar.length;
   // Calculate health metrics
   const maxWarnings = 3;
   const healthPercent = Math.max(0, Math.min(100, Math.round(((maxWarnings - arizaSoni) / maxWarnings) * 100)));
@@ -2012,9 +2015,6 @@ export default function TalabaDashboard() {
         </>,
         document.body
       )}
-
-      {/* Toaster for notifications */}
-      <Toaster position="top-center" reverseOrder={false} />
 
       {/* 3. CLEANING SCHEDULE MODAL */}
       {mounted && typeof document !== 'undefined' && createPortal(

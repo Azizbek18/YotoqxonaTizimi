@@ -103,6 +103,7 @@ export default function ArizalarContent() {
                         .from('arizalar')
                         .select('*')
                         .eq('student_id', currentUser.id)
+                        .in('type', ['ariza', 'tushuntirish'])
                         .order('created_at', { ascending: false })
 
                     if (!appError && appData) {

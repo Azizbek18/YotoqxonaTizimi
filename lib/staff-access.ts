@@ -1,7 +1,7 @@
 import 'server-only'
 import { safeEqual } from '@/lib/security'
 
-export type StaffRole = 'admin' | 'tarbiyachi'
+export type StaffRole = 'admin' | 'tarbiyachi' | 'zamdekan'
 
 function envByRole(role: StaffRole) {
   if (role === 'admin') {
@@ -9,6 +9,14 @@ function envByRole(role: StaffRole) {
       linkKey: process.env.ADMIN_PORTAL_KEY,
       accessCode: process.env.ADMIN_REGISTER_CODE,
       allowedIds: process.env.ADMIN_ALLOWED_IDS,
+    }
+  }
+
+  if (role === 'zamdekan') {
+    return {
+      linkKey: process.env.ZAMDEKAN_PORTAL_KEY,
+      accessCode: process.env.ZAMDEKAN_REGISTER_CODE,
+      allowedIds: process.env.ZAMDEKAN_ALLOWED_IDS,
     }
   }
 

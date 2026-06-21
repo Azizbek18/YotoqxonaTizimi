@@ -73,6 +73,9 @@ export async function proxy(request: NextRequest) {
       if (userRole === 'tarbiyachi') {
         return NextResponse.redirect(new URL('/tarbiyachi/dashboard', request.url))
       }
+      if (userRole === 'zamdekan') {
+        return NextResponse.redirect(new URL('/zamdekan/dashboard', request.url))
+      }
       return NextResponse.redirect(new URL('/talaba/dashboard', request.url))
     }
   }
@@ -92,6 +95,9 @@ export async function proxy(request: NextRequest) {
       if (userRole === 'tarbiyachi') {
         return NextResponse.redirect(new URL('/tarbiyachi/dashboard', request.url))
       }
+      if (userRole === 'zamdekan') {
+        return NextResponse.redirect(new URL('/zamdekan/dashboard', request.url))
+      }
       return NextResponse.redirect(new URL('/login', request.url))
     }
   }
@@ -107,6 +113,28 @@ export async function proxy(request: NextRequest) {
     if (userRole !== 'tarbiyachi') {
       if (userRole === 'admin') {
         return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+      }
+      if (userRole === 'zamdekan') {
+        return NextResponse.redirect(new URL('/zamdekan/dashboard', request.url))
+      }
+      return NextResponse.redirect(new URL('/talaba/dashboard', request.url))
+    }
+  }
+
+  // ========================
+  // ZAMDEKAN ROUTES HIMOYASI
+  // ========================
+  if (path.startsWith('/zamdekan')) {
+    if (!session) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    if (userRole !== 'zamdekan') {
+      if (userRole === 'admin') {
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+      }
+      if (userRole === 'tarbiyachi') {
+        return NextResponse.redirect(new URL('/tarbiyachi/dashboard', request.url))
       }
       return NextResponse.redirect(new URL('/talaba/dashboard', request.url))
     }
@@ -127,6 +155,9 @@ export async function proxy(request: NextRequest) {
       if (userRole === 'tarbiyachi') {
         return NextResponse.redirect(new URL('/tarbiyachi/dashboard', request.url))
       }
+      if (userRole === 'zamdekan') {
+        return NextResponse.redirect(new URL('/zamdekan/dashboard', request.url))
+      }
       return NextResponse.redirect(new URL('/login', request.url))
     }
   }
@@ -142,6 +173,9 @@ export async function proxy(request: NextRequest) {
     if (userRole === 'tarbiyachi') {
       return NextResponse.redirect(new URL('/tarbiyachi/dashboard', request.url))
     }
+    if (userRole === 'zamdekan') {
+      return NextResponse.redirect(new URL('/zamdekan/dashboard', request.url))
+    }
     return NextResponse.redirect(new URL('/talaba/dashboard', request.url))
   }
 
@@ -149,5 +183,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/talaba/:path*', '/tarbiyachi/:path*', '/admin/:path*', '/sardor/:path*', '/login', '/register', '/'],
+  matcher: ['/talaba/:path*', '/tarbiyachi/:path*', '/admin/:path*', '/sardor/:path*', '/zamdekan/:path*', '/login', '/register', '/'],
 }

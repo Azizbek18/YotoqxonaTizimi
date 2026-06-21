@@ -38,30 +38,12 @@ export default function UpdatePassword() {
     const strength = Object.values(checks).filter(Boolean).length
 
     const show3DToast = (type: 'success' | 'error', message: string) => {
-        toast.custom((t) => (
-            <AnimatePresence>
-                {t.visible && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -50, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -20, scale: 0.9 }}
-                        className="flex items-center gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-[#0b1120]/90 backdrop-blur-3xl border border-white/10 shadow-2xl max-w-[90vw] sm:max-w-md w-full relative overflow-hidden z-999"
-                    >
-                        <div className={`absolute -inset-1 rounded-2xl blur-2xl opacity-10 ${type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                        <div className={`flex items-center justify-center p-2 sm:p-3 rounded-xl ${type === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                            {type === 'success' ? <CheckCircle size={20} /> : <AlertTriangle size={20} />}
-                        </div>
-                        <div className="flex-1 text-left">
-                            <p className={`text-[9px] sm:text-[11px] font-black uppercase tracking-[0.2em] ${type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {type === 'success' ? 'Muvaffaqiyat' : 'Tizim xabari'}
-                            </p>
-                            <p className="text-xs sm:text-sm font-medium text-slate-200 mt-0.5 sm:mt-1 leading-tight sm:leading-relaxed">{message}</p>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        ), { duration: 4000 });
-    }
+        if (type === 'success') {
+            toast.success(message)
+        } else {
+            toast.error(message)
+        }
+    };
 
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault()

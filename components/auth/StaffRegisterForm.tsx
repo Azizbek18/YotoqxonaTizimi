@@ -7,7 +7,7 @@ import { CheckCircle, AlertTriangle, Shield, UserCog } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 
-type StaffRole = 'admin' | 'tarbiyachi'
+type StaffRole = 'admin' | 'tarbiyachi' | 'zamdekan'
 
 const ROLE_META: Record<StaffRole, { title: string; icon: React.ReactNode; loginUrl: string }> = {
   admin: {
@@ -19,6 +19,11 @@ const ROLE_META: Record<StaffRole, { title: string; icon: React.ReactNode; login
     title: "Tarbiyachi ro'yxatdan o'tishi",
     icon: <UserCog size={22} />,
     loginUrl: '/kirish/tarbiyachi',
+  },
+  zamdekan: {
+    title: "Zamdekan ro'yxatdan o'tishi",
+    icon: <UserCog size={22} />,
+    loginUrl: '/login',
   },
 }
 
@@ -34,23 +39,11 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
   const [loading, setLoading] = useState(false)
 
   const showToast = (type: 'success' | 'error', message: string) => {
-    toast.custom((t) => (
-      <AnimatePresence>
-        {t.visible && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97 }}
-            className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0b1120]/95 p-4"
-          >
-            <div className={`rounded-lg p-2 ${type === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-              {type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
-            </div>
-            <p className="text-xs text-slate-200">{message}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    ))
+    if (type === 'success') {
+      toast.success(message)
+    } else {
+      toast.error(message)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,7 +68,7 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
           fullName,
           email,
           phone,
-        role,
+          role,
           staffId,
           registerCode,
           password,

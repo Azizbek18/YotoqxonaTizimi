@@ -5,11 +5,11 @@ import { supabase } from '@/lib/supabase'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import {
   CreditCard, Search, Check, X, Clock, AlertCircle,
-  Eye, Download, FileText, Calendar, DollarSign, User,
-  HelpCircle, Sparkles, ArrowRight, CheckCircle2, ChevronRight, Loader,
+  Eye, FileText, User,
+  Sparkles, CheckCircle2, Loader,
   Layers
 } from 'lucide-react'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 
 interface PaymentRecord {
   id: string
@@ -571,6 +571,7 @@ export default function AdminTolovlarPage() {
                       </div>
                     ) : (
                       <>
+                        {/* eslint-disable-next-line @next/next/no-img-element -- receipt image has unknown/variable aspect ratio, sized by intrinsic content within max-height */}
                         <img
                           src={selectedGroup.receipt_url}
                           alt="Chek tasviri"

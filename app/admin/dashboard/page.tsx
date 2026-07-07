@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as XLSX from 'xlsx'
@@ -19,11 +20,10 @@ import {
   Cell,
 } from 'recharts'
 import Link from 'next/link'
-import { AlertTriangle, Loader, Copy, X, Check, Activity, Cpu } from 'lucide-react'
+import { AlertTriangle, Loader, Copy, X, Activity, Cpu } from 'lucide-react'
 import StatCard from '@/components/admin/StatCard'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import toast from 'react-hot-toast'
-import Image from 'next/image'
 
 interface DashboardStats {
   totalStudents: number
@@ -318,7 +318,7 @@ export default function AdminDashboard() {
         dbStatus = 'online'
         dbPing = Math.round(performance.now() - dbStart)
       }
-    } catch (e) {
+    } catch {
       dbStatus = 'offline'
     }
 
@@ -329,7 +329,7 @@ export default function AdminDashboard() {
         apiStatus = 'online'
         apiPing = Math.round(performance.now() - apiStart)
       }
-    } catch (e) {
+    } catch {
       apiStatus = 'offline'
     }
 
@@ -700,10 +700,12 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                   <div className="relative w-12 h-12 sm:w-14 sm:h-14 self-end sm:self-auto shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
-                    <img 
-                      src="https://img.icons8.com/3d-fluency/94/synchronize.png" 
-                      alt="Yangilash" 
-                      className="w-full h-full object-contain" 
+                    <Image
+                      src="https://img.icons8.com/3d-fluency/94/synchronize.png"
+                      alt="Yangilash"
+                      fill
+                      unoptimized
+                      className="object-contain"
                     />
                   </div>
                 </button>
@@ -731,10 +733,12 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                   <div className="relative w-12 h-12 sm:w-14 sm:h-14 self-end sm:self-auto shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
-                    <img 
-                      src="https://img.icons8.com/3d-fluency/94/server.png" 
-                      alt="Server holati" 
-                      className="w-full h-full object-contain" 
+                    <Image
+                      src="https://img.icons8.com/3d-fluency/94/server.png"
+                      alt="Server holati"
+                      fill
+                      unoptimized
+                      className="object-contain"
                     />
                   </div>
                 </button>
@@ -758,10 +762,12 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                   <div className="relative w-12 h-12 sm:w-14 sm:h-14 self-end sm:self-auto shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
-                    <img 
-                      src="https://img.icons8.com/3d-fluency/94/student-male.png" 
-                      alt="Talaba" 
-                      className="w-full h-full object-contain" 
+                    <Image
+                      src="https://img.icons8.com/3d-fluency/94/student-male.png"
+                      alt="Talaba"
+                      fill
+                      unoptimized
+                      className="object-contain"
                     />
                   </div>
                 </button>
@@ -1071,10 +1077,12 @@ export default function AdminDashboard() {
                   : 'bg-amber-500/5 border-amber-500/20 text-amber-200 shadow-[0_0_30px_rgba(245,158,11,0.05)]'
             }`}>
               <div className="relative w-16 h-16 shrink-0 transition-transform duration-500 hover:scale-110 hover:rotate-6">
-                <img 
-                  src="https://img.icons8.com/3d-fluency/94/conference-call.png" 
-                  alt="Talabalar soni" 
-                  className="w-full h-full object-contain" 
+                <Image
+                  src="https://img.icons8.com/3d-fluency/94/conference-call.png"
+                  alt="Talabalar soni"
+                  fill
+                  unoptimized
+                  className="object-contain"
                 />
               </div>
               <div>
@@ -1156,7 +1164,7 @@ export default function AdminDashboard() {
 
               <div className="flex flex-col items-center text-center mt-2 mb-6">
                 <div className="relative w-24 h-24 mb-4 animate-pulse">
-                  <img src="https://img.icons8.com/3d-fluency/94/server.png" alt="Server 3D" className="w-full h-full object-contain" />
+                  <Image src="https://img.icons8.com/3d-fluency/94/server.png" alt="Server 3D" fill unoptimized className="object-contain" />
                 </div>
                 <h3 className="text-xl font-black tracking-tight">Tizim Ishlash Holati</h3>
                 <p className={`text-xs mt-1 ${textMuted}`}>Oxirgi tekshiruv: {systemStatus.time}</p>
@@ -1261,7 +1269,7 @@ export default function AdminDashboard() {
 
               <div className="flex flex-col items-center text-center mt-2 mb-6">
                 <div className="relative w-24 h-24 mb-4">
-                  <img src="https://img.icons8.com/3d-fluency/94/student-male.png" alt="Student 3D" className="w-full h-full object-contain" />
+                  <Image src="https://img.icons8.com/3d-fluency/94/student-male.png" alt="Student 3D" fill unoptimized className="object-contain" />
                 </div>
                 <h3 className="text-xl font-black tracking-tight">Yangi Talaba Taklif Yaratish</h3>
                 <p className={`text-xs mt-1 ${textMuted}`}>

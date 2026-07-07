@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { Toast, resolveValue } from 'react-hot-toast'
-import { motion, AnimatePresence, useMotionValue, useTransform, useSpring, useMotionTemplate } from 'framer-motion'
+import { motion, useMotionValue, useTransform, useSpring, useMotionTemplate } from 'framer-motion'
 import { Sparkles, ShieldAlert } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
@@ -12,7 +12,7 @@ interface Custom3DToastProps {
 
 const playToastSound = (isSuccess: boolean) => {
   try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext
     if (!AudioCtx) return
     const ctx = new AudioCtx()
     const now = ctx.currentTime
@@ -75,7 +75,7 @@ const playToastSound = (isSuccess: boolean) => {
         ctx.close().catch(() => {})
       }
     }, 1000)
-  } catch (e) {
+  } catch {
     // Autoplay policy blocker
     console.debug('Autoplay audio blocked or not interacted yet.')
   }
@@ -182,8 +182,8 @@ export default function Custom3DToast({ toast: t }: Custom3DToastProps) {
             transition={{ duration: 0.85, delay: p.delay, ease: 'easeOut' }}
             className={`absolute pointer-events-none rounded-full blur-[0.4px] transform-gpu will-change-transform ${
               isSuccess
-                ? 'bg-emerald-450 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
-                : 'bg-rose-450 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
+                ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
+                : 'bg-rose-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
             }`}
             style={{
               width: p.size,

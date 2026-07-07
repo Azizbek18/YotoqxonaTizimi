@@ -8,7 +8,6 @@ import Custom3DToast from '@/components/ui/Custom3DToast'
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
   const theme = useThemeStore((state) => state.theme)
-  const isLight = theme === 'light'
   const [queryClient] = useState(
     () =>
       new QueryClient({

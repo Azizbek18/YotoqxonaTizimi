@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/server-admin'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import { getRequestUser } from '@/lib/server-auth'
 
 type StaffProfile = {
   id: string
@@ -23,22 +23,19 @@ function extractFloor(roomNumber?: string | null) {
   return Math.max(1, Math.floor((parsed - 1) / 30) + 1)
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const authSupabase = await createServerSupabaseClient()
+    const user = await getRequestUser(req)
     const serviceSupabase = getServiceSupabase()
-    const {
-      data: { session },
-    } = await authSupabase.auth.getSession()
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return jsonError('Autentifikatsiya talab qilinadi', 401)
     }
 
     const { data: staffUser, error: staffError } = await serviceSupabase
       .from('staff')
       .select('id, email, role, assigned_floor, assigned_gender')
-      .or(`id.eq.${session.user.id},email.eq.${session.user.email?.trim().toLowerCase() ?? ''}`)
+      .or(`id.eq.${user.id},email.eq.${user.email?.trim().toLowerCase() ?? ''}`)
       .maybeSingle<StaffProfile>()
 
     if (staffError) {

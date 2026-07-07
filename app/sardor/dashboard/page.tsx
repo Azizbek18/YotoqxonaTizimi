@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { 
   Users, Megaphone, LogOut, Search, Clock, 
   Trash2, Plus, Sparkles, Building2, Phone, Mail, 
-  ArrowLeft, CheckCircle2, AlertTriangle, ShieldCheck, X
+  ArrowLeft, ShieldCheck, X
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
@@ -79,8 +79,6 @@ export default function SardorDashboard() {
 
   const surfaceBg = isLight ? 'bg-white/80 border-slate-200 shadow-lg' : 'bg-[#0b1120]/50 border-white/10 shadow-[0_0_20px_rgba(168,85,247,0.05)]'
   const cardBg = isLight ? 'bg-slate-100/70 border-slate-200' : 'bg-white/[0.04] border-white/5'
-  const textMuted = isLight ? 'text-slate-600' : 'text-slate-400'
-  const textStrong = isLight ? 'text-slate-900' : 'text-white'
   const cardBorder = isLight ? 'border-slate-200' : 'border-white/5'
 
   // Load Dashboard Data
@@ -109,8 +107,13 @@ export default function SardorDashboard() {
 
       setProfile(profileData)
 
+      const { data: { session } } = await supabase.auth.getSession()
+      const authHeader: Record<string, string> = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+
       // Fetch students under captain scope
-      const resStudents = await fetch('/api/sardor/students')
+      const resStudents = await fetch('/api/sardor/students', {
+        headers: authHeader
+      })
       const resultStudents = await resStudents.json()
       if (resStudents.ok && Array.isArray(resultStudents.students)) {
         setStudents(resultStudents.students)
@@ -119,7 +122,9 @@ export default function SardorDashboard() {
       }
 
       // Fetch announcements sent by captain
-      const resElon = await fetch('/api/sardor/elonlar')
+      const resElon = await fetch('/api/sardor/elonlar', {
+        headers: authHeader
+      })
       const resultElon = await resElon.json()
       if (resElon.ok && Array.isArray(resultElon.elonlar)) {
         setElonlar(resultElon.elonlar)
@@ -128,7 +133,7 @@ export default function SardorDashboard() {
       }
 
       // Fetch floor duty schedule announcement
-      const { data: dutyData, error: dutyError } = await supabase
+      const { data: dutyData } = await supabase
         .from('elonlar')
         .select('*')
         .eq('title', 'HAFTALIK_NAVBATCHILIK_JADVALI')
@@ -185,9 +190,15 @@ export default function SardorDashboard() {
 
     try {
       setIsSubmitting(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      const authHeader: Record<string, string> = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+
       const res = await fetch('/api/sardor/elonlar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader
+        },
         body: JSON.stringify(newElonForm)
       })
 
@@ -210,8 +221,12 @@ export default function SardorDashboard() {
     if (!confirm("Ushbu e'lonni o'chirmoqchimisiz?")) return
 
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const authHeader: Record<string, string> = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+
       const res = await fetch(`/api/sardor/elonlar?id=${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: authHeader
       })
 
       if (!res.ok) {

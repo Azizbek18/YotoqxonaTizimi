@@ -160,7 +160,11 @@ export default function ElonlarPage() {
 
     const loadElonlar = async () => {
       try {
-        const response = await fetch('/api/elonlar');
+        const { data: { session } } = await supabase.auth.getSession();
+        const authHeader: Record<string, string> = session?.access_token
+          ? { Authorization: `Bearer ${session.access_token}` }
+          : {};
+        const response = await fetch('/api/elonlar', { headers: authHeader });
         const result = await response.json();
 
         if (!response.ok) {

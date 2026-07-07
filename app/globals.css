@@ -252,10 +252,6 @@ html.theme-light #app-shell [class*="border-white/5"] {
 }
 
 /* GPU compositor layers and layout containment optimizations */
-html {
-  scroll-behavior: smooth;
-  scroll-padding-top: 2rem;
-}
 
 body {
   text-rendering: optimizeLegibility;

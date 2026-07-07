@@ -1,20 +1,17 @@
-import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/server-admin'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import { getRequestUser } from '@/lib/server-auth'
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Server xatoligi'
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const authSupabase = await createServerSupabaseClient()
+    const user = await getRequestUser(request)
     const serviceSupabase = getServiceSupabase()
-    const {
-      data: { session },
-    } = await authSupabase.auth.getSession()
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
     }
 
@@ -22,7 +19,7 @@ export async function GET() {
     const { data: caller, error: callerError } = await serviceSupabase
       .from('users')
       .select('*')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single()
 
     if (callerError || !caller || !caller.is_floor_captain) {
@@ -45,15 +42,12 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const authSupabase = await createServerSupabaseClient()
+    const user = await getRequestUser(request)
     const serviceSupabase = getServiceSupabase()
-    const {
-      data: { session },
-    } = await authSupabase.auth.getSession()
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
     }
 
@@ -61,7 +55,7 @@ export async function POST(request: Request) {
     const { data: caller, error: callerError } = await serviceSupabase
       .from('users')
       .select('*')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single()
 
     if (callerError || !caller || !caller.is_floor_captain) {
@@ -107,15 +101,12 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
-    const authSupabase = await createServerSupabaseClient()
+    const user = await getRequestUser(request)
     const serviceSupabase = getServiceSupabase()
-    const {
-      data: { session },
-    } = await authSupabase.auth.getSession()
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
     }
 
@@ -123,7 +114,7 @@ export async function DELETE(request: Request) {
     const { data: caller, error: callerError } = await serviceSupabase
       .from('users')
       .select('*')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single()
 
     if (callerError || !caller || !caller.is_floor_captain) {

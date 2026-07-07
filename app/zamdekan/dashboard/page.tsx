@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   PieChart,
   Pie,
@@ -13,20 +13,16 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  Legend
+  ResponsiveContainer
 } from 'recharts'
 import Link from 'next/link'
 import {
   FileText,
   Users,
   CheckCircle,
-  AlertCircle,
   Home,
   ArrowRight,
   TrendingUp,
-  GraduationCap,
-  Calendar,
   Layers
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -73,8 +69,8 @@ export default function ZamdekanDashboard() {
   })
 
   const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([])
-  const [courseDistribution, setCourseDistribution] = useState<any[]>([])
-  const [facultyDistribution, setFacultyDistribution] = useState<any[]>([])
+  const [courseDistribution, setCourseDistribution] = useState<{ course: string; talabalar: number }[]>([])
+  const [facultyDistribution, setFacultyDistribution] = useState<{ name: string; talabalar: number }[]>([])
 
   const loadData = async () => {
     try {
@@ -297,7 +293,7 @@ export default function ZamdekanDashboard() {
               href={card.link}
               className={`absolute bottom-3 right-4 opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-indigo-500 transition-opacity`}
             >
-              Ko'rish <ArrowRight size={10} />
+              Ko&apos;rish <ArrowRight size={10} />
             </Link>
           </motion.div>
         ))}
@@ -358,7 +354,7 @@ export default function ZamdekanDashboard() {
             <div className="flex items-center justify-between text-xs font-bold">
               <div className="flex items-center gap-2">
                 <div className={`h-3 w-3 rounded-full ${isLight ? 'bg-slate-200' : 'bg-slate-800'}`} />
-                <span className={textMuted}>Bo'sh o'rinlar</span>
+                <span className={textMuted}>Bo&apos;sh o&apos;rinlar</span>
               </div>
               <span className={textStrong}>{freeBeds} ta</span>
             </div>
@@ -407,7 +403,7 @@ export default function ZamdekanDashboard() {
           </div>
           <div className="flex justify-end mt-2 text-[10px] font-black uppercase tracking-widest text-indigo-500">
             <Link href="/zamdekan/xonalar" className="flex items-center gap-1">
-              Barcha talabalarni ko'rish <ArrowRight size={10} />
+              Barcha talabalarni ko&apos;rish <ArrowRight size={10} />
             </Link>
           </div>
         </motion.div>
@@ -469,7 +465,7 @@ export default function ZamdekanDashboard() {
               href="/zamdekan/arizalar"
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 transition-all"
             >
-              Arizalar ro'yxatiga o'tish <ArrowRight size={12} />
+              Arizalar ro&apos;yxatiga o&apos;tish <ArrowRight size={12} />
             </Link>
           </div>
         </motion.div>
@@ -486,7 +482,7 @@ export default function ZamdekanDashboard() {
 
             <div className="mt-4 space-y-3">
               {facultyDistribution.length === 0 ? (
-                <div className="text-center py-8 text-xs font-bold text-slate-500">Ma'lumotlar mavjud emas</div>
+                <div className="text-center py-8 text-xs font-bold text-slate-500">Ma&apos;lumotlar mavjud emas</div>
               ) : (
                 facultyDistribution.map((fac, idx) => {
                   const percent = stats.totalOccupiedBeds > 0

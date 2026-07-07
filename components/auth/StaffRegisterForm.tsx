@@ -3,8 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { CheckCircle, AlertTriangle, Shield, UserCog } from 'lucide-react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { Shield, UserCog } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type StaffRole = 'admin' | 'tarbiyachi' | 'zamdekan'

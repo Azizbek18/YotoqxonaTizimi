@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/server-admin'
+import { NextRequest, NextResponse } from 'next/server'
+import { getRequestUser } from '@/lib/server-auth'
 import { getServiceSupabase } from '@/lib/server-supabase'
 
 function extractFloor(roomNumber: string | null | undefined): number | null {
@@ -9,23 +9,20 @@ function extractFloor(roomNumber: string | null | undefined): number | null {
   return Math.floor((num - 1) / 30) + 1
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const authSupabase = await createServerSupabaseClient()
+    const user = await getRequestUser(request)
     const serviceSupabase = getServiceSupabase()
-    const {
-      data: { session },
-    } = await authSupabase.auth.getSession()
 
     let currentFaculty: string | null = null
     let userFloor: number | null = null
     let userGender: string | null = null
 
-    if (session?.user?.id) {
+    if (user?.id) {
       const { data: userData } = await serviceSupabase
         .from('users')
         .select('faculty, room_number, gender, assigned_floor')
-        .eq('id', session.user.id)
+        .eq('id', user.id)
         .maybeSingle()
 
       if (userData) {

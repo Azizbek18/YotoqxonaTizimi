@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import type { Student } from '@/lib/types'
+import { supabase } from '@/lib/supabase'
 
 export default function TarbiyachiTalabalarPage() {
   const [students, setStudents] = useState<Student[]>([])
@@ -11,7 +12,12 @@ export default function TarbiyachiTalabalarPage() {
 
   useEffect(() => {
     const load = async () => {
-      const response = await fetch('/api/staff/students')
+      const { data: { session } } = await supabase.auth.getSession()
+      const authHeader: Record<string, string> = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+
+      const response = await fetch('/api/staff/students', {
+        headers: authHeader
+      })
       const result = (await response.json()) as {
         ok: boolean
         students?: Student[]

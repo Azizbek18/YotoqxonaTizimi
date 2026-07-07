@@ -1,8 +1,9 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import {
@@ -15,7 +16,7 @@ import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { supabase } from '@/lib/supabase'
 import { getSafeUser, getSafeSession } from '@/lib/auth-session'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 interface Profile {
@@ -94,6 +95,7 @@ const PAGE_VARIANTS = {
 
 export default function TalabaLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
   const [time, setTime] = useState(new Date())
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
@@ -212,7 +214,11 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
             } catch (err) {
               console.error('Error fetching notifications:', err)
             }
+          } else {
+            router.push('/login')
           }
+        } else {
+          router.push('/login')
         }
       } catch (err) {
         console.error('Error fetching user data in layout:', err)
@@ -220,7 +226,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
     }
 
     fetchUserData()
-  }, [mounted])
+  }, [mounted, router])
 
   const markAllAsRead = () => {
     const readIds = notifications.map(n => n.id)
@@ -286,16 +292,18 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
       </div>
 
       {/* --- 2. PREMIUM TOP BAR (HEADER) --- */}
-      <header className={`relative z-50 px-4 sm:px-6 py-4 transition-all ${isLight ? 'bg-white border-b border-slate-200' : 'bg-[#02040a] border-b border-white/5'}`}>
+      <header className={`sticky top-0 z-50 px-4 sm:px-6 py-4 transition-all ${isLight ? 'bg-white border-b border-slate-200' : 'bg-[#02040a] border-b border-white/5'}`}>
         <div className="max-w-6xl mx-auto flex justify-between items-center gap-3">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-linear-to-tr p-px shrink-0 ${isLight ? 'from-blue-600 to-blue-400' : 'from-blue-600 to-cyan-400'}`}>
-              <div className={`w-full h-full rounded-[15px] flex items-center justify-center ${isLight ? 'bg-white' : 'bg-[#02040a]'}`}>
+              <div className={`relative w-full h-full rounded-[15px] flex items-center justify-center overflow-hidden ${isLight ? 'bg-white' : 'bg-[#02040a]'}`}>
                 {profile?.avatar_url ? (
-                  <img
+                  <Image
                     src={profile.avatar_url}
                     alt={profile.full_name}
-                    className="w-full h-full rounded-[15px] object-cover"
+                    fill
+                    unoptimized
+                    className="rounded-[15px] object-cover"
                   />
                 ) : (
                   <UserCircle className={isLight ? 'text-blue-600' : 'text-cyan-400'} size={20} />
@@ -1161,8 +1169,12 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
       const formData = new FormData()
       formData.append('file', selectedFile)
 
+      const { data: { session: photoSession } } = await supabase.auth.getSession()
       const response = await fetch('/api/ai/photo-check', {
         method: 'POST',
+        headers: {
+          ...(photoSession?.access_token ? { Authorization: `Bearer ${photoSession.access_token}` } : {})
+        },
         body: formData
       })
 
@@ -1306,6 +1318,7 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
               <div className="flex flex-col items-center justify-center gap-4">
                 {preview ? (
                   <div className="relative w-36 h-48 rounded-2xl border border-white/10 overflow-hidden shadow-inner bg-slate-900/50 flex items-center justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- local blob: object URL preview, not optimizable by next/image */}
                     <img src={preview} alt="3x4 Preview" className="w-full h-full object-cover" />
                   </div>
                 ) : (
@@ -1499,11 +1512,13 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
           isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/5'
         }`}>
           {/* Developer Photo */}
-          <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-purple-500/50 shrink-0 shadow-md">
-            <img 
-              src="https://qgnjhkvmuywlfdnjfpqg.supabase.co/storage/v1/object/public/avatar/005d251c-5116-4e1e-926f-4cdb97915743/1781451759533.jpg" 
-              alt="Azizbek Mo'minov" 
-              className="w-full h-full object-cover"
+          <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-purple-500/50 shrink-0 shadow-md">
+            <Image
+              src="https://qgnjhkvmuywlfdnjfpqg.supabase.co/storage/v1/object/public/avatar/005d251c-5116-4e1e-926f-4cdb97915743/1781451759533.jpg"
+              alt="Azizbek Mo'minov"
+              fill
+              unoptimized
+              className="object-cover"
             />
           </div>
           {/* Details */}

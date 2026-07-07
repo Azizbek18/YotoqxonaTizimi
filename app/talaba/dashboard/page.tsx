@@ -12,7 +12,7 @@ import {
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { supabase } from '@/lib/supabase';
 import { getSafeUser } from '@/lib/auth-session';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { marked } from 'marked';
 
@@ -219,13 +219,6 @@ export default function TalabaDashboard() {
     }
   };
 
-  const DUTY_SLOTS = useMemo(() => [
-    "Dushanba / Payshanba",
-    "Seshanba / Juma",
-    "Chorshanba / Shanba",
-    "Yakshanba"
-  ], []);
-
   const allResidents = useMemo(() => {
     if (!profile) return [];
     const list = [
@@ -412,7 +405,7 @@ export default function TalabaDashboard() {
   };
 
   // Drag over target
-  const handleDragOver = (e: React.DragEvent, day: string) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
 
@@ -464,15 +457,6 @@ export default function TalabaDashboard() {
         setSelectedResidentId(null);
       }
     }
-  };
-
-  // Unassign resident from a day
-  const handleUnassign = (day: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent trigger click-to-assign on the day box
-    setDraftSchedule(prev => ({
-      ...prev,
-      [day]: null
-    }));
   };
 
   // Reset draft to sequential default
@@ -539,10 +523,12 @@ export default function TalabaDashboard() {
     setChatLoading(true);
 
     try {
+      const { data: { session: chatSession } } = await supabase.auth.getSession();
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(chatSession?.access_token ? { Authorization: `Bearer ${chatSession.access_token}` } : {})
         },
         body: JSON.stringify({
           message: messageText,
@@ -722,7 +708,11 @@ export default function TalabaDashboard() {
         }
 
         // 3. Real E'lonlarni Yuklash (API orqali filterlangan holda)
-        const resElon = await fetch('/api/elonlar');
+        const { data: { session: elonSession } } = await supabase.auth.getSession();
+        const elonAuthHeader: Record<string, string> = elonSession?.access_token
+          ? { Authorization: `Bearer ${elonSession.access_token}` }
+          : {};
+        const resElon = await fetch('/api/elonlar', { headers: elonAuthHeader });
         const resultElon = await resElon.json();
 
         if (resElon.ok && Array.isArray(resultElon.elonlar)) {
@@ -787,6 +777,7 @@ export default function TalabaDashboard() {
             .select('*')
             .eq('student_name', currentProfile.full_name)
             .neq('status', 'draft')
+            .neq('type', 'chat')
             .in('level', ['warning', 'critical'])
             .order('created_at', { ascending: false });
 
@@ -2082,7 +2073,7 @@ export default function TalabaDashboard() {
                         <div
                           key={day}
                           onClick={() => handleDayClick(day)}
-                          onDragOver={(e) => handleDragOver(e, day)}
+                          onDragOver={(e) => handleDragOver(e)}
                           onDragEnter={(e) => handleDragEnter(e, day)}
                           onDragLeave={(e) => handleDragLeave(e, day)}
                           onDrop={(e) => handleDrop(e, day)}

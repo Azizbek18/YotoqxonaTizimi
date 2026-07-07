@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/server-admin'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import { getRequestUser } from '@/lib/server-auth'
 
 function extractFloor(roomNumber: string | null | undefined): number | null {
   if (!roomNumber) return null
@@ -9,15 +9,12 @@ function extractFloor(roomNumber: string | null | undefined): number | null {
   return Math.floor((num - 1) / 30) + 1
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const authSupabase = await createServerSupabaseClient()
+    const user = await getRequestUser(req)
     const serviceSupabase = getServiceSupabase()
-    const {
-      data: { session },
-    } = await authSupabase.auth.getSession()
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
     }
 
@@ -25,7 +22,7 @@ export async function GET() {
     const { data: caller, error: callerError } = await serviceSupabase
       .from('users')
       .select('*')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single()
 
     if (callerError || !caller || !caller.is_floor_captain) {

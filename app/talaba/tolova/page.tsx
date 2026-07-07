@@ -1,15 +1,15 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     Upload, Check, Clock, AlertCircle, Download, Eye,
     Calendar, DollarSign, TrendingUp, FileText, Loader,
     CreditCard, ShieldCheck, HelpCircle,
-    ShieldAlert, X, AlertTriangle, CheckCircle2, Info
+    ShieldAlert, X, AlertTriangle, CheckCircle2
 } from 'lucide-react'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { supabase } from '@/lib/supabase'
 import { getSafeUser } from '@/lib/auth-session'
@@ -79,7 +79,6 @@ export default function TolovaPage() {
     const [selectedMonths, setSelectedMonths] = useState<string[]>([])
     const [selectedYear, setSelectedYear] = useState<number>(2026)
     const [amount, setAmount] = useState<number>(300000)
-    const [showUploadForm, setShowUploadForm] = useState(false)
 
     // AI Validation states
     const [validating, setValidating] = useState(false)
@@ -149,6 +148,23 @@ export default function TolovaPage() {
         }
         init()
     }, [])
+
+    // Helper to get status of a month
+    const getMonthStatus = useCallback((monthName: string, year: number): PaymentRecord['status'] | 'unpaid' => {
+        const records = payments.filter(p => p.month === monthName && p.year === year)
+        if (records.length === 0) return 'unpaid'
+
+        const approvedRecord = records.find(p => p.status === 'paid' || p.status === 'approved')
+        if (approvedRecord) return approvedRecord.status
+
+        const waitingRecord = records.find(p => p.status === 'waiting' || p.status === 'pending')
+        if (waitingRecord) return waitingRecord.status
+
+        const rejectedRecord = records.find(p => p.status === 'rejected')
+        if (rejectedRecord) return rejectedRecord.status
+
+        return 'unpaid'
+    }, [payments])
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
@@ -243,7 +259,7 @@ export default function TolovaPage() {
                 setAmount(0)
             }
         }
-    }, [payments, selectedYear, loading])
+    }, [payments, selectedYear, loading, getMonthStatus])
 
     // Step 1: AI Validation — check receipt before saving
     const handleUpload = async () => {
@@ -269,8 +285,12 @@ export default function TolovaPage() {
             formData.append('file', newReceipt)
             formData.append('amount', String(amount))
 
+            const { data: { session: tekshiruvSession } } = await supabase.auth.getSession()
             const res = await fetch('/api/ai/tekshiruv', {
                 method: 'POST',
+                headers: {
+                    ...(tekshiruvSession?.access_token ? { Authorization: `Bearer ${tekshiruvSession.access_token}` } : {})
+                },
                 body: formData
             })
 
@@ -342,11 +362,13 @@ export default function TolovaPage() {
 
             // 4. Trigger AI receipt analysis in the background for all batch records
             if (Array.isArray(insertedDatas)) {
+                const { data: { session: tahlilSession } } = await supabase.auth.getSession()
                 insertedDatas.forEach(record => {
                     fetch('/api/ai/tahlil', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            ...(tahlilSession?.access_token ? { Authorization: `Bearer ${tahlilSession.access_token}` } : {})
                         },
                         body: JSON.stringify({ paymentId: record.id })
                     }).catch(err => console.error("Background AI trigger error:", err))
@@ -356,7 +378,6 @@ export default function TolovaPage() {
             // Refresh state
             await loadPayments(user.id)
             setNewReceipt(null)
-            setShowUploadForm(false)
             setShowValidationModal(false)
             setValidationResult(null)
             // Reset file input
@@ -370,23 +391,6 @@ export default function TolovaPage() {
         } finally {
             setUploading(false)
         }
-    }
-
-    // Helper to get status of a month
-    const getMonthStatus = (monthName: string, year: number): PaymentRecord['status'] | 'unpaid' => {
-        const records = payments.filter(p => p.month === monthName && p.year === year)
-        if (records.length === 0) return 'unpaid'
-        
-        const approvedRecord = records.find(p => p.status === 'paid' || p.status === 'approved')
-        if (approvedRecord) return approvedRecord.status
-
-        const waitingRecord = records.find(p => p.status === 'waiting' || p.status === 'pending')
-        if (waitingRecord) return waitingRecord.status
-
-        const rejectedRecord = records.find(p => p.status === 'rejected')
-        if (rejectedRecord) return rejectedRecord.status
-        
-        return 'unpaid'
     }
 
     // Calculations for the dashboard card
@@ -619,10 +623,7 @@ export default function TolovaPage() {
                                         return (
                                             <div
                                                 key={m}
-                                                onClick={() => {
-                                                    handleMonthClick(m)
-                                                    setShowUploadForm(true)
-                                                }}
+                                                onClick={() => handleMonthClick(m)}
                                                 className={getMonthCardClass(m, status)}
                                             >
                                                 <div className="flex items-center justify-between">

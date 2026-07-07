@@ -4,15 +4,8 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Home,
-  User,
-  Users,
   Search,
-  Layers,
-  Info,
   AlertTriangle,
-  CheckCircle,
-  HelpCircle,
   X
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -381,7 +374,7 @@ export default function ZamdekanXonalarMap() {
                   {selectedRoom.occupants.length === 0 ? (
                     <div className="text-center py-8 text-xs font-bold text-slate-500">Xona bo‘sh</div>
                   ) : (
-                    selectedRoom.occupants.map((occ, idx) => (
+                    selectedRoom.occupants.map((occ) => (
                       <div
                         key={occ.id}
                         className={`p-3 rounded-2xl border ${

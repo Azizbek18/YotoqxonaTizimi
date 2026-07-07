@@ -21,7 +21,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import PageSkeleton from '@/components/ui/PageSkeleton'
 import { supabase } from '@/lib/supabase'
 import { getSafeUser } from '@/lib/auth-session'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 interface Profile {

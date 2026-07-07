@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useState, useRef } from 'react'
+import Image from 'next/image'
 import { 
   Building2, DoorOpen, Layers3, Users, 
   Info, MousePointer2, ExternalLink, Upload, Cpu, 
@@ -28,7 +29,6 @@ interface RoomOccupancySnapshot {
 export default function Admin3DXonalarPage() {
   const [roomSnapshots, setRoomSnapshots] = useState<RoomOccupancySnapshot[]>([])
   const [selectedRoomNumber, setSelectedRoomNumber] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
 
   // Floor Selector State (1st, 2nd, and 3rd floors)
   const [activeFloor, setActiveFloor] = useState<number>(1)
@@ -60,7 +60,6 @@ export default function Admin3DXonalarPage() {
   // Load Room Occupancy from Supabase
   const loadRoomOccupancy = async () => {
     try {
-      setLoading(true)
       const { data, error } = await supabase
         .from('users')
         .select('id, room_number, full_name')
@@ -90,8 +89,6 @@ export default function Admin3DXonalarPage() {
     } catch (error) {
       console.error('3D xonalar bandligini yuklashda xato:', error)
       toast.error('Ma\'lumotlarni yuklashda xatolik yuz berdi')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -507,10 +504,12 @@ export default function Admin3DXonalarPage() {
           {!floorPreviews[activeFloor] ? (
             <div className="max-w-md w-full">
               <div className="relative w-24 h-24 mx-auto mb-6 shrink-0">
-                <img 
-                  src="https://img.icons8.com/3d-fluency/94/upload.png" 
-                  alt="Upload blueprint" 
-                  className="w-full h-full object-contain" 
+                <Image
+                  src="https://img.icons8.com/3d-fluency/94/upload.png"
+                  alt="Upload blueprint"
+                  fill
+                  unoptimized
+                  className="object-contain"
                 />
               </div>
               <h2 className={`text-xl font-black ${textStrong}`}>{activeFloor}-qavat Blueprintini Yuklang</h2>
@@ -527,11 +526,12 @@ export default function Admin3DXonalarPage() {
           ) : (
             <div className="max-w-xl w-full space-y-6">
               <div className="relative rounded-2xl overflow-hidden border border-white/10 max-h-60 bg-black/20">
+                {/* eslint-disable-next-line @next/next/no-img-element -- local blob: object URL preview, not optimizable by next/image */}
                 <img src={floorPreviews[activeFloor]} alt="Blueprint preview" className="w-full h-auto object-cover max-h-60" />
                 {floorAnalyzing[activeFloor] && (
                   <div className="absolute inset-0 bg-black/70 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-white">
                     <div className="relative w-16 h-16 mb-4 animate-spin">
-                      <img src="https://img.icons8.com/3d-fluency/94/settings.png" alt="Analyzing" className="w-full h-full object-contain" />
+                      <Image src="https://img.icons8.com/3d-fluency/94/settings.png" alt="Analyzing" fill unoptimized className="object-contain" />
                     </div>
                     <p className="text-sm font-black uppercase tracking-widest text-cyan-400">AI {activeFloor}-qavatni Tahlil Qilmoqda...</p>
                     <div className="w-full max-w-xs bg-white/10 h-1.5 rounded-full mt-4 overflow-hidden">

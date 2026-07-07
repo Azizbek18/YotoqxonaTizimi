@@ -31,6 +31,14 @@ CREATE TABLE IF NOT EXISTS users (
   entry_date date,
   passport_series text UNIQUE,
   jshshir text UNIQUE,
+  passport_date date,
+  birth_date date,
+  father_full_name text,
+  father_workplace text,
+  father_phone text,
+  mother_full_name text,
+  mother_workplace text,
+  mother_phone text,
   avatar_url text,
   is_floor_captain boolean DEFAULT false,
   assigned_floor integer,
@@ -39,6 +47,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
 
 CREATE TABLE IF NOT EXISTS staff (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,

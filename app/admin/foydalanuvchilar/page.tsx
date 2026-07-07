@@ -1,12 +1,11 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CalendarDays,
   Edit2,
-  Filter,
   GraduationCap,
   Home,
   Mail,
@@ -229,7 +228,7 @@ export default function AdminUsersPage() {
     return date.toLocaleDateString('uz-UZ')
   }
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/admin/users', {
@@ -250,12 +249,11 @@ export default function AdminUsersPage() {
       const usersList = result.users ?? []
       setUsers(usersList)
 
-      if (selectedUser) {
-        const updated = usersList.find((u) => u.id === selectedUser.id)
-        if (updated) {
-          setSelectedUser(updated)
-        }
-      }
+      setSelectedUser((prev) => {
+        if (!prev) return prev
+        const updated = usersList.find((u) => u.id === prev.id)
+        return updated ?? prev
+      })
       return usersList
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Foydalanuvchilarni yuklashda xato!"
@@ -265,7 +263,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   const handleCreateInvite = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -317,7 +315,7 @@ export default function AdminUsersPage() {
       }
     }
     void init()
-  }, [])
+  }, [loadUsers])
 
   const loadStudentPayments = async (studentId: string) => {
     try {
@@ -1388,7 +1386,6 @@ export default function AdminUsersPage() {
                           {payments.map((record) => {
                             const isApproved = record.status === 'paid' || record.status === 'approved'
                             const isWaiting = record.status === 'waiting' || record.status === 'pending'
-                            const isRejected = record.status === 'rejected'
 
                             return (
                               <div 

@@ -1,15 +1,15 @@
 'use client'
 
 import Image from 'next/image'
-import { useState, useEffect, useRef, type SyntheticEvent } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
 import { getSafeSession, getSafeUser } from '@/lib/auth-session'
 import {
   Mail, Phone, GraduationCap, Home,
-  ShieldCheck, LogOut, Camera, Edit2, Lock, X, Check, Loader, Award, Sparkles, Shield,
-  Eye, EyeOff, Key, Clock, Info, AlertTriangle, Trash2, RefreshCw, Calendar, Activity,
-  HelpCircle, ExternalLink, ChevronRight
+  ShieldCheck, LogOut, Camera, Edit2, X, Check, Loader, Award, Sparkles, Shield,
+  Eye, EyeOff, Key, Clock, Info, AlertTriangle, Trash2, Calendar, Activity,
+  HelpCircle, ChevronRight
 } from 'lucide-react'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -265,10 +265,8 @@ export default function StudentProfile() {
 
   // Password change state
   const [showPasswordModal, setShowPasswordModal] = useState(false)
-  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
-  const [showCurrentPass, setShowCurrentPass] = useState(false)
   const [showNewPass, setShowNewPass] = useState(false)
   const [showConfirmPass, setShowConfirmPass] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
@@ -530,9 +528,13 @@ export default function StudentProfile() {
 
     setSavingEdit(true)
     try {
+      const session = await getSafeSession()
       const response = await fetch('/api/student/profile/update', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           userId: profile.id,
           ...editForm,
@@ -599,7 +601,6 @@ export default function StudentProfile() {
       } else {
         setMessage({ type: 'success', text: 'Parol muvaffaqiyatli o\'zgartirildi!' })
         setShowPasswordModal(false)
-        setCurrentPassword('')
         setNewPassword('')
         setConfirmNewPassword('')
       }
@@ -645,9 +646,13 @@ export default function StudentProfile() {
   const initials = getInitials(fullName)
 
   // Subtly dark overlay style
-  const cardOverlay = isLight 
-    ? 'bg-white/80 border-slate-200/80 shadow-lg' 
+  const cardOverlay = isLight
+    ? 'bg-white/80 border-slate-200/80 shadow-lg'
     : 'bg-slate-900/40 backdrop-blur-xl border-white/5 shadow-2xl';
+
+  if (loading) {
+    return <Skeleton />
+  }
 
   return (
     <div className={`w-full relative py-4 space-y-6 sm:space-y-8 min-h-screen transition-colors duration-300`}>

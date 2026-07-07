@@ -7,17 +7,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import * as XLSX from 'xlsx'
 import {
   Search,
-  Filter,
   FileText,
   User,
-  Phone,
-  BookOpen,
-  Calendar,
   AlertTriangle,
   CheckCircle,
   XCircle,
   Download,
-  Check,
   X,
   ExternalLink,
   ChevronRight
@@ -447,7 +442,7 @@ function ArizalarContent() {
                 <div className="p-3 rounded-2xl bg-red-500/15 border border-red-500/20 text-red-500 text-[10px] font-bold flex items-start gap-2">
                   <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-black">DIQQAT: QORA RO'YXAT!</p>
+                    <p className="font-black">DIQQAT: QORA RO&apos;YXAT!</p>
                     <p className="mt-0.5 text-[9px] leading-tight">Bu talaba tizim qoidalari buzilganligi sababli qora ro‘yxatga kiritilgan.</p>
                   </div>
                 </div>

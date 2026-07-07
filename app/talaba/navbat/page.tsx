@@ -72,7 +72,7 @@ export default function NavbatPage() {
         if (!userData) return
         setProfile(userData as Profile)
 
-        const floor = userData.room_number ? Math.floor((parseInt(userData.room_number) - 1) / 30) + 1 : null
+        const floor = userData.room_number ? calculateFloor(parseInt(userData.room_number) || 0) || null : null
         
         if (floor) {
           // Fetch Floor Captains
@@ -125,18 +125,18 @@ export default function NavbatPage() {
     )
   }
 
-  const floorNumber = profile?.room_number ? Math.floor((parseInt(profile.room_number) - 1) / 30) + 1 : '—'
+  const floorNumber = profile?.room_number ? calculateFloor(parseInt(profile.room_number) || 0) || '—' : '—'
 
   return (
-    <div className={`min-h-screen font-sans overflow-x-hidden relative pb-24 transition-colors duration-300 ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#020617] text-white'}`}>
+    <div className={`h-screen font-sans overflow-hidden relative pb-24 transition-colors duration-300 ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#020617] text-white'}`}>
       {/* Background Glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[120px] bg-purple-500/5 pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[120px] bg-indigo-500/5 pointer-events-none" />
 
-      <div className="max-w-6xl mx-auto px-4 pt-8 space-y-8">
+      <div className="max-w-6xl mx-auto px-4 pt-4 space-y-4">
         
         {/* Header */}
-        <header className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-6 ${isLight ? 'border-slate-200' : 'border-white/5'}`}>
+        <header className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3 ${isLight ? 'border-slate-200' : 'border-white/5'}`}>
           <div className="flex items-center gap-3.5">
             <div className={`p-3 rounded-2xl border ${
               isLight 
@@ -161,17 +161,17 @@ export default function NavbatPage() {
         </header>
 
         {/* Top Section: Captain & Admins */}
-        <section className="space-y-4">
+        <section className="space-y-2">
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Qavat Ma&apos;murlari</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Qavat Sardori */}
             {floorCaptains.length > 0 ? (
               floorCaptains.map((captain) => (
                 <motion.div
                   key={captain.id}
                   whileHover={{ y: -4, scale: 1.01 }}
-                  className={`backdrop-blur-xl border p-4 sm:p-5 rounded-2xl sm:rounded-[2rem] flex items-center gap-3 sm:gap-4 relative overflow-hidden shadow-xl ${
+                  className={`backdrop-blur-xl border p-3 rounded-2xl flex items-center gap-3 relative overflow-hidden shadow-xl ${
                     isLight ? 'bg-white border-slate-200/80 shadow-sm' : 'bg-white/[0.02] border-white/10'
                   }`}
                 >
@@ -203,7 +203,7 @@ export default function NavbatPage() {
               <motion.div
                 key={admin.id}
                 whileHover={{ y: -4, scale: 1.01 }}
-                className={`backdrop-blur-xl border p-4 sm:p-5 rounded-2xl sm:rounded-[2rem] flex items-center gap-3 sm:gap-4 relative overflow-hidden shadow-xl ${
+                className={`backdrop-blur-xl border p-3 rounded-2xl flex items-center gap-3 relative overflow-hidden shadow-xl ${
                   isLight ? 'bg-white border-slate-200/80 shadow-sm' : 'bg-white/[0.02] border-white/10'
                 }`}
               >
@@ -226,10 +226,10 @@ export default function NavbatPage() {
         </section>
 
         {/* Weekly Duty Schedule Grid */}
-        <section className="space-y-4">
+        <section className="flex-1 space-y-2">
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Haftalik Navbatchilar Jadvali</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
             {WEEKDAYS.map((day) => {
               const isToday = todayName === day
               const dayDuties = dutySchedule[day] || []
@@ -238,7 +238,7 @@ export default function NavbatPage() {
                 <motion.div
                   key={day}
                   whileHover={{ y: -4, scale: 1.01 }}
-                  className={`backdrop-blur-xl rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 border flex flex-col justify-between min-h-[200px] relative overflow-hidden transition-all duration-300 ${
+                  className={`backdrop-blur-xl rounded-2xl p-3 border flex flex-col relative overflow-hidden transition-all duration-300 ${
                     isToday
                       ? isLight
                         ? 'bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200 shadow-[0_0_30px_rgba(168,85,247,0.06)]'
@@ -253,7 +253,7 @@ export default function NavbatPage() {
                     <div className="absolute top-[-20%] right-[-20%] w-[50%] h-[50%] rounded-full blur-[40px] bg-purple-500/20 animate-pulse pointer-events-none" />
                   )}
 
-                  <div className="relative z-10 flex justify-between items-center mb-5">
+                  <div className="relative z-10 flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">
                       <div className={`w-1.5 h-6 rounded-full ${isToday ? 'bg-purple-500' : 'bg-slate-300'}`} />
                       <h3 className={`text-base font-extrabold ${isToday ? isLight ? 'text-purple-600' : 'text-purple-400' : textStrong}`}>{day}</h3>
@@ -267,12 +267,12 @@ export default function NavbatPage() {
                     )}
                   </div>
 
-                  <div className="relative z-10 flex-1 space-y-2.5">
+                  <div className="relative z-10 flex-1 space-y-1.5">
                     {dayDuties.length > 0 ? (
                       dayDuties.map((duty, idx) => (
                         <div 
                           key={duty.id || idx}
-                          className={`flex items-center gap-2 sm:gap-2.5 border rounded-xl sm:rounded-2xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 ${
+                          className={`flex items-center gap-2 border rounded-xl px-2 py-1.5 ${
                             isLight ? 'bg-slate-50 border-slate-200/60' : 'bg-white/5 border-white/5'
                           }`}
                         >
@@ -304,4 +304,13 @@ export default function NavbatPage() {
       </div>
     </div>
   )
+}
+
+function calculateFloor(roomNumber: number): number {
+  if (roomNumber === 0 || isNaN(roomNumber)) return 0
+  if (roomNumber < 100) return 1
+  if (roomNumber < 200) return 2
+  if (roomNumber < 300) return 3
+  if (roomNumber < 400) return 4
+  return 5
 }

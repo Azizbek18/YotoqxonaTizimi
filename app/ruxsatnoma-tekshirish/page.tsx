@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useEffect, useState, Suspense } from 'react'
+import React, { useCallback, useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  ShieldCheck, Search, FileText, CheckCircle2, XCircle, 
+  Search, CheckCircle2, XCircle,
   HelpCircle, AlertTriangle, ChevronRight, House, LogIn 
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -39,31 +39,11 @@ function StatusCheckContent() {
   const [searched, setSearched] = useState(false)
   const [result, setResult] = useState<PermitRequest | null>(null)
 
-  // Auto search if params are present
-  useEffect(() => {
-    const passportParam = searchParams.get('passport')
-    const jshshirParam = searchParams.get('jshshir')
-    if (passportParam && jshshirParam) {
-      setPassportSeries(passportParam)
-      setJshshir(jshshirParam)
-      handleSearch(passportParam, jshshirParam)
-    }
-  }, [searchParams])
-
   const showToast = (message: string) => {
     toast.error(message)
   }
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!passportSeries || !jshshir) {
-      showToast("Pasport va JShSHIR ma'lumotlarini kiriting!")
-      return
-    }
-    handleSearch(passportSeries, jshshir)
-  }
-
-  const handleSearch = async (passport: string, pin: string) => {
+  const handleSearch = useCallback(async (passport: string, pin: string) => {
     setLoading(true)
     setSearched(true)
     setResult(null)
@@ -90,12 +70,32 @@ function StatusCheckContent() {
       } else {
         setResult(null)
       }
-    } catch (err: any) {
-      showToast(err.message || 'Qidirishda xatolik yuz berdi')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Qidirishda xatolik yuz berdi')
       console.error(err)
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  // Auto search if params are present
+  useEffect(() => {
+    const passportParam = searchParams.get('passport')
+    const jshshirParam = searchParams.get('jshshir')
+    if (passportParam && jshshirParam) {
+      setPassportSeries(passportParam)
+      setJshshir(jshshirParam)
+      handleSearch(passportParam, jshshirParam)
+    }
+  }, [searchParams, handleSearch])
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!passportSeries || !jshshir) {
+      showToast("Pasport va JShSHIR ma'lumotlarini kiriting!")
+      return
+    }
+    handleSearch(passportSeries, jshshir)
   }
 
   return (

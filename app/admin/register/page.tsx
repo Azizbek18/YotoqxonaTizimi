@@ -4,15 +4,12 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   Mail,
   Lock,
   User,
   ChevronRight,
   Shield,
-  CheckCircle,
-  AlertTriangle,
   Eye,
   EyeOff,
   KeyRound,

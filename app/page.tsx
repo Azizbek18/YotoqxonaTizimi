@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { 
@@ -10,10 +11,19 @@ import ThemeToggle from '@/components/theme/ThemeToggle';
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { supabase } from '@/lib/supabase';
 
+interface PermitRequest {
+  status: 'pending' | 'rejected' | 'approved' | 'registered';
+  full_name?: string;
+  reject_reason?: string | null;
+  room_number?: string | number | null;
+  passport_series?: string;
+  jshshir?: string;
+}
+
 export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [permitRequest, setPermitRequest] = useState<any>(null);
+  const [permitRequest, setPermitRequest] = useState<PermitRequest | null>(null);
   const [checkingPermit, setCheckingPermit] = useState(false);
 
   const theme = useThemeStore((state) => state.theme);
@@ -519,7 +529,7 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {staffRoles.map((role, idx) => (
+          {staffRoles.map((role) => (
             <motion.div
               key={role.title}
               whileHover={{ y: -6, scale: 1.02 }}
@@ -533,11 +543,13 @@ export default function Home() {
               <div className={`absolute top-[-20%] right-[-20%] w-[50%] h-[40%] rounded-full blur-[40px] bg-gradient-to-br ${role.color} opacity-20 group-hover:opacity-45 transition-opacity pointer-events-none`} />
 
               <div className="space-y-4">
-                <div className="h-28 flex items-center justify-center pt-2">
-                  <img 
-                    src={role.icon} 
+                <div className="relative h-24 mt-4">
+                  <Image
+                    src={role.icon}
                     alt={role.title}
-                    className="h-24 object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.2)] group-hover:scale-110 transition-transform duration-300"
+                    fill
+                    unoptimized
+                    className="object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.2)] group-hover:scale-110 transition-transform duration-300"
                   />
                 </div>
 

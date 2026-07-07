@@ -1,12 +1,12 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  FileText, Upload, User, Mail, Phone, ShieldCheck, Volume2, VolumeX,
-  ChevronRight, ChevronLeft, ArrowLeft, CheckCircle2, AlertTriangle, Sparkles, CreditCard, GraduationCap
+import {
+  Upload, User, Mail, Phone, Volume2, VolumeX,
+  ChevronRight, ChevronLeft, ArrowLeft, CheckCircle2, CreditCard, GraduationCap
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -100,7 +100,7 @@ export default function RuxsatnomaYuborish() {
     if (currentMuted) return
 
     try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext
       if (!AudioContextClass) return
       const ctx = new AudioContextClass()
       const osc = ctx.createOscillator()
@@ -408,8 +408,8 @@ export default function RuxsatnomaYuborish() {
       setSubmitted(true)
       playSound('success')
       showToast('success', "Yo'llanma ko'rib chiqish uchun yuborildi!")
-    } catch (err: any) {
-      showToast('error', err.message || 'Xatolik yuz berdi')
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Xatolik yuz berdi')
       console.error(err)
     } finally {
       setLoading(false)

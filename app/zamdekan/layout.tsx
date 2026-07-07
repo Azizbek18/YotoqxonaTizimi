@@ -13,8 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   UserCog,
-  Bell,
-  Sparkles
+  Bell
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -120,9 +119,6 @@ export default function ZamdekanLayout({
   const sidebarSurface = isLight
     ? 'border-slate-200 bg-white/90 text-slate-900 shadow-xl'
     : 'border-white/10 bg-[#06101f]/90 text-white'
-  const panelSurface = isLight
-    ? 'border-slate-200 bg-white/80'
-    : 'border-white/10 bg-white/[0.03]'
   const mutedText = isLight ? 'text-slate-500' : 'text-slate-400'
   const strongText = isLight ? 'text-slate-900' : 'text-white'
 

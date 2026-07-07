@@ -94,7 +94,7 @@ function mapStudentRow(user: RawStudentRow): AdminUserRow {
     updated_at: null,
     source: 'users',
     avatar_url: (user.avatar_url as string | null | undefined) ?? null,
-    phone: ((user.phone as string | null | undefined) ?? (user.phoneNumber as string | null | undefined)) ?? null,
+    phone: ((user.phone as string | null | undefined) ?? (user.phone_number as string | null | undefined)) ?? null,
     faculty: (user.faculty as string | null | undefined) ?? null,
     direction: (user.direction as string | null | undefined) ?? null,
     course: (user.course as number | null | undefined) ?? null,
@@ -208,7 +208,7 @@ function buildStudentUpdates(body: Record<string, unknown>) {
   if ('phone' in body) {
     const normalizedPhone = normalizeOptionalString(body.phone)
     if (normalizedPhone !== undefined) {
-      updates.phoneNumber = normalizedPhone
+      updates.phone_number = normalizedPhone
     }
   }
 

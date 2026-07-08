@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster, resolveValue } from 'react-hot-toast'
 import { applyThemeToDocument, useThemeStore } from '@/lib/stores/theme-store'
 import Custom3DToast from '@/components/ui/Custom3DToast'
+import { isNativeApp } from '@/lib/platform'
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
   const theme = useThemeStore((state) => state.theme)
@@ -25,8 +26,10 @@ export default function AppProviders({ children }: { children: React.ReactNode }
   )
 
   useEffect(() => {
-    // Register PWA service worker
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+    // Register PWA service worker (skip inside the native Capacitor app —
+    // the shell already packages the app, so a competing service worker
+    // cache only adds overhead with no benefit there)
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && !isNativeApp()) {
       navigator.serviceWorker.register('/sw.js')
         .then((reg) => console.log('ServiceWorker registered:', reg.scope))
         .catch((err) => console.error('ServiceWorker registration failed:', err))

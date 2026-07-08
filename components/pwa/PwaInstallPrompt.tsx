@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, X, Smartphone, Share, PlusSquare, Sparkles } from 'lucide-react'
+import { isNativeApp } from '@/lib/platform'
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: Array<string>
@@ -18,9 +19,14 @@ export default function PwaInstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false)
   const [isIos, setIsIos] = useState(false)
   const [showIosGuide, setShowIosGuide] = useState(false)
-  const [isStandalone, setIsStandalone] = useState(false)
+  // Running inside the packaged Capacitor app — it's already "installed", so
+  // the PWA/"Add to Home Screen" prompt is irrelevant and would just pop an
+  // unexpected animated modal a few seconds after opening the app.
+  const [isStandalone, setIsStandalone] = useState(() => isNativeApp())
 
   useEffect(() => {
+    if (isNativeApp()) return
+
     // 1. Check if already installed / running in standalone mode
     const checkStandalone = () => {
       const isStandaloneMode = 

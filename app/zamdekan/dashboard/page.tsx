@@ -23,9 +23,11 @@ import {
   Home,
   ArrowRight,
   TrendingUp,
-  Layers
+  Layers,
+  AlertTriangle
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { useZamdekanScope } from '@/lib/hooks/useZamdekanScope'
 
 interface DashboardStats {
   pendingCount: number
@@ -71,30 +73,39 @@ export default function ZamdekanDashboard() {
   const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([])
   const [courseDistribution, setCourseDistribution] = useState<{ course: string; talabalar: number }[]>([])
   const [facultyDistribution, setFacultyDistribution] = useState<{ name: string; talabalar: number }[]>([])
+  const { faculty: zamdekanFaculty, resolved: facultyResolved } = useZamdekanScope()
 
-  const loadData = async () => {
+  const loadData = async (faculty: string | null) => {
     try {
-      // 1. Get permit_requests counts
+      // 1. Get permit_requests counts (dorm-wide, for the cross-faculty distribution charts)
       const { data: permits, error: permitsError } = await supabase
         .from('permit_requests')
         .select('status, room_number, course, faculty')
 
       if (permitsError) throw permitsError
 
+      // 1b. Same counts, scoped to this zamdekan's own faculty (their actual approval queue)
+      const scopedPermits = faculty
+        ? (permits ?? []).filter((p) => (p.faculty ?? '').toLowerCase() === faculty.toLowerCase())
+        : []
+
       let pending = 0
       let approved = 0
       let rejected = 0
       let registered = 0
 
-      const coursesMap: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
-      const facultiesMap: Record<string, number> = {}
-
-      permits?.forEach((p) => {
+      scopedPermits.forEach((p) => {
         if (p.status === 'pending') pending++
         else if (p.status === 'approved') approved++
         else if (p.status === 'rejected') rejected++
         else if (p.status === 'registered') registered++
+      })
 
+      // Course/faculty distribution charts stay dorm-wide (cross-faculty comparison context)
+      const coursesMap: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
+      const facultiesMap: Record<string, number> = {}
+
+      permits?.forEach((p) => {
         // Aggregate course & faculty details (for approved or registered students)
         if (p.status === 'approved' || p.status === 'registered') {
           if (p.course && coursesMap[p.course] !== undefined) {
@@ -134,15 +145,20 @@ export default function ZamdekanDashboard() {
       const activeBedsInPermits = permits?.filter((p) => p.status === 'approved' && p.room_number).length || 0
       const totalOccupiedBeds = activeBedsInUsers + activeBedsInPermits
 
-      // 3. Get recent pending requests
-      const { data: recent, error: recentError } = await supabase
-        .from('permit_requests')
-        .select('id, full_name, passport_series, jshshir, faculty, direction, course, created_at')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(5)
+      // 3. Get recent pending requests, scoped to this zamdekan's own faculty
+      let recent: RecentRequest[] = []
+      if (faculty) {
+        const { data: recentData, error: recentError } = await supabase
+          .from('permit_requests')
+          .select('id, full_name, passport_series, jshshir, faculty, direction, course, created_at')
+          .eq('status', 'pending')
+          .ilike('faculty', faculty)
+          .order('created_at', { ascending: false })
+          .limit(5)
 
-      if (recentError) throw recentError
+        if (recentError) throw recentError
+        recent = recentData ?? []
+      }
 
       // Format distributions for Recharts
       const courseChartData = Object.keys(coursesMap).map((key) => ({
@@ -174,10 +190,11 @@ export default function ZamdekanDashboard() {
   }
 
   useEffect(() => {
-    loadData()
-    const interval = setInterval(loadData, 30000)
+    if (!facultyResolved) return
+    loadData(zamdekanFaculty)
+    const interval = setInterval(() => loadData(zamdekanFaculty), 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [facultyResolved, zamdekanFaculty])
 
   // Capacity calculations
   const totalBedsCapacity = 600 // 150 rooms * 4 beds
@@ -253,11 +270,13 @@ export default function ZamdekanDashboard() {
               Xush kelibsiz, Zamdekan!
             </h1>
             <p className={`text-xs sm:text-sm mt-1 max-w-xl ${textMuted}`}>
-              Yotoqxona tizimidagi talabalar oqimi, yo&apos;llanmalar (arizalar) ko&apos;rib chiqilishi va xonalar taqsimotini real vaqt rejimida boshqaring.
+              {zamdekanFaculty
+                ? `${zamdekanFaculty.toUpperCase()} fakulteti bo'yicha yo'llanmalar (arizalar) ko'rib chiqilishini boshqaring.`
+                : "Yotoqxona tizimidagi talabalar oqimi, yo'llanmalar (arizalar) ko'rib chiqilishi va xonalar taqsimotini real vaqt rejimida boshqaring."}
             </p>
           </div>
           <button
-            onClick={loadData}
+            onClick={() => loadData(zamdekanFaculty)}
             className={`shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all border shadow-sm ${
               isLight
                 ? 'bg-slate-900 border-slate-900 text-white hover:bg-slate-800'
@@ -268,6 +287,15 @@ export default function ZamdekanDashboard() {
           </button>
         </div>
       </motion.div>
+
+      {facultyResolved && !zamdekanFaculty && (
+        <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs font-bold flex items-start gap-2">
+          <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+          <span>
+            Hisobingizga fakultet biriktirilmagan, shuning uchun sizga tegishli yo&apos;llanmalar soni ko&apos;rsatilmayapti. Administratorga murojaat qiling.
+          </span>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

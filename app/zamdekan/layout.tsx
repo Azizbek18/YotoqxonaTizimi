@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -18,6 +18,7 @@ import {
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { useZamdekanScope } from '@/lib/hooks/useZamdekanScope'
 
 export default function ZamdekanLayout({
   children,
@@ -31,6 +32,10 @@ export default function ZamdekanLayout({
   const [isMobile, setIsMobile] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [mounted, setMounted] = useState(false)
+  const { faculty: zamdekanFaculty, fullName: zamdekanName, resolved: facultyResolved } = useZamdekanScope()
+  const [recentPending, setRecentPending] = useState<{ id: string; full_name: string; direction: string; created_at: string | null }[]>([])
+  const [notifOpen, setNotifOpen] = useState(false)
+  const notifRef = useRef<HTMLDivElement>(null)
 
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
@@ -53,15 +58,27 @@ export default function ZamdekanLayout({
   }, [])
 
   useEffect(() => {
+    if (!facultyResolved) return
+
     async function fetchPendingPermits() {
+      if (!zamdekanFaculty) {
+        setPendingCount(0)
+        setRecentPending([])
+        return
+      }
+
       try {
-        const { count, error } = await supabase
+        const { data: recent, count, error } = await supabase
           .from('permit_requests')
-          .select('*', { count: 'exact', head: true })
+          .select('id, full_name, direction, created_at', { count: 'exact' })
           .eq('status', 'pending')
-        
-        if (!error && count !== null) {
-          setPendingCount(count)
+          .ilike('faculty', zamdekanFaculty)
+          .order('created_at', { ascending: false })
+          .limit(5)
+
+        if (!error) {
+          setPendingCount(count ?? 0)
+          setRecentPending(recent ?? [])
         }
       } catch (err) {
         console.error('Error fetching pending permits count:', err)
@@ -70,6 +87,16 @@ export default function ZamdekanLayout({
     fetchPendingPermits()
     const interval = setInterval(fetchPendingPermits, 15000)
     return () => clearInterval(interval)
+  }, [facultyResolved, zamdekanFaculty])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setNotifOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   const menuItems = useMemo(() => ([
@@ -130,7 +157,7 @@ export default function ZamdekanLayout({
 
         <div className="relative flex items-center justify-between gap-4">
           <div className={`flex items-center gap-3 min-w-0 ${compact ? 'justify-center w-full' : ''}`}>
-            <div className={`shrink-0 flex items-center justify-center h-10 w-10 rounded-full backdrop-blur-md border transition-all ${isLight ? 'bg-white/80 border-sky-200 text-sky-600 shadow-lg shadow-sky-200/20' : 'bg-white/[0.08] border-indigo-400/30 text-indigo-300 shadow-lg shadow-indigo-550/10'}`}>
+            <div className={`shrink-0 flex items-center justify-center h-10 w-10 rounded-full backdrop-blur-md border transition-all ${isLight ? 'bg-white/80 border-sky-200 text-sky-600 shadow-lg shadow-sky-200/20' : 'bg-white/[0.08] border-indigo-400/30 text-indigo-300 shadow-lg shadow-indigo-500/10'}`}>
               <UserCog size={20} strokeWidth={2.5} />
             </div>
 
@@ -139,7 +166,12 @@ export default function ZamdekanLayout({
                 <p className={`text-[10px] font-black uppercase tracking-[0.32em] leading-none ${isLight ? 'text-sky-600' : 'text-indigo-400/80'}`}>
                   ZAMDEKAN
                 </p>
-                <h2 className={`text-sm font-black tracking-tight leading-tight mt-0.5 ${strongText}`}>Yotoqxona</h2>
+                <h2 className={`text-sm font-black tracking-tight leading-tight mt-0.5 truncate ${strongText}`}>
+                  {zamdekanName || 'Yotoqxona'}
+                </h2>
+                <p className={`text-[9px] font-medium mt-0.5 truncate ${mutedText}`}>
+                  {zamdekanFaculty ? zamdekanFaculty.toUpperCase() : 'Fakultet sozlanmagan'}
+                </p>
               </div>
             )}
           </div>
@@ -159,7 +191,7 @@ export default function ZamdekanLayout({
                 className={`group flex items-center justify-between rounded-2xl p-3 text-xs font-bold tracking-wide transition-all ${
                   active
                     ? isLight
-                      ? 'bg-sky-100/80 text-sky-850 shadow-sm'
+                      ? 'bg-sky-100/80 text-sky-700 shadow-sm'
                       : 'bg-white/[0.06] text-white border border-white/5'
                     : isLight
                       ? 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
@@ -196,7 +228,7 @@ export default function ZamdekanLayout({
       </div>
 
       {/* Logout */}
-      <div className={`p-4 border-t ${isLight ? 'border-slate-250/50' : 'border-white/5'}`}>
+      <div className={`p-4 border-t ${isLight ? 'border-slate-200/50' : 'border-white/5'}`}>
         <button
           onClick={handleLogout}
           className={`flex w-full items-center gap-3 rounded-2xl p-3 text-xs font-black uppercase tracking-wider transition-all active:scale-95 ${
@@ -251,7 +283,7 @@ export default function ZamdekanLayout({
             {isMobile ? (
               <button
                 onClick={() => setMobileSidebarOpen(true)}
-                className={`p-2 rounded-xl border ${isLight ? 'border-slate-250 bg-slate-50 text-slate-700' : 'border-white/10 bg-white/5 text-white'}`}
+                className={`p-2 rounded-xl border ${isLight ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-white/10 bg-white/5 text-white'}`}
               >
                 <Menu size={18} />
               </button>
@@ -259,7 +291,7 @@ export default function ZamdekanLayout({
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className={`p-2 rounded-xl border transition-all hover:scale-105 active:scale-95 ${
-                  isLight ? 'border-slate-250 bg-slate-50 text-slate-700' : 'border-white/10 bg-white/5 text-white'
+                  isLight ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-white/10 bg-white/5 text-white'
                 }`}
               >
                 {sidebarOpen ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
@@ -273,14 +305,59 @@ export default function ZamdekanLayout({
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <button className={`relative p-2 rounded-xl border transition-all hover:scale-105 ${
-              isLight ? 'border-slate-250 bg-slate-50 text-slate-700' : 'border-white/10 bg-white/5 text-white'
-            }`}>
-              <Bell size={18} />
-              {pendingCount > 0 && (
-                <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-rose-500 border border-white dark:border-slate-950 animate-pulse" />
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setNotifOpen((prev) => !prev)}
+                className={`relative p-2 rounded-xl border transition-all hover:scale-105 ${
+                  isLight ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-white/10 bg-white/5 text-white'
+                }`}
+              >
+                <Bell size={18} />
+                {pendingCount > 0 && (
+                  <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-rose-500 border border-white dark:border-slate-950 animate-pulse" />
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className={`absolute right-0 mt-2 w-80 max-w-[90vw] rounded-2xl border shadow-2xl z-50 overflow-hidden ${
+                  isLight ? 'bg-white border-slate-200' : 'bg-[#0b101d] border-white/10'
+                }`}>
+                  <div className={`px-4 py-3 border-b text-xs font-black uppercase tracking-wider ${isLight ? 'border-slate-200 text-slate-700' : 'border-white/5 text-slate-300'}`}>
+                    Kutilayotgan yo&apos;llanmalar {pendingCount > 0 && `(${pendingCount})`}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {recentPending.length === 0 ? (
+                      <p className={`px-4 py-6 text-center text-xs ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {zamdekanFaculty ? 'Kutilayotgan yo\'llanma yo\'q.' : 'Fakultet sozlanmagan.'}
+                      </p>
+                    ) : (
+                      recentPending.map((item) => (
+                        <Link
+                          key={item.id}
+                          href={`/zamdekan/arizalar?id=${item.id}`}
+                          onClick={() => setNotifOpen(false)}
+                          className={`block px-4 py-3 border-b last:border-b-0 transition-colors ${
+                            isLight ? 'border-slate-100 hover:bg-slate-50' : 'border-white/5 hover:bg-white/5'
+                          }`}
+                        >
+                          <p className="text-xs font-bold truncate">{item.full_name}</p>
+                          <p className={`text-[11px] mt-0.5 truncate ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{item.direction}</p>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                  <Link
+                    href="/zamdekan/arizalar"
+                    onClick={() => setNotifOpen(false)}
+                    className={`block px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-wider transition-colors ${
+                      isLight ? 'text-sky-600 hover:bg-slate-50' : 'text-cyan-400 hover:bg-white/5'
+                    }`}
+                  >
+                    Barcha yo&apos;llanmalarni ko&apos;rish
+                  </Link>
+                </div>
               )}
-            </button>
+            </div>
           </div>
         </header>
 

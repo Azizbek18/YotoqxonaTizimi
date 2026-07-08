@@ -50,3 +50,13 @@ export async function getSafeSession() {
     return null
   }
 }
+
+/**
+ * Builds an `Authorization: Bearer <token>` header from the current session
+ * for authenticated fetch() calls to our own API routes. Returns an empty
+ * object when there's no active session.
+ */
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  const session = await getSafeSession()
+  return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+}

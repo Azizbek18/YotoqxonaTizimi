@@ -1529,7 +1529,7 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
               <a 
                 href="tel:+998912461050" 
                 className={`flex items-center justify-center sm:justify-start gap-1.5 font-medium transition-colors ${
-                  isLight ? 'text-slate-650 hover:text-blue-600' : 'text-slate-300 hover:text-cyan-400'
+                  isLight ? 'text-slate-600 hover:text-blue-600' : 'text-slate-300 hover:text-cyan-400'
                 }`}
               >
                 <Phone size={12} className="shrink-0" />
@@ -1540,7 +1540,7 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className={`flex items-center justify-center sm:justify-start gap-1.5 font-medium transition-colors ${
-                  isLight ? 'text-slate-650 hover:text-blue-600' : 'text-slate-300 hover:text-cyan-400'
+                  isLight ? 'text-slate-600 hover:text-blue-600' : 'text-slate-300 hover:text-cyan-400'
                 }`}
               >
                 <Send size={12} className="rotate-45 shrink-0" />
@@ -1554,7 +1554,7 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
         {/* Team MTalaba info */}
         <div className="space-y-1.5 mb-5 text-xs text-left">
           <h5 className={`font-black uppercase tracking-wider text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>MTalaba Jamoasi</h5>
-          <p className={`leading-relaxed ${isLight ? 'text-slate-650' : 'text-slate-400'}`}>
+          <p className={`leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
             MTalaba jamoasi - oliy ta&apos;lim muassasalari va yotoqxona hayotini raqamlashtirish uchun zamonaviy dasturiy yechimlar yaratadigan talaba-dasturchilar va dizaynerlar jamoasidir.
           </p>
         </div>

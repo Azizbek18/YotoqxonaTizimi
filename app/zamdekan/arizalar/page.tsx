@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { useZamdekanScope } from '@/lib/hooks/useZamdekanScope'
 
 interface PermitRequest {
   id: string
@@ -59,6 +60,7 @@ function ArizalarContent() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected' | 'registered'>('pending')
   const [selectedReq, setSelectedReq] = useState<PermitRequest | null>(null)
+  const { faculty: zamdekanFaculty, resolved: facultyResolved } = useZamdekanScope()
 
   // Room Assignment Modal
   const [roomModalOpen, setRoomModalOpen] = useState(false)
@@ -68,13 +70,21 @@ function ArizalarContent() {
   const [rejectReason, setRejectReason] = useState('')
   const [processing, setProcessing] = useState(false)
 
-  // Fetch all requests
-  const fetchRequests = async () => {
+  // Fetch all requests (scoped to this zamdekan's own faculty)
+  const fetchRequests = async (faculty: string | null) => {
     setLoading(true)
     try {
+      if (!faculty) {
+        setRequests([])
+        setRoomOccupancy({})
+        setLoading(false)
+        return
+      }
+
       const { data, error } = await supabase
         .from('permit_requests')
         .select('*')
+        .ilike('faculty', faculty)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -127,8 +137,9 @@ function ArizalarContent() {
   }
 
   useEffect(() => {
-    fetchRequests()
-  }, [])
+    if (!facultyResolved) return
+    fetchRequests(zamdekanFaculty)
+  }, [facultyResolved, zamdekanFaculty])
 
   // Auto-open request from URL query params
   useEffect(() => {
@@ -213,7 +224,7 @@ function ArizalarContent() {
       exportToExcel([updatedReq])
 
       // Refresh list
-      await fetchRequests()
+      await fetchRequests(zamdekanFaculty)
       setSelectedReq(null)
     } catch (err) {
       console.error(err)
@@ -248,7 +259,7 @@ function ArizalarContent() {
       setRejectModalOpen(false)
       setRejectReason('')
 
-      await fetchRequests()
+      await fetchRequests(zamdekanFaculty)
       setSelectedReq(null)
     } catch (err) {
       console.error(err)
@@ -269,7 +280,11 @@ function ArizalarContent() {
         <div className={`p-5 rounded-3xl border ${surfaceBg} flex flex-col md:flex-row md:items-center md:justify-between gap-4`}>
           <div>
             <h1 className={`text-lg font-black uppercase tracking-wider ${textStrong}`}>Yo‘llanmalar ro‘yxati</h1>
-            <p className={`text-[10px] font-medium ${textMuted}`}>Kelib tushgan ruxsatnomalarni tekshirish va tasdiqlash</p>
+            <p className={`text-[10px] font-medium ${textMuted}`}>
+              {zamdekanFaculty
+                ? `${zamdekanFaculty.toUpperCase()} fakulteti bo'yicha kelib tushgan ruxsatnomalar`
+                : 'Kelib tushgan ruxsatnomalarni tekshirish va tasdiqlash'}
+            </p>
           </div>
 
           <button
@@ -280,6 +295,15 @@ function ArizalarContent() {
             <Download size={14} /> Excel Yuklab olish
           </button>
         </div>
+
+        {facultyResolved && !zamdekanFaculty && (
+          <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs font-bold flex items-start gap-2">
+            <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+            <span>
+              Hisobingizga fakultet biriktirilmagan, shuning uchun hech qanday ariza ko&apos;rsatilmayapti. Administratorga murojaat qilib, profilingizga fakultet qo&apos;shishini so&apos;rang.
+            </span>
+          </div>
+        )}
 
         {/* Filters */}
         <div className={`p-4 rounded-3xl border ${surfaceBg} flex flex-col md:flex-row md:items-center justify-between gap-3`}>
@@ -312,7 +336,7 @@ function ArizalarContent() {
                       ? isLight
                         ? 'bg-white text-slate-900 shadow-sm'
                         : 'bg-white/10 text-white'
-                      : 'text-slate-450 hover:text-slate-700 dark:hover:text-white'
+                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-white'
                   }`}
                 >
                   <span className={`h-1.5 w-1.5 rounded-full bg-current ${colorMap[status]}`} />
@@ -361,7 +385,7 @@ function ArizalarContent() {
                         ? 'border-indigo-600 bg-indigo-50/20'
                         : 'border-indigo-500 bg-indigo-500/5'
                       : isLight
-                        ? 'border-slate-200 bg-white hover:border-slate-350'
+                        ? 'border-slate-200 bg-white hover:border-slate-300'
                         : 'border-white/5 bg-white/[0.02] hover:border-white/10'
                   }`}
                 >
@@ -589,7 +613,7 @@ function ArizalarContent() {
               <button
                 onClick={() => setRoomModalOpen(false)}
                 className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${
-                  isLight ? 'bg-slate-150 text-slate-700 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                  isLight ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
                 }`}
               >
                 Bekor qilish
@@ -633,7 +657,7 @@ function ArizalarContent() {
               <button
                 onClick={() => setRejectModalOpen(false)}
                 className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${
-                  isLight ? 'bg-slate-150 text-slate-700 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                  isLight ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
                 }`}
               >
                 Bekor qilish

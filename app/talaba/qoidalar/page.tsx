@@ -201,7 +201,7 @@ function DisciplineGauge({ score, isLight }: { score: number; isLight: boolean }
           {score}%
         </motion.span>
         <span className={`text-[8px] font-black uppercase tracking-widest ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-          Salomatlik
+          Intizom
         </span>
       </div>
     </div>
@@ -401,7 +401,7 @@ export default function QoidalarPage() {
 
                 <div className="mt-4 space-y-2.5">
                   <h3 className={`text-sm font-black tracking-tight ${statusColor}`}>
-                    Disiplina Holati: {statusText}
+                    Intizom holati: {statusText}
                   </h3>
                   <p className={`text-[11px] leading-relaxed font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                     {statusDesc}

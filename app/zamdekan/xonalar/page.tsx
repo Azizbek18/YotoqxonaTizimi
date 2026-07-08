@@ -216,7 +216,7 @@ export default function ZamdekanXonalarMap() {
                 ? isLight
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'bg-white/10 text-white'
-                : 'text-slate-455 hover:text-slate-700 dark:hover:text-white'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-white'
             }`}
           >
             Barchasi
@@ -230,7 +230,7 @@ export default function ZamdekanXonalarMap() {
                   ? isLight
                     ? 'bg-white text-slate-900 shadow-sm'
                     : 'bg-white/10 text-white'
-                  : 'text-slate-455 hover:text-slate-700 dark:hover:text-white'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-white'
               }`}
             >
               {fl}-qavat
@@ -414,7 +414,7 @@ export default function ZamdekanXonalarMap() {
                           {occ.warning_count && occ.warning_count > 0 ? (
                             <div>
                               <span className="text-amber-500">Ogohlantirishlar:</span>
-                              <p className="text-amber-550 font-black">{occ.warning_count} ta</p>
+                              <p className="text-amber-500 font-black">{occ.warning_count} ta</p>
                             </div>
                           ) : null}
                         </div>

@@ -1146,3 +1146,40 @@ CREATE TRIGGER enforce_student_permit_approved_trigger
 BEFORE INSERT ON users
 FOR EACH ROW
 EXECUTE FUNCTION check_student_permit_approved();
+
+-- ==========================================================
+-- ZAMDEKAN FACULTY SCOPING
+-- ==========================================================
+-- A zamdekan should only see and act on permit requests from their own
+-- faculty. Previously any staff row (any role) could read/write every
+-- permit_requests row dorm-wide with no faculty restriction.
+
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS faculty text;
+
+-- Tighten permit_requests access: admin/tarbiyachi keep full access,
+-- zamdekan is restricted to rows matching their own assigned faculty
+-- (case-insensitive, since faculty is free text on the applicant form).
+DROP POLICY IF EXISTS "Staff can manage permit requests" ON permit_requests;
+CREATE POLICY "Staff can manage permit requests"
+ON permit_requests FOR ALL
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM staff
+    WHERE staff.id = auth.uid()
+      AND (
+        staff.role IN ('admin', 'tarbiyachi')
+        OR (staff.role = 'zamdekan' AND lower(staff.faculty) = lower(permit_requests.faculty))
+      )
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM staff
+    WHERE staff.id = auth.uid()
+      AND (
+        staff.role IN ('admin', 'tarbiyachi')
+        OR (staff.role = 'zamdekan' AND lower(staff.faculty) = lower(permit_requests.faculty))
+      )
+  )
+);

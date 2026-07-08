@@ -35,6 +35,7 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
   const [registerCode, setRegisterCode] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [faculty, setFaculty] = useState('')
   const [loading, setLoading] = useState(false)
 
   const showToast = (type: 'success' | 'error', message: string) => {
@@ -50,6 +51,11 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
 
     if (!fullName || !email || !staffId || !registerCode || !password || !confirmPassword) {
       showToast('error', "Majburiy maydonlarni to'ldiring")
+      return
+    }
+
+    if (role === 'zamdekan' && !faculty.trim()) {
+      showToast('error', 'Fakultetni kiriting')
       return
     }
 
@@ -72,6 +78,7 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
           registerCode,
           password,
           confirmPassword,
+          faculty: role === 'zamdekan' ? faculty.trim() : undefined,
           linkKey,
         }),
       })
@@ -131,6 +138,15 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
             placeholder="Maxsus ID"
             required
           />
+          {role === 'zamdekan' && (
+            <input
+              value={faculty}
+              onChange={(e) => setFaculty(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
+              placeholder="Fakultet (masalan: Amaliy Matematika va Informatika Texnologiyalari)"
+              required
+            />
+          )}
           <input
             value={registerCode}
             onChange={(e) => setRegisterCode(e.target.value)}

@@ -50,6 +50,10 @@ function LoginContent() {
         throw new Error("Sizning arizangiz kutilmoqda. Admin tasdiqlagandan so'ng tizimga kira olasiz.")
       }
 
+      if (userExists && userExists.status === 'rejected') {
+        throw new Error("Arizangiz rad etilgan. Qo'shimcha ma'lumot uchun ma'muriyatga murojaat qiling.")
+      }
+
       // 2. Foydalanuvchi bor bo'lsa, endi tizimga kirishga urinib ko'ramiz
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,

@@ -558,7 +558,7 @@ export default function RuxsatnomaYuborish() {
             className={`flex items-center gap-2 text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-xl transition-all duration-300 border ${
               isLight 
                 ? 'bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100 shadow-xs' 
-                : 'bg-[#0f172a]/80 border-white/5 text-slate-350 hover:bg-white/5 shadow-md shadow-black/30'
+                : 'bg-[#0f172a]/80 border-white/5 text-slate-400 hover:bg-white/5 shadow-md shadow-black/30'
             }`}
           >
             <ArrowLeft size={14} />
@@ -572,7 +572,7 @@ export default function RuxsatnomaYuborish() {
               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-300 ${
                 isLight 
                   ? 'bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100' 
-                  : 'bg-[#0f172a]/80 border-white/5 text-slate-350 hover:bg-white/5'
+                  : 'bg-[#0f172a]/80 border-white/5 text-slate-400 hover:bg-white/5'
               }`}
               title={isMuted ? "Tovushni yoqish" : "Tovushni o'chirish"}
             >
@@ -661,7 +661,7 @@ export default function RuxsatnomaYuborish() {
                     <div className="flex justify-between items-end pt-3 border-t border-slate-700/10 dark:border-white/5 mt-3" style={{ transform: 'translateZ(20px)' }}>
                       
                       <div className="space-y-1 sm:space-y-1.5">
-                        <p className="text-[7px] sm:text-[8px] font-black text-slate-455 uppercase tracking-widest leading-none">Hujjatlar</p>
+                        <p className="text-[7px] sm:text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Hujjatlar</p>
                         <p className={`text-[9px] sm:text-xs font-mono leading-none font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                           {passportSeries.toUpperCase() || "AAXXXXXXX"} • {jshshir || "30102030405060"}
                         </p>
@@ -691,7 +691,7 @@ export default function RuxsatnomaYuborish() {
                             <User className="w-4 h-4 sm:w-5 sm:h-5 opacity-30" />
                           )}
                         </div>
-                        <span className="text-[7px] sm:text-[8px] font-black text-slate-455 uppercase tracking-widest leading-none">KURS</span>
+                        <span className="text-[7px] sm:text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">KURS</span>
                         <p className="text-[9px] sm:text-xs font-black uppercase text-indigo-400 leading-none">
                           {course}-kurs • {faculty.toUpperCase()}
                         </p>
@@ -732,7 +732,7 @@ export default function RuxsatnomaYuborish() {
                           {isActive && (
                             <motion.div
                               layoutId="activeWizardTab"
-                              className="absolute inset-0 bg-gradient-to-r from-blue-600/35 to-indigo-650/35 dark:from-blue-500/25 dark:to-indigo-500/25 border border-indigo-500/30 rounded-lg shadow-[0_0_12px_rgba(99,102,241,0.2)] active-tab-3d"
+                              className="absolute inset-0 bg-gradient-to-r from-blue-600/35 to-indigo-600/35 dark:from-blue-500/25 dark:to-indigo-500/25 border border-indigo-500/30 rounded-lg shadow-[0_0_12px_rgba(99,102,241,0.2)] active-tab-3d"
                               transition={{ type: "spring", stiffness: 350, damping: 25 }}
                             />
                           )}
@@ -782,7 +782,7 @@ export default function RuxsatnomaYuborish() {
                           </div>
                           <div className={`cyber-border ${focusedField === 'fullName' ? 'focused' : ''}`}>
                             <div className="cyber-input-inner relative">
-                              <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'fullName' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-455'}`}>
+                              <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'fullName' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-500'}`}>
                                 <User size={16} />
                               </div>
                               
@@ -822,7 +822,7 @@ export default function RuxsatnomaYuborish() {
                             </div>
                             <div className={`cyber-border ${focusedField === 'email' ? 'focused' : ''}`}>
                               <div className="cyber-input-inner relative">
-                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'email' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-455'}`}>
+                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'email' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-500'}`}>
                                   <Mail size={16} />
                                 </div>
 
@@ -859,7 +859,7 @@ export default function RuxsatnomaYuborish() {
                             </div>
                             <div className={`cyber-border ${focusedField === 'phone' ? 'focused' : ''}`}>
                               <div className="cyber-input-inner relative">
-                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'phone' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-455'}`}>
+                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'phone' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-500'}`}>
                                   <Phone size={16} />
                                 </div>
 
@@ -902,7 +902,7 @@ export default function RuxsatnomaYuborish() {
                                 gender === 'male'
                                   ? 'bg-blue-500/15 border-blue-500/40 text-blue-400 shadow-[0_6px_15px_rgba(59,130,246,0.1)] ring-2 ring-blue-500/15'
                                   : isLight 
-                                    ? 'bg-white border-slate-250 hover:bg-slate-50 text-slate-700' 
+                                    ? 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700' 
                                     : 'bg-[#0f172a]/70 border-white/5 text-slate-400 hover:bg-white/5'
                               }`}
                             >
@@ -936,7 +936,7 @@ export default function RuxsatnomaYuborish() {
                                 gender === 'female'
                                   ? 'bg-pink-500/15 border-pink-500/40 text-pink-400 shadow-[0_6px_15px_rgba(236,72,153,0.1)] ring-2 ring-pink-500/15'
                                   : isLight 
-                                    ? 'bg-white border-slate-250 hover:bg-slate-50 text-slate-700' 
+                                    ? 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700' 
                                     : 'bg-[#0f172a]/70 border-white/5 text-slate-400 hover:bg-white/5'
                               }`}
                             >
@@ -1009,7 +1009,7 @@ export default function RuxsatnomaYuborish() {
                             </div>
                             <div className={`cyber-border ${focusedField === 'direction' ? 'focused' : ''}`}>
                               <div className="cyber-input-inner relative">
-                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'direction' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-455'}`}>
+                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'direction' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-500'}`}>
                                   <GraduationCap size={16} />
                                 </div>
 
@@ -1048,9 +1048,9 @@ export default function RuxsatnomaYuborish() {
                                 whileTap={{ scale: 0.98 }}
                                 className={`flex-1 py-2.5 sm:py-3 rounded-xl border flex items-center justify-center cursor-pointer select-none text-xs sm:text-sm font-black transition-all duration-300 ${
                                   course === c
-                                    ? 'bg-indigo-600 border-indigo-650 text-white shadow-md shadow-indigo-600/20 ring-2 ring-indigo-500/15'
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/20 ring-2 ring-indigo-500/15'
                                     : isLight 
-                                      ? 'bg-white border-slate-250 text-slate-700 hover:bg-slate-100' 
+                                      ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100' 
                                       : 'bg-[#0f172a]/70 border-white/5 text-slate-400 hover:bg-white/5'
                                 }`}
                               >
@@ -1091,7 +1091,7 @@ export default function RuxsatnomaYuborish() {
                             </div>
                             <div className={`cyber-border ${focusedField === 'passport' ? 'focused' : ''}`}>
                               <div className="cyber-input-inner relative">
-                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'passport' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-455'}`}>
+                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'passport' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-500'}`}>
                                   <CreditCard size={16} />
                                 </div>
 
@@ -1131,7 +1131,7 @@ export default function RuxsatnomaYuborish() {
                             </div>
                             <div className={`cyber-border ${focusedField === 'jshshir' ? 'focused' : ''}`}>
                               <div className="cyber-input-inner relative">
-                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'jshshir' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-455'}`}>
+                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'jshshir' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-500'}`}>
                                   <CreditCard size={16} />
                                 </div>
 
@@ -1169,7 +1169,7 @@ export default function RuxsatnomaYuborish() {
                               file 
                                 ? 'border-emerald-500/40 bg-emerald-500/5' 
                                 : isLight 
-                                  ? 'border-slate-350 hover:bg-slate-50 shadow-inner' 
+                                  ? 'border-slate-300 hover:bg-slate-50 shadow-inner' 
                                   : 'border-white/10 hover:bg-white/5'
                             }`}
                           >
@@ -1181,11 +1181,11 @@ export default function RuxsatnomaYuborish() {
                               required
                             />
                             <div className="flex flex-col items-center justify-center gap-1">
-                              <Upload className={`h-6 w-6 transition-all duration-300 ${file ? 'text-emerald-400 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'text-slate-455'}`} />
+                              <Upload className={`h-6 w-6 transition-all duration-300 ${file ? 'text-emerald-400 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'text-slate-500'}`} />
                               <span className="text-xs font-black tracking-wide">
                                 {file ? file.name : "Ruxsatnoma faylini tanlang"}
                               </span>
-                              <span className="text-[10px] text-slate-455 font-sans">
+                              <span className="text-[10px] text-slate-500 font-sans">
                                 {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : "PDF, PNG, JPG (Maks. 5MB)"}
                               </span>
                             </div>
@@ -1214,7 +1214,7 @@ export default function RuxsatnomaYuborish() {
                         <button
                           type="button"
                           onClick={handleNextStep}
-                          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-650 hover:from-blue-700 hover:to-indigo-750 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-1.5 transition-all duration-300 shadow-md shadow-indigo-600/15 active:scale-95"
+                          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-1.5 transition-all duration-300 shadow-md shadow-indigo-600/15 active:scale-95"
                         >
                           <span>Keyingi</span> <ChevronRight size={14} />
                         </button>
@@ -1222,7 +1222,7 @@ export default function RuxsatnomaYuborish() {
                         <button
                           type="submit"
                           disabled={loading}
-                          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-650 to-indigo-650 hover:from-blue-700 hover:to-indigo-750 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-indigo-655/25 active:scale-95 disabled:opacity-50"
+                          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-indigo-600/25 active:scale-95 disabled:opacity-50"
                         >
                           {loading ? (
                             <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1258,7 +1258,7 @@ export default function RuxsatnomaYuborish() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               className={`backdrop-blur-3xl border rounded-3xl max-w-md mx-auto p-6 sm:p-10 shadow-2xl text-center space-y-6 ${
-                isLight ? 'bg-white/85 border-slate-250 shadow-slate-300/40' : 'bg-[#0b1120]/80 border-white/10 shadow-black/80'
+                isLight ? 'bg-white/85 border-slate-200 shadow-slate-300/40' : 'bg-[#0b1120]/80 border-white/10 shadow-black/80'
               }`}
             >
               <div className="mx-auto w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 border border-emerald-500/20 animate-bounce">
@@ -1267,24 +1267,24 @@ export default function RuxsatnomaYuborish() {
               
               <div className="space-y-2">
                 <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-emerald-400">Muvaffaqiyatli yuborildi!</h2>
-                <p className={`text-xs leading-relaxed font-sans ${isLight ? 'text-slate-655' : 'text-slate-400'}`}>
+                <p className={`text-xs leading-relaxed font-sans ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                   Sizning yotoqxona ruxsatnoma yo&apos;llanmangiz ko&apos;rib chiqish uchun qabul qilindi. Hujjat Zamdekan tomonidan tasdiqlanganidan so&apos;ng sizga xona biriktiriladi va tizimda to&apos;liq ro&apos;yxatdan o&apos;tishingiz mumkin bo&apos;ladi.
                 </p>
               </div>
 
               <div className="bg-slate-950/40 rounded-2xl p-5 text-left border border-white/5 font-sans space-y-3 shadow-inner">
-                <p className="text-[10px] text-slate-450 uppercase font-black tracking-widest">Ma&apos;lumotlaringiz</p>
+                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Ma&apos;lumotlaringiz</p>
                 <div className="text-xs space-y-2 text-slate-300">
                   <p className="flex justify-between border-b border-white/5 pb-1">
-                    <span className="text-slate-455">Talaba:</span> 
+                    <span className="text-slate-500">Talaba:</span> 
                     <span className="font-bold text-white">{fullName}</span>
                   </p>
                   <p className="flex justify-between border-b border-white/5 pb-1">
-                    <span className="text-slate-455">Pasport:</span> 
+                    <span className="text-slate-500">Pasport:</span> 
                     <span className="font-mono font-bold text-white">{passportSeries.toUpperCase()}</span>
                   </p>
                   <p className="flex justify-between">
-                    <span className="text-slate-455">Fakultet:</span> 
+                    <span className="text-slate-500">Fakultet:</span> 
                     <span className="font-bold text-indigo-400">{faculty.toUpperCase()}</span>
                   </p>
                 </div>
@@ -1308,7 +1308,7 @@ export default function RuxsatnomaYuborish() {
                   className={`flex-1 p-4 rounded-xl border text-xs font-black uppercase tracking-widest transition-all duration-300 active:scale-95 ${
                     isLight 
                       ? 'border-slate-300 text-slate-700 hover:bg-slate-100 shadow-sm' 
-                      : 'border-white/10 hover:bg-white/5 text-slate-350'
+                      : 'border-white/10 hover:bg-white/5 text-slate-400'
                   }`}
                 >
                   Bosh sahifa

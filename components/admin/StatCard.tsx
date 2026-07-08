@@ -11,8 +11,6 @@ interface StatCardProps {
     imageSrc: string
     color: string
     glowColor: string
-    trend?: number
-    trendLabel?: string
     isLoading?: boolean
 }
 
@@ -22,8 +20,6 @@ export default function StatCard({
     imageSrc,
     color,
     glowColor,
-    trend,
-    trendLabel,
     isLoading = false,
 }: StatCardProps) {
     const theme = useThemeStore((state) => state.theme)
@@ -64,13 +60,6 @@ export default function StatCard({
                             value
                         )}
                     </p>
-                    
-                    {trend !== undefined && trendLabel && (
-                        <div className={`flex items-center text-xs gap-1 mt-3 ${trend >= 0 ? 'text-emerald-500 font-bold' : 'text-rose-500 font-bold'}`}>
-                            <span className="text-sm">{trend >= 0 ? '↑' : '↓'}</span>
-                            <span>{Math.abs(trend)}% {trendLabel}</span>
-                        </div>
-                    )}
                 </div>
 
                 <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 flex items-center justify-center">

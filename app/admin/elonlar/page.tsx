@@ -22,6 +22,8 @@ import {
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { motion, AnimatePresence } from 'framer-motion'
+import ConfirmModal from '@/components/ui/ConfirmModal'
+import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 
 type ElonType = 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish'
 
@@ -67,6 +69,7 @@ export default function AdminElonlarPage() {
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const deleteModal = useConfirmModal<string>()
   const [editingElon, setEditingElon] = useState<Elon | null>(null)
 
   // Form State
@@ -257,9 +260,15 @@ export default function AdminElonlarPage() {
   }
 
   // Delete announcement
-  const deleteElon = async (id: string) => {
-    if (!confirm("E'lonni o'chirasizmi? Ushbu amal qaytarilmaydi!")) return
+  const deleteElon = (id: string) => {
+    deleteModal.open(id)
+  }
 
+  const confirmDeleteElon = async () => {
+    const id = deleteModal.target
+    if (!id) return
+
+    deleteModal.setIsLoading(true)
     try {
       const response = await fetch(`/api/admin/elonlar?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
@@ -272,8 +281,11 @@ export default function AdminElonlarPage() {
 
       setElonlar((current) => current.filter((elon) => elon.id !== id))
       toast.success("E'lon o'chirildi")
+      deleteModal.close()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "E'lonni o'chirishda xatolik")
+    } finally {
+      deleteModal.setIsLoading(false)
     }
   }
 
@@ -771,6 +783,18 @@ export default function AdminElonlarPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        title="E'lonni o'chirish"
+        description="Ushbu e'lonni o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi."
+        onClose={deleteModal.close}
+        onConfirm={confirmDeleteElon}
+        confirmText="O'chirish"
+        confirmVariant="danger"
+        isLoading={deleteModal.isLoading}
+      />
     </div>
   )
 }

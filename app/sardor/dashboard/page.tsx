@@ -8,10 +8,12 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
-import { getSafeUser } from '@/lib/auth-session'
+import { getSafeUser, getAuthHeaders } from '@/lib/auth-session'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import ConfirmModal from '@/components/ui/ConfirmModal'
+import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 
 interface Student {
   id: string
@@ -57,6 +59,7 @@ export default function SardorDashboard() {
   // Search and Filter States
   const [studentSearch, setStudentSearch] = useState('')
   const [newElonOpen, setNewElonOpen] = useState(false)
+  const deleteElonModal = useConfirmModal<string>()
   const [newElonForm, setNewElonForm] = useState({
     title: '',
     text: '',
@@ -107,8 +110,7 @@ export default function SardorDashboard() {
 
       setProfile(profileData)
 
-      const { data: { session } } = await supabase.auth.getSession()
-      const authHeader: Record<string, string> = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+      const authHeader = await getAuthHeaders()
 
       // Fetch students under captain scope
       const resStudents = await fetch('/api/sardor/students', {
@@ -190,8 +192,7 @@ export default function SardorDashboard() {
 
     try {
       setIsSubmitting(true)
-      const { data: { session } } = await supabase.auth.getSession()
-      const authHeader: Record<string, string> = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+      const authHeader = await getAuthHeaders()
 
       const res = await fetch('/api/sardor/elonlar', {
         method: 'POST',
@@ -217,12 +218,17 @@ export default function SardorDashboard() {
   }
 
   // Delete Announcement
-  const handleDeleteElon = async (id: string) => {
-    if (!confirm("Ushbu e'lonni o'chirmoqchimisiz?")) return
+  const handleDeleteElon = (id: string) => {
+    deleteElonModal.open(id)
+  }
 
+  const confirmDeleteElon = async () => {
+    const id = deleteElonModal.target
+    if (!id) return
+
+    deleteElonModal.setIsLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const authHeader: Record<string, string> = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+      const authHeader = await getAuthHeaders()
 
       const res = await fetch(`/api/sardor/elonlar?id=${id}`, {
         method: 'DELETE',
@@ -236,8 +242,11 @@ export default function SardorDashboard() {
 
       toast.success("E'lon o'chirildi")
       setElonlar(prev => prev.filter(e => e.id !== id))
+      deleteElonModal.close()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Xatolik yuz berdi")
+    } finally {
+      deleteElonModal.setIsLoading(false)
     }
   }
 
@@ -268,7 +277,10 @@ export default function SardorDashboard() {
             title: 'HAFTALIK_NAVBATCHILIK_JADVALI',
             text: textValue,
             type: 'Yangilik',
-            audience: 'Qavat',
+            // Internal data-storage row (raw JSON schedule, not a real announcement) —
+            // audience is intentionally NOT 'floor'/'faculty'/'all' so /api/elonlar
+            // never surfaces it in the student-facing announcements feed.
+            audience: 'internal',
             faculty: profile?.faculty || 'Barchasi',
             is_published: true,
             created_by: profile?.id,
@@ -871,6 +883,18 @@ export default function SardorDashboard() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Delete Announcement Confirm Modal */}
+      <ConfirmModal
+        isOpen={deleteElonModal.isOpen}
+        title="E'lonni o'chirish"
+        description="Ushbu e'lonni o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi."
+        onClose={deleteElonModal.close}
+        onConfirm={confirmDeleteElon}
+        confirmText="O'chirish"
+        confirmVariant="danger"
+        isLoading={deleteElonModal.isLoading}
+      />
     </div>
   )
 }

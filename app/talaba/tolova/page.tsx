@@ -191,7 +191,7 @@ export default function TolovaPage() {
 
         // If clicked month is before the first unpaid month, it's invalid
         if (clickedIdx < firstUnpaidIdx) {
-            toast.error("Siz faqat to'lanmagan oylarni tanlashingiz mumkin.")
+            toast.error(`${MONTHS[firstUnpaidIdx]} oyi allaqachon to'langan yoki tekshirilmoqda. Shartnoma bo'yicha to'lovlar faqat to'lanmagan oylardan boshlanadi.`)
             return
         }
 
@@ -212,7 +212,7 @@ export default function TolovaPage() {
                     setSelectedMonth(nextSelected[nextSelected.length - 1])
                 }
             } else {
-                toast.error("Oylarni faqat oxiridan boshlab o'chirishingiz mumkin.")
+                toast.error("Oylarni faqat tanlangan ketma-ketlikning oxiridan boshlab bekor qilishingiz mumkin — avval keyingi oylarni bekor qiling.")
             }
         } else {
             // To select, it must be exactly the next unpaid month!
@@ -237,7 +237,12 @@ export default function TolovaPage() {
                 setSelectedMonth(m)
                 setAmount(nextSelected.length * 300000)
             } else {
-                toast.error("Iltimos, oylarni ketma-ket tanlang!")
+                const nextLabel = expectedIdx < MONTHS.length ? MONTHS[expectedIdx] : null
+                toast.error(
+                    nextLabel
+                        ? `Oylarni ketma-ket tanlash kerak — keyingi tanlanishi kerak bo'lgan oy: ${nextLabel}.`
+                        : "Iltimos, oylarni ketma-ket tanlang!"
+                )
             }
         }
     }

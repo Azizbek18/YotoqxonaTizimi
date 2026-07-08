@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
-interface AdminModalProps {
+interface ConfirmModalProps {
     isOpen: boolean
     title: string
     description?: string
@@ -20,7 +20,7 @@ interface AdminModalProps {
     isLoading?: boolean
 }
 
-export default function AdminModal({
+export default function ConfirmModal({
     isOpen,
     title,
     description,
@@ -32,7 +32,7 @@ export default function AdminModal({
     cancelText = 'Bekor qilish',
     confirmVariant = 'primary',
     isLoading = false,
-}: AdminModalProps) {
+}: ConfirmModalProps) {
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
     const [mounted, setMounted] = useState(false)
@@ -84,7 +84,7 @@ export default function AdminModal({
                         </div>
 
                         {/* Content */}
-                        <div className="p-4 sm:p-6 overflow-y-auto flex-1 no-scrollbar text-xs sm:text-sm">{children}</div>
+                        {children && <div className="p-4 sm:p-6 overflow-y-auto flex-1 no-scrollbar text-xs sm:text-sm">{children}</div>}
 
                         {/* Actions */}
                         {onConfirm && (
@@ -93,8 +93,8 @@ export default function AdminModal({
                                     onClick={onClose}
                                     disabled={isLoading}
                                     className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50 ${
-                                        isLight 
-                                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' 
+                                        isLight
+                                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                                             : 'bg-white/5 hover:bg-white/10 text-slate-300'
                                     }`}
                                 >
@@ -105,8 +105,8 @@ export default function AdminModal({
                                     disabled={isLoading}
                                     className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50 text-white shadow-lg ${
                                         confirmVariant === 'danger'
-                                            ? 'bg-red-600 hover:bg-red-750 shadow-red-600/10'
-                                            : 'bg-purple-600 hover:bg-purple-750 shadow-purple-600/10'
+                                            ? 'bg-red-600 hover:bg-red-700 shadow-red-600/10'
+                                            : 'bg-purple-600 hover:bg-purple-700 shadow-purple-600/10'
                                     }`}
                                 >
                                     {isLoading ? 'Jarayonda...' : confirmText}

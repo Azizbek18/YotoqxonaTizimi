@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { getRequestUser } from '@/lib/server-auth'
+import { extractFloor } from '@/lib/floor'
 
 type StaffProfile = {
   id: string
@@ -12,15 +13,6 @@ type StaffProfile = {
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ ok: false, error: message }, { status })
-}
-
-function extractFloor(roomNumber?: string | null) {
-  if (!roomNumber) return null
-  const matched = roomNumber.match(/\d+/)
-  if (!matched) return null
-  const parsed = Number(matched[0])
-  if (!Number.isFinite(parsed)) return null
-  return Math.max(1, Math.floor((parsed - 1) / 30) + 1)
 }
 
 export async function GET(req: NextRequest) {
@@ -46,11 +38,20 @@ export async function GET(req: NextRequest) {
       return jsonError('Tarbiyachi huquqi talab qilinadi', 403)
     }
 
-    const { data: students, error: studentsError } = await serviceSupabase
+    let studentsQuery = serviceSupabase
       .from('users')
       .select('*')
       .eq('role', 'talaba')
       .order('created_at', { ascending: false })
+
+    // Gender is an exact-match field, so it can be pushed down into SQL to cut
+    // down the number of rows fetched. Floor is derived from room_number via
+    // regex and stays as a JS filter below.
+    if (staffUser.assigned_gender) {
+      studentsQuery = studentsQuery.ilike('gender', staffUser.assigned_gender)
+    }
+
+    const { data: students, error: studentsError } = await studentsQuery
 
     if (studentsError) {
       return jsonError(studentsError.message, 500)
@@ -61,11 +62,7 @@ export async function GET(req: NextRequest) {
         ? extractFloor((student.room_number as string | null | undefined) ?? null) === staffUser.assigned_floor
         : true
 
-      const genderOk = staffUser.assigned_gender
-        ? String(student.gender ?? '').toLowerCase() === String(staffUser.assigned_gender).toLowerCase()
-        : true
-
-      return floorOk && genderOk
+      return floorOk
     })
 
     return NextResponse.json({

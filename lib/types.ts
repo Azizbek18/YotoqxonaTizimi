@@ -1,13 +1,3 @@
-export type ArizaLevel = 'info' | 'warning' | 'critical'
-
-export interface Ariza {
-  id: string | number
-  student_name: string
-  text: string
-  level: ArizaLevel
-  created_at?: string
-}
-
 export interface Student {
   id: string
   full_name?: string

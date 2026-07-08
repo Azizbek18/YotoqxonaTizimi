@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRequestUser } from '@/lib/server-auth'
 import { getServiceSupabase } from '@/lib/server-supabase'
-
-function extractFloor(roomNumber: string | null | undefined): number | null {
-  if (!roomNumber) return null
-  const num = parseInt(roomNumber.trim().replace(/\D/g, ''))
-  if (isNaN(num)) return null
-  return Math.floor((num - 1) / 30) + 1
-}
+import { extractFloor } from '@/lib/floor'
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,6 +32,10 @@ export async function GET(request: NextRequest) {
       .from('elonlar')
       .select('id, title, text, type, audience, faculty, is_published, created_at, published_at, created_by, target_floor, target_gender')
       .eq('is_published', true)
+      // Exclude internal data-storage rows (e.g. the floor duty-schedule JSON
+      // saved by floor captains) — these are never meant to appear as
+      // student-facing announcements.
+      .neq('title', 'HAFTALIK_NAVBATCHILIK_JADVALI')
       .order('published_at', { ascending: false })
       .order('created_at', { ascending: false })
 

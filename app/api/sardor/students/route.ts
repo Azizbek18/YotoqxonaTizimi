@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { getRequestUser } from '@/lib/server-auth'
-
-function extractFloor(roomNumber: string | null | undefined): number | null {
-  if (!roomNumber) return null
-  const num = parseInt(roomNumber.trim().replace(/\D/g, ''))
-  if (isNaN(num)) return null
-  return Math.floor((num - 1) / 30) + 1
-}
+import { extractFloor } from '@/lib/floor'
 
 export async function GET(req: NextRequest) {
   try {

@@ -5,8 +5,9 @@ import { motion } from 'framer-motion'
 import { Search, Eye, Edit2, Trash2, FileText, Filter, RotateCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import AdminTable, { type TableColumn } from '@/components/admin/AdminTable'
-import AdminModal from '@/components/admin/AdminModal'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 
 interface ApplicationRequest {
   id: string
@@ -60,6 +61,7 @@ export default function AdminArizalar() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; request?: ApplicationRequest }>({ isOpen: false })
   const [statusModal, setStatusModal] = useState<{ isOpen: boolean; request?: ApplicationRequest }>({ isOpen: false })
+  const deleteModal = useConfirmModal<string>()
   const [newStatus, setNewStatus] = useState<ApplicationRequest['level']>('info')
   const [newRealStatus, setNewRealStatus] = useState<string>('pending')
   const [isUpdating, setIsUpdating] = useState(false)
@@ -140,9 +142,15 @@ export default function AdminArizalar() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Arizani o'chirmoqchisiz?")) return
+  const handleDelete = (id: string) => {
+    deleteModal.open(id)
+  }
 
+  const confirmDelete = async () => {
+    const id = deleteModal.target
+    if (!id) return
+
+    deleteModal.setIsLoading(true)
     try {
       const response = await fetch('/api/admin/arizalar', {
         method: 'DELETE',
@@ -156,9 +164,12 @@ export default function AdminArizalar() {
 
       setRequests(requests.filter(r => r.id !== id))
       toast.success("Ariza o'chirildi!")
+      deleteModal.close()
     } catch (error) {
       console.error("O'chirishda xato:", error)
       toast.error("O'chirishda xato!")
+    } finally {
+      deleteModal.setIsLoading(false)
     }
   }
 
@@ -403,7 +414,7 @@ export default function AdminArizalar() {
       </motion.div>
 
       {/* Detail Modal */}
-      <AdminModal
+      <ConfirmModal
         isOpen={detailModal.isOpen}
         title=""
         onClose={() => setDetailModal({ isOpen: false })}
@@ -449,10 +460,10 @@ export default function AdminArizalar() {
             </div>
           </div>
         )}
-      </AdminModal>
+      </ConfirmModal>
 
       {/* Status Update Modal */}
-      <AdminModal
+      <ConfirmModal
         isOpen={statusModal.isOpen}
         title="Holat o'zgartirish"
         description={statusModal.request?.student_name}
@@ -495,7 +506,19 @@ export default function AdminArizalar() {
             </p>
           </div>
         </div>
-      </AdminModal>
+      </ConfirmModal>
+
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        title="Arizani o'chirish"
+        description="Ushbu arizani o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi."
+        onClose={deleteModal.close}
+        onConfirm={confirmDelete}
+        confirmText="O'chirish"
+        confirmVariant="danger"
+        isLoading={deleteModal.isLoading}
+      />
     </div>
   )
 }

@@ -204,7 +204,7 @@ export default function Home() {
             S
           </div>
           <span className={`text-xl font-black uppercase tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r transition-colors duration-300 syne-font ${
-            isLight ? 'from-slate-900 to-slate-655' : 'from-white via-gray-100 to-gray-300'
+            isLight ? 'from-slate-900 to-slate-600' : 'from-white via-gray-100 to-gray-300'
           }`}>
             SmartDorm
           </span>
@@ -216,7 +216,7 @@ export default function Home() {
             href="/login" 
             className={`px-5 py-2.5 rounded-2xl border text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 active:scale-95 shadow-md ${
               isLight
-                ? 'bg-slate-100 hover:bg-slate-200 border-slate-350 text-slate-800 shadow-slate-200'
+                ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800 shadow-slate-200'
                 : 'bg-white/5 hover:bg-white/10 border-white/10 text-white shadow-black/40'
             }`}
           >
@@ -274,7 +274,7 @@ export default function Home() {
                     ? 'bg-blue-600 text-white ring-4 ring-blue-500/20 scale-110 shadow-lg shadow-blue-500/40 border border-blue-400/20'
                     : activeStep > 1 
                       ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
-                      : isLight ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-white/5 text-slate-650 border border-white/5'
+                      : isLight ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-white/5 text-slate-500 border border-white/5'
                 }`}
               >
                 {activeStep > 1 ? <CheckCircle2 size={24} /> : "1"}
@@ -301,7 +301,7 @@ export default function Home() {
                     ? 'bg-amber-500 text-slate-950 ring-4 ring-amber-500/20 scale-110 shadow-lg shadow-amber-500/40 border border-amber-400/20'
                     : activeStep > 2 
                       ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
-                      : isLight ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-white/5 text-slate-650 border border-white/5'
+                      : isLight ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-white/5 text-slate-500 border border-white/5'
                 }`}
               >
                 {activeStep > 2 ? <CheckCircle2 size={24} /> : activeStep === 2 ? <Clock size={22} className="animate-spin" /> : "2"}
@@ -328,7 +328,7 @@ export default function Home() {
                     ? permitRequest?.status === 'registered'
                       ? 'bg-sky-500 text-white ring-4 ring-sky-500/20 scale-110 shadow-lg shadow-sky-500/40 border border-sky-400/20'
                       : 'bg-emerald-500 text-white ring-4 ring-emerald-500/20 scale-110 shadow-lg shadow-emerald-500/40 border border-emerald-400/20'
-                    : isLight ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-white/5 text-slate-650 border border-white/5'
+                    : isLight ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-white/5 text-slate-500 border border-white/5'
                 }`}
               >
                 {permitRequest?.status === 'registered' ? <CheckCircle2 size={24} /> : "3"}
@@ -363,7 +363,7 @@ export default function Home() {
                   <Clock size={32} className="animate-pulse" />
                 </div>
                 <div className="space-y-3">
-                  <h3 className="text-xl font-black uppercase tracking-wider text-amber-450 syne-font">Arizangiz Kutilmoqda</h3>
+                  <h3 className="text-xl font-black uppercase tracking-wider text-amber-500 syne-font">Arizangiz Kutilmoqda</h3>
                   <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
                     Hurmatli <b>{permitRequest.full_name}</b>, siz yuborgan yotoqxona yo&apos;llanmasi hozirda ko&apos;rib chiqilmoqda. Arizangiz tasdiqlanib, Dekan xona raqamini belgilaganidan so&apos;ng ro&apos;yxatdan o&apos;tish imkoni ochiladi.
                   </p>
@@ -371,7 +371,7 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
                   <button
                     onClick={() => checkStatus(false)}
-                    className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-550 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]"
+                    className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]"
                   >
                     <RefreshCw size={14} className="animate-spin" style={{ animationDuration: '4s' }} /> Statusni yangilash
                   </button>
@@ -394,14 +394,14 @@ export default function Home() {
                 </div>
                 <div className="space-y-3">
                   <h3 className="text-xl font-black uppercase tracking-wider text-rose-500 syne-font">Ariza Rad Etildi</h3>
-                  <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-605' : 'text-slate-300'}`}>
-                    Yo&apos;llanma arizangiz rad etilgan. Sababi: <span className="font-bold text-rose-455">{permitRequest.reject_reason || "Hujjat talabga javob bermaydi."}</span>
+                  <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+                    Yo&apos;llanma arizangiz rad etilgan. Sababi: <span className="font-bold text-rose-500">{permitRequest.reject_reason || "Hujjat talabga javob bermaydi."}</span>
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
                   <Link
                     href="/ruxsatnoma-yuborish"
-                    className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-655 text-white font-black text-xs uppercase tracking-wider text-center transition-all shadow-lg shadow-rose-500/20 active:scale-[0.98]"
+                    className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-black text-xs uppercase tracking-wider text-center transition-all shadow-lg shadow-rose-500/20 active:scale-[0.98]"
                   >
                     Qayta yuborish (my.gov.uz)
                   </Link>
@@ -423,22 +423,22 @@ export default function Home() {
                   <CheckCircle2 size={32} className="animate-bounce" />
                 </div>
                 <div className="space-y-3">
-                  <h3 className="text-xl font-black uppercase tracking-wider text-emerald-555 syne-font">Yo&apos;llanmangiz tasdiqlandi!</h3>
-                  <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-605' : 'text-slate-200'}`}>
+                  <h3 className="text-xl font-black uppercase tracking-wider text-emerald-500 syne-font">Yo&apos;llanmangiz tasdiqlandi!</h3>
+                  <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-600' : 'text-slate-200'}`}>
                     Tabriklaymiz, <b>{permitRequest.full_name}</b>! Yo&apos;llanma tasdiqlandi va sizga <b>{permitRequest.room_number}-xona</b> ajratildi. Quyidagi tugmani bosib, akkauntingiz uchun parol belgilang.
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
                   <Link
                     href={`/register?k=${permitRequest.passport_series}&j=${permitRequest.jshshir}`}
-                    className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-550 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-550/20 active:scale-[0.98]"
+                    className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
                   >
                     <UserPlus size={14} /> Ro&apos;yxatdan O&apos;tish
                   </Link>
                   <button
                     onClick={handleClearStatus}
                     className={`py-4 px-6 rounded-2xl border font-black text-xs uppercase tracking-wider transition-all active:scale-[0.98] ${
-                      isLight ? 'border-slate-350 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'
+                      isLight ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'
                     }`}
                   >
                     Keshni tozalash
@@ -454,21 +454,21 @@ export default function Home() {
                 </div>
                 <div className="space-y-3">
                   <h3 className="text-xl font-black uppercase tracking-wider text-sky-500 syne-font">Ro&apos;yxatdan O&apos;tish Yakunlangan</h3>
-                  <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-605' : 'text-slate-300'}`}>
+                  <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
                     Hurmatli <b>{permitRequest.full_name}</b>, siz ro&apos;yxatdan o&apos;tib parolingizni kiritgansiz. Tizimdan foydalanish uchun kirish sahifasiga o&apos;ting.
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
                   <Link
                     href="/login?student=1"
-                    className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-sky-550 to-blue-650 hover:from-sky-600 hover:to-blue-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-sky-500/20"
+                    className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-sky-500/20"
                   >
                     <LogIn size={14} /> Tizimga Kirish
                   </Link>
                   <button
                     onClick={handleClearStatus}
                     className={`py-4 px-6 rounded-2xl border font-black text-xs uppercase tracking-wider transition-all active:scale-[0.98] ${
-                      isLight ? 'border-slate-350 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'
+                      isLight ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'
                     }`}
                   >
                     Boshqa pasport
@@ -497,7 +497,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
               <Link
                 href="/ruxsatnoma-yuborish"
-                className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-650 text-white font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/30 active:scale-[0.98] border border-white/10"
+                className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/30 active:scale-[0.98] border border-white/10"
               >
                 <UploadCloud size={14} /> Yo&apos;llanma Yuborish
               </Link>
@@ -576,7 +576,7 @@ export default function Home() {
       </section>
 
       {/* Statistics & Trust footer */}
-      <section className="relative z-10 max-w-4xl mx-auto px-4 py-10 text-center space-y-4 border-t border-slate-250/20 dark:border-white/5">
+      <section className="relative z-10 max-w-4xl mx-auto px-4 py-10 text-center space-y-4 border-t border-slate-200/20 dark:border-white/5">
         <div className={`flex justify-center gap-6 text-[10px] font-black uppercase tracking-wider transition-colors duration-500 ${
           isLight ? 'text-slate-500' : 'text-gray-600'
         }`}>

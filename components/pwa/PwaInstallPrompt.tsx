@@ -143,7 +143,7 @@ export default function PwaInstallPrompt() {
                       <Sparkles size={8} /> PWA
                     </span>
                   </div>
-                  <p className="text-xs text-slate-350 mt-1 leading-relaxed font-sans">
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed font-sans">
                     Yotoqxona tizimidan tezroq va qulayroq foydalanish uchun ilovani telefoningiz yoki kompyuteringizga o&apos;rnating!
                   </p>
                 </div>

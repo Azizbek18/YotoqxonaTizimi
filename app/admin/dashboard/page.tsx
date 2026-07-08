@@ -335,9 +335,9 @@ export default function AdminDashboard() {
 
     setSystemStatus({
       dbStatus,
-      dbPing: dbPing || Math.round(Math.random() * 30 + 10),
+      dbPing,
       apiStatus,
-      apiPing: apiPing || Math.round(Math.random() * 40 + 15),
+      apiPing,
       time: new Date().toLocaleTimeString('uz-UZ'),
     })
     setIsCheckingStatus(false)
@@ -505,8 +505,6 @@ export default function AdminDashboard() {
       imageSrc: '/3d-icons/student_3d_v4.png',
       color: 'from-blue-500 to-indigo-600',
       glowColor: 'rgba(59, 130, 246, 0.15)',
-      trend: 12,
-      trendLabel: 'bu oyda',
     },
     {
       title: 'Jami Arizalar',
@@ -514,8 +512,6 @@ export default function AdminDashboard() {
       imageSrc: '/3d-icons/document_3d_v4.png',
       color: 'from-purple-500 to-pink-600',
       glowColor: 'rgba(168, 85, 247, 0.15)',
-      trend: 8,
-      trendLabel: 'bu oyda',
     },
     {
       title: 'Tasdiqlangan',
@@ -523,8 +519,6 @@ export default function AdminDashboard() {
       imageSrc: '/3d-icons/check_3d_v4.png',
       color: 'from-emerald-500 to-green-600',
       glowColor: 'rgba(16, 185, 129, 0.15)',
-      trend: 15,
-      trendLabel: 'bu oyda',
     },
     {
       title: 'Kutish Holati',
@@ -532,8 +526,6 @@ export default function AdminDashboard() {
       imageSrc: '/3d-icons/clock_3d_v4.png',
       color: 'from-orange-500 to-amber-600',
       glowColor: 'rgba(245, 158, 11, 0.15)',
-      trend: -5,
-      trendLabel: 'bu oyda',
     },
     {
       title: 'Tarbiyachilar',
@@ -541,8 +533,6 @@ export default function AdminDashboard() {
       imageSrc: '/3d-icons/educator_3d_v4.png',
       color: 'from-cyan-500 to-blue-600',
       glowColor: 'rgba(6, 182, 212, 0.15)',
-      trend: 3,
-      trendLabel: 'bu oyda',
     },
     {
       title: 'Jami Foydalanuvchilar',
@@ -550,8 +540,6 @@ export default function AdminDashboard() {
       imageSrc: '/3d-icons/user_3d_v4.png',
       color: 'from-rose-500 to-red-600',
       glowColor: 'rgba(244, 63, 94, 0.15)',
-      trend: 10,
-      trendLabel: 'bu oyda',
     },
   ]
 
@@ -660,8 +648,6 @@ export default function AdminDashboard() {
                   imageSrc={card.imageSrc}
                   color={card.color}
                   glowColor={card.glowColor}
-                  trend={card.trend}
-                  trendLabel={card.trendLabel}
                   isLoading={stats.loading}
                 />
               ))}
@@ -1192,7 +1178,7 @@ export default function AdminDashboard() {
                       {systemStatus.dbStatus === 'online' ? 'Faol' : 'Oflayn'}
                     </span>
                     {systemStatus.dbStatus === 'online' && (
-                      <p className="text-xs font-bold text-emerald-400/80 mt-1">{systemStatus.dbPing} ms</p>
+                      <p className="text-xs font-bold text-emerald-400/80 mt-1">{systemStatus.dbPing > 0 ? `${systemStatus.dbPing} ms` : '<1 ms'}</p>
                     )}
                   </div>
                 </div>
@@ -1216,7 +1202,7 @@ export default function AdminDashboard() {
                       {systemStatus.apiStatus === 'online' ? 'Faol' : 'Kutilmoqda'}
                     </span>
                     {systemStatus.apiStatus === 'online' && (
-                      <p className="text-xs font-bold text-purple-400/80 mt-1">{systemStatus.apiPing} ms</p>
+                      <p className="text-xs font-bold text-purple-400/80 mt-1">{systemStatus.apiPing > 0 ? `${systemStatus.apiPing} ms` : '<1 ms'}</p>
                     )}
                   </div>
                 </div>

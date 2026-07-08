@@ -26,9 +26,14 @@ export async function POST(request: Request) {
     const staffId = typeof body.staffId === 'string' ? body.staffId : ''
     const registerCode = typeof body.registerCode === 'string' ? body.registerCode : ''
     const linkKey = typeof body.linkKey === 'string' ? body.linkKey : ''
+    const faculty = typeof body.faculty === 'string' ? body.faculty.trim() : ''
 
-    if (role !== 'admin' && role !== 'tarbiyachi') {
+    if (role !== 'admin' && role !== 'tarbiyachi' && role !== 'zamdekan') {
       return NextResponse.json({ ok: false, error: "Noto'g'ri rol" }, { status: 400 })
+    }
+
+    if (role === 'zamdekan' && !faculty) {
+      return NextResponse.json({ ok: false, error: 'Fakultet kiritilishi shart' }, { status: 400 })
     }
 
     if (!fullName || !email || !password || !confirmPassword) {
@@ -74,6 +79,7 @@ export async function POST(request: Request) {
       staff_id: staffId,
       role,
       status: 'active',
+      faculty: role === 'zamdekan' ? faculty : null,
     })
 
     if (userError) {

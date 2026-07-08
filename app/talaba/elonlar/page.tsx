@@ -54,16 +54,6 @@ type FilterType = 'Barchasi' | Elon['type'];
 
 const FILTERS: FilterType[] = ['Barchasi', 'Muhim', 'Tadbir', 'Yangilik', 'Ogohlantirish'];
 
-const DATA: { umumiy: Elon[] } = {
-  umumiy: [
-    { id: 1, title: "Internet tezligi 100 Mbit/s ga oshirildi", text: "Yotoqxona bo'ylab barcha routerlar yangi 5G standartiga o'tkazildi va internet tarmoq tezligi sezilarli ravishda yaxshilandi.", date: "Bugun", type: "Yangilik", audience: 'all', faculty: null, teacher: "AT bo'limi", room: "Barcha xonalar" },
-    { id: 2, title: "Bino liftlari to'liq yangilandi", text: "Barcha bloklardagi liftlar Germaniya texnologiyasi asosida to'liq modernizatsiya qilinib, xavfsizlik sertifikatlariga ega bo'ldi.", date: "Bugun", type: "Muhim", audience: 'all', faculty: null, teacher: "Komedant", room: "A/B/C Bloklar" },
-    { id: 3, title: "Futbol turniri: Final o'yini", text: "Ertaga soat 17:00 da yotoqxona stadionida 1-va 4-blok jamoalari o'rtasida shiddatli final o'yini va tantanali yopilish marosimi bo'lib o'tadi.", date: "Bugun", type: "Tadbir", audience: 'all', faculty: null, teacher: "Sport Kengashi", room: "Stadion" },
-    { id: 4, title: "Kutubxona 24/7 ishlash tartibiga o'tdi", text: "Imtihonlar mavsumi yaqinlashayotganligi munosabati bilan bino kutubxonasi tunu-kun (24/7) ishlash rejimiga o'tkazildi.", date: "Kecha", type: "Yangilik", audience: 'all', faculty: null, teacher: "Kutubxonachi", room: "Ziyomax" },
-    { id: 5, title: "Elektr energiyasidagi vaqtinchalik uzilish", text: "Profilaktika va texnik ta'mirlash ishlari sababli juma kuni soat 14:00 dan 16:00 gacha elektr energiyasi vaqtincha o'chiriladi.", date: "Kecha", type: "Ogohlantirish", audience: 'all', faculty: null, teacher: "Bosh muhandis", room: "Bosh transformator" },
-  ],
-};
-
 const typeStyles: Record<Elon['type'], { badge: string; border: string; bg: string; rail: string; icon: React.ReactNode }> = {
   Muhim: {
     badge: 'border-red-500/30 bg-red-500/10 text-red-400',
@@ -130,7 +120,7 @@ function mapDbElon(elon: DbElon): Elon {
 export default function ElonlarPage() {
   const [view, setView] = useState<ViewMode>('dorm');
   const [selectedElon, setSelectedElon] = useState<Elon | null>(null);
-  const [elonlar, setElonlar] = useState<Elon[]>(DATA.umumiy);
+  const [elonlar, setElonlar] = useState<Elon[]>([]);
   const [currentFaculty, setCurrentFaculty] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -173,11 +163,12 @@ export default function ElonlarPage() {
 
         if (isMounted && Array.isArray(result.elonlar)) {
           const mapped = result.elonlar.map((elon: DbElon) => mapDbElon(elon));
-          setElonlar(mapped.length > 0 ? mapped : DATA.umumiy);
+          setElonlar(mapped);
           setCurrentFaculty(typeof result.currentFaculty === 'string' ? result.currentFaculty : null);
         }
       } catch (error) {
         console.error("E'lonlarni yuklashda xatolik:", error);
+        if (isMounted) setElonlar([]);
       } finally {
         if (isMounted) setLoading(false);
       }

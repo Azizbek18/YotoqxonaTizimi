@@ -12,6 +12,8 @@ import {
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { supabase } from '@/lib/supabase';
 import { getSafeUser } from '@/lib/auth-session';
+import { extractFloor } from '@/lib/floor';
+import ProfileLoadError from '@/components/talaba/ProfileLoadError';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { marked } from 'marked';
@@ -141,6 +143,7 @@ export default function TalabaDashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roommates, setRoommates] = useState<Profile[]>([]);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [profileError, setProfileError] = useState(false);
   const [floorCaptain, setFloorCaptain] = useState<CaptainInfo | null>(null);
 
 
@@ -606,14 +609,6 @@ export default function TalabaDashboard() {
   // Fetch Profile, Roommates, Announcements, and Disciplinary Writeups
   useEffect(() => {
     async function fetchData() {
-      // Helper function to extract floor
-      function extractFloor(roomNumber: string | null | undefined): number | null {
-        if (!roomNumber) return null
-        const num = parseInt(roomNumber.trim().replace(/\D/g, ''))
-        if (isNaN(num)) return null
-        return Math.floor((num - 1) / 30) + 1
-      }
-
       try {
         setLoadingProfile(true);
         const user = await getSafeUser();
@@ -665,191 +660,148 @@ export default function TalabaDashboard() {
           }
         }
 
-        // Mock mode if not logged in or database error
         if (!currentProfile) {
-          const mockProfile = {
-            id: '1',
-            full_name: "Sherzod G'apparov",
-            email: "sherzod@univer.uz",
-            phone: "+998 90 123 45 67",
-            faculty: "Amaliy Matematika & IT",
-            role: "Talaba",
-            room_number: "87-xona",
-            course: "1",
-            group: "TMI-03"
-          };
-          setProfile(mockProfile);
-          currentProfile = mockProfile;
-
-          setRoommates([
-            {
-              id: '2',
-              full_name: "Dilshod Latipov",
-              email: "dilshod@univer.uz",
-              phone: "+998 90 234 56 78",
-              faculty: "Amaliy Matematika",
-              role: "Talaba",
-              room_number: "87-xona",
-              course: "1",
-              group: "TMI-03"
-            },
-            {
-              id: '3',
-              full_name: "Gaxriman Araznepesov",
-              email: "gaxriman@univer.uz",
-              phone: "+998 90 345 67 89",
-              faculty: "Amaliy Matematika",
-              role: "Talaba",
-              room_number: "87-xona",
-              course: "1",
-              group: "TMI-03"
-            }
-          ]);
+          setProfileError(true);
         }
 
-        // 3. Real E'lonlarni Yuklash (API orqali filterlangan holda)
-        const { data: { session: elonSession } } = await supabase.auth.getSession();
-        const elonAuthHeader: Record<string, string> = elonSession?.access_token
-          ? { Authorization: `Bearer ${elonSession.access_token}` }
-          : {};
-        const resElon = await fetch('/api/elonlar', { headers: elonAuthHeader });
-        const resultElon = await resElon.json();
+        // Steps 3-5 load supplementary data (announcements, warnings, payments).
+        // A failure here must never hide an already-loaded profile behind the
+        // fatal error screen, so each step is isolated in its own try/catch.
 
-        if (resElon.ok && Array.isArray(resultElon.elonlar)) {
-          const mappedElons = resultElon.elonlar.map((e: {
-            id: string | number;
-            title: string;
-            type: 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish';
-            author_name?: string;
-            is_from_captain?: boolean;
-            captain_floor?: number | string;
-            published_at?: string;
-            created_at?: string;
-            text: string;
-          }) => ({
-            id: e.id,
-            title: e.title,
-            type: e.type,
-            teacher: e.author_name || "Tizim ma'muri",
-            room: e.is_from_captain ? `${e.captain_floor}-qavat sardori` : "Ma'muriyat",
-            time: formatElonDate(e.published_at ?? e.created_at),
-            desc: e.text,
-            is_from_captain: e.is_from_captain,
-          }));
-          setElonlar(mappedElons);
-        } else {
-          // Mock announcements if DB is empty
-          setElonlar([
-            {
-              id: 1,
-              title: "Fakultet Bayram Tadbiri",
-              type: "Tadbir",
-              teacher: "Ma'naviyat bo'limi",
-              room: "Fakultet hovlisi",
-              time: "Bugun",
-              desc: "Navro'z sayli va talabalar bayrami bo'lib o'tadi."
-            },
-            {
-              id: 2,
-              title: "Frontend darslari boshlandi",
-              type: "Yangilik",
-              teacher: "Mo'minov Azizbek",
-              room: "302-xona",
-              time: "Kecha",
-              desc: "React.js kutubxonasi bo'yicha amaliy darslar davom etadi."
-            },
-            {
-              id: 3,
-              title: "Yong'in xavfsizligi bo'yicha yo'riqnoma",
-              type: "Muhim",
-              teacher: "Xavfsizlik xizmati",
-              room: "Majlislar zali",
-              time: "2 kun avval",
-              desc: "Barcha talabalar yong'in xavfsizligi talablariga rioya etishi shart."
-            }
-          ]);
+        // 3. Real E'lonlarni Yuklash (API orqali filterlangan holda)
+        try {
+          const { data: { session: elonSession } } = await supabase.auth.getSession();
+          const elonAuthHeader: Record<string, string> = elonSession?.access_token
+            ? { Authorization: `Bearer ${elonSession.access_token}` }
+            : {};
+          const resElon = await fetch('/api/elonlar', { headers: elonAuthHeader });
+          const resultElon = await resElon.json();
+
+          if (resElon.ok && Array.isArray(resultElon.elonlar)) {
+            const mappedElons = resultElon.elonlar.map((e: {
+              id: string | number;
+              title: string;
+              type: 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish';
+              author_name?: string;
+              is_from_captain?: boolean;
+              captain_floor?: number | string;
+              published_at?: string;
+              created_at?: string;
+              text: string;
+            }) => ({
+              id: e.id,
+              title: e.title,
+              type: e.type,
+              teacher: e.author_name || "Tizim ma'muri",
+              room: e.is_from_captain ? `${e.captain_floor}-qavat sardori` : "Ma'muriyat",
+              time: formatElonDate(e.published_at ?? e.created_at),
+              desc: e.text,
+              is_from_captain: e.is_from_captain,
+            }));
+            setElonlar(mappedElons);
+          } else {
+            setElonlar([]);
+          }
+        } catch (elonError) {
+          console.error("E'lonlarni yuklashda xato:", elonError);
+          setElonlar([]);
         }
 
         // 4. Real Arizalar / Ogohlantirishlarni Yuklash (arizalar table)
-        if (currentProfile && currentProfile.full_name) {
-          const { data: arizalarData, error: arizalarError } = await supabase
-            .from('arizalar')
-            .select('*')
-            .eq('student_name', currentProfile.full_name)
-            .neq('status', 'draft')
-            .neq('type', 'chat')
-            .in('level', ['warning', 'critical'])
-            .order('created_at', { ascending: false });
+        try {
+          if (currentProfile && currentProfile.full_name) {
+            const { data: arizalarData, error: arizalarError } = await supabase
+              .from('arizalar')
+              .select('*')
+              .eq('student_name', currentProfile.full_name)
+              .neq('status', 'draft')
+              .neq('type', 'chat')
+              .in('level', ['warning', 'critical'])
+              .order('created_at', { ascending: false });
 
-          if (!arizalarError && arizalarData && arizalarData.length > 0) {
-            const mappedArizalar = arizalarData.map((a: {
-              id: string | number;
-              student_name: string;
-              created_at?: string;
-              text: string;
-              level?: string;
-            }) => ({
-              id: a.id,
-              ism: a.student_name,
-              kurs: currentProfile?.course ? `${currentProfile.course}-kurs` : "—",
-              yonalish: currentProfile?.faculty || "—",
-              sana: a.created_at ? new Date(a.created_at).toLocaleDateString('uz-UZ') : '—',
-              matn: a.text,
-              daraja: (a.level === 'critical' ? 'danger' : a.level === 'warning' ? 'warning' : 'info') as Ariza['daraja'],
-            }));
-            setArizalar(mappedArizalar);
-          } else {
-            setArizalar([]);
+            if (!arizalarError && arizalarData && arizalarData.length > 0) {
+              const mappedArizalar = arizalarData.map((a: {
+                id: string | number;
+                student_name: string;
+                created_at?: string;
+                text: string;
+                level?: string;
+              }) => ({
+                id: a.id,
+                ism: a.student_name,
+                kurs: currentProfile?.course ? `${currentProfile.course}-kurs` : "—",
+                yonalish: currentProfile?.faculty || "—",
+                sana: a.created_at ? new Date(a.created_at).toLocaleDateString('uz-UZ') : '—',
+                matn: a.text,
+                daraja: (a.level === 'critical' ? 'danger' : a.level === 'warning' ? 'warning' : 'info') as Ariza['daraja'],
+              }));
+              setArizalar(mappedArizalar);
+            } else {
+              setArizalar([]);
+            }
           }
+        } catch (arizaError) {
+          console.error('Arizalarni yuklashda xato:', arizaError);
+          setArizalar([]);
         }
 
         // 4b. Real Murojaat va Arizalarim Statusini Yuklash (arizalar table)
-        if (user) {
-          const { data: myAppsData, error: myAppsError } = await supabase
-            .from('arizalar')
-            .select('*')
-            .eq('student_id', user.id)
-            .in('type', ['ariza', 'tushuntirish'])
-            .order('created_at', { ascending: false })
-            .limit(3);
+        try {
+          if (user) {
+            const { data: myAppsData, error: myAppsError } = await supabase
+              .from('arizalar')
+              .select('*')
+              .eq('student_id', user.id)
+              .in('type', ['ariza', 'tushuntirish'])
+              .order('created_at', { ascending: false })
+              .limit(3);
 
-          if (!myAppsError && myAppsData && myAppsData.length > 0) {
-            const mappedMyApps = myAppsData.map((app: {
-              id: string | number;
-              type?: string;
-              title?: string;
-              date?: string;
-              created_at?: string;
-              status?: string;
-            }) => ({
-              id: app.id,
-              type: (app.type || 'ariza') as 'ariza' | 'tushuntirish',
-              title: app.title || 'Sarlavhasiz',
-              createdDate: app.date || app.created_at || new Date().toISOString(),
-              status: (app.status || 'pending') as 'draft' | 'submitted' | 'pending' | 'approved' | 'rejected',
-            }));
-            setMyApplications(mappedMyApps);
+            if (!myAppsError && myAppsData && myAppsData.length > 0) {
+              const mappedMyApps = myAppsData.map((app: {
+                id: string | number;
+                type?: string;
+                title?: string;
+                date?: string;
+                created_at?: string;
+                status?: string;
+              }) => ({
+                id: app.id,
+                type: (app.type || 'ariza') as 'ariza' | 'tushuntirish',
+                title: app.title || 'Sarlavhasiz',
+                createdDate: app.date || app.created_at || new Date().toISOString(),
+                status: (app.status || 'pending') as 'draft' | 'submitted' | 'pending' | 'approved' | 'rejected',
+              }));
+              setMyApplications(mappedMyApps);
+            } else {
+              setMyApplications([]);
+            }
           } else {
             setMyApplications([]);
           }
-        } else {
+        } catch (myAppsCatchError) {
+          console.error('Murojaatlarni yuklashda xato:', myAppsCatchError);
           setMyApplications([]);
         }
 
         // 5. Real Tolovlarni Yuklash (tolovlar table)
-        if (user) {
-          const { data: tolovData, error: tolovError } = await supabase
-            .from('tolovlar')
-            .select('*')
-            .eq('student_id', user.id);
+        try {
+          if (user) {
+            const { data: tolovData, error: tolovError } = await supabase
+              .from('tolovlar')
+              .select('*')
+              .eq('student_id', user.id);
 
-          if (!tolovError && tolovData) {
-            setPayments(tolovData);
+            if (!tolovError && tolovData) {
+              setPayments(tolovData);
+            }
           }
+        } catch (tolovCatchError) {
+          console.error("To'lovlarni yuklashda xato:", tolovCatchError);
         }
 
       } catch (error) {
         console.error('Ma\'lumotlarni yuklashda xato:', error);
+        setProfileError(true);
       } finally {
         setLoadingProfile(false);
       }
@@ -912,6 +864,10 @@ export default function TalabaDashboard() {
         </div>
       </div>
     );
+  }
+
+  if (profileError || !profile) {
+    return <ProfileLoadError isLight={isLight} />;
   }
 
   return (
@@ -1020,7 +976,7 @@ export default function TalabaDashboard() {
                           {todayDutyPerson.id === profile?.id ? `${profile?.full_name} (Siz)` : todayDutyPerson.name}
                         </span>
                       ) : (
-                        <span className="text-white/50 italic">Bugun hech kim biriktirilmagan</span>
+                        <span className="text-white/50 italic">Bugun hech kim biriktirilmagan — pastdagi tugma orqali tayinlang</span>
                       )}
                     </div>
                   </div>
@@ -1123,46 +1079,6 @@ export default function TalabaDashboard() {
               </div>
             </div>
           )}
-
-          {/* Turniket Logs (Gate Passes) */}
-          <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg}`}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className={`text-[10px] font-black tracking-[0.2em] uppercase ${
-                isLight ? 'text-blue-600' : 'text-cyan-400'
-              }`}>
-                Kirish-chiqish Tarixi
-              </h3>
-              <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                Turniket: FAOL
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              <div className={`flex justify-between items-center p-3 rounded-2xl border ${cardBorder} ${cardInnerBg}`}>
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <span className={`text-xs font-bold ${textStrong}`}>Kirish (Asosiy darvoza)</span>
-                </div>
-                <span className={`text-[10px] font-semibold ${textMuted}`}>Bugun, 18:30</span>
-              </div>
-              
-              <div className={`flex justify-between items-center p-3 rounded-2xl border ${cardBorder} ${cardInnerBg}`}>
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                  <span className={`text-xs font-bold ${textStrong}`}>Chiqish (Asosiy darvoza)</span>
-                </div>
-                <span className={`text-[10px] font-semibold ${textMuted}`}>Bugun, 14:15</span>
-              </div>
-
-              <div className={`flex justify-between items-center p-3 rounded-2xl border ${cardBorder} ${cardInnerBg}`}>
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <span className={`text-xs font-bold ${textStrong}`}>Kirish (B bino)</span>
-                </div>
-                <span className={`text-[10px] font-semibold ${textMuted}`}>Kecha, 21:55</span>
-              </div>
-            </div>
-          </div>
 
           {/* Xonadoshlar Ro'yxati */}
           <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg}`}>
@@ -1509,13 +1425,13 @@ export default function TalabaDashboard() {
               <h3 className={`text-[10px] font-black tracking-[0.2em] uppercase ${
                 arizaSoni >= 3 ? 'text-red-500' : isLight ? 'text-blue-600' : 'text-indigo-400'
               }`}>
-                Tartib-intizom & Salomatlik Indeksi
+                Intizom Reytingi
               </h3>
-              
+
               <div className="flex items-center gap-1.5">
                 <Heart size={14} className={arizaSoni >= 3 ? 'text-red-500 animate-pulse' : 'text-emerald-500'} />
                 <span className={`text-[10px] font-black uppercase ${arizaSoni >= 3 ? 'text-red-500' : 'text-emerald-500'}`}>
-                  Tizim sog&apos;ligi: {healthPercent}%
+                  Intizom darajasi: {healthPercent}%
                 </span>
               </div>
             </div>

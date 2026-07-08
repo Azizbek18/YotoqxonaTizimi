@@ -10,6 +10,9 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { supabase } from '@/lib/supabase'
 import { getSafeUser } from '@/lib/auth-session'
 import { User } from '@supabase/supabase-js'
+import toast from 'react-hot-toast'
+import ConfirmModal from '@/components/ui/ConfirmModal'
+import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 
 interface Profile {
     id: string
@@ -57,6 +60,7 @@ export default function ArizalarContent() {
     const [showDetailModal, setShowDetailModal] = useState(false)
     const [isGenerating, setIsGenerating] = useState(false)
     const [mounted, setMounted] = useState(false)
+    const deleteModal = useConfirmModal<number | string>()
 
     useEffect(() => {
         setMounted(true)
@@ -145,12 +149,12 @@ export default function ArizalarContent() {
 
     const generateWithAI = async () => {
         if (!newAppForm.title || !newAppForm.reason) {
-            alert('Iltimos, sarlavha va sababni kiriting')
+            toast.error('Iltimos, sarlavha va sababni kiriting')
             return
         }
 
         if (!user) {
-            alert('Sessiya topilmadi. Tizimga qaytadan kiring.')
+            toast.error('Sessiya topilmadi. Tizimga qaytadan kiring.')
             return
         }
 
@@ -204,7 +208,7 @@ export default function ArizalarContent() {
         } catch (error) {
             console.error('Error generating and saving application:', error)
             const errMsg = error instanceof Error ? error.message : String(error)
-            alert('Ariza yaratish va saqlashda xatolik yuz berdi: ' + errMsg)
+            toast.error('Ariza yaratish va saqlashda xatolik yuz berdi: ' + errMsg)
         } finally {
             setIsGenerating(false)
         }
@@ -240,26 +244,34 @@ export default function ArizalarContent() {
             doc.save(`${app.type}_${app.id}.pdf`)
         } catch (error) {
             console.error('Error generating PDF:', error)
-            alert('PDF yuklashda xatolik yuz berdi. Iltimos, qaytadan urinib ko\'ring.')
+            toast.error('PDF yuklashda xatolik yuz berdi. Iltimos, qaytadan urinib ko\'ring.')
         }
     }
 
-    const deleteApp = async (id: number | string) => {
-        if (confirm('Rostdanham o\'chirmoqchisiz?')) {
-            try {
-                const { error } = await supabase
-                    .from('arizalar')
-                    .delete()
-                    .eq('id', id)
+    const deleteApp = (id: number | string) => {
+        deleteModal.open(id)
+    }
 
-                if (error) throw error
+    const confirmDeleteApp = async () => {
+        if (deleteModal.target === undefined) return
+        const id = deleteModal.target
+        deleteModal.setIsLoading(true)
+        try {
+            const { error } = await supabase
+                .from('arizalar')
+                .delete()
+                .eq('id', id)
 
-                setApplications(applications.filter(a => a.id !== id))
-            } catch (error) {
-                console.error('Error deleting application:', error)
-                const errMsg = error instanceof Error ? error.message : String(error)
-                alert('Arizani o\'chirishda xatolik yuz berdi: ' + errMsg)
-            }
+            if (error) throw error
+
+            setApplications(applications.filter(a => a.id !== id))
+            deleteModal.close()
+        } catch (error) {
+            console.error('Error deleting application:', error)
+            const errMsg = error instanceof Error ? error.message : String(error)
+            toast.error('Arizani o\'chirishda xatolik yuz berdi: ' + errMsg)
+        } finally {
+            deleteModal.setIsLoading(false)
         }
     }
 
@@ -278,7 +290,7 @@ export default function ArizalarContent() {
         } catch (error) {
             console.error('Error submitting application:', error)
             const errMsg = error instanceof Error ? error.message : String(error)
-            alert('Arizani yuborishda xatolik yuz berdi: ' + errMsg)
+            toast.error('Arizani yuborishda xatolik yuz berdi: ' + errMsg)
         }
     }
 
@@ -602,6 +614,17 @@ export default function ArizalarContent() {
                 </div>,
                 document.body
             )}
+
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                title="Arizani o'chirish"
+                description="Ushbu qoralamani o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi."
+                onClose={deleteModal.close}
+                onConfirm={confirmDeleteApp}
+                confirmText="O'chirish"
+                confirmVariant="danger"
+                isLoading={deleteModal.isLoading}
+            />
         </div>
     )
 }

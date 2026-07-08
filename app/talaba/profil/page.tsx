@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import ProfileLoadError from '@/components/talaba/ProfileLoadError'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Profile {
@@ -252,6 +253,7 @@ export default function StudentProfile() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [roommates, setRoommates] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
+  const [profileError, setProfileError] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editForm, setEditForm] = useState<Partial<Profile>>({})
@@ -351,46 +353,11 @@ export default function StudentProfile() {
           }
         }
 
-        // Mock profile fallback
-        setProfile({
-          id: '1',
-          full_name: "Azizbek Karimov",
-          email: "azizbek@univer.uz",
-          phone: "+998 90 123 45 67",
-          faculty: "Dasturiy Injiniring",
-          role: "Talaba",
-          room_number: "204-xona",
-          course: "3",
-          group: "412"
-        })
-        setLastLogin(new Date().toISOString())
-        setRoommates([
-          {
-            id: '2',
-            full_name: "Dilshod Latipov",
-            email: "dilshod@univer.uz",
-            phone: "+998 90 234 56 78",
-            faculty: "Dasturiy Injiniring",
-            role: "Talaba",
-            room_number: "204-xona",
-            course: "3",
-            group: "412"
-          },
-          {
-            id: '3',
-            full_name: "Gaxriman Araznepesov",
-            email: "gaxriman@univer.uz",
-            phone: "+998 90 345 67 89",
-            faculty: "Dasturiy Injiniring",
-            role: "Talaba",
-            room_number: "204-xona",
-            course: "3",
-            group: "412"
-          }
-        ])
+        setProfileError(true)
 
-      } catch {
-        console.log("Offline mode fallback enabled")
+      } catch (err) {
+        console.error('Profil yuklashda xato:', err)
+        setProfileError(true)
       } finally {
         setLoading(false)
       }
@@ -652,6 +619,10 @@ export default function StudentProfile() {
 
   if (loading) {
     return <Skeleton />
+  }
+
+  if (profileError || !profile) {
+    return <ProfileLoadError isLight={isLight} />
   }
 
   return (

@@ -113,13 +113,13 @@ function StatusCheckContent() {
         <div className={`backdrop-blur-3xl border rounded-3xl sm:rounded-4xl p-5 sm:p-10 shadow-2xl overflow-hidden ${isLight ? 'bg-white/80 border-slate-200' : 'bg-[#0b1120]/80 border-white/10'}`}>
           {/* Header */}
           <div className="text-center mb-6 sm:mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-linear-to-br from-blue-500 to-indigo-650 shadow-xl mb-3.5 p-px">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 shadow-xl mb-3.5 p-px">
               <div className={`w-full h-full rounded-full flex items-center justify-center ${isLight ? 'bg-white text-blue-600' : 'bg-[#020617] text-blue-500'}`}>
                 <Search className="h-6 w-6" />
               </div>
             </div>
             <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight">Statusni Tekshirish</h1>
-            <p className={`text-[10px] sm:text-xs font-medium mt-1.5 ${isLight ? 'text-slate-505' : 'text-slate-400'}`}>
+            <p className={`text-[10px] sm:text-xs font-medium mt-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               Pasport seriyasi va JShSHIR ma&apos;lumotlarini kiritib, yo&apos;llanma tasdiqlanish holatini tekshiring.
             </p>
           </div>
@@ -132,7 +132,7 @@ function StatusCheckContent() {
                 value={passportSeries}
                 onChange={(e) => setPassportSeries(e.target.value)}
                 placeholder="AA1234567"
-                className={`w-full border p-3 rounded-xl text-xs outline-none transition-all font-sans ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200' : 'bg-slate-900/30 border-white/15 text-white placeholder:text-slate-450 focus:border-blue-500/50'}`}
+                className={`w-full border p-3 rounded-xl text-xs outline-none transition-all font-sans ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200' : 'bg-slate-900/30 border-white/15 text-white placeholder:text-slate-400 focus:border-blue-500/50'}`}
                 required
               />
             </div>
@@ -144,7 +144,7 @@ function StatusCheckContent() {
                 value={jshshir}
                 onChange={(e) => setJshshir(e.target.value)}
                 placeholder="30102030405060"
-                className={`w-full border p-3 rounded-xl text-xs outline-none transition-all font-sans ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200' : 'bg-slate-900/30 border-white/15 text-white placeholder:text-slate-450 focus:border-blue-500/50'}`}
+                className={`w-full border p-3 rounded-xl text-xs outline-none transition-all font-sans ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200' : 'bg-slate-900/30 border-white/15 text-white placeholder:text-slate-400 focus:border-blue-500/50'}`}
                 required
               />
             </div>
@@ -152,7 +152,7 @@ function StatusCheckContent() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-750 text-white font-black uppercase tracking-wider text-xs shadow-xl transition-all active:scale-98 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-wider text-xs shadow-xl transition-all active:scale-98 disabled:opacity-50"
             >
               {loading ? (
                 <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -192,7 +192,7 @@ function StatusCheckContent() {
                     {/* 2. Rejected Status */}
                     {result.status === 'rejected' && (
                       <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-center space-y-3">
-                        <XCircle className="mx-auto h-10 w-10 text-rose-455" />
+                        <XCircle className="mx-auto h-10 w-10 text-rose-400" />
                         <div className="space-y-1">
                           <h3 className="text-xs font-black uppercase tracking-wider text-rose-400">Rad etilgan</h3>
                           <p className={`text-[11px] leading-relaxed font-sans ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
@@ -238,8 +238,8 @@ function StatusCheckContent() {
                       <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-center space-y-4">
                         <CheckCircle2 className="mx-auto h-10 w-10 text-blue-400" />
                         <div className="space-y-1">
-                          <h3 className="text-xs font-black uppercase tracking-wider text-blue-450">Akkaunt Yaratilgan</h3>
-                          <p className={`text-[11px] leading-relaxed font-sans ${isLight ? 'text-slate-605' : 'text-slate-300'}`}>
+                          <h3 className="text-xs font-black uppercase tracking-wider text-blue-400">Akkaunt Yaratilgan</h3>
+                          <p className={`text-[11px] leading-relaxed font-sans ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
                             Siz ushbu yo&apos;llanma ma&apos;lumotlari bilan allaqachon ro&apos;yxatdan o&apos;tib bo&apos;lgansiz. Tizimdan foydalanish uchun login sahifasiga o&apos;ting.
                           </p>
                         </div>
@@ -257,7 +257,7 @@ function StatusCheckContent() {
                   <div className="p-4 rounded-2xl bg-slate-950/40 border border-white/5 text-center space-y-2">
                     <AlertTriangle className="mx-auto h-8 w-8 text-rose-500" />
                     <h3 className="text-xs font-black uppercase tracking-wider text-white">Ariza topilmadi</h3>
-                    <p className={`text-[10px] leading-relaxed font-sans ${isLight ? 'text-slate-500' : 'text-slate-450'}`}>
+                    <p className={`text-[10px] leading-relaxed font-sans ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                       Kiritilgan pasport seriyasi ({passportSeries.toUpperCase()}) va JShSHIR bo&apos;yicha hech qanday ariza topilmadi. Ma&apos;lumotlar to&apos;g&apos;ri ekanini qayta tekshiring yoki yangi ariza yuboring.
                     </p>
                     <div className="pt-2">

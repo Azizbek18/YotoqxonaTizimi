@@ -28,7 +28,8 @@ import {
   FileText,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import AdminModal from '@/components/admin/AdminModal'
+import ConfirmModal from '@/components/ui/ConfirmModal'
+import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { supabase } from '@/lib/supabase'
 
@@ -160,7 +161,8 @@ export default function AdminUsersPage() {
   const [sendingChat, setSendingChat] = useState(false)
   const [chatInput, setChatInput] = useState('')
 
-  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; userId?: string }>({ isOpen: false })
+  const deleteModal = useConfirmModal<string>()
+  const rejectModal = useConfirmModal<string>()
   const [editModal, setEditModal] = useState<{ isOpen: boolean; user?: UserRow }>({ isOpen: false })
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null)
   const [editingRole, setEditingRole] = useState<UserRow['role']>('talaba')
@@ -203,7 +205,6 @@ export default function AdminUsersPage() {
     warning_count: '',
   })
 
-  const [isDeleting, setIsDeleting] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
 
   const getAllowedRoles = (user: UserRow): UserRow['role'][] => {
@@ -445,15 +446,15 @@ export default function AdminUsersPage() {
   }, [users, selectedUser])
 
   const handleDeleteClick = (userId: string) => {
-    setDeleteModal({ isOpen: true, userId })
+    deleteModal.open(userId)
   }
 
   const handleDeleteConfirm = async () => {
-    if (!deleteModal.userId) return
+    if (!deleteModal.target) return
 
     try {
-      setIsDeleting(true)
-      const user = users.find((item) => item.id === deleteModal.userId)
+      deleteModal.setIsLoading(true)
+      const user = users.find((item) => item.id === deleteModal.target)
       if (!user) {
         throw new Error('Foydalanuvchi topilmadi')
       }
@@ -472,18 +473,18 @@ export default function AdminUsersPage() {
         throw new Error(result.error ?? "O'chirishda xato!")
       }
 
-      setUsers(users.filter((userItem) => userItem.id !== deleteModal.userId))
-      if (selectedUser?.id === deleteModal.userId) {
+      setUsers(users.filter((userItem) => userItem.id !== deleteModal.target))
+      if (selectedUser?.id === deleteModal.target) {
         setSelectedUser(null)
       }
-      setDeleteModal({ isOpen: false })
+      deleteModal.close()
       toast.success("Foydalanuvchi o'chirildi!")
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "O'chirishda xato!"
       console.error("O'chirishda xato:", message)
       toast.error(message)
     } finally {
-      setIsDeleting(false)
+      deleteModal.setIsLoading(false)
     }
   }
 
@@ -520,19 +521,23 @@ export default function AdminUsersPage() {
     }
   }
 
-  const handleReject = async (id: string) => {
-    if (!window.confirm("Ushbu talabaning ro'yxatdan o'tish arizasini rad etib, tizimdan butunlay o'chirib tashlaysizmi?")) {
-      return
-    }
+  const handleReject = (id: string) => {
+    rejectModal.open(id)
+  }
+
+  const handleRejectConfirm = async () => {
+    const id = rejectModal.target
+    if (!id) return
 
     try {
-      setIsDeleting(true)
+      rejectModal.setIsLoading(true)
       const response = await fetch('/api/admin/users', {
-        method: 'DELETE',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id,
           source: 'users',
+          status: 'rejected',
         }),
       })
 
@@ -541,16 +546,19 @@ export default function AdminUsersPage() {
         throw new Error(result.error ?? "Rad etishda xato!")
       }
 
-      setUsers((prev) => prev.filter((u) => u.id !== id))
+      setUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, status: 'rejected' } : u))
+      )
       if (selectedUser?.id === id) {
-        setSelectedUser(null)
+        setSelectedUser(prev => prev ? { ...prev, status: 'rejected' } : null)
       }
-      toast.success("Talaba arizasi rad etildi va o'chirildi!")
+      toast.success("Talaba arizasi rad etildi")
+      rejectModal.close()
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Rad etishda xato!"
       toast.error(message)
     } finally {
-      setIsDeleting(false)
+      rejectModal.setIsLoading(false)
     }
   }
 
@@ -988,7 +996,9 @@ export default function AdminUsersPage() {
                       } ${
                         user.status === 'pending'
                           ? 'bg-amber-400 animate-pulse'
-                          : 'bg-emerald-500'
+                          : user.status === 'rejected'
+                            ? 'bg-rose-500'
+                            : 'bg-emerald-500'
                       }`} />
                     </div>
 
@@ -1104,6 +1114,11 @@ export default function AdminUsersPage() {
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                             Tizimda faol
                           </span>
+                        ) : selectedUser.status === 'rejected' ? (
+                          <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                            Rad etilgan
+                          </span>
                         ) : (
                           <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
@@ -1138,23 +1153,23 @@ export default function AdminUsersPage() {
 
                 {/* Header Actions */}
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end shrink-0">
+                  {selectedUser.role === 'talaba' && (selectedUser.status === 'pending' || selectedUser.status === 'rejected') && (
+                    <button
+                      onClick={() => handleApprove(selectedUser.id)}
+                      className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-1 shadow-md shadow-emerald-500/10"
+                    >
+                      <Check size={14} />
+                      Tasdiqlash
+                    </button>
+                  )}
                   {selectedUser.role === 'talaba' && selectedUser.status === 'pending' && (
-                    <>
-                      <button
-                        onClick={() => handleApprove(selectedUser.id)}
-                        className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-1 shadow-md shadow-emerald-500/10"
-                      >
-                        <Check size={14} />
-                        Tasdiqlash
-                      </button>
-                      <button
-                        onClick={() => handleReject(selectedUser.id)}
-                        className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center gap-1 shadow-md shadow-rose-500/10"
-                      >
-                        <X size={14} />
-                        Rad etish
-                      </button>
-                    </>
+                    <button
+                      onClick={() => handleReject(selectedUser.id)}
+                      className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center gap-1 shadow-md shadow-rose-500/10"
+                    >
+                      <X size={14} />
+                      Rad etish
+                    </button>
                   )}
                   <button
                     onClick={() => handleEditClick(selectedUser)}
@@ -1551,19 +1566,31 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Delete Confirmation Modal */}
-      <AdminModal
+      <ConfirmModal
         isOpen={deleteModal.isOpen}
         title="Foydalanuvchini o'chirish"
         description="Ushbu amalni qaytarib bo'lmaydi. Tizimdan o'chirishni tasdiqlaysizmi?"
-        onClose={() => setDeleteModal({ isOpen: false })}
+        onClose={deleteModal.close}
         onConfirm={handleDeleteConfirm}
         confirmText="O'chirish"
         confirmVariant="danger"
-        isLoading={isDeleting}
+        isLoading={deleteModal.isLoading}
+      />
+
+      {/* Reject Application Confirmation Modal */}
+      <ConfirmModal
+        isOpen={rejectModal.isOpen}
+        title="Arizani rad etish"
+        description="Talaba tizimdan o'chirilmaydi — arizasi rad etilgan deb belgilanadi va kerak bo'lsa keyinroq qayta tasdiqlashingiz mumkin."
+        onClose={rejectModal.close}
+        onConfirm={handleRejectConfirm}
+        confirmText="Rad etish"
+        confirmVariant="danger"
+        isLoading={rejectModal.isLoading}
       />
 
       {/* Edit User Modal */}
-      <AdminModal
+      <ConfirmModal
         isOpen={editModal.isOpen}
         title={editModal.user?.source === 'users' ? "Talaba ma'lumotlarini tahrirlash" : "Xodim ma'lumotlarini tahrirlash"}
         description={`${editModal.user?.full_name} uchun ma'lumotlarni yangilang`}
@@ -1723,10 +1750,10 @@ export default function AdminUsersPage() {
             </div>
           )}
         </div>
-      </AdminModal>
+      </ConfirmModal>
 
       {/* Staff Invite Creation Modal */}
-      <AdminModal
+      <ConfirmModal
         isOpen={inviteModalOpen}
         title="Yangi Xodim Taklif Yaratish"
         description="Admin yoki Tarbiyachi ro'yxatdan o'tishi uchun taklif kodi yarating"
@@ -1812,7 +1839,7 @@ export default function AdminUsersPage() {
             </div>
           )}
         </div>
-      </AdminModal>
+      </ConfirmModal>
 
       {/* Full Screen Image Modal */}
       <AnimatePresence>

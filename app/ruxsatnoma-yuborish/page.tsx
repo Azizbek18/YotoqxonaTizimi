@@ -347,25 +347,37 @@ export default function RuxsatnomaYuborish() {
       const cleanJshshir = jshshir.trim()
       const cleanEmail = email.trim().toLowerCase()
 
-      // 1. Check duplicate
-      const { data: existingRequest, error: checkError } = await supabase
+      // 1. Check duplicate — three safe .eq() lookups rather than
+      // interpolating applicant-submitted values into a single `.or()`
+      // filter string.
+      const { data: byPassport, error: passportCheckError } = await supabase
         .from('permit_requests')
-        .select('id, passport_series, jshshir, email')
-        .or(`passport_series.eq.${cleanPassport},jshshir.eq.${cleanJshshir},email.eq.${cleanEmail}`)
+        .select('id')
+        .eq('passport_series', cleanPassport)
         .maybeSingle()
+      if (passportCheckError) throw new Error(passportCheckError.message)
+      if (byPassport) {
+        throw new Error("Ushbu Pasport seriyasi bilan yo'llanma yuborilgan!")
+      }
 
-      if (checkError) throw new Error(checkError.message)
+      const { data: byJshshir, error: jshshirCheckError } = await supabase
+        .from('permit_requests')
+        .select('id')
+        .eq('jshshir', cleanJshshir)
+        .maybeSingle()
+      if (jshshirCheckError) throw new Error(jshshirCheckError.message)
+      if (byJshshir) {
+        throw new Error("Ushbu JShSHIR bilan yo'llanma yuborilgan!")
+      }
 
-      if (existingRequest) {
-        if (existingRequest.passport_series === cleanPassport) {
-          throw new Error("Ushbu Pasport seriyasi bilan yo'llanma yuborilgan!")
-        }
-        if (existingRequest.jshshir === cleanJshshir) {
-          throw new Error("Ushbu JShSHIR bilan yo'llanma yuborilgan!")
-        }
-        if (existingRequest.email === cleanEmail) {
-          throw new Error("Ushbu Email manzili bilan yo'llanma yuborilgan!")
-        }
+      const { data: byEmail, error: emailCheckError } = await supabase
+        .from('permit_requests')
+        .select('id')
+        .eq('email', cleanEmail)
+        .maybeSingle()
+      if (emailCheckError) throw new Error(emailCheckError.message)
+      if (byEmail) {
+        throw new Error("Ushbu Email manzili bilan yo'llanma yuborilgan!")
       }
 
       // 2. Upload file

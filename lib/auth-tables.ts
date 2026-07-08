@@ -7,6 +7,29 @@ type Identity = {
   email?: string | null
 }
 
+// Finds a `staff` row matching either `id` or `email` using two safe,
+// parameterized lookups instead of interpolating user-controlled values into
+// a single `.or()` filter string (PostgREST's or() mini-language treats
+// commas/dots as syntax, so raw interpolation there is an injection vector).
+export async function findStaffRowByIdentity<T = Record<string, unknown>>(
+  supabase: SupabaseClient,
+  columns: string,
+  identity: Identity
+): Promise<T | null> {
+  if (identity.id) {
+    const { data } = await supabase.from('staff').select(columns).eq('id', identity.id).maybeSingle()
+    if (data) return data as T
+  }
+
+  const cleanEmail = identity.email?.trim().toLowerCase()
+  if (cleanEmail) {
+    const { data } = await supabase.from('staff').select(columns).eq('email', cleanEmail).maybeSingle()
+    if (data) return data as T
+  }
+
+  return null
+}
+
 export async function findRoleByUserId(supabase: SupabaseClient, userId: string, email?: string | null): Promise<AppRole> {
   return findRoleByIdentity(supabase, { id: userId, email })
 }

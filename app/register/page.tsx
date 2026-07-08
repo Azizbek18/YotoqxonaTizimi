@@ -73,28 +73,34 @@ export default function RegisterPage() {
       const passportSeriesClean = data.passportSeries.toUpperCase().replace(/\s/g, '')
       const jshshirClean = data.jshshir.trim()
 
-      // 0. Email, Pasport seriyasi va JShSHIR takrorlanishini tekshirish
-      const { data: duplicateUser, error: checkError } = await supabase
-        .from('users')
-        .select('id, email, passport_series, jshshir')
-        .or(`email.eq.${userEmail},passport_series.eq.${passportSeriesClean},jshshir.eq.${jshshirClean}`)
-        .maybeSingle()
-
-      if (checkError) {
+      // 0. Email, Pasport seriyasi va JShSHIR takrorlanishini tekshirish —
+      // uch xil xavfsiz .eq() so'rovi orqali, yagona `.or()` filtr satriga
+      // foydalanuvchi kiritgan qiymatlarni to'g'ridan-to'g'ri qo'shish o'rniga.
+      const { data: byEmail, error: emailCheckError } = await supabase
+        .from('users').select('id').eq('email', userEmail).maybeSingle()
+      if (emailCheckError) {
         throw new Error("Tizimda ma'lumotlarni tekshirishda xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.")
       }
+      if (byEmail) {
+        throw new Error("Ushbu Email manzili tizimda allaqachon ro'yxatdan o'tgan!")
+      }
 
-      if (duplicateUser) {
-        if (duplicateUser.email === userEmail) {
-          throw new Error("Ushbu Email manzili tizimda allaqachon ro'yxatdan o'tgan!")
-        }
-        if (duplicateUser.passport_series === passportSeriesClean) {
-          throw new Error("Ushbu Pasport seriyasi bilan ro'yxatdan o'tgan foydalanuvchi allaqachon mavjud!")
-        }
-        if (duplicateUser.jshshir === jshshirClean) {
-          throw new Error("Ushbu JShSHIR bilan ro'yxatdan o'tgan foydalanuvchi allaqachon mavjud!")
-        }
-        throw new Error("Ushbu foydalanuvchi tizimda allaqachon ro'yxatdan o'tgan!")
+      const { data: byPassport, error: passportCheckError } = await supabase
+        .from('users').select('id').eq('passport_series', passportSeriesClean).maybeSingle()
+      if (passportCheckError) {
+        throw new Error("Tizimda ma'lumotlarni tekshirishda xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.")
+      }
+      if (byPassport) {
+        throw new Error("Ushbu Pasport seriyasi bilan ro'yxatdan o'tgan foydalanuvchi allaqachon mavjud!")
+      }
+
+      const { data: byJshshir, error: jshshirCheckError } = await supabase
+        .from('users').select('id').eq('jshshir', jshshirClean).maybeSingle()
+      if (jshshirCheckError) {
+        throw new Error("Tizimda ma'lumotlarni tekshirishda xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.")
+      }
+      if (byJshshir) {
+        throw new Error("Ushbu JShSHIR bilan ro'yxatdan o'tgan foydalanuvchi allaqachon mavjud!")
       }
 
       // 1. Supabase Auth-da foydalanuvchi yaratish

@@ -38,34 +38,32 @@ export async function POST(request: Request) {
       ? userPayload.jshshir.trim()
       : ''
 
-    const orConditions: string[] = []
-    if (email) orConditions.push(`email.eq.${email}`)
-    if (passportSeriesClean) orConditions.push(`passport_series.eq.${passportSeriesClean}`)
-    if (jshshirClean) orConditions.push(`jshshir.eq.${jshshirClean}`)
-
-    if (orConditions.length > 0) {
-      const { data: duplicateUser, error: checkError } = await supabase
-        .from('users')
-        .select('id, email, passport_series, jshshir')
-        .or(orConditions.join(','))
-        .maybeSingle()
-
-      if (checkError) {
-        return NextResponse.json({ ok: false, error: "Tekshirishda xatolik yuz berdi" }, { status: 500 })
-      }
-
-      if (duplicateUser) {
-        if (duplicateUser.email === email) {
+    // Check each field independently with parameterized .eq() lookups rather
+    // than interpolating user-supplied values into a single `.or()` filter
+    // string (PostgREST's or() mini-language treats commas/dots as syntax,
+    // so raw interpolation there is an injection vector, and these values
+    // come straight from an unauthenticated public registration form).
+    try {
+      if (email) {
+        const { data } = await supabase.from('users').select('id').eq('email', email).maybeSingle()
+        if (data) {
           return NextResponse.json({ ok: false, error: "Ushbu Email manzili tizimda allaqachon ro'yxatdan o'tgan!" }, { status: 400 })
         }
-        if (duplicateUser.passport_series === passportSeriesClean) {
+      }
+      if (passportSeriesClean) {
+        const { data } = await supabase.from('users').select('id').eq('passport_series', passportSeriesClean).maybeSingle()
+        if (data) {
           return NextResponse.json({ ok: false, error: "Ushbu Pasport seriyasi bilan ro'yxatdan o'tgan foydalanuvchi allaqachon mavjud!" }, { status: 400 })
         }
-        if (duplicateUser.jshshir === jshshirClean) {
+      }
+      if (jshshirClean) {
+        const { data } = await supabase.from('users').select('id').eq('jshshir', jshshirClean).maybeSingle()
+        if (data) {
           return NextResponse.json({ ok: false, error: "Ushbu JShSHIR bilan ro'yxatdan o'tgan foydalanuvchi allaqachon mavjud!" }, { status: 400 })
         }
-        return NextResponse.json({ ok: false, error: "Ushbu foydalanuvchi tizimda allaqachon ro'yxatdan o'tgan!" }, { status: 400 })
       }
+    } catch {
+      return NextResponse.json({ ok: false, error: "Tekshirishda xatolik yuz berdi" }, { status: 500 })
     }
 
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({

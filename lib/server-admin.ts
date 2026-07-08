@@ -24,6 +24,27 @@ export async function createServerSupabaseClient() {
   )
 }
 
+// Finds a row matching either `id` or `email` using two safe, parameterized
+// lookups instead of interpolating user-controlled values into a single
+// `.or()` filter string (PostgREST's or() mini-language treats commas/dots
+// as syntax, so raw interpolation there is an injection vector).
+async function findByIdOrEmail<T>(
+  supabase: ReturnType<typeof getServiceSupabase>,
+  table: 'staff' | 'users',
+  columns: string,
+  id: string,
+  email: string | null | undefined
+): Promise<T | null> {
+  const { data: byId } = await supabase.from(table).select(columns).eq('id', id).eq('role', 'admin').maybeSingle()
+  if (byId) return byId as T
+
+  const cleanEmail = email?.trim().toLowerCase()
+  if (!cleanEmail) return null
+
+  const { data: byEmail } = await supabase.from(table).select(columns).eq('email', cleanEmail).eq('role', 'admin').maybeSingle()
+  return (byEmail as T) ?? null
+}
+
 export async function getAdminSession() {
   const authSupabase = await createServerSupabaseClient()
   const serviceSupabase = getServiceSupabase()
@@ -36,12 +57,9 @@ export async function getAdminSession() {
     }
 
     // Check both staff and users tables
-    const { data: staffData } = await serviceSupabase
-      .from('staff')
-      .select('id, email, full_name, role')
-      .eq('role', 'admin')
-      .or(`id.eq.${session.user.id},email.eq.${session.user.email?.trim().toLowerCase() ?? ''}`)
-      .maybeSingle()
+    const staffData = await findByIdOrEmail<{ id: string; email: string; full_name: string; role: string }>(
+      serviceSupabase, 'staff', 'id, email, full_name, role', session.user.id, session.user.email
+    )
 
     if (staffData) {
       return {
@@ -51,12 +69,9 @@ export async function getAdminSession() {
       }
     }
 
-    const { data: userData } = await serviceSupabase
-      .from('users')
-      .select('id, email, full_name, role')
-      .eq('role', 'admin')
-      .or(`id.eq.${session.user.id},email.eq.${session.user.email?.trim().toLowerCase() ?? ''}`)
-      .maybeSingle()
+    const userData = await findByIdOrEmail<{ id: string; email: string; full_name: string; role: string }>(
+      serviceSupabase, 'users', 'id, email, full_name, role', session.user.id, session.user.email
+    )
 
     if (userData?.role === 'admin') {
       return {

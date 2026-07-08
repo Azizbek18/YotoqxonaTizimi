@@ -89,14 +89,28 @@ function ArizalarContent() {
 
       if (error) throw error
 
-      // Enrich with warning count & blacklisted status from users table
+      // Enrich with warning count & blacklisted status from users table.
+      // Looked up via two safe .eq() calls rather than interpolating
+      // applicant-submitted values into a single `.or()` filter string.
       const enriched: PermitRequest[] = []
       for (const req of (data || [])) {
-        const { data: userLink } = await supabase
-          .from('users')
-          .select('warning_count, blacklisted')
-          .or(`passport_series.eq.${req.passport_series},jshshir.eq.${req.jshshir}`)
-          .maybeSingle()
+        let userLink: { warning_count?: number; blacklisted?: boolean } | null = null
+        if (req.passport_series) {
+          const { data: byPassport } = await supabase
+            .from('users')
+            .select('warning_count, blacklisted')
+            .eq('passport_series', req.passport_series)
+            .maybeSingle()
+          userLink = byPassport
+        }
+        if (!userLink && req.jshshir) {
+          const { data: byJshshir } = await supabase
+            .from('users')
+            .select('warning_count, blacklisted')
+            .eq('jshshir', req.jshshir)
+            .maybeSingle()
+          userLink = byJshshir
+        }
 
         enriched.push({
           ...req,

@@ -4,28 +4,36 @@ import { callGemini } from '@/lib/gemini'
 import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 
+// Looks up `role` for the given identity in `table`, trying `id` then
+// `email` as two safe, parameterized lookups — never interpolate
+// user-controlled values into a single `.or()` filter string (PostgREST's
+// or() mini-language treats commas/dots as syntax, so raw interpolation
+// there is an injection vector).
+async function findRoleInTable(
+  supabase: ReturnType<typeof getServiceSupabase>,
+  table: 'staff' | 'users',
+  userId: string,
+  cleanEmail: string
+): Promise<string | null> {
+  const { data: byId } = await supabase.from(table).select('role').eq('id', userId).maybeSingle()
+  if (byId) return byId.role
+
+  if (!cleanEmail) return null
+  const { data: byEmail } = await supabase.from(table).select('role').eq('email', cleanEmail).maybeSingle()
+  return byEmail?.role ?? null
+}
+
 async function canAnalyzePayment(userId: string, email: string | undefined, studentId: string) {
   if (userId === studentId) return true
 
   const supabase = getServiceSupabase()
   const cleanEmail = email?.trim().toLowerCase() ?? ''
-  const identityFilter = cleanEmail ? `id.eq.${userId},email.eq.${cleanEmail}` : `id.eq.${userId}`
 
-  const { data: staff } = await supabase
-    .from('staff')
-    .select('role')
-    .or(identityFilter)
-    .maybeSingle()
+  const staffRole = await findRoleInTable(supabase, 'staff', userId, cleanEmail)
+  if (staffRole === 'admin') return true
 
-  if (staff?.role === 'admin') return true
-
-  const { data: user } = await supabase
-    .from('users')
-    .select('role')
-    .or(identityFilter)
-    .maybeSingle()
-
-  return user?.role === 'admin'
+  const userRole = await findRoleInTable(supabase, 'users', userId, cleanEmail)
+  return userRole === 'admin'
 }
 
 export async function POST(req: NextRequest) {

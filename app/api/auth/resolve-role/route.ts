@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 
 export async function POST(request: Request) {
@@ -10,12 +11,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'Juda ko\'p urinish. Keyinroq urinib ko\'ring.' }, { status: 429 })
     }
 
-    const body = await request.json()
-    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
-
-    if (!email) {
-      return NextResponse.json({ ok: false, error: 'Email talab qilinadi' }, { status: 400 })
+    // Require a verified session and always resolve the role for that
+    // session's OWN email — never trust an arbitrary email from the request
+    // body, since that would let anyone probe whether any email belongs to
+    // an admin/staff account without authenticating at all.
+    const requestUser = await getRequestUser(request)
+    if (!requestUser?.email) {
+      return NextResponse.json({ ok: false, error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
     }
+    const email = requestUser.email.trim().toLowerCase()
 
     const supabase = getServiceSupabase()
     const { data: staffUser, error: staffError } = await supabase

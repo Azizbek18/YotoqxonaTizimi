@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { getRequestUser } from '@/lib/server-auth'
 import { extractFloor } from '@/lib/floor'
+import { findStaffRowByIdentity } from '@/lib/auth-tables'
 
 type StaffProfile = {
   id: string
@@ -24,15 +25,11 @@ export async function GET(req: NextRequest) {
       return jsonError('Autentifikatsiya talab qilinadi', 401)
     }
 
-    const { data: staffUser, error: staffError } = await serviceSupabase
-      .from('staff')
-      .select('id, email, role, assigned_floor, assigned_gender')
-      .or(`id.eq.${user.id},email.eq.${user.email?.trim().toLowerCase() ?? ''}`)
-      .maybeSingle<StaffProfile>()
-
-    if (staffError) {
-      return jsonError(staffError.message, 500)
-    }
+    const staffUser = await findStaffRowByIdentity<StaffProfile>(
+      serviceSupabase,
+      'id, email, role, assigned_floor, assigned_gender',
+      { id: user.id, email: user.email }
+    )
 
     if (!staffUser || staffUser.role !== 'tarbiyachi') {
       return jsonError('Tarbiyachi huquqi talab qilinadi', 403)

@@ -16,6 +16,26 @@ const supabaseAdmin = createClient(
 // GET - foydalanuvchining avatar URLsini olish
 export async function GET(request: NextRequest) {
     try {
+        // Auth header'dan token'ni olish — faqat o'z avatarini so'rashi mumkin
+        // (POST/DELETE'dagi bilan bir xil tekshiruv)
+        const authHeader = request.headers.get('authorization')
+        if (!authHeader?.startsWith('Bearer ')) {
+            return NextResponse.json(
+                { error: 'Avtentifikatsiya talab qilinadi' },
+                { status: 401 }
+            )
+        }
+
+        const token = authHeader.substring(7)
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+
+        if (authError || !user) {
+            return NextResponse.json(
+                { error: 'Avtentifikatsiya xatosi' },
+                { status: 401 }
+            )
+        }
+
         const searchParams = request.nextUrl.searchParams
         const userId = searchParams.get('userId')
 
@@ -23,6 +43,13 @@ export async function GET(request: NextRequest) {
             return NextResponse.json(
                 { error: 'User ID topilmadi' },
                 { status: 400 }
+            )
+        }
+
+        if (userId !== user.id) {
+            return NextResponse.json(
+                { error: 'Ruxsatnoma berilmadi' },
+                { status: 403 }
             )
         }
 

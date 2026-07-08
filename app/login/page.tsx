@@ -75,10 +75,8 @@ function LoginContent() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...(authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {}),
           },
-          body: JSON.stringify({
-            email: authData.user?.email ?? cleanEmail,
-          }),
         })
         const roleResult = await roleResponse.json()
         if (roleResponse.ok && roleResult.ok) {

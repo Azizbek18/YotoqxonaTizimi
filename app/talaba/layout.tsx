@@ -293,7 +293,10 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
       </div>
 
       {/* --- 2. PREMIUM TOP BAR (HEADER) --- */}
-      <header className={`sticky top-0 z-50 px-4 sm:px-6 py-4 transition-all ${isLight ? 'bg-white border-b border-slate-200' : 'bg-[#02040a] border-b border-white/5'}`}>
+      {/* `fixed` instead of `sticky`: an ancestor further up sets overflow-x-hidden,
+          which per spec forces overflow-y to auto and turns that ancestor into the
+          sticky containing block instead of the viewport, breaking `sticky top-0`. */}
+      <header className={`fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-4 transition-all ${isLight ? 'bg-white border-b border-slate-200' : 'bg-[#02040a] border-b border-white/5'}`}>
         <div className="max-w-6xl mx-auto flex justify-between items-center gap-3">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-linear-to-tr p-px shrink-0 ${isLight ? 'from-blue-600 to-blue-400' : 'from-blue-600 to-cyan-400'}`}>
@@ -349,7 +352,8 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
       </header>
 
       {/* --- 3. MAIN CONTENT --- */}
-      <main className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-40">
+      {/* pt-[92px]/[104px] = fixed header's own rendered height + the original pt-6/pt-8 gap */}
+      <main className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-[92px] sm:pt-[104px] pb-40">
 
         {/* Quick Actions Scrollable Row */}
         <section className="mb-6 sm:mb-8">

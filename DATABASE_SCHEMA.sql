@@ -1183,3 +1183,63 @@ WITH CHECK (
       )
   )
 );
+
+-- ==========================================================
+-- FIX: "staff" jadvalidagi RLS policy'da cheksiz rekursiya
+-- ==========================================================
+-- "Adminlar barcha xodimlarni ko'ra oladi" policy'si o'zi "staff"
+-- jadvalining ichida o'zini so'rar edi (EXISTS (SELECT 1 FROM staff ...)),
+-- bu esa cheksiz rekursiyaga sabab bo'lardi va "staff"ga tegadigan har
+-- qanday so'rovni (shu jumladan "elonlar" kabi boshqa jadvallarning
+-- policy'lari orqali bilvosita) 42P17 xatosi bilan buzardi.
+
+CREATE OR REPLACE FUNCTION public.is_admin(uid uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (SELECT 1 FROM staff WHERE staff.id = uid AND staff.role = 'admin');
+$$;
+
+REVOKE ALL ON FUNCTION public.is_admin(uuid) FROM public;
+GRANT EXECUTE ON FUNCTION public.is_admin(uuid) TO authenticated, anon;
+
+-- Eslatma: shu nomdagi policy'lar bazada turli apostrof belgisi (' va ')
+-- bilan dublikat holda mavjud bo'lishi mumkin — DROP POLICY aniq nom
+-- bo'yicha faqat bittasiga mos keladi. Shu sabab prefiks bo'yicha
+-- dinamik qidirib, hammasini tozalaymiz.
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN
+    SELECT policyname FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'staff' AND cmd = 'SELECT'
+      AND (
+        policyname LIKE 'Adminlar barcha xodimlarni%'
+        OR policyname LIKE 'Xodimlar faqat%'
+      )
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.staff', pol.policyname);
+  END LOOP;
+END $$;
+
+CREATE POLICY "Adminlar barcha xodimlarni ko'ra oladi"
+ON public.staff FOR SELECT
+TO authenticated
+USING (public.is_admin(auth.uid()));
+
+CREATE POLICY "Xodimlar faqat o'z profilini ko'ra oladi"
+ON public.staff FOR SELECT
+TO authenticated
+USING (auth.uid() = id);
+
+-- Login sahifasidagi anon (tizimga kirmagan) holatdagi email tekshiruvi
+-- uchun (avval bunday policy umuman yo'q edi, shuning uchun bu funksiya
+-- allaqachon ishlamas edi):
+DROP POLICY IF EXISTS "Anon email orqali mavjudligini tekshiradi" ON public.staff;
+CREATE POLICY "Anon email orqali mavjudligini tekshiradi"
+ON public.staff FOR SELECT
+TO anon
+USING (true);

@@ -13,6 +13,7 @@ import {
   Code, Send, Phone, ExternalLink
 } from 'lucide-react'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { supabase } from '@/lib/supabase'
 import { getSafeUser, getSafeSession } from '@/lib/auth-session'
@@ -908,28 +909,18 @@ function QueueSwapModal({ onClose, profile, roommates, isLight }: QueueSwapModal
             <label className={`block text-xs font-black uppercase tracking-wider mb-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               Kim bilan almashasiz?
             </label>
-            <select
-              required
+            <CustomSelect
               value={targetRoommateId}
-              onChange={(e) => setTargetRoommateId(e.target.value)}
-              className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-hidden focus:ring-2 transition-all ${
+              onChange={setTargetRoommateId}
+              placeholder="Xonadoshni tanlang..."
+              emptyText="Xonadoshlar topilmadi"
+              options={roommates.map(roommate => ({ value: roommate.id, label: roommate.full_name }))}
+              className={`px-4 py-2.5 rounded-xl border text-sm focus:outline-hidden focus:ring-2 transition-all ${
                 isLight
                   ? 'bg-slate-50 border-slate-300 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900'
                   : 'bg-slate-900 border-white/10 focus:ring-cyan-500/20 focus:border-cyan-400 text-white'
               }`}
-            >
-              <option value="" disabled className={isLight ? 'text-slate-500' : 'text-slate-400 bg-slate-950'}>
-                Xonadoshni tanlang...
-              </option>
-              {roommates.map(roommate => (
-                <option key={roommate.id} value={roommate.id} className={isLight ? 'text-slate-900' : 'text-white bg-slate-950'}>
-                  {roommate.full_name}
-                </option>
-              ))}
-              {roommates.length === 0 && (
-                <option disabled className="text-rose-400">Xonadoshlar topilmadi</option>
-              )}
-            </select>
+            />
           </div>
 
           <div>

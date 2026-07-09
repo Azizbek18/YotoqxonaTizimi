@@ -12,6 +12,7 @@ import { getSafeUser } from '@/lib/auth-session'
 import { User } from '@supabase/supabase-js'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 
 interface Profile {
@@ -403,14 +404,15 @@ export default function ArizalarContent() {
                                 <label className={`block text-sm font-semibold mb-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                     Tur tanlang
                                 </label>
-                                <select
+                                <CustomSelect
                                     value={newAppForm.type}
-                                    onChange={(e) => setNewAppForm({ ...newAppForm, type: e.target.value as 'ariza' | 'tushuntirish' })}
-                                    className={`w-full px-3 py-2 rounded-lg border transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-blue-500' : 'bg-slate-800 border-slate-700 text-white focus:border-cyan-500'}`}
-                                >
-                                    <option value="ariza">Ariza</option>
-                                    <option value="tushuntirish">Tushuntirish</option>
-                                </select>
+                                    onChange={(val) => setNewAppForm({ ...newAppForm, type: val as 'ariza' | 'tushuntirish' })}
+                                    options={[
+                                        { value: 'ariza', label: 'Ariza' },
+                                        { value: 'tushuntirish', label: 'Tushuntirish' },
+                                    ]}
+                                    className={`px-3 py-2 rounded-lg border transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-blue-500' : 'bg-slate-800 border-slate-700 text-white focus:border-cyan-500'}`}
+                                />
                             </div>
 
                             <div>

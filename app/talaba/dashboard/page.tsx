@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { getSafeUser } from '@/lib/auth-session';
 import { extractFloor } from '@/lib/floor';
 import ProfileLoadError from '@/components/talaba/ProfileLoadError';
+import CustomSelect from '@/components/ui/CustomSelect';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { marked } from 'marked';
@@ -1944,9 +1945,9 @@ export default function TalabaDashboard() {
                 exit={{ opacity: 0, scale: 0.95, rotateX: 8, y: -20 }}
                 transition={{ type: "spring", stiffness: 350, damping: 25 }}
                 style={{ transformStyle: 'preserve-3d', perspective: 1000 }}
-                className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-[32px] border p-4 sm:p-8 shadow-[0_0_50px_rgba(30,58,138,0.4)] ${
-                  isLight 
-                    ? 'bg-white/95 border-slate-200 text-slate-900 shadow-slate-200/50' 
+                className={`relative w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col rounded-2xl sm:rounded-[32px] border shadow-[0_0_50px_rgba(30,58,138,0.4)] ${
+                  isLight
+                    ? 'bg-white/95 border-slate-200 text-slate-900 shadow-slate-200/50'
                     : 'bg-[#0f172a]/90 border-white/10 text-white shadow-indigo-950/50'
                 }`}
               >
@@ -1955,20 +1956,20 @@ export default function TalabaDashboard() {
                 <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full blur-[100px] bg-purple-600/10 pointer-events-none" />
 
                 {/* Modal Header */}
-                <div className="relative z-10 flex justify-between items-center mb-6 border-b border-white/5 pb-4">
-                  <div>
+                <div className={`relative z-10 shrink-0 flex justify-between items-center gap-3 border-b px-4 sm:px-8 pt-4 sm:pt-8 pb-4 ${isLight ? 'border-slate-200' : 'border-white/5'}`}>
+                  <div className="min-w-0">
                     <h2 className="text-xl sm:text-2xl font-black italic uppercase tracking-tight flex items-center gap-2">
                       🧹 Tozalik Navbatchiligi
                     </h2>
-                    <p className={`text-xs mt-1 ${textMuted}`}>
+                    <p className={`text-xs mt-1 truncate ${textMuted}`}>
                       Xona {profile?.room_number || '—'} uchun hafta kunlariga navbatchilarni biriktiring.
                     </p>
                   </div>
                   <button
                     onClick={() => setIsScheduleModalOpen(false)}
-                    className={`p-2 rounded-full border transition-all cursor-pointer ${
-                      isLight 
-                        ? 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200' 
+                    className={`shrink-0 p-2 rounded-full border transition-all cursor-pointer ${
+                      isLight
+                        ? 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200'
                         : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'
                     }`}
                   >
@@ -1976,153 +1977,152 @@ export default function TalabaDashboard() {
                   </button>
                 </div>
 
-                {/* Top Section: Weekdays List */}
-                <div className="relative z-10 mb-8">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-blue-500 mb-4">
-                    📅 Hafta Kunlari (Navbatchilik Slotlari)
-                  </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
-                    {WEEKDAYS.map((day) => {
-                      const assigned = draftSchedule[day];
-                      const isDragOver = activeDragOverDay === day;
-                      return (
-                        <div
-                          key={day}
-                          onClick={() => handleDayClick(day)}
-                          onDragOver={(e) => handleDragOver(e)}
-                          onDragEnter={(e) => handleDragEnter(e, day)}
-                          onDragLeave={(e) => handleDragLeave(e, day)}
-                          onDrop={(e) => handleDrop(e, day)}
-                          className={`group relative flex flex-col justify-between p-3.5 min-h-[105px] rounded-2xl border transition-all duration-300 cursor-pointer select-none ${
-                            isDragOver 
-                              ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_15px_rgba(34,211,238,0.25)] scale-[1.02]' 
-                              : assigned 
-                                ? isLight 
-                                  ? 'border-blue-200 bg-blue-50/70 hover:border-blue-300' 
-                                  : 'border-indigo-500/30 bg-indigo-500/5 hover:border-indigo-500/50'
-                                : isLight
-                                  ? 'border-dashed border-slate-300 bg-slate-50/50 hover:bg-slate-100/50 hover:border-slate-400'
-                                  : 'border-dashed border-white/10 bg-slate-950/20 hover:bg-white/5 hover:border-white/20'
-                          }`}
-                        >
-                          <span className={`text-[10px] font-black uppercase tracking-wider mb-2 ${
-                            assigned 
-                              ? isLight ? 'text-blue-600' : 'text-cyan-400' 
-                              : textMuted
-                          }`}>
-                            {day}
-                          </span>
-
-                          <div className="flex-grow flex items-end">
-                            <select
-                              value={assigned ? assigned.id : ''}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val) {
-                                  const resident = allResidents.find(r => r.id === val);
-                                  if (resident) {
-                                    setDraftSchedule(prev => ({
-                                      ...prev,
-                                      [day]: { id: resident.id, name: resident.name }
-                                    }));
-                                  }
-                                } else {
-                                  setDraftSchedule(prev => {
-                                    const next = { ...prev };
-                                    delete next[day];
-                                    return next;
-                                  });
-                                }
-                              }}
-                              className={`w-full text-xs font-bold py-1.5 px-2 rounded-xl border focus:outline-hidden transition-all cursor-pointer ${
-                                isLight
-                                  ? 'bg-white border-slate-200 text-slate-800 focus:border-blue-400 shadow-xs'
-                                  : 'bg-slate-900 border-white/5 text-white focus:border-cyan-400 shadow-md shadow-black/20'
-                              }`}
-                            >
-                              <option value="">— Bo&apos;sh —</option>
-                              {allResidents.map((r) => (
-                                <option key={r.id} value={r.id}>
-                                  {r.name.replace(" (Siz)", "")}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Bottom Section: Roommates (4 Draggable Cards) */}
-                <div className="relative z-10 mb-8">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-indigo-500">
-                      👥 Xonadoshlar (Ushlab torting yoki Tanlang)
+                {/* Scrollable body */}
+                <div className="relative z-10 flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 sm:px-8 py-4 sm:py-6 space-y-8">
+                  {/* Top Section: Weekdays List */}
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-widest text-blue-500 mb-4">
+                      📅 Hafta Kunlari (Navbatchilik Slotlari)
                     </h3>
-                    <span className={`text-[10px] font-semibold ${textMuted}`}>
-                      {selectedResidentId ? "💡 Biriktirish uchun hafta kunini bosing" : "💡 Kunlarga tortib olib boring"}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {allResidents.map((resident) => {
-                      const isSelected = selectedResidentId === resident.id;
-                      const isSelf = resident.isSelf;
-                      return (
-                        <div
-                          key={resident.id}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, resident.id)}
-                          onClick={() => handleResidentClick(resident.id)}
-                          className={`group relative flex flex-col justify-between p-4 rounded-2xl cursor-grab active:cursor-grabbing select-none transition-all duration-300 transform preserve-3d ${
-                            isSelected
-                              ? 'border-2 border-yellow-500 bg-yellow-500/10 shadow-[0_0_20px_rgba(234,179,8,0.25)] scale-[1.03] -translate-y-1'
-                              : isLight
-                                ? 'bg-white border border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5'
-                                : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 hover:-translate-y-0.5 shadow-lg'
-                          }`}
-                          style={{
-                            boxShadow: isSelected 
-                              ? '0 10px 20px rgba(234,179,8,0.15)' 
-                              : isLight 
-                                ? '0 4px 6px rgba(0,0,0,0.02), 0 10px 15px -3px rgba(0,0,0,0.03)' 
-                                : '0 4px 6px rgba(0,0,0,0.1), 0 10px 15px -3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)',
-                          }}
-                        >
-                          {/* Draggable Icon indicator */}
-                          <div className="flex justify-between items-center mb-3">
-                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
-                              isSelf 
-                                ? 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20' 
-                                : isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/5 text-slate-400'
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
+                      {WEEKDAYS.map((day) => {
+                        const assigned = draftSchedule[day];
+                        const isDragOver = activeDragOverDay === day;
+                        return (
+                          <div
+                            key={day}
+                            onClick={() => handleDayClick(day)}
+                            onDragOver={(e) => handleDragOver(e)}
+                            onDragEnter={(e) => handleDragEnter(e, day)}
+                            onDragLeave={(e) => handleDragLeave(e, day)}
+                            onDrop={(e) => handleDrop(e, day)}
+                            className={`group relative min-w-0 flex flex-col justify-between p-3.5 min-h-[105px] rounded-2xl border transition-all duration-300 cursor-pointer select-none ${
+                              isDragOver
+                                ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_15px_rgba(34,211,238,0.25)] scale-[1.02]'
+                                : assigned
+                                  ? isLight
+                                    ? 'border-blue-200 bg-blue-50/70 hover:border-blue-300'
+                                    : 'border-indigo-500/30 bg-indigo-500/5 hover:border-indigo-500/50'
+                                  : isLight
+                                    ? 'border-dashed border-slate-300 bg-slate-50/50 hover:bg-slate-100/50 hover:border-slate-400'
+                                    : 'border-dashed border-white/10 bg-slate-950/20 hover:bg-white/5 hover:border-white/20'
+                            }`}
+                          >
+                            <span className={`text-[10px] font-black uppercase tracking-wider mb-2 truncate ${
+                              assigned
+                                ? isLight ? 'text-blue-600' : 'text-cyan-400'
+                                : textMuted
                             }`}>
-                              {isSelf ? "Siz" : "Xonadosh"}
+                              {day}
                             </span>
-                            <div className={`flex flex-col gap-0.5 opacity-50 group-hover:opacity-100 transition-opacity`}>
-                              <span className="w-2.5 h-0.5 bg-current rounded-full" />
-                              <span className="w-2.5 h-0.5 bg-current rounded-full" />
-                              <span className="w-2.5 h-0.5 bg-current rounded-full" />
+
+                            <div className="flex-grow flex items-end min-w-0" onClick={(e) => e.stopPropagation()}>
+                              <CustomSelect
+                                value={assigned ? assigned.id : ''}
+                                onChange={(val) => {
+                                  if (val) {
+                                    const resident = allResidents.find(r => r.id === val);
+                                    if (resident) {
+                                      setDraftSchedule(prev => ({
+                                        ...prev,
+                                        [day]: { id: resident.id, name: resident.name }
+                                      }));
+                                    }
+                                  } else {
+                                    setDraftSchedule(prev => {
+                                      const next = { ...prev };
+                                      delete next[day];
+                                      return next;
+                                    });
+                                  }
+                                }}
+                                placeholder="— Bo'sh —"
+                                options={[
+                                  { value: '', label: "— Bo'sh —" },
+                                  ...allResidents.map((r) => ({ value: r.id, label: r.name.replace(" (Siz)", "") })),
+                                ]}
+                                className={`min-w-0 text-xs font-bold py-1.5 px-2 rounded-xl border focus:outline-hidden transition-all cursor-pointer ${
+                                  isLight
+                                    ? 'bg-white border-slate-200 text-slate-800 focus:border-blue-400 shadow-xs'
+                                    : 'bg-slate-900 border-white/5 text-white focus:border-cyan-400 shadow-md shadow-black/20'
+                                }`}
+                              />
                             </div>
                           </div>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-                          <div>
-                            <p className="text-sm font-black tracking-tight leading-tight mb-1">
-                              {resident.name.replace(" (Siz)", "")}
-                            </p>
-                            <p className={`text-[10px] ${textMuted} font-semibold`}>
-                              Tanlang yoki torting
-                            </p>
+                  {/* Bottom Section: Roommates (Draggable Cards) */}
+                  <div>
+                    <div className="flex justify-between items-center gap-2 mb-4">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-indigo-500 truncate">
+                        👥 Xonadoshlar (Ushlab torting yoki Tanlang)
+                      </h3>
+                      <span className={`shrink-0 text-[10px] font-semibold ${textMuted}`}>
+                        {selectedResidentId ? "💡 Kunni bosing" : "💡 Torting yoki bosing"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {allResidents.map((resident) => {
+                        const isSelected = selectedResidentId === resident.id;
+                        const isSelf = resident.isSelf;
+                        return (
+                          <div
+                            key={resident.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, resident.id)}
+                            onClick={() => handleResidentClick(resident.id)}
+                            className={`group relative min-w-0 flex flex-col justify-between p-4 rounded-2xl cursor-grab active:cursor-grabbing select-none transition-all duration-300 transform preserve-3d ${
+                              isSelected
+                                ? 'border-2 border-yellow-500 bg-yellow-500/10 shadow-[0_0_20px_rgba(234,179,8,0.25)] scale-[1.03] -translate-y-1'
+                                : isLight
+                                  ? 'bg-white border border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5'
+                                  : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 hover:-translate-y-0.5 shadow-lg'
+                            }`}
+                            style={{
+                              boxShadow: isSelected
+                                ? '0 10px 20px rgba(234,179,8,0.15)'
+                                : isLight
+                                  ? '0 4px 6px rgba(0,0,0,0.02), 0 10px 15px -3px rgba(0,0,0,0.03)'
+                                  : '0 4px 6px rgba(0,0,0,0.1), 0 10px 15px -3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)',
+                            }}
+                          >
+                            {/* Draggable Icon indicator */}
+                            <div className="flex justify-between items-center mb-3">
+                              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                                isSelf
+                                  ? 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20'
+                                  : isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/5 text-slate-400'
+                              }`}>
+                                {isSelf ? "Siz" : "Xonadosh"}
+                              </span>
+                              <div className={`flex flex-col gap-0.5 opacity-50 group-hover:opacity-100 transition-opacity`}>
+                                <span className="w-2.5 h-0.5 bg-current rounded-full" />
+                                <span className="w-2.5 h-0.5 bg-current rounded-full" />
+                                <span className="w-2.5 h-0.5 bg-current rounded-full" />
+                              </div>
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="text-sm font-black tracking-tight leading-tight mb-1 truncate">
+                                {resident.name.replace(" (Siz)", "")}
+                              </p>
+                              <p className={`text-[10px] ${textMuted} font-semibold truncate`}>
+                                Tanlang yoki torting
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
                 {/* Modal Footer / Actions */}
-                <div className="relative z-10 flex justify-between items-center border-t border-white/5 pt-6 gap-4">
+                <div className={`relative z-10 shrink-0 flex flex-wrap justify-between items-center border-t px-4 sm:px-8 pb-4 sm:pb-8 pt-4 gap-3 ${isLight ? 'border-slate-200' : 'border-white/5'}`}>
                   <button
                     onClick={handleResetDraft}
                     className={`px-4 py-2.5 rounded-xl border text-xs font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer ${

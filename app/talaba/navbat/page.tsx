@@ -253,13 +253,13 @@ export default function NavbatPage() {
                     <div className="absolute top-[-20%] right-[-20%] w-[50%] h-[50%] rounded-full blur-[40px] bg-purple-500/20 animate-pulse pointer-events-none" />
                   )}
 
-                  <div className="relative z-10 flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-1.5 h-6 rounded-full ${isToday ? 'bg-purple-500' : 'bg-slate-300'}`} />
-                      <h3 className={`text-base font-extrabold ${isToday ? isLight ? 'text-purple-600' : 'text-purple-400' : textStrong}`}>{day}</h3>
+                  <div className="relative z-10 flex flex-wrap justify-between items-center gap-x-2 gap-y-1 mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`w-1.5 h-6 rounded-full shrink-0 ${isToday ? 'bg-purple-500' : 'bg-slate-300'}`} />
+                      <h3 className={`text-sm lg:text-xs xl:text-sm font-extrabold truncate ${isToday ? isLight ? 'text-purple-600' : 'text-purple-400' : textStrong}`}>{day}</h3>
                     </div>
                     {isToday && (
-                      <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full animate-bounce ${
+                      <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full animate-bounce ${
                         isLight ? 'text-purple-600 bg-purple-100 border border-purple-200' : 'text-purple-400 bg-purple-500/10 border border-purple-500/25'
                       }`}>
                         Bugun

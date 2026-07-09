@@ -835,10 +835,43 @@ ALTER TABLE elonlar
 ADD COLUMN IF NOT EXISTS target_floor integer DEFAULT NULL,
 ADD COLUMN IF NOT EXISTS target_gender text DEFAULT NULL;
 
--- 3. Update the check constraint on audience to allow floor-specific targeting
+-- 3. Update the check constraint on audience to allow floor-specific targeting.
+--    'internal' is also allowed: the sardor (floor captain) duty-schedule
+--    feature stores its JSON payload as an elonlar row with audience='internal'
+--    specifically so /api/elonlar's student-facing feed (which only matches
+--    'all'/'faculty'/'floor') never surfaces it as a real announcement.
 ALTER TABLE elonlar DROP CONSTRAINT IF EXISTS elonlar_audience_check;
-ALTER TABLE elonlar ADD CONSTRAINT elonlar_audience_check 
-CHECK (audience IN ('all', 'faculty', 'floor'));
+ALTER TABLE elonlar ADD CONSTRAINT elonlar_audience_check
+CHECK (audience IN ('all', 'faculty', 'floor', 'internal'));
+
+-- 4. Floor captains (users.is_floor_captain=true) save the duty schedule
+--    via a direct client-side insert/update on elonlar (see
+--    app/sardor/dashboard/page.tsx -> handleSaveDuty), so they need their
+--    own RLS policy scoped to just that marker row for their own floor/gender.
+DROP POLICY IF EXISTS "Floor captains can manage duty schedule" ON elonlar;
+CREATE POLICY "Floor captains can manage duty schedule"
+ON elonlar FOR ALL
+TO authenticated
+USING (
+  title = 'HAFTALIK_NAVBATCHILIK_JADVALI'
+  AND EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid()
+      AND users.is_floor_captain = true
+      AND users.assigned_floor = elonlar.target_floor
+      AND users.gender = elonlar.target_gender
+  )
+)
+WITH CHECK (
+  title = 'HAFTALIK_NAVBATCHILIK_JADVALI'
+  AND EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid()
+      AND users.is_floor_captain = true
+      AND users.assigned_floor = elonlar.target_floor
+      AND users.gender = elonlar.target_gender
+  )
+);
 
 -- ==========================================================
 -- Migration: 014_create_cleaning_schedule.sql

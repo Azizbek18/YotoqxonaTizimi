@@ -632,7 +632,7 @@ export default function TalabaDashboard() {
             if (profileData.room_number) {
               const { data: roommatesData, error: roommatesError } = await supabase
                 .from('users')
-                .select('id, full_name, email, phone, faculty, role, room_number, course, group, avatar_url')
+                .select('id, full_name, email, phone_number, faculty, role, room_number, course, group, avatar_url')
                 .eq('room_number', profileData.room_number)
                 .neq('id', user.id)
                 .order('full_name', { ascending: true });
@@ -1109,7 +1109,7 @@ export default function TalabaDashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <a href={`tel:${roommate.phone || '+998900000000'}`} className={`p-1.5 rounded-lg border hover:bg-blue-500/10 ${isLight ? 'border-slate-200 text-slate-600' : 'border-white/5 text-gray-400'}`}>
+                      <a href={`tel:${roommate.phone_number || '+998900000000'}`} className={`p-1.5 rounded-lg border hover:bg-blue-500/10 ${isLight ? 'border-slate-200 text-slate-600' : 'border-white/5 text-gray-400'}`}>
                         <Phone size={12} />
                       </a>
                       <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />

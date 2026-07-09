@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
         if (profile.room_number) {
             const { data: roommatesData, error: roommatesError } = await supabase
                 .from('users')
-                .select('id, full_name, email, phone, faculty, role, room_number, course, group, avatar_url')
+                .select('id, full_name, email, phone_number, faculty, role, room_number, course, group, avatar_url')
                 .eq('room_number', profile.room_number)
                 .neq('id', user.id)
                 .order('full_name', { ascending: true })

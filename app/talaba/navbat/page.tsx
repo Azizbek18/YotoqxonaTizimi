@@ -229,7 +229,7 @@ export default function NavbatPage() {
         <section className="flex-1 space-y-2">
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Haftalik Navbatchilar Jadvali</h2>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {WEEKDAYS.map((day) => {
               const isToday = todayName === day
               const dayDuties = dutySchedule[day] || []
@@ -238,28 +238,28 @@ export default function NavbatPage() {
                 <motion.div
                   key={day}
                   whileHover={{ y: -4, scale: 1.01 }}
-                  className={`backdrop-blur-xl rounded-2xl p-3 border flex flex-col relative overflow-hidden transition-all duration-300 ${
+                  className={`backdrop-blur-xl rounded-3xl p-5 border flex flex-col relative overflow-hidden transition-all duration-300 ${
                     isToday
                       ? isLight
                         ? 'bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200 shadow-[0_0_30px_rgba(168,85,247,0.06)]'
                         : 'bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border-purple-500/40 shadow-[0_0_30px_rgba(168,85,247,0.12)]'
                       : isLight
-                        ? 'bg-white border-slate-200 hover:border-purple-300 hover:shadow-sm'
+                        ? 'bg-white border-slate-200 hover:border-purple-300 hover:shadow-md'
                         : 'bg-white/[0.02] border-white/10 hover:border-purple-500/20'
                   }`}
                 >
                   {/* Glowing light for today */}
                   {isToday && (
-                    <div className="absolute top-[-20%] right-[-20%] w-[50%] h-[50%] rounded-full blur-[40px] bg-purple-500/20 animate-pulse pointer-events-none" />
+                    <div className="absolute top-[-20%] right-[-20%] w-[50%] h-[50%] rounded-full blur-[50px] bg-purple-500/20 animate-pulse pointer-events-none" />
                   )}
 
-                  <div className="relative z-10 flex flex-wrap justify-between items-center gap-x-2 gap-y-1 mb-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className={`w-1.5 h-6 rounded-full shrink-0 ${isToday ? 'bg-purple-500' : 'bg-slate-300'}`} />
-                      <h3 className={`text-sm lg:text-xs xl:text-sm font-extrabold truncate ${isToday ? isLight ? 'text-purple-600' : 'text-purple-400' : textStrong}`}>{day}</h3>
+                  <div className="relative z-10 flex justify-between items-center gap-2 mb-4">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-2 h-8 rounded-full shrink-0 ${isToday ? 'bg-purple-500' : 'bg-slate-300'}`} />
+                      <h3 className={`text-lg font-black truncate ${isToday ? isLight ? 'text-purple-600' : 'text-purple-400' : textStrong}`}>{day}</h3>
                     </div>
                     {isToday && (
-                      <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full animate-bounce ${
+                      <span className={`shrink-0 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full animate-bounce ${
                         isLight ? 'text-purple-600 bg-purple-100 border border-purple-200' : 'text-purple-400 bg-purple-500/10 border border-purple-500/25'
                       }`}>
                         Bugun
@@ -267,23 +267,23 @@ export default function NavbatPage() {
                     )}
                   </div>
 
-                  <div className="relative z-10 flex-1 space-y-1.5">
+                  <div className="relative z-10 flex-1 space-y-2 min-h-[92px]">
                     {dayDuties.length > 0 ? (
                       dayDuties.map((duty, idx) => (
-                        <div 
+                        <div
                           key={duty.id || idx}
-                          className={`flex items-center gap-2 border rounded-xl px-2 py-1.5 ${
+                          className={`flex items-center gap-3 border rounded-2xl px-3 py-2.5 ${
                             isLight ? 'bg-slate-50 border-slate-200/60' : 'bg-white/5 border-white/5'
                           }`}
                         >
-                          <div className={`w-7 h-7 rounded-xl border flex items-center justify-center text-[10px] font-black ${
+                          <div className={`w-10 h-10 shrink-0 rounded-xl border flex items-center justify-center text-xs font-black ${
                             isLight ? 'bg-purple-50 border-purple-100 text-purple-600' : 'bg-purple-500/10 border-purple-500/20 text-purple-400'
                           }`}>
                             {duty.name ? duty.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'ST'}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className={`text-xs font-bold truncate ${textStrong}`}>{duty.name}</p>
-                            <p className="text-[9px] text-slate-500 font-semibold mt-0.5">Xona #{duty.room || '—'}</p>
+                            <p className={`text-sm font-bold truncate ${textStrong}`}>{duty.name}</p>
+                            <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Xona #{duty.room || '—'}</p>
                           </div>
                         </div>
                       ))
@@ -291,7 +291,7 @@ export default function NavbatPage() {
                       <div className={`h-full flex items-center justify-center py-8 border border-dashed rounded-2xl ${
                         isLight ? 'border-slate-200 bg-slate-50/30' : 'border-white/5'
                       }`}>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Navbatchi yo&apos;q</p>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Navbatchi yo&apos;q</p>
                       </div>
                     )}
                   </div>

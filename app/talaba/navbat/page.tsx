@@ -128,7 +128,7 @@ export default function NavbatPage() {
   const floorNumber = profile?.room_number ? calculateFloor(parseInt(profile.room_number) || 0) || '—' : '—'
 
   return (
-    <div className={`h-screen font-sans overflow-hidden relative pb-24 transition-colors duration-300 ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#020617] text-white'}`}>
+    <div className={`min-h-screen font-sans relative pb-24 transition-colors duration-300 ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#020617] text-white'}`}>
       {/* Background Glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[120px] bg-purple-500/5 pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[120px] bg-indigo-500/5 pointer-events-none" />

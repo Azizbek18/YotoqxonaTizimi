@@ -9,6 +9,7 @@ import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { getAuthHeaders } from '@/lib/auth-session'
+import { useToastOffset } from '@/lib/hooks/useToastOffset'
 
 const NAV = [
   { href: '/tarbiyachi/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -27,6 +28,7 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
   const pathname = usePathname()
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+  useToastOffset(72)
   const [mounted, setMounted] = useState(false)
   const [pending, setPending] = useState<PendingAriza[]>([])
   const [notifOpen, setNotifOpen] = useState(false)

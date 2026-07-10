@@ -23,6 +23,7 @@ import {
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { useToastOffset } from '@/lib/hooks/useToastOffset'
 
 export default function AdminLayout({
   children,
@@ -39,6 +40,7 @@ export default function AdminLayout({
 
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+  useToastOffset(88)
 
   useEffect(() => {
     const mountId = window.setTimeout(() => {

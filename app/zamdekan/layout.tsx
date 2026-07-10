@@ -19,6 +19,7 @@ import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useZamdekanScope } from '@/lib/hooks/useZamdekanScope'
+import { useToastOffset } from '@/lib/hooks/useToastOffset'
 
 export default function ZamdekanLayout({
   children,
@@ -33,6 +34,7 @@ export default function ZamdekanLayout({
   const [pendingCount, setPendingCount] = useState(0)
   const [mounted, setMounted] = useState(false)
   const { faculty: zamdekanFaculty, fullName: zamdekanName, resolved: facultyResolved } = useZamdekanScope()
+  useToastOffset(76)
   const [recentPending, setRecentPending] = useState<{ id: string; full_name: string; direction: string; created_at: string | null }[]>([])
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)

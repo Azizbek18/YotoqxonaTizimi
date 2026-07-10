@@ -61,7 +61,7 @@ export default function AppProviders({ children }: { children: React.ReactNode }
       <Toaster
         position="top-center"
         reverseOrder={false}
-        containerStyle={{ zIndex: 99999999 }}
+        containerStyle={{ zIndex: 99999999, top: 'var(--toast-offset-top, 16px)' }}
       >
         {(t) => {
           if (t.type === 'custom') {

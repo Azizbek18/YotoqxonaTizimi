@@ -17,6 +17,7 @@ import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { supabase } from '@/lib/supabase'
 import { getSafeUser, getSafeSession } from '@/lib/auth-session'
+import { useToastOffset } from '@/lib/hooks/useToastOffset'
 import toast from 'react-hot-toast'
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
@@ -100,6 +101,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
   const [time, setTime] = useState(new Date())
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+  useToastOffset(112)
 
   const [mounted, setMounted] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)

@@ -39,12 +39,14 @@ interface ValidationResult {
     valid: boolean
     amount_match?: boolean
     is_duplicate?: boolean
+    is_suspicious_id?: boolean
     amount?: number
     extracted_amount?: number
     confidence: number
     details?: string
     message?: string
     analysis?: string
+    file_hash?: string
 }
 
 interface PaymentRecord {
@@ -302,7 +304,7 @@ export default function TolovaPage() {
             const result = await res.json()
             setValidationResult(result)
 
-            if (!result.valid || result.amount_match === false || result.is_duplicate) {
+            if (!result.valid || result.amount_match === false || result.is_duplicate || result.is_suspicious_id) {
                 // Show warning modal — amounts don't match, low confidence, or duplicate
                 setShowValidationModal(true)
                 setValidating(false)
@@ -310,7 +312,7 @@ export default function TolovaPage() {
             }
 
             // If valid — proceed to upload
-            await proceedWithUpload()
+            await proceedWithUpload(result.file_hash)
         } catch (error) {
             console.error('AI validation error:', error)
             toast.error('AI tekshiruv tizimida xatolik. Qayta urinib ko\'ring.')
@@ -320,7 +322,7 @@ export default function TolovaPage() {
     }
 
     // Step 2: Actual upload after validation passes
-    const proceedWithUpload = async () => {
+    const proceedWithUpload = async (fileHash?: string) => {
         if (!newReceipt || !user) return
         setUploading(true)
         try {
@@ -354,6 +356,7 @@ export default function TolovaPage() {
                 amount: dividedAmount,
                 status: 'waiting',
                 receipt_url: publicUrl,
+                receipt_hash: fileHash || null,
                 admin_message: 'Tekshirilmoqda...'
             }))
 

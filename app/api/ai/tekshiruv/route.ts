@@ -1,8 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHash } from 'crypto'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { callGemini } from '@/lib/gemini'
 import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+
+// Normalizes a transaction_id for comparison so trivial formatting
+// differences (case, spaces, dashes) can't be used to dodge the
+// duplicate check — must mirror the `transaction_id_normalized`
+// generated column added in MIGRATION_receipt_duplicate_hardening.sql.
+function normalizeTransactionId(id: string): string {
+  return id.toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
+// Catches placeholder/example IDs (including the literal example used
+// in the prompt below) and trivially-guessable sequences that carry no
+// real evidence of an actual transaction.
+function isSuspiciousTransactionId(normalizedId: string): boolean {
+  if (normalizedId.length < 6) return true
+
+  const knownPlaceholders = ['TX12345678', 'TX99281726', 'NA', 'TEST', 'TXXXXXXXXX']
+  if (knownPlaceholders.includes(normalizedId)) return true
+
+  const digitsOnly = normalizedId.replace(/[^0-9]/g, '')
+  if (digitsOnly.length >= 6) {
+    if (/^(\d)\1+$/.test(digitsOnly)) return true // all same digit
+
+    let ascending = true
+    let descending = true
+    for (let i = 1; i < digitsOnly.length; i++) {
+      const prev = Number(digitsOnly[i - 1])
+      const cur = Number(digitsOnly[i])
+      if (cur !== (prev + 1) % 10) ascending = false
+      if (cur !== (prev + 9) % 10) descending = false
+    }
+    if (ascending || descending) return true
+  }
+
+  return false
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,6 +69,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Chek hajmi 8MB dan kichik bo‘lishi kerak' }, { status: 400 })
     }
 
+    // Read file once — used for both the byte-level duplicate check and the AI call.
+    const arrayBuffer = await file.arrayBuffer()
+    const fileBuffer = Buffer.from(arrayBuffer)
+    const fileHash = createHash('sha256').update(fileBuffer).digest('hex')
+    const base64Data = fileBuffer.toString('base64')
+    const mimeType = file.type || 'image/jpeg'
+
+    // ========== EXACT FILE DUPLICATE CHECK ==========
+    // Independent of the AI's OCR/authenticity judgement: if the exact same
+    // image bytes were already submitted (by this student or reused from
+    // someone else's receipt), it's a guaranteed duplicate regardless of what
+    // the AI extracts this time.
+    const supabaseForHash = getServiceSupabase()
+    const { data: hashMatches } = await supabaseForHash
+      .from('tolovlar')
+      .select('id, student_name, month, year, created_at')
+      .eq('receipt_hash', fileHash)
+      .limit(1)
+
+    if (hashMatches && hashMatches.length > 0) {
+      const dup = hashMatches[0]
+      const dupDate = new Date(dup.created_at).toLocaleDateString('uz-UZ')
+      const duplicateInfo = `⚠️ TAKRORIY CHEK ANIQLANDI!\n\nUshbu aynan bir xil chek fayli tizimda allaqachon mavjud!\n\nAvval "${dup.student_name}" tomonidan ${dup.month} ${dup.year} oyi to'lovi uchun ${dupDate} sanasida yuklangan.\n\nBu chekni qayta yuklash mumkin emas!`
+      return NextResponse.json({
+        valid: false,
+        confidence: 5,
+        extracted_amount: null,
+        transaction_id: null,
+        analysis: duplicateInfo,
+        amount_match: false,
+        is_duplicate: true,
+        duplicate_info: duplicateInfo,
+        file_hash: fileHash
+      })
+    }
+
     const geminiApiKey = process.env.GEMINI_API_KEY
     if (!geminiApiKey) {
       return NextResponse.json({
@@ -42,14 +114,10 @@ export async function POST(req: NextRequest) {
         transaction_id: null,
         analysis: 'AI kaliti sozlanmaganligi sababli avtomatik tekshiruv o\'tkazib yuborildi.',
         amount_match: true,
-        is_duplicate: false
+        is_duplicate: false,
+        file_hash: fileHash
       })
     }
-
-    // Read file as base64
-    const arrayBuffer = await file.arrayBuffer()
-    const base64Data = Buffer.from(arrayBuffer).toString('base64')
-    const mimeType = file.type || 'image/jpeg'
 
     // Prepare Gemini prompt for real-time validation
     const systemPrompt = `Siz to'lov cheklarini real-vaqtda tekshiradigan AI tizimisiz.
@@ -105,76 +173,60 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       amountMatch = Math.abs(extractedAmount - declaredAmount) <= tolerance
     }
 
-    // ========== DUPLICATE CHECK ==========
-    // Check if this transaction_id already exists in the database
+    // ========== DUPLICATE / SUSPICIOUS ID CHECK ==========
+    // Check if this transaction_id already exists in the database, matching
+    // on a normalized form (uppercase, alphanumeric-only) so case/spacing/
+    // punctuation differences can't be used to dodge the check.
     let isDuplicate = false
+    let isSuspiciousId = false
     let duplicateInfo = ''
 
     if (transactionId) {
-      try {
-        const supabase = getServiceSupabase()
-        const { data: existingRecords, error: dupError } = await supabase
-          .from('tolovlar')
-          .select('id, student_name, month, year, created_at')
-          .eq('transaction_id', transactionId)
-          .limit(1)
+      const normalizedId = normalizeTransactionId(transactionId)
 
-        if (!dupError && existingRecords && existingRecords.length > 0) {
-          const dup = existingRecords[0]
-          isDuplicate = true
-          confidence = 5 // Very low confidence for duplicates
-          const dupDate = new Date(dup.created_at).toLocaleDateString('uz-UZ')
-          duplicateInfo = `⚠️ TAKRORIY CHEK ANIQLANDI!\n\nUshbu chekdagi tranzaksiya raqami (${transactionId}) tizimda allaqachon mavjud!\n\nAvval "${dup.student_name}" tomonidan ${dup.month} ${dup.year} oyi to'lovi uchun ${dupDate} sanasida yuklangan.\n\nBu chekni qayta yuklash mumkin emas!`
-          analysis = duplicateInfo
-          amountMatch = false // Force invalid
-        }
-      } catch (dbErr: unknown) {
-        console.error('Duplicate check DB error:', dbErr)
-        // Don't block the validation if DB check fails
-      }
-    }
+      if (isSuspiciousTransactionId(normalizedId)) {
+        isSuspiciousId = true
+        confidence = 5
+        duplicateInfo = `⚠️ SHUBHALI TRANZAKSIYA RAQAMI!\n\nAniqlangan tranzaksiya raqami (${transactionId}) haqiqiy to'lov tizimlariga xos ko'rinmayapti (juda qisqa, na'muna yoki ketma-ket raqamlarga o'xshaydi).\n\nIltimos, chekning asl, aniq skrinshotini yuklang.`
+        analysis = duplicateInfo
+        amountMatch = false
+      } else {
+        try {
+          const supabase = getServiceSupabase()
+          const { data: existingRecords, error: dupError } = await supabase
+            .from('tolovlar')
+            .select('id, student_name, month, year, created_at')
+            .eq('transaction_id_normalized', normalizedId)
+            .limit(1)
 
-    // Also check by payment_date + extracted_amount combination for same-looking receipts
-    if (!isDuplicate && extractedAmount && jsonResult.payment_date) {
-      try {
-        const supabase = getServiceSupabase()
-        // Check if there's already a payment with the same AI-extracted amount and similar date
-        const { data: similarRecords, error: simError } = await supabase
-          .from('tolovlar')
-          .select('id, student_name, month, year, created_at, transaction_id')
-          .eq('ai_extracted_amount', extractedAmount)
-          .not('transaction_id', 'is', null)
-          .limit(5)
-
-        if (!simError && similarRecords && similarRecords.length > 0) {
-          // Check if any of these have the same transaction_id pattern or payment date
-          for (const rec of similarRecords) {
-            if (rec.transaction_id === transactionId) {
-              isDuplicate = true
-              confidence = 5
-              const dupDate = new Date(rec.created_at).toLocaleDateString('uz-UZ')
-              duplicateInfo = `⚠️ TAKRORIY CHEK ANIQLANDI!\n\nXuddi shu tranzaksiya raqami (${transactionId}) va summa (${extractedAmount?.toLocaleString()} UZS) bilan chek oldinroq "${rec.student_name}" tomonidan ${rec.month} ${rec.year} uchun ${dupDate} da yuklangan.\n\nBu chekni qayta yuklash mumkin emas!`
-              analysis = duplicateInfo
-              amountMatch = false
-              break
-            }
+          if (!dupError && existingRecords && existingRecords.length > 0) {
+            const dup = existingRecords[0]
+            isDuplicate = true
+            confidence = 5 // Very low confidence for duplicates
+            const dupDate = new Date(dup.created_at).toLocaleDateString('uz-UZ')
+            duplicateInfo = `⚠️ TAKRORIY CHEK ANIQLANDI!\n\nUshbu chekdagi tranzaksiya raqami (${transactionId}) tizimda allaqachon mavjud!\n\nAvval "${dup.student_name}" tomonidan ${dup.month} ${dup.year} oyi to'lovi uchun ${dupDate} sanasida yuklangan.\n\nBu chekni qayta yuklash mumkin emas!`
+            analysis = duplicateInfo
+            amountMatch = false // Force invalid
           }
+        } catch (dbErr: unknown) {
+          console.error('Duplicate check DB error:', dbErr)
+          // Don't block the validation if DB check fails
         }
-      } catch (dbErr: unknown) {
-        console.error('Similar check DB error:', dbErr)
       }
     }
 
     return NextResponse.json({
-      valid: !isDuplicate && confidence >= 50 && amountMatch !== false,
+      valid: !isDuplicate && !isSuspiciousId && confidence >= 50 && amountMatch !== false,
       confidence,
       extracted_amount: extractedAmount,
       transaction_id: transactionId,
       payment_date: jsonResult.payment_date || null,
       analysis,
-      amount_match: isDuplicate ? false : amountMatch,
+      amount_match: (isDuplicate || isSuspiciousId) ? false : amountMatch,
       is_duplicate: isDuplicate,
-      duplicate_info: duplicateInfo || null
+      is_suspicious_id: isSuspiciousId,
+      duplicate_info: duplicateInfo || null,
+      file_hash: fileHash
     })
 
   } catch (error: unknown) {

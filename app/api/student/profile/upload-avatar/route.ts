@@ -82,12 +82,9 @@ export async function GET(request: NextRequest) {
 // POST - yangi avatar yuklash
 export async function POST(request: NextRequest) {
     try {
-        console.log('🔵 Avatar upload request started')
-
         // Auth header'dan token'ni olish
         const authHeader = request.headers.get('authorization')
         if (!authHeader?.startsWith('Bearer ')) {
-            console.log('❌ Missing or invalid auth header')
             return NextResponse.json(
                 { error: 'Avtentifikatsiya talab qilinadi' },
                 { status: 401 }
@@ -106,24 +103,18 @@ export async function POST(request: NextRequest) {
         const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token)
 
         if (authError || !user) {
-            console.log('❌ Auth error:', authError)
             return NextResponse.json(
                 { error: 'Avtentifikatsiya xatosi' },
                 { status: 401 }
             )
         }
 
-        console.log('✅ User authenticated:', user.id)
-
         const formData = await request.formData()
         const file = formData.get('file') as File
         const userId = formData.get('userId') as string
 
-        console.log('📦 FormData:', { file: file?.name, userId, fileSize: file?.size, fileType: file?.type })
-
         // User ID'ni verify qilish - faqat o'z avatarini upload qila oladi
         if (userId !== user.id) {
-            console.log('❌ User ID mismatch')
             return NextResponse.json(
                 { error: 'Ruxsatnoma berilmadi' },
                 { status: 403 }
@@ -131,7 +122,6 @@ export async function POST(request: NextRequest) {
         }
 
         if (!file) {
-            console.log('❌ Missing file')
             return NextResponse.json(
                 { error: 'Fayl topilmadi' },
                 { status: 400 }
@@ -141,7 +131,6 @@ export async function POST(request: NextRequest) {
         // File tipini tekshirish
         const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
         if (!validTypes.includes(file.type)) {
-            console.log('❌ Invalid file type:', file.type)
             return NextResponse.json(
                 { error: 'Faqat JPEG, PNG, WebP yoki GIF formatida rasm qabul qilinadi' },
                 { status: 400 }
@@ -151,7 +140,6 @@ export async function POST(request: NextRequest) {
         // File hajmini tekshirish (5MB)
         const maxSize = 5 * 1024 * 1024
         if (file.size > maxSize) {
-            console.log('❌ File too large:', file.size, 'bytes')
             return NextResponse.json(
                 { error: `Rasm ${maxSize / 1024 / 1024}MB dan katta bo'lmasligi kerak` },
                 { status: 400 }
@@ -181,8 +169,6 @@ export async function POST(request: NextRequest) {
         const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
         const filename = `${userId}/${timestamp}.${fileExtension}`
 
-        console.log('📤 Uploading to Storage:', { filename, size: buffer.byteLength })
-
         // Supabase Storage-ga yuklash (avatar bucket)
         const { data, error } = await supabase
             .storage
@@ -201,8 +187,6 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        console.log('✅ File uploaded:', data.path)
-
         // Public URL olish
         const { data: publicData } = supabase
             .storage
@@ -210,13 +194,6 @@ export async function POST(request: NextRequest) {
             .getPublicUrl(data.path)
 
         const publicUrl = publicData.publicUrl
-        console.log('🔗 Public URL:', publicUrl)
-        console.log('📋 Public URL Details:', {
-            path: data.path,
-            publicUrl,
-            isHttps: publicUrl.startsWith('https'),
-            bucket: 'avatar'
-        })
 
         // Users jadvalida avatar_url ni update qilish (Service Role)
         const { data: updateData, error: updateError } = await supabaseAdmin
@@ -224,13 +201,6 @@ export async function POST(request: NextRequest) {
             .update({ avatar_url: publicUrl })
             .eq('id', userId)
             .select()
-
-        console.log('📝 Database Update:', {
-            userId,
-            publicUrl,
-            updateData,
-            updateError: updateError?.message || 'No error'
-        })
 
         if (updateError) {
             console.error('Profile update xatosi:', updateError)

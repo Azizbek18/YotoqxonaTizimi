@@ -294,8 +294,8 @@ export default function TalabaDashboard() {
           setCleaningSchedule(data.schedule);
           return;
         }
-      } catch (err) {
-        console.log("Supabase fetch failed or table doesn't exist, falling back to local storage.", err);
+      } catch {
+        // Table may not exist yet — fall back to localStorage below.
       }
 
       // Check localStorage

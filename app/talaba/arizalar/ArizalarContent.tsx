@@ -355,7 +355,7 @@ export default function ArizalarContent() {
         <div className="space-y-6 pb-8">
             {/* Header */}
             <div>
-                <h1 className={`text-3xl font-black mb-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                <h1 className={`text-2xl sm:text-3xl font-black mb-2 break-words ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     📋 Arizalar va Tushuntirishlar
                 </h1>
                 <p className={`text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
@@ -364,34 +364,34 @@ export default function ArizalarContent() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className={`p-4 rounded-2xl backdrop-blur-xl transition-all ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
-                    <p className={`text-xs font-bold uppercase tracking-wide mb-2 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Jami</p>
-                    <p className={`text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{applications.length}</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                <div className={`p-3 sm:p-4 rounded-2xl backdrop-blur-xl transition-all min-w-0 ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
+                    <p className={`text-xs font-bold uppercase tracking-wide mb-2 truncate ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Jami</p>
+                    <p className={`text-xl sm:text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{applications.length}</p>
                 </div>
-                <div className={`p-4 rounded-2xl backdrop-blur-xl transition-all ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
-                    <p className={`text-xs font-bold uppercase tracking-wide mb-2 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Qoralamasi</p>
-                    <p className={`text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{applications.filter(a => a.status === 'draft').length}</p>
+                <div className={`p-3 sm:p-4 rounded-2xl backdrop-blur-xl transition-all min-w-0 ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
+                    <p className={`text-xs font-bold uppercase tracking-wide mb-2 truncate ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Qoralamasi</p>
+                    <p className={`text-xl sm:text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{applications.filter(a => a.status === 'draft').length}</p>
                 </div>
-                <div className={`p-4 rounded-2xl backdrop-blur-xl transition-all ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
-                    <p className={`text-xs font-bold uppercase tracking-wide mb-2 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Tasdiqlandi</p>
-                    <p className={`text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{applications.filter(a => a.status === 'approved').length}</p>
+                <div className={`p-3 sm:p-4 rounded-2xl backdrop-blur-xl transition-all min-w-0 ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
+                    <p className={`text-xs font-bold uppercase tracking-wide mb-2 truncate ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Tasdiqlandi</p>
+                    <p className={`text-xl sm:text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{applications.filter(a => a.status === 'approved').length}</p>
                 </div>
-                <div className={`p-4 rounded-2xl backdrop-blur-xl transition-all ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
-                    <p className={`text-xs font-bold uppercase tracking-wide mb-2 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Yuborildi</p>
-                    <p className={`text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{applications.filter(a => a.status === 'submitted' || a.status === 'pending').length}</p>
+                <div className={`p-3 sm:p-4 rounded-2xl backdrop-blur-xl transition-all min-w-0 ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
+                    <p className={`text-xs font-bold uppercase tracking-wide mb-2 truncate ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Yuborildi</p>
+                    <p className={`text-xl sm:text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{applications.filter(a => a.status === 'submitted' || a.status === 'pending').length}</p>
                 </div>
             </div>
 
             {/* Create New Application Button */}
-            <div className={`rounded-2xl backdrop-blur-xl p-6 transition-all ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className={`text-lg font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            <div className={`rounded-2xl backdrop-blur-xl p-4 sm:p-6 transition-all ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <h2 className={`text-lg font-black min-w-0 break-words ${isLight ? 'text-slate-900' : 'text-white'}`}>
                         ✨ Yangi Ariza Yaratish
                     </h2>
                     <button
                         onClick={() => setShowNewForm(!showNewForm)}
-                        className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-cyan-600 text-white hover:bg-cyan-700'}`}
+                        className={`shrink-0 px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-cyan-600 text-white hover:bg-cyan-700'}`}
                     >
                         <Plus size={18} /> Yangi
                     </button>
@@ -462,7 +462,7 @@ export default function ArizalarContent() {
             </div>
 
             {/* Applications List */}
-            <div className={`rounded-2xl backdrop-blur-xl p-6 transition-all ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
+            <div className={`rounded-2xl backdrop-blur-xl p-4 sm:p-6 transition-all ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
                 <h2 className={`text-lg font-black mb-4 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     📄 Arizalarning Ro&apos;yxati
                 </h2>
@@ -476,43 +476,43 @@ export default function ArizalarContent() {
                         {applications.map((app) => (
                             <div
                                 key={app.id}
-                                className={`p-4 rounded-lg border transition-all hover:shadow-md cursor-pointer ${isLight ? 'bg-slate-50 border-slate-200 hover:bg-white' : 'bg-slate-800/30 border-slate-700 hover:bg-slate-800/50'}`}
+                                className={`p-3 sm:p-4 rounded-lg border transition-all hover:shadow-md cursor-pointer overflow-hidden ${isLight ? 'bg-slate-50 border-slate-200 hover:bg-white' : 'bg-slate-800/30 border-slate-700 hover:bg-slate-800/50'}`}
                                 onClick={() => {
                                     setSelectedApp(app)
                                     setShowDetailModal(true)
                                 }}
                             >
-                                <div className="flex items-start justify-between mb-3">
+                                <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <FileText size={18} className={isLight ? 'text-slate-500' : 'text-slate-400'} />
-                                            <h3 className={`font-bold text-sm break-all ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                        <div className="flex flex-wrap items-center gap-2 mb-1 min-w-0">
+                                            <FileText size={18} className={`shrink-0 ${isLight ? 'text-slate-500' : 'text-slate-400'}`} />
+                                            <h3 className={`font-bold text-sm break-words min-w-0 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                                 {app.title}
                                             </h3>
                                             {app.aiGenerated && (
-                                                <span className={`px-2 py-1 rounded text-xs font-bold flex items-center gap-1 whitespace-nowrap ${isLight ? 'bg-purple-100 text-purple-700' : 'bg-purple-900/30 text-purple-400'}`}>
+                                                <span className={`shrink-0 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 whitespace-nowrap ${isLight ? 'bg-purple-100 text-purple-700' : 'bg-purple-900/30 text-purple-400'}`}>
                                                     <Sparkles size={12} /> AI
                                                 </span>
                                             )}
                                         </div>
-                                        <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                                        <p className={`text-xs break-words ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                                             {app.type === 'ariza' ? '📋 Ariza' : '📝 Tushuntirish'} • 📅 {new Date(app.createdDate).toLocaleDateString('uz-UZ')}
                                         </p>
                                     </div>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 whitespace-nowrap ${getStatusColor(app.status)}`}>
+                                    <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 whitespace-nowrap ${getStatusColor(app.status)}`}>
                                         {getStatusIcon(app.status)}
                                         {getStatusLabel(app.status)}
                                     </span>
                                 </div>
 
-                                <p className={`text-xs line-clamp-2 mb-3 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                                <p className={`text-xs line-clamp-2 mb-3 break-words ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                                     {app.reason}
                                 </p>
 
                                 {app.adminResponse && (
-                                    <div className={`p-3 rounded-lg text-xs mb-3 border ${isLight ? 'bg-blue-50 border-blue-200 text-blue-900' : 'bg-blue-900/20 border-blue-800 text-blue-300'}`}>
+                                    <div className={`p-3 rounded-lg text-xs mb-3 border break-words ${isLight ? 'bg-blue-50 border-blue-200 text-blue-900' : 'bg-blue-900/20 border-blue-800 text-blue-300'}`}>
                                         <p className="font-semibold mb-1">Admin xabari:</p>
-                                        <p>{app.adminResponse}</p>
+                                        <p className="break-words">{app.adminResponse}</p>
                                     </div>
                                 )}
 
@@ -574,12 +574,12 @@ export default function ArizalarContent() {
                     onClick={() => setShowDetailModal(false)}
                 >
                     <div
-                        className={`rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 ${isLight ? 'bg-white' : 'bg-slate-900'}`}
+                        className={`rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 ${isLight ? 'bg-white' : 'bg-slate-900'}`}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex items-start justify-between mb-4">
-                            <div>
-                                <h2 className={`text-xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                        <div className="flex items-start justify-between gap-3 mb-4">
+                            <div className="min-w-0">
+                                <h2 className={`text-xl font-black break-words ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                     {selectedApp.title}
                                 </h2>
                                 <p className={`text-xs mt-1 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
@@ -588,26 +588,26 @@ export default function ArizalarContent() {
                             </div>
                             <button
                                 onClick={() => setShowDetailModal(false)}
-                                className={`text-2xl font-bold ${isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white'}`}
+                                className={`shrink-0 text-2xl font-bold ${isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white'}`}
                             >
                                 ✕
                             </button>
                         </div>
 
-                        <div className={`p-4 rounded-lg mb-4 whitespace-pre-wrap text-sm font-mono ${isLight ? 'bg-slate-50 border border-slate-200 text-slate-700' : 'bg-slate-800/50 border border-slate-700 text-slate-300'}`}>
+                        <div className={`p-4 rounded-lg mb-4 whitespace-pre-wrap break-words text-sm font-mono ${isLight ? 'bg-slate-50 border border-slate-200 text-slate-700' : 'bg-slate-800/50 border border-slate-700 text-slate-300'}`}>
                             {selectedApp.content}
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <button
                                 onClick={() => downloadPDF(selectedApp)}
-                                className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-cyan-600 text-white hover:bg-cyan-700'}`}
+                                className={`flex-1 sm:flex-none justify-center px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-cyan-600 text-white hover:bg-cyan-700'}`}
                             >
                                 <Download size={18} /> PDF Yuklab Olish
                             </button>
                             <button
                                 onClick={() => setShowDetailModal(false)}
-                                className={`px-4 py-2 rounded-lg font-semibold transition-all ${isLight ? 'bg-slate-200 text-slate-900 hover:bg-slate-300' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                                className={`flex-1 sm:flex-none justify-center px-4 py-2 rounded-lg font-semibold transition-all flex items-center ${isLight ? 'bg-slate-200 text-slate-900 hover:bg-slate-300' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
                             >
                                 Yopish
                             </button>

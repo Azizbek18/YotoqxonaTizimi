@@ -380,7 +380,33 @@ export default function RuxsatnomaYuborish() {
         throw new Error("Ushbu Email manzili bilan yo'llanma yuborilgan!")
       }
 
-      // 2. Upload file
+      // 2. AI orqali yo'llanma hujjatini tekshirish — hujjat rasmiy
+      // my.gov.uz namunasiga mosligi va undagi FISH/JSHSHIR/pasport
+      // ma'lumotlari formada kiritilgan ma'lumotlar bilan mosligini
+      // tasdiqlaydi. Fayl saqlanishidan oldin ishlaydi.
+      const aiFormData = new FormData()
+      aiFormData.append('file', file)
+      aiFormData.append('fullName', fullName.trim())
+      aiFormData.append('jshshir', cleanJshshir)
+      aiFormData.append('passportSeries', cleanPassport)
+
+      const aiResponse = await fetch('/api/ai/yollanma-tekshiruv', {
+        method: 'POST',
+        body: aiFormData
+      })
+      const aiResult = await aiResponse.json()
+
+      if (!aiResponse.ok) {
+        throw new Error(aiResult.error || "Hujjatni tekshirishda xatolik yuz berdi")
+      }
+      if (!aiResult.valid) {
+        const reason = Array.isArray(aiResult.mismatches) && aiResult.mismatches.length > 0
+          ? aiResult.mismatches.join(' ')
+          : "Yuklangan hujjat rasmiy Yo'llanma namunasiga mos kelmadi."
+        throw new Error(reason)
+      }
+
+      // 3. Upload file
       const fileExt = file.name.split('.').pop()
       const filePath = `permits/temp/${cleanPassport}_${Date.now()}.${fileExt}`
       const { error: uploadError } = await supabase.storage
@@ -393,7 +419,7 @@ export default function RuxsatnomaYuborish() {
 
       const { data: { publicUrl } } = supabase.storage.from('avatar').getPublicUrl(filePath)
 
-      // 3. Insert into permit_requests
+      // 4. Insert into permit_requests
       const { error: dbError } = await supabase
         .from('permit_requests')
         .insert({

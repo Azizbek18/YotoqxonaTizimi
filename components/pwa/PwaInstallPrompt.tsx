@@ -164,17 +164,17 @@ export default function PwaInstallPrompt() {
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-3 mt-4 relative z-10 pl-[72px]">
+              <div className="flex items-center gap-2 sm:gap-3 mt-4 relative z-10 pl-0 sm:pl-[72px]">
                 <button
                   onClick={handleInstallClick}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+                  className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
                 >
-                  <Download size={14} />
+                  <Download size={14} className="shrink-0" />
                   O&apos;rnatish
                 </button>
                 <button
                   onClick={handleDismiss}
-                  className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-xs font-black uppercase tracking-wider transition-colors"
+                  className="shrink-0 px-3 sm:px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-xs font-black uppercase tracking-wider transition-colors"
                 >
                   Keyinroq
                 </button>

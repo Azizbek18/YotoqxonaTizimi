@@ -196,25 +196,25 @@ export default function Home() {
       }`} />
 
       {/* Navigation */}
-      <nav className={`relative z-50 max-w-7xl mx-auto px-4 py-5 flex justify-between items-center border-b transition-colors duration-500 ${
+      <nav className={`relative z-50 max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-5 flex flex-wrap justify-between items-center gap-x-3 gap-y-3 border-b transition-colors duration-500 ${
         isLight ? 'border-slate-200' : 'border-white/5'
       }`}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/30 border border-white/10 scale-105">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/30 border border-white/10 scale-105">
             S
           </div>
-          <span className={`text-xl font-black uppercase tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r transition-colors duration-300 syne-font ${
+          <span className={`text-base sm:text-xl font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r transition-colors duration-300 syne-font truncate ${
             isLight ? 'from-slate-900 to-slate-600' : 'from-white via-gray-100 to-gray-300'
           }`}>
             SmartDorm
           </span>
         </div>
-        
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <ThemeToggle />
-          <Link 
-            href="/login" 
-            className={`px-5 py-2.5 rounded-2xl border text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 active:scale-95 shadow-md ${
+          <Link
+            href="/login"
+            className={`px-3 sm:px-5 py-2 sm:py-2.5 rounded-2xl border text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 active:scale-95 shadow-md whitespace-nowrap ${
               isLight
                 ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800 shadow-slate-200'
                 : 'bg-white/5 hover:bg-white/10 border-white/10 text-white shadow-black/40'
@@ -231,14 +231,14 @@ export default function Home() {
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`inline-flex items-center gap-2.5 px-4.5 py-2 rounded-full border text-[10px] font-black uppercase tracking-widest transition-colors duration-500 ${
+          className={`inline-flex items-center gap-2 sm:gap-2.5 max-w-full px-3 sm:px-4.5 py-2 rounded-full border text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-widest text-center transition-colors duration-500 ${
             isLight
               ? 'border-indigo-500/20 bg-indigo-500/5 text-indigo-600 shadow-sm shadow-indigo-50'
               : 'border-indigo-500/20 bg-indigo-500/10 text-indigo-400 shadow-md shadow-indigo-950/20'
           }`}
         >
-          <Sparkles size={12} className="animate-pulse text-indigo-500" /> 
-          YOTOQXONADA JOY OLISH MULTI-BOSQICHLI TIZIMI
+          <Sparkles size={12} className="shrink-0 animate-pulse text-indigo-500" />
+          <span className="break-words">YOTOQXONADA JOY OLISH MULTI-BOSQICHLI TIZIMI</span>
         </motion.div>
 
         <motion.h1 
@@ -257,7 +257,7 @@ export default function Home() {
 
       {/* 3D Flow Timeline Visual Guide */}
       <section className="relative z-10 max-w-4xl mx-auto px-4 pt-10">
-        <div className={`p-6 sm:p-8 rounded-[36px] glass-panel ${
+        <div className={`p-4 sm:p-8 rounded-[28px] sm:rounded-[36px] glass-panel ${
           isLight ? 'bg-white/80' : 'bg-white/[0.02]'
         }`}>
           <p className={`text-[10px] font-black uppercase tracking-[0.32em] text-center mb-8 ${isLight ? 'text-slate-500' : 'text-slate-400'} syne-font`}>
@@ -352,7 +352,7 @@ export default function Home() {
             <p className="text-[10px] text-indigo-400 uppercase tracking-[0.25em] font-black animate-pulse syne-font">Ma&apos;lumotlar yangilanmoqda...</p>
           </div>
         ) : permitRequest ? (
-          <div className={`p-6 sm:p-10 rounded-[36px] glass-panel text-center space-y-6 relative overflow-hidden transition-all ${
+          <div className={`p-5 sm:p-10 rounded-[28px] sm:rounded-[36px] glass-panel text-center space-y-6 relative overflow-hidden transition-all ${
             isLight ? 'bg-white/90' : 'bg-[#060a17]/90'
           }`}>
             <div className="absolute inset-0 bg-radial-gradient from-indigo-500/10 via-transparent to-transparent opacity-40 pointer-events-none" />
@@ -478,7 +478,7 @@ export default function Home() {
             )}
           </div>
         ) : (
-          <div className={`p-6 sm:p-10 rounded-[36px] glass-panel text-center space-y-6 relative overflow-hidden transition-all ${
+          <div className={`p-5 sm:p-10 rounded-[28px] sm:rounded-[36px] glass-panel text-center space-y-6 relative overflow-hidden transition-all ${
             isLight ? 'bg-white/90' : 'bg-[#060a17]/90'
           }`}>
             <div className="absolute inset-0 bg-radial-gradient from-indigo-500/10 via-transparent to-transparent opacity-40 pointer-events-none" />
@@ -533,7 +533,7 @@ export default function Home() {
             <motion.div
               key={role.title}
               whileHover={{ y: -6, scale: 1.02 }}
-              className={`border p-6 rounded-[32px] flex flex-col justify-between min-h-[340px] shadow-xl relative overflow-hidden group transition-all duration-300 ${
+              className={`border p-5 sm:p-6 rounded-[32px] flex flex-col justify-between min-h-[340px] shadow-xl relative overflow-hidden group transition-all duration-300 ${
                 isLight
                   ? 'bg-white border-slate-200 shadow-slate-200/50'
                   : `bg-[#060a17]/80 border-white/5 hover:border-white/10`
@@ -577,19 +577,19 @@ export default function Home() {
 
       {/* Statistics & Trust footer */}
       <section className="relative z-10 max-w-4xl mx-auto px-4 py-10 text-center space-y-4 border-t border-slate-200/20 dark:border-white/5">
-        <div className={`flex justify-center gap-6 text-[10px] font-black uppercase tracking-wider transition-colors duration-500 ${
+        <div className={`flex flex-wrap justify-center gap-x-4 gap-y-2 sm:gap-x-6 text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-colors duration-500 ${
           isLight ? 'text-slate-500' : 'text-gray-600'
         }`}>
-          <div className="flex items-center gap-1.5">
-            <ShieldCheck size={14} className="text-indigo-500 animate-pulse" />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <ShieldCheck size={14} className="shrink-0 text-indigo-500 animate-pulse" />
             <span>Ishonchli va Xavfsiz</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Cpu size={14} className="text-indigo-500" />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Cpu size={14} className="shrink-0 text-indigo-500" />
             <span>AI Integratsiya</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Activity size={14} className="text-indigo-500" />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Activity size={14} className="shrink-0 text-indigo-500" />
             <span>Real-time monitoring</span>
           </div>
         </div>

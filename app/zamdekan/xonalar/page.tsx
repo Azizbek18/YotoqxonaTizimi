@@ -9,10 +9,16 @@ import {
   BedDouble,
   DoorOpen,
   DoorClosed,
-  Users2
+  Users2,
+  UserPlus,
+  UserMinus
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchZamdekanOverview } from '@/features/permits/client/admin-api'
+import { fetchAssignableStudents, assignStudentRoom } from '@/features/room-assignment/client/api'
+import type { FacultyStudentRow } from '@/features/room-assignment/types'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 
 interface Occupant {
   id: string
@@ -53,6 +59,23 @@ export default function ZamdekanXonalarMap() {
   const [selectedRoom, setSelectedRoom] = useState<RoomData | null>(null)
   const [floorFilter, setFloorFilter] = useState<number | 'all'>('all')
   const [searchTerm, setSearchTerm] = useState('')
+
+  // Room assignment state
+  const [students, setStudents] = useState<FacultyStudentRow[]>([])
+  const [assignModalOpen, setAssignModalOpen] = useState(false)
+  const [assignSearch, setAssignSearch] = useState('')
+  const [assigningId, setAssigningId] = useState<string | null>(null)
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+
+  const loadStudents = async () => {
+    try {
+      const rows = await fetchAssignableStudents()
+      setStudents(rows)
+    } catch (err) {
+      console.error('Error fetching faculty students:', err)
+    }
+  }
 
   const fetchRoomsData = async () => {
     setLoading(true)
@@ -151,7 +174,47 @@ export default function ZamdekanXonalarMap() {
 
   useEffect(() => {
     fetchRoomsData()
+    loadStudents()
   }, [])
+
+  // Keep the open detail panel in sync with the freshly-refetched room list
+  // (e.g. after assigning/removing a student) instead of showing a stale snapshot.
+  useEffect(() => {
+    setSelectedRoom((prev) => {
+      if (!prev) return prev
+      return rooms.find((r) => r.roomNumber === prev.roomNumber) ?? prev
+    })
+  }, [rooms])
+
+  const handleAssignStudent = async (studentId: string) => {
+    if (!selectedRoom) return
+    setAssigningId(studentId)
+    try {
+      await assignStudentRoom({ studentId, roomNumber: selectedRoom.roomNumber })
+      toast.success('Talaba xonaga joylashtirildi')
+      setAssignModalOpen(false)
+      setAssignSearch('')
+      await Promise.all([fetchRoomsData(), loadStudents()])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Joylashtirishda xatolik yuz berdi")
+    } finally {
+      setAssigningId(null)
+    }
+  }
+
+  const handleRemoveStudent = async (occ: Occupant) => {
+    setRemovingId(occ.id)
+    try {
+      await assignStudentRoom({ studentId: occ.id, roomNumber: null })
+      toast.success(`${occ.full_name} xonadan chiqarildi`)
+      setConfirmRemoveId(null)
+      await Promise.all([fetchRoomsData(), loadStudents()])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Chiqarishda xatolik yuz berdi")
+    } finally {
+      setRemovingId(null)
+    }
+  }
 
   // Filters
   const filteredRooms = rooms.filter((r) => {
@@ -353,6 +416,19 @@ export default function ZamdekanXonalarMap() {
                   </button>
                 </div>
 
+                {selectedRoom.gender === 'mixed' ? null : selectedRoom.occupants.length >= 4 ? (
+                  <div className={`p-2.5 rounded-xl text-center text-[10px] font-bold ${isLight ? 'bg-slate-100 text-slate-500' : 'bg-white/5 text-slate-400'}`}>
+                    Xona to&apos;la — yangi talaba joylashtirib bo&apos;lmaydi
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setAssignModalOpen(true)}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-md shadow-indigo-500/25 transition-all active:scale-95"
+                  >
+                    <UserPlus size={14} /> Talaba joylashtirish
+                  </button>
+                )}
+
                 {/* Mixed Gender Error message */}
                 {selectedRoom.gender === 'mixed' && (
                   <div className="p-3 rounded-2xl bg-rose-500/15 border border-rose-500/20 text-rose-500 text-[10px] font-bold flex items-start gap-2">
@@ -415,6 +491,34 @@ export default function ZamdekanXonalarMap() {
                             </div>
                           ) : null}
                         </div>
+
+                        {occ.status === 'registered' && (
+                          confirmRemoveId === occ.id ? (
+                            <div className="flex items-center gap-2 pt-1">
+                              <span className={`flex-1 text-[9px] font-bold ${textMuted}`}>Rostdan chiqarasizmi?</span>
+                              <button
+                                onClick={() => handleRemoveStudent(occ)}
+                                disabled={removingId === occ.id}
+                                className="px-2.5 py-1 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-[9px] font-black uppercase disabled:opacity-50"
+                              >
+                                {removingId === occ.id ? '...' : 'Ha, chiqarish'}
+                              </button>
+                              <button
+                                onClick={() => setConfirmRemoveId(null)}
+                                className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/5 text-slate-300'}`}
+                              >
+                                Bekor
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmRemoveId(occ.id)}
+                              className="flex items-center gap-1.5 pt-1 text-[9px] font-bold uppercase tracking-wider text-rose-500 hover:text-rose-600 transition-colors"
+                            >
+                              <UserMinus size={11} /> Xonadan chiqarish
+                            </button>
+                          )
+                        )}
                       </div>
                     ))
                   )}
@@ -433,6 +537,74 @@ export default function ZamdekanXonalarMap() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Assign Student Modal */}
+      <ConfirmModal
+        isOpen={assignModalOpen && !!selectedRoom}
+        title="Talaba joylashtirish"
+        description={selectedRoom ? `${selectedRoom.roomNumber}-xonaga talaba tanlang` : undefined}
+        onClose={() => {
+          setAssignModalOpen(false)
+          setAssignSearch('')
+        }}
+      >
+        <div className="space-y-3">
+          <div className="relative">
+            <Search size={14} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${textMuted}`} />
+            <input
+              type="text"
+              autoFocus
+              placeholder="Talaba ismi bo'yicha qidirish..."
+              value={assignSearch}
+              onChange={(e) => setAssignSearch(e.target.value)}
+              className={`w-full text-xs py-2.5 pl-9 pr-4 rounded-xl outline-none border transition-all ${inputBg}`}
+            />
+          </div>
+
+          <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1 custom-scrollbar">
+            {students
+              .filter((s) => s.room_number !== selectedRoom?.roomNumber)
+              .filter((s) => s.full_name.toLowerCase().includes(assignSearch.toLowerCase()))
+              .map((s) => {
+                const genderMismatch = Boolean(selectedRoom?.gender && selectedRoom.gender !== 'mixed' && s.gender && s.gender !== selectedRoom.gender)
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    disabled={genderMismatch || assigningId === s.id}
+                    onClick={() => handleAssignStudent(s.id)}
+                    className={`w-full flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all ${
+                      genderMismatch
+                        ? 'opacity-40 cursor-not-allowed border-transparent'
+                        : isLight
+                          ? 'border-slate-200 bg-white hover:border-indigo-300'
+                          : 'border-white/5 bg-white/[0.02] hover:border-indigo-500/30'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className={`text-xs font-bold truncate ${textStrong}`}>{s.full_name}</p>
+                      <p className={`text-[9px] mt-0.5 ${textMuted}`}>
+                        {s.direction ? `${s.direction} • ` : ''}{s.course ? `${s.course}-kurs • ` : ''}
+                        {s.gender === 'male' ? 'Erkak' : 'Ayol'}
+                        {genderMismatch && ' • jinsi mos kelmaydi'}
+                        {s.room_number ? ` • Hozir: ${s.room_number}-xona` : ' • Xonasiz'}
+                      </p>
+                    </div>
+                    {assigningId === s.id ? (
+                      <span className="shrink-0 text-[9px] font-black uppercase text-indigo-500">...</span>
+                    ) : (
+                      <UserPlus size={16} className={genderMismatch ? textMuted : 'shrink-0 text-indigo-500'} />
+                    )}
+                  </button>
+                )
+              })}
+
+            {students.filter((s) => s.room_number !== selectedRoom?.roomNumber && s.full_name.toLowerCase().includes(assignSearch.toLowerCase())).length === 0 && (
+              <p className={`py-6 text-center text-xs font-bold ${textMuted}`}>Talaba topilmadi</p>
+            )}
+          </div>
+        </div>
+      </ConfirmModal>
     </div>
   )
 }

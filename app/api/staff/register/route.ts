@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getServiceSupabase } from '@/lib/server-supabase'
+import { createAuthUserSafely, deleteAuthUserSafely } from '@/lib/supabase-admin-auth'
 import {
   validateRegisterCode,
   validateStaffId,
@@ -28,11 +29,11 @@ export async function POST(request: Request) {
     const linkKey = typeof body.linkKey === 'string' ? body.linkKey : ''
     const faculty = typeof body.faculty === 'string' ? body.faculty.trim() : ''
 
-    if (role !== 'admin' && role !== 'tarbiyachi' && role !== 'zamdekan') {
+    if (role !== 'zamdekan') {
       return NextResponse.json({ ok: false, error: "Noto'g'ri rol" }, { status: 400 })
     }
 
-    if (role === 'zamdekan' && !faculty) {
+    if (!faculty) {
       return NextResponse.json({ ok: false, error: 'Fakultet kiritilishi shart' }, { status: 400 })
     }
 
@@ -45,28 +46,15 @@ export async function POST(request: Request) {
     }
 
     const linkOk = validateStaffLink(role, linkKey)
-    const idOk = validateStaffId(role, staffId)
-    const codeOk = validateRegisterCode(role, registerCode)
+    const idOk = validateStaffId(staffId)
+    const codeOk = validateRegisterCode(registerCode)
     if (!linkOk || !idOk || !codeOk) {
       return NextResponse.json({ ok: false, error: 'Ruxsat rad etildi' }, { status: 403 })
     }
 
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!serviceRoleKey) {
-      return NextResponse.json({ ok: false, error: 'Server konfiguratsiyasi to\'liq emas' }, { status: 500 })
-    }
+    const supabase = getServiceSupabase()
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      serviceRoleKey,
-    )
-
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { role },
-    })
+    const { data: authData, error: authError } = await createAuthUserSafely(email, password, { role })
     if (authError || !authData.user) {
       return NextResponse.json({ ok: false, error: "Ro'yxatdan o'tishda xatolik" }, { status: 400 })
     }
@@ -76,14 +64,13 @@ export async function POST(request: Request) {
       email,
       full_name: fullName,
       phone_number: phone || null,
-      staff_id: staffId,
       role,
       status: 'active',
-      faculty: role === 'zamdekan' ? faculty : null,
+      faculty,
     })
 
     if (userError) {
-      await supabase.auth.admin.deleteUser(authData.user.id)
+      await deleteAuthUserSafely(authData.user.id)
       return NextResponse.json({ ok: false, error: userError.message }, { status: 400 })
     }
 

@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Settings as SettingsIcon, Lock, Bell, Server, Shield, Copy, KeyRound, MailPlus } from 'lucide-react'
+import { Settings as SettingsIcon, Lock, Bell, Server, Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
@@ -35,21 +35,11 @@ type SettingConfig =
         key: keyof SettingsState
     }
 
-type AdminInvite = {
-    id: string
-    code: string
-    email: string
-    used: boolean
-    created_at: string
-    used_at: string | null
-}
-
 export default function AdminSettingsPage() {
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
 
     const surfaceBg = isLight ? 'bg-white/80 border-slate-200 shadow-md' : 'bg-[#0b1120]/50 border-white/10 shadow-[0_0_20px_rgba(168,85,247,0.05)]'
-    const cardBg = isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'
     const textMuted = isLight ? 'text-slate-500' : 'text-slate-400'
     const textStrong = isLight ? 'text-slate-900' : 'text-white'
     const inputBg = isLight ? 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-500/50' : 'bg-white/5 border-white/10 text-white placeholder-slate-500 focus:border-purple-500/50'
@@ -64,82 +54,12 @@ export default function AdminSettingsPage() {
     })
 
     const [saving, setSaving] = useState(false)
-    const [inviteEmail, setInviteEmail] = useState('')
-    const [creatingInvite, setCreatingInvite] = useState(false)
-    const [loadingInvites, setLoadingInvites] = useState(true)
-    const [generatedInviteCode, setGeneratedInviteCode] = useState('')
-    const [invites, setInvites] = useState<AdminInvite[]>([])
-
-    const loadInvites = async () => {
-        try {
-            setLoadingInvites(true)
-            const response = await fetch('/api/admin/invites')
-            const result = await response.json()
-
-            if (!response.ok || !result.success) {
-                throw new Error(result.error || 'Taklif kodlarini yuklab bo‘lmadi')
-            }
-
-            setInvites(Array.isArray(result.invites) ? result.invites : [])
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Taklif kodlarini yuklab bo‘lmadi')
-        } finally {
-            setLoadingInvites(false)
-        }
-    }
-
-    useEffect(() => {
-        void loadInvites()
-    }, [])
 
     const handleToggle = (key: keyof typeof settings) => {
         setSettings(prev => ({
             ...prev,
             [key]: typeof prev[key] === 'boolean' ? !prev[key] : prev[key],
         }))
-    }
-
-    const handleCreateInvite = async () => {
-        const normalizedEmail = inviteEmail.trim().toLowerCase()
-
-        if (!normalizedEmail) {
-            toast.error('Admin email manzilini kiriting')
-            return
-        }
-
-        setCreatingInvite(true)
-        try {
-            const response = await fetch('/api/admin/invites', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email: normalizedEmail }),
-            })
-            const result = await response.json()
-
-            if (!response.ok || !result.success) {
-                throw new Error(result.error || 'Taklif kodi yaratilmadi')
-            }
-
-            setGeneratedInviteCode(result.inviteCode)
-            setInviteEmail('')
-            toast.success('Taklif kodi yaratildi')
-            await loadInvites()
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Taklif kodi yaratishda xato')
-        } finally {
-            setCreatingInvite(false)
-        }
-    }
-
-    const handleCopy = async (value: string) => {
-        try {
-            await navigator.clipboard.writeText(value)
-            toast.success('Nusxalandi')
-        } catch {
-            toast.error('Nusxalab bo‘lmadi')
-        }
     }
 
     const handleInputChange = <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
@@ -236,134 +156,6 @@ export default function AdminSettingsPage() {
                     <p className={`mt-2 text-sm ${textMuted}`}>Yotoqxona boshqaruv tizimining sozlama va konfiguratsiyasi</p>
                 </div>
             </div>
-
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.08 }}
-                className={`mb-6 overflow-hidden rounded-2xl border backdrop-blur-xl ${surfaceBg}`}
-            >
-                <div className="bg-linear-to-r from-purple-600 to-indigo-600 p-6 shadow-md">
-                    <div className="flex items-center gap-3">
-                        <KeyRound size={28} className="text-white" />
-                        <div>
-                            <h2 className="text-xl font-black text-white">Admin taklif kodi</h2>
-                            <p className="mt-1 text-sm text-purple-100">
-                                Yangi admin ro&apos;yxatdan o&apos;tishi uchun shu yerda bir martalik taklif kodi yarating.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-6 p-6">
-                    <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
-                        <div className="space-y-2">
-                            <label className={`text-xs font-black uppercase tracking-[0.2em] ${textMuted}`}>
-                                Admin email
-                            </label>
-                            <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all ${inputBg}`}>
-                                <MailPlus size={18} className="text-slate-500" />
-                                <input
-                                    type="email"
-                                    value={inviteEmail}
-                                    onChange={(e) => setInviteEmail(e.target.value)}
-                                    placeholder="new-admin@example.com"
-                                    className={`w-full bg-transparent text-sm outline-none ${textStrong} placeholder:text-slate-500`}
-                                />
-                            </div>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={handleCreateInvite}
-                            disabled={creatingInvite}
-                            className="mt-auto h-12 rounded-xl bg-linear-to-r from-purple-500 to-fuchsia-600 hover:from-purple-600 hover:to-fuchsia-700 px-5 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-purple-500/10 transition-all hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60 active:scale-95"
-                        >
-                            {creatingInvite ? 'Yaratilmoqda...' : 'Kod yaratish'}
-                        </button>
-                    </div>
-
-                    {generatedInviteCode && (
-                        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-300">
-                                Oxirgi yaratilgan kod
-                            </p>
-                            <div className={`mt-3 flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${cardBg}`}>
-                                <code className={`break-all text-sm font-bold ${textStrong}`}>{generatedInviteCode}</code>
-                                <button
-                                    type="button"
-                                    onClick={() => void handleCopy(generatedInviteCode)}
-                                    className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-widest transition-all ${isLight ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'}`}
-                                >
-                                    <Copy size={14} />
-                                    Nusxalash
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    <div>
-                        <div className="mb-4 flex items-center justify-between">
-                            <div>
-                                <h3 className={`text-sm font-black uppercase tracking-[0.2em] ${textStrong}`}>
-                                    Yaratilgan takliflar
-                                </h3>
-                                <p className={`mt-1 text-xs ${textMuted}`}>
-                                    Admin ro&apos;yxatdan o&apos;tish sahifasida shu kod email bilan birga ishlatiladi.
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => void loadInvites()}
-                                className={`rounded-xl border px-3.5 py-2 text-xs font-bold uppercase tracking-widest transition-all ${isLight ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
-                            >
-                                Yangilash
-                            </button>
-                        </div>
-
-                        <div className="space-y-3 max-h-[35vh] overflow-y-auto pr-1 no-scrollbar">
-                            {loadingInvites ? (
-                                <div className={`rounded-xl border p-4 text-sm ${borderCol} ${textMuted} animate-pulse`}>
-                                    Taklif kodlari yuklanmoqda...
-                                </div>
-                            ) : invites.length === 0 ? (
-                                <div className={`rounded-xl border border-dashed p-4 text-sm text-center ${borderCol} ${textMuted}`}>
-                                    Hozircha taklif kodlari yo&apos;q.
-                                </div>
-                            ) : (
-                                invites.map((invite) => (
-                                    <div
-                                        key={invite.id}
-                                        className={`grid gap-3 rounded-xl border p-4 lg:grid-cols-[1.2fr_1fr_auto] ${cardBg}`}
-                                    >
-                                        <div className="min-w-0">
-                                            <p className={`truncate text-sm font-semibold ${textStrong}`}>{invite.email}</p>
-                                            <p className={`mt-1 break-all font-mono text-xs ${textMuted}`}>{invite.code}</p>
-                                        </div>
-                                        <div className={`text-xs ${textMuted} space-y-0.5`}>
-                                            <p>Yaratilgan: {new Date(invite.created_at).toLocaleString('uz-UZ')}</p>
-                                            <p>Ishlatilgan: {invite.used_at ? new Date(invite.used_at).toLocaleString('uz-UZ') : 'Yo‘q'}</p>
-                                        </div>
-                                        <div className="flex items-start justify-between gap-3 lg:justify-end">
-                                            <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${invite.used ? 'bg-amber-500/15 text-amber-500 border border-amber-500/20' : 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/20'}`}>
-                                                {invite.used ? 'Ishlatilgan' : 'Faol'}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => void handleCopy(invite.code)}
-                                                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all ${isLight ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
-                                            >
-                                                <Copy size={12} />
-                                                Kod
-                                            </button>
-                                        </div>
-                                    </div>
-                                    ))
-                                )}
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
 
             {/* Settings Sections */}
             <div className="space-y-6">

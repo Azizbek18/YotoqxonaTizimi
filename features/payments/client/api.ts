@@ -30,8 +30,16 @@ export async function fetchAdminPayments(studentId?: string) {
   return result.payments
 }
 
-export function fetchAdminPaymentSummary() {
-  return requestJson<PaymentSummary>('/api/admin/payments?summary=1')
+export async function fetchAdminPaymentSummary(): Promise<PaymentSummary> {
+  try {
+    const authHeaders = await getAuthHeaders()
+    if (!authHeaders.Authorization) {
+      return { waitingCount: 0 }
+    }
+    return await requestJson<PaymentSummary>('/api/admin/payments?summary=1')
+  } catch {
+    return { waitingCount: 0 }
+  }
 }
 
 export function reviewAdminPayments(input: {

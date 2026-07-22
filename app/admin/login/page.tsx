@@ -111,12 +111,6 @@ export default function AdminLoginPage() {
                         <div className="flex-1 rounded-lg bg-blue-600 py-2 text-center text-[8px] font-black uppercase tracking-widest text-white shadow-lg sm:py-3 sm:text-[10px]">
                             Kirish
                         </div>
-                        <Link
-                            href="/admin/register"
-                            className="flex-1 py-2 text-center text-[8px] font-black uppercase tracking-widest text-slate-500 transition-all hover:text-white sm:py-3 sm:text-[10px]"
-                        >
-                            Ro&apos;yxatdan o&apos;tish
-                        </Link>
                     </div>
 
                     <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6">

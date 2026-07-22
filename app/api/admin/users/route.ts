@@ -344,11 +344,35 @@ export async function PATCH(request: Request) {
       return jsonError("Staff yozuvini talaba roliga o'tkazib bo'lmaydi", 400)
     }
 
-    if (role && !['talaba', 'tarbiyachi', 'zamdekan', 'admin'].includes(role)) {
+    // Zamdekan admindan yuqori lavozim: bu rolga faqat maxfiy ro'yxatdan
+    // o'tish oqimi (portal link + register kod + ruxsat etilgan ID) orqali
+    // tayinlanadi, admin panelidan emas.
+    if (role === 'zamdekan') {
+      return jsonError("Zamdekan roli faqat rasmiy ro'yxatdan o'tish orqali beriladi", 403)
+    }
+
+    if (role && !['talaba', 'tarbiyachi', 'admin'].includes(role)) {
       return jsonError("Noto'g'ri rol", 400)
     }
 
     const supabase = getServiceSupabase()
+
+    if (source === 'staff') {
+      const { data: existingStaff, error: existingError } = await supabase
+        .from('staff')
+        .select('role')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (existingError) {
+        return jsonError(existingError.message, 500)
+      }
+
+      if (existingStaff?.role === 'zamdekan') {
+        return jsonError("Zamdekan profilini admin panelidan o'zgartirib bo'lmaydi", 403)
+      }
+    }
+
     const updates =
       source === 'users'
         ? buildStudentUpdates(body as Record<string, unknown>)
@@ -422,6 +446,22 @@ export async function DELETE(request: Request) {
 
     const supabase = getServiceSupabase()
     const table = source === 'users' ? 'users' : 'staff'
+
+    if (source === 'staff') {
+      const { data: existingStaff, error: existingError } = await supabase
+        .from('staff')
+        .select('role')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (existingError) {
+        return jsonError(existingError.message, 500)
+      }
+
+      if (existingStaff?.role === 'zamdekan') {
+        return jsonError("Zamdekan profilini admin panelidan o'chirib bo'lmaydi", 403)
+      }
+    }
 
     const { error: dbError } = await supabase
       .from(table)

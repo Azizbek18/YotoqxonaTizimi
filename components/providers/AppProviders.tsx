@@ -30,9 +30,18 @@ export default function AppProviders({ children }: { children: React.ReactNode }
     // the shell already packages the app, so a competing service worker
     // cache only adds overhead with no benefit there)
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator && !isNativeApp()) {
-      navigator.serviceWorker.register('/sw.js')
-        .then((reg) => console.log('ServiceWorker registered:', reg.scope))
-        .catch((err) => console.error('ServiceWorker registration failed:', err))
+      if (process.env.NODE_ENV === 'production') {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => console.log('ServiceWorker registered:', reg.scope))
+          .catch((err) => console.error('ServiceWorker registration failed:', err))
+      } else {
+        // A service worker registered from an earlier production build stays
+        // active for this origin and intercepts dev-server requests, causing
+        // spurious "Failed to fetch" errors as Turbopack's assets churn.
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          regs.forEach((reg) => reg.unregister())
+        })
+      }
     }
 
     if (useThemeStore.persist.hasHydrated()) {

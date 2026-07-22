@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   UserCog,
+  UserPlus,
   Bell
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -120,6 +121,13 @@ export default function ZamdekanLayout({
       href: '/zamdekan/xonalar',
       icon: Boxes,
       accent: 'from-amber-500 to-orange-600',
+    },
+    {
+      label: 'Xodimlar',
+      caption: 'Admin va tarbiyachilar',
+      href: '/zamdekan/xodimlar',
+      icon: UserPlus,
+      accent: 'from-purple-500 to-violet-600',
     }
   ]), [pendingCount])
 

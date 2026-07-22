@@ -14,7 +14,7 @@ export async function proxy(request: NextRequest) {
     "object-src 'none'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.supabase.co https://upload.wikimedia.org https://nuu.uz",
+    "img-src 'self' data: blob: https://*.supabase.co https://upload.wikimedia.org https://nuu.uz https://img.icons8.com",
     "font-src 'self' data:",
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
     "worker-src 'self' blob:",
@@ -89,8 +89,8 @@ export async function proxy(request: NextRequest) {
   // ADMIN ROUTES HIMOYASI
   // ========================
   if (path.startsWith('/admin')) {
-    // Admin loginiga va registerga kirish
-    if (path === '/admin/login' || path === '/admin/register') {
+    // Admin loginiga kirish
+    if (path === '/admin/login') {
       // Agar admin ro'li bilan tizimga kirgan bo'lsa, dashboardga yo'naltirish
       if (session && userRole === 'admin') {
         return redirect('/admin/dashboard')

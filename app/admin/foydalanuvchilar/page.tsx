@@ -168,11 +168,6 @@ export default function AdminUsersPage() {
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null)
   const [editingRole, setEditingRole] = useState<UserRow['role']>('talaba')
   const [activeEditTab, setActiveEditTab] = useState<'asosiy' | 'hujjatlar' | 'oila'>('asosiy')
-  
-  const [inviteModalOpen, setInviteModalOpen] = useState(false)
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [generatedInviteCode, setGeneratedInviteCode] = useState('')
-  const [creatingInvite, setCreatingInvite] = useState(false)
 
   const [editForm, setEditForm] = useState({
     full_name: '',
@@ -266,41 +261,6 @@ export default function AdminUsersPage() {
       setLoading(false)
     }
   }, [])
-
-  const handleCreateInvite = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const normalizedEmail = inviteEmail.trim().toLowerCase()
-
-    if (!normalizedEmail) {
-      toast.error('Email manzilini kiriting')
-      return
-    }
-
-    setCreatingInvite(true)
-    try {
-      const response = await fetch('/api/admin/invites', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: normalizedEmail }),
-      })
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Taklif kodi yaratilmadi')
-      }
-
-      setGeneratedInviteCode(result.inviteCode)
-      setInviteEmail('')
-      toast.success('Taklif kodi muvaffaqiyatli yaratildi!')
-      void loadUsers()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Xatolik yuz berdi')
-    } finally {
-      setCreatingInvite(false)
-    }
-  }
 
   useEffect(() => {
     const init = async () => {
@@ -762,13 +722,6 @@ export default function AdminUsersPage() {
         </div>
 
         <div className="flex gap-2">
-          <button
-            onClick={() => setInviteModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-linear-to-r from-purple-500 to-fuchsia-600 hover:from-purple-600 hover:to-fuchsia-700 px-5 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-purple-500/20 active:scale-[0.98] transition-all"
-          >
-            <Users size={16} />
-            Taklif Yaratish
-          </button>
           <button
             onClick={loadUsers}
             disabled={loading}
@@ -1740,95 +1693,6 @@ export default function AdminUsersPage() {
                 <p className="text-xs text-amber-200/70 leading-relaxed">
                   <span className="font-bold text-amber-300">Ma&apos;lumot:</span> Tarbiyachi biriktirilgan jinsi bo&apos;yicha faqat o&apos;sha jinsga oid qavatlarni ko&apos;ra oladi. Agar qavat bo&apos;sh qoldirilsa, barcha qavatlar ochiq bo&apos;ladi.
                 </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </ConfirmModal>
-
-      {/* Staff Invite Creation Modal */}
-      <ConfirmModal
-        isOpen={inviteModalOpen}
-        title="Yangi Xodim Taklif Yaratish"
-        description="Admin yoki Tarbiyachi ro'yxatdan o'tishi uchun taklif kodi yarating"
-        onClose={() => {
-          setInviteModalOpen(false)
-          setGeneratedInviteCode('')
-          setInviteEmail('')
-        }}
-      >
-        <div className="space-y-6">
-          {!generatedInviteCode ? (
-            <form onSubmit={handleCreateInvite} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Email Manzil</label>
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="xodim@yotoqxona.uz"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition-all focus:border-purple-500/50 outline-none"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={creatingInvite}
-                className="w-full h-11 rounded-xl bg-linear-to-r from-purple-500 to-fuchsia-600 hover:from-purple-600 hover:to-fuchsia-700 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-purple-500/10 transition-all disabled:opacity-50 active:scale-95"
-              >
-                {creatingInvite ? 'Yaratilmoqda...' : 'Taklif Kodini Yaratish'}
-              </button>
-            </form>
-          ) : (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-center">
-                <p className="text-xs text-emerald-400 font-bold uppercase tracking-wider">Taklif havolasi tayyor!</p>
-                <p className="mt-2 text-xs text-slate-300">
-                  Ushbu taklif havolasini ro&apos;yxatdan o&apos;tuvchi xodimga yuboring. Havola faqat ko&apos;rsatilgan email uchun amal qiladi.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Taklif Havolasi</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/admin/register?code=${generatedInviteCode}`}
-                    className="flex-1 rounded-xl border border-white/10 bg-slate-900 px-4 py-2.5 text-xs text-slate-300 outline-none"
-                  />
-                  <button
-                    onClick={() => {
-                      const link = `${window.location.origin}/admin/register?code=${generatedInviteCode}`
-                      navigator.clipboard.writeText(link)
-                      toast.success('Nusxalandi!')
-                    }}
-                    className="px-4 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold transition-all"
-                  >
-                    Nusxalash
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Taklif Kodi</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={generatedInviteCode}
-                    className="flex-1 rounded-xl border border-white/10 bg-slate-900 px-4 py-2.5 text-xs text-slate-300 outline-none"
-                  />
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(generatedInviteCode)
-                      toast.success('Nusxalandi!')
-                    }}
-                    className="px-4 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold transition-all"
-                  >
-                    Nusxalash
-                  </button>
-                </div>
               </div>
             </div>
           )}

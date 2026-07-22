@@ -19,7 +19,7 @@ import {
   Cell,
 } from 'recharts'
 import Link from 'next/link'
-import { AlertTriangle, Loader, Copy, X, Activity, Cpu } from 'lucide-react'
+import { AlertTriangle, Loader, X, Activity, Cpu } from 'lucide-react'
 import StatCard from '@/components/admin/StatCard'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import toast from 'react-hot-toast'
@@ -133,12 +133,6 @@ export default function AdminDashboard() {
     apiPing: number
     time: string
   } | null>(null)
-
-  // Taklif yaratish holatlari
-  const [inviteModalOpen, setInviteModalOpen] = useState(false)
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [generatedInviteCode, setGeneratedInviteCode] = useState('')
-  const [creatingInvite, setCreatingInvite] = useState(false)
 
   // Hisobotlar uchun filterlar va eksport
   const [exporting, setExporting] = useState(false)
@@ -282,7 +276,7 @@ export default function AdminDashboard() {
 
     const apiStart = performance.now()
     try {
-      const res = await fetch('/api/admin/invites', { method: 'GET' })
+      const res = await fetch('/api/admin/users', { method: 'GET' })
       if (res.ok) {
         apiStatus = 'online'
         apiPing = Math.round(performance.now() - apiStart)
@@ -300,48 +294,6 @@ export default function AdminDashboard() {
     })
     setIsCheckingStatus(false)
     setStatusModalOpen(true)
-  }
-
-  const handleCreateInvite = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const normalizedEmail = inviteEmail.trim().toLowerCase()
-
-    if (!normalizedEmail) {
-      toast.error('Email manzilini kiriting')
-      return
-    }
-
-    setCreatingInvite(true)
-    try {
-      const response = await fetch('/api/admin/invites', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: normalizedEmail }),
-      })
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Taklif kodi yaratilmadi')
-      }
-
-      setGeneratedInviteCode(result.inviteCode)
-      setInviteEmail('')
-      toast.success('Taklif kodi muvaffaqiyatli yaratildi! 🎉')
-      await loadStats(true)
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Xatolik yuz berdi')
-    } finally {
-      setCreatingInvite(false)
-    }
-  }
-
-  const handleCopyLink = () => {
-    if (!generatedInviteCode) return
-    const inviteLink = `${window.location.origin}/register?code=${generatedInviteCode}`
-    navigator.clipboard.writeText(inviteLink)
-    toast.success('Taklif havolasi buferga nusxalandi! 📋')
   }
 
   // Real vaqt rejimida filtrlangan talabalar ro'yxati va ularning soni
@@ -680,35 +632,6 @@ export default function AdminDashboard() {
                     <Image
                       src="https://img.icons8.com/3d-fluency/94/server.png"
                       alt="Server holati"
-                      fill
-                      unoptimized
-                      className="object-contain"
-                    />
-                  </div>
-                </button>
-
-                {/* 3. Yangi Talaba */}
-                <button 
-                  onClick={() => setInviteModalOpen(true)}
-                  className={`relative overflow-hidden p-4 sm:p-5 text-left transition-all duration-300 group border rounded-2xl backdrop-blur-xl flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 ${
-                    isLight 
-                      ? 'bg-slate-50/50 border-slate-200/80 hover:bg-white hover:border-purple-300 hover:shadow-lg hover:shadow-purple-500/5' 
-                      : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-purple-500/30 hover:shadow-[0_0_35px_rgba(168,85,247,0.08)]'
-                  }`}
-                >
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-emerald-500 to-green-500" />
-                  <div className="pl-2 flex-1">
-                    <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${textMuted} group-hover:text-purple-500`}>
-                      Yangi Talaba
-                    </p>
-                    <p className={`text-sm sm:text-base md:text-lg font-black mt-1.5 transition-transform duration-300 group-hover:translate-x-1 ${textStrong}`}>
-                      Foydalanuvchi Qo&apos;shish &rarr;
-                    </p>
-                  </div>
-                  <div className="relative w-12 h-12 sm:w-14 sm:h-14 self-end sm:self-auto shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
-                    <Image
-                      src="https://img.icons8.com/3d-fluency/94/student-male.png"
-                      alt="Talaba"
                       fill
                       unoptimized
                       className="object-contain"
@@ -1177,126 +1100,6 @@ export default function AdminDashboard() {
         )}
       </AnimatePresence>
 
-      {/* Invite Student Modal */}
-      <AnimatePresence>
-        {inviteModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => {
-                setInviteModalOpen(false)
-                setGeneratedInviteCode('')
-              }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className={`relative z-10 w-full max-w-md overflow-hidden rounded-3xl border p-6 shadow-2xl backdrop-blur-xl ${
-                isLight ? 'bg-white text-slate-800 border-slate-200' : 'bg-[#0f172a]/95 text-white border-white/10'
-              }`}
-            >
-              <button
-                onClick={() => {
-                  setInviteModalOpen(false)
-                  setGeneratedInviteCode('')
-                }}
-                className={`absolute right-4 top-4 p-2 rounded-xl border transition-colors ${
-                  isLight ? 'hover:bg-slate-100 border-slate-200' : 'hover:bg-white/10 border-white/5'
-                }`}
-              >
-                <X size={16} />
-              </button>
-
-              <div className="flex flex-col items-center text-center mt-2 mb-6">
-                <div className="relative w-24 h-24 mb-4">
-                  <Image src="https://img.icons8.com/3d-fluency/94/student-male.png" alt="Student 3D" fill unoptimized className="object-contain" />
-                </div>
-                <h3 className="text-xl font-black tracking-tight">Yangi Talaba Taklif Yaratish</h3>
-                <p className={`text-xs mt-1 ${textMuted}`}>
-                  Talabani ro&apos;yxatdan o&apos;tkazish uchun uning emailiga taklif kodi va havola yarating.
-                </p>
-              </div>
-
-              {!generatedInviteCode ? (
-                <form onSubmit={handleCreateInvite} className="space-y-4">
-                  <div>
-                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>
-                      Talaba Emaili
-                    </label>
-                    <input
-                      type="email"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      placeholder="student@example.com"
-                      required
-                      className={`w-full px-4 py-3 rounded-xl border outline-none text-sm transition-all ${
-                        isLight 
-                          ? 'bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10' 
-                          : 'bg-white/5 border-white/10 focus:bg-[#0f172a] focus:border-purple-500 focus:ring-2 focus:ring-purple-500/15'
-                      }`}
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={creatingInvite}
-                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-black text-sm transition-all duration-300 shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
-                  >
-                    {creatingInvite ? (
-                      <>
-                        <Loader className="animate-spin" size={16} />
-                        Yaratilmoqda...
-                      </>
-                    ) : (
-                      'Taklif Kodini Yaratish'
-                    )}
-                  </button>
-                </form>
-              ) : (
-                <div className="space-y-4">
-                  <div className={`p-4 rounded-2xl border text-center ${
-                    isLight ? 'bg-emerald-50/50 border-emerald-100' : 'bg-emerald-500/5 border-emerald-500/20'
-                  }`}>
-                    <p className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-1">Taklif kodi yaratildi!</p>
-                    <p className={`text-xs ${textMuted} mb-3`}>Quyidagi havola orqali ro&apos;yxatdan o&apos;tishi mumkin:</p>
-                    
-                    <div className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-mono select-all ${
-                      isLight ? 'bg-white border-slate-200' : 'bg-black/25 border-white/5'
-                    }`}>
-                      <span className="truncate flex-1 text-left">
-                        {`${window.location.origin}/register?code=${generatedInviteCode}`}
-                      </span>
-                      <button
-                        onClick={handleCopyLink}
-                        className={`p-1.5 rounded-lg border transition-all shrink-0 ${
-                          isLight ? 'hover:bg-slate-100 border-slate-200' : 'hover:bg-white/10 border-white/5'
-                        }`}
-                        title="Havolani nusxalash"
-                      >
-                        <Copy size={14} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setInviteModalOpen(false)
-                      setGeneratedInviteCode('')
-                    }}
-                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-black text-sm transition-all duration-300 shadow-lg shadow-purple-500/20"
-                  >
-                    Tayyor
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }

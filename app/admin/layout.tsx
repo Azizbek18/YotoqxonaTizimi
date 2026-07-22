@@ -23,6 +23,7 @@ import {
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { getSafeSession } from '@/lib/auth-session'
 import { fetchAdminPaymentSummary } from '@/features/payments/client/api'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
 
@@ -62,18 +63,33 @@ export default function AdminLayout({
   }, [])
 
   useEffect(() => {
+    let active = true
+
     async function fetchWaitingPayments() {
+      if (pathname.startsWith('/admin/login')) {
+        return
+      }
+
+      const session = await getSafeSession()
+      if (!session || !active) return
+
       try {
         const summary = await fetchAdminPaymentSummary()
-        setWaitingCount(summary.waitingCount)
-      } catch (err) {
-        console.error('Error fetching waiting payments count:', err)
+        if (active && summary) {
+          setWaitingCount(summary.waitingCount || 0)
+        }
+      } catch {
+        // Silently swallow unauthenticated background polling errors
       }
     }
+
     fetchWaitingPayments()
     const interval = setInterval(fetchWaitingPayments, 15000)
-    return () => clearInterval(interval)
-  }, [])
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
+  }, [pathname])
 
   const menuItems = useMemo(() => ([
     {
@@ -162,8 +178,8 @@ export default function AdminLayout({
   const mutedText = isLight ? 'text-slate-500' : 'text-slate-400'
   const strongText = isLight ? 'text-slate-900' : 'text-white'
 
-  // Login va Register sahifalarida sidebar ko'rinmasligi kerak
-  const isAuthPage = pathname === '/admin/login' || pathname === '/admin/register'
+  // Login sahifasida sidebar ko'rinmasligi kerak
+  const isAuthPage = pathname === '/admin/login'
 
   if (isAuthPage) {
     return <>{children}</>

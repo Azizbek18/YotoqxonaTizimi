@@ -148,11 +148,7 @@ export default function AdminReportsPage() {
         loadStats()
     }, [mounted])
 
-    const exportToPDF = () => {
-        toast.error("PDF eksport funksiyasi yaqin kunlarda faollashadi")
-    }
-
-    const downloadUsersData = async (format: 'excel' | 'csv') => {
+    const downloadUsersData = async (format: 'excel' | 'csv' | 'pdf') => {
         const toastId = toast.loading("Ma'lumotlar tayyorlanmoqda...")
         try {
             // Barcha foydalanuvchilarni xona raqami bo'yicha saralab olish
@@ -176,21 +172,52 @@ export default function AdminReportsPage() {
                 .replace(/\s+/g, ' ')
                 .trim();
 
-            // CSV/Excel formati uchun sarlavhalar
-            const headers = ["Xona", "F.I.Sh.", "Email", "Rol", "Telefon", "Fakultet", "Yo'nalish", "Kurs", "Holat"]
+            // Foydalanuvchi taqdim etgan rasmdagi 14 ta sarlavha (tartib bilan)
+            const headers = [
+                "Xonasi",
+                "F.I.O",
+                "Jinsi",
+                "Fakulteti",
+                "Yo'nalishi",
+                "Kursi",
+                "Viloyati",
+                "Pasport raqami",
+                "Doimiy yashash manzili",
+                "Telefon raqami",
+                "Ijtimoiy ahvoli",
+                "Daftar",
+                "kirgan sanasi",
+                "chiqqan sanasi"
+            ]
 
             // Ma'lumotlarni shakllantirish
-            const rawRows = sortedUsers.map(u => [
-                cleanText(u.room_number || '-'),
-                cleanText(u.full_name),
-                cleanText(u.email),
-                cleanText(u.role),
-                cleanText(u.phone_number || '-'),
-                cleanText(u.faculty || '-'),
-                cleanText(u.direction || '-'),
-                cleanText(u.course || '-'),
-                cleanText(u.status || '-')
-            ])
+            const rawRows = sortedUsers.map(u => {
+                const fullFio = [u.full_name, u.middle_name].filter(Boolean).join(' ') || u.full_name || '-';
+                const gender = u.gender === 'male' || u.gender === 'Erkak' ? 'Erkak' : u.gender === 'female' || u.gender === 'Ayol' ? 'Ayol' : (u.gender || '-');
+                const fullAddress = [u.region, u.district, u.mahalla].filter(Boolean).join(', ') || u.region || u.district || u.mahalla || '-';
+                const phone = u.phone_number || u.phone || '-';
+                const entryDate = u.entry_date || (u.created_at ? u.created_at.slice(0, 10) : '-');
+                const exitDate = (u as Record<string, unknown>).exit_date || (u as Record<string, unknown>).leave_date || '-';
+                const daftar = (u as Record<string, unknown>).daftar || u.status || '-';
+                const ijtimoiyAhvol = u.study_type || (u as Record<string, unknown>).ijtimoiy_ahvol || '-';
+
+                return [
+                    cleanText(u.room_number || '-'),
+                    cleanText(fullFio),
+                    cleanText(gender),
+                    cleanText(u.faculty || '-'),
+                    cleanText(u.direction || '-'),
+                    cleanText(u.course || '-'),
+                    cleanText(u.region || '-'),
+                    cleanText(u.passport_series || '-'),
+                    cleanText(fullAddress),
+                    cleanText(phone),
+                    cleanText(ijtimoiyAhvol),
+                    cleanText(daftar),
+                    cleanText(entryDate),
+                    cleanText(exitDate)
+                ]
+            })
 
             // Bir xil xonalarni guruhlash (vizual birlashtirish)
             const displayRows = JSON.parse(JSON.stringify(rawRows));
@@ -261,7 +288,7 @@ export default function AdminReportsPage() {
                 const colWidths = headers.map((h, i) => {
                     const column = [h, ...rawRows.map(row => String(row[i]))];
                     const maxLen = Math.max(...column.map(v => v.length));
-                    return { wch: maxLen + 5 }; // +5 bo'sh joy qo'shish uchun
+                    return { wch: Math.max(maxLen + 4, 12) }; // +4 bo'sh joy qo'shish uchun
                 });
                 worksheet['!cols'] = colWidths;
 
@@ -274,7 +301,56 @@ export default function AdminReportsPage() {
                 return;
             }
 
-            // CSV formati (oldingidek qoladi)
+            if (format === 'pdf') {
+                const { jsPDF } = await import('jspdf')
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+
+                doc.setFontSize(14)
+                doc.text("Talabalar Yotoqxonasi - Foydalanuvchilar Hisoboti", 14, 15)
+                doc.setFontSize(9)
+                doc.text(`Sana: ${new Date().toLocaleDateString('uz-UZ')}`, 14, 22)
+
+                let startY = 28
+                const colWidths = [14, 32, 14, 22, 22, 10, 18, 18, 32, 20, 18, 14, 16, 16]
+                const rowHeight = 7
+
+                // Header drawing
+                let x = 10
+                doc.setFontSize(7)
+                doc.setFillColor(79, 70, 229)
+                doc.setTextColor(255, 255, 255)
+                headers.forEach((h, idx) => {
+                    const w = colWidths[idx] || 18
+                    doc.rect(x, startY, w, rowHeight, 'F')
+                    doc.text(h, x + 1, startY + 4.5)
+                    x += w
+                })
+
+                startY += rowHeight
+                doc.setTextColor(0, 0, 0)
+
+                rawRows.forEach((row) => {
+                    if (startY > 185) {
+                        doc.addPage()
+                        startY = 15
+                    }
+                    let rx = 10
+                    row.forEach((cellText, idx) => {
+                        const w = colWidths[idx] || 18
+                        doc.rect(rx, startY, w, rowHeight)
+                        const str = String(cellText).slice(0, 16)
+                        doc.text(str, rx + 1, startY + 4.5)
+                        rx += w
+                    })
+                    startY += rowHeight
+                })
+
+                doc.save(`foydalanuvchilar_${new Date().toISOString().slice(0, 10)}.pdf`)
+                toast.success("PDF fayl yuklab olindi", { id: toastId })
+                return
+            }
+
+            // CSV formati
             const content = [
                 'sep=,',
                 headers.join(','),
@@ -290,7 +366,7 @@ export default function AdminReportsPage() {
             link.click()
             document.body.removeChild(link)
 
-            toast.success("Fayl yuklab olindi", { id: toastId })
+            toast.success("CSV fayl yuklab olindi", { id: toastId })
         } catch (error) {
             console.error('Export error full object:', JSON.parse(JSON.stringify(error)))
             const supabaseError = error as { message?: string; details?: string }
@@ -299,6 +375,7 @@ export default function AdminReportsPage() {
         }
     }
 
+    const exportToPDF = () => downloadUsersData('pdf')
     const exportToExcel = () => downloadUsersData('excel')
     const exportToCSV = () => downloadUsersData('csv')
 

@@ -3,22 +3,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Shield, UserCog } from 'lucide-react'
+import { UserCog } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-type StaffRole = 'admin' | 'tarbiyachi' | 'zamdekan'
+type StaffRole = 'zamdekan'
 
 const ROLE_META: Record<StaffRole, { title: string; icon: React.ReactNode; loginUrl: string }> = {
-  admin: {
-    title: "Admin ro'yxatdan o'tishi",
-    icon: <Shield size={22} />,
-    loginUrl: '/kirish/admin',
-  },
-  tarbiyachi: {
-    title: "Tarbiyachi ro'yxatdan o'tishi",
-    icon: <UserCog size={22} />,
-    loginUrl: '/kirish/tarbiyachi',
-  },
   zamdekan: {
     title: "Zamdekan ro'yxatdan o'tishi",
     icon: <UserCog size={22} />,
@@ -54,7 +44,7 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
       return
     }
 
-    if (role === 'zamdekan' && !faculty.trim()) {
+    if (!faculty.trim()) {
       showToast('error', 'Fakultetni kiriting')
       return
     }
@@ -78,7 +68,7 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
           registerCode,
           password,
           confirmPassword,
-          faculty: role === 'zamdekan' ? faculty.trim() : undefined,
+          faculty: faculty.trim(),
           linkKey,
         }),
       })
@@ -138,15 +128,13 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
             placeholder="Maxsus ID"
             required
           />
-          {role === 'zamdekan' && (
-            <input
-              value={faculty}
-              onChange={(e) => setFaculty(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-              placeholder="Fakultet (masalan: Amaliy Matematika va Informatika Texnologiyalari)"
-              required
-            />
-          )}
+          <input
+            value={faculty}
+            onChange={(e) => setFaculty(e.target.value)}
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
+            placeholder="Fakultet (masalan: Amaliy Matematika va Informatika Texnologiyalari)"
+            required
+          />
           <input
             value={registerCode}
             onChange={(e) => setRegisterCode(e.target.value)}

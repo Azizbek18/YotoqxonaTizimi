@@ -1079,3 +1079,4 @@ CREATE POLICY "Anon email orqali mavjudligini tekshiradi"
 ON public.staff FOR SELECT
 TO anon
 USING (true);
+

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { callGemini } from '@/lib/gemini'
 import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
     }
 
-    const throttle = checkRateLimit(`ai-photo:${user.id}:${getClientIp(req)}`, 12, 60_000)
+    const throttle = await checkRateLimit(`ai-photo:${user.id}:${getClientIp(req)}`, 12, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: 'Juda ko‘p rasm tekshirildi. Keyinroq urinib ko‘ring.' }, { status: 429 })
     }
@@ -31,18 +32,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Rasm hajmi 5MB dan kichik bo‘lishi kerak' }, { status: 400 })
     }
 
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const rule = PERMIT_FILE_RULES[file.type]
+    if (!rule || !hasAllowedSignature(buffer, rule.signatures) || (file.type === 'image/webp' && buffer.subarray(8, 12).toString('ascii') !== 'WEBP')) {
+      return NextResponse.json({ error: 'Rasm faylining haqiqiy formati noto‘g‘ri' }, { status: 400 })
+    }
+
     const geminiApiKey = process.env.GEMINI_API_KEY
     if (!geminiApiKey) {
       return NextResponse.json({
-        is_human: true,
-        confidence: 100,
-        description: 'Tizimda GEMINI_API_KEY sozlanmaganligi sababli rasm avtomatik qabul qilindi.'
-      })
+        is_human: false,
+        confidence: 0,
+        description: 'Rasmni tekshirish xizmati vaqtincha mavjud emas.',
+        reason: 'AI tekshiruvi bajarilmadi',
+      }, { status: 503 })
     }
 
     // Read file as base64
-    const arrayBuffer = await file.arrayBuffer()
-    const base64Data = Buffer.from(arrayBuffer).toString('base64')
+    const base64Data = buffer.toString('base64')
     const mimeType = file.type || 'image/jpeg'
 
     const systemPrompt = `Siz talabalar tomonidan profil uchun yuklanadigan shaxsiy 3x4 formatdagi rasmlarni (portret) tekshiradigan AI tizimisiz.
@@ -69,31 +76,50 @@ Agar rasmda inson yuzi aniqlanmasa, yoki u profil rasmi uchun butunlay mos kelma
 
 MUHIM: Faqat va faqat toza JSON formatida javob bering. Hech qanday markdown (masalan \`\`\`json ...) bloklarisiz.`
 
-    const apiData = await callGemini({
-      contents: [{
-        parts: [
-          { text: systemPrompt },
-          { inlineData: { mimeType, data: base64Data } }
-        ]
-      }],
-      generationConfig: { responseMimeType: 'application/json' }
-    }, geminiApiKey)
+    let isHuman = true
+    let confidence = 100
+    let description = ''
+    let reason: string | null = null
 
-    const textResponse = apiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    
-    // Parse response
-    let cleanText = textResponse.trim()
-    if (cleanText.startsWith('```')) {
-      cleanText = cleanText.replace(/^```json/, '').replace(/```$/, '').trim()
+    try {
+      const apiData = await callGemini({
+        contents: [{
+          parts: [
+            { text: systemPrompt },
+            { inlineData: { mimeType, data: base64Data } }
+          ]
+        }],
+        generationConfig: { responseMimeType: 'application/json' }
+      }, geminiApiKey)
+
+      const textResponse = apiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+
+      // Parse response
+      let cleanText = textResponse.trim()
+      if (cleanText.startsWith('```')) {
+        cleanText = cleanText.replace(/^```json/, '').replace(/```$/, '').trim()
+      }
+
+      const jsonResult = JSON.parse(cleanText)
+      isHuman = jsonResult.is_human === true
+      confidence = typeof jsonResult.confidence === 'number' ? jsonResult.confidence : 50
+      description = jsonResult.description || ''
+      reason = jsonResult.reason || null
+    } catch (geminiError: unknown) {
+      console.error('Gemini API call failed during photo check:', geminiError)
+      return NextResponse.json({
+        is_human: false,
+        confidence: 0,
+        description: 'Rasmni tekshirib bo‘lmadi. Keyinroq qayta urinib ko‘ring.',
+        reason: 'AI tekshiruvi bajarilmadi',
+      }, { status: 502 })
     }
-    
-    const jsonResult = JSON.parse(cleanText)
 
     return NextResponse.json({
-      is_human: jsonResult.is_human === true,
-      confidence: typeof jsonResult.confidence === 'number' ? jsonResult.confidence : 50,
-      description: jsonResult.description || '',
-      reason: jsonResult.reason || null
+      is_human: isHuman,
+      confidence,
+      description,
+      reason
     })
 
   } catch (error: unknown) {

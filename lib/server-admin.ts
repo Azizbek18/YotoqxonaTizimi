@@ -1,11 +1,12 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import type { Database } from '@/types/database.generated'
 
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies()
 
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -35,13 +36,13 @@ async function findByIdOrEmail<T>(
   id: string,
   email: string | null | undefined
 ): Promise<T | null> {
-  const { data: byId } = await supabase.from(table).select(columns).eq('id', id).eq('role', 'admin').maybeSingle()
+  const { data: byId } = await supabase.from(table).select(columns).eq('id', id).eq('role', 'admin').eq('status', 'active').maybeSingle()
   if (byId) return byId as T
 
   const cleanEmail = email?.trim().toLowerCase()
   if (!cleanEmail) return null
 
-  const { data: byEmail } = await supabase.from(table).select(columns).eq('email', cleanEmail).eq('role', 'admin').maybeSingle()
+  const { data: byEmail } = await supabase.from(table).select(columns).eq('email', cleanEmail).eq('role', 'admin').eq('status', 'active').maybeSingle()
   return (byEmail as T) ?? null
 }
 
@@ -50,38 +51,27 @@ export async function getAdminSession() {
   const serviceSupabase = getServiceSupabase()
 
   try {
-    const { data: { session } } = await authSupabase.auth.getSession()
+    const { data: { user: authUser }, error: authError } = await authSupabase.auth.getUser()
 
-    if (!session?.user?.id) {
+    if (authError || !authUser?.id) {
       return { session: null, user: null, isAdmin: false }
     }
 
-    // Check both staff and users tables
+    // Privileged identities live only in the staff table. A users.role value
+    // is never accepted as authorization evidence.
     const staffData = await findByIdOrEmail<{ id: string; email: string; full_name: string; role: string }>(
-      serviceSupabase, 'staff', 'id, email, full_name, role', session.user.id, session.user.email
+      serviceSupabase, 'staff', 'id, email, full_name, role', authUser.id, authUser.email
     )
 
     if (staffData) {
       return {
-        session,
+        session: { user: authUser },
         user: staffData,
         isAdmin: true,
       }
     }
 
-    const userData = await findByIdOrEmail<{ id: string; email: string; full_name: string; role: string }>(
-      serviceSupabase, 'users', 'id, email, full_name, role', session.user.id, session.user.email
-    )
-
-    if (userData?.role === 'admin') {
-      return {
-        session,
-        user: userData,
-        isAdmin: true,
-      }
-    }
-
-    return { session, user: userData || staffData || null, isAdmin: false }
+    return { session: { user: authUser }, user: null, isAdmin: false }
   } catch {
     return { session: null, user: null, isAdmin: false }
   }

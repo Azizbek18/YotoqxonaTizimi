@@ -15,11 +15,11 @@ export async function GET(req: NextRequest) {
     // Fetch caller profile
     const { data: caller, error: callerError } = await serviceSupabase
       .from('users')
-      .select('*')
+      .select('id, role, status, is_floor_captain, assigned_floor, gender')
       .eq('id', user.id)
       .single()
 
-    if (callerError || !caller || !caller.is_floor_captain) {
+    if (callerError || !caller || caller.role !== 'talaba' || caller.status !== 'active' || !caller.is_floor_captain) {
       return NextResponse.json({ error: 'Siz qavat sardori emassiz' }, { status: 403 })
     }
 
@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
       .from('users')
       .select('id, full_name, email, phone_number, room_number, faculty, course, group, avatar_url, gender')
       .eq('role', 'talaba')
+      .eq('status', 'active')
       .eq('gender', captainGender)
 
     if (studentsError) {

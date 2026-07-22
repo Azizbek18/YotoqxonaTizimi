@@ -40,11 +40,11 @@ export async function findRoleByIdentity(supabase: SupabaseClient, identity: Ide
   if (identity.id) {
     const { data: staffById } = await supabase
       .from('staff')
-      .select('role')
+      .select('role, status')
       .eq('id', identity.id)
       .maybeSingle()
 
-    if (staffById?.role === 'admin' || staffById?.role === 'tarbiyachi' || staffById?.role === 'zamdekan') {
+    if (staffById?.status === 'active' && (staffById.role === 'admin' || staffById.role === 'tarbiyachi' || staffById.role === 'zamdekan')) {
       return staffById.role
     }
   }
@@ -52,11 +52,11 @@ export async function findRoleByIdentity(supabase: SupabaseClient, identity: Ide
   if (cleanEmail) {
     const { data: staffByEmail } = await supabase
       .from('staff')
-      .select('role')
+      .select('role, status')
       .eq('email', cleanEmail)
       .maybeSingle()
 
-    if (staffByEmail?.role === 'admin' || staffByEmail?.role === 'tarbiyachi' || staffByEmail?.role === 'zamdekan') {
+    if (staffByEmail?.status === 'active' && (staffByEmail.role === 'admin' || staffByEmail.role === 'tarbiyachi' || staffByEmail.role === 'zamdekan')) {
       return staffByEmail.role
     }
   }

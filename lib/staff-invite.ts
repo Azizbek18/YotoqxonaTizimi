@@ -55,12 +55,14 @@ export async function validateInvite(params: {
   if (new Date(data.expires_at).getTime() < Date.now()) return false
 
   if (params.consume) {
-    const { error: consumeError } = await supabase
+    const { data: consumed, error: consumeError } = await supabase
       .from('staff_invites')
       .update({ used_at: new Date().toISOString() })
       .eq('id', data.id)
       .is('used_at', null)
-    if (consumeError) return false
+      .select('id')
+      .maybeSingle()
+    if (consumeError || !consumed) return false
   }
 
   return true

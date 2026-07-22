@@ -3,37 +3,30 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import { callGemini } from '@/lib/gemini'
 import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+import { assertSafeReceiptUrl, fetchReceipt } from '@/lib/safe-storage-url'
 
 // Looks up `role` for the given identity in `table`, trying `id` then
 // `email` as two safe, parameterized lookups — never interpolate
 // user-controlled values into a single `.or()` filter string (PostgREST's
 // or() mini-language treats commas/dots as syntax, so raw interpolation
 // there is an injection vector).
-async function findRoleInTable(
-  supabase: ReturnType<typeof getServiceSupabase>,
-  table: 'staff' | 'users',
-  userId: string,
-  cleanEmail: string
-): Promise<string | null> {
-  const { data: byId } = await supabase.from(table).select('role').eq('id', userId).maybeSingle()
-  if (byId) return byId.role
-
-  if (!cleanEmail) return null
-  const { data: byEmail } = await supabase.from(table).select('role').eq('email', cleanEmail).maybeSingle()
-  return byEmail?.role ?? null
-}
-
-async function canAnalyzePayment(userId: string, email: string | undefined, studentId: string) {
-  if (userId === studentId) return true
-
+async function canAnalyzePayment(userId: string, studentId: string) {
   const supabase = getServiceSupabase()
-  const cleanEmail = email?.trim().toLowerCase() ?? ''
+  if (userId === studentId) {
+    const { data: student } = await supabase
+      .from('users')
+      .select('role, status')
+      .eq('id', userId)
+      .maybeSingle()
+    return student?.role === 'talaba' && student.status === 'active'
+  }
 
-  const staffRole = await findRoleInTable(supabase, 'staff', userId, cleanEmail)
-  if (staffRole === 'admin') return true
-
-  const userRole = await findRoleInTable(supabase, 'users', userId, cleanEmail)
-  return userRole === 'admin'
+  const { data: staff } = await supabase
+    .from('staff')
+    .select('role, status')
+    .eq('id', userId)
+    .maybeSingle()
+  return staff?.role === 'admin' && staff.status === 'active'
 }
 
 export async function POST(req: NextRequest) {
@@ -43,7 +36,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
     }
 
-    const throttle = checkRateLimit(`ai-tahlil:${user.id}:${getClientIp(req)}`, 20, 60_000)
+    const throttle = await checkRateLimit(`ai-tahlil:${user.id}:${getClientIp(req)}`, 20, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: 'Juda ko‘p AI tahlil so‘rovi. Keyinroq urinib ko‘ring.' }, { status: 429 })
     }
@@ -58,7 +51,7 @@ export async function POST(req: NextRequest) {
     // 1. Fetch the payment record
     const { data: record, error: fetchError } = await supabase
       .from('tolovlar')
-      .select('*')
+      .select('id, student_id, student_name, month, year, amount, receipt_url')
       .eq('id', paymentId)
       .single()
 
@@ -66,33 +59,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'To\'lov yozuvi topilmadi' }, { status: 404 })
     }
 
-    if (!(await canAnalyzePayment(user.id, user.email, record.student_id))) {
+    if (!(await canAnalyzePayment(user.id, record.student_id))) {
       return NextResponse.json({ error: 'Ushbu to‘lovni tahlil qilishga ruxsat yo‘q' }, { status: 403 })
     }
 
-    const receiptUrl = record.receipt_url
+    const receiptUrl = assertSafeReceiptUrl(record.receipt_url, record.student_id)
     if (!receiptUrl) {
       return NextResponse.json({ error: 'Ushbu to\'lovda yuklangan chek/kvitansiya mavjud emas' }, { status: 400 })
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY
+    if (!geminiApiKey) {
+      return NextResponse.json({ error: 'AI tekshiruv xizmati vaqtincha mavjud emas' }, { status: 503 })
+    }
 
     let aiConfidence = 95
     let aiExtractedAmount = record.amount
     let aiTransactionId: string | null = null
     let aiAnalysis = ''
 
-    if (geminiApiKey) {
-      try {
+    try {
         // 2. Download receipt file from the public URL
-        const fileResponse = await fetch(receiptUrl)
-        if (!fileResponse.ok) {
-          throw new Error('Chek faylini yuklab olishda xatolik: ' + fileResponse.statusText)
+        const { buffer, mimeType } = await fetchReceipt(receiptUrl)
+        if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(mimeType)) {
+          return NextResponse.json({ error: 'Chek fayli formati qo‘llab-quvvatlanmaydi' }, { status: 400 })
         }
-
-        const arrayBuffer = await fileResponse.arrayBuffer()
-        const mimeType = fileResponse.headers.get('content-type') || 'image/jpeg'
-        const base64Data = Buffer.from(arrayBuffer).toString('base64')
+        const base64Data = buffer.toString('base64')
 
         // 3. Prepare Prompt for Gemini to also extract transaction_id
         const systemPrompt = `Siz to'lov cheklarini tahlil qiladigan va soxtalikni aniqlaydigan AI audit mutaxassissiz. 
@@ -137,41 +129,9 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown for
         aiTransactionId = jsonResult.transaction_id ? String(jsonResult.transaction_id) : null
         aiAnalysis = jsonResult.analysis || 'Tahlil muvaffaqiyatli yakunlandi.'
 
-      } catch (geminiError: unknown) {
-        console.error('Gemini processing failed, falling back to mock:', geminiError)
-        // If Gemini fails, fallback to simulated analysis
-        aiConfidence = 88
-        aiExtractedAmount = record.amount === 300000 ? 900000 : record.amount
-        aiTransactionId = 'TX-FALLBACK-' + paymentId.substring(0, 6)
-        aiAnalysis = `[Tahlil tizimi xatosi tufayli avtomatik tahlil] Chek formati va rekvizitlari mos keldi. Tranzaksiya vaqti tekshirildi. Tizimdagi xatolik sababli to'liq AI tekshiruvi amalga oshmadi, ammo vizual tekshiruvda shubhali holat aniqlanmadi.`
-      }
-    } else {
-      // Simulation mode if GEMINI_API_KEY is not defined
-      // If payment amount is 300,000, we simulate a mismatch (AI extracts 900,000) to demonstrate mismatch detection.
-      if (record.amount === 300000) {
-        aiConfidence = 96
-        aiExtractedAmount = 900000
-        aiTransactionId = 'TX-MOCK-300K'
-        aiAnalysis = `Eslatma: Tizimda GEMINI_API_KEY sozlanmaganligi sababli test AI modeli ishlatildi. 
-Chek vizual jihatdan haqiqiy Click tranzaksiyasiga mos keladi. 
-Biroq, talaba 300,000 so'm deb e'lon qilgan to'lov chekida aslida 900,000 UZS miqdoridagi to'lov amalga oshirilgani aniqlandi. 
-Summalarni solishtiring.`
-      } else if (record.student_name.toLowerCase().includes('soxta') || record.student_name.toLowerCase().includes('fake')) {
-        aiConfidence = 35
-        aiExtractedAmount = record.amount
-        aiTransactionId = 'TX-FAKE-999'
-        aiAnalysis = `Eslatma: Chekning haqiqiylik darajasi shubhali (35%). 
-Fayl strukturasida va metadata ma'lumotlarida o'zgartirishlar kiritilgan bo'lishi ehtimoli mavjud. 
-Admin ushbu tranzaksiyani alohida tekshirishi tavsiya etiladi.`
-      } else {
-        aiConfidence = 98
-        aiExtractedAmount = record.amount
-        aiTransactionId = 'TX-MOCK-NORMAL-123'
-        aiAnalysis = `Eslatma: GEMINI_API_KEY sozlanmaganligi sababli test AI modeli ishlatildi. 
-Kvitansiya tahlili muvaffaqiyatli yakunlandi. 
-Tranzaksiya turi (Payme/Click) haqiqiy ekanligi 98% ehtimollik bilan tasdiqlandi. 
-Summa mos keladi (${record.amount.toLocaleString()} UZS).`
-      }
+    } catch (geminiError: unknown) {
+      console.error('Gemini processing failed:', geminiError)
+      return NextResponse.json({ error: 'AI tahlili yakunlanmadi; to‘lov qo‘lda tekshiriladi' }, { status: 502 })
     }
 
     // 5.5 Check for duplicate transaction IDs in the database

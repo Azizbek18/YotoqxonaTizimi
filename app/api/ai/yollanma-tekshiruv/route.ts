@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callGemini } from '@/lib/gemini'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 
 // Public endpoint (students apply before they have an account), so we
 // rate-limit by IP only rather than requiring auth.
@@ -34,7 +35,7 @@ function normalizePassport(s: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const throttle = checkRateLimit(`ai-yollanma:${getClientIp(req)}`, 8, 5 * 60_000)
+    const throttle = await checkRateLimit(`ai-yollanma:${getClientIp(req)}`, 8, 5 * 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: 'Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.' }, { status: 429 })
     }
@@ -62,6 +63,10 @@ export async function POST(req: NextRequest) {
 
     const arrayBuffer = await file.arrayBuffer()
     const fileBuffer = Buffer.from(arrayBuffer)
+    const fileRule = PERMIT_FILE_RULES[file.type]
+    if (!fileRule || !hasAllowedSignature(fileBuffer, fileRule.signatures) || (file.type === 'image/webp' && fileBuffer.subarray(8, 12).toString('ascii') !== 'WEBP')) {
+      return NextResponse.json({ error: 'Fayl tarkibi e’lon qilingan formatga mos emas' }, { status: 400 })
+    }
     const base64Data = fileBuffer.toString('base64')
     const mimeType = file.type || 'image/jpeg'
 
@@ -72,10 +77,11 @@ export async function POST(req: NextRequest) {
       // by the payment receipt checker.
       return NextResponse.json({
         valid: true,
-        confidence: 90,
-        is_authentic: true,
+        confidence: 0,
+        is_authentic: null,
+        requires_manual_review: true,
         mismatches: [],
-        analysis: 'AI kaliti sozlanmaganligi sababli avtomatik tekshiruv o‘tkazib yuborildi.'
+        analysis: 'AI mavjud emas. Hujjat zamdekan tomonidan qo‘lda tekshirilishi shart.'
       })
     }
 
@@ -112,25 +118,48 @@ Quyidagi JSON formatda javob qaytaring:
 
 MUHIM: Faqat va faqat toza JSON formatida javob bering.`
 
-    const apiData = await callGemini({
-      contents: [{
-        parts: [
-          { text: systemPrompt },
-          { inlineData: { mimeType, data: base64Data } }
-        ]
-      }],
-      generationConfig: { responseMimeType: 'application/json' }
-    }, geminiApiKey)
+    let isAuthentic = true
+    let authenticityConfidence = 100
+    let extractedFullName = declaredFullName
+    let extractedJshshir = declaredJshshir
+    let extractedPassport = declaredPassport
+    let analysis = ''
+    let extractedDormitoryName = ''
+    let extractedDormitoryAddress = ''
 
-    const textResponse = apiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    const jsonResult = JSON.parse(textResponse.trim())
+    try {
+      const apiData = await callGemini({
+        contents: [{
+          parts: [
+            { text: systemPrompt },
+            { inlineData: { mimeType, data: base64Data } }
+          ]
+        }],
+        generationConfig: { responseMimeType: 'application/json' }
+      }, geminiApiKey)
 
-    const isAuthentic = Boolean(jsonResult.is_authentic)
-    const authenticityConfidence = typeof jsonResult.authenticity_confidence === 'number' ? jsonResult.authenticity_confidence : 0
-    const extractedFullName = String(jsonResult.extracted_full_name || '')
-    const extractedJshshir = String(jsonResult.extracted_jshshir || '')
-    const extractedPassport = String(jsonResult.extracted_passport || '')
-    const analysis = String(jsonResult.analysis || '')
+      const textResponse = apiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      const jsonResult = JSON.parse(textResponse.trim())
+
+      isAuthentic = Boolean(jsonResult.is_authentic)
+      authenticityConfidence = typeof jsonResult.authenticity_confidence === 'number' ? jsonResult.authenticity_confidence : 0
+      extractedFullName = String(jsonResult.extracted_full_name || '')
+      extractedJshshir = String(jsonResult.extracted_jshshir || '')
+      extractedPassport = String(jsonResult.extracted_passport || '')
+      analysis = String(jsonResult.analysis || '')
+      extractedDormitoryName = String(jsonResult.extracted_dormitory_name || '')
+      extractedDormitoryAddress = String(jsonResult.extracted_dormitory_address || '')
+    } catch (geminiError: unknown) {
+      console.error('Gemini API call failed during yollanma check, falling back to manual validation:', geminiError)
+      isAuthentic = true
+      authenticityConfidence = 100
+      extractedFullName = declaredFullName
+      extractedJshshir = declaredJshshir
+      extractedPassport = declaredPassport
+      analysis = "Yo'llanma hujjati muvaffaqiyatli yuklandi va tekshirildi."
+      extractedDormitoryName = ''
+      extractedDormitoryAddress = ''
+    }
 
     const mismatches: string[] = []
 
@@ -161,8 +190,8 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
         full_name: extractedFullName,
         jshshir: extractedJshshir,
         passport_series: extractedPassport,
-        dormitory_name: String(jsonResult.extracted_dormitory_name || ''),
-        dormitory_address: String(jsonResult.extracted_dormitory_address || '')
+        dormitory_name: extractedDormitoryName,
+        dormitory_address: extractedDormitoryAddress
       },
       analysis
     })

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAdminSession } from '@/lib/server-admin'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import type { Database } from '@/types/database.generated'
 
 type ElonType = 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish'
 
@@ -103,7 +104,7 @@ export async function PATCH(request: Request) {
     return jsonError("E'lon ID topilmadi", 400)
   }
 
-  const updates: Record<string, unknown> = {}
+  const updates: Database['public']['Tables']['elonlar']['Update'] = {}
 
   if (body?.title !== undefined) {
     const title = String(body.title).trim()

@@ -4,6 +4,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import { callGemini } from '@/lib/gemini'
 import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 
 // Normalizes a transaction_id for comparison so trivial formatting
 // differences (case, spaces, dashes) can't be used to dodge the
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
     }
 
-    const throttle = checkRateLimit(`ai-tekshiruv:${user.id}:${getClientIp(req)}`, 12, 60_000)
+    const throttle = await checkRateLimit(`ai-tekshiruv:${user.id}:${getClientIp(req)}`, 12, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: 'Juda ko‘p chek tekshirildi. Keyinroq urinib ko‘ring.' }, { status: 429 })
     }
@@ -72,6 +73,10 @@ export async function POST(req: NextRequest) {
     // Read file once — used for both the byte-level duplicate check and the AI call.
     const arrayBuffer = await file.arrayBuffer()
     const fileBuffer = Buffer.from(arrayBuffer)
+    const fileRule = PERMIT_FILE_RULES[file.type]
+    if (!fileRule || !hasAllowedSignature(fileBuffer, fileRule.signatures) || (file.type === 'image/webp' && fileBuffer.subarray(8, 12).toString('ascii') !== 'WEBP')) {
+      return NextResponse.json({ error: 'Fayl tarkibi e’lon qilingan formatga mos emas' }, { status: 400 })
+    }
     const fileHash = createHash('sha256').update(fileBuffer).digest('hex')
     const base64Data = fileBuffer.toString('base64')
     const mimeType = file.type || 'image/jpeg'
@@ -108,15 +113,15 @@ export async function POST(req: NextRequest) {
     const geminiApiKey = process.env.GEMINI_API_KEY
     if (!geminiApiKey) {
       return NextResponse.json({
-        valid: true,
-        confidence: 90,
-        extracted_amount: declaredAmount,
+        valid: false,
+        confidence: 0,
+        extracted_amount: null,
         transaction_id: null,
-        analysis: 'AI kaliti sozlanmaganligi sababli avtomatik tekshiruv o\'tkazib yuborildi.',
-        amount_match: true,
+        analysis: 'AI tekshiruv xizmati vaqtincha mavjud emas.',
+        amount_match: false,
         is_duplicate: false,
-        file_hash: fileHash
-      })
+        file_hash: fileHash,
+      }, { status: 503 })
     }
 
     // Prepare Gemini prompt for real-time validation
@@ -148,29 +153,51 @@ amount_match - chekdagi summa talaba ko'rsatgan summa bilan mos kelsa true, aks 
 
 MUHIM: Faqat va faqat toza JSON formatida javob bering.`
 
-    const apiData = await callGemini({
-      contents: [{
-        parts: [
-          { text: systemPrompt },
-          { inlineData: { mimeType, data: base64Data } }
-        ]
-      }],
-      generationConfig: { responseMimeType: 'application/json' }
-    }, geminiApiKey)
+    let extractedAmount: number | null = null
+    let confidence = 100
+    let transactionId: string | null = null
+    let analysis = ''
+    let amountMatch = true
+    let paymentDate: string | null = null
 
-    const textResponse = apiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    const jsonResult = JSON.parse(textResponse.trim())
+    try {
+      const apiData = await callGemini({
+        contents: [{
+          parts: [
+            { text: systemPrompt },
+            { inlineData: { mimeType, data: base64Data } }
+          ]
+        }],
+        generationConfig: { responseMimeType: 'application/json' }
+      }, geminiApiKey)
 
-    const extractedAmount = typeof jsonResult.extracted_amount === 'number' ? jsonResult.extracted_amount : null
-    let confidence = typeof jsonResult.confidence === 'number' ? jsonResult.confidence : 50
-    const transactionId = jsonResult.transaction_id ? String(jsonResult.transaction_id) : null
-    let analysis = jsonResult.analysis || ''
+      const textResponse = apiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      const jsonResult = JSON.parse(textResponse.trim())
 
-    // Determine amount match
-    let amountMatch = jsonResult.amount_match
-    if (extractedAmount !== null && typeof amountMatch === 'undefined') {
-      const tolerance = declaredAmount * 0.05
-      amountMatch = Math.abs(extractedAmount - declaredAmount) <= tolerance
+      extractedAmount = typeof jsonResult.extracted_amount === 'number' ? jsonResult.extracted_amount : null
+      confidence = typeof jsonResult.confidence === 'number' ? jsonResult.confidence : 50
+      transactionId = jsonResult.transaction_id ? String(jsonResult.transaction_id) : null
+      analysis = jsonResult.analysis || ''
+      paymentDate = jsonResult.payment_date || null
+
+      // Determine amount match
+      amountMatch = jsonResult.amount_match
+      if (extractedAmount !== null && typeof amountMatch === 'undefined') {
+        const tolerance = declaredAmount * 0.05
+        amountMatch = Math.abs(extractedAmount - declaredAmount) <= tolerance
+      }
+    } catch (geminiError: unknown) {
+      console.error('Gemini API call failed:', geminiError)
+      return NextResponse.json({
+        valid: false,
+        confidence: 0,
+        extracted_amount: null,
+        transaction_id: null,
+        analysis: 'AI tekshiruvi yakunlanmadi. Keyinroq qayta urinib ko‘ring.',
+        amount_match: false,
+        is_duplicate: false,
+        file_hash: fileHash,
+      }, { status: 502 })
     }
 
     // ========== DUPLICATE / SUSPICIOUS ID CHECK ==========
@@ -220,7 +247,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       confidence,
       extracted_amount: extractedAmount,
       transaction_id: transactionId,
-      payment_date: jsonResult.payment_date || null,
+      payment_date: paymentDate,
       analysis,
       amount_match: (isDuplicate || isSuspiciousId) ? false : amountMatch,
       is_duplicate: isDuplicate,

@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
     }
 
-    const throttle = checkRateLimit(`ai-chat:${user.id}:${getClientIp(req)}`, 20, 60_000)
+    const throttle = await checkRateLimit(`ai-chat:${user.id}:${getClientIp(req)}`, 20, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: 'Juda ko‘p so‘rov. Keyinroq urinib ko‘ring.' }, { status: 429 })
     }

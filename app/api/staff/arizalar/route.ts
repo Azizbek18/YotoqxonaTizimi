@@ -10,6 +10,7 @@ type StaffProfile = {
   role: string
   assigned_floor?: number | null
   assigned_gender?: string | null
+  status?: string | null
 }
 
 type ApplicationLevel = 'info' | 'warning' | 'critical'
@@ -28,11 +29,11 @@ async function getScopedStaff(req: NextRequest) {
 
   const staffUser = await findStaffRowByIdentity<StaffProfile>(
     serviceSupabase,
-    'id, email, role, assigned_floor, assigned_gender',
+    'id, email, role, assigned_floor, assigned_gender, status',
     { id: user.id, email: user.email }
   )
 
-  if (!staffUser || staffUser.role !== 'tarbiyachi') {
+  if (!staffUser || staffUser.role !== 'tarbiyachi' || staffUser.status !== 'active') {
     return { error: jsonError('Tarbiyachi huquqi talab qilinadi', 403) }
   }
 

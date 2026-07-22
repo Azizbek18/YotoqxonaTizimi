@@ -1,47 +1,66 @@
-import { NextResponse } from 'next/server'
-import { getAdminSession } from '@/lib/server-admin'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import { requireAdmin } from '@/server/auth/guards'
+import { ApiError, getApiError } from '@/server/http/api-error'
 
-export async function POST(request: Request) {
+function errorResponse(error: unknown) {
+  console.error('Admin chat API error:', error)
+  const response = getApiError(error, 'Chat so\'rovini bajarib bo\'lmadi')
+  return NextResponse.json({ ok: false, ...response.body }, { status: response.status })
+}
+
+export async function GET(request: NextRequest) {
   try {
-    const { session, isAdmin } = await getAdminSession()
+    await requireAdmin(request)
+    const studentId = request.nextUrl.searchParams.get('studentId')?.trim()
+    if (!studentId) throw new ApiError(400, 'Talaba identifikatori talab qilinadi')
+    const { data, error } = await getServiceSupabase()
+      .from('arizalar')
+      .select('*')
+      .eq('student_id', studentId)
+      .eq('type', 'chat')
+      .order('created_at', { ascending: true })
+    if (error) throw error
+    return NextResponse.json({ ok: true, messages: data ?? [] })
+  } catch (error) {
+    return errorResponse(error)
+  }
+}
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ ok: false, error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
-    }
-
-    if (!isAdmin) {
-      return NextResponse.json({ ok: false, error: 'Admin huquqi talab qilinadi' }, { status: 403 })
-    }
-
-    const body = await request.json()
-    const student_id = typeof body.student_id === 'string' ? body.student_id.trim() : ''
-    const message = typeof body.message === 'string' ? body.message.trim() : ''
-
-    if (!student_id || !message) {
-      return NextResponse.json({ ok: false, error: "So'rov ma'lumotlari noto'g'ri" }, { status: 400 })
-    }
+export async function POST(request: NextRequest) {
+  try {
+    await requireAdmin(request)
+    const body = await request.json().catch(() => ({}))
+    const studentId = typeof body.student_id === 'string' ? body.student_id.trim() : ''
+    const message = typeof body.message === 'string' ? body.message.trim().slice(0, 4000) : ''
+    if (!studentId || !message) throw new ApiError(400, 'So\'rov ma\'lumotlari noto\'g\'ri')
 
     const supabase = getServiceSupabase()
+    const { data: student, error: studentError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', studentId)
+      .eq('role', 'talaba')
+      .maybeSingle()
+    if (studentError) throw studentError
+    if (!student) throw new ApiError(404, 'Talaba topilmadi')
+
     const { data, error } = await supabase
       .from('arizalar')
       .insert({
-        student_id,
+        student_id: studentId,
         type: 'chat',
         title: 'admin',
         reason: message,
-        status: 'submitted'
+        text: message,
+        level: 'info',
+        status: 'submitted',
       })
       .select()
       .single()
-
-    if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
-    }
-
+    if (error) throw error
     return NextResponse.json({ ok: true, message: data })
   } catch (error) {
-    console.error('Admin chat POST error:', error)
-    return NextResponse.json({ ok: false, error: 'Xatolik yuz berdi' }, { status: 500 })
+    return errorResponse(error)
   }
 }

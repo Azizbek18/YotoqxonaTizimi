@@ -10,6 +10,7 @@ type StaffProfile = {
   role: string
   assigned_floor?: number | null
   assigned_gender?: string | null
+  status?: string | null
 }
 
 function jsonError(message: string, status: number) {
@@ -27,17 +28,17 @@ export async function GET(req: NextRequest) {
 
     const staffUser = await findStaffRowByIdentity<StaffProfile>(
       serviceSupabase,
-      'id, email, role, assigned_floor, assigned_gender',
+      'id, email, role, assigned_floor, assigned_gender, status',
       { id: user.id, email: user.email }
     )
 
-    if (!staffUser || staffUser.role !== 'tarbiyachi') {
+    if (!staffUser || staffUser.role !== 'tarbiyachi' || staffUser.status !== 'active') {
       return jsonError('Tarbiyachi huquqi talab qilinadi', 403)
     }
 
     let studentsQuery = serviceSupabase
       .from('users')
-      .select('*')
+      .select('id, full_name, email, phone_number, faculty, direction, course, group, room_number, avatar_url, gender, status, warning_count, created_at')
       .eq('role', 'talaba')
       .order('created_at', { ascending: false })
 

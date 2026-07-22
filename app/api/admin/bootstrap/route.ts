@@ -36,7 +36,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request)
-    const throttle = checkRateLimit(`admin-bootstrap:${ip}`, 10, 60_000)
+    const throttle = await checkRateLimit(`admin-bootstrap:${ip}`, 10, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ ok: false, error: 'Juda ko‘p urinish. Keyinroq urinib ko‘ring.' }, { status: 429 })
     }
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'Parollar mos emas' }, { status: 400 })
     }
 
-    if (password.length < 6) {
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
       return NextResponse.json({ ok: false, error: 'Parol kamida 6 ta belgidan iborat bo‘lishi kerak' }, { status: 400 })
     }
 

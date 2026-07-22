@@ -22,8 +22,9 @@ export async function POST(request: NextRequest) {
         }
 
         const { email } = await request.json()
+        const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase().slice(0, 254) : ''
 
-        if (!email) {
+        if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) {
             return NextResponse.json(
                 { error: 'Email kerak' },
                 { status: 400 }
@@ -32,15 +33,17 @@ export async function POST(request: NextRequest) {
 
         // Taklif kodini yaratish
         const inviteCode = crypto.randomBytes(16).toString('hex')
+        const tokenHash = crypto.createHash('sha256').update(inviteCode).digest('hex')
 
         const serviceSupabase = getServiceSupabase()
         const { error: insertError } = await serviceSupabase
             .from('admin_invites')
             .insert({
-                code: inviteCode,
-                email: email.toLowerCase(),
+                token_hash: tokenHash,
+                email: cleanEmail,
                 created_by: session.user.id,
                 created_at: new Date().toISOString(),
+                expires_at: new Date(Date.now() + 24 * 60 * 60_000).toISOString(),
                 used: false,
             })
 
@@ -84,7 +87,7 @@ export async function GET() {
         const serviceSupabase = getServiceSupabase()
         const { data: invites, error } = await serviceSupabase
             .from('admin_invites')
-            .select('*')
+            .select('id, email, created_by, created_at, expires_at, used, used_at')
             .order('created_at', { ascending: false })
 
         if (error) {

@@ -9,4 +9,6 @@ if (!supabaseUrl || !supabaseKey) {
   )
 }
 
+// Browser access is being migrated feature-by-feature to typed API clients.
+// Keep this legacy client untyped until the remaining direct reads are gone.
 export const supabase = createBrowserClient(supabaseUrl, supabaseKey)

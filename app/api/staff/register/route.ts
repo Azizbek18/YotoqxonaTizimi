@@ -11,7 +11,7 @@ import { checkRateLimit, getClientIp } from '@/lib/security'
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request)
-    const throttle = checkRateLimit(`staff-register:${ip}`, 10, 60_000)
+    const throttle = await checkRateLimit(`staff-register:${ip}`, 5, 15 * 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ ok: false, error: 'Juda ko\'p urinish. Keyinroq urinib ko\'ring.' }, { status: 429 })
     }
@@ -36,12 +36,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'Fakultet kiritilishi shart' }, { status: 400 })
     }
 
-    if (!fullName || !email || !password || !confirmPassword) {
+    if (fullName.length < 3 || !/^\S+@\S+\.\S+$/.test(email) || !password || !confirmPassword) {
       return NextResponse.json({ ok: false, error: "Majburiy maydonlar to'ldirilmagan" }, { status: 400 })
     }
 
-    if (password !== confirmPassword) {
-      return NextResponse.json({ ok: false, error: 'Parollar mos emas' }, { status: 400 })
+    if (password !== confirmPassword || password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+      return NextResponse.json({ ok: false, error: 'Parol kamida 8 belgi, harf va raqamdan iborat bo‘lishi kerak' }, { status: 400 })
     }
 
     const linkOk = validateStaffLink(role, linkKey)

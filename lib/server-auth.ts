@@ -21,12 +21,15 @@ export async function getRequestUser(request?: Request | NextRequest): Promise<U
     return error ? null : user
   }
 
+  // Never authorize from getSession(): it only reads the locally stored JWT
+  // and does not revalidate it with Supabase Auth. getUser() verifies the
+  // cookie-backed access token before privileged service-role queries run.
   const supabase = await createServerSupabaseClient()
   const {
-    data: { session },
+    data: { user },
     error,
-  } = await supabase.auth.getSession()
+  } = await supabase.auth.getUser()
 
   if (error) return null
-  return session?.user ?? null
+  return user ?? null
 }

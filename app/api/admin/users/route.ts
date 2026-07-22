@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getAdminSession } from '@/lib/server-admin'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import type { StaffRow, UserRow } from '@/types/database.generated'
 
 type UserSource = 'users' | 'staff'
-type UserRole = 'talaba' | 'tarbiyachi' | 'admin'
+type UserRole = 'talaba' | 'tarbiyachi' | 'zamdekan' | 'admin'
 
 type AdminUserRow = {
   id: string
@@ -343,8 +344,11 @@ export async function PATCH(request: Request) {
       return jsonError("Staff yozuvini talaba roliga o'tkazib bo'lmaydi", 400)
     }
 
+    if (role && !['talaba', 'tarbiyachi', 'zamdekan', 'admin'].includes(role)) {
+      return jsonError("Noto'g'ri rol", 400)
+    }
+
     const supabase = getServiceSupabase()
-    const table = source === 'users' ? 'users' : 'staff'
     const updates =
       source === 'users'
         ? buildStudentUpdates(body as Record<string, unknown>)
@@ -358,7 +362,8 @@ export async function PATCH(request: Request) {
       return jsonError("Yangilash uchun ma'lumot topilmadi", 400)
     }
 
-    if (source === 'users' && updates.is_floor_captain === true && updates.assigned_floor) {
+    const assignedFloor = typeof updates.assigned_floor === 'number' ? updates.assigned_floor : null
+    if (source === 'users' && updates.is_floor_captain === true && assignedFloor) {
       const { data: genderData } = await supabase
         .from('users')
         .select('gender')
@@ -370,16 +375,15 @@ export async function PATCH(request: Request) {
           .from('users')
           .update({ is_floor_captain: false })
           .eq('is_floor_captain', true)
-          .eq('assigned_floor', updates.assigned_floor)
+          .eq('assigned_floor', assignedFloor)
           .eq('gender', genderData.gender)
           .neq('id', id)
       }
     }
 
-    const { error } = await supabase
-      .from(table)
-      .update(updates)
-      .eq('id', id)
+    const { error } = source === 'users'
+      ? await supabase.from('users').update(updates as Partial<UserRow>).eq('id', id)
+      : await supabase.from('staff').update(updates as Partial<StaffRow>).eq('id', id)
 
     if (error) {
       return jsonError(error.message, 400)

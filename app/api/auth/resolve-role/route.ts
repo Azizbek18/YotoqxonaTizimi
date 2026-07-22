@@ -6,7 +6,7 @@ import { checkRateLimit, getClientIp } from '@/lib/security'
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request)
-    const throttle = checkRateLimit(`resolve-role:${ip}`, 30, 60_000)
+    const throttle = await checkRateLimit(`resolve-role:${ip}`, 30, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ ok: false, error: 'Juda ko\'p urinish. Keyinroq urinib ko\'ring.' }, { status: 429 })
     }
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const supabase = getServiceSupabase()
     const { data: staffUser, error: staffError } = await supabase
       .from('staff')
-      .select('role')
+      .select('role, status')
       .eq('email', email)
       .maybeSingle()
 
@@ -32,13 +32,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: staffError.message }, { status: 500 })
     }
 
-    if (staffUser?.role === 'admin' || staffUser?.role === 'tarbiyachi' || staffUser?.role === 'zamdekan') {
+    if (staffUser?.status === 'active' && (staffUser.role === 'admin' || staffUser.role === 'tarbiyachi' || staffUser.role === 'zamdekan')) {
       return NextResponse.json({ ok: true, role: staffUser.role })
     }
 
     const { data: studentUser, error: userError } = await supabase
       .from('users')
-      .select('role')
+      .select('role, status')
       .eq('email', email)
       .maybeSingle()
 
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: userError.message }, { status: 500 })
     }
 
-    if (studentUser?.role === 'talaba') {
+    if (studentUser?.role === 'talaba' && studentUser.status === 'active') {
       return NextResponse.json({ ok: true, role: 'talaba' })
     }
 

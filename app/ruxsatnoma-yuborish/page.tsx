@@ -8,7 +8,6 @@ import {
   Upload, User, Mail, Phone, Volume2, VolumeX,
   ChevronRight, ChevronLeft, ArrowLeft, CheckCircle2, CreditCard, GraduationCap
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -347,40 +346,7 @@ export default function RuxsatnomaYuborish() {
       const cleanJshshir = jshshir.trim()
       const cleanEmail = email.trim().toLowerCase()
 
-      // 1. Check duplicate — three safe .eq() lookups rather than
-      // interpolating applicant-submitted values into a single `.or()`
-      // filter string.
-      const { data: byPassport, error: passportCheckError } = await supabase
-        .from('permit_requests')
-        .select('id')
-        .eq('passport_series', cleanPassport)
-        .maybeSingle()
-      if (passportCheckError) throw new Error(passportCheckError.message)
-      if (byPassport) {
-        throw new Error("Ushbu Pasport seriyasi bilan yo'llanma yuborilgan!")
-      }
-
-      const { data: byJshshir, error: jshshirCheckError } = await supabase
-        .from('permit_requests')
-        .select('id')
-        .eq('jshshir', cleanJshshir)
-        .maybeSingle()
-      if (jshshirCheckError) throw new Error(jshshirCheckError.message)
-      if (byJshshir) {
-        throw new Error("Ushbu JShSHIR bilan yo'llanma yuborilgan!")
-      }
-
-      const { data: byEmail, error: emailCheckError } = await supabase
-        .from('permit_requests')
-        .select('id')
-        .eq('email', cleanEmail)
-        .maybeSingle()
-      if (emailCheckError) throw new Error(emailCheckError.message)
-      if (byEmail) {
-        throw new Error("Ushbu Email manzili bilan yo'llanma yuborilgan!")
-      }
-
-      // 2. AI orqali yo'llanma hujjatini tekshirish — hujjat rasmiy
+      // 1. AI orqali yo'llanma hujjatini tekshirish — hujjat rasmiy
       // my.gov.uz namunasiga mosligi va undagi FISH/JSHSHIR/pasport
       // ma'lumotlari formada kiritilgan ma'lumotlar bilan mosligini
       // tasdiqlaydi. Fayl saqlanishidan oldin ishlaydi.
@@ -406,37 +372,27 @@ export default function RuxsatnomaYuborish() {
         throw new Error(reason)
       }
 
-      // 3. Upload file
-      const fileExt = file.name.split('.').pop()
-      const filePath = `permits/temp/${cleanPassport}_${Date.now()}.${fileExt}`
-      const { error: uploadError } = await supabase.storage
-        .from('avatar')
-        .upload(filePath, file)
+      // 2. Server tekshiradi, private storage'ga yuklaydi va bazaga yozadi.
+      const submission = new FormData()
+      submission.append('file', file)
+      submission.append('passportSeries', cleanPassport)
+      submission.append('jshshir', cleanJshshir)
+      submission.append('fullName', fullName.trim())
+      submission.append('email', cleanEmail)
+      submission.append('phone', phone.trim())
+      submission.append('gender', gender)
+      submission.append('faculty', faculty)
+      submission.append('direction', direction.trim())
+      submission.append('course', String(course))
 
-      if (uploadError) {
-        throw new Error("Faylni yuklashda xatolik yuz berdi: " + uploadError.message)
+      const submitResponse = await fetch('/api/permit-requests', {
+        method: 'POST',
+        body: submission,
+      })
+      const submitResult = await submitResponse.json()
+      if (!submitResponse.ok) {
+        throw new Error(submitResult.error || 'Arizani saqlashda xatolik yuz berdi')
       }
-
-      const { data: { publicUrl } } = supabase.storage.from('avatar').getPublicUrl(filePath)
-
-      // 4. Insert into permit_requests
-      const { error: dbError } = await supabase
-        .from('permit_requests')
-        .insert({
-          passport_series: cleanPassport,
-          jshshir: cleanJshshir,
-          full_name: fullName.trim(),
-          email: cleanEmail,
-          phone: phone.trim(),
-          gender,
-          faculty,
-          direction: direction.trim(),
-          course: Number(course),
-          permit_url: publicUrl,
-          status: 'pending'
-        })
-
-      if (dbError) throw new Error(dbError.message)
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('student_permit_passport', cleanPassport)

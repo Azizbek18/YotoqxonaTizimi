@@ -7,13 +7,13 @@ import {
   ArrowLeft, ShieldCheck, X
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { supabase } from '@/lib/supabase'
 import { getSafeUser, getAuthHeaders } from '@/lib/auth-session'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
+import { fetchStudentProfile } from '@/features/profile/client/api'
 
 interface Student {
   id: string
@@ -96,19 +96,15 @@ export default function SardorDashboard() {
       }
 
       // Fetch student profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+      const { profile: profileData } = await fetchStudentProfile()
 
-      if (profileError || !profileData || !profileData.is_floor_captain) {
+      if (!profileData || !profileData.is_floor_captain) {
         toast.error("Ruxsat berilmagan! Siz qavat sardori emassiz.")
         window.location.href = '/talaba/dashboard'
         return
       }
 
-      setProfile(profileData)
+      setProfile(profileData as Profile)
 
       const authHeader = await getAuthHeaders()
 
@@ -130,35 +126,16 @@ export default function SardorDashboard() {
       const resultElon = await resElon.json()
       if (resElon.ok && Array.isArray(resultElon.elonlar)) {
         setElonlar(resultElon.elonlar)
+        if (resultElon.dutySchedule) {
+          setDutySchedule({
+            Dushanba: [], Seshanba: [], Chorshanba: [], Payshanba: [], Juma: [], Shanba: [], Yakshanba: [],
+            ...(resultElon.dutySchedule.schedule || {})
+          })
+          setDutyAdmins(Array.isArray(resultElon.dutySchedule.admins) ? resultElon.dutySchedule.admins : [])
+          setDutyElonId(resultElon.dutySchedule.id || null)
+        }
       } else {
         throw new Error(resultElon.error || "E'lonlarni yuklashda xato")
-      }
-
-      // Fetch floor duty schedule announcement
-      const { data: dutyData } = await supabase
-        .from('elonlar')
-        .select('*')
-        .eq('title', 'HAFTALIK_NAVBATCHILIK_JADVALI')
-        .eq('target_floor', profileData.assigned_floor)
-        .eq('target_gender', profileData.gender)
-        .maybeSingle()
-
-      if (dutyData && dutyData.text) {
-        try {
-          const parsed = JSON.parse(dutyData.text)
-          if (parsed.schedule) {
-            setDutySchedule({
-              Dushanba: [], Seshanba: [], Chorshanba: [], Payshanba: [], Juma: [], Shanba: [], Yakshanba: [],
-              ...parsed.schedule
-            })
-          }
-          if (parsed.admins) {
-            setDutyAdmins(parsed.admins)
-          }
-          setDutyElonId(dutyData.id)
-        } catch (e) {
-          console.error("Navbatchilik JSON parsing xatosi:", e)
-        }
       }
     } catch (err) {
       console.error(err)
@@ -254,48 +231,18 @@ export default function SardorDashboard() {
   const handleSaveDuty = async () => {
     try {
       setSavingDuty(true)
-      const textValue = JSON.stringify({
-        schedule: dutySchedule,
-        admins: dutyAdmins
+      const authHeader = await getAuthHeaders()
+      const response = await fetch('/api/sardor/elonlar', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify({ schedule: dutySchedule, admins: dutyAdmins }),
       })
-
-      if (dutyElonId) {
-        const { error } = await supabase
-          .from('elonlar')
-          .update({
-            text: textValue,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', dutyElonId)
-
-        if (error) throw error
-        toast.success("Navbatchilik jadvali muvaffaqiyatli yangilandi!")
-      } else {
-        const { data, error } = await supabase
-          .from('elonlar')
-          .insert({
-            title: 'HAFTALIK_NAVBATCHILIK_JADVALI',
-            text: textValue,
-            type: 'Yangilik',
-            // Internal data-storage row (raw JSON schedule, not a real announcement) —
-            // audience is intentionally NOT 'floor'/'faculty'/'all' so /api/elonlar
-            // never surfaces it in the student-facing announcements feed.
-            audience: 'internal',
-            faculty: profile?.faculty || 'Barchasi',
-            is_published: true,
-            created_by: profile?.id,
-            target_floor: profile?.assigned_floor,
-            target_gender: profile?.gender
-          })
-          .select()
-          .single()
-
-        if (error) throw error
-        if (data) {
-          setDutyElonId(data.id)
-        }
-        toast.success("Navbatchilik jadvali muvaffaqiyatli yaratildi va saqlandi!")
-      }
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Navbatchilik jadvalini saqlab bo‘lmadi')
+      setDutyElonId(result.id)
+      toast.success(dutyElonId
+        ? "Navbatchilik jadvali muvaffaqiyatli yangilandi!"
+        : "Navbatchilik jadvali muvaffaqiyatli yaratildi va saqlandi!")
     } catch (err) {
       console.error(err)
       toast.error(err instanceof Error ? err.message : "Saqlashda xatolik yuz berdi")

@@ -36,25 +36,8 @@ function LoginContent() {
     try {
       const cleanEmail = email.trim().toLowerCase()
 
-      // 1. Birinchi navbatda foydalanuvchi ro'yxatdan o'tganmi yoki yo'qligini tekshiramiz
-      const [{ data: userExists }, { data: staffExists }] = await Promise.all([
-        supabase.from('users').select('id, email, status').eq('email', cleanEmail).maybeSingle(),
-        supabase.from('staff').select('id, email, role').eq('email', cleanEmail).maybeSingle(),
-      ])
-
-      if (!userExists && !staffExists) {
-        throw new Error("Bunday foydalanuvchi ro'yxatdan o'tmagan!")
-      }
-
-      if (userExists && userExists.status === 'pending') {
-        throw new Error("Sizning arizangiz kutilmoqda. Admin tasdiqlagandan so'ng tizimga kira olasiz.")
-      }
-
-      if (userExists && userExists.status === 'rejected') {
-        throw new Error("Arizangiz rad etilgan. Qo'shimcha ma'lumot uchun ma'muriyatga murojaat qiling.")
-      }
-
-      // 2. Foydalanuvchi bor bo'lsa, endi tizimga kirishga urinib ko'ramiz
+      // Login oldidan users/staff jadvallarini anonim qidirmaymiz. Bu hisob
+      // mavjudligini oshkor qiladigan account-enumeration xatosini yopadi.
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password: password,
@@ -63,7 +46,7 @@ function LoginContent() {
       // Agar parol xato bo'lsa Supabase 'Invalid login credentials' qaytaradi
       if (authError) {
         if (authError.message.includes("Invalid login credentials")) {
-          throw new Error("Xato parol kiritildi! Tekshirib qaytadan kiriting.")
+          throw new Error("Email yoki parol noto'g'ri.")
         }
         throw new Error(authError.message)
       }

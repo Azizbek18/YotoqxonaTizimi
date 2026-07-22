@@ -23,6 +23,7 @@ import {
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { fetchAdminPaymentSummary } from '@/features/payments/client/api'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
 
 export default function AdminLayout({
@@ -63,14 +64,8 @@ export default function AdminLayout({
   useEffect(() => {
     async function fetchWaitingPayments() {
       try {
-        const { count, error } = await supabase
-          .from('tolovlar')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'waiting')
-        
-        if (!error && count !== null) {
-          setWaitingCount(count)
-        }
+        const summary = await fetchAdminPaymentSummary()
+        setWaitingCount(summary.waitingCount)
       } catch (err) {
         console.error('Error fetching waiting payments count:', err)
       }

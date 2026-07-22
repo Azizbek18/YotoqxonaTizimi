@@ -8,11 +8,11 @@ import {
   RotateCcw, CheckCircle2, ChevronRight 
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import toast from 'react-hot-toast'
 import * as THREE from 'three'
+import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
 
 interface StudentInfo {
   id: string
@@ -60,13 +60,7 @@ export default function Admin3DXonalarPage() {
   // Load Room Occupancy from Supabase
   const loadRoomOccupancy = async () => {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, room_number, full_name')
-        .eq('role', 'talaba')
-        .not('room_number', 'is', null)
-
-      if (error) throw error
+      const { students: data } = await fetchAdminDashboard()
 
       const occupancyMap = new Map<string, { count: number, students: StudentInfo[] }>()
       data?.forEach((user) => {
@@ -74,7 +68,7 @@ export default function Admin3DXonalarPage() {
         const existing = occupancyMap.get(user.room_number) || { count: 0, students: [] }
         occupancyMap.set(user.room_number, {
           count: existing.count + 1,
-          students: [...existing.students, { id: user.id, name: user.full_name }]
+          students: [...existing.students, { id: user.id, name: user.full_name ?? 'Noma\'lum' }]
         })
       })
 
@@ -93,7 +87,8 @@ export default function Admin3DXonalarPage() {
   }
 
   useEffect(() => {
-    loadRoomOccupancy()
+    const loadId = window.setTimeout(() => void loadRoomOccupancy(), 0)
+    return () => window.clearTimeout(loadId)
   }, [])
 
   // Blueprint File Selection

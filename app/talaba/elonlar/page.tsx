@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { supabase } from '@/lib/supabase';
+import { fetchStudentAnnouncements } from '@/features/announcements/client/api';
 
 interface Elon {
   id: string | number;
@@ -40,7 +41,7 @@ interface DbElon {
   type: Elon['type'];
   audience: 'all' | 'faculty' | 'floor';
   faculty: string | null;
-  is_published: boolean;
+  is_published?: boolean;
   created_at: string;
   published_at: string | null;
   author_name?: string | null;
@@ -150,16 +151,7 @@ export default function ElonlarPage() {
 
     const loadElonlar = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const authHeader: Record<string, string> = session?.access_token
-          ? { Authorization: `Bearer ${session.access_token}` }
-          : {};
-        const response = await fetch('/api/elonlar', { headers: authHeader });
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error ?? "E'lonlarni yuklashda xatolik");
-        }
+        const result = await fetchStudentAnnouncements();
 
         if (isMounted && Array.isArray(result.elonlar)) {
           const mapped = result.elonlar.map((elon: DbElon) => mapDbElon(elon));
@@ -582,4 +574,3 @@ export default function ElonlarPage() {
     </div>
   );
 }
-

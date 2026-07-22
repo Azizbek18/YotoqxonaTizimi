@@ -1,8 +1,9 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { fetchAdminPayments, reviewAdminPayments } from '@/features/payments/client/api'
+import type { PaymentRecord } from '@/features/payments/types'
 import {
   CreditCard, Search, Check, X, Clock, AlertCircle,
   Eye, FileText, User,
@@ -10,22 +11,6 @@ import {
   Layers
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-
-interface PaymentRecord {
-  id: string
-  student_id: string
-  student_name: string
-  month: string
-  year: number
-  amount: number
-  status: 'paid' | 'pending' | 'rejected' | 'waiting' | 'approved'
-  receipt_url?: string
-  admin_message?: string
-  created_at: string
-  ai_confidence?: number
-  ai_extracted_amount?: number
-  ai_analysis?: string
-}
 
 interface GroupedPayment {
   key: string
@@ -103,13 +88,7 @@ export default function AdminTolovlarPage() {
   const loadPayments = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('tolovlar')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setRecords(data || [])
+      setRecords(await fetchAdminPayments())
     } catch (err: unknown) {
       console.error('Error fetching payments:', err)
       toast.error('To\'lovlarni yuklashda xatolik yuz berdi')
@@ -127,15 +106,11 @@ export default function AdminTolovlarPage() {
       setSubmitting(true)
       // Approve ALL records in the group
       const ids = group.records.map(r => r.id)
-      const { error } = await supabase
-        .from('tolovlar')
-        .update({
-          status: 'approved',
-          admin_message: 'To\'lov muvaffaqiyatli tasdiqlandi. Rahmat! ✅'
-        })
-        .in('id', ids)
-
-      if (error) throw error
+      await reviewAdminPayments({
+        ids,
+        status: 'approved',
+        message: 'To\'lov muvaffaqiyatli tasdiqlandi. Rahmat! ✅',
+      })
 
       toast.success(`${group.student_name} — ${group.months.join(', ')} to'lovi tasdiqlandi!`)
       setSelectedGroup(null)
@@ -158,15 +133,11 @@ export default function AdminTolovlarPage() {
       setSubmitting(true)
       // Reject ALL records in the group
       const ids = group.records.map(r => r.id)
-      const { error } = await supabase
-        .from('tolovlar')
-        .update({
-          status: 'rejected',
-          admin_message: `Rad etildi: ${rejectReason}`
-        })
-        .in('id', ids)
-
-      if (error) throw error
+      await reviewAdminPayments({
+        ids,
+        status: 'rejected',
+        message: `Rad etildi: ${rejectReason}`,
+      })
 
       toast.success(`${group.student_name} — ${group.months.join(', ')} to'lovi rad etildi`)
       setSelectedGroup(null)

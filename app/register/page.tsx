@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -73,98 +72,13 @@ export default function RegisterPage() {
       const passportSeriesClean = data.passportSeries.toUpperCase().replace(/\s/g, '')
       const jshshirClean = data.jshshir.trim()
 
-      // 0. Email, Pasport seriyasi va JShSHIR takrorlanishini tekshirish —
-      // uch xil xavfsiz .eq() so'rovi orqali, yagona `.or()` filtr satriga
-      // foydalanuvchi kiritgan qiymatlarni to'g'ridan-to'g'ri qo'shish o'rniga.
-      const { data: byEmail, error: emailCheckError } = await supabase
-        .from('users').select('id').eq('email', userEmail).maybeSingle()
-      if (emailCheckError) {
-        throw new Error("Tizimda ma'lumotlarni tekshirishda xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.")
-      }
-      if (byEmail) {
-        throw new Error("Ushbu Email manzili tizimda allaqachon ro'yxatdan o'tgan!")
-      }
-
-      const { data: byPassport, error: passportCheckError } = await supabase
-        .from('users').select('id').eq('passport_series', passportSeriesClean).maybeSingle()
-      if (passportCheckError) {
-        throw new Error("Tizimda ma'lumotlarni tekshirishda xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.")
-      }
-      if (byPassport) {
-        throw new Error("Ushbu Pasport seriyasi bilan ro'yxatdan o'tgan foydalanuvchi allaqachon mavjud!")
-      }
-
-      const { data: byJshshir, error: jshshirCheckError } = await supabase
-        .from('users').select('id').eq('jshshir', jshshirClean).maybeSingle()
-      if (jshshirCheckError) {
-        throw new Error("Tizimda ma'lumotlarni tekshirishda xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.")
-      }
-      if (byJshshir) {
-        throw new Error("Ushbu JShSHIR bilan ro'yxatdan o'tgan foydalanuvchi allaqachon mavjud!")
-      }
-
-      // 1. Supabase Auth-da foydalanuvchi yaratish
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userEmail,
-        password: data.password
+      const response = await fetch('/api/student/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, email: userEmail, passportSeries: passportSeriesClean, jshshir: jshshirClean }),
       })
-
-      if (authError || !authData.user) {
-        let msg = authError?.message ?? "Ro'yxatdan o'tishda xatolik"
-        if (msg.includes("already registered") || msg.toLowerCase().includes("user already exists")) {
-          msg = "Ushbu email manziliga ega foydalanuvchi allaqachon ro'yxatdan o'tgan!"
-        }
-        throw new Error(msg)
-      }
-
-      // 2. 'users' jadvaliga siz aytgan 21 ta ustun bo'yicha ma'lumot yozish
-      const { error: dbError } = await supabase.from('users').insert({
-        id: authData.user.id,
-        email: userEmail,
-
-        // 1. Ism familya va sharifni bitta ustunga birlashtirish
-        full_name: `${data.lastName} ${data.firstName} ${data.middleName}`.trim(),
-        middle_name: data.middleName,
-        // 2-3-4. Manzil ma'lumotlari
-        region: data.region,
-        district: data.district,
-        mahalla: data.mahalla,
-
-        // 5-6-7-8. Shaxsiy hujjat va tug'ilgan sana
-        passport_series: data.passportSeries.toUpperCase().replace(/\s/g, ''),
-        jshshir: data.jshshir,
-        passport_date: data.passportDate,
-        birth_date: data.birthDate,
-
-        // 9-10-11. O'qish ma'lumotlari
-        faculty: data.faculty,
-        direction: data.direction,
-        course: Number(data.course),
-
-        // 12-13-14-15. Qo'shimcha ma'lumotlar
-        nationality: data.nationality,
-        study_type: data.study_type, // Grand yoki Kontrakt
-        gender: data.gender,
-        phone_number: data.phone,
-
-        // 16-17-18. Ota ma'lumotlari
-        father_full_name: data.father_full_name,
-        father_workplace: data.father_workplace,
-        father_phone: data.father_phone,
-
-        // 19-20-21. Ona ma'lumotlari
-        mother_full_name: data.mother_full_name,
-        mother_workplace: data.mother_workplace,
-        mother_phone: data.mother_phone,
-
-        // Yotoqxona uchun maxsus (Qo'shimcha)
-        room_number: data.room_number,
-        entry_date: data.entryDate,
-        role: 'talaba',
-        status: 'pending'
-      })
-
-      if (dbError) throw new Error(dbError.message)
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || "Ro'yxatdan o'tishda xatolik")
 
       show3DToast('success', "Muvaffaqiyatli ro'yxatdan o'tdingiz!")
 

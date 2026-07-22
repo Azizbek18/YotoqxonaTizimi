@@ -1,13 +1,13 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import { Download, BarChart3, TrendingUp, Users, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
-import XLSX from 'xlsx-js-style'
+import * as XLSX from 'xlsx'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
 
 type MonthlyReportRow = {
     year: number
@@ -53,27 +53,19 @@ export default function AdminReportsPage() {
 
         const loadStats = async () => {
             try {
-                // Fetch stats counts
-                const [users, apps, students, approved, educators, admins] = await Promise.all([
-                    supabase.from('users').select('*', { count: 'exact', head: true }),
-                    supabase.from('arizalar').select('*', { count: 'exact', head: true }),
-                    supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'talaba'),
-                    supabase.from('arizalar').select('*', { count: 'exact', head: true }).eq('status', 'approved'),
-                    supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'tarbiyachi'),
-                    supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
-                ])
+                const dashboard = await fetchAdminDashboard()
 
                 setStats({
-                    totalUsers: users.count || 0,
-                    totalApplications: apps.count || 0,
-                    totalStudents: students.count || 0,
-                    approvedApps: approved.count || 0,
+                    totalUsers: dashboard.stats.totalUsers,
+                    totalApplications: dashboard.stats.totalRequests,
+                    totalStudents: dashboard.stats.totalStudents,
+                    approvedApps: dashboard.stats.approvedRequests,
                 })
 
                 setRoleData([
-                    { name: 'Talabalar', value: students.count || 0, color: '#3b82f6' },
-                    { name: 'Tarbiyachilar', value: educators.count || 0, color: '#10b981' },
-                    { name: 'Adminlar', value: admins.count || 0, color: '#ef4444' },
+                    { name: 'Talabalar', value: dashboard.roleCounts.students, color: '#3b82f6' },
+                    { name: 'Tarbiyachilar', value: dashboard.roleCounts.educators, color: '#10b981' },
+                    { name: 'Adminlar', value: dashboard.roleCounts.admins, color: '#ef4444' },
                 ])
 
                 // Fetch real monthly statistics
@@ -82,25 +74,12 @@ export default function AdminReportsPage() {
                 
                 // Get the start of the 6-month window
                 const oldestMonthDate = new Date(d.getFullYear(), d.getMonth() - 5, 1)
-                const oldestMonthISO = oldestMonthDate.toISOString()
-
-                const [dbUsers, dbApps, priorStudents] = await Promise.all([
-                    supabase
-                        .from('users')
-                        .select('created_at, role')
-                        .eq('role', 'talaba')
-                        .gte('created_at', oldestMonthISO),
-                    supabase
-                        .from('arizalar')
-                        .select('created_at, status, type')
-                        .neq('type', 'chat')
-                        .gte('created_at', oldestMonthISO),
-                    supabase
-                        .from('users')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('role', 'talaba')
-                        .lt('created_at', oldestMonthISO)
-                ])
+                const oldestTime = oldestMonthDate.getTime()
+                const recentStudents = dashboard.students.filter((user) => new Date(user.created_at).getTime() >= oldestTime)
+                const recentApplications = dashboard.applications.filter((application) => (
+                    application.type !== 'chat' && new Date(application.created_at).getTime() >= oldestTime
+                ))
+                const priorStudents = dashboard.students.length - recentStudents.length
 
                 // Initialize the 6-month array
                 const monthsList: MonthlyReportRow[] = []
@@ -117,8 +96,8 @@ export default function AdminReportsPage() {
                 }
 
                 // Group users by month
-                if (dbUsers.data) {
-                    dbUsers.data.forEach(u => {
+                if (recentStudents) {
+                    recentStudents.forEach(u => {
                         const date = new Date(u.created_at)
                         const y = date.getFullYear()
                         const m = date.getMonth()
@@ -130,8 +109,8 @@ export default function AdminReportsPage() {
                 }
 
                 // Group arizalar by month
-                if (dbApps.data) {
-                    dbApps.data.forEach(a => {
+                if (recentApplications) {
+                    recentApplications.forEach(a => {
                         const date = new Date(a.created_at)
                         const y = date.getFullYear()
                         const m = date.getMonth()
@@ -146,7 +125,7 @@ export default function AdminReportsPage() {
                 }
 
                 // Map to cumulative student numbers + format for chart
-                let cumulativeStudents = priorStudents.count || 0
+                let cumulativeStudents = priorStudents
                 const finalMonthlyData = monthsList.map(month => {
                     cumulativeStudents += month.studentsCount
                     return {
@@ -177,11 +156,7 @@ export default function AdminReportsPage() {
         const toastId = toast.loading("Ma'lumotlar tayyorlanmoqda...")
         try {
             // Barcha foydalanuvchilarni xona raqami bo'yicha saralab olish
-            const { data: users, error } = await supabase
-                .from('users')
-                .select('full_name, email, role, room_number, phone_number, faculty, direction, course, status')
-
-            if (error) throw error
+            const { users } = await fetchAdminDashboard()
 
             if (!users || users.length === 0) {
                 toast.error("Ma'lumot topilmadi", { id: toastId })

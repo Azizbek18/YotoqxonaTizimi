@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 import {
   Mail,
   Lock,
@@ -103,54 +102,13 @@ export default function AdminRegisterPage() {
         return
       }
 
-      const { data: inviteExists } = await supabase
-        .from('admin_invites')
-        .select('id, email, used')
-        .eq('code', inviteCode.trim())
-        .eq('email', cleanEmail)
-        .maybeSingle()
-
-      if (!inviteExists) {
-        throw new Error("Taklif kodi noto'g'ri yoki email bilan mos kelmadi!")
-      }
-
-      if (inviteExists.used) {
-        throw new Error("Bu taklif kodi allaqachon ishlatilgan!")
-      }
-
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password,
+      const inviteResponse = await fetch('/api/admin/register-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email: cleanEmail, password, inviteCode }),
       })
-
-      if (authError) {
-        if (authError.message.includes('already registered')) {
-          throw new Error("Bu email allaqachon ro'yxatdan o'tgan!")
-        }
-        throw new Error(authError.message)
-      }
-
-      if (!authData.user?.id) {
-        throw new Error('Autentifikatsiya xatosi!')
-      }
-
-      const { error: insertError } = await supabase.from('staff').insert({
-        id: authData.user.id,
-        email: cleanEmail,
-        full_name: name,
-        staff_id: inviteCode.trim(),
-        role: 'admin',
-        created_at: new Date().toISOString(),
-      })
-
-      if (insertError) {
-        throw new Error("Foydalanuvchi ma'lumotlarini saqlashda xato!")
-      }
-
-      await supabase
-        .from('admin_invites')
-        .update({ used: true, used_at: new Date().toISOString() })
-        .eq('id', inviteExists.id)
+      const inviteResult = await inviteResponse.json()
+      if (!inviteResponse.ok) throw new Error(inviteResult.error || 'Admin yaratilmadi')
 
       show3DToast('success', 'Admin akkaunt muvaffaqiyatli yaratildi!')
 

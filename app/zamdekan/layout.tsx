@@ -3,7 +3,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import {
   LayoutDashboard,
   FileText,
@@ -20,6 +19,8 @@ import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useZamdekanScope } from '@/lib/hooks/useZamdekanScope'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
+import { fetchZamdekanOverview } from '@/features/permits/client/admin-api'
+import { supabase } from '@/lib/supabase'
 
 export default function ZamdekanLayout({
   children,
@@ -70,18 +71,14 @@ export default function ZamdekanLayout({
       }
 
       try {
-        const { data: recent, count, error } = await supabase
-          .from('permit_requests')
-          .select('id, full_name, direction, created_at', { count: 'exact' })
-          .eq('status', 'pending')
-          .ilike('faculty', zamdekanFaculty)
-          .order('created_at', { ascending: false })
-          .limit(5)
-
-        if (!error) {
-          setPendingCount(count ?? 0)
-          setRecentPending(recent ?? [])
-        }
+        const { dashboard } = await fetchZamdekanOverview()
+        setPendingCount(dashboard.pendingCount)
+        setRecentPending(dashboard.recentRequests.map((request) => ({
+          id: request.id,
+          full_name: request.full_name,
+          direction: request.direction,
+          created_at: request.created_at,
+        })))
       } catch (err) {
         console.error('Error fetching pending permits count:', err)
       }

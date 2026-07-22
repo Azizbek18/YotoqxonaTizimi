@@ -15,8 +15,11 @@ import {
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { fetchStudentProfile, updateStudentProfile, uploadStudentAvatar } from '@/features/profile/client/api'
+import { createStudentApplication, fetchStudentApplications } from '@/features/applications/client/api'
+import { fetchStudentAnnouncements } from '@/features/announcements/client/api'
 import { supabase } from '@/lib/supabase'
-import { getSafeUser, getSafeSession } from '@/lib/auth-session'
+import { getSafeUser } from '@/lib/auth-session'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
 import toast from 'react-hot-toast'
 
@@ -55,6 +58,7 @@ type ElonNotificationRow = {
   id: string | number
   title?: string | null
   desc?: string | null
+  text?: string | null
   created_at?: string | null
   type?: string | null
 }
@@ -136,45 +140,22 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
       try {
         const user = await getSafeUser()
         if (user) {
-          const { data: profileData, error: profileError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', user.id)
-            .single()
+          const profilePayload = await fetchStudentProfile()
+          const profileData = profilePayload.profile
+          const profileError = !profileData
 
           if (!profileError && profileData) {
             setProfile(profileData as Profile)
-
-            if (profileData.room_number) {
-              const { data: roommatesData, error: roommatesError } = await supabase
-                .from('users')
-                .select('id, full_name, email, phone_number, faculty, role, room_number, course, group, avatar_url')
-                .eq('room_number', profileData.room_number)
-                .neq('id', user.id)
-                .order('full_name', { ascending: true })
-
-              if (!roommatesError && roommatesData) {
-                setRoommates(roommatesData as Profile[])
-              }
-            }
+            setRoommates((profilePayload.roommates ?? []) as Profile[])
 
             // --- FETCH NOTIFICATIONS DATA ---
             try {
               // 1. Fetch latest announcements
-              const { data: elonData } = await supabase
-                .from('elonlar')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(5)
+              const elonPayload = await fetchStudentAnnouncements()
+              const elonData = Array.isArray(elonPayload.elonlar) ? elonPayload.elonlar.slice(0, 5) : []
 
               // 2. Fetch student's applications / warnings
-              const { data: arizalarData } = await supabase
-                .from('arizalar')
-                .select('*')
-                .eq('student_id', user.id)
-                .in('type', ['ariza', 'tushuntirish'])
-                .order('date', { ascending: false })
-                .limit(5)
+              const { applications: arizalarData } = await fetchStudentApplications('notifications', 5)
 
               const combinedList: NotificationItem[] = []
 
@@ -183,7 +164,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                   combinedList.push({
                     id: `elon-${el.id}`,
                     title: el.title || 'E\'lon',
-                    desc: el.desc || '',
+                    desc: el.text || el.desc || '',
                     time: el.created_at || new Date().toISOString(),
                     type: 'elon',
                     level: el.type === 'Muhim' || el.type === 'Ogohlantirish' ? 'warning' : 'info'
@@ -247,17 +228,8 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
 
   const refreshProfileData = async () => {
     try {
-      const user = await getSafeUser()
-      if (user) {
-        const { data: profileData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', user.id)
-          .single()
-        if (profileData) {
-          setProfile(profileData as Profile)
-        }
-      }
+      const payload = await fetchStudentProfile()
+      setProfile(payload.profile as Profile)
     } catch (err) {
       console.error('Error refreshing profile:', err)
     }
@@ -638,24 +610,15 @@ function NightPermModal({ onClose, profile, isLight }: ModalProps) {
 
     setSubmitting(true)
     try {
-      const appDate = new Date().toISOString()
-      const { error } = await supabase.from('arizalar').insert({
-        student_id: profile.id,
-        student_name: profile.full_name,
-        faculty: profile.faculty || '',
-        direction: profile.direction || '',
-        course: profile.course ? parseInt(String(profile.course)) : 1,
-        date: appDate,
+      await createStudentApplication({
         text: `Tungi ruxsat so'rovi. Sana: ${date}, Qaytish vaqti: ${time}, Sabab: ${reason}`,
         level: 'info',
         status: 'pending',
         title: 'Tungi ruxsat so\'rovi',
         type: 'ariza',
         reason: reason,
-        ai_generated: false
+        aiGenerated: false
       })
-
-      if (error) throw error
 
       toast.success('Tungi ruxsat arizasi muvaffaqiyatli yuborildi!')
       onClose()
@@ -822,24 +785,15 @@ function QueueSwapModal({ onClose, profile, roommates, isLight }: QueueSwapModal
 
     setSubmitting(true)
     try {
-      const appDate = new Date().toISOString()
-      const { error } = await supabase.from('arizalar').insert({
-        student_id: profile.id,
-        student_name: profile.full_name,
-        faculty: profile.faculty || '',
-        direction: profile.direction || '',
-        course: profile.course ? parseInt(String(profile.course)) : 1,
-        date: appDate,
+      await createStudentApplication({
         text: `Navbatchilik almashish so'rovi. Mening navbatchilik sanam: ${dutyDate}, Xonadosh: ${roommateName}, Sabab: ${reason}`,
         level: 'info',
         status: 'pending',
         title: 'Navbatchilik almashish so\'rovi',
         type: 'ariza',
         reason: `Sana: ${dutyDate}, Kim bilan: ${roommateName}. Sabab: ${reason}`,
-        ai_generated: false
+        aiGenerated: false
       })
-
-      if (error) throw error
 
       toast.success('Navbat almashish arizasi muvaffaqiyatli yuborildi!')
       onClose()
@@ -991,24 +945,15 @@ function CleanAuditModal({ onClose, profile, isLight }: ModalProps) {
 
     setSubmitting(true)
     try {
-      const appDate = new Date().toISOString()
-      const { error } = await supabase.from('arizalar').insert({
-        student_id: profile.id,
-        student_name: profile.full_name,
-        faculty: profile.faculty || '',
-        direction: profile.direction || '',
-        course: profile.course ? parseInt(String(profile.course)) : 1,
-        date: appDate,
+      await createStudentApplication({
         text: `Tozalik auditi so'rovi. Xona raqami: ${profile.room_number || 'Noma\'lum'}, Izoh: ${comment || 'Yo\'q'}`,
         level: 'info',
         status: 'pending',
         title: 'Tozalik auditi so\'rovi',
         type: 'ariza',
         reason: `Xona: ${profile.room_number || 'Noma\'lum'}. Izoh: ${comment || 'Yo\'q'}`,
-        ai_generated: false
+        aiGenerated: false
       })
-
-      if (error) throw error
 
       toast.success('Tozalik auditi so\'rovi muvaffaqiyatli yuborildi!')
       onClose()
@@ -1214,47 +1159,11 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
 
     setSubmitting(true)
     try {
-      const session = await getSafeSession()
-      if (!session?.access_token) {
-        toast.error("Autentifikatsiya xatosi. Tizimga qayta kiring.")
-        return
-      }
-
       // 1. Upload verified avatar to storage
-      const avatarFormData = new FormData()
-      avatarFormData.append('file', file)
-      avatarFormData.append('userId', profile.id)
-
-      const uploadRes = await fetch('/api/student/profile/upload-avatar', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: avatarFormData
-      })
-
-      const uploadData = await uploadRes.json()
-      if (!uploadRes.ok) {
-        throw new Error(uploadData.error || "Rasm saqlashda xatolik")
-      }
+      await uploadStudentAvatar(file)
 
       // 2. Update student profile group
-      const updateRes = await fetch('/api/student/profile/update', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          userId: profile.id,
-          group: group.trim()
-        })
-      })
-
-      const updateData = await updateRes.json()
-      if (!updateRes.ok) {
-        throw new Error(updateData.error || "Guruhni saqlashda xatolik")
-      }
+      await updateStudentProfile({ group: group.trim() })
 
       toast.success("Profil sozlamalari muvaffaqiyatli saqlandi!")
       onComplete()
@@ -1432,24 +1341,15 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
 
     setSubmitting(true)
     try {
-      const appDate = new Date().toISOString()
-      const { error } = await supabase.from('arizalar').insert({
-        student_id: profile.id,
-        student_name: profile.full_name,
-        faculty: profile.faculty || '',
-        direction: profile.direction || '',
-        course: profile.course ? parseInt(String(profile.course)) : 1,
-        date: appDate,
+      await createStudentApplication({
         text: feedback.trim(),
         level: 'info',
         status: 'pending',
         title: 'Talab va taklif (Dasturchiga)',
         type: 'taklif',
         reason: 'Dasturchi uchun talab va takliflar',
-        ai_generated: false
+        aiGenerated: false
       })
-
-      if (error) throw error
 
       toast.success('Talab va taklifingiz muvaffaqiyatli yuborildi! Rahmat!')
       setFeedback('')
@@ -1511,10 +1411,9 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
           {/* Developer Photo */}
           <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-purple-500/50 shrink-0 shadow-md">
             <Image
-              src="https://qgnjhkvmuywlfdnjfpqg.supabase.co/storage/v1/object/public/avatar/005d251c-5116-4e1e-926f-4cdb97915743/1781451759533.jpg"
+              src="/logo.png"
               alt="Azizbek Mo'minov"
               fill
-              unoptimized
               className="object-cover"
             />
           </div>

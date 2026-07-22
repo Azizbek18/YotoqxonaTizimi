@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import {
   PieChart,
@@ -28,6 +27,7 @@ import {
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useZamdekanScope } from '@/lib/hooks/useZamdekanScope'
+import { fetchZamdekanOverview } from '@/features/permits/client/admin-api'
 
 interface DashboardStats {
   pendingCount: number
@@ -77,110 +77,18 @@ export default function ZamdekanDashboard() {
 
   const loadData = async (faculty: string | null) => {
     try {
-      // 1. Get permit_requests counts (dorm-wide, for the cross-faculty distribution charts)
-      const { data: permits, error: permitsError } = await supabase
-        .from('permit_requests')
-        .select('status, room_number, course, faculty')
-
-      if (permitsError) throw permitsError
-
-      // 1b. Same counts, scoped to this zamdekan's own faculty (their actual approval queue)
-      const scopedPermits = faculty
-        ? (permits ?? []).filter((p) => (p.faculty ?? '').toLowerCase() === faculty.toLowerCase())
-        : []
-
-      let pending = 0
-      let approved = 0
-      let rejected = 0
-      let registered = 0
-
-      scopedPermits.forEach((p) => {
-        if (p.status === 'pending') pending++
-        else if (p.status === 'approved') approved++
-        else if (p.status === 'rejected') rejected++
-        else if (p.status === 'registered') registered++
-      })
-
-      // Course/faculty distribution charts stay dorm-wide (cross-faculty comparison context)
-      const coursesMap: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
-      const facultiesMap: Record<string, number> = {}
-
-      permits?.forEach((p) => {
-        // Aggregate course & faculty details (for approved or registered students)
-        if (p.status === 'approved' || p.status === 'registered') {
-          if (p.course && coursesMap[p.course] !== undefined) {
-            coursesMap[p.course]++
-          }
-          if (p.faculty) {
-            facultiesMap[p.faculty] = (facultiesMap[p.faculty] || 0) + 1
-          }
-        }
-      })
-
-      // 2. Get registered students
-      const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select('room_number, course, faculty')
-        .eq('role', 'talaba')
-
-      if (usersError) throw usersError
-
-      // Aggregate course & faculty for registered users who might not have permit records
-      // (Older system flow students)
-      users?.forEach((u) => {
-        if (u.room_number) {
-          if (u.course && coursesMap[u.course] !== undefined) {
-            coursesMap[u.course]++
-          }
-          if (u.faculty) {
-            facultiesMap[u.faculty] = (facultiesMap[u.faculty] || 0) + 1
-          }
-        }
-      })
-
-      // Calculate total occupied beds:
-      // - Active students in users table with assigned room
-      const activeBedsInUsers = users?.filter((u) => u.room_number).length || 0
-      // - Approved but not yet registered permits
-      const activeBedsInPermits = permits?.filter((p) => p.status === 'approved' && p.room_number).length || 0
-      const totalOccupiedBeds = activeBedsInUsers + activeBedsInPermits
-
-      // 3. Get recent pending requests, scoped to this zamdekan's own faculty
-      let recent: RecentRequest[] = []
-      if (faculty) {
-        const { data: recentData, error: recentError } = await supabase
-          .from('permit_requests')
-          .select('id, full_name, passport_series, jshshir, faculty, direction, course, created_at')
-          .eq('status', 'pending')
-          .ilike('faculty', faculty)
-          .order('created_at', { ascending: false })
-          .limit(5)
-
-        if (recentError) throw recentError
-        recent = recentData ?? []
-      }
-
-      // Format distributions for Recharts
-      const courseChartData = Object.keys(coursesMap).map((key) => ({
-        course: `${key}-kurs`,
-        talabalar: coursesMap[Number(key)],
-      }))
-
-      const facultyChartData = Object.keys(facultiesMap).map((key) => ({
-        name: key,
-        talabalar: facultiesMap[key],
-      }))
-
-      setCourseDistribution(courseChartData)
-      setFacultyDistribution(facultyChartData)
-      setRecentRequests(recent || [])
+      if (!faculty) throw new Error('Fakultet biriktirilmagan')
+      const { dashboard } = await fetchZamdekanOverview()
+      setCourseDistribution(dashboard.courseDistribution)
+      setFacultyDistribution(dashboard.facultyDistribution)
+      setRecentRequests(dashboard.recentRequests)
       setStats({
-        pendingCount: pending,
-        approvedCount: approved,
-        rejectedCount: rejected,
-        registeredCount: registered,
-        activeStudentsCount: users?.length || 0,
-        totalOccupiedBeds,
+        pendingCount: dashboard.pendingCount,
+        approvedCount: dashboard.approvedCount,
+        rejectedCount: dashboard.rejectedCount,
+        registeredCount: dashboard.registeredCount,
+        activeStudentsCount: dashboard.activeStudentsCount,
+        totalOccupiedBeds: dashboard.totalOccupiedBeds,
         loading: false,
       })
     } catch (err) {

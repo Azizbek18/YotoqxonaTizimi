@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
@@ -9,6 +8,7 @@ import {
   X
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { fetchZamdekanOverview } from '@/features/permits/client/admin-api'
 
 interface Occupant {
   id: string
@@ -53,23 +53,7 @@ export default function ZamdekanXonalarMap() {
   const fetchRoomsData = async () => {
     setLoading(true)
     try {
-      // 1. Fetch registered users with rooms
-      const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select('id, full_name, passport_series, jshshir, phone, gender, faculty, direction, course, room_number, warning_count')
-        .eq('role', 'talaba')
-        .not('room_number', 'is', null)
-
-      if (usersError) throw usersError
-
-      // 2. Fetch approved permit requests with rooms (not yet registered)
-      const { data: permits, error: permitsError } = await supabase
-        .from('permit_requests')
-        .select('id, full_name, passport_series, jshshir, phone, gender, faculty, direction, course, room_number')
-        .eq('status', 'approved')
-        .not('room_number', 'is', null)
-
-      if (permitsError) throw permitsError
+      const { usersWithRooms: users, approvedPermitsWithRooms: permits } = await fetchZamdekanOverview()
 
       // Map to combined occupants list
       const occupantsMap: Record<string, Occupant[]> = {}
@@ -81,7 +65,7 @@ export default function ZamdekanXonalarMap() {
           full_name: u.full_name || 'Noma‘lum',
           passport_series: u.passport_series || '',
           jshshir: u.jshshir || '',
-          phone: u.phone || '',
+          phone: u.phone_number || '',
           gender: u.gender || '',
           faculty: u.faculty || '',
           direction: u.direction || '',

@@ -12,12 +12,20 @@ import {
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { supabase } from '@/lib/supabase';
 import { getSafeUser } from '@/lib/auth-session';
-import { extractFloor } from '@/lib/floor';
 import ProfileLoadError from '@/components/talaba/ProfileLoadError';
 import CustomSelect from '@/components/ui/CustomSelect';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+import { fetchStudentPayments } from '@/features/payments/client/api';
+import { fetchStudentProfile } from '@/features/profile/client/api';
+import { fetchStudentAnnouncements } from '@/features/announcements/client/api';
+import { fetchCleaningSchedule, saveCleaningSchedule } from '@/features/duty/client/cleaning-api';
+import {
+  createStudentApplication,
+  fetchStudentApplications,
+} from '@/features/applications/client/api';
 
 
 interface Task {
@@ -103,6 +111,27 @@ type AdminChatMessage = {
   sender_role?: string;
 }
 
+function toAdminChatMessage(application: {
+  id: string;
+  title: string | null;
+  text: string;
+  reason: string | null;
+  status: string | null;
+  created_at: string;
+  date: string | null;
+}) : AdminChatMessage {
+  return {
+    id: application.id,
+    title: application.title ?? undefined,
+    text: application.text,
+    reason: application.reason ?? undefined,
+    status: application.status ?? undefined,
+    created_at: application.created_at,
+    date: application.date ?? undefined,
+    sender_role: application.title ?? undefined,
+  };
+}
+
 function formatElonDate(value: string | null | undefined) {
   if (!value) return 'Bugun';
   const date = new Date(value);
@@ -117,7 +146,9 @@ function formatElonDate(value: string | null | undefined) {
 
 const ChatMarkdownMessage = React.memo(({ text }: { text: string }) => {
   const html = useMemo(() => {
-    return String(marked.parse(text, { async: false }))
+    return DOMPurify.sanitize(String(marked.parse(text, { async: false })), {
+      USE_PROFILES: { html: true },
+    })
   }, [text])
   return (
     <div 
@@ -284,14 +315,10 @@ export default function TalabaDashboard() {
     async function loadSchedule() {
       const roomNum = profile!.room_number!;
       try {
-        const { data, error } = await supabase
-          .from('cleaning_schedule')
-          .select('*')
-          .eq('room_number', roomNum)
-          .maybeSingle();
+        const { schedule } = await fetchCleaningSchedule();
 
-        if (!error && data && data.schedule) {
-          setCleaningSchedule(data.schedule);
+        if (schedule) {
+          setCleaningSchedule(schedule);
           return;
         }
       } catch {
@@ -339,18 +366,11 @@ export default function TalabaDashboard() {
     };
   }, [isScheduleModalOpen, selectedElon, selectedAriza, showArizalar, isChatModalOpen]);
 
-  const loadChatMessages = async (studentId: string) => {
+  const loadChatMessages = async () => {
     try {
       setLoadingAdminChat(true);
-      const { data, error } = await supabase
-        .from('arizalar')
-        .select('*')
-        .eq('student_id', studentId)
-        .eq('type', 'chat')
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setAdminChatMessages(data || []);
+      const { applications } = await fetchStudentApplications('chat');
+      setAdminChatMessages((applications || []).map(toAdminChatMessage));
     } catch (error) {
       console.error('Chat yuklashda xatolik:', error);
     } finally {
@@ -360,7 +380,7 @@ export default function TalabaDashboard() {
 
   useEffect(() => {
     if (profile && isChatModalOpen) {
-      void loadChatMessages(profile.id);
+      void loadChatMessages();
     }
   }, [profile, isChatModalOpen]);
 
@@ -373,26 +393,15 @@ export default function TalabaDashboard() {
     setSendingAdminChat(true);
 
     try {
-      const { data, error } = await supabase
-        .from('arizalar')
-        .insert({
-          student_id: profile.id,
-          student_name: profile.full_name,
-          faculty: profile.faculty || '',
-          course: profile.course ? parseInt(String(profile.course)) : 1,
+      const { application } = await createStudentApplication({
           type: 'chat',
           title: 'talaba',
           reason: messageText,
           status: 'submitted',
           text: messageText,
           level: 'info',
-          date: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      setAdminChatMessages(prev => [...prev, data]);
+        });
+      setAdminChatMessages(prev => [...prev, toAdminChatMessage(application)]);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Xabar yuborishda xatolik';
       toast.error(message);
@@ -476,17 +485,7 @@ export default function TalabaDashboard() {
     setIsSavingSchedule(true);
     const roomNum = profile.room_number;
     try {
-      const { error } = await supabase
-        .from('cleaning_schedule')
-        .upsert({
-          room_number: roomNum,
-          schedule: draftSchedule,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'room_number' });
-
-      if (error) {
-        throw error;
-      }
+      await saveCleaningSchedule(draftSchedule);
 
       setCleaningSchedule(draftSchedule);
       localStorage.setItem(`cleaning_schedule_${roomNum}`, JSON.stringify(draftSchedule));
@@ -618,45 +617,23 @@ export default function TalabaDashboard() {
 
         if (user) {
           // 1. Profil ma'lumotlarini olish
-          const { data: profileData, error: profileError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', user.id)
-            .single();
+          const profilePayload = await fetchStudentProfile();
+          const profileData = profilePayload.profile;
+          const profileError = !profileData;
 
           if (!profileError && profileData) {
             currentProfile = profileData as Profile;
             setProfile(currentProfile);
 
-            // 2. Xonadoshlarni olish
-            if (profileData.room_number) {
-              const { data: roommatesData, error: roommatesError } = await supabase
-                .from('users')
-                .select('id, full_name, email, phone_number, faculty, role, room_number, course, group, avatar_url')
-                .eq('room_number', profileData.room_number)
-                .neq('id', user.id)
-                .order('full_name', { ascending: true });
-
-              if (!roommatesError && roommatesData) {
-                setRoommates(roommatesData as Profile[]);
-              }
-            }
+            setRoommates((profilePayload.roommates ?? []) as Profile[]);
 
             // 2b. Qavat sardorini yuklash
-            const userFloor = profileData.assigned_floor || extractFloor(profileData.room_number);
-            const userGender = profileData.gender;
-            if (userFloor && userGender) {
-              const { data: captainData } = await supabase
-                .from('users')
-                .select('full_name, phone_number, email')
-                .eq('is_floor_captain', true)
-                .eq('assigned_floor', userFloor)
-                .eq('gender', userGender)
-                .maybeSingle();
-              
-              if (captainData) {
-                setFloorCaptain(captainData);
-              }
+            if (profilePayload.floorCaptain) {
+              setFloorCaptain({
+                full_name: profilePayload.floorCaptain.full_name ?? '',
+                phone_number: profilePayload.floorCaptain.phone_number ?? undefined,
+                email: profilePayload.floorCaptain.email ?? undefined,
+              });
             }
           }
         }
@@ -671,25 +648,10 @@ export default function TalabaDashboard() {
 
         // 3. Real E'lonlarni Yuklash (API orqali filterlangan holda)
         try {
-          const { data: { session: elonSession } } = await supabase.auth.getSession();
-          const elonAuthHeader: Record<string, string> = elonSession?.access_token
-            ? { Authorization: `Bearer ${elonSession.access_token}` }
-            : {};
-          const resElon = await fetch('/api/elonlar', { headers: elonAuthHeader });
-          const resultElon = await resElon.json();
+          const resultElon = await fetchStudentAnnouncements();
 
-          if (resElon.ok && Array.isArray(resultElon.elonlar)) {
-            const mappedElons = resultElon.elonlar.map((e: {
-              id: string | number;
-              title: string;
-              type: 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish';
-              author_name?: string;
-              is_from_captain?: boolean;
-              captain_floor?: number | string;
-              published_at?: string;
-              created_at?: string;
-              text: string;
-            }) => ({
+          if (Array.isArray(resultElon.elonlar)) {
+            const mappedElons = resultElon.elonlar.map((e) => ({
               id: e.id,
               title: e.title,
               type: e.type,
@@ -711,25 +673,12 @@ export default function TalabaDashboard() {
         // 4. Real Arizalar / Ogohlantirishlarni Yuklash (arizalar table)
         try {
           if (currentProfile && currentProfile.full_name) {
-            const { data: arizalarData, error: arizalarError } = await supabase
-              .from('arizalar')
-              .select('*')
-              .eq('student_name', currentProfile.full_name)
-              .neq('status', 'draft')
-              .neq('type', 'chat')
-              .in('level', ['warning', 'critical'])
-              .order('created_at', { ascending: false });
+            const { applications: arizalarData } = await fetchStudentApplications('warnings');
 
-            if (!arizalarError && arizalarData && arizalarData.length > 0) {
-              const mappedArizalar = arizalarData.map((a: {
-                id: string | number;
-                student_name: string;
-                created_at?: string;
-                text: string;
-                level?: string;
-              }) => ({
+            if (arizalarData && arizalarData.length > 0) {
+              const mappedArizalar = arizalarData.map((a) => ({
                 id: a.id,
-                ism: a.student_name,
+                ism: a.student_name ?? currentProfile.full_name,
                 kurs: currentProfile?.course ? `${currentProfile.course}-kurs` : "—",
                 yonalish: currentProfile?.faculty || "—",
                 sana: a.created_at ? new Date(a.created_at).toLocaleDateString('uz-UZ') : '—',
@@ -749,23 +698,10 @@ export default function TalabaDashboard() {
         // 4b. Real Murojaat va Arizalarim Statusini Yuklash (arizalar table)
         try {
           if (user) {
-            const { data: myAppsData, error: myAppsError } = await supabase
-              .from('arizalar')
-              .select('*')
-              .eq('student_id', user.id)
-              .in('type', ['ariza', 'tushuntirish'])
-              .order('created_at', { ascending: false })
-              .limit(3);
+            const { applications: myAppsData } = await fetchStudentApplications('documents', 3);
 
-            if (!myAppsError && myAppsData && myAppsData.length > 0) {
-              const mappedMyApps = myAppsData.map((app: {
-                id: string | number;
-                type?: string;
-                title?: string;
-                date?: string;
-                created_at?: string;
-                status?: string;
-              }) => ({
+            if (myAppsData && myAppsData.length > 0) {
+              const mappedMyApps = myAppsData.map((app) => ({
                 id: app.id,
                 type: (app.type || 'ariza') as 'ariza' | 'tushuntirish',
                 title: app.title || 'Sarlavhasiz',
@@ -787,14 +723,7 @@ export default function TalabaDashboard() {
         // 5. Real Tolovlarni Yuklash (tolovlar table)
         try {
           if (user) {
-            const { data: tolovData, error: tolovError } = await supabase
-              .from('tolovlar')
-              .select('*')
-              .eq('student_id', user.id);
-
-            if (!tolovError && tolovData) {
-              setPayments(tolovData);
-            }
+            setPayments(await fetchStudentPayments());
           }
         } catch (tolovCatchError) {
           console.error("To'lovlarni yuklashda xato:", tolovCatchError);

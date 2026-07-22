@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
-import { getSafeSession, getSafeUser } from '@/lib/auth-session'
+import { getSafeUser } from '@/lib/auth-session'
 import {
   Mail, Phone, GraduationCap, Home,
   ShieldCheck, LogOut, Camera, Edit2, X, Check, Loader, Award, Sparkles, Shield,
@@ -14,6 +14,12 @@ import {
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import ProfileLoadError from '@/components/talaba/ProfileLoadError'
+import {
+  deleteStudentAvatar,
+  fetchStudentProfile,
+  updateStudentProfile,
+  uploadStudentAvatar,
+} from '@/features/profile/client/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Profile {
@@ -27,6 +33,32 @@ interface Profile {
   course?: string | number
   group?: string | number
   avatar_url?: string
+}
+
+function toProfile(data: {
+  id: string
+  full_name: string | null
+  email: string | null
+  phone_number?: string | null
+  faculty?: string | null
+  role?: string | null
+  room_number?: string | null
+  course?: number | null
+  group?: string | null
+  avatar_url?: string | null
+}): Profile {
+  return {
+    id: data.id,
+    full_name: data.full_name ?? '',
+    email: data.email ?? '',
+    phone: data.phone_number ?? undefined,
+    faculty: data.faculty ?? undefined,
+    role: data.role ?? undefined,
+    room_number: data.room_number ?? undefined,
+    course: data.course ?? undefined,
+    group: data.group ?? undefined,
+    avatar_url: data.avatar_url ?? undefined,
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -309,45 +341,16 @@ export default function StudentProfile() {
             setLastLogin(loginTime)
           }
 
-          const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', user.id)
-            .single()
+          const payload = await fetchStudentProfile()
+          const data = payload.profile
+          const error = !data
 
           if (!error && data) {
-            setProfile({
-              ...data,
-              phone: data.phone_number
-            })
+            setProfile(toProfile(data))
 
-            // Roommates load
-            if (data.room_number) {
-              const { data: roommatesData, error: roommatesError } = await supabase
-                .from('users')
-                .select('id, full_name, email, phone_number, faculty, role, room_number, course, group, avatar_url')
-                .eq('room_number', data.room_number)
-                .neq('id', user.id)
-                .order('full_name', { ascending: true })
-
-              if (!roommatesError && roommatesData) {
-                const mappedRoommates = roommatesData.map((r: {
-                  id: string
-                  full_name: string
-                  email: string
-                  phone_number?: string
-                  faculty?: string
-                  role?: string
-                  room_number?: string
-                  course?: string | number
-                  group?: string | number
-                  avatar_url?: string
-                }) => ({
-                  ...r,
-                  phone: r.phone_number
-                }))
+            if (Array.isArray(payload.roommates)) {
+                const mappedRoommates = payload.roommates.map(toProfile)
                 setRoommates(mappedRoommates)
-              }
             }
             return
           }
@@ -368,15 +371,8 @@ export default function StudentProfile() {
   const refreshProfile = async () => {
     if (!profile) return
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', profile.id)
-        .single()
-
-      if (!error && data) {
-        setProfile(data)
-      }
+      const payload = await fetchStudentProfile()
+      setProfile(toProfile(payload.profile))
     } catch (error) {
       console.error('Profile refresh xatosi:', error)
     }
@@ -391,28 +387,7 @@ export default function StudentProfile() {
 
     setUploading(true)
     try {
-      const session = await getSafeSession()
-      if (!session?.access_token) {
-        setMessage({ type: 'error', text: 'Autentifikatsiya xatosi' })
-        return
-      }
-
-      const response = await fetch(
-        `/api/student/profile/upload-avatar?userId=${profile.id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          }
-        }
-      )
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setMessage({ type: 'error', text: data.error || 'Avatar o\'chirilishida xato' })
-        return
-      }
+      await deleteStudentAvatar()
 
       await refreshProfile()
       setMessage({ type: 'success', text: 'Avatar o\'chirildi' })
@@ -441,30 +416,7 @@ export default function StudentProfile() {
 
     setUploading(true)
     try {
-      const session = await getSafeSession()
-      if (!session?.access_token) {
-        setMessage({ type: 'error', text: 'Autentifikatsiya xatosi' })
-        return
-      }
-
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('userId', profile.id)
-
-      const response = await fetch('/api/student/profile/upload-avatar', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: formData,
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setMessage({ type: 'error', text: data.error || 'Yuklashda xato yuz berdi' })
-        return
-      }
+      await uploadStudentAvatar(file)
 
       await refreshProfile()
       setMessage({ type: 'success', text: 'Rasm muvaffaqiyatli saqlandi' })
@@ -495,28 +447,18 @@ export default function StudentProfile() {
 
     setSavingEdit(true)
     try {
-      const session = await getSafeSession()
-      const response = await fetch('/api/student/profile/update', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({
-          userId: profile.id,
-          ...editForm,
-        }),
+      const data = await updateStudentProfile({
+        full_name: editForm.full_name,
+        phone: editForm.phone,
+        group: editForm.group == null ? undefined : String(editForm.group),
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        setMessage({ type: 'error', text: data.error || 'Yangilashda xato yuz berdi' })
-        setTimeout(() => setMessage(null), 4000)
-        return
-      }
-
-      setProfile(data.data)
+      setProfile((current) => current ? {
+        ...current,
+        full_name: data.data.full_name ?? current.full_name,
+        phone: data.data.phone_number ?? current.phone,
+        group: data.data.group ?? current.group,
+      } : current)
       setShowEditModal(false)
       setMessage({ type: 'success', text: 'Profil muvaffaqiyatli yangilandi! ✅' })
       setTimeout(() => setMessage(null), 4000)

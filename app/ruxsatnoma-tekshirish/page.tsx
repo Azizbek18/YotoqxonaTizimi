@@ -8,7 +8,6 @@ import {
   Search, CheckCircle2, XCircle,
   HelpCircle, AlertTriangle, ChevronRight, House, LogIn 
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -52,14 +51,14 @@ function StatusCheckContent() {
       const cleanPassport = passport.toUpperCase().replace(/\s/g, '')
       const cleanJshshir = pin.trim()
 
-      const { data, error } = await supabase
-        .from('permit_requests')
-        .select('*')
-        .eq('passport_series', cleanPassport)
-        .eq('jshshir', cleanJshshir)
-        .maybeSingle()
-
-      if (error) throw new Error(error.message)
+      const response = await fetch('/api/permit-requests/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passportSeries: cleanPassport, jshshir: cleanJshshir }),
+      })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Qidirishda xatolik yuz berdi')
+      const data = payload.data ? { ...payload.data, passport_series: cleanPassport, jshshir: cleanJshshir } : null
 
       if (data) {
         setResult(data as PermitRequest)

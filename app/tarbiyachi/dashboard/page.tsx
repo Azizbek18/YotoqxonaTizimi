@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { AlertTriangle, BedDouble, Users } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { getAuthHeaders } from '@/lib/auth-session'
 
 type StatState = {
   students: number
@@ -20,18 +20,25 @@ export default function TarbiyachiDashboardPage() {
   useEffect(() => {
     const load = async () => {
       setLoading(true)
-      const [studentsRes, warningsRes] = await Promise.all([
-        supabase.from('users').select('id,status', { count: 'exact', head: false }).eq('role', 'talaba'),
-        supabase.from('arizalar').select('id', { count: 'exact', head: true }),
+      const headers = await getAuthHeaders()
+      const [studentsResponse, requestsResponse] = await Promise.all([
+        fetch('/api/staff/students', { headers, cache: 'no-store' }),
+        fetch('/api/staff/arizalar', { headers, cache: 'no-store' }),
       ])
+      const [studentsPayload, requestsPayload] = await Promise.all([
+        studentsResponse.json(),
+        requestsResponse.json(),
+      ])
+      const studentRows = Array.isArray(studentsPayload.students) ? studentsPayload.students : []
+      const requestRows = Array.isArray(requestsPayload.requests) ? requestsPayload.requests : []
 
-      const students = studentsRes.count ?? 0
-      const activeStudents = (studentsRes.data ?? []).filter((s) => s.status === 'active').length
+      const students = studentRows.length
+      const activeStudents = studentRows.filter((student: { status?: string }) => student.status === 'active').length
 
       setStats({
         students,
         activeStudents,
-        warnings: warningsRes.count ?? 0,
+        warnings: requestRows.length,
       })
       setLoading(false)
     }

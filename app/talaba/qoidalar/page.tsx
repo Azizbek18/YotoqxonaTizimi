@@ -19,8 +19,7 @@ import {
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import PageSkeleton from '@/components/ui/PageSkeleton'
-import { supabase } from '@/lib/supabase'
-import { getSafeUser } from '@/lib/auth-session'
+import { fetchStudentProfile } from '@/features/profile/client/api'
 import toast from 'react-hot-toast'
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
@@ -223,17 +222,8 @@ export default function QoidalarPage() {
       try {
         setLoading(true)
         // 1. Fetch User Profile
-        const user = await getSafeUser()
-        if (user) {
-          const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', user.id)
-            .single()
-          if (!error && data) {
-            setProfile(data as Profile)
-          }
-        }
+        const { profile: data } = await fetchStudentProfile()
+        setProfile(data as Profile)
 
         // 2. Load acknowledged rules from localStorage
         const saved = localStorage.getItem('acknowledged_rules')

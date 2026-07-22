@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import {
   ListOrdered, Loader2, ShieldCheck, User, Sparkles
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import { getSafeSession } from '@/lib/auth-session'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
@@ -63,47 +62,16 @@ export default function NavbatPage() {
         const session = await getSafeSession()
         if (!session) return
 
-        const { data: userData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .maybeSingle()
+        const response = await fetch('/api/student/duty-schedule', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.error || 'Navbatchilik ma’lumotlarini yuklab bo‘lmadi')
 
-        if (!userData) return
-        setProfile(userData as Profile)
-
-        const floor = userData.room_number ? calculateFloor(parseInt(userData.room_number) || 0) || null : null
-        
-        if (floor) {
-          // Fetch Floor Captains
-          const { data: captains } = await supabase
-            .from('users')
-            .select('id, full_name, room_number, phone_number, avatar_url')
-            .eq('is_floor_captain', true)
-            .eq('assigned_floor', floor)
-            .eq('gender', userData.gender)
-          
-          setFloorCaptains(captains || [])
-
-          // Fetch Duty Schedule from Announcements
-          const { data: dutyAnn } = await supabase
-            .from('elonlar')
-            .select('*')
-            .eq('title', 'HAFTALIK_NAVBATCHILIK_JADVALI')
-            .eq('target_floor', floor)
-            .eq('target_gender', userData.gender)
-            .maybeSingle()
-
-          if (dutyAnn && dutyAnn.text) {
-            try {
-              const parsed = JSON.parse(dutyAnn.text)
-              if (parsed.schedule) setDutySchedule(parsed.schedule)
-              if (parsed.admins) setDutyAdmins(parsed.admins)
-            } catch (e) {
-              console.error("Navbatchilik JSON o'qish xatosi:", e)
-            }
-          }
-        }
+        setProfile(result.profile as Profile)
+        setFloorCaptains(Array.isArray(result.floorCaptains) ? result.floorCaptains : [])
+        setDutySchedule(result.schedule && typeof result.schedule === 'object' ? result.schedule : {})
+        setDutyAdmins(Array.isArray(result.admins) ? result.admins : [])
       } catch (error) {
         console.error("Xatolik:", error)
       } finally {

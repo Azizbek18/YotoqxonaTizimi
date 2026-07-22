@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import AppProviders from "@/components/providers/AppProviders";
 import PwaInstallPrompt from "@/components/pwa/PwaInstallPrompt";
 import { THEME_STORAGE_KEY } from "@/lib/theme/constants";
@@ -71,19 +72,21 @@ const themeInitScript = `
   })();
 `;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+
   return (
     <html
-      lang="en"
+      lang="uz"
       suppressHydrationWarning
       className="h-full antialiased"
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full flex flex-col">
         <AppProviders>

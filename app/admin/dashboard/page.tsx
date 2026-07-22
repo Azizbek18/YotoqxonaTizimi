@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as XLSX from 'xlsx'
 import {
@@ -24,6 +23,8 @@ import { AlertTriangle, Loader, Copy, X, Activity, Cpu } from 'lucide-react'
 import StatCard from '@/components/admin/StatCard'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import toast from 'react-hot-toast'
+import { fetchAdminPaymentSummary } from '@/features/payments/client/api'
+import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
 
 interface DashboardStats {
   totalStudents: number
@@ -155,45 +156,20 @@ export default function AdminDashboard() {
       setStats((prev) => ({ ...prev, loading: true }))
     }
     try {
-      const { count: studentCount } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'talaba')
+      const dashboard = await fetchAdminDashboard()
+      const { students: studentsData, applications: arizalarData } = dashboard
+      const {
+        totalStudents: studentCount,
+        totalEducators: educatorCount,
+        totalRequests: requestCount,
+        approvedRequests: approvedCount,
+        pendingRequests: pendingCount,
+        rejectedRequests: rejectedCount,
+        totalUsers: userCount,
+      } = dashboard.stats
 
-      const { count: educatorCount } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'tarbiyachi')
-
-      const { count: requestCount } = await supabase
-        .from('arizalar')
-        .select('*', { count: 'exact', head: true })
-
-      const { count: approvedCount } = await supabase
-        .from('arizalar')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'approved')
-
-      const { count: pendingCount } = await supabase
-        .from('arizalar')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending')
-
-      const { count: rejectedCount } = await supabase
-        .from('arizalar')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'rejected')
-
-      const { count: userCount } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-
-      const { count: waitingCount } = await supabase
-        .from('tolovlar')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'waiting')
-
-      setWaitingPaymentsCount(waitingCount || 0)
+      const paymentSummary = await fetchAdminPaymentSummary()
+      setWaitingPaymentsCount(paymentSummary.waitingCount)
 
       setStats({
         totalStudents: studentCount || 0,
@@ -213,19 +189,7 @@ export default function AdminDashboard() {
       ])
 
       // Talabalarni to'liq ma'lumotlarini hisobot uchun olish
-      const { data: studentsData, error: studentsError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('role', 'talaba')
-
-      if (!studentsError && studentsData) {
-        setAllStudents(studentsData)
-      }
-
-      // Arizalar ma'lumotlarini olish
-      const { data: arizalarData, error: arizalarError } = await supabase
-        .from('arizalar')
-        .select('created_at, status')
+      setAllStudents(studentsData)
 
       // 6 oylik statistika massivini tayyorlash
       const monthsUz = [
@@ -262,7 +226,7 @@ export default function AdminDashboard() {
       }
 
       // Arizalarni joriy oylar bo'yicha guruhlash
-      if (!arizalarError && arizalarData) {
+      if (arizalarData) {
         ;(arizalarData as ArizaStatRow[]).forEach((ariza) => {
           if (!ariza.created_at) return
           const date = new Date(ariza.created_at)
@@ -309,15 +273,9 @@ export default function AdminDashboard() {
     let apiPing = 0
 
     try {
-      const { error } = await supabase
-        .from('users')
-        .select('id')
-        .limit(1)
-      
-      if (!error) {
-        dbStatus = 'online'
-        dbPing = Math.round(performance.now() - dbStart)
-      }
+      await fetchAdminDashboard()
+      dbStatus = 'online'
+      dbPing = Math.round(performance.now() - dbStart)
     } catch {
       dbStatus = 'offline'
     }

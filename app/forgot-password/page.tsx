@@ -35,24 +35,8 @@ export default function ForgotPassword() {
     try {
       const cleanEmail = email.trim().toLowerCase()
 
-      // 1. QADAM: Tekshirish (Data massiv sifatida olinadi)
-      const { data: users, error: checkError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('email', cleanEmail)
-
-      // AGAR SUPABASE XATO QAYTARSA:
-      if (checkError) {
-        console.error("Supabase xatosi tafsiloti:", checkError)
-        throw new Error(`Baza bilan aloqa uzildi: ${checkError.message}`)
-      }
-
-      // AGAR FOYDALANUVCHI TOPILMASA:
-      if (!users || users.length === 0) {
-        throw new Error("Bunday email bilan ro'yxatdan o'tilmagan!")
-      }
-
-      // 2. QADAM: Parol tiklash
+      // Account enumerationni oldini olish uchun emailning mavjudligini
+      // public jadvaldan tekshirmaymiz. Supabase mavjud hisob bo‘lsa xat yuboradi.
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: `${window.location.origin}/update-password`,
       })
@@ -60,7 +44,7 @@ export default function ForgotPassword() {
       if (resetError) throw resetError
 
       setIsSent(true)
-      show3DToast('success', "Parolni tiklash signali yuborildi!")
+      show3DToast('success', "Agar bu email ro‘yxatdan o‘tgan bo‘lsa, tiklash havolasi yuborildi.")
 
     } catch (error: unknown) {
       // Xatolikni konsolga chiqaramiz (F12 ni bosib ko'rish uchun)

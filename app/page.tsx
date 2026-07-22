@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { useThemeStore } from '@/lib/stores/theme-store';
-import { supabase } from '@/lib/supabase';
 
 interface PermitRequest {
   status: 'pending' | 'rejected' | 'approved' | 'registered';
@@ -36,15 +35,15 @@ export default function Home() {
     if (passport && jshshir) {
       if (!silent) setCheckingPermit(true);
       try {
-        const { data, error } = await supabase
-          .from('permit_requests')
-          .select('*')
-          .eq('passport_series', passport.toUpperCase().replace(/\s/g, ''))
-          .eq('jshshir', jshshir.trim())
-          .maybeSingle();
+        const response = await fetch('/api/permit-requests/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ passportSeries: passport, jshshir }),
+        });
+        const result = await response.json();
 
-        if (!error && data) {
-          setPermitRequest(data);
+        if (response.ok && result.data) {
+          setPermitRequest({ ...result.data, passport_series: passport, jshshir });
         } else {
           setPermitRequest(null);
         }

@@ -7,13 +7,19 @@ import {
     FileText, CheckCircle, Clock, AlertCircle
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { supabase } from '@/lib/supabase'
 import { getSafeUser } from '@/lib/auth-session'
 import { User } from '@supabase/supabase-js'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
+import { fetchStudentProfile } from '@/features/profile/client/api'
+import {
+    createStudentApplication,
+    deleteStudentApplication,
+    fetchStudentApplications,
+    submitStudentApplication,
+} from '@/features/applications/client/api'
 
 interface Profile {
     id: string
@@ -92,39 +98,19 @@ export default function ArizalarContent() {
                 if (currentUser) {
                     setUser(currentUser)
 
-                    // Fetch student profile from users table
-                    const { data: profileData, error: profileError } = await supabase
-                        .from('users')
-                        .select('*')
-                        .eq('id', currentUser.id)
-                        .single()
+                    const [profilePayload, applicationPayload] = await Promise.all([
+                        fetchStudentProfile(),
+                        fetchStudentApplications('documents'),
+                    ])
+                    setStudentProfile({
+                        ...profilePayload.profile,
+                        full_name: profilePayload.profile.full_name ?? '',
+                        email: profilePayload.profile.email ?? '',
+                    } as Profile)
 
-                    if (!profileError && profileData) {
-                        setStudentProfile(profileData)
-                    }
-
-                    // Fetch student's applications
-                    const { data: appData, error: appError } = await supabase
-                        .from('arizalar')
-                        .select('*')
-                        .eq('student_id', currentUser.id)
-                        .in('type', ['ariza', 'tushuntirish'])
-                        .order('created_at', { ascending: false })
-
-                    if (!appError && appData) {
-                        const mapped = appData.map((app: {
-                            id: string | number
-                            type?: string
-                            title?: string
-                            reason?: string
-                            text?: string
-                            date?: string
-                            created_at?: string
-                            status?: string
-                            ai_generated?: boolean
-                            admin_response?: string
-                            response_date?: string
-                        }) => ({
+                    const appData = applicationPayload.applications
+                    if (appData) {
+                        const mapped = appData.map((app) => ({
                             id: app.id,
                             type: (app.type || 'ariza') as 'ariza' | 'tushuntirish',
                             title: app.title || 'Sarlavhasiz',
@@ -165,30 +151,16 @@ export default function ArizalarContent() {
             const appDate = new Date().toISOString()
 
             const newRecord = {
-                student_id: user.id,
-                student_name: studentProfile?.full_name || user.email || 'Talaba',
-                faculty: studentProfile?.faculty || '',
-                direction: studentProfile?.direction || '',
-                course: studentProfile?.course ? parseInt(String(studentProfile.course)) : 1,
-                date: appDate,
                 text: generatedContent,
-                level: 'info',
-                status: 'draft',
+                level: 'info' as const,
+                status: 'draft' as const,
                 title: newAppForm.title,
                 type: newAppForm.type,
                 reason: newAppForm.reason,
-                ai_generated: true
+                aiGenerated: true
             }
 
-            const { data, error } = await supabase
-                .from('arizalar')
-                .insert(newRecord)
-                .select()
-                .single()
-
-            if (error) {
-                throw error
-            }
+            const { application: data } = await createStudentApplication(newRecord)
 
             if (data) {
                 const newApp: Application = {
@@ -199,7 +171,7 @@ export default function ArizalarContent() {
                     content: data.text || generatedContent,
                     createdDate: data.date || appDate,
                     status: data.status as 'draft' | 'submitted' | 'pending' | 'approved' | 'rejected',
-                    aiGenerated: data.ai_generated
+                    aiGenerated: Boolean(data.ai_generated)
                 }
 
                 setApplications([newApp, ...applications])
@@ -258,12 +230,7 @@ export default function ArizalarContent() {
         const id = deleteModal.target
         deleteModal.setIsLoading(true)
         try {
-            const { error } = await supabase
-                .from('arizalar')
-                .delete()
-                .eq('id', id)
-
-            if (error) throw error
+            await deleteStudentApplication(id)
 
             setApplications(applications.filter(a => a.id !== id))
             deleteModal.close()
@@ -278,12 +245,7 @@ export default function ArizalarContent() {
 
     const submitApp = async (app: Application) => {
         try {
-            const { error } = await supabase
-                .from('arizalar')
-                .update({ status: 'pending' })
-                .eq('id', app.id)
-
-            if (error) throw error
+            await submitStudentApplication(app.id)
 
             setApplications(applications.map(a =>
                 a.id === app.id ? { ...a, status: 'pending' as const } : a

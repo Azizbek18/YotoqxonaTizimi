@@ -31,7 +31,8 @@ import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { supabase } from '@/lib/supabase'
+import { fetchAdminPayments } from '@/features/payments/client/api'
+import { fetchAdminChat, sendAdminChat } from '@/features/applications/client/admin-chat-api'
 
 type UserRow = {
   id: string
@@ -321,15 +322,12 @@ export default function AdminUsersPage() {
   const loadStudentPayments = async (studentId: string) => {
     try {
       setPaymentsLoading(true)
-      const { data, error } = await supabase
-        .from('tolovlar')
-        .select('*')
-        .eq('student_id', studentId)
-        .order('year', { ascending: false })
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setPayments(data || [])
+      const records = await fetchAdminPayments(studentId)
+      setPayments(records.map((record) => ({
+        ...record,
+        receipt_url: record.receipt_url ?? undefined,
+        admin_message: record.admin_message ?? undefined,
+      })))
     } catch (error) {
       console.error('To\'lovlarni yuklashda xatolik:', error)
       toast.error('To\'lov ma\'lumotlarini yuklab bo\'lmadi')
@@ -341,15 +339,16 @@ export default function AdminUsersPage() {
   const loadChatMessages = async (studentId: string) => {
     try {
       setLoadingChat(true)
-      const { data, error } = await supabase
-        .from('arizalar')
-        .select('*')
-        .eq('student_id', studentId)
-        .eq('type', 'chat')
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
-      setChatMessages(data || [])
+      const { messages } = await fetchAdminChat(studentId)
+      setChatMessages(messages.map((message) => ({
+        id: message.id,
+        student_id: message.student_id ?? studentId,
+        type: message.type ?? 'chat',
+        title: message.title === 'admin' ? 'admin' : 'talaba',
+        reason: message.reason ?? message.text,
+        status: message.status ?? 'submitted',
+        created_at: message.created_at,
+      })))
     } catch (error) {
       console.error('Chat yuklashda xato:', error)
     } finally {
@@ -378,21 +377,16 @@ export default function AdminUsersPage() {
     setSendingChat(true)
 
     try {
-      const response = await fetch('/api/admin/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          student_id: selectedUser.id,
-          message: messageText
-        })
-      })
-
-      const result = await response.json()
-      if (!response.ok || !result.ok) {
-        throw new Error(result.error || 'Xabar yuborishda xatolik')
-      }
-
-      setChatMessages(prev => [...prev, result.message])
+      const result = await sendAdminChat(selectedUser.id, messageText)
+      setChatMessages(prev => [...prev, {
+        id: result.message.id,
+        student_id: result.message.student_id ?? selectedUser.id,
+        type: result.message.type ?? 'chat',
+        title: 'admin',
+        reason: result.message.reason ?? result.message.text,
+        status: result.message.status ?? 'submitted',
+        created_at: result.message.created_at,
+      }])
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Xabar yuborishda xatolik')
       setChatInput(messageText)

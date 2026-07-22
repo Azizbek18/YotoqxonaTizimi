@@ -1,37 +1,42 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { findRoleByUserId } from '@/lib/auth-tables'
-import { createClient } from '@supabase/supabase-js'
-
-// Resolving a role normally costs up to 3 sequential DB round trips
-// (findRoleByUserId checks staff-by-id, staff-by-email, users-by-id, then
-// users-by-email). That ran on EVERY protected navigation, adding real
-// latency on mobile networks. We cache the resolved role for a short TTL in
-// an httpOnly cookie; this is purely a redirect-gating convenience layer —
-// actual data access is still enforced independently by RLS and by each API
-// route's own server-side role check (see lib/server-admin.ts), so a
-// briefly-stale cached role here cannot grant unauthorized access.
-const ROLE_CACHE_COOKIE = 'app_role_cache'
-const ROLE_CACHE_MAX_AGE_SECONDS = 120
-
-function withRoleCache(res: NextResponse, userId: string | undefined, role: string | null): NextResponse {
-  if (!userId) return res
-  res.cookies.set(ROLE_CACHE_COOKIE, `${userId}:${role ?? 'none'}`, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: ROLE_CACHE_MAX_AGE_SECONDS,
-    path: '/',
-  })
-  return res
-}
+import type { Database } from '@/types/database.generated'
 
 export async function proxy(request: NextRequest) {
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  const isDev = process.env.NODE_ENV === 'development'
+  const contentSecurityPolicy = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https://*.supabase.co https://upload.wikimedia.org https://nuu.uz",
+    "font-src 'self' data:",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+    ...(isDev ? [] : ['upgrade-insecure-requests']),
+  ].join('; ')
+
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set('Content-Security-Policy', contentSecurityPolicy)
+
   let response = NextResponse.next({
-    request: { headers: request.headers },
+    request: { headers: requestHeaders },
   })
 
-  const supabase = createServerClient(
+  const rebuildResponse = () => {
+    const existingCookies = response.cookies.getAll()
+    response = NextResponse.next({ request: { headers: requestHeaders } })
+    existingCookies.forEach((cookie) => response.cookies.set(cookie))
+  }
+
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -39,12 +44,12 @@ export async function proxy(request: NextRequest) {
         get(name: string) { return request.cookies.get(name)?.value },
         set(name: string, value: string, options: CookieOptions) {
           request.cookies.set({ name, value, ...options })
-          response = NextResponse.next({ request: { headers: request.headers } })
+          rebuildResponse()
           response.cookies.set({ name, value, ...options })
         },
         remove(name: string, options: CookieOptions) {
           request.cookies.set({ name, value: '', ...options })
-          response = NextResponse.next({ request: { headers: request.headers } })
+          rebuildResponse()
           response.cookies.set({ name, value: '', ...options })
         },
       },
@@ -54,23 +59,14 @@ export async function proxy(request: NextRequest) {
   let session = null
   let userRole = null
   try {
-    const { data } = await supabase.auth.getSession()
-    session = data?.session || null
+    const { data, error } = await supabase.auth.getUser()
+    session = !error && data.user ? { user: data.user } : null
 
     // Agar sessiya bo'lsa, foydalanuvchi rolini olish (RLS infinite recursion oldini olish uchun service role orqali)
     if (session?.user?.id) {
-      const cached = request.cookies.get(ROLE_CACHE_COOKIE)?.value
-      const [cachedUserId, cachedRole] = cached ? cached.split(':') : []
-
-      if (cachedUserId === session.user.id && cachedRole) {
-        userRole = cachedRole === 'none' ? null : cachedRole
-      } else {
-        const serviceSupabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        )
-        userRole = await findRoleByUserId(serviceSupabase, session.user.id, session.user.email)
-      }
+      // Resolve through the authenticated cookie client so RLS remains active;
+      // never place the service-role key or an unsigned role cache in Proxy.
+      userRole = await findRoleByUserId(supabase, session.user.id, session.user.email)
     }
   } catch (err) {
     console.error('Proxy session/role error:', err)
@@ -79,9 +75,15 @@ export async function proxy(request: NextRequest) {
   }
 
   const path = request.nextUrl.pathname
-  const userId = session?.user?.id
-  const redirect = (to: string) => withRoleCache(NextResponse.redirect(new URL(to, request.url)), userId, userRole)
-  const allow = () => withRoleCache(response, userId, userRole)
+  const finalize = (target: NextResponse) => {
+    target.headers.set('Content-Security-Policy', contentSecurityPolicy)
+    if (target !== response) {
+      response.cookies.getAll().forEach((cookie) => target.cookies.set(cookie))
+    }
+    return target
+  }
+  const redirect = (to: string) => finalize(NextResponse.redirect(new URL(to, request.url)))
+  const allow = () => finalize(response)
 
   // ========================
   // ADMIN ROUTES HIMOYASI
@@ -216,5 +218,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/talaba/:path*', '/tarbiyachi/:path*', '/admin/:path*', '/sardor/:path*', '/zamdekan/:path*', '/login', '/register', '/'],
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|manifest.json|sw.js|icons/|logo.png|rasm.png).*)',
+  ],
 }

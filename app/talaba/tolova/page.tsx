@@ -15,25 +15,8 @@ import { supabase } from '@/lib/supabase'
 import { getSafeUser } from '@/lib/auth-session'
 import PageSkeleton from '@/components/ui/PageSkeleton'
 import { User } from '@supabase/supabase-js'
-
-interface Profile {
-    id: string
-    full_name: string
-    email: string
-    phone_number?: string
-    faculty?: string
-    role?: string
-    room_number?: string
-    course?: string | number
-    group?: string | number
-    avatar_url?: string
-    is_floor_captain?: boolean
-    assigned_floor?: number
-    gender?: string
-    warning_count?: number
-    blacklisted?: boolean
-    direction?: string
-}
+import { fetchStudentPayments, submitStudentPayment } from '@/features/payments/client/api'
+import type { PaymentRecord } from '@/features/payments/types'
 
 interface ValidationResult {
     valid: boolean
@@ -49,17 +32,6 @@ interface ValidationResult {
     file_hash?: string
 }
 
-interface PaymentRecord {
-    id: string
-    month: string
-    year: number
-    amount: number
-    status: 'paid' | 'pending' | 'rejected' | 'waiting' | 'approved'
-    receipt_url?: string
-    admin_message?: string
-    created_at?: string
-}
-
 const MONTHS = [
     'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
     'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'
@@ -73,7 +45,6 @@ export default function TolovaPage() {
     const [loading, setLoading] = useState(true)
     const [uploading, setUploading] = useState(false)
     const [user, setUser] = useState<User | null>(null)
-    const [studentProfile, setStudentProfile] = useState<Profile | null>(null)
 
     // Form states
     const [newReceipt, setNewReceipt] = useState<File | null>(null)
@@ -92,18 +63,9 @@ export default function TolovaPage() {
         setMounted(true)
     }, [])
 
-    // Load payments from Supabase
-    const loadPayments = async (userId: string) => {
+    const loadPayments = async () => {
         try {
-            const { data, error } = await supabase
-                .from('tolovlar')
-                .select('*')
-                .eq('student_id', userId)
-                .order('year', { ascending: true })
-                .order('created_at', { ascending: true })
-
-            if (error) throw error
-            setPayments(data || [])
+            setPayments(await fetchStudentPayments())
         } catch (error) {
             const errMsg = error instanceof Error ? error.message : String(error)
             console.error('Error loading payments:', errMsg)
@@ -129,17 +91,7 @@ export default function TolovaPage() {
                 if (currentUser) {
                     setUser(currentUser)
 
-                    const { data: profileData } = await supabase
-                        .from('users')
-                        .select('*')
-                        .eq('id', currentUser.id)
-                        .single()
-
-                    if (profileData) {
-                        setStudentProfile(profileData)
-                    }
-
-                    await loadPayments(currentUser.id)
+                    await loadPayments()
                 }
             } catch (error) {
                 const errMsg = error instanceof Error ? error.message : String(error)
@@ -326,47 +278,15 @@ export default function TolovaPage() {
         if (!newReceipt || !user) return
         setUploading(true)
         try {
-            const fileExtension = newReceipt.name.split('.').pop()
-            const path = `${user.id}/${Date.now()}_receipt.${fileExtension}`
-
-            // 1. Upload receipt to Supabase Storage Bucket
-            const { error: uploadError } = await supabase.storage
-                .from('receipts')
-                .upload(path, newReceipt, {
-                    cacheControl: '3600',
-                    upsert: true
-                })
-
-            if (uploadError) throw uploadError
-
-            // 2. Retrieve public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('receipts')
-                .getPublicUrl(path)
-
-            // Determine months to pay
             const monthsToPay = selectedMonths.length > 0 ? selectedMonths : [selectedMonth]
-            const dividedAmount = Math.round(amount / monthsToPay.length)
-
-            const recordsToInsert = monthsToPay.map(m => ({
-                student_id: user.id,
-                student_name: studentProfile?.full_name || 'Talaba',
-                month: m,
-                year: selectedYear,
-                amount: dividedAmount,
-                status: 'waiting',
-                receipt_url: publicUrl,
-                receipt_hash: fileHash || null,
-                admin_message: 'Tekshirilmoqda...'
-            }))
-
-            // 3. Insert transaction into tolovlar table
-            const { data: insertedDatas, error: dbError } = await supabase
-                .from('tolovlar')
-                .insert(recordsToInsert)
-                .select()
-
-            if (dbError) throw dbError
+            const paymentForm = new FormData()
+            paymentForm.append('file', newReceipt)
+            paymentForm.append('amount', String(amount))
+            paymentForm.append('year', String(selectedYear))
+            paymentForm.append('months', JSON.stringify(monthsToPay))
+            if (fileHash) paymentForm.append('validatedHash', fileHash)
+            const paymentResult = await submitStudentPayment(paymentForm)
+            const insertedDatas = paymentResult.records
 
             // 4. Trigger AI receipt analysis in the background for all batch records
             if (Array.isArray(insertedDatas)) {
@@ -384,7 +304,7 @@ export default function TolovaPage() {
             }
 
             // Refresh state
-            await loadPayments(user.id)
+            await loadPayments()
             setNewReceipt(null)
             setShowValidationModal(false)
             setValidationResult(null)

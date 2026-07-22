@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as XLSX from 'xlsx'
 import {
@@ -20,6 +19,12 @@ import {
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useZamdekanScope } from '@/lib/hooks/useZamdekanScope'
+import { getAuthHeaders } from '@/lib/auth-session'
+import {
+  approvePermitRequest,
+  fetchZamdekanOverview,
+  rejectPermitRequest,
+} from '@/features/permits/client/admin-api'
 
 interface PermitRequest {
   id: string
@@ -70,6 +75,19 @@ function ArizalarContent() {
   const [rejectReason, setRejectReason] = useState('')
   const [processing, setProcessing] = useState(false)
 
+  const handleViewDocument = async () => {
+    if (!selectedReq) return
+    const response = await fetch(`/api/staff/permit-document?id=${encodeURIComponent(selectedReq.id)}`, {
+      headers: await getAuthHeaders(),
+    })
+    const result = await response.json()
+    if (!response.ok || !result.url) {
+      toast.error(result.error || 'Hujjatni ochib bo‘lmadi')
+      return
+    }
+    window.open(result.url, '_blank', 'noopener,noreferrer')
+  }
+
   // Fetch all requests (scoped to this zamdekan's own faculty)
   const fetchRequests = async (faculty: string | null) => {
     setLoading(true)
@@ -81,67 +99,9 @@ function ArizalarContent() {
         return
       }
 
-      const { data, error } = await supabase
-        .from('permit_requests')
-        .select('*')
-        .ilike('faculty', faculty)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      // Enrich with warning count & blacklisted status from users table.
-      // Looked up via two safe .eq() calls rather than interpolating
-      // applicant-submitted values into a single `.or()` filter string.
-      const enriched: PermitRequest[] = []
-      for (const req of (data || [])) {
-        let userLink: { warning_count?: number; blacklisted?: boolean } | null = null
-        if (req.passport_series) {
-          const { data: byPassport } = await supabase
-            .from('users')
-            .select('warning_count, blacklisted')
-            .eq('passport_series', req.passport_series)
-            .maybeSingle()
-          userLink = byPassport
-        }
-        if (!userLink && req.jshshir) {
-          const { data: byJshshir } = await supabase
-            .from('users')
-            .select('warning_count, blacklisted')
-            .eq('jshshir', req.jshshir)
-            .maybeSingle()
-          userLink = byJshshir
-        }
-
-        enriched.push({
-          ...req,
-          warning_count: userLink?.warning_count ?? 0,
-          blacklisted: userLink?.blacklisted ?? false,
-        })
-      }
-
-      setRequests(enriched)
-
-      // Fetch room occupancy mapping
-      const { data: usersRooms } = await supabase
-        .from('users')
-        .select('room_number')
-        .not('room_number', 'is', null)
-
-      const { data: approvedPermits } = await supabase
-        .from('permit_requests')
-        .select('room_number')
-        .eq('status', 'approved')
-        .not('room_number', 'is', null)
-
-      const counts: Record<string, number> = {}
-      usersRooms?.forEach((u) => {
-        if (u.room_number) counts[u.room_number] = (counts[u.room_number] || 0) + 1
-      })
-      approvedPermits?.forEach((p) => {
-        if (p.room_number) counts[p.room_number] = (counts[p.room_number] || 0) + 1
-      })
-
-      setRoomOccupancy(counts)
+      const overview = await fetchZamdekanOverview()
+      setRequests(overview.requests as PermitRequest[])
+      setRoomOccupancy(overview.roomOccupancy)
     } catch (err) {
       console.error('Error fetching permits:', err)
       toast.error("Yo'llanmalarni yuklashda xatolik yuz berdi")
@@ -218,16 +178,7 @@ function ArizalarContent() {
 
     setProcessing(true)
     try {
-      const { error } = await supabase
-        .from('permit_requests')
-        .update({
-          status: 'approved',
-          room_number: selectedRoom,
-          reject_reason: null
-        })
-        .eq('id', selectedReq.id)
-
-      if (error) throw error
+      await approvePermitRequest(selectedReq.id, selectedRoom)
 
       toast.success(`${selectedReq.full_name}ga ${selectedRoom}-xona biriktirildi va ariza tasdiqlandi!`)
       setRoomModalOpen(false)
@@ -258,16 +209,7 @@ function ArizalarContent() {
 
     setProcessing(true)
     try {
-      const { error } = await supabase
-        .from('permit_requests')
-        .update({
-          status: 'rejected',
-          reject_reason: rejectReason,
-          room_number: null
-        })
-        .eq('id', selectedReq.id)
-
-      if (error) throw error
+      await rejectPermitRequest(selectedReq.id, rejectReason)
 
       toast.success("Ariza rad etildi")
       setRejectModalOpen(false)
@@ -539,10 +481,9 @@ function ArizalarContent() {
               </div>
 
               {/* Document Link */}
-              <a
-                href={selectedReq.permit_url}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
+                onClick={handleViewDocument}
                 className={`flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider border transition-all ${
                   isLight
                     ? 'border-slate-200 hover:bg-slate-50 text-slate-700'
@@ -550,7 +491,7 @@ function ArizalarContent() {
                 }`}
               >
                 Ruxsatnoma faylini ko‘rish <ExternalLink size={12} />
-              </a>
+              </button>
 
               {/* Action Buttons */}
               {selectedReq.status === 'pending' && (

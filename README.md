@@ -74,7 +74,15 @@ Tizim avtomatik ravishda [http://localhost:3000](http://localhost:3000) manzilid
 
 ## 🗄 Ma'lumotlar Bazasini Sozlash (Database Setup)
 
-Loyihadagi ma'lumotlar bazasini noldan sozlash uchun loyiha ildizidagi `DATABASE_SCHEMA.sql` fayli ichidagi barcha SQL buyruqlarini Supabase SQL Editor-ga nusxalab, ishga tushirish (Run) kifoya.
+Canonical migratsiyalar `supabase/migrations/` ichida versiyalangan. Supabase CLI orqali loyihani bog‘lab, migratsiyalarni ketma-ket qo‘llang:
+
+```bash
+npx supabase login
+npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase db push
+```
+
+Root papkadagi `DATABASE_SCHEMA.sql` va `MIGRATION_*.sql` fayllari eski o‘rnatish jarayonlari bilan moslik uchun saqlangan; yangi deploylarda `supabase/migrations/` yagona manba hisoblanadi. Oxirgi xavfsizlik migratsiyasini o‘tkazmasdan production deploy qilmang.
 
 Ushbu SQL fayl quyidagi jarayonlarni amalga oshiradi:
 1. `profiles`, `arizalar` (va chatlar), `elonlar`, `invites`, `tolovlar`, `cleaning_schedule` jadvallarini yaratadi.
@@ -83,12 +91,9 @@ Ushbu SQL fayl quyidagi jarayonlarni amalga oshiradi:
 
 ---
 
-## 🔑 Demo Kirish Ma'lumotlari (Demo Accounts)
+## 🔑 Administratorni yaratish
 
-Admin portaliga kirishni osonlashtirish uchun tizimda **Demo rejim** mavjud. Tizim login sahifasida "Demo Admin" tugmasi orqali quyidagi demo hisoblarga bir bosishda kirish mumkin:
-
-- **Tizim Admini**: `muminovazizbek1050@gmail.com`
-- **Parol**: `muminov1050`
+Birinchi administrator faqat serverdagi `ADMIN_BOOTSTRAP_CODE` orqali yaratiladi. Keyingi administratorlar amal qilish muddati cheklangan taklif kodi orqali qo‘shiladi. Repository, hujjatlar yoki mijoz kodiga haqiqiy login/parol yozmang.
 
 ---
 

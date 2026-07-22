@@ -9,8 +9,8 @@ const config: CapacitorConfig = {
     // Next.js API maruzalari, Supabase Middleware va barcha server-side funksiyalarni
     // buzilmasdan ishlashini ta'minlash uchun ilovani jonli veb-saytga yo'naltiramiz.
     // Deploj qilganingizdan so'ng ushbu manzilni o'z veb-saytingiz URL manziliga o'zgartiring (masalan: https://yotoqxona.uz).
-    url: 'https://yotoqxona.uz',
-    cleartext: true
+    url: process.env.CAPACITOR_SERVER_URL || 'https://yotoqxona.uz',
+    cleartext: false
   }
 };
 

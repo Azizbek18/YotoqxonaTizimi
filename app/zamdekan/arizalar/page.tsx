@@ -7,7 +7,6 @@ import * as XLSX from 'xlsx'
 import {
   Search,
   FileText,
-  User,
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -20,6 +19,7 @@ import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useZamdekanScope } from '@/lib/hooks/useZamdekanScope'
 import { getAuthHeaders } from '@/lib/auth-session'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 import {
   approvePermitRequest,
   fetchZamdekanOverview,
@@ -279,6 +279,12 @@ function ArizalarContent() {
                 rejected: 'text-rose-500',
                 registered: 'text-sky-500'
               }
+              const activeGradientMap = {
+                pending: 'from-amber-500 to-orange-600 shadow-amber-500/25',
+                approved: 'from-emerald-500 to-teal-600 shadow-emerald-500/25',
+                rejected: 'from-rose-500 to-red-600 shadow-rose-500/25',
+                registered: 'from-sky-500 to-blue-600 shadow-sky-500/25',
+              }
               const isActive = statusFilter === status
               return (
                 <button
@@ -289,13 +295,11 @@ function ArizalarContent() {
                   }}
                   className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${
                     isActive
-                      ? isLight
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'bg-white/10 text-white'
+                      ? `bg-gradient-to-r ${activeGradientMap[status]} text-white shadow-md`
                       : 'text-slate-500 hover:text-slate-700 dark:hover:text-white'
                   }`}
                 >
-                  <span className={`h-1.5 w-1.5 rounded-full bg-current ${colorMap[status]}`} />
+                  <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-white' : `bg-current ${colorMap[status]}`}`} />
                   {labelMap[status]} ({count})
                 </button>
               )
@@ -335,18 +339,24 @@ function ArizalarContent() {
                 <div
                   key={req.id}
                   onClick={() => setSelectedReq(req)}
-                  className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                  className={`p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-md ${
                     isSelected
                       ? isLight
-                        ? 'border-indigo-600 bg-indigo-50/20'
-                        : 'border-indigo-500 bg-indigo-500/5'
+                        ? 'border-indigo-600 bg-indigo-50/20 ring-1 ring-indigo-500/20'
+                        : 'border-indigo-500 bg-indigo-500/5 ring-1 ring-indigo-500/20'
                       : isLight
                         ? 'border-slate-200 bg-white hover:border-slate-300'
                         : 'border-white/5 bg-white/[0.02] hover:border-white/10'
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className={`hidden sm:flex h-9 w-9 shrink-0 rounded-full items-center justify-center text-xs font-black ${
+                        req.gender === 'male' ? 'bg-sky-500/10 text-sky-500' : 'bg-rose-500/10 text-rose-500'
+                      }`}>
+                        {req.full_name.trim().charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className={`text-xs font-bold ${textStrong}`}>{req.full_name}</h3>
                         {req.blacklisted && (
@@ -363,6 +373,7 @@ function ArizalarContent() {
                       <p className={`text-[10px] mt-1 ${textMuted}`}>
                         {req.faculty} • {req.direction} • {req.course}-kurs
                       </p>
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between sm:justify-end gap-3">
@@ -408,12 +419,14 @@ function ArizalarContent() {
 
               {/* Student Header */}
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
-                  <User size={20} />
+                <div className={`h-11 w-11 rounded-full flex items-center justify-center text-sm font-black shrink-0 ${
+                  selectedReq.gender === 'male' ? 'bg-sky-500/10 text-sky-500' : 'bg-rose-500/10 text-rose-500'
+                }`}>
+                  {selectedReq.full_name.trim().charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <h4 className={`text-xs font-bold leading-tight ${textStrong}`}>{selectedReq.full_name}</h4>
-                  <p className={`text-[9px] mt-0.5 ${textMuted}`}>{selectedReq.email}</p>
+                <div className="min-w-0">
+                  <h4 className={`text-xs font-bold leading-tight truncate ${textStrong}`}>{selectedReq.full_name}</h4>
+                  <p className={`text-[9px] mt-0.5 truncate ${textMuted}`}>{selectedReq.email}</p>
                 </div>
               </div>
 
@@ -520,114 +533,70 @@ function ArizalarContent() {
       </div>
 
       {/* 3. Assign Room Modal */}
-      {roomModalOpen && selectedReq && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`w-full max-w-lg rounded-3xl border ${surfaceBg} bg-[#0b1120] p-6 space-y-4 max-h-[85vh] flex flex-col`}>
-            <div className="flex items-center justify-between shrink-0">
-              <div>
-                <h3 className={`text-sm font-black uppercase tracking-wider ${textStrong}`}>Xona biriktirish</h3>
-                <p className="text-[10px] text-slate-400 mt-0.5">{selectedReq.full_name} ({selectedReq.gender === 'male' ? 'Erkak' : 'Ayol'})</p>
-              </div>
-              <button onClick={() => setRoomModalOpen(false)} className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 ${textMuted}`}>
-                <X size={16} />
-              </button>
-            </div>
+      <ConfirmModal
+        isOpen={roomModalOpen && !!selectedReq}
+        title="Xona biriktirish"
+        description={selectedReq ? `${selectedReq.full_name} (${selectedReq.gender === 'male' ? 'Erkak' : 'Ayol'})` : undefined}
+        maxWidthClass="max-w-lg"
+        onClose={() => setRoomModalOpen(false)}
+        onConfirm={handleAssignRoom}
+        confirmText="Tasdiqlash va Excel yaratish"
+        isLoading={processing}
+      >
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[50vh] overflow-y-auto pr-1 custom-scrollbar">
+          {roomsList.map((room) => {
+            const count = roomOccupancy[room] || 0
+            const isFull = count >= 4
+            const isSelected = selectedRoom === room
 
-            {/* Room List grid (Scrollable) */}
-            <div className="flex-1 overflow-y-auto pr-1 py-1 grid grid-cols-4 sm:grid-cols-5 gap-2 custom-scrollbar">
-              {roomsList.map((room) => {
-                const count = roomOccupancy[room] || 0
-                const isFull = count >= 4
-                const isSelected = selectedRoom === room
-
-                return (
-                  <button
-                    key={room}
-                    disabled={isFull}
-                    onClick={() => setSelectedRoom(room)}
-                    className={`p-2.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
-                      isSelected
-                        ? 'border-indigo-500 bg-indigo-500 text-white'
-                        : isFull
-                          ? 'border-red-500/20 bg-red-500/5 text-red-400 opacity-40 cursor-not-allowed'
-                          : isLight
-                            ? 'border-slate-200 bg-white hover:border-indigo-300 text-slate-900'
-                            : 'border-white/5 bg-white/[0.02] hover:border-indigo-500/30 text-white'
-                    }`}
-                  >
-                    <span className="text-xs font-black">{room}-xona</span>
-                    <span className="text-[9px] font-bold mt-0.5">
-                      {isFull ? 'To‘la' : `${count}/4 band`}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-
-            <div className="flex gap-3 justify-end pt-3 border-t border-slate-100 dark:border-white/5 shrink-0">
+            return (
               <button
-                onClick={() => setRoomModalOpen(false)}
-                className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${
-                  isLight ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                key={room}
+                type="button"
+                disabled={isFull}
+                onClick={() => setSelectedRoom(room)}
+                className={`p-2.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
+                  isSelected
+                    ? 'border-indigo-500 bg-indigo-500 text-white shadow-md shadow-indigo-500/20'
+                    : isFull
+                      ? 'border-red-500/20 bg-red-500/5 text-red-400 opacity-40 cursor-not-allowed'
+                      : isLight
+                        ? 'border-slate-200 bg-white hover:border-indigo-300 text-slate-900'
+                        : 'border-white/5 bg-white/[0.02] hover:border-indigo-500/30 text-white'
                 }`}
               >
-                Bekor qilish
+                <span className="text-xs font-black">{room}-xona</span>
+                <span className="text-[9px] font-bold mt-0.5">
+                  {isFull ? 'To‘la' : `${count}/4 band`}
+                </span>
               </button>
-              <button
-                onClick={handleAssignRoom}
-                disabled={processing}
-                className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50"
-              >
-                {processing ? 'Yuklanmoqda...' : 'Tasdiqlash va Excel yaratish'}
-              </button>
-            </div>
-          </div>
+            )
+          })}
         </div>
-      )}
+      </ConfirmModal>
 
       {/* 4. Reject Request Modal */}
-      {rejectModalOpen && selectedReq && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`w-full max-w-md rounded-3xl border ${surfaceBg} bg-[#0b1120] p-6 space-y-4`}>
-            <div className="flex items-center justify-between">
-              <h3 className={`text-sm font-black uppercase tracking-wider ${textStrong}`}>Arizani rad etish</h3>
-              <button onClick={() => setRejectModalOpen(false)} className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 ${textMuted}`}>
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Rad etish sababi</label>
-              <textarea
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Talaba ma'lumotlari mos kelmadi / ruxsatnoma muddati o‘tgan / hujjat sifatsiz..."
-                rows={4}
-                className={`w-full text-xs p-3 rounded-xl outline-none border transition-all ${inputBg}`}
-                required
-              />
-            </div>
-
-            <div className="flex gap-3 justify-end pt-2">
-              <button
-                onClick={() => setRejectModalOpen(false)}
-                className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${
-                  isLight ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
-                }`}
-              >
-                Bekor qilish
-              </button>
-              <button
-                onClick={handleReject}
-                disabled={processing}
-                className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-50"
-              >
-                {processing ? 'Rad etilmoqda...' : 'Rad etish'}
-              </button>
-            </div>
-          </div>
+      <ConfirmModal
+        isOpen={rejectModalOpen && !!selectedReq}
+        title="Arizani rad etish"
+        onClose={() => setRejectModalOpen(false)}
+        onConfirm={handleReject}
+        confirmText="Rad etish"
+        confirmVariant="danger"
+        isLoading={processing}
+      >
+        <div className="space-y-2">
+          <label className={`text-[10px] font-black uppercase tracking-wider block ${textMuted}`}>Rad etish sababi</label>
+          <textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Talaba ma'lumotlari mos kelmadi / ruxsatnoma muddati o‘tgan / hujjat sifatsiz..."
+            rows={4}
+            className={`w-full text-xs p-3 rounded-xl outline-none border transition-all ${inputBg}`}
+            required
+          />
         </div>
-      )}
+      </ConfirmModal>
     </div>
   )
 }

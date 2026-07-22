@@ -5,7 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
   AlertTriangle,
-  X
+  X,
+  BedDouble,
+  DoorOpen,
+  DoorClosed,
+  Users2
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchZamdekanOverview } from '@/features/permits/client/admin-api'
@@ -168,25 +172,32 @@ export default function ZamdekanXonalarMap() {
   return (
     <div className="space-y-6">
       {/* 1. Header Overview Stats */}
-      <div className={`p-5 rounded-3xl border ${surfaceBg} grid grid-cols-2 md:grid-cols-4 gap-4`}>
-        <div>
-          <span className={`text-[10px] font-black uppercase tracking-wider ${textMuted}`}>Jami band joylar</span>
-          <h3 className={`text-2xl font-black mt-1 ${textStrong}`}>{totalOccupiedBeds} / 600</h3>
-        </div>
-        <div>
-          <span className={`text-[10px] font-black uppercase tracking-wider ${textMuted}`}>Bo‘sh xonalar</span>
-          <h3 className={`text-2xl font-black mt-1 ${textStrong}`}>{totalEmptyRooms} ta</h3>
-        </div>
-        <div>
-          <span className={`text-[10px] font-black uppercase tracking-wider ${textMuted}`}>To‘la xonalar (4/4)</span>
-          <h3 className={`text-2xl font-black mt-1 ${textStrong}`}>{totalFullRooms} ta</h3>
-        </div>
-        <div>
-          <span className={`text-[10px] font-black uppercase tracking-wider ${textMuted}`}>Gender xatoliklar</span>
-          <h3 className={`text-2xl font-black mt-1 ${totalRoomsWithMixedGenders > 0 ? 'text-rose-500 animate-pulse' : textStrong}`}>
-            {totalRoomsWithMixedGenders} ta xona
-          </h3>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Jami band joylar', value: `${totalOccupiedBeds} / 600`, icon: BedDouble, color: 'from-indigo-500 to-purple-600' },
+          { label: 'Bo‘sh xonalar', value: `${totalEmptyRooms} ta`, icon: DoorOpen, color: 'from-emerald-500 to-teal-600' },
+          { label: 'To‘la xonalar (4/4)', value: `${totalFullRooms} ta`, icon: DoorClosed, color: 'from-sky-500 to-blue-600' },
+          { label: 'Gender xatoliklar', value: `${totalRoomsWithMixedGenders} ta xona`, icon: Users2, color: 'from-rose-500 to-red-600', warn: totalRoomsWithMixedGenders > 0 },
+        ].map((stat, idx) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.05 }}
+            className={`relative overflow-hidden p-4 pt-5 rounded-2xl border ${surfaceBg} flex items-center gap-3`}
+          >
+            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${stat.color}`} />
+            <div className={`h-11 w-11 shrink-0 rounded-xl bg-gradient-to-tr ${stat.color} flex items-center justify-center text-white shadow-lg`}>
+              <stat.icon size={19} strokeWidth={2.2} />
+            </div>
+            <div className="min-w-0">
+              <span className={`block text-[9px] font-black uppercase tracking-wider truncate ${textMuted}`}>{stat.label}</span>
+              <h3 className={`text-lg sm:text-xl font-black mt-0.5 ${stat.warn ? 'text-rose-500 animate-pulse' : textStrong}`}>
+                {stat.value}
+              </h3>
+            </div>
+          </motion.div>
+        ))}
       </div>
 
       {/* 2. Map Controls */}
@@ -197,9 +208,7 @@ export default function ZamdekanXonalarMap() {
             onClick={() => setFloorFilter('all')}
             className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
               floorFilter === 'all'
-                ? isLight
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'bg-white/10 text-white'
+                ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25'
                 : 'text-slate-500 hover:text-slate-700 dark:hover:text-white'
             }`}
           >
@@ -211,9 +220,7 @@ export default function ZamdekanXonalarMap() {
               onClick={() => setFloorFilter(fl)}
               className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
                 floorFilter === fl
-                  ? isLight
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'bg-white/10 text-white'
+                  ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25'
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-white'
               }`}
             >
@@ -239,6 +246,12 @@ export default function ZamdekanXonalarMap() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Rooms Grid (Left) */}
         <div className={`lg:col-span-8 p-5 rounded-3xl border ${surfaceBg}`}>
+          <div className={`flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4 pb-4 border-b text-[10px] font-bold ${isLight ? 'border-slate-100' : 'border-white/5'} ${textMuted}`}>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-500" /> O&apos;g&apos;il bolalar</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500" /> Qiz bolalar</span>
+            <span className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${isLight ? 'bg-slate-300' : 'bg-slate-700'}`} /> Bo&apos;sh joy</span>
+            <span className="flex items-center gap-1.5"><AlertTriangle size={11} className="text-rose-500" /> Gender aralashuvi</span>
+          </div>
           {loading ? (
             <div className="flex h-64 items-center justify-center">
               <div className={`animate-spin rounded-full h-8 w-8 border-t-2 ${isLight ? 'border-indigo-600' : 'border-cyan-500'}`} />
@@ -254,22 +267,22 @@ export default function ZamdekanXonalarMap() {
                 let roomBgColor = 'bg-white/[0.01]'
 
                 if (room.gender === 'mixed') {
-                  roomBorderColor = 'border-rose-500 bg-rose-500/5'
+                  roomBorderColor = 'border-rose-500 bg-rose-500/5 ring-2 ring-rose-500/20'
                 } else if (isSelected) {
-                  roomBorderColor = 'border-indigo-500 bg-indigo-500/[0.04]'
+                  roomBorderColor = 'border-indigo-500 bg-indigo-500/[0.05] ring-2 ring-indigo-500/20'
                 } else if (room.gender === 'male') {
-                  roomBgColor = isLight ? 'bg-sky-50/50' : 'bg-sky-950/10'
-                  roomBorderColor = isLight ? 'border-sky-200' : 'border-sky-500/10'
+                  roomBgColor = isLight ? 'bg-sky-100/70' : 'bg-sky-500/[0.08]'
+                  roomBorderColor = isLight ? 'border-sky-300' : 'border-sky-500/25'
                 } else if (room.gender === 'female') {
-                  roomBgColor = isLight ? 'bg-rose-50/50' : 'bg-rose-950/10'
-                  roomBorderColor = isLight ? 'border-rose-200' : 'border-rose-500/10'
+                  roomBgColor = isLight ? 'bg-rose-100/70' : 'bg-rose-500/[0.08]'
+                  roomBorderColor = isLight ? 'border-rose-300' : 'border-rose-500/25'
                 }
 
                 return (
                   <div
                     key={room.roomNumber}
                     onClick={() => setSelectedRoom(room)}
-                    className={`p-3 rounded-2xl border cursor-pointer hover:scale-105 active:scale-95 transition-all text-center flex flex-col justify-between h-24 ${roomBorderColor} ${roomBgColor}`}
+                    className={`p-3 rounded-2xl border cursor-pointer hover:scale-105 hover:shadow-lg active:scale-95 transition-all text-center flex flex-col justify-between h-24 ${roomBorderColor} ${roomBgColor}`}
                   >
                     <div className="flex items-center justify-between">
                       <span className={`text-[10px] font-black uppercase tracking-wider ${textMuted}`}>

@@ -110,7 +110,7 @@ export default function ZamdekanDashboard() {
   const occupancyRate = totalBedsCapacity > 0 ? Math.round((stats.totalOccupiedBeds / totalBedsCapacity) * 100) : 0
 
   const occupancyPieData = [
-    { name: "Band joylar", value: stats.totalOccupiedBeds, color: '#6366f1' },
+    { name: "Band joylar", value: stats.totalOccupiedBeds, color: '#7c3aed' },
     { name: "Bo'sh joylar", value: freeBeds, color: isLight ? '#e2e8f0' : '#1e293b' },
   ]
 
@@ -120,6 +120,7 @@ export default function ZamdekanDashboard() {
       value: stats.pendingCount,
       icon: FileText,
       color: 'from-amber-500 to-orange-500',
+      glow: 'rgba(245, 158, 11, 0.35)',
       description: "Ko'rib chiqilishi kerak bo'lgan yo'llanmalar",
       link: '/zamdekan/arizalar',
     },
@@ -128,6 +129,7 @@ export default function ZamdekanDashboard() {
       value: stats.activeStudentsCount,
       icon: Users,
       color: 'from-sky-500 to-blue-600',
+      glow: 'rgba(14, 165, 233, 0.35)',
       description: "Tizimda ro'yxatdan o'tganlar",
       link: '/zamdekan/xonalar',
     },
@@ -136,6 +138,7 @@ export default function ZamdekanDashboard() {
       value: stats.totalOccupiedBeds,
       icon: Home,
       color: 'from-indigo-500 to-purple-600',
+      glow: 'rgba(99, 102, 241, 0.35)',
       description: `${occupancyRate}% bandlik darajasi`,
       link: '/zamdekan/xonalar',
     },
@@ -144,6 +147,7 @@ export default function ZamdekanDashboard() {
       value: stats.approvedCount + stats.registeredCount,
       icon: CheckCircle,
       color: 'from-emerald-500 to-teal-600',
+      glow: 'rgba(16, 185, 129, 0.35)',
       description: 'Tasdiqlangan jami arizalar',
       link: '/zamdekan/arizalar',
     }
@@ -163,21 +167,22 @@ export default function ZamdekanDashboard() {
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`relative overflow-hidden rounded-3xl border ${surfaceBg} p-6 sm:p-8`}
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-blue-600 to-violet-700 p-6 sm:p-8 shadow-xl shadow-indigo-500/25"
       >
-        <div className={`absolute inset-0 opacity-10 ${isLight ? 'bg-gradient-to-br from-sky-400 via-blue-500 to-transparent' : 'bg-gradient-to-br from-indigo-500 via-blue-600 to-transparent'}`} />
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute -left-10 -bottom-16 h-48 w-48 rounded-full bg-fuchsia-400/20 blur-3xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center justify-center p-1.5 rounded-lg text-xs font-black ${isLight ? 'bg-sky-100 text-sky-700' : 'bg-white/10 text-cyan-300'}`}>
-                <TrendingUp size={14} className="mr-1" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-white/15 text-white backdrop-blur-sm">
+                <TrendingUp size={12} />
                 Live Statlar
               </span>
             </div>
-            <h1 className={`text-2xl sm:text-3xl font-black mt-2 tracking-tight ${textStrong}`}>
+            <h1 className="text-2xl sm:text-3xl font-black mt-3 tracking-tight text-white">
               Xush kelibsiz, Zamdekan!
             </h1>
-            <p className={`text-xs sm:text-sm mt-1 max-w-xl ${textMuted}`}>
+            <p className="text-xs sm:text-sm mt-1.5 max-w-xl leading-relaxed text-indigo-100">
               {zamdekanFaculty
                 ? `${zamdekanFaculty.toUpperCase()} fakulteti bo'yicha yo'llanmalar (arizalar) ko'rib chiqilishini boshqaring.`
                 : "Yotoqxona tizimidagi talabalar oqimi, yo'llanmalar (arizalar) ko'rib chiqilishi va xonalar taqsimotini real vaqt rejimida boshqaring."}
@@ -185,11 +190,7 @@ export default function ZamdekanDashboard() {
           </div>
           <button
             onClick={() => loadData(zamdekanFaculty)}
-            className={`shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all border shadow-sm ${
-              isLight
-                ? 'bg-slate-900 border-slate-900 text-white hover:bg-slate-800'
-                : 'bg-white/5 border-white/15 text-white hover:bg-white/10'
-            }`}
+            className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all bg-white text-indigo-700 hover:bg-indigo-50 shadow-lg shadow-black/10 active:scale-95"
           >
             Ma&apos;lumotlarni yangilash
           </button>
@@ -212,22 +213,33 @@ export default function ZamdekanDashboard() {
             key={idx}
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05 }}
-            className={`rounded-3xl border ${surfaceBg} p-5 relative overflow-hidden group hover:scale-[1.02] transition-all`}
+            whileHover={{ y: -4 }}
+            transition={{ delay: idx * 0.05, duration: 0.25, ease: 'easeOut' }}
+            style={{
+              boxShadow: isLight
+                ? `0 12px 32px -14px ${card.glow}`
+                : `0 20px 44px -16px rgba(0,0,0,0.65), 0 0 32px -10px ${card.glow}`,
+            }}
+            className={`rounded-3xl border ${surfaceBg} p-5 pt-4 relative overflow-hidden group transition-colors`}
           >
-            <div className="flex items-center justify-between">
+            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${card.color}`} />
+            <div
+              className="absolute -right-6 -bottom-6 w-32 h-32 rounded-full blur-3xl opacity-40 group-hover:opacity-60 transition-opacity duration-500"
+              style={{ backgroundColor: card.glow }}
+            />
+            <div className="relative flex items-center justify-between mt-1">
               <div>
                 <p className={`text-[10px] font-black uppercase tracking-wider ${textMuted}`}>{card.title}</p>
-                <h3 className={`text-2xl sm:text-3xl font-black mt-1 leading-none ${textStrong}`}>{card.value}</h3>
+                <h3 className={`text-2xl sm:text-3xl font-black mt-1.5 leading-none ${textStrong}`}>{card.value}</h3>
               </div>
-              <div className={`h-11 w-11 rounded-2xl bg-gradient-to-tr ${card.color} flex items-center justify-center text-white shadow-md shadow-indigo-500/10`}>
-                <card.icon size={20} strokeWidth={2.2} />
+              <div className={`h-12 w-12 rounded-2xl bg-gradient-to-tr ${card.color} flex items-center justify-center text-white shadow-lg`} style={{ boxShadow: `0 8px 20px -6px ${card.glow}` }}>
+                <card.icon size={22} strokeWidth={2.2} />
               </div>
             </div>
-            <p className={`text-[10px] font-medium mt-4 ${textMuted}`}>{card.description}</p>
+            <p className={`relative text-[10px] font-medium mt-4 ${textMuted}`}>{card.description}</p>
             <Link
               href={card.link}
-              className={`absolute bottom-3 right-4 opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-indigo-500 transition-opacity`}
+              className="relative mt-2 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-indigo-500 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
             >
               Ko&apos;rish <ArrowRight size={10} />
             </Link>
@@ -282,7 +294,7 @@ export default function ZamdekanDashboard() {
           <div className="space-y-2 mt-2">
             <div className="flex items-center justify-between text-xs font-bold">
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-indigo-500" />
+                <div className="h-3 w-3 rounded-full bg-violet-600" />
                 <span className={textMuted}>Joylashtirilgan talabalar</span>
               </div>
               <span className={textStrong}>{stats.totalOccupiedBeds} ta</span>
@@ -333,7 +345,7 @@ export default function ZamdekanDashboard() {
                     borderRadius: '12px'
                   }}
                 />
-                <Bar dataKey="talabalar" fill="#6366f1" radius={[8, 8, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="talabalar" fill="#7c3aed" radius={[8, 8, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>

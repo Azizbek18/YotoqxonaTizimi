@@ -117,31 +117,63 @@ export default function ZamdekanXodimlarPage() {
         </div>
       </div>
 
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:max-w-md">
+        {[
+          { label: 'Adminlar', count: staff.filter((s) => s.role === 'admin').length, color: 'from-red-500 to-rose-600', icon: Shield },
+          { label: 'Tarbiyachilar', count: staff.filter((s) => s.role === 'tarbiyachi').length, color: 'from-green-500 to-emerald-600', icon: UserCog },
+        ].map((stat) => (
+          <div key={stat.label} className={`relative overflow-hidden flex items-center gap-3 rounded-2xl border p-4 pt-5 ${cardSurface}`}>
+            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${stat.color}`} />
+            <div className={`h-11 w-11 shrink-0 rounded-xl bg-gradient-to-tr ${stat.color} flex items-center justify-center text-white shadow-lg`}>
+              <stat.icon size={19} strokeWidth={2.2} />
+            </div>
+            <div>
+              <p className={`text-[9px] font-black uppercase tracking-wider ${textMuted}`}>{stat.label}</p>
+              <p className={`text-lg font-black leading-none mt-0.5 ${textStrong}`}>{stat.count}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className={`rounded-2xl border p-2 sm:p-4 ${cardSurface}`}>
         {loading ? (
-          <p className={`p-6 text-center text-sm ${textMuted}`}>Yuklanmoqda...</p>
+          <div className="flex items-center justify-center p-10">
+            <div className={`animate-spin rounded-full h-7 w-7 border-t-2 ${isLight ? 'border-purple-600' : 'border-purple-400'}`} />
+          </div>
         ) : staff.length === 0 ? (
-          <p className={`p-6 text-center text-sm ${textMuted}`}>Hozircha admin yoki tarbiyachi akkounti yo&apos;q.</p>
+          <div className="flex flex-col items-center justify-center p-10 text-center">
+            <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-full ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-white/5 text-slate-500'}`}>
+              <UserCog size={22} />
+            </div>
+            <p className={`text-sm font-bold ${textMuted}`}>Hozircha admin yoki tarbiyachi akkounti yo&apos;q.</p>
+          </div>
         ) : (
           <div className="space-y-2">
             {staff.map((row) => (
               <div
                 key={row.id}
-                className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${isLight ? 'border-slate-200 bg-slate-50/60' : 'border-white/5 bg-white/[0.02]'}`}
+                className={`flex flex-col gap-3 rounded-xl border p-4 transition-all sm:flex-row sm:items-center sm:justify-between ${isLight ? 'border-slate-200 bg-slate-50/60 hover:border-slate-300' : 'border-white/5 bg-white/[0.02] hover:border-white/10'}`}
               >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className={`truncate text-sm font-bold ${textStrong}`}>{row.full_name}</p>
-                    <span className={`rounded-full border px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${ROLE_COLORS[row.role]}`}>
-                      {ROLE_LABELS[row.role]}
-                    </span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black ${
+                    row.role === 'admin' ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'
+                  }`}>
+                    {row.full_name.trim().charAt(0).toUpperCase()}
                   </div>
-                  <div className={`mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs ${textMuted}`}>
-                    <span className="inline-flex items-center gap-1.5"><Mail size={12} />{row.email}</span>
-                    {row.phone_number && <span className="inline-flex items-center gap-1.5"><Phone size={12} />{row.phone_number}</span>}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className={`truncate text-sm font-bold ${textStrong}`}>{row.full_name}</p>
+                      <span className={`rounded-full border px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${ROLE_COLORS[row.role]}`}>
+                        {ROLE_LABELS[row.role]}
+                      </span>
+                    </div>
+                    <div className={`mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs ${textMuted}`}>
+                      <span className="inline-flex items-center gap-1.5"><Mail size={12} />{row.email}</span>
+                      {row.phone_number && <span className="inline-flex items-center gap-1.5"><Phone size={12} />{row.phone_number}</span>}
+                    </div>
                   </div>
                 </div>
-                <div className="text-xs">
+                <div className="text-xs pl-[52px] sm:pl-0">
                   <span className={`rounded-full px-2.5 py-1 font-bold uppercase tracking-wider ${row.status === 'active' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-slate-500/15 text-slate-400'}`}>
                     {row.status === 'active' ? 'Faol' : row.status ?? "Noma'lum"}
                   </span>
@@ -166,14 +198,14 @@ export default function ZamdekanXodimlarPage() {
             <button
               type="button"
               onClick={() => setForm((f) => ({ ...f, role: 'tarbiyachi' }))}
-              className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${form.role === 'tarbiyachi' ? 'border-green-500/40 bg-green-500/10 text-green-400' : isLight ? 'border-slate-200 text-slate-500' : 'border-white/10 text-slate-400'}`}
+              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${form.role === 'tarbiyachi' ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md shadow-green-500/25' : isLight ? 'border border-slate-200 text-slate-500' : 'border border-white/10 text-slate-400'}`}
             >
               <UserCog size={14} /> Tarbiyachi
             </button>
             <button
               type="button"
               onClick={() => setForm((f) => ({ ...f, role: 'admin' }))}
-              className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${form.role === 'admin' ? 'border-red-500/40 bg-red-500/10 text-red-400' : isLight ? 'border-slate-200 text-slate-500' : 'border-white/10 text-slate-400'}`}
+              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${form.role === 'admin' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md shadow-red-500/25' : isLight ? 'border border-slate-200 text-slate-500' : 'border border-white/10 text-slate-400'}`}
             >
               <Shield size={14} /> Admin
             </button>

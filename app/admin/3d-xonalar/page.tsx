@@ -1,11 +1,11 @@
 'use client'
 
 import React, { useEffect, useMemo, useState, useRef } from 'react'
-import Image from 'next/image'
-import { 
-  Building2, DoorOpen, Layers3, Users, 
-  Info, MousePointer2, ExternalLink, Upload, Cpu, 
-  RotateCcw, CheckCircle2, ChevronRight 
+import { createPortal } from 'react-dom'
+import {
+  Building2, DoorOpen, Layers3, Users,
+  Info, MousePointer2, ExternalLink,
+  Plus, Trash2, ChevronUp, ChevronDown, Save, RotateCcw
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
@@ -13,6 +13,8 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import toast from 'react-hot-toast'
 import * as THREE from 'three'
 import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
+import { fetchFloorLayout, saveFloorLayout } from '@/features/room-layout/client/api'
+import type { RoomBlockSide, RoomBlockSize, RoomLayoutBlock } from '@/features/room-layout/types'
 
 interface StudentInfo {
   id: string
@@ -26,28 +28,90 @@ interface RoomOccupancySnapshot {
   students: StudentInfo[]
 }
 
+type EditableBlock = { roomNumber: string; size: RoomBlockSize }
+
+type PositionedRoom = {
+  roomNumber: string
+  side: RoomBlockSide
+  size: RoomBlockSize
+  x: number
+  z: number
+  width: number
+  depth: number
+  height: number
+}
+
+const CORRIDOR_WIDTH = 2.4
+const GAP = 0.35
+// Only the room's frontage along the row (`depth`, the Z-axis spacing between
+// neighboring blocks) varies by size. The offset away from the corridor
+// (`width`, the X-axis) and the height stay identical for every room, so a
+// "large" room grows in line with its neighbors instead of jutting out
+// sideways and looking detached from the row.
+const ROOM_WIDTH = 1.8
+const ROOM_HEIGHT = 1.0
+const SIZE_UNITS: Record<RoomBlockSize, { width: number; depth: number; height: number }> = {
+  small: { width: ROOM_WIDTH, depth: 1.3, height: ROOM_HEIGHT },
+  medium: { width: ROOM_WIDTH, depth: 1.8, height: ROOM_HEIGHT },
+  large: { width: ROOM_WIDTH, depth: 2.6, height: ROOM_HEIGHT },
+}
+const SIZE_LABELS: Record<RoomBlockSize, string> = { small: 'Kichik', medium: "O'rta", large: 'Katta' }
+
+// Lays a side's ordered blocks out along Z, hugging the corridor on X,
+// so rooms of different sizes never overlap regardless of their width.
+function layoutSide(blocks: EditableBlock[], side: RoomBlockSide): { rooms: PositionedRoom[]; totalDepth: number; maxWidth: number } {
+  let cursor = 0
+  const raw = blocks
+    .filter((b) => b.roomNumber.trim())
+    .map((b) => {
+      const units = SIZE_UNITS[b.size]
+      const z = cursor + units.depth / 2
+      cursor += units.depth + GAP
+      return { roomNumber: b.roomNumber.trim(), size: b.size, z, ...units }
+    })
+
+  const totalDepth = Math.max(cursor - GAP, 0)
+  const centerOffset = totalDepth / 2
+  const maxWidth = raw.reduce((max, r) => Math.max(max, r.width), 0)
+  const xSign = side === 'left' ? -1 : 1
+
+  const rooms: PositionedRoom[] = raw.map((r) => ({
+    roomNumber: r.roomNumber,
+    side,
+    size: r.size,
+    x: xSign * (CORRIDOR_WIDTH / 2 + r.width / 2 + GAP),
+    z: r.z - centerOffset,
+    width: r.width,
+    depth: r.depth,
+    height: r.height,
+  }))
+
+  return { rooms, totalDepth, maxWidth }
+}
+
 export default function Admin3DXonalarPage() {
   const [roomSnapshots, setRoomSnapshots] = useState<RoomOccupancySnapshot[]>([])
   const [selectedRoomNumber, setSelectedRoomNumber] = useState<string | null>(null)
+  const [hoveredRoom, setHoveredRoom] = useState<{ roomNumber: string; clientX: number; clientY: number } | null>(null)
 
-  // Floor Selector State (1st, 2nd, and 3rd floors)
   const [activeFloor, setActiveFloor] = useState<number>(1)
-  const floors = [1, 2, 3]
+  const floors = [1, 2, 3, 4, 5]
 
-  // Floor-specific Blueprint & AI States
-  const [floorBlueprints, setFloorBlueprints] = useState<Record<number, File>>({})
-  const [floorPreviews, setFloorPreviews] = useState<Record<number, string>>({})
-  const [floorAnalyzing, setFloorAnalyzing] = useState<Record<number, boolean>>({})
-  const [floorProgress, setFloorProgress] = useState<Record<number, number>>({})
-  const [floorStructures, setFloorStructures] = useState<Record<number, string[]>>({})
-  const [builtFloors, setBuiltFloors] = useState<Record<number, boolean>>({})
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [leftBlocks, setLeftBlocks] = useState<EditableBlock[]>([])
+  const [rightBlocks, setRightBlocks] = useState<EditableBlock[]>([])
 
-  // Three.js refs
+  // Debounced snapshot of the editable lists — the 3D scene rebuilds from
+  // this instead of the raw state, so typing a room number doesn't tear
+  // down and rebuild the whole Three.js scene on every keystroke.
+  const [previewLeft, setPreviewLeft] = useState<EditableBlock[]>([])
+  const [previewRight, setPreviewRight] = useState<EditableBlock[]>([])
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const groupRef = useRef<THREE.Group | null>(null)
-  const roomMeshesRef = useRef<THREE.Mesh[]>([])
 
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
@@ -56,12 +120,11 @@ export default function Admin3DXonalarPage() {
   const cardBg = isLight ? 'bg-slate-100/70 border-slate-200' : 'bg-white/[0.04] border-white/10'
   const textMuted = isLight ? 'text-slate-600' : 'text-slate-400'
   const textStrong = isLight ? 'text-slate-900' : 'text-white'
+  const inputBg = isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-white/5 border-white/10 text-white'
 
-  // Load Room Occupancy from Supabase
   const loadRoomOccupancy = async () => {
     try {
       const { students: data } = await fetchAdminDashboard()
-
       const occupancyMap = new Map<string, { count: number, students: StudentInfo[] }>()
       data?.forEach((user) => {
         if (!user.room_number) return
@@ -71,7 +134,6 @@ export default function Admin3DXonalarPage() {
           students: [...existing.students, { id: user.id, name: user.full_name ?? 'Noma\'lum' }]
         })
       })
-
       setRoomSnapshots(
         Array.from(occupancyMap.entries()).map(([roomNumber, info]) => ({
           roomNumber,
@@ -81,8 +143,27 @@ export default function Admin3DXonalarPage() {
         }))
       )
     } catch (error) {
-      console.error('3D xonalar bandligini yuklashda xato:', error)
-      toast.error('Ma\'lumotlarni yuklashda xatolik yuz berdi')
+      console.error('Xona bandligini yuklashda xato:', error)
+      toast.error('Bandlik ma\'lumotlarini yuklashda xatolik yuz berdi')
+    }
+  }
+
+  const loadFloorLayout = async (floor: number) => {
+    setLoading(true)
+    setSelectedRoomNumber(null)
+    try {
+      const blocks = await fetchFloorLayout(floor)
+      const left = blocks.filter((b) => b.side === 'left').map((b) => ({ roomNumber: b.roomNumber, size: b.size }))
+      const right = blocks.filter((b) => b.side === 'right').map((b) => ({ roomNumber: b.roomNumber, size: b.size }))
+      setLeftBlocks(left)
+      setRightBlocks(right)
+    } catch (error) {
+      console.error('Qavat tarxini yuklashda xato:', error)
+      toast.error('Qavat tarxini yuklab bo\'lmadi')
+      setLeftBlocks([])
+      setRightBlocks([])
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -91,138 +172,122 @@ export default function Admin3DXonalarPage() {
     return () => window.clearTimeout(loadId)
   }, [])
 
-  // Blueprint File Selection
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0]
-      setFloorBlueprints(prev => ({ ...prev, [activeFloor]: file }))
-      setFloorPreviews(prev => ({ ...prev, [activeFloor]: URL.createObjectURL(file) }))
-      toast.success(`${activeFloor}-qavat uchun chizma muvaffaqiyatli yuklandi! 📐`)
+  useEffect(() => {
+    void loadFloorLayout(activeFloor)
+  }, [activeFloor])
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setPreviewLeft(leftBlocks)
+      setPreviewRight(rightBlocks)
+    }, 400)
+    return () => clearTimeout(id)
+  }, [leftBlocks, rightBlocks])
+
+  // --- Editor mutations ---
+  const addBlock = (side: RoomBlockSide) => {
+    const setter = side === 'left' ? setLeftBlocks : setRightBlocks
+    setter((prev) => [...prev, { roomNumber: '', size: 'medium' }])
+  }
+  const updateBlock = (side: RoomBlockSide, index: number, patch: Partial<EditableBlock>) => {
+    const setter = side === 'left' ? setLeftBlocks : setRightBlocks
+    setter((prev) => prev.map((b, i) => (i === index ? { ...b, ...patch } : b)))
+  }
+  const removeBlock = (side: RoomBlockSide, index: number) => {
+    const setter = side === 'left' ? setLeftBlocks : setRightBlocks
+    setter((prev) => prev.filter((_, i) => i !== index))
+  }
+  const moveBlock = (side: RoomBlockSide, index: number, direction: -1 | 1) => {
+    const setter = side === 'left' ? setLeftBlocks : setRightBlocks
+    setter((prev) => {
+      const target = index + direction
+      if (target < 0 || target >= prev.length) return prev
+      const next = [...prev]
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
+  }
+
+  const handleSave = async () => {
+    const allEmpty = [...leftBlocks, ...rightBlocks].every((b) => !b.roomNumber.trim())
+    if ([...leftBlocks, ...rightBlocks].some((b) => !b.roomNumber.trim())) {
+      toast.error(allEmpty ? "Kamida bitta xona qo'shing" : "Barcha xona raqamlarini to'ldiring")
+      return
+    }
+
+    const combined: RoomLayoutBlock[] = [
+      ...leftBlocks.map((b, i) => ({ roomNumber: b.roomNumber.trim(), side: 'left' as const, size: b.size, position: i })),
+      ...rightBlocks.map((b, i) => ({ roomNumber: b.roomNumber.trim(), side: 'right' as const, size: b.size, position: i })),
+    ]
+
+    setSaving(true)
+    try {
+      await saveFloorLayout(activeFloor, combined)
+      toast.success(`${activeFloor}-qavat tarxi saqlandi`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Saqlashda xatolik yuz berdi")
+    } finally {
+      setSaving(false)
     }
   }
 
-  // Simulate AI Analysis of Blueprint for the selected floor
-  const startAIAnalysis = () => {
-    const file = floorBlueprints[activeFloor]
-    if (!file) return
+  // --- 3D scene, driven by the debounced preview blocks ---
+  const positionedRooms = useMemo(() => {
+    const left = layoutSide(previewLeft, 'left')
+    const right = layoutSide(previewRight, 'right')
+    return {
+      rooms: [...left.rooms, ...right.rooms],
+      slabWidth: CORRIDOR_WIDTH + 2 * (Math.max(left.maxWidth, right.maxWidth, 1.8) + GAP) + 1,
+      slabDepth: Math.max(left.totalDepth, right.totalDepth, 2) + 2,
+    }
+  }, [previewLeft, previewRight])
 
-    setFloorAnalyzing(prev => ({ ...prev, [activeFloor]: true }))
-    setFloorProgress(prev => ({ ...prev, [activeFloor]: 0 }))
-
-    let progress = 0
-    const interval = setInterval(() => {
-      progress += 10
-      setFloorProgress(prev => ({ ...prev, [activeFloor]: progress }))
-
-      if (progress >= 100) {
-        clearInterval(interval)
-        
-        // Generate rooms specifically for the selected floor (e.g. 1-6 for floor 1, 31-36 for floor 2, etc.)
-        const startRoom = (activeFloor - 1) * 30 + 1
-        const parsedRooms = Array.from({ length: 6 }, (_, idx) => String(startRoom + idx))
-
-        setFloorStructures(prev => ({ ...prev, [activeFloor]: parsedRooms }))
-        setFloorAnalyzing(prev => ({ ...prev, [activeFloor]: false }))
-        toast.success(`AI ${activeFloor}-qavat chizmasini tahlil qildi va xonalar rejasini aniqladi! 🧠⚡`)
-      }
-    }, 250)
-  }
-
-  // Build 3D Model for the selected floor
-  const build3DModel = () => {
-    if (!floorStructures[activeFloor]) return
-    setBuiltFloors(prev => ({ ...prev, [activeFloor]: true }))
-    setSelectedRoomNumber(null)
-    toast.success(`${activeFloor}-qavat 3D modeli muvaffaqiyatli qurildi! 🏢`)
-  }
-
-  // Reset/Re-analyze blueprint for active floor
-  const resetFloorModel = () => {
-    setBuiltFloors(prev => {
-      const copy = { ...prev }
-      delete copy[activeFloor]
-      return copy
-    })
-    setFloorStructures(prev => {
-      const copy = { ...prev }
-      delete copy[activeFloor]
-      return copy
-    })
-    setFloorPreviews(prev => {
-      const copy = { ...prev }
-      delete copy[activeFloor]
-      return copy
-    })
-    setFloorBlueprints(prev => {
-      const copy = { ...prev }
-      delete copy[activeFloor]
-      return copy
-    })
-    setSelectedRoomNumber(null)
-  }
-
-  // Initialize and Render Three.js Scene for the active floor
   useEffect(() => {
-    const isBuilt = builtFloors[activeFloor]
-    const rooms = floorStructures[activeFloor]
-    if (!isBuilt || !canvasRef.current || !rooms) return
+    const rooms = positionedRooms.rooms
+    if (!canvasRef.current || rooms.length === 0) {
+      if (groupRef.current) groupRef.current.clear()
+      return
+    }
 
     const canvas = canvasRef.current
     const width = canvas.clientWidth
     const height = canvas.clientHeight
 
-    // 1. Scene setup
     const scene = new THREE.Scene()
     sceneRef.current = scene
 
-    // 2. Camera setup
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100)
+    const camera = new THREE.PerspectiveCamera(45, width / Math.max(height, 1), 0.1, 100)
     camera.position.set(0, 5, 8)
     camera.lookAt(0, 0, 0)
 
-    // 3. Renderer setup
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
     renderer.setSize(width, height, false)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     rendererRef.current = renderer
 
-    // Resize Observer for dynamic container sizing (fluid adjustment on panel resize/window resize)
     const resizeObserver = new ResizeObserver(() => {
       if (!canvas || !rendererRef.current) return
       const w = canvas.clientWidth
       const h = canvas.clientHeight
-      camera.aspect = w / h
+      camera.aspect = w / Math.max(h, 1)
       camera.updateProjectionMatrix()
       rendererRef.current.setSize(w, h, false)
     })
-    if (canvas.parentElement) {
-      resizeObserver.observe(canvas.parentElement)
-    }
+    if (canvas.parentElement) resizeObserver.observe(canvas.parentElement)
 
-    // 4. Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
-    scene.add(ambientLight)
-
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6))
     const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8)
     dirLight1.position.set(5, 10, 7)
     scene.add(dirLight1)
-
-    const dirLight2 = new THREE.DirectionalLight(0x06b6d4, 0.5) // Cyan fill
+    const dirLight2 = new THREE.DirectionalLight(0x06b6d4, 0.5)
     dirLight2.position.set(-5, 5, -5)
     scene.add(dirLight2)
 
-    // 5. Room Group (for rotation)
     const roomGroup = new THREE.Group()
     scene.add(roomGroup)
     groupRef.current = roomGroup
 
-    // 6. Floor Slab (Pol Asosi)
-    const half = Math.ceil(rooms.length / 2)
-    const maxRoomsInRow = Math.max(half, rooms.length - half)
-    const slabWidth = Math.max(maxRoomsInRow * 2.5, 6)
-    const slabDepth = 5.2
-
-    const slabGeo = new THREE.BoxGeometry(slabWidth, 0.15, slabDepth)
+    const slabGeo = new THREE.BoxGeometry(positionedRooms.slabWidth, 0.15, positionedRooms.slabDepth)
     const slabMat = new THREE.MeshStandardMaterial({
       color: isLight ? 0xe2e8f0 : 0x111827,
       roughness: 0.8,
@@ -232,186 +297,139 @@ export default function Admin3DXonalarPage() {
     slabMesh.position.set(0, -0.075, 0)
     roomGroup.add(slabMesh)
 
-    // Glowing neon slab border
     const slabEdges = new THREE.EdgesGeometry(slabGeo)
-    const slabLineMat = new THREE.LineBasicMaterial({
-      color: isLight ? 0x94a3b8 : 0x06b6d4,
-      linewidth: 1.5,
-    })
-    const slabWireframe = new THREE.LineSegments(slabEdges, slabLineMat)
-    slabMesh.add(slabWireframe)
+    const slabLineMat = new THREE.LineBasicMaterial({ color: isLight ? 0x94a3b8 : 0x06b6d4 })
+    slabMesh.add(new THREE.LineSegments(slabEdges, slabLineMat))
 
-    // 7. Generate Room Blocks (Double-sided Corridor Layout)
+    // Corridor strip down the middle, visually marking the "zal".
+    const corridorGeo = new THREE.BoxGeometry(CORRIDOR_WIDTH, 0.02, positionedRooms.slabDepth - 0.3)
+    const corridorMat = new THREE.MeshStandardMaterial({ color: isLight ? 0xcbd5e1 : 0x1e293b, roughness: 0.9 })
+    const corridorMesh = new THREE.Mesh(corridorGeo, corridorMat)
+    corridorMesh.position.set(0, 0.01, 0)
+    roomGroup.add(corridorMesh)
+
     const meshes: THREE.Mesh[] = []
-    const boxGeo = new THREE.BoxGeometry(1.8, 1.0, 1.8)
+    const disposables: { geo: THREE.BufferGeometry; mat: THREE.Material }[] = []
 
-    rooms.forEach((roomNum, idx) => {
-      let xOffset = 0
-      let zOffset = 0
-
-      // Split into two parallel rows
-      if (idx < half) {
-        // Top row
-        xOffset = (idx - (half - 1) / 2) * 2.4
-        zOffset = -1.3
-      } else {
-        // Bottom row
-        const bottomIdx = idx - half
-        const bottomHalf = rooms.length - half
-        xOffset = (bottomIdx - (bottomHalf - 1) / 2) * 2.4
-        zOffset = 1.3
-      }
-
-      // Occupancy color-coding from snapshots
-      const snap = roomSnapshots.find(s => s.roomNumber === roomNum)
+    rooms.forEach((room) => {
+      const snap = roomSnapshots.find((s) => s.roomNumber === room.roomNumber)
       const occupied = snap?.occupied ?? 0
 
-      let color = 0x10b981 // Green (empty)
-      if (occupied >= 4) color = 0xef4444 // Red (full)
-      else if (occupied > 0) color = 0xf59e0b // Yellow (partial)
+      let color = 0x10b981
+      if (occupied >= 4) color = 0xef4444
+      else if (occupied > 0) color = 0xf59e0b
 
+      const geo = new THREE.BoxGeometry(room.width, room.height, room.depth)
       const material = new THREE.MeshStandardMaterial({
-        color,
-        roughness: 0.2,
-        metalness: 0.1,
-        transparent: true,
-        opacity: 0.85,
+        color, roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.85,
       })
-
-      const mesh = new THREE.Mesh(boxGeo, material)
-      mesh.position.set(xOffset, 0.5, zOffset)
-      mesh.name = roomNum
+      const mesh = new THREE.Mesh(geo, material)
+      mesh.position.set(room.x, room.height / 2, room.z)
+      mesh.name = room.roomNumber
       roomGroup.add(mesh)
       meshes.push(mesh)
+      disposables.push({ geo, mat: material })
 
-      // Add wireframe neon highlights
-      const edges = new THREE.EdgesGeometry(boxGeo)
-      const lineMat = new THREE.LineBasicMaterial({
-        color,
-        linewidth: 2,
-      })
-      const wireframe = new THREE.LineSegments(edges, lineMat)
-      mesh.add(wireframe)
+      const edges = new THREE.EdgesGeometry(geo)
+      const lineMat = new THREE.LineBasicMaterial({ color })
+      mesh.add(new THREE.LineSegments(edges, lineMat))
+      disposables.push({ geo: edges, mat: lineMat })
     })
 
-    roomMeshesRef.current = meshes
-
-    // 8. Mouse Orbit Drag Control
     let isDragging = false
     let prevMousePos = { x: 0, y: 0 }
-
-    const onMouseDown = (e: MouseEvent) => {
-      isDragging = true
-      prevMousePos = { x: e.offsetX, y: e.offsetY }
-    }
-
-    const onMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return
-      const deltaMove = {
-        x: e.offsetX - prevMousePos.x,
-        y: e.offsetY - prevMousePos.y
-      }
-
-      roomGroup.rotation.y += deltaMove.x * 0.005
-      roomGroup.rotation.x += deltaMove.y * 0.005
-
-      // Rotation boundaries
-      roomGroup.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, roomGroup.rotation.x))
-
-      prevMousePos = { x: e.offsetX, y: e.offsetY }
-    }
-
-    const onMouseUp = () => {
-      isDragging = false
-    }
-
-    canvas.addEventListener('mousedown', onMouseDown)
-    canvas.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('mouseup', onMouseUp)
-
-    // 9. Raycasting (clicking a room)
     const raycaster = new THREE.Raycaster()
     const mouse = new THREE.Vector2()
+
+    const onMouseDown = (e: MouseEvent) => { isDragging = true; prevMousePos = { x: e.offsetX, y: e.offsetY } }
+    const onMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        const deltaMove = { x: e.offsetX - prevMousePos.x, y: e.offsetY - prevMousePos.y }
+        roomGroup.rotation.y += deltaMove.x * 0.005
+        roomGroup.rotation.x += deltaMove.y * 0.005
+        roomGroup.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, roomGroup.rotation.x))
+        prevMousePos = { x: e.offsetX, y: e.offsetY }
+        setHoveredRoom(null)
+        return
+      }
+
+      const rect = canvas.getBoundingClientRect()
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+      raycaster.setFromCamera(mouse, camera)
+      const intersects = raycaster.intersectObjects(meshes)
+      if (intersects.length > 0) {
+        const hoveredMesh = intersects[0].object as THREE.Mesh
+        canvas.style.cursor = 'pointer'
+        setHoveredRoom({ roomNumber: hoveredMesh.name, clientX: e.clientX, clientY: e.clientY })
+      } else {
+        canvas.style.cursor = 'grab'
+        setHoveredRoom(null)
+      }
+    }
+    const onMouseUp = () => { isDragging = false }
+    const onMouseLeave = () => { setHoveredRoom(null); canvas.style.cursor = 'grab' }
+    canvas.addEventListener('mousedown', onMouseDown)
+    canvas.addEventListener('mousemove', onMouseMove)
+    canvas.addEventListener('mouseleave', onMouseLeave)
+    window.addEventListener('mouseup', onMouseUp)
 
     const onCanvasClick = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect()
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
-
       raycaster.setFromCamera(mouse, camera)
       const intersects = raycaster.intersectObjects(meshes)
-
       if (intersects.length > 0) {
         const clickedMesh = intersects[0].object as THREE.Mesh
         setSelectedRoomNumber(clickedMesh.name)
-        
-        // Highlight animation pulse
         clickedMesh.scale.set(1.08, 1.08, 1.08)
-        setTimeout(() => {
-          clickedMesh.scale.set(1.0, 1.0, 1.0)
-        }, 150)
-        
-        toast.success(`Xona #${clickedMesh.name} tanlandi! 🚪`)
+        setTimeout(() => clickedMesh.scale.set(1, 1, 1), 150)
       }
     }
-
     canvas.addEventListener('click', onCanvasClick)
 
-    // 10. Animation Loop
     let animationFrameId: number
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate)
-
-      // Auto rotation when idle
-      if (!isDragging) {
-        roomGroup.rotation.y += 0.0015
-      }
-
+      if (!isDragging) roomGroup.rotation.y += 0.0015
       renderer.render(scene, camera)
     }
     animate()
 
-    // 11. Cleanup function
     return () => {
       resizeObserver.disconnect()
       cancelAnimationFrame(animationFrameId)
       canvas.removeEventListener('mousedown', onMouseDown)
       canvas.removeEventListener('mousemove', onMouseMove)
+      canvas.removeEventListener('mouseleave', onMouseLeave)
       window.removeEventListener('mouseup', onMouseUp)
       canvas.removeEventListener('click', onCanvasClick)
-      
-      meshes.forEach(m => {
-        m.geometry.dispose()
-        if (Array.isArray(m.material)) {
-          m.material.forEach(mat => mat.dispose())
-        } else {
-          m.material.dispose()
-        }
-      })
+      setHoveredRoom(null)
+      disposables.forEach(({ geo, mat }) => { geo.dispose(); mat.dispose() })
       slabGeo.dispose()
       slabMat.dispose()
+      corridorGeo.dispose()
+      corridorMat.dispose()
       renderer.dispose()
     }
-  }, [activeFloor, builtFloors, floorStructures, roomSnapshots, isLight])
+  }, [positionedRooms, roomSnapshots, isLight])
 
-  // Current floor statistics
   const summary = useMemo(() => {
-    const rooms = floorStructures[activeFloor] || []
+    const roomCount = positionedRooms.rooms.length
     const occupiedPlaces = roomSnapshots
-      .filter(room => rooms.includes(room.roomNumber))
+      .filter((room) => positionedRooms.rooms.some((r) => r.roomNumber === room.roomNumber))
       .reduce((total, room) => total + room.occupied, 0)
-    
     return {
       occupiedPlaces,
-      totalRooms: rooms.length,
-      freePlaces: Math.max(rooms.length * 4 - occupiedPlaces, 0),
+      totalRooms: roomCount,
+      freePlaces: Math.max(roomCount * 4 - occupiedPlaces, 0),
     }
-  }, [roomSnapshots, activeFloor, floorStructures])
+  }, [roomSnapshots, positionedRooms])
 
-  // Selected room details
   const selectedRoomData = useMemo(() => {
     if (!selectedRoomNumber) return null
-    const snap = roomSnapshots.find(s => s.roomNumber === selectedRoomNumber)
+    const snap = roomSnapshots.find((s) => s.roomNumber === selectedRoomNumber)
     return {
       number: selectedRoomNumber,
       occupied: snap?.occupied ?? 0,
@@ -420,63 +438,116 @@ export default function Admin3DXonalarPage() {
     }
   }, [selectedRoomNumber, roomSnapshots])
 
+  const renderBlockColumn = (side: RoomBlockSide, blocks: EditableBlock[]) => (
+    <div className={`rounded-2xl border p-4 ${cardBg}`}>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className={`text-xs font-black uppercase tracking-wider ${textStrong}`}>
+          {side === 'left' ? 'Chap tomon' : "O'ng tomon"}
+        </h3>
+        <span className={`text-[10px] font-bold ${textMuted}`}>{blocks.length} ta xona</span>
+      </div>
+
+      <div className="space-y-2">
+        {blocks.map((block, index) => (
+          <div key={index} className={`rounded-xl border p-2.5 space-y-2 ${isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.02]'}`}>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={block.roomNumber}
+                onChange={(e) => updateBlock(side, index, { roomNumber: e.target.value })}
+                placeholder="Xona №"
+                className={`min-w-0 flex-1 text-xs py-1.5 px-2.5 rounded-lg outline-none border ${inputBg}`}
+              />
+              <button onClick={() => moveBlock(side, index, -1)} disabled={index === 0} className={`p-1.5 rounded-lg disabled:opacity-30 ${isLight ? 'hover:bg-slate-100' : 'hover:bg-white/5'} ${textMuted}`}>
+                <ChevronUp size={14} />
+              </button>
+              <button onClick={() => moveBlock(side, index, 1)} disabled={index === blocks.length - 1} className={`p-1.5 rounded-lg disabled:opacity-30 ${isLight ? 'hover:bg-slate-100' : 'hover:bg-white/5'} ${textMuted}`}>
+                <ChevronDown size={14} />
+              </button>
+              <button onClick={() => removeBlock(side, index)} className="p-1.5 rounded-lg hover:bg-rose-500/10 text-rose-500">
+                <Trash2 size={14} />
+              </button>
+            </div>
+            <div className="flex gap-1.5">
+              {(['small', 'medium', 'large'] as const).map((size) => (
+                <button
+                  key={size}
+                  onClick={() => updateBlock(side, index, { size })}
+                  className={`flex-1 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                    block.size === size
+                      ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
+                      : isLight ? 'bg-slate-100 text-slate-500' : 'bg-white/5 text-slate-400'
+                  }`}
+                >
+                  {SIZE_LABELS[size]}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={() => addBlock(side)}
+        className={`mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed text-[10px] font-black uppercase tracking-wider transition-all ${
+          isLight ? 'border-slate-300 text-slate-500 hover:bg-slate-100' : 'border-white/15 text-slate-400 hover:bg-white/5'
+        }`}
+      >
+        <Plus size={14} /> Xona qo&apos;shish
+      </button>
+    </div>
+  )
+
   return (
     <div className="space-y-6">
       {/* Title Header */}
       <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-sm font-bold text-cyan-400">
-            <Cpu className="h-4 w-4" />
-            AI Qavatma-Qavat 3D Quruvchisi
+            <Layers3 className="h-4 w-4" />
+            Qavat Tarxi Quruvchisi
           </div>
           <h1 className={`mt-4 text-3xl font-black tracking-tight sm:text-4xl ${textStrong}`}>
             Dynamic 3D Bino Modeli
           </h1>
           <p className={`mt-3 max-w-3xl text-sm leading-6 ${textMuted}`}>
-            Har bir qavat uchun alohida chizma (blueprint) yuklang, AI tahlili orqali xonalar rejasini yarating va interaktiv 3D maketni ko&apos;ring.
+            Har bir qavat uchun xonalarni chap va o&apos;ng tomonga, xohlagan tartibda va o&apos;lchamda qo&apos;shing — natija pastda jonli 3D maketda ko&apos;rinadi.
           </p>
         </div>
 
-        {/* Floor Stats (Visible only when built) */}
-        {builtFloors[activeFloor] && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:min-w-[520px]">
-            <div className={`rounded-xl border p-4 ${cardBg}`}>
-              <div className={`flex items-center gap-2 ${textMuted}`}>
-                <Users className="h-4 w-4 text-cyan-400" />
-                <span className="text-xs font-bold uppercase tracking-[0.18em]">Band joy</span>
-              </div>
-              <p className={`mt-2 text-2xl font-black ${textStrong}`}>{summary.occupiedPlaces}</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:min-w-[520px]">
+          <div className={`rounded-xl border p-4 ${cardBg}`}>
+            <div className={`flex items-center gap-2 ${textMuted}`}>
+              <Users className="h-4 w-4 text-cyan-400" />
+              <span className="text-xs font-bold uppercase tracking-[0.18em]">Band joy</span>
             </div>
-            <div className={`rounded-xl border p-4 ${cardBg}`}>
-              <div className={`flex items-center gap-2 ${textMuted}`}>
-                <DoorOpen className="h-4 w-4 text-emerald-400" />
-                <span className="text-xs font-bold uppercase tracking-[0.18em]">Bo&apos;sh joy</span>
-              </div>
-              <p className={`mt-2 text-2xl font-black ${textStrong}`}>{summary.freePlaces}</p>
-            </div>
-            <div className={`rounded-xl border p-4 ${cardBg}`}>
-              <div className={`flex items-center gap-2 ${textMuted}`}>
-                <Layers3 className="h-4 w-4 text-amber-400" />
-                <span className="text-xs font-bold uppercase tracking-[0.18em]">Jami xona</span>
-              </div>
-              <p className={`mt-2 truncate text-2xl font-black ${textStrong}`}>{summary.totalRooms} ta</p>
-            </div>
+            <p className={`mt-2 text-2xl font-black ${textStrong}`}>{summary.occupiedPlaces}</p>
           </div>
-        )}
+          <div className={`rounded-xl border p-4 ${cardBg}`}>
+            <div className={`flex items-center gap-2 ${textMuted}`}>
+              <DoorOpen className="h-4 w-4 text-emerald-400" />
+              <span className="text-xs font-bold uppercase tracking-[0.18em]">Bo&apos;sh joy</span>
+            </div>
+            <p className={`mt-2 text-2xl font-black ${textStrong}`}>{summary.freePlaces}</p>
+          </div>
+          <div className={`rounded-xl border p-4 ${cardBg}`}>
+            <div className={`flex items-center gap-2 ${textMuted}`}>
+              <Layers3 className="h-4 w-4 text-amber-400" />
+              <span className="text-xs font-bold uppercase tracking-[0.18em]">Jami xona</span>
+            </div>
+            <p className={`mt-2 truncate text-2xl font-black ${textStrong}`}>{summary.totalRooms} ta</p>
+          </div>
+        </div>
       </div>
 
       {/* Floor Selection Tabs */}
       <div className="flex gap-2 p-1.5 rounded-2xl bg-slate-100/50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 w-fit">
         {floors.map((fl) => {
           const active = fl === activeFloor
-          const isBuilt = !!builtFloors[fl]
           return (
             <button
               key={fl}
-              onClick={() => {
-                setActiveFloor(fl)
-                setSelectedRoomNumber(null)
-              }}
+              onClick={() => setActiveFloor(fl)}
               className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 ${
                 active
                   ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-500/10'
@@ -485,132 +556,54 @@ export default function Admin3DXonalarPage() {
             >
               <Layers3 size={14} className={active ? 'text-white' : 'text-cyan-500'} />
               {fl}-qavat
-              {isBuilt && (
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
-              )}
             </button>
           )
         })}
       </div>
 
-      {/* Main interactive panel */}
-      {!builtFloors[activeFloor] ? (
-        <div className={`backdrop-blur-xl border rounded-[2rem] p-8 ${surfaceBg} min-h-[450px] flex flex-col items-center justify-center text-center`}>
-          {!floorPreviews[activeFloor] ? (
-            <div className="max-w-md w-full">
-              <div className="relative w-24 h-24 mx-auto mb-6 shrink-0">
-                <Image
-                  src="https://img.icons8.com/3d-fluency/94/upload.png"
-                  alt="Upload blueprint"
-                  fill
-                  unoptimized
-                  className="object-contain"
-                />
-              </div>
-              <h2 className={`text-xl font-black ${textStrong}`}>{activeFloor}-qavat Blueprintini Yuklang</h2>
-              <p className={`text-xs mt-2 mb-6 ${textMuted}`}>
-                {activeFloor}-qavatdagi xonalar joylashuvi va rejasini tahlil qilish uchun uning chizmasini (JPEG/PNG) yuklang.
-              </p>
-              
-              <label className="cursor-pointer inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white text-xs font-black uppercase tracking-wider tracking-widest transition-all duration-300 shadow-lg shadow-cyan-500/20 active:scale-95">
-                <Upload size={16} />
-                Chizmani Tanlash
-                <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-              </label>
-            </div>
-          ) : (
-            <div className="max-w-xl w-full space-y-6">
-              <div className="relative rounded-2xl overflow-hidden border border-white/10 max-h-60 bg-black/20">
-                {/* eslint-disable-next-line @next/next/no-img-element -- local blob: object URL preview, not optimizable by next/image */}
-                <img src={floorPreviews[activeFloor]} alt="Blueprint preview" className="w-full h-auto object-cover max-h-60" />
-                {floorAnalyzing[activeFloor] && (
-                  <div className="absolute inset-0 bg-black/70 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-white">
-                    <div className="relative w-16 h-16 mb-4 animate-spin">
-                      <Image src="https://img.icons8.com/3d-fluency/94/settings.png" alt="Analyzing" fill unoptimized className="object-contain" />
-                    </div>
-                    <p className="text-sm font-black uppercase tracking-widest text-cyan-400">AI {activeFloor}-qavatni Tahlil Qilmoqda...</p>
-                    <div className="w-full max-w-xs bg-white/10 h-1.5 rounded-full mt-4 overflow-hidden">
-                      <motion.div 
-                        className="bg-cyan-500 h-full" 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${floorProgress[activeFloor] || 0}%` }}
-                        transition={{ duration: 0.1 }}
-                      />
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-400 mt-2">{floorProgress[activeFloor] || 0}% yakunlandi</span>
-                  </div>
-                )}
-              </div>
-
-              {!floorAnalyzing[activeFloor] && (
-                <div className="space-y-4">
-                  {!floorStructures[activeFloor] ? (
-                    <div className="flex gap-4 justify-center">
-                      <button
-                        onClick={resetFloorModel}
-                        className={`px-5 py-3 rounded-2xl border text-xs font-black uppercase tracking-wider transition-all ${
-                          isLight ? 'border-slate-200 hover:bg-slate-50' : 'border-white/5 hover:bg-white/5 text-slate-300'
-                        }`}
-                      >
-                        Qayta yuklash
-                      </button>
-                      <button
-                        onClick={startAIAnalysis}
-                        className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-lg shadow-cyan-500/20 flex items-center gap-2"
-                      >
-                        <Cpu size={16} />
-                        AI Tahlilni Boshlash
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      <div className={`p-5 rounded-2xl border text-left ${
-                        isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/5'
-                      }`}>
-                        <div className="flex items-center gap-2 text-emerald-400 mb-4 font-bold text-sm">
-                           <CheckCircle2 size={16} />
-                           Tahlil muvaffaqiyatli yakunlandi!
-                        </div>
-                        <p className={`text-xs ${textMuted} mb-3`}>AI chizmadan quyidagi bino tarkibini aniqladi:</p>
-                        <div className="p-4 rounded-xl border bg-emerald-500/10 border-emerald-500/20 text-emerald-400 text-center">
-                          <p className="text-[10px] font-bold uppercase tracking-wider">Aniqlangan xonalar soni</p>
-                          <p className="text-2xl font-black mt-1">{floorStructures[activeFloor]?.length} ta xona</p>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-4 justify-center">
-                        <button
-                          onClick={resetFloorModel}
-                          className={`px-5 py-3 rounded-2xl border text-xs font-black uppercase tracking-wider transition-all ${
-                            isLight ? 'border-slate-200 hover:bg-slate-50' : 'border-white/5 hover:bg-white/5 text-slate-300'
-                          }`}
-                        >
-                          Qayta yuklash
-                        </button>
-                        <button
-                          onClick={build3DModel}
-                          className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-lg shadow-purple-500/20 flex items-center gap-2"
-                        >
-                          3D Modelni Qurish
-                          <ChevronRight size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+      {loading ? (
+        <div className={`backdrop-blur-xl border rounded-[2rem] p-16 ${surfaceBg} flex items-center justify-center`}>
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-cyan-500" />
         </div>
       ) : (
-        <div className="space-y-6">
-          {/* Three.js interactive canvas wrapper */}
+        <>
+          {/* Editor */}
+          <div className={`backdrop-blur-xl border rounded-[2rem] p-6 ${surfaceBg}`}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className={`text-lg font-black ${textStrong}`}>{activeFloor}-qavat tarxi</h2>
+                <p className={`text-xs mt-1 ${textMuted}`}>Zal ikki tomoni bo&apos;yicha xonalarni joylashtiring — lego kabi yig&apos;ing.</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => void loadFloorLayout(activeFloor)}
+                  className={`p-2.5 rounded-xl border transition-all ${isLight ? 'border-slate-200 hover:bg-slate-50' : 'border-white/10 hover:bg-white/5 text-slate-300'}`}
+                  title="Saqlangan holatga qaytarish"
+                >
+                  <RotateCcw size={16} />
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+                >
+                  <Save size={14} /> {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {renderBlockColumn('left', leftBlocks)}
+              {renderBlockColumn('right', rightBlocks)}
+            </div>
+          </div>
+
+          {/* 3D Preview */}
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`relative min-h-[500px] rounded-[2rem] border backdrop-blur-xl overflow-hidden ${surfaceBg}`}
+            className={`relative min-h-[420px] rounded-[2rem] border backdrop-blur-xl overflow-hidden ${surfaceBg}`}
           >
-            {/* Status badges */}
             <div className="absolute top-6 left-6 z-10 flex flex-wrap gap-3">
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
                 <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
@@ -626,25 +619,41 @@ export default function Admin3DXonalarPage() {
               </div>
             </div>
 
-            {/* Back button */}
-            <button
-              onClick={resetFloorModel}
-              className={`absolute top-6 right-6 z-10 px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-wider flex items-center gap-2 transition-all ${
-                isLight ? 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
-              }`}
-            >
-              <RotateCcw size={12} />
-              Qayta Tahlil qilish
-            </button>
+            {positionedRooms.rooms.length === 0 ? (
+              <div className="h-[420px] flex flex-col items-center justify-center text-center px-6">
+                <Building2 className={`h-10 w-10 mb-3 ${textMuted}`} />
+                <p className={`text-sm font-bold ${textMuted}`}>Hali xona qo&apos;shilmagan — yuqoridan xona qo&apos;shing.</p>
+              </div>
+            ) : (
+              <canvas ref={canvasRef} className="w-full h-[420px] block outline-none cursor-grab active:cursor-grabbing" />
+            )}
 
-            {/* 3D Canvas */}
-            <canvas ref={canvasRef} className="w-full h-[500px] block outline-none cursor-grab active:cursor-grabbing" />
+            {hoveredRoom && typeof document !== 'undefined' && createPortal(
+              (() => {
+                const snap = roomSnapshots.find((s) => s.roomNumber === hoveredRoom.roomNumber)
+                return (
+                  <div
+                    className={`pointer-events-none fixed z-[9999] rounded-xl border px-3 py-2 shadow-2xl backdrop-blur-xl ${isLight ? 'bg-white/95 border-slate-200' : 'bg-[#0b101d]/95 border-white/10'}`}
+                    style={{ left: hoveredRoom.clientX + 14, top: hoveredRoom.clientY + 14 }}
+                  >
+                    <p className={`text-xs font-black ${textStrong}`}>Xona #{hoveredRoom.roomNumber}</p>
+                    {snap && snap.students.length > 0 ? (
+                      <p className={`mt-0.5 max-w-[220px] text-[10px] ${textMuted}`}>
+                        {snap.students.map((s) => s.name).join(', ')}
+                      </p>
+                    ) : (
+                      <p className={`mt-0.5 text-[10px] ${textMuted}`}>Bo&apos;sh</p>
+                    )}
+                  </div>
+                )
+              })(),
+              document.body
+            )}
 
-            {/* Hover overlay hint */}
             <div className="absolute bottom-6 left-6 pointer-events-none">
               <p className={`text-[10px] font-bold uppercase tracking-widest ${textMuted} flex items-center gap-2`}>
                 <MousePointer2 size={12} />
-                Qavatni aylantirish uchun sudrang, tanlash uchun xonani bosing.
+                Aylantirish uchun sudrang, tanlash uchun xonani bosing.
               </p>
             </div>
           </motion.div>
@@ -692,8 +701,7 @@ export default function Admin3DXonalarPage() {
                     textStrong={textStrong}
                     cardBg={cardBg}
                   />
-                  
-                  {/* Student occupancy detail */}
+
                   {selectedRoomData.students.length > 0 && (
                     <div className="md:col-span-3">
                       <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 ${textMuted}`}>Xonadagi Talabalar Ro&apos;yxati</h4>
@@ -721,7 +729,7 @@ export default function Admin3DXonalarPage() {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </>
       )}
     </div>
   )

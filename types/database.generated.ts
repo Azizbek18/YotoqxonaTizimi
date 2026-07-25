@@ -196,6 +196,15 @@ export interface Database {
         details: Json
         created_at: string
       }>
+      floor_room_layout: Table<{
+        id: string
+        floor_number: number
+        room_number: string
+        side: string
+        position: number
+        size: string
+        created_at: string
+      }>
     }
     Views: Record<string, never>
     Functions: {

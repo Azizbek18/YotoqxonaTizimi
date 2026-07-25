@@ -1,7 +1,21 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { findRoleByUserId } from '@/lib/auth-tables'
+import { findRoleByUserId, type AppRole } from '@/lib/auth-tables'
 import type { Database } from '@/types/database.generated'
+
+const ROLE_HOME: Record<Exclude<AppRole, null>, string> = {
+  admin: '/admin/dashboard',
+  tarbiyachi: '/tarbiyachi/dashboard',
+  zamdekan: '/zamdekan/dashboard',
+  talaba: '/talaba/dashboard',
+}
+
+// Where to send a signed-in user whose role doesn't match the route they're
+// guarding. `fallback` covers both "no role record found" (null) and roles
+// with no home of their own (e.g. sardor is a talaba, not a distinct role).
+function homeFor(role: AppRole, fallback: string): string {
+  return role ? ROLE_HOME[role] : fallback
+}
 
 export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
@@ -85,133 +99,66 @@ export async function proxy(request: NextRequest) {
   const redirect = (to: string) => finalize(NextResponse.redirect(new URL(to, request.url)))
   const allow = () => finalize(response)
 
+  // Guards a route prefix that requires `requiredRole`: redirects signed-out
+  // visitors to `loginTarget`, and signed-in visitors with the wrong role to
+  // their own home (or `unknownRoleFallback` when they have no role at all).
+  // Returns null when the route isn't guarded here or access is allowed, so
+  // the caller falls through to the next check.
+  const guardRole = (
+    prefix: string,
+    requiredRole: Exclude<AppRole, null>,
+    loginTarget: string,
+    unknownRoleFallback = '/talaba/dashboard',
+  ) => {
+    if (!path.startsWith(prefix)) return null
+    if (!session) return redirect(loginTarget)
+    if (userRole !== requiredRole) return redirect(homeFor(userRole, unknownRoleFallback))
+    return null
+  }
+
   // ========================
   // ADMIN ROUTES HIMOYASI
   // ========================
-  if (path.startsWith('/admin')) {
-    // Admin loginiga kirish
-    if (path === '/admin/login') {
-      // Agar admin ro'li bilan tizimga kirgan bo'lsa, dashboardga yo'naltirish
-      if (session && userRole === 'admin') {
-        return redirect('/admin/dashboard')
-      }
-      return allow()
-    }
-
-    // Boshqa admin routelari (dashboard, arizalar, foydalanuvchilar)
-    if (!session) {
-      return redirect('/admin/login')
-    }
-
-    if (userRole !== 'admin') {
-      // Admin emas bo'lsa, o'ziga mos dashboardga yo'naltirish
-      if (userRole === 'tarbiyachi') {
-        return redirect('/tarbiyachi/dashboard')
-      }
-      if (userRole === 'zamdekan') {
-        return redirect('/zamdekan/dashboard')
-      }
-      return redirect('/talaba/dashboard')
-    }
+  // Admin loginiga kirish alohida holat: faqat tizimga admin sifatida
+  // kirgan foydalanuvchi undan uzoqlashtiriladi, boshqa hamma uni ko'ra oladi.
+  if (path === '/admin/login') {
+    if (session && userRole === 'admin') return redirect('/admin/dashboard')
+    return allow()
   }
+  const adminGuard = guardRole('/admin', 'admin', '/admin/login')
+  if (adminGuard) return adminGuard
 
   // ========================
   // TALABA ROUTES HIMOYASI
   // ========================
-  if (path.startsWith('/talaba')) {
-    if (!session) {
-      return redirect('/login')
-    }
-
-    if (userRole !== 'talaba') {
-      if (userRole === 'admin') {
-        return redirect('/admin/dashboard')
-      }
-      if (userRole === 'tarbiyachi') {
-        return redirect('/tarbiyachi/dashboard')
-      }
-      if (userRole === 'zamdekan') {
-        return redirect('/zamdekan/dashboard')
-      }
-      return redirect('/login')
-    }
-  }
+  const talabaGuard = guardRole('/talaba', 'talaba', '/login', '/login')
+  if (talabaGuard) return talabaGuard
 
   // ========================
   // TARBIYACHI ROUTES HIMOYASI
   // ========================
-  if (path.startsWith('/tarbiyachi')) {
-    if (!session) {
-      return redirect('/login')
-    }
-
-    if (userRole !== 'tarbiyachi') {
-      if (userRole === 'admin') {
-        return redirect('/admin/dashboard')
-      }
-      if (userRole === 'zamdekan') {
-        return redirect('/zamdekan/dashboard')
-      }
-      return redirect('/talaba/dashboard')
-    }
-  }
+  const tarbiyachiGuard = guardRole('/tarbiyachi', 'tarbiyachi', '/login')
+  if (tarbiyachiGuard) return tarbiyachiGuard
 
   // ========================
   // ZAMDEKAN ROUTES HIMOYASI
   // ========================
-  if (path.startsWith('/zamdekan')) {
-    if (!session) {
-      return redirect('/login')
-    }
-
-    if (userRole !== 'zamdekan') {
-      if (userRole === 'admin') {
-        return redirect('/admin/dashboard')
-      }
-      if (userRole === 'tarbiyachi') {
-        return redirect('/tarbiyachi/dashboard')
-      }
-      return redirect('/talaba/dashboard')
-    }
-  }
+  const zamdekanGuard = guardRole('/zamdekan', 'zamdekan', '/login')
+  if (zamdekanGuard) return zamdekanGuard
 
   // ========================
   // SARDOR ROUTES HIMOYASI
   // ========================
-  if (path.startsWith('/sardor')) {
-    if (!session) {
-      return redirect('/login')
-    }
-
-    if (userRole !== 'talaba') {
-      if (userRole === 'admin') {
-        return redirect('/admin/dashboard')
-      }
-      if (userRole === 'tarbiyachi') {
-        return redirect('/tarbiyachi/dashboard')
-      }
-      if (userRole === 'zamdekan') {
-        return redirect('/zamdekan/dashboard')
-      }
-      return redirect('/login')
-    }
-  }
+  // Sardor alohida rol emas — talaba roli bilan boshqa UI ko'rsatiladi.
+  const sardorGuard = guardRole('/sardor', 'talaba', '/login', '/login')
+  if (sardorGuard) return sardorGuard
 
   // ========================
   // LOGIN VA REGISTER SAHIFALARI
   // ========================
+  // Login qilgan bo'lsa, o'ziga mos dashboardga yo'naltirish
   if (session && (path === '/login' || path === '/register' || path === '/')) {
-    // Login qilgan bo'lsa, o'ziga mos dashboardga yo'naltirish
-    if (userRole === 'admin') {
-      return redirect('/admin/dashboard')
-    }
-    if (userRole === 'tarbiyachi') {
-      return redirect('/tarbiyachi/dashboard')
-    }
-    if (userRole === 'zamdekan') {
-      return redirect('/zamdekan/dashboard')
-    }
-    return redirect('/talaba/dashboard')
+    return redirect(homeFor(userRole, '/talaba/dashboard'))
   }
 
   return allow()

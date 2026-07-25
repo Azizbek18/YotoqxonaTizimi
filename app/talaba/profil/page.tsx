@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import ProfileLoadError from '@/components/talaba/ProfileLoadError'
+import PageSkeleton from '@/components/ui/PageSkeleton'
 import {
   deleteStudentAvatar,
   fetchStudentProfile,
@@ -200,20 +201,6 @@ function InfoRow({ icon, label, value, bg, color }: InfoRowProps) {
         <p className="text-xs font-bold truncate dark:text-slate-100 text-slate-800">
           {value}
         </p>
-      </div>
-    </div>
-  )
-}
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-function Skeleton() {
-  const theme = useThemeStore((state) => state.theme)
-  const isLight = theme === 'light'
-  return (
-    <div className={`min-h-screen flex items-center justify-center ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#02040a]'}`}>
-      <div className="flex flex-col items-center gap-3">
-        <div className={`w-12 h-12 border-4 rounded-full animate-spin ${isLight ? 'border-blue-200 border-t-blue-600' : 'border-blue-500/20 border-t-blue-500'}`} />
-        <p className={`text-xs font-bold ${isLight ? 'text-slate-400' : 'text-gray-500'}`}>Profil yuklanmoqda...</p>
       </div>
     </div>
   )
@@ -560,7 +547,11 @@ export default function StudentProfile() {
     : 'bg-slate-900/40 backdrop-blur-xl border-white/5 shadow-2xl';
 
   if (loading) {
-    return <Skeleton />
+    return (
+      <div className="px-4 py-6">
+        <PageSkeleton />
+      </div>
+    )
   }
 
   if (profileError || !profile) {

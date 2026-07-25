@@ -3,11 +3,12 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import {
-  ListOrdered, Loader2, ShieldCheck, User, Sparkles
+  ListOrdered, ShieldCheck, User, Sparkles
 } from 'lucide-react'
 import { getSafeSession } from '@/lib/auth-session'
 import { extractFloor } from '@/lib/floor'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import PageSkeleton from '@/components/ui/PageSkeleton'
 
 interface Profile {
   id: string
@@ -85,11 +86,8 @@ export default function NavbatPage() {
 
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#020617] text-white'}`}>
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 size={36} className="text-purple-500 animate-spin" />
-          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Ma&apos;lumotlar yuklanmoqda...</p>
-        </div>
+      <div className={`min-h-screen px-4 py-6 transition-colors duration-300 ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#020617] text-white'}`}>
+        <PageSkeleton />
       </div>
     )
   }

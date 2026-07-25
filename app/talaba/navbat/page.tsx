@@ -6,6 +6,7 @@ import {
   ListOrdered, Loader2, ShieldCheck, User, Sparkles
 } from 'lucide-react'
 import { getSafeSession } from '@/lib/auth-session'
+import { extractFloor } from '@/lib/floor'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
 interface Profile {
@@ -93,7 +94,7 @@ export default function NavbatPage() {
     )
   }
 
-  const floorNumber = profile?.room_number ? calculateFloor(parseInt(profile.room_number) || 0) || '—' : '—'
+  const floorNumber = extractFloor(profile?.room_number) ?? '—'
 
   return (
     <div className={`min-h-screen font-sans relative pb-24 transition-colors duration-300 ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#020617] text-white'}`}>
@@ -272,13 +273,4 @@ export default function NavbatPage() {
       </div>
     </div>
   )
-}
-
-function calculateFloor(roomNumber: number): number {
-  if (roomNumber === 0 || isNaN(roomNumber)) return 0
-  if (roomNumber < 100) return 1
-  if (roomNumber < 200) return 2
-  if (roomNumber < 300) return 3
-  if (roomNumber < 400) return 4
-  return 5
 }

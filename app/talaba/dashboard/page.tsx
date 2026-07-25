@@ -12,6 +12,7 @@ import {
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { supabase } from '@/lib/supabase';
 import { getSafeUser } from '@/lib/auth-session';
+import { extractFloor } from '@/lib/floor';
 import ProfileLoadError from '@/components/talaba/ProfileLoadError';
 import CustomSelect from '@/components/ui/CustomSelect';
 import toast from 'react-hot-toast';
@@ -773,8 +774,7 @@ export default function TalabaDashboard() {
 
   // Room parameters - Fully visible room number
   const roomNumberFull = profile?.room_number || '—';
-  const roomNumberOnly = profile?.room_number?.split('-')[0] || '';
-  const floor = calculateFloor(Number(roomNumberOnly) || 0);
+  const floor = extractFloor(profile?.room_number);
   const fullName = profile?.full_name || 'Talaba';
   const faculty = profile?.faculty || 'Fakultet';
   const course = Number(profile?.course ?? 1);
@@ -893,7 +893,7 @@ export default function TalabaDashboard() {
                 </div>
                 <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl text-xs font-black">
                   <Calendar size={14} className="text-cyan-300" />
-                  <span>{floor === 0 ? '—' : `${floor}-qavat`}</span>
+                  <span>{floor ? `${floor}-qavat` : '—'}</span>
                 </div>
               </div>
               
@@ -1009,7 +1009,7 @@ export default function TalabaDashboard() {
                   <div>
                     <p className={`text-sm font-black tracking-tight ${textStrong}`}>{floorCaptain.full_name}</p>
                     <p className={`text-[10px] ${textMuted} font-semibold mt-0.5`}>
-                      Sizning qavatingiz ({profile?.room_number ? Math.floor((parseInt(profile.room_number.replace(/\D/g, '')) - 1) / 30) + 1 : ''}-qavat) sardori
+                      Sizning qavatingiz ({extractFloor(profile?.room_number) ?? ''}-qavat) sardori
                     </p>
                   </div>
                 </div>
@@ -2229,14 +2229,3 @@ export default function TalabaDashboard() {
   );
 }
 
-
-// ─── Helper Functions ──────────────────────────────────────────────────────
-
-function calculateFloor(roomNumber: number): number {
-  if (roomNumber === 0 || isNaN(roomNumber)) return 0;
-  if (roomNumber < 100) return 1;
-  if (roomNumber < 200) return 2;
-  if (roomNumber < 300) return 3;
-  if (roomNumber < 400) return 4;
-  return 5;
-}

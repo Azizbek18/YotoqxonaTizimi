@@ -21,6 +21,7 @@ import {
 import Link from 'next/link'
 import { AlertTriangle, Loader, X, Activity, Cpu } from 'lucide-react'
 import StatCard from '@/components/admin/StatCard'
+import { extractFloor } from '@/lib/floor'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import toast from 'react-hot-toast'
 import { fetchAdminPaymentSummary } from '@/features/payments/client/api'
@@ -323,13 +324,7 @@ export default function AdminDashboard() {
     // Qavat bo'yicha filter
     if (reportFilters.floor !== 'all') {
       const targetFloor = parseInt(reportFilters.floor)
-      filtered = filtered.filter(s => {
-        if (!s.room_number) return false
-        const roomInt = parseInt(s.room_number)
-        if (Number.isNaN(roomInt)) return false
-        const floorOfRoom = Math.floor((roomInt - 1) / 30) + 1
-        return floorOfRoom === targetFloor
-      })
+      filtered = filtered.filter(s => extractFloor(s.room_number) === targetFloor)
     }
 
     // Xona oralig'i bo'yicha filter (faqat qavat tanlangan bo'lsa)

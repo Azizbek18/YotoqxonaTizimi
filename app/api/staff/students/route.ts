@@ -1,17 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServiceSupabase } from '@/lib/server-supabase'
-import { getRequestUser } from '@/lib/server-auth'
-import { extractFloor } from '@/lib/floor'
-import { findStaffRowByIdentity } from '@/lib/auth-tables'
-
-type StaffProfile = {
-  id: string
-  email: string
-  role: string
-  assigned_floor?: number | null
-  assigned_gender?: string | null
-  status?: string | null
-}
+import { requireScopedTarbiyachi, isWithinTarbiyachiFloor } from '@/server/auth/tarbiyachi'
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ ok: false, error: message }, { status })
@@ -19,22 +7,9 @@ function jsonError(message: string, status: number) {
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getRequestUser(req)
-    const serviceSupabase = getServiceSupabase()
-
-    if (!user?.id) {
-      return jsonError('Autentifikatsiya talab qilinadi', 401)
-    }
-
-    const staffUser = await findStaffRowByIdentity<StaffProfile>(
-      serviceSupabase,
-      'id, email, role, assigned_floor, assigned_gender, status',
-      { id: user.id, email: user.email }
-    )
-
-    if (!staffUser || staffUser.role !== 'tarbiyachi' || staffUser.status !== 'active') {
-      return jsonError('Tarbiyachi huquqi talab qilinadi', 403)
-    }
+    const scoped = await requireScopedTarbiyachi(req)
+    if (scoped.error) return scoped.error
+    const { staffUser, serviceSupabase } = scoped
 
     let studentsQuery = serviceSupabase
       .from('users')
@@ -55,13 +30,9 @@ export async function GET(req: NextRequest) {
       return jsonError(studentsError.message, 500)
     }
 
-    const filteredStudents = (students ?? []).filter((student) => {
-      const floorOk = staffUser.assigned_floor
-        ? extractFloor((student.room_number as string | null | undefined) ?? null) === staffUser.assigned_floor
-        : true
-
-      return floorOk
-    })
+    const filteredStudents = (students ?? []).filter((student) =>
+      isWithinTarbiyachiFloor(staffUser, student.room_number as string | null | undefined)
+    )
 
     return NextResponse.json({
       ok: true,

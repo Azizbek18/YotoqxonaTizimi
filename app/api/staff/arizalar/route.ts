@@ -1,17 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
-import { getRequestUser } from '@/lib/server-auth'
-import { extractFloor } from '@/lib/floor'
-import { findStaffRowByIdentity } from '@/lib/auth-tables'
-
-type StaffProfile = {
-  id: string
-  email: string
-  role: string
-  assigned_floor?: number | null
-  assigned_gender?: string | null
-  status?: string | null
-}
+import { requireScopedTarbiyachi, isWithinTarbiyachiFloor, type ScopedTarbiyachi } from '@/server/auth/tarbiyachi'
 
 type ApplicationLevel = 'info' | 'warning' | 'critical'
 
@@ -19,30 +8,9 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ ok: false, error: message }, { status })
 }
 
-async function getScopedStaff(req: NextRequest) {
-  const user = await getRequestUser(req)
-  const serviceSupabase = getServiceSupabase()
-
-  if (!user?.id) {
-    return { error: jsonError('Autentifikatsiya talab qilinadi', 401) }
-  }
-
-  const staffUser = await findStaffRowByIdentity<StaffProfile>(
-    serviceSupabase,
-    'id, email, role, assigned_floor, assigned_gender, status',
-    { id: user.id, email: user.email }
-  )
-
-  if (!staffUser || staffUser.role !== 'tarbiyachi' || staffUser.status !== 'active') {
-    return { error: jsonError('Tarbiyachi huquqi talab qilinadi', 403) }
-  }
-
-  return { staffUser, serviceSupabase }
-}
-
 async function getScopedStudentIds(
   serviceSupabase: ReturnType<typeof getServiceSupabase>,
-  staffUser: StaffProfile
+  staffUser: ScopedTarbiyachi
 ) {
   let query = serviceSupabase
     .from('users')
@@ -61,18 +29,13 @@ async function getScopedStudentIds(
   if (error) throw error
 
   return (students ?? [])
-    .filter((student) => {
-      const floorOk = staffUser.assigned_floor
-        ? extractFloor((student.room_number as string | null | undefined) ?? null) === staffUser.assigned_floor
-        : true
-      return floorOk
-    })
+    .filter((student) => isWithinTarbiyachiFloor(staffUser, student.room_number as string | null | undefined))
     .map((student) => student.id as string)
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const scoped = await getScopedStaff(req)
+    const scoped = await requireScopedTarbiyachi(req)
     if (scoped.error) return scoped.error
     const { staffUser, serviceSupabase } = scoped
 
@@ -121,7 +84,7 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const scoped = await getScopedStaff(req)
+    const scoped = await requireScopedTarbiyachi(req)
     if (scoped.error) return scoped.error
     const { staffUser, serviceSupabase } = scoped
 

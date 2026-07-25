@@ -1,18 +1,10 @@
 'use client'
 
-import { getAuthHeaders } from '@/lib/auth-session'
+import { apiRequest } from '@/lib/api-client'
 import type { StudentProfilePayload, StudentProfileUpdate } from '../types'
 
-async function profileRequest<T>(url: string, init?: RequestInit): Promise<T> {
-  const authHeaders = await getAuthHeaders()
-  const response = await fetch(url, {
-    ...init,
-    headers: { ...authHeaders, ...init?.headers },
-    cache: 'no-store',
-  })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.error || 'Profil so‘rovini bajarib bo‘lmadi')
-  return body as T
+function profileRequest<T>(url: string, init?: RequestInit): Promise<T> {
+  return apiRequest<T>(url, init, 'Profil so‘rovini bajarib bo‘lmadi')
 }
 
 export function fetchStudentProfile() {

@@ -1,18 +1,10 @@
 'use client'
 
-import { getAuthHeaders } from '@/lib/auth-session'
+import { apiRequest } from '@/lib/api-client'
 import type { ApplicationListKind, CreateStudentApplication, StudentApplication } from '../types'
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const authHeaders = await getAuthHeaders()
-  const response = await fetch(url, {
-    ...init,
-    headers: { ...authHeaders, ...init?.headers },
-    cache: 'no-store',
-  })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.error || 'Murojaat so\'rovini bajarib bo\'lmadi')
-  return body as T
+function request<T>(url: string, init?: RequestInit): Promise<T> {
+  return apiRequest<T>(url, init, "Murojaat so'rovini bajarib bo'lmadi")
 }
 
 export function fetchStudentApplications(kind: ApplicationListKind = 'documents', limit = 100) {

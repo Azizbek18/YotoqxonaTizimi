@@ -1,17 +1,10 @@
 'use client'
 
-import { getAuthHeaders } from '@/lib/auth-session'
+import { apiRequest } from '@/lib/api-client'
 import type { ZamdekanOverview } from '../types'
 
-async function request<T>(init?: RequestInit): Promise<T> {
-  const response = await fetch('/api/zamdekan/overview', {
-    ...init,
-    headers: { ...await getAuthHeaders(), ...init?.headers },
-    cache: 'no-store',
-  })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.error || 'Yo\'llanma ma\'lumotlarini yuklab bo\'lmadi')
-  return body as T
+function request<T>(init?: RequestInit): Promise<T> {
+  return apiRequest<T>('/api/zamdekan/overview', init, "Yo'llanma ma'lumotlarini yuklab bo'lmadi")
 }
 
 export function fetchZamdekanOverview() {

@@ -1,18 +1,10 @@
 'use client'
 
-import { getAuthHeaders } from '@/lib/auth-session'
+import { apiRequest } from '@/lib/api-client'
 import type { CleaningSchedule } from '../types'
 
-async function request<T>(init?: RequestInit): Promise<T> {
-  const authHeaders = await getAuthHeaders()
-  const response = await fetch('/api/student/cleaning-schedule', {
-    ...init,
-    headers: { ...authHeaders, ...init?.headers },
-    cache: 'no-store',
-  })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.error || 'Navbatchilik jadvali so\'rovini bajarib bo\'lmadi')
-  return body as T
+function request<T>(init?: RequestInit): Promise<T> {
+  return apiRequest<T>('/api/student/cleaning-schedule', init, "Navbatchilik jadvali so'rovini bajarib bo'lmadi")
 }
 
 export function fetchCleaningSchedule() {

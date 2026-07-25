@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bell,
   CalendarDays,
@@ -19,6 +20,8 @@ import {
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { supabase } from '@/lib/supabase';
 import { fetchStudentAnnouncements } from '@/features/announcements/client/api';
+import PageSkeleton from '@/components/ui/PageSkeleton';
+import { StaggerList, StaggerItem } from '@/components/motion/StaggerList';
 
 interface Elon {
   id: string | number;
@@ -367,9 +370,7 @@ export default function ElonlarPage() {
           {/* Main List Column */}
           <div className="lg:col-span-8 space-y-4">
             {loading && view === 'dorm' ? (
-              <div className={`rounded-[28px] border p-12 text-center text-xs font-black uppercase tracking-wider ${panel} ${textMuted}`}>
-                E&apos;lonlar yuklanmoqda...
-              </div>
+              <PageSkeleton />
             ) : filteredElonlar.length === 0 ? (
               <div className={`rounded-[28px] border p-12 text-center ${panel} space-y-4`}>
                 <Megaphone className={`mx-auto opacity-35 ${textMuted}`} size={40} />
@@ -383,12 +384,13 @@ export default function ElonlarPage() {
                 </div>
               </div>
             ) : (
-              filteredElonlar.map((elon) => {
+              <StaggerList className="space-y-4">
+                {filteredElonlar.map((elon) => {
                 const styles = typeStyles[elon.type];
                 return (
+                  <StaggerItem key={elon.id}>
                   <button
                     type="button"
-                    key={elon.id}
                     onClick={() => setSelectedElon(elon)}
                     className={`relative overflow-hidden w-full rounded-2xl border-l-[6px] border border-y-transparent border-r-transparent p-5 text-left transition-all duration-200 hover:translate-x-1 group flex flex-col justify-between gap-4 ${styles.border} ${cardBg}`}
                   >
@@ -432,15 +434,17 @@ export default function ElonlarPage() {
                           <span className={`text-[10px] font-bold ${textMuted}`}>{elon.room || "—"}</span>
                         </div>
                       </div>
-                      
+
                       <div className={`flex items-center gap-0.5 text-xs font-black uppercase tracking-wider ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>
                         <span>Ochish</span>
                         <ChevronRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
                       </div>
                     </div>
                   </button>
+                  </StaggerItem>
                 );
-              })
+                })}
+              </StaggerList>
             )}
           </div>
 
@@ -508,9 +512,21 @@ export default function ElonlarPage() {
       </div>
 
       {/* Frosted Detail Modal */}
-      {mounted && typeof document !== 'undefined' && selectedElon && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" onClick={() => setSelectedElon(null)}>
-          <div 
+      {mounted && typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {selectedElon && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
+          onClick={() => setSelectedElon(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, y: 20, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.9, y: 20, opacity: 0 }}
+            transition={{ type: 'spring', duration: 0.5 }}
             className={`relative w-full max-w-lg overflow-hidden rounded-[36px] border p-0 shadow-2xl ${panel}`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -566,8 +582,10 @@ export default function ElonlarPage() {
                 Tushunarli
               </button>
             </div>
-          </div>
-        </div>,
+          </motion.div>
+        </motion.div>
+          )}
+        </AnimatePresence>,
         document.body
       )}
 

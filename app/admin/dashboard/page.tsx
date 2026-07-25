@@ -21,6 +21,7 @@ import {
 import Link from 'next/link'
 import { AlertTriangle, Loader, X, Activity, Cpu } from 'lucide-react'
 import StatCard from '@/components/admin/StatCard'
+import { StaggerList, StaggerItem } from '@/components/motion/StaggerList'
 import { extractFloor } from '@/lib/floor'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import toast from 'react-hot-toast'
@@ -566,10 +567,11 @@ export default function AdminDashboard() {
               className={`backdrop-blur-xl border rounded-3xl p-6 ${surfaceBg}`}
             >
               <h2 className={`text-xl font-black mb-6 ${textStrong}`}>Tezkor Amallar</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                
+              <StaggerList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
                 {/* 1. Ma'lumotlarni Yangilash */}
-                <button 
+                <StaggerItem>
+                <button
                   onClick={handleRefreshStats}
                   disabled={isRefreshing}
                   className={`relative overflow-hidden p-4 sm:p-5 text-left transition-all duration-300 group border rounded-2xl backdrop-blur-xl flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 ${
@@ -600,9 +602,11 @@ export default function AdminDashboard() {
                     />
                   </div>
                 </button>
+                </StaggerItem>
 
                 {/* 2. Tizim holati */}
-                <button 
+                <StaggerItem>
+                <button
                   onClick={handleCheckStatus}
                   disabled={isCheckingStatus}
                   className={`relative overflow-hidden p-4 sm:p-5 text-left transition-all duration-300 group border rounded-2xl backdrop-blur-xl flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 ${
@@ -633,8 +637,9 @@ export default function AdminDashboard() {
                     />
                   </div>
                 </button>
+                </StaggerItem>
 
-              </div>
+              </StaggerList>
             </motion.div>
           </motion.div>
         )}

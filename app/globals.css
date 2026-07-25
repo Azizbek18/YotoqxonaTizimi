@@ -13,6 +13,13 @@
   --app-font-sans: "Trebuchet MS", "Segoe UI", sans-serif;
   --app-font-mono: "Consolas", "SFMono-Regular", "Courier New", monospace;
   --app-font-display: "Arial Black", "Trebuchet MS", sans-serif;
+  /* Neutral slate "shelf" tone for the chunky button/card retrofit below —
+     a black shadow reads as depth against a light card, but has ~zero
+     contrast against this near-black page background, so dark mode needs a
+     lighter hue instead of a darker one. */
+  --shelf-shadow-button: rgba(51, 65, 85, 0.9);
+  --shelf-shadow-button-disabled: rgba(51, 65, 85, 0.4);
+  --shelf-shadow-card: rgba(51, 65, 85, 0.75);
 }
 
 @theme inline {
@@ -70,6 +77,9 @@ html.theme-dark {
   --border-soft: rgba(148, 163, 184, 0.2);
   --page-glow-a: rgba(59, 130, 246, 0.18);
   --page-glow-b: rgba(99, 102, 241, 0.14);
+  --shelf-shadow-button: rgba(51, 65, 85, 0.9);
+  --shelf-shadow-button-disabled: rgba(51, 65, 85, 0.4);
+  --shelf-shadow-card: rgba(51, 65, 85, 0.75);
 }
 
 html.theme-light {
@@ -80,6 +90,9 @@ html.theme-light {
   --border-soft: rgba(148, 163, 184, 0.26);
   --page-glow-a: rgba(96, 165, 250, 0.34);
   --page-glow-b: rgba(244, 114, 182, 0.18);
+  --shelf-shadow-button: rgba(15, 23, 42, 0.28);
+  --shelf-shadow-button-disabled: rgba(15, 23, 42, 0.14);
+  --shelf-shadow-card: rgba(15, 23, 42, 0.2);
 }
 
 html {
@@ -109,6 +122,25 @@ body {
   isolation: isolate;
 }
 
+/* Slow-drifting atmosphere blobs, one pseudo-element per theme (::before is
+   the pre-existing light-mode layer, ::after is its dark-mode counterpart).
+   transform-only keyframes keep this on the compositor instead of forcing
+   main-thread repaint (unlike animating background-position), so it stays
+   cheap on mobile. A static version of this already existed for light mode;
+   this just adds motion plus a dark-mode equivalent, so the background
+   stops feeling flat/"quruq" in both themes rather than only in light. */
+@keyframes bg-drift-a {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(3%, 4%, 0) scale(1.06); }
+  100% { transform: translate3d(-2%, -3%, 0) scale(1); }
+}
+
+@keyframes bg-drift-b {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-4%, 3%, 0) scale(1.05); }
+  100% { transform: translate3d(3%, -2%, 0) scale(1); }
+}
+
 html.theme-light #app-shell::before {
   content: "";
   position: fixed;
@@ -120,6 +152,30 @@ html.theme-light #app-shell::before {
     radial-gradient(circle at 78% 16%, rgba(255, 255, 255, 0.92), transparent 22%),
     radial-gradient(circle at 84% 82%, rgba(216, 180, 254, 0.22), transparent 22%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(219, 234, 254, 0.18));
+  animation: bg-drift-a 52s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+html.theme-dark #app-shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 16% 20%, rgba(59, 130, 246, 0.18), transparent 26%),
+    radial-gradient(circle at 82% 18%, rgba(129, 140, 248, 0.14), transparent 24%),
+    radial-gradient(circle at 78% 84%, rgba(56, 189, 248, 0.12), transparent 26%);
+  animation: bg-drift-b 46s ease-in-out infinite alternate;
+  animation-delay: -8s;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-light #app-shell::before,
+  html.theme-dark #app-shell::after {
+    animation: none;
+  }
 }
 
 html.theme-light [class*="bg-[#020617]"],
@@ -348,7 +404,7 @@ html.theme-light [class*="border-[#0b1120]"] {
   a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.22),
-      0 5px 0 0 rgba(0, 0, 0, 0.55),
+      0 5px 0 0 var(--shelf-shadow-button),
       0 9px 18px -6px rgba(0, 0, 0, 0.4);
     transform: translateY(0);
     transition:
@@ -373,14 +429,14 @@ html.theme-light [class*="border-[#0b1120]"] {
   a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
   a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active {
     transform: translateY(5px) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 0 0 rgba(0, 0, 0, 0.55);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 0 0 var(--shelf-shadow-button);
     transition:
       transform 0.05s ease,
       box-shadow 0.05s ease !important;
   }
 
   button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):disabled {
-    box-shadow: 0 5px 0 0 rgba(0, 0, 0, 0.25);
+    box-shadow: 0 5px 0 0 var(--shelf-shadow-button-disabled);
   }
 
   html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
@@ -391,7 +447,7 @@ html.theme-light [class*="border-[#0b1120]"] {
   html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.5),
-      0 5px 0 0 rgba(15, 23, 42, 0.32),
+      0 5px 0 0 var(--shelf-shadow-button),
       0 9px 16px -6px rgba(15, 23, 42, 0.22);
   }
 
@@ -401,11 +457,11 @@ html.theme-light [class*="border-[#0b1120]"] {
   html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
   html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
   html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active {
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 0 0 rgba(15, 23, 42, 0.32);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 0 0 var(--shelf-shadow-button);
   }
 
   html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):disabled {
-    box-shadow: 0 5px 0 0 rgba(15, 23, 42, 0.16);
+    box-shadow: 0 5px 0 0 var(--shelf-shadow-button-disabled);
   }
 
   div[class*="rounded-2xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
@@ -414,7 +470,7 @@ html.theme-light [class*="border-[#0b1120]"] {
   div[class*="rounded-["][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 6px 0 0 rgba(0, 0, 0, 0.4),
+      0 6px 0 0 var(--shelf-shadow-card),
       0 12px 26px -6px rgba(0, 0, 0, 0.32);
   }
 
@@ -424,8 +480,52 @@ html.theme-light [class*="border-[#0b1120]"] {
   html.theme-light div[class*="rounded-["][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.6),
-      0 6px 0 0 rgba(15, 23, 42, 0.22),
+      0 6px 0 0 var(--shelf-shadow-card),
       0 12px 24px -6px rgba(15, 23, 42, 0.16);
+  }
+
+  /* NESTED CARDS ("card ichida card") — a rounded+bordered card sitting
+     inside another rounded+bordered card previously got the exact same
+     raised shelf-shadow as its parent, so both stacked and the inner one
+     looked like a broken, floating duplicate. :is(...) groups the four
+     rounded-size variants once so the descendant rule below stays a single
+     readable selector instead of a 16-way cross product; a descendant
+     combinator between two copies of that group is inherently more
+     specific than the flat single-compound rules above, so this wins
+     regardless of source order — no !important needed. Depth-agnostic: a
+     card three levels deep also matches and gets flattened. */
+  :is(
+    div[class*="rounded-2xl"][class*="border"],
+    div[class*="rounded-3xl"][class*="border"],
+    div[class*="rounded-4xl"][class*="border"],
+    div[class*="rounded-["][class*="border"]
+  ):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"])
+  :is(
+    div[class*="rounded-2xl"][class*="border"],
+    div[class*="rounded-3xl"][class*="border"],
+    div[class*="rounded-4xl"][class*="border"],
+    div[class*="rounded-["][class*="border"]
+  ):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]) {
+    box-shadow:
+      inset 0 1px 3px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  html.theme-light :is(
+    div[class*="rounded-2xl"][class*="border"],
+    div[class*="rounded-3xl"][class*="border"],
+    div[class*="rounded-4xl"][class*="border"],
+    div[class*="rounded-["][class*="border"]
+  ):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"])
+  :is(
+    div[class*="rounded-2xl"][class*="border"],
+    div[class*="rounded-3xl"][class*="border"],
+    div[class*="rounded-4xl"][class*="border"],
+    div[class*="rounded-["][class*="border"]
+  ):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]) {
+    box-shadow:
+      inset 0 1px 3px rgba(15, 23, 42, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
   }
 }
 

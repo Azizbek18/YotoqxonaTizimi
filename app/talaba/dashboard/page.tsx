@@ -16,6 +16,8 @@ import { extractFloor } from '@/lib/floor';
 import { usePollingEffect, useChatAutoScroll } from '@/lib/hooks/useChatPolling';
 import ProfileLoadError from '@/components/talaba/ProfileLoadError';
 import CustomSelect from '@/components/ui/CustomSelect';
+import PageSkeleton from '@/components/ui/PageSkeleton';
+import { StaggerList, StaggerItem } from '@/components/motion/StaggerList';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { marked } from 'marked';
@@ -788,11 +790,8 @@ export default function TalabaDashboard() {
 
   if (loadingProfile) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#02040a]'}`}>
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 border-4 rounded-full animate-spin border-blue-500/20 border-t-blue-500" />
-          <p className={`text-xs font-bold ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Tizim yuklanmoqda...</p>
-        </div>
+      <div className={`min-h-screen px-4 py-6 ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#02040a]'}`}>
+        <PageSkeleton />
       </div>
     );
   }
@@ -1019,38 +1018,39 @@ export default function TalabaDashboard() {
               Xonadoshlar ({roommates.length} kishi)
             </h3>
             
-            <div className="space-y-3">
+            <StaggerList className="space-y-3">
               {roommates.map((roommate) => {
                 const initials = roommate.full_name.split(' ').map(n => n[0]).join('').substring(0, 2);
                 return (
-                  <div 
-                    key={roommate.id} 
-                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
-                      isLight ? 'bg-white border-slate-200' : 'bg-white/5 border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black border bg-blue-500/10 text-cyan-400 border-blue-500/20">
-                        {initials}
+                  <StaggerItem key={roommate.id}>
+                    <div
+                      className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
+                        isLight ? 'bg-white border-slate-200' : 'bg-white/5 border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black border bg-blue-500/10 text-cyan-400 border-blue-500/20">
+                          {initials}
+                        </div>
+                        <div>
+                          <p className={`text-xs font-bold ${textStrong}`}>{roommate.full_name}</p>
+                          <p className={`text-[9px] ${textMuted}`}>{roommate.course || 1}-kurs | {roommate.faculty || 'Talaba'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className={`text-xs font-bold ${textStrong}`}>{roommate.full_name}</p>
-                        <p className={`text-[9px] ${textMuted}`}>{roommate.course || 1}-kurs | {roommate.faculty || 'Talaba'}</p>
+                      <div className="flex items-center gap-2">
+                        <a href={`tel:${roommate.phone_number || '+998900000000'}`} className={`p-1.5 rounded-lg border hover:bg-blue-500/10 ${isLight ? 'border-slate-200 text-slate-600' : 'border-white/5 text-gray-400'}`}>
+                          <Phone size={12} />
+                        </a>
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <a href={`tel:${roommate.phone_number || '+998900000000'}`} className={`p-1.5 rounded-lg border hover:bg-blue-500/10 ${isLight ? 'border-slate-200 text-slate-600' : 'border-white/5 text-gray-400'}`}>
-                        <Phone size={12} />
-                      </a>
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                    </div>
-                  </div>
+                  </StaggerItem>
                 );
               })}
               {roommates.length === 0 && (
                 <p className={`text-xs text-center py-4 ${textMuted}`}>Xonadoshlar ma&apos;lumoti topilmadi.</p>
               )}
-            </div>
+            </StaggerList>
           </div>
 
           {/* Quick Support Contacts */}
@@ -1113,45 +1113,55 @@ export default function TalabaDashboard() {
               Tezkor Xizmatlar
             </h3>
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              <Link href="/talaba/arizalar" className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
-                isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
-              }`}>
-                <FileText className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
-                <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Ariza Yozish</span>
-              </Link>
-              
-              <Link href="/talaba/tolova" className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
-                isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
-              }`}>
-                <CreditCard className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
-                <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>To&apos;lov qilish</span>
-              </Link>
-
-              <Link href="/talaba/navbat" className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
-                isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
-              }`}>
-                <Plus className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
-                <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Navbatga turish</span>
-              </Link>
-
-              <Link href="/talaba/qoidalar" className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
-                isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
-              }`}>
-                <AlertTriangle className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
-                <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Tizim qoidalari</span>
-              </Link>
-
-              <button 
-                onClick={() => setIsChatModalOpen(true)}
-                className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
+            <StaggerList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+              <StaggerItem>
+                <Link href="/talaba/arizalar" className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
                   isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
-                }`}
-              >
-                <MessageSquare className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
-                <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Xabarlar</span>
-              </button>
-            </div>
+                }`}>
+                  <FileText className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
+                  <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Ariza Yozish</span>
+                </Link>
+              </StaggerItem>
+
+              <StaggerItem>
+                <Link href="/talaba/tolova" className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
+                  isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
+                }`}>
+                  <CreditCard className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
+                  <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>To&apos;lov qilish</span>
+                </Link>
+              </StaggerItem>
+
+              <StaggerItem>
+                <Link href="/talaba/navbat" className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
+                  isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
+                }`}>
+                  <Plus className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
+                  <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Navbatga turish</span>
+                </Link>
+              </StaggerItem>
+
+              <StaggerItem>
+                <Link href="/talaba/qoidalar" className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
+                  isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
+                }`}>
+                  <AlertTriangle className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
+                  <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Tizim qoidalari</span>
+                </Link>
+              </StaggerItem>
+
+              <StaggerItem>
+                <button
+                  onClick={() => setIsChatModalOpen(true)}
+                  className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group w-full ${
+                    isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
+                  }`}
+                >
+                  <MessageSquare className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
+                  <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Xabarlar</span>
+                </button>
+              </StaggerItem>
+            </StaggerList>
           </div>
 
           {/* E'lonlar Bo'limi (RE-DESIGNED NOTICE BOARD - TIMELINE CARDS) */}
@@ -1269,7 +1279,7 @@ export default function TalabaDashboard() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <StaggerList className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {myApplications.map((app) => {
                 const typeLabel = app.type === 'tushuntirish' ? 'Tushuntirish' : 'Ariza';
                 const formattedDate = formatElonDate(app.createdDate);
@@ -1277,21 +1287,23 @@ export default function TalabaDashboard() {
                 const StatusIcon = statusInfo.icon;
 
                 return (
-                  <div key={app.id} className={`p-4 rounded-2xl border ${cardBorder} ${cardInnerBg} flex flex-col justify-between gap-3`}>
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-[9px] font-black uppercase text-indigo-400">{typeLabel}</span>
-                        <span className="text-[9px] font-bold text-gray-500">{formattedDate}</span>
+                  <StaggerItem key={app.id}>
+                    <div className={`p-4 rounded-2xl border ${cardBorder} ${cardInnerBg} flex flex-col justify-between gap-3`}>
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-[9px] font-black uppercase text-indigo-400">{typeLabel}</span>
+                          <span className="text-[9px] font-bold text-gray-500">{formattedDate}</span>
+                        </div>
+                        <h4 className={`text-xs font-bold line-clamp-2 ${textStrong}`}>
+                          {app.title}
+                        </h4>
                       </div>
-                      <h4 className={`text-xs font-bold line-clamp-2 ${textStrong}`}>
-                        {app.title}
-                      </h4>
+                      <div className={`flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-lg self-start border ${statusInfo.badgeClass}`}>
+                        <StatusIcon size={10} />
+                        <span>{statusInfo.label}</span>
+                      </div>
                     </div>
-                    <div className={`flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-lg self-start border ${statusInfo.badgeClass}`}>
-                      <StatusIcon size={10} />
-                      <span>{statusInfo.label}</span>
-                    </div>
-                  </div>
+                  </StaggerItem>
                 );
               })}
               {myApplications.length === 0 && (
@@ -1343,7 +1355,7 @@ export default function TalabaDashboard() {
                   </Link>
                 </motion.div>
               )}
-            </div>
+            </StaggerList>
           </div>
 
           {/* Gamified Health Card & Disciplinary Status */}
@@ -1516,13 +1528,13 @@ export default function TalabaDashboard() {
                 </button>
               </div>
               
-              <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+              <StaggerList className="space-y-2 max-h-52 overflow-y-auto pr-1">
                 {tasks.map(t => (
-                  <div 
-                    key={t.id} 
-                    onClick={() => { 
-                      saveTasks(tasks.map(task => task.id === t.id ? { ...task, completed: !task.completed } : task)) 
-                    }} 
+                  <StaggerItem key={t.id}>
+                  <div
+                    onClick={() => {
+                      saveTasks(tasks.map(task => task.id === t.id ? { ...task, completed: !task.completed } : task))
+                    }}
                     className={`flex items-center gap-3 p-3 border rounded-2xl cursor-pointer group transition-all duration-200 ${
                       isLight ? 'bg-white border-slate-200 hover:bg-slate-50 shadow-sm' : 'bg-white/5 border-white/5 hover:bg-white/10'
                     }`}
@@ -1555,11 +1567,12 @@ export default function TalabaDashboard() {
                       <Trash2 size={12} />
                     </button>
                   </div>
+                  </StaggerItem>
                 ))}
                 {tasks.length === 0 && (
                   <p className={`text-xs text-center py-6 ${textMuted} italic`}>Hozircha vazifalar yo&apos;q.</p>
                 )}
-              </div>
+              </StaggerList>
             </div>
 
           </div>

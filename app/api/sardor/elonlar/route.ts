@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServiceSupabase } from '@/lib/server-supabase'
-import { getRequestUser } from '@/lib/server-auth'
+import { requireFloorCaptain } from '@/server/auth/sardor'
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Server xatoligi'
@@ -8,23 +7,9 @@ function errorMessage(error: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getRequestUser(request)
-    const serviceSupabase = getServiceSupabase()
-
-    if (!user?.id) {
-      return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
-    }
-
-    // Fetch caller profile
-    const { data: caller, error: callerError } = await serviceSupabase
-      .from('users')
-      .select('id, full_name, role, status, is_floor_captain, assigned_floor, gender, faculty')
-      .eq('id', user.id)
-      .single()
-
-    if (callerError || !caller || caller.role !== 'talaba' || caller.status !== 'active' || !caller.is_floor_captain) {
-      return NextResponse.json({ error: 'Siz qavat sardori emassiz' }, { status: 403 })
-    }
+    const scoped = await requireFloorCaptain(request)
+    if (scoped.error) return scoped.error
+    const { caller, serviceSupabase } = scoped
 
     const { data: elonlar, error: elonError } = await serviceSupabase
       .from('elonlar')
@@ -58,23 +43,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getRequestUser(request)
-    const serviceSupabase = getServiceSupabase()
-
-    if (!user?.id) {
-      return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
-    }
-
-    // Fetch caller profile
-    const { data: caller, error: callerError } = await serviceSupabase
-      .from('users')
-      .select('id, role, status, is_floor_captain, assigned_floor, gender')
-      .eq('id', user.id)
-      .single()
-
-    if (callerError || !caller || caller.role !== 'talaba' || caller.status !== 'active' || !caller.is_floor_captain) {
-      return NextResponse.json({ error: 'Siz qavat sardori emassiz' }, { status: 403 })
-    }
+    const scoped = await requireFloorCaptain(request)
+    if (scoped.error) return scoped.error
+    const { caller, serviceSupabase } = scoped
 
     const body = await request.json()
     const { title, text, type } = body
@@ -117,21 +88,10 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await getRequestUser(request)
-    if (!user?.id) {
-      return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
-    }
+    const scoped = await requireFloorCaptain(request)
+    if (scoped.error) return scoped.error
+    const { caller, serviceSupabase } = scoped
 
-    const serviceSupabase = getServiceSupabase()
-    const { data: caller } = await serviceSupabase
-      .from('users')
-      .select('id, role, status, is_floor_captain, assigned_floor, gender, faculty')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (!caller || caller.role !== 'talaba' || caller.status !== 'active' || !caller.is_floor_captain) {
-      return NextResponse.json({ error: 'Siz qavat sardori emassiz' }, { status: 403 })
-    }
     if (!caller.assigned_floor || !caller.gender) {
       return NextResponse.json({ error: 'Sardorlik qavati yoki jinsi belgilanmagan' }, { status: 400 })
     }
@@ -186,23 +146,9 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await getRequestUser(request)
-    const serviceSupabase = getServiceSupabase()
-
-    if (!user?.id) {
-      return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
-    }
-
-    // Fetch caller profile
-    const { data: caller, error: callerError } = await serviceSupabase
-      .from('users')
-      .select('id, role, status, is_floor_captain')
-      .eq('id', user.id)
-      .single()
-
-    if (callerError || !caller || caller.role !== 'talaba' || caller.status !== 'active' || !caller.is_floor_captain) {
-      return NextResponse.json({ error: 'Siz qavat sardori emassiz' }, { status: 403 })
-    }
+    const scoped = await requireFloorCaptain(request)
+    if (scoped.error) return scoped.error
+    const { caller, serviceSupabase } = scoped
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')

@@ -1,27 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServiceSupabase } from '@/lib/server-supabase'
-import { getRequestUser } from '@/lib/server-auth'
 import { extractFloor } from '@/lib/floor'
+import { requireFloorCaptain } from '@/server/auth/sardor'
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getRequestUser(req)
-    const serviceSupabase = getServiceSupabase()
-
-    if (!user?.id) {
-      return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
-    }
-
-    // Fetch caller profile
-    const { data: caller, error: callerError } = await serviceSupabase
-      .from('users')
-      .select('id, role, status, is_floor_captain, assigned_floor, gender')
-      .eq('id', user.id)
-      .single()
-
-    if (callerError || !caller || caller.role !== 'talaba' || caller.status !== 'active' || !caller.is_floor_captain) {
-      return NextResponse.json({ error: 'Siz qavat sardori emassiz' }, { status: 403 })
-    }
+    const scoped = await requireFloorCaptain(req)
+    if (scoped.error) return scoped.error
+    const { caller, serviceSupabase } = scoped
 
     const captainFloor = caller.assigned_floor
     const captainGender = caller.gender

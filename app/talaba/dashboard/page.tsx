@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
@@ -124,7 +124,7 @@ function toAdminChatMessage(application: {
     id: application.id,
     title: application.title ?? undefined,
     text: application.text,
-    reason: application.reason ?? undefined,
+    reason: application.reason ?? application.text ?? undefined,
     status: application.status ?? undefined,
     created_at: application.created_at,
     date: application.date ?? undefined,
@@ -207,6 +207,9 @@ export default function TalabaDashboard() {
   const [loadingAdminChat, setLoadingAdminChat] = useState(false);
   const [sendingAdminChat, setSendingAdminChat] = useState(false);
   const [adminChatInput, setAdminChatInput] = useState('');
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
+  const prevAdminChatCountRef = useRef(0);
 
   const getAppStatusInfo = (status: string) => {
     switch (status) {
@@ -366,23 +369,42 @@ export default function TalabaDashboard() {
     };
   }, [isScheduleModalOpen, selectedElon, selectedAriza, showArizalar, isChatModalOpen]);
 
-  const loadChatMessages = async () => {
+  const loadChatMessages = async (silent = false) => {
     try {
-      setLoadingAdminChat(true);
+      if (!silent) setLoadingAdminChat(true);
       const { applications } = await fetchStudentApplications('chat');
       setAdminChatMessages((applications || []).map(toAdminChatMessage));
     } catch (error) {
       console.error('Chat yuklashda xatolik:', error);
     } finally {
-      setLoadingAdminChat(false);
+      if (!silent) setLoadingAdminChat(false);
     }
   };
 
   useEffect(() => {
-    if (profile && isChatModalOpen) {
-      void loadChatMessages();
-    }
+    if (!profile || !isChatModalOpen) return;
+
+    prevAdminChatCountRef.current = 0;
+    void loadChatMessages();
+    const interval = setInterval(() => {
+      void loadChatMessages(true);
+    }, 4000);
+    return () => clearInterval(interval);
   }, [profile, isChatModalOpen]);
+
+  useEffect(() => {
+    if (!isChatModalOpen) return;
+
+    const prevCount = prevAdminChatCountRef.current;
+    prevAdminChatCountRef.current = adminChatMessages.length;
+    if (adminChatMessages.length === prevCount) return;
+
+    const container = chatContainerRef.current;
+    const nearBottom = !container || container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+    if (prevCount === 0 || nearBottom) {
+      chatEndRef.current?.scrollIntoView({ block: 'end' });
+    }
+  }, [adminChatMessages, isChatModalOpen]);
 
   const handleSendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1755,7 +1777,7 @@ export default function TalabaDashboard() {
                 </div>
 
                 {/* Chat History */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-4 pr-3 custom-scrollbar text-xs sm:text-sm">
+                <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 pr-3 custom-scrollbar text-xs sm:text-sm">
                   {chatMessages.map((msg, idx) => (
                     <div
                       key={idx}
@@ -2141,7 +2163,7 @@ export default function TalabaDashboard() {
               </div>
 
               {/* Chat bubbles container */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar flex flex-col min-h-0">
+              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar flex flex-col min-h-0">
                 {loadingAdminChat ? (
                   <p className="text-center text-xs text-slate-500 my-auto">Yuklanmoqda...</p>
                 ) : adminChatMessages.length === 0 ? (
@@ -2170,6 +2192,7 @@ export default function TalabaDashboard() {
                     )
                   })
                 )}
+                <div ref={chatEndRef} />
               </div>
 
               {/* Composer form */}

@@ -477,7 +477,7 @@ export default function AdminTolovlarPage() {
             </div>
 
             {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto pr-2 space-y-4 text-xs sm:text-sm">
+            <div className="flex-1 min-h-0 overflow-y-auto pr-2 space-y-4 text-xs sm:text-sm">
               {/* Info Grid */}
               <div className={`p-4 rounded-2xl border space-y-3 ${
                 isLight ? 'bg-slate-50/50 border-slate-100' : 'bg-slate-900/10 border-white/5'

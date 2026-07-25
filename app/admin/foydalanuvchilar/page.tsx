@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -161,6 +161,9 @@ export default function AdminUsersPage() {
   const [loadingChat, setLoadingChat] = useState(false)
   const [sendingChat, setSendingChat] = useState(false)
   const [chatInput, setChatInput] = useState('')
+  const chatEndRef = useRef<HTMLDivElement | null>(null)
+  const chatContainerRef = useRef<HTMLDivElement | null>(null)
+  const prevChatCountRef = useRef(0)
 
   const deleteModal = useConfirmModal<string>()
   const rejectModal = useConfirmModal<string>()
@@ -296,9 +299,9 @@ export default function AdminUsersPage() {
     }
   }
 
-  const loadChatMessages = async (studentId: string) => {
+  const loadChatMessages = async (studentId: string, silent = false) => {
     try {
-      setLoadingChat(true)
+      if (!silent) setLoadingChat(true)
       const { messages } = await fetchAdminChat(studentId)
       setChatMessages(messages.map((message) => ({
         id: message.id,
@@ -312,21 +315,46 @@ export default function AdminUsersPage() {
     } catch (error) {
       console.error('Chat yuklashda xato:', error)
     } finally {
-      setLoadingChat(false)
+      if (!silent) setLoadingChat(false)
     }
   }
 
   useEffect(() => {
     if (selectedUser && selectedUser.role === 'talaba') {
       void loadStudentPayments(selectedUser.id)
-      if (detailTab === 'chat') {
-        void loadChatMessages(selectedUser.id)
-      }
     } else {
       setPayments([])
-      setChatMessages([])
     }
+  }, [selectedUser])
+
+  useEffect(() => {
+    if (!selectedUser || selectedUser.role !== 'talaba' || detailTab !== 'chat') {
+      setChatMessages([])
+      return
+    }
+
+    const studentId = selectedUser.id
+    prevChatCountRef.current = 0
+    void loadChatMessages(studentId)
+    const interval = setInterval(() => {
+      void loadChatMessages(studentId, true)
+    }, 4000)
+    return () => clearInterval(interval)
   }, [selectedUser, detailTab])
+
+  useEffect(() => {
+    if (detailTab !== 'chat') return
+
+    const prevCount = prevChatCountRef.current
+    prevChatCountRef.current = chatMessages.length
+    if (chatMessages.length === prevCount) return
+
+    const container = chatContainerRef.current
+    const nearBottom = !container || container.scrollHeight - container.scrollTop - container.clientHeight < 120
+    if (prevCount === 0 || nearBottom) {
+      chatEndRef.current?.scrollIntoView({ block: 'end' })
+    }
+  }, [chatMessages, detailTab])
 
   const handleSendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1021,7 +1049,7 @@ export default function AdminUsersPage() {
           ) : (
             <>
               {/* Active User Header */}
-              <div className={`p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+              <div className={`p-4 border-b shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                 isLight ? 'border-slate-200 bg-white' : 'border-white/5 bg-[#17212b]'
               }`}>
                 <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
@@ -1144,7 +1172,7 @@ export default function AdminUsersPage() {
               </div>
 
               {/* Details Pane Body */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                 
                  {/* Details Tab Menu */}
                 <div className={`flex gap-1 rounded-xl p-1 border overflow-x-auto no-scrollbar flex-nowrap ${
@@ -1406,7 +1434,7 @@ export default function AdminUsersPage() {
                     <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-3 shrink-0">Talaba bilan suhbat</h3>
                     
                     {/* Chat bubbles container */}
-                    <div className="flex-1 overflow-y-auto space-y-3 pr-1 mb-3 custom-scrollbar flex flex-col min-h-0">
+                    <div ref={chatContainerRef} className="flex-1 overflow-y-auto space-y-3 pr-1 mb-3 custom-scrollbar flex flex-col min-h-0">
                       {loadingChat ? (
                         <p className="text-center text-xs text-slate-500 my-auto">Yuklanmoqda...</p>
                       ) : chatMessages.length === 0 ? (
@@ -1435,6 +1463,7 @@ export default function AdminUsersPage() {
                           )
                         })
                       )}
+                      <div ref={chatEndRef} />
                     </div>
 
                     {/* Chat composer form */}

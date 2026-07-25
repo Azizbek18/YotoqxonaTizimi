@@ -497,7 +497,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
             </div>
 
             {/* Notifications List */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4 pr-3 custom-scrollbar text-xs sm:text-sm">
+            <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 pr-3 custom-scrollbar text-xs sm:text-sm">
               {notifications.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
                   <div className={`p-4 rounded-full ${isLight ? 'bg-blue-50 text-blue-500' : 'bg-blue-500/10 text-cyan-400'} animate-pulse`}>

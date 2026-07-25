@@ -125,7 +125,7 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <div className={`flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-8 py-2 ${isLight ? '' : ''}`}>
+          <div className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 sm:px-8 py-2 ${isLight ? '' : ''}`}>
             <div className="min-h-70 flex flex-col justify-start py-4">
               <AnimatePresence mode="wait">
                 <motion.div

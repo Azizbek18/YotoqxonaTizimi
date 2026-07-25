@@ -4,7 +4,7 @@ import { requireAdmin } from '@/server/auth/guards'
 import { ApiError, getApiError } from '@/server/http/api-error'
 
 function errorResponse(error: unknown) {
-  console.error('Admin chat API error:', error)
+  console.error('Admin chat API error:', error instanceof Error ? (error.stack ?? error.message) : error)
   const response = getApiError(error, 'Chat so\'rovini bajarib bo\'lmadi')
   return NextResponse.json({ ok: false, ...response.body }, { status: response.status })
 }
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     const supabase = getServiceSupabase()
     const { data: student, error: studentError } = await supabase
       .from('users')
-      .select('id')
+      .select('id, full_name, faculty, direction, course')
       .eq('id', studentId)
       .eq('role', 'talaba')
       .maybeSingle()
@@ -49,12 +49,17 @@ export async function POST(request: NextRequest) {
       .from('arizalar')
       .insert({
         student_id: studentId,
+        student_name: student.full_name,
+        faculty: student.faculty,
+        direction: student.direction,
+        course: student.course ?? 1,
         type: 'chat',
         title: 'admin',
         reason: message,
         text: message,
         level: 'info',
         status: 'submitted',
+        date: new Date().toISOString(),
       })
       .select()
       .single()

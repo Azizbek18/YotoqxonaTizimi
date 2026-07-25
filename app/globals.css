@@ -296,6 +296,139 @@ html.theme-light [class*="border-[#0b1120]"] {
   border-color: rgba(148, 163, 184, 0.18) !important;
 }
 
+/* ============================================================
+   DUOLINGO-STYLE CHUNKY BUTTONS & CARDS
+   Global retrofit (this app has no shared Button/Card
+   component — every page hardcodes Tailwind classes directly,
+   so broad visual changes are applied here via attribute
+   selectors, same approach as the light-mode overrides above).
+   Adds a raised 3D "shelf" edge + press-down animation to every
+   button (and button-styled <a> link), and a chunky
+   bordered-shadow look to every card, WITHOUT touching each
+   element's own background/text color.
+
+   Exclusions (kept flat, no chunky effect):
+   - icon-only buttons/badges: exact single-padding tokens
+     p-1 / p-1.5 / p-2 / p-2.5 (real action buttons use split
+     px- and py- padding instead, so this reliably distinguishes
+     small icon buttons and small icon-tile badges from real
+     buttons/cards without excluding legitimate ones)
+   - form controls: [class*="outline-none"] (inputs/selects/
+     textareas always carry this; no card ever does)
+   - [class*="rounded-full"] elements: pill toggles/switches
+     (e.g. the theme switch), circular FABs (e.g. the floating
+     AI-chat button) and round avatar links — a flat-bottomed
+     rectangular "shelf" reads as a rendering glitch on a
+     circular/pill shape, so those keep their own shadow instead.
+
+   <a> links only get this treatment when they carry both
+   `border` and a `rounded-{xl,2xl,3xl,4xl,[...]}` class — the
+   same "looks like a button/card" signal used for cards below —
+   so plain text/nav links (no border) are never touched.
+
+   box-shadow is intentionally declared WITHOUT !important, inside
+   `@layer components` (a layer Tailwind's own utilities — incl.
+   `shadow-*`, `hover:shadow-*`, colored `shadow-cyan-500/20`
+   glows, etc. — are emitted after, per `@import "tailwindcss"`).
+   Per the CSS cascade-layers spec, a later layer always wins over
+   an earlier one regardless of selector specificity, so: elements
+   with their own shadow-* utility keep exactly the shadow their
+   author chose, and every other element falls through to this
+   default. transform/transition stay !important so the
+   press-down feel itself stays snappy regardless of whatever
+   transition-duration utility a given element also carries.
+   ============================================================ */
+
+@layer components {
+  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
+  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
+  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
+  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
+  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
+  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]) {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 5px 0 0 rgba(0, 0, 0, 0.55),
+      0 9px 18px -6px rgba(0, 0, 0, 0.4);
+    transform: translateY(0);
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease,
+      filter 0.15s ease !important;
+  }
+
+  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):hover:not(:active):not(:disabled),
+  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):hover:not(:active),
+  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):hover:not(:active),
+  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):hover:not(:active),
+  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):hover:not(:active),
+  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):hover:not(:active) {
+    filter: brightness(1.06);
+  }
+
+  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active:not(:disabled),
+  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
+  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
+  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
+  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
+  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active {
+    transform: translateY(5px) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 0 0 rgba(0, 0, 0, 0.55);
+    transition:
+      transform 0.05s ease,
+      box-shadow 0.05s ease !important;
+  }
+
+  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):disabled {
+    box-shadow: 0 5px 0 0 rgba(0, 0, 0, 0.25);
+  }
+
+  html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
+  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
+  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
+  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
+  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
+  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]) {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      0 5px 0 0 rgba(15, 23, 42, 0.32),
+      0 9px 16px -6px rgba(15, 23, 42, 0.22);
+  }
+
+  html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active:not(:disabled),
+  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
+  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
+  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
+  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
+  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 0 0 rgba(15, 23, 42, 0.32);
+  }
+
+  html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):disabled {
+    box-shadow: 0 5px 0 0 rgba(15, 23, 42, 0.16);
+  }
+
+  div[class*="rounded-2xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
+  div[class*="rounded-3xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
+  div[class*="rounded-4xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
+  div[class*="rounded-["][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]) {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 6px 0 0 rgba(0, 0, 0, 0.4),
+      0 12px 26px -6px rgba(0, 0, 0, 0.32);
+  }
+
+  html.theme-light div[class*="rounded-2xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
+  html.theme-light div[class*="rounded-3xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
+  html.theme-light div[class*="rounded-4xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
+  html.theme-light div[class*="rounded-["][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]) {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      0 6px 0 0 rgba(15, 23, 42, 0.22),
+      0 12px 24px -6px rgba(15, 23, 42, 0.16);
+  }
+}
+
 * {
   scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
 }

@@ -1,4 +1,4 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { findRoleByUserId } from '@/lib/auth-tables'
 import type { Database } from '@/types/database.generated'
@@ -30,27 +30,27 @@ export async function proxy(request: NextRequest) {
     request: { headers: requestHeaders },
   })
 
-  const rebuildResponse = () => {
-    const existingCookies = response.cookies.getAll()
-    response = NextResponse.next({ request: { headers: requestHeaders } })
-    existingCookies.forEach((cookie) => response.cookies.set(cookie))
-  }
-
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) { return request.cookies.get(name)?.value },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options })
-          rebuildResponse()
-          response.cookies.set({ name, value, ...options })
+        getAll() {
+          return request.cookies.getAll()
         },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: '', ...options })
-          rebuildResponse()
-          response.cookies.set({ name, value: '', ...options })
+        setAll(cookiesToSet) {
+          // Cookies must land on the *request* too so the values this
+          // Supabase client (and anything reading `request.cookies` later
+          // in this function) sees are already up to date, then the
+          // response is rebuilt from that request so the Set-Cookie
+          // headers actually reach the browser.
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value)
+          })
+          response = NextResponse.next({ request: { headers: requestHeaders } })
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options)
+          })
         },
       },
     }

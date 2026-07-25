@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
@@ -13,6 +13,7 @@ import { useThemeStore } from '@/lib/stores/theme-store';
 import { supabase } from '@/lib/supabase';
 import { getSafeUser } from '@/lib/auth-session';
 import { extractFloor } from '@/lib/floor';
+import { usePollingEffect, useChatAutoScroll } from '@/lib/hooks/useChatPolling';
 import ProfileLoadError from '@/components/talaba/ProfileLoadError';
 import CustomSelect from '@/components/ui/CustomSelect';
 import toast from 'react-hot-toast';
@@ -208,9 +209,6 @@ export default function TalabaDashboard() {
   const [loadingAdminChat, setLoadingAdminChat] = useState(false);
   const [sendingAdminChat, setSendingAdminChat] = useState(false);
   const [adminChatInput, setAdminChatInput] = useState('');
-  const chatEndRef = useRef<HTMLDivElement | null>(null);
-  const chatContainerRef = useRef<HTMLDivElement | null>(null);
-  const prevAdminChatCountRef = useRef(0);
 
   const getAppStatusInfo = (status: string) => {
     switch (status) {
@@ -382,30 +380,11 @@ export default function TalabaDashboard() {
     }
   };
 
-  useEffect(() => {
-    if (!profile || !isChatModalOpen) return;
+  const isAdminChatActive = Boolean(profile) && isChatModalOpen;
 
-    prevAdminChatCountRef.current = 0;
-    void loadChatMessages();
-    const interval = setInterval(() => {
-      void loadChatMessages(true);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [profile, isChatModalOpen]);
+  usePollingEffect(loadChatMessages, isAdminChatActive, profile?.id);
 
-  useEffect(() => {
-    if (!isChatModalOpen) return;
-
-    const prevCount = prevAdminChatCountRef.current;
-    prevAdminChatCountRef.current = adminChatMessages.length;
-    if (adminChatMessages.length === prevCount) return;
-
-    const container = chatContainerRef.current;
-    const nearBottom = !container || container.scrollHeight - container.scrollTop - container.clientHeight < 120;
-    if (prevCount === 0 || nearBottom) {
-      chatEndRef.current?.scrollIntoView({ block: 'end' });
-    }
-  }, [adminChatMessages, isChatModalOpen]);
+  const { containerRef: chatContainerRef, endRef: chatEndRef } = useChatAutoScroll(adminChatMessages.length, isAdminChatActive);
 
   const handleSendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();

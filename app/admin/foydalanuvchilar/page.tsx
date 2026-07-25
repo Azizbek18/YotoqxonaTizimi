@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -30,6 +30,7 @@ import {
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
+import { usePollingEffect, useChatAutoScroll } from '@/lib/hooks/useChatPolling'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchAdminPayments } from '@/features/payments/client/api'
 import { fetchAdminChat, sendAdminChat } from '@/features/applications/client/admin-chat-api'
@@ -161,9 +162,6 @@ export default function AdminUsersPage() {
   const [loadingChat, setLoadingChat] = useState(false)
   const [sendingChat, setSendingChat] = useState(false)
   const [chatInput, setChatInput] = useState('')
-  const chatEndRef = useRef<HTMLDivElement | null>(null)
-  const chatContainerRef = useRef<HTMLDivElement | null>(null)
-  const prevChatCountRef = useRef(0)
 
   const deleteModal = useConfirmModal<string>()
   const rejectModal = useConfirmModal<string>()
@@ -327,34 +325,19 @@ export default function AdminUsersPage() {
     }
   }, [selectedUser])
 
-  useEffect(() => {
-    if (!selectedUser || selectedUser.role !== 'talaba' || detailTab !== 'chat') {
-      setChatMessages([])
-      return
-    }
-
-    const studentId = selectedUser.id
-    prevChatCountRef.current = 0
-    void loadChatMessages(studentId)
-    const interval = setInterval(() => {
-      void loadChatMessages(studentId, true)
-    }, 4000)
-    return () => clearInterval(interval)
-  }, [selectedUser, detailTab])
+  const isChatActive = Boolean(selectedUser && selectedUser.role === 'talaba' && detailTab === 'chat')
 
   useEffect(() => {
-    if (detailTab !== 'chat') return
+    if (!isChatActive) setChatMessages([])
+  }, [isChatActive])
 
-    const prevCount = prevChatCountRef.current
-    prevChatCountRef.current = chatMessages.length
-    if (chatMessages.length === prevCount) return
+  usePollingEffect(
+    (silent) => loadChatMessages(selectedUser!.id, silent),
+    isChatActive,
+    selectedUser?.id,
+  )
 
-    const container = chatContainerRef.current
-    const nearBottom = !container || container.scrollHeight - container.scrollTop - container.clientHeight < 120
-    if (prevCount === 0 || nearBottom) {
-      chatEndRef.current?.scrollIntoView({ block: 'end' })
-    }
-  }, [chatMessages, detailTab])
+  const { containerRef: chatContainerRef, endRef: chatEndRef } = useChatAutoScroll(chatMessages.length, isChatActive)
 
   const handleSendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault()

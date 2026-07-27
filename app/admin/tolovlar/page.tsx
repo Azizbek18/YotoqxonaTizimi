@@ -273,41 +273,41 @@ export default function AdminTolovlarPage() {
       </div>
 
       {/* Stats Cards Deck */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-6">
         {/* Waiting Card */}
-        <div className={`relative p-5 rounded-3xl border backdrop-blur-xl ${surfaceBg} border-amber-500/20 shadow-[0_10px_30px_rgba(245,158,11,0.04)]`}>
-          <div className="flex items-center justify-between mb-4">
-            <span className={`text-[9px] font-black uppercase tracking-wider ${textMuted}`}>Kutilmoqda</span>
-            <div className={`p-2 rounded-xl ${isLight ? 'bg-amber-50 text-amber-600' : 'bg-amber-500/10 text-amber-400'}`}>
+        <div className={`relative p-3 sm:p-5 rounded-2xl sm:rounded-3xl border backdrop-blur-xl ${surfaceBg} border-amber-500/20 shadow-[0_10px_30px_rgba(245,158,11,0.04)]`}>
+          <div className="flex items-center justify-between mb-2 sm:mb-4">
+            <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider truncate ${textMuted}`}>Kutilmoqda</span>
+            <div className={`hidden sm:flex p-2 rounded-xl shrink-0 ${isLight ? 'bg-amber-50 text-amber-600' : 'bg-amber-500/10 text-amber-400'}`}>
               <Clock size={16} />
             </div>
           </div>
-          <p className={`text-3xl font-black tracking-tight ${textStrong}`}>{countWaiting} ta</p>
-          <p className="text-[10px] text-slate-500 mt-2">Tasdiqlash kutilayotgan cheklar</p>
+          <p className={`text-lg sm:text-3xl font-black tracking-tight ${textStrong}`}>{countWaiting} ta</p>
+          <p className="hidden sm:block text-[10px] text-slate-500 mt-2">Tasdiqlash kutilayotgan cheklar</p>
         </div>
 
         {/* Approved Card */}
-        <div className={`relative p-5 rounded-3xl border backdrop-blur-xl ${surfaceBg} border-emerald-500/20 shadow-[0_10px_30px_rgba(16,185,129,0.04)]`}>
-          <div className="flex items-center justify-between mb-4">
-            <span className={`text-[9px] font-black uppercase tracking-wider ${textMuted}`}>Tasdiqlangan</span>
-            <div className={`p-2 rounded-xl ${isLight ? 'bg-emerald-50 text-emerald-600' : 'bg-emerald-500/10 text-emerald-400'}`}>
+        <div className={`relative p-3 sm:p-5 rounded-2xl sm:rounded-3xl border backdrop-blur-xl ${surfaceBg} border-emerald-500/20 shadow-[0_10px_30px_rgba(16,185,129,0.04)]`}>
+          <div className="flex items-center justify-between mb-2 sm:mb-4">
+            <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider truncate ${textMuted}`}>Tasdiqlangan</span>
+            <div className={`hidden sm:flex p-2 rounded-xl shrink-0 ${isLight ? 'bg-emerald-50 text-emerald-600' : 'bg-emerald-500/10 text-emerald-400'}`}>
               <Check size={16} />
             </div>
           </div>
-          <p className={`text-3xl font-black tracking-tight ${textStrong}`}>{countApproved} ta</p>
-          <p className="text-[10px] text-slate-500 mt-2">Qabul qilingan oylar</p>
+          <p className={`text-lg sm:text-3xl font-black tracking-tight ${textStrong}`}>{countApproved} ta</p>
+          <p className="hidden sm:block text-[10px] text-slate-500 mt-2">Qabul qilingan oylar</p>
         </div>
 
         {/* Rejected Card */}
-        <div className={`relative p-5 rounded-3xl border backdrop-blur-xl ${surfaceBg} border-rose-500/20 shadow-[0_10px_30px_rgba(244,63,94,0.04)]`}>
-          <div className="flex items-center justify-between mb-4">
-            <span className={`text-[9px] font-black uppercase tracking-wider ${textMuted}`}>Rad etilgan</span>
-            <div className={`p-2 rounded-xl ${isLight ? 'bg-rose-50 text-rose-600' : 'bg-rose-500/10 text-rose-400'}`}>
+        <div className={`relative p-3 sm:p-5 rounded-2xl sm:rounded-3xl border backdrop-blur-xl ${surfaceBg} border-rose-500/20 shadow-[0_10px_30px_rgba(244,63,94,0.04)]`}>
+          <div className="flex items-center justify-between mb-2 sm:mb-4">
+            <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider truncate ${textMuted}`}>Rad etilgan</span>
+            <div className={`hidden sm:flex p-2 rounded-xl shrink-0 ${isLight ? 'bg-rose-50 text-rose-600' : 'bg-rose-500/10 text-rose-400'}`}>
               <X size={16} />
             </div>
           </div>
-          <p className={`text-3xl font-black tracking-tight ${textStrong}`}>{countRejected} ta</p>
-          <p className="text-[10px] text-slate-500 mt-2">Xatolik sababli qaytarilganlar</p>
+          <p className={`text-lg sm:text-3xl font-black tracking-tight ${textStrong}`}>{countRejected} ta</p>
+          <p className="hidden sm:block text-[10px] text-slate-500 mt-2">Xatolik sababli qaytarilganlar</p>
         </div>
       </div>
 
@@ -381,20 +381,20 @@ export default function AdminTolovlarPage() {
                 </div>
               )}
 
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex items-center gap-3">
+              <div className="flex items-start justify-between gap-2 mb-4">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className={`p-2.5 rounded-xl shrink-0 ${isLight ? 'bg-slate-50 text-slate-600' : 'bg-white/[0.03] text-slate-400'}`}>
                     <User size={18} />
                   </div>
                   <div className="min-w-0">
-                    <h4 className={`text-sm font-black truncate max-w-[160px] ${textStrong}`}>
+                    <h4 className={`text-sm font-black truncate ${textStrong}`}>
                       {group.student_name}
                     </h4>
                     <p className={`text-[10px] mt-0.5 ${textMuted}`}>Talaba</p>
                   </div>
                 </div>
 
-                <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border whitespace-nowrap ${
+                <span className={`shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border whitespace-nowrap ${
                   group.months.length > 1 ? 'mt-5' : ''
                 } ${getStatusColor(group.status)}`}>
                   {getStatusLabel(group.status)}

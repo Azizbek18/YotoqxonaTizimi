@@ -439,7 +439,7 @@ export default function AdminArizalar() {
                 <p className={`text-sm leading-relaxed ${textBody}`}>{detailModal.request.text}</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className={`p-4 rounded-xl border ${cardBg}`}>
                   <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted} mb-2`}>Daraja</h3>
                   <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[detailModal.request.level]}`}>

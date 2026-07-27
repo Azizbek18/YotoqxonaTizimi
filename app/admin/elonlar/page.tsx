@@ -755,14 +755,14 @@ export default function AdminElonlarPage() {
                 </label>
 
                 {/* Submit / Cancel Buttons */}
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-4 border-t border-white/5">
                   <button
                     type="button"
                     onClick={() => {
                       setIsModalOpen(false)
                       setEditingElon(null)
                     }}
-                    className={`rounded-xl px-5 py-3 text-xs font-bold uppercase tracking-wider transition ${
+                    className={`w-full sm:w-auto rounded-xl px-5 py-3 text-xs font-bold uppercase tracking-wider transition ${
                       isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-600' : 'bg-white/5 hover:bg-white/10 text-slate-300'
                     }`}
                   >
@@ -772,7 +772,7 @@ export default function AdminElonlarPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition disabled:cursor-not-allowed disabled:opacity-60 active:scale-95 cursor-pointer"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition disabled:cursor-not-allowed disabled:opacity-60 active:scale-95 cursor-pointer"
                   >
                     <Send size={14} />
                     {submitting ? 'Saqlanmoqda...' : editingElon ? 'Saqlash' : 'Nashr qilish'}

@@ -438,7 +438,20 @@ export default function AdminReportsPage() {
                     startY += rowHeight
                 })
 
-                doc.save(`foydalanuvchilar_${new Date().toISOString().slice(0, 10)}.pdf`)
+                // doc.save() ishlatilmaydi — jsPDF'ning Node build'ida bu metod
+                // require('fs') orqali faylni diskka yozadi, brauzerda esa xato
+                // beradi/hech narsa yuklamaydi. Excel/CSV kabi Blob + vaqtinchalik
+                // <a> havolasi orqali qo'lda yuklab olish ishonchli ishlaydi.
+                const pdfBlob = doc.output('blob')
+                const pdfUrl = URL.createObjectURL(pdfBlob)
+                const pdfLink = document.createElement('a')
+                pdfLink.href = pdfUrl
+                pdfLink.setAttribute('download', `foydalanuvchilar_${new Date().toISOString().slice(0, 10)}.pdf`)
+                document.body.appendChild(pdfLink)
+                pdfLink.click()
+                document.body.removeChild(pdfLink)
+                URL.revokeObjectURL(pdfUrl)
+
                 toast.success("PDF fayl yuklab olindi", { id: toastId })
                 return
             }
@@ -695,7 +708,7 @@ export default function AdminReportsPage() {
                         <Download size={20} className="text-blue-400" />
                         <div className="text-left">
                             <p className={`text-sm font-semibold ${isLight ? 'text-slate-800' : 'text-white'}`}>PDF Eksport</p>
-                            <p className="text-xs text-slate-400">Tizim hisoboti</p>
+                            <p className="text-xs text-slate-400">Chop etish yoki ko&apos;rsatish uchun jadval</p>
                         </div>
                     </button>
                     <button
@@ -709,7 +722,7 @@ export default function AdminReportsPage() {
                         <Download size={20} className="text-green-400" />
                         <div className="text-left">
                             <p className={`text-sm font-semibold ${isLight ? 'text-slate-800' : 'text-white'}`}>Excel Eksport</p>
-                            <p className="text-xs text-slate-400">Batafsil ma&apos;lumot</p>
+                            <p className="text-xs text-slate-400">Xona bo&apos;yicha guruhlangan, batafsil jadval</p>
                         </div>
                     </button>
                     <button
@@ -723,7 +736,7 @@ export default function AdminReportsPage() {
                         <Download size={20} className="text-purple-400" />
                         <div className="text-left">
                             <p className={`text-sm font-semibold ${isLight ? 'text-slate-800' : 'text-white'}`}>CSV Eksport</p>
-                            <p className="text-xs text-slate-400">Ma&apos;lumotlar tabli</p>
+                            <p className="text-xs text-slate-400">Boshqa dastur/tizimga import qilish uchun xom ma&apos;lumot</p>
                         </div>
                     </button>
                 </div>

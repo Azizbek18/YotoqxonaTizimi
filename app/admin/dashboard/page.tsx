@@ -1114,13 +1114,13 @@ export default function AdminDashboard() {
             </AnimatePresence>
 
             {/* Filtered Students Count Premium Card */}
-            <div className={`p-5 rounded-3xl border backdrop-blur-xl transition-all duration-300 flex items-center gap-5 mb-6 ${
-              filteredStudents.length > 0 
-                ? isLight 
-                  ? 'bg-purple-50/50 border-purple-200/80 shadow-lg shadow-purple-100/40 text-purple-900' 
+            <div className={`p-5 rounded-3xl border backdrop-blur-xl transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 mb-6 ${
+              filteredStudents.length > 0
+                ? isLight
+                  ? 'bg-purple-50/50 border-purple-200/80 shadow-lg shadow-purple-100/40 text-purple-900'
                   : 'bg-purple-500/5 border-purple-500/20 text-purple-200 shadow-[0_0_30px_rgba(168,85,247,0.05)]'
-                : isLight 
-                  ? 'bg-amber-50/50 border-amber-200 text-amber-900 shadow-lg shadow-amber-100/40' 
+                : isLight
+                  ? 'bg-amber-50/50 border-amber-200 text-amber-900 shadow-lg shadow-amber-100/40'
                   : 'bg-amber-500/5 border-amber-500/20 text-amber-200 shadow-[0_0_30px_rgba(245,158,11,0.05)]'
             }`}>
               <div className="relative w-16 h-16 shrink-0 transition-transform duration-500 hover:scale-110 hover:rotate-6">
@@ -1132,14 +1132,14 @@ export default function AdminDashboard() {
                   className="object-contain"
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-3xl font-black tracking-tight flex items-baseline gap-1.5">
-                  {filteredStudents.length} 
+                  {filteredStudents.length}
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-400">ta talaba</span>
                 </p>
                 <p className={`text-xs mt-1 ${textMuted}`}>
-                  {filteredStudents.length > 0 
-                    ? 'Tanlangan filtrlarga mos keluvchi yuklab olinadigan talabalar soni' 
+                  {filteredStudents.length > 0
+                    ? 'Tanlangan filtrlarga mos keluvchi yuklab olinadigan talabalar soni'
                     : 'Filtrlarga mos talabalar topilmadi. Iltimos, boshqa filtrlarni tanlang.'}
                 </p>
               </div>

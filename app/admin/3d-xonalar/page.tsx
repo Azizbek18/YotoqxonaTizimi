@@ -31,6 +31,8 @@ interface RoomOccupancySnapshot {
 
 type EditableBlock = { roomNumber: string; size: RoomBlockSize }
 
+const snapshotBlocks = (left: EditableBlock[], right: EditableBlock[]) => JSON.stringify({ left, right })
+
 type PositionedRoom = {
   roomNumber: string
   side: RoomBlockSide
@@ -102,6 +104,11 @@ export default function Admin3DXonalarPage() {
   const [saving, setSaving] = useState(false)
   const [leftBlocks, setLeftBlocks] = useState<EditableBlock[]>([])
   const [rightBlocks, setRightBlocks] = useState<EditableBlock[]>([])
+  // Snapshot of whatever's actually persisted on the server for the active
+  // floor — compared against the live editor state so we can warn before
+  // silently discarding unsaved edits (e.g. switching floor tabs).
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() => snapshotBlocks([], []))
+  const isDirty = snapshotBlocks(leftBlocks, rightBlocks) !== lastSavedSnapshot
 
   // Debounced snapshot of the editable lists — the 3D scene rebuilds from
   // this instead of the raw state, so typing a room number doesn't tear
@@ -159,11 +166,13 @@ export default function Admin3DXonalarPage() {
       const right = blocks.filter((b) => b.side === 'right').map((b) => ({ roomNumber: b.roomNumber, size: b.size }))
       setLeftBlocks(left)
       setRightBlocks(right)
+      setLastSavedSnapshot(snapshotBlocks(left, right))
     } catch (error) {
       console.error('Qavat tarxini yuklashda xato:', error)
       toast.error('Qavat tarxini yuklab bo\'lmadi')
       setLeftBlocks([])
       setRightBlocks([])
+      setLastSavedSnapshot(snapshotBlocks([], []))
     } finally {
       setLoading(false)
     }
@@ -177,6 +186,18 @@ export default function Admin3DXonalarPage() {
   useEffect(() => {
     void loadFloorLayout(activeFloor)
   }, [activeFloor])
+
+  // Warn before the browser tab is closed/refreshed with unsaved edits —
+  // switching floors is guarded separately (see the floor tab buttons).
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -211,20 +232,25 @@ export default function Admin3DXonalarPage() {
   }
 
   const handleSave = async () => {
-    const allEmpty = [...leftBlocks, ...rightBlocks].every((b) => !b.roomNumber.trim())
-    if ([...leftBlocks, ...rightBlocks].some((b) => !b.roomNumber.trim())) {
-      toast.error(allEmpty ? "Kamida bitta xona qo'shing" : "Barcha xona raqamlarini to'ldiring")
+    // Bo'sh (raqami kiritilmagan) qatorlar shunchaki e'tiborsiz qoldiriladi —
+    // avval bittasi bo'sh qolsa BUTUN saqlash bloklanardi, bu esa boshqa
+    // to'ldirilgan xonalarning ham saqlanib qolishiga xalaqit berardi.
+    const filledLeft = leftBlocks.filter((b) => b.roomNumber.trim())
+    const filledRight = rightBlocks.filter((b) => b.roomNumber.trim())
+    if (filledLeft.length === 0 && filledRight.length === 0) {
+      toast.error("Kamida bitta xona qo'shing")
       return
     }
 
     const combined: RoomLayoutBlock[] = [
-      ...leftBlocks.map((b, i) => ({ roomNumber: b.roomNumber.trim(), side: 'left' as const, size: b.size, position: i })),
-      ...rightBlocks.map((b, i) => ({ roomNumber: b.roomNumber.trim(), side: 'right' as const, size: b.size, position: i })),
+      ...filledLeft.map((b, i) => ({ roomNumber: b.roomNumber.trim(), side: 'left' as const, size: b.size, position: i })),
+      ...filledRight.map((b, i) => ({ roomNumber: b.roomNumber.trim(), side: 'right' as const, size: b.size, position: i })),
     ]
 
     setSaving(true)
     try {
       await saveFloorLayout(activeFloor, combined)
+      setLastSavedSnapshot(snapshotBlocks(leftBlocks, rightBlocks))
       toast.success(`${activeFloor}-qavat tarxi saqlandi`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Saqlashda xatolik yuz berdi")
@@ -543,14 +569,22 @@ export default function Admin3DXonalarPage() {
       </div>
 
       {/* Floor Selection Tabs */}
-      <div className="flex gap-2 p-1.5 rounded-2xl bg-slate-100/50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 w-fit">
+      <div className="flex gap-2 p-1.5 rounded-2xl bg-slate-100/50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 w-full overflow-x-auto no-scrollbar sm:w-fit">
         {floors.map((fl) => {
           const active = fl === activeFloor
           return (
             <button
               key={fl}
-              onClick={() => setActiveFloor(fl)}
-              className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 ${
+              onClick={() => {
+                if (fl === activeFloor) return
+                if (isDirty && !window.confirm(
+                  `${activeFloor}-qavatda saqlanmagan o'zgarishlar bor. Ularni saqlamasdan boshqa qavatga o'tsangiz, o'zgarishlar yo'qoladi. Davom etilsinmi?`
+                )) {
+                  return
+                }
+                setActiveFloor(fl)
+              }}
+              className={`shrink-0 whitespace-nowrap px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 ${
                 active
                   ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-white/5'
@@ -571,12 +605,12 @@ export default function Admin3DXonalarPage() {
         <>
           {/* Editor */}
           <div className={`backdrop-blur-xl border rounded-[2rem] p-6 ${surfaceBg}`}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="min-w-0">
                 <h2 className={`text-lg font-black ${textStrong}`}>{activeFloor}-qavat tarxi</h2>
                 <p className={`text-xs mt-1 ${textMuted}`}>Zal ikki tomoni bo&apos;yicha xonalarni joylashtiring — lego kabi yig&apos;ing.</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 shrink-0">
                 <button
                   onClick={() => void loadFloorLayout(activeFloor)}
                   className={`p-2.5 rounded-xl border transition-all ${isLight ? 'border-slate-200 hover:bg-slate-50' : 'border-white/10 hover:bg-white/5 text-slate-300'}`}
@@ -670,17 +704,17 @@ export default function Admin3DXonalarPage() {
                 exit={{ opacity: 0, y: -20 }}
                 className={`rounded-[2rem] border p-6 sm:p-8 backdrop-blur-2xl shadow-2xl ${surfaceBg}`}
               >
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-12 h-12 shrink-0 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
                       <Building2 size={24} />
                     </div>
-                    <div>
-                      <h2 className={`text-2xl font-black tracking-tight ${textStrong}`}>Xona #{selectedRoomData.number}</h2>
+                    <div className="min-w-0">
+                      <h2 className={`text-2xl font-black tracking-tight truncate ${textStrong}`}>Xona #{selectedRoomData.number}</h2>
                       <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{activeFloor}-qavat</p>
                     </div>
                   </div>
-                  <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${cardBg}`}>
+                  <div className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl border ${cardBg}`}>
                     <Info size={16} className="text-cyan-400" />
                     <span className={`text-[10px] font-black uppercase tracking-widest ${textStrong}`}>Tafsilotlar</span>
                   </div>
@@ -710,15 +744,15 @@ export default function Admin3DXonalarPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {selectedRoomData.students.map((student) => (
                           <div key={student.id} className={`p-4 rounded-2xl border flex items-center justify-between gap-4 ${cardBg}`}>
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 font-bold text-xs uppercase">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 shrink-0 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 font-bold text-xs uppercase">
                                 {student.name.slice(0, 2)}
                               </div>
-                              <p className={`text-sm font-bold ${textStrong}`}>{student.name}</p>
+                              <p className={`text-sm font-bold truncate ${textStrong}`}>{student.name}</p>
                             </div>
                             <Link
                               href={`/admin/foydalanuvchilar?id=${student.id}`}
-                              className="p-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-all border border-cyan-500/20"
+                              className="shrink-0 p-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-all border border-cyan-500/20"
                             >
                               <ExternalLink size={14} />
                             </Link>

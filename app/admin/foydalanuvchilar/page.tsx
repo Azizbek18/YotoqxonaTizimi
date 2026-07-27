@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -26,6 +27,7 @@ import {
   CheckCircle2,
   Clock,
   FileText,
+  MoreVertical,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
@@ -168,6 +170,10 @@ export default function AdminUsersPage() {
   const rejectModal = useConfirmModal<string>()
   const [editModal, setEditModal] = useState<{ isOpen: boolean; user?: UserRow }>({ isOpen: false })
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null)
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
+  const [actionsMenuPos, setActionsMenuPos] = useState<{ top: number; left: number } | null>(null)
+  const actionsButtonRef = useRef<HTMLButtonElement>(null)
+  const ACTIONS_MENU_WIDTH = 192
   const [editingRole, setEditingRole] = useState<UserRow['role']>('talaba')
   const [activeEditTab, setActiveEditTab] = useState<'asosiy' | 'hujjatlar' | 'oila'>('asosiy')
 
@@ -319,12 +325,32 @@ export default function AdminUsersPage() {
   }
 
   useEffect(() => {
+    setActionsMenuOpen(false)
     if (selectedUser && selectedUser.role === 'talaba') {
       void loadStudentPayments(selectedUser.id)
     } else {
       setPayments([])
     }
   }, [selectedUser])
+
+  useEffect(() => {
+    if (!actionsMenuOpen) return
+    const close = () => setActionsMenuOpen(false)
+    window.addEventListener('resize', close)
+    return () => window.removeEventListener('resize', close)
+  }, [actionsMenuOpen])
+
+  const openActionsMenu = () => {
+    const rect = actionsButtonRef.current?.getBoundingClientRect()
+    if (rect) {
+      const left = Math.min(
+        Math.max(8, rect.right - ACTIONS_MENU_WIDTH),
+        window.innerWidth - ACTIONS_MENU_WIDTH - 8
+      )
+      setActionsMenuPos({ top: rect.bottom + 8, left })
+    }
+    setActionsMenuOpen(true)
+  }
 
   const isChatActive = Boolean(selectedUser && selectedUser.role === 'talaba' && detailTab === 'chat')
 
@@ -1108,6 +1134,69 @@ export default function AdminUsersPage() {
                       )}
                     </div>
                   </div>
+
+                  <button
+                    ref={actionsButtonRef}
+                    onClick={() => (actionsMenuOpen ? setActionsMenuOpen(false) : openActionsMenu())}
+                    className={`shrink-0 p-2 rounded-lg border transition-all ${
+                      actionsMenuOpen
+                        ? isLight ? 'border-slate-300 bg-slate-100 text-slate-700' : 'border-white/20 bg-white/10 text-white'
+                        : isLight ? 'border-slate-200 bg-white hover:bg-slate-50 text-slate-500' : 'border-white/10 bg-white/5 hover:bg-white/10 text-slate-300'
+                    }`}
+                    title="Amallar"
+                  >
+                    <MoreVertical size={16} />
+                  </button>
+                  {typeof document !== 'undefined' && createPortal(
+                    <AnimatePresence>
+                      {actionsMenuOpen && actionsMenuPos && (
+                        <>
+                          <button
+                            type="button"
+                            aria-label="Menyuni yopish"
+                            onClick={() => setActionsMenuOpen(false)}
+                            className="fixed inset-0 z-40 cursor-default"
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: -6 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                            transition={{ duration: 0.15 }}
+                            style={{ top: actionsMenuPos.top, left: actionsMenuPos.left, width: ACTIONS_MENU_WIDTH }}
+                            className={`fixed z-50 rounded-2xl border p-1.5 space-y-1 shadow-2xl backdrop-blur-xl ${
+                              isLight ? 'bg-white border-slate-200' : 'bg-[#182533] border-white/10'
+                            }`}
+                          >
+                            <button
+                              onClick={() => {
+                                setActionsMenuOpen(false)
+                                handleEditClick(selectedUser)
+                              }}
+                              className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${
+                                isLight ? 'text-slate-700 hover:bg-amber-50 hover:text-amber-700' : 'text-slate-300 hover:bg-amber-500/10 hover:text-amber-400'
+                              }`}
+                            >
+                              <Edit2 size={15} className="transition-transform group-hover:scale-110" />
+                              Tahrirlash
+                            </button>
+                            <button
+                              onClick={() => {
+                                setActionsMenuOpen(false)
+                                handleDeleteClick(selectedUser.id)
+                              }}
+                              className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${
+                                isLight ? 'text-rose-600 hover:bg-rose-50' : 'text-rose-400 hover:bg-rose-500/10'
+                              }`}
+                            >
+                              <Trash2 size={15} className="transition-transform group-hover:scale-110" />
+                              O&apos;chirish
+                            </button>
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>,
+                    document.body
+                  )}
                 </div>
 
                 {/* Header Actions */}
@@ -1130,28 +1219,6 @@ export default function AdminUsersPage() {
                       Rad etish
                     </button>
                   )}
-                  <button
-                    onClick={() => handleEditClick(selectedUser)}
-                    className={`p-2 rounded-lg border transition-all ${
-                      isLight 
-                        ? 'border-slate-200 bg-white hover:bg-slate-50 text-amber-500' 
-                        : 'border-white/10 bg-white/5 hover:bg-white/10 text-amber-400'
-                    }`}
-                    title="Tahrirlash"
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteClick(selectedUser.id)}
-                    className={`p-2 rounded-lg border transition-all ${
-                      isLight 
-                        ? 'border-slate-200 bg-white hover:bg-slate-50 text-rose-500' 
-                        : 'border-white/10 bg-white/5 hover:bg-white/10 text-red-400'
-                    }`}
-                    title="O'chirish"
-                  >
-                    <Trash2 size={16} />
-                  </button>
                 </div>
               </div>
 
@@ -1625,7 +1692,7 @@ export default function AdminUsersPage() {
           )}
           {editModal.user?.source === 'users' && (
             <>
-              <div className="mb-6 flex gap-1 rounded-full border border-white/5 bg-white/5 p-1">
+              <div className="mb-6 flex gap-1 rounded-full border border-white/5 bg-white/5 p-1 overflow-x-auto no-scrollbar flex-nowrap">
                 {([
                   { key: 'asosiy', label: 'Asosiy' },
                   { key: 'hujjatlar', label: 'Hujjat & Manzil' },
@@ -1634,8 +1701,11 @@ export default function AdminUsersPage() {
                   <button
                     key={tab.key}
                     type="button"
-                    onClick={() => setActiveEditTab(tab.key)}
-                    className={`flex-1 rounded-full py-2.5 text-center text-xs font-black uppercase tracking-widest transition-all ${
+                    onClick={(e) => {
+                      setActiveEditTab(tab.key)
+                      e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+                    }}
+                    className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2.5 text-center text-xs font-black uppercase tracking-widest transition-all ${
                       activeEditTab === tab.key
                         ? 'bg-purple-600 text-white shadow-lg'
                         : 'text-slate-400 hover:text-white'

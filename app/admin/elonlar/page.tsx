@@ -374,13 +374,13 @@ export default function AdminElonlarPage() {
         ].map((item, index) => (
           <div
             key={index}
-            className={`rounded-2xl border p-5 bg-gradient-to-br ${item.color} backdrop-blur-md flex items-center justify-between shadow-xs`}
+            className={`rounded-2xl border p-3 sm:p-5 bg-gradient-to-br ${item.color} backdrop-blur-md flex items-center justify-between gap-2 shadow-xs`}
           >
-            <div>
-              <p className={`text-xs font-bold uppercase tracking-wider ${textMuted}`}>{item.title}</p>
-              <h3 className={`mt-2 text-2xl font-black ${textStrong}`}>{item.value}</h3>
+            <div className="min-w-0">
+              <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider break-words ${textMuted}`}>{item.title}</p>
+              <h3 className={`mt-1 sm:mt-2 text-xl sm:text-2xl font-black ${textStrong}`}>{item.value}</h3>
             </div>
-            <div className={`p-3 rounded-xl bg-white/5 border border-white/10`}>
+            <div className={`shrink-0 p-2 sm:p-3 rounded-xl bg-white/5 border border-white/10`}>
               {item.icon}
             </div>
           </div>
@@ -410,7 +410,7 @@ export default function AdminElonlarPage() {
           {/* Filtering controls */}
           <div className="flex flex-wrap items-center gap-3">
             {/* Status Pills */}
-            <div className={`flex rounded-full p-1 border ${borderCol} bg-slate-950/20`}>
+            <div className={`flex w-full sm:w-auto rounded-full p-1 border ${borderCol} bg-slate-950/20`}>
               {([
                 { id: 'all', label: 'Barchasi' },
                 { id: 'published', label: 'Faol' },
@@ -419,7 +419,7 @@ export default function AdminElonlarPage() {
                 <button
                   key={tab.id}
                   onClick={() => setStatusFilter(tab.id)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
+                  className={`flex-1 sm:flex-none rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
                     statusFilter === tab.id
                       ? 'bg-purple-600 text-white shadow-xs'
                       : `text-slate-400 hover:${textStrong}`
@@ -431,7 +431,7 @@ export default function AdminElonlarPage() {
             </div>
 
             {/* Type dropdown */}
-            <div className="shrink-0 w-36">
+            <div className="w-full sm:w-36 sm:shrink-0">
               <CustomSelect
                 value={typeFilter}
                 onChange={(val) => setTypeFilter(val as 'all' | ElonType)}
@@ -439,12 +439,12 @@ export default function AdminElonlarPage() {
                   { value: 'all', label: 'Barcha Turlar' },
                   ...TYPE_OPTIONS.map((type) => ({ value: type, label: type })),
                 ]}
-                className={`rounded-xl border px-3 py-2 text-xs font-bold ${inputBg}`}
+                className={`w-full rounded-xl border px-3 py-2 text-xs font-bold ${inputBg}`}
               />
             </div>
 
             {/* Audience filter */}
-            <div className="shrink-0 w-44">
+            <div className="w-full sm:w-44 sm:shrink-0">
               <CustomSelect
                 value={audienceFilter}
                 onChange={(val) => setAudienceFilter(val as 'all' | 'dorm' | 'faculty')}
@@ -453,7 +453,7 @@ export default function AdminElonlarPage() {
                   { value: 'dorm', label: 'Yotoqxona (Barchaga)' },
                   { value: 'faculty', label: "Fakultet bo'yicha" },
                 ]}
-                className={`rounded-xl border px-3 py-2 text-xs font-bold ${inputBg}`}
+                className={`w-full rounded-xl border px-3 py-2 text-xs font-bold ${inputBg}`}
               />
             </div>
           </div>
@@ -549,7 +549,7 @@ export default function AdminElonlarPage() {
                   {/* Publish/Hide button */}
                   <button
                     onClick={() => togglePublished(elon)}
-                    className={`rounded-lg p-2 border transition-colors ${
+                    className={`rounded-lg px-2 py-2 border transition-colors ${
                       elon.is_published
                         ? isLight
                           ? 'border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700'
@@ -569,7 +569,7 @@ export default function AdminElonlarPage() {
                       setEditingElon(elon)
                       setIsModalOpen(true)
                     }}
-                    className={`rounded-lg p-2 border transition-colors ${
+                    className={`rounded-lg px-2 py-2 border transition-colors ${
                       isLight
                         ? 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
                         : 'border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white hover:border-white/20'
@@ -582,7 +582,7 @@ export default function AdminElonlarPage() {
                   {/* Delete button */}
                   <button
                     onClick={() => deleteElon(elon.id)}
-                    className={`rounded-lg p-2 border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors active:scale-95`}
+                    className={`rounded-lg px-2 py-2 border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors`}
                     title="O'chirish"
                   >
                     <Trash2 size={15} />
@@ -616,10 +616,10 @@ export default function AdminElonlarPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', duration: 0.4 }}
-              className={`relative z-10 w-full max-w-2xl rounded-3xl border p-6 overflow-hidden ${modalBg}`}
+              className={`relative z-10 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl border overflow-hidden ${modalBg}`}
             >
               {/* Header */}
-              <div className="flex items-center justify-between border-b pb-4 mb-5 border-white/5">
+              <div className="flex items-center justify-between border-b p-6 pb-4 shrink-0 border-white/5">
                 <div className="flex items-center gap-3">
                   <div className="rounded-xl bg-purple-500/10 p-2 text-purple-400 border border-purple-500/20">
                     {editingElon ? <Edit3 size={20} /> : <Plus size={20} />}
@@ -649,15 +649,16 @@ export default function AdminElonlarPage() {
               </div>
 
               {/* Form */}
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 pt-5 space-y-4">
                 {/* Title */}
                 <div>
                   <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>Sarlavha</label>
-                  <input
+                  <textarea
                     value={form.title}
                     onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
                     placeholder="Sarlavha (Kamida 3 ta belgi)"
-                    className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition ${inputBg}`}
+                    rows={2}
+                    className={`w-full resize-none rounded-xl border px-4 py-3 text-sm outline-none transition ${inputBg}`}
                     required
                   />
                 </div>

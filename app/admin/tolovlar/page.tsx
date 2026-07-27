@@ -381,8 +381,8 @@ export default function AdminTolovlarPage() {
                 </div>
               )}
 
-              <div className="flex items-start justify-between gap-2 mb-4">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
+                <div className="flex items-center gap-3 min-w-[140px] flex-1">
                   <div className={`p-2.5 rounded-xl shrink-0 ${isLight ? 'bg-slate-50 text-slate-600' : 'bg-white/[0.03] text-slate-400'}`}>
                     <User size={18} />
                   </div>
@@ -394,7 +394,7 @@ export default function AdminTolovlarPage() {
                   </div>
                 </div>
 
-                <span className={`shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border whitespace-nowrap ${
+                <span className={`ml-auto shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border whitespace-nowrap ${
                   group.months.length > 1 ? 'mt-5' : ''
                 } ${getStatusColor(group.status)}`}>
                   {getStatusLabel(group.status)}
@@ -467,16 +467,16 @@ export default function AdminTolovlarPage() {
       {/* Review & Approve Modal */}
       {selectedGroup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs">
-          <div className={`w-full max-w-2xl rounded-[32px] border p-6 backdrop-blur-xl relative flex flex-col justify-between max-h-[90vh] ${
+          <div className={`w-full max-w-2xl rounded-3xl sm:rounded-[32px] border p-4 sm:p-6 backdrop-blur-xl relative flex flex-col justify-between max-h-[90vh] ${
             isLight ? 'bg-white border-slate-200 shadow-2xl' : 'bg-slate-950 border-white/5 shadow-2xl shadow-slate-950'
           }`}>
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200/40 mb-4 shrink-0">
-              <div>
+            <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-200/40 mb-4 shrink-0">
+              <div className="min-w-0">
                 <h3 className={`text-lg font-black tracking-tight ${textStrong}`}>
                   🔍 Kvitansiyani Tekshirish
                 </h3>
-                <p className={`text-xs mt-1 truncate max-w-[300px] ${textMuted}`}>
+                <p className={`text-xs mt-1 truncate ${textMuted}`}>
                   {selectedGroup.student_name} • {selectedGroup.months.join(', ')} {selectedGroup.year}
                 </p>
               </div>
@@ -486,7 +486,7 @@ export default function AdminTolovlarPage() {
                   setRejectMode(false)
                   setRejectReason('')
                 }}
-                className={`p-2 rounded-xl transition-all border ${
+                className={`shrink-0 p-2 rounded-xl transition-all border ${
                   isLight ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'
                 }`}
               >
@@ -500,9 +500,9 @@ export default function AdminTolovlarPage() {
               <div className={`p-4 rounded-2xl border space-y-3 ${
                 isLight ? 'bg-slate-50/50 border-slate-100' : 'bg-slate-900/10 border-white/5'
               }`}>
-                <div className="flex justify-between items-center">
-                  <span className={textMuted}>Talaba ismi:</span>
-                  <span className={`font-bold ${textStrong}`}>{selectedGroup.student_name}</span>
+                <div className="flex justify-between items-center gap-2">
+                  <span className={`${textMuted} shrink-0`}>Talaba ismi:</span>
+                  <span className={`font-bold truncate ${textStrong}`}>{selectedGroup.student_name}</span>
                 </div>
                 <div className="flex justify-between items-start">
                   <span className={`${textMuted} shrink-0`}>{selectedGroup.months.length > 1 ? 'Oylar:' : 'Oy:'}</span>
@@ -565,7 +565,7 @@ export default function AdminTolovlarPage() {
                         <img
                           src={receiptSignedUrl}
                           alt="Chek tasviri"
-                          className="max-h-[180px] sm:max-h-[350px] object-contain rounded-xl shadow-md border"
+                          className="max-h-[180px] sm:max-h-[350px] max-w-full object-contain rounded-xl shadow-md border"
                         />
                         <button
                           onClick={() => viewReceipt(receiptSignedUrl)}

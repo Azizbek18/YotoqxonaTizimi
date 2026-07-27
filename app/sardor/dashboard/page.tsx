@@ -552,7 +552,7 @@ export default function SardorDashboard() {
                         setActiveSelectAdmin(true);
                         setActiveSelectDay(null);
                       }}
-                      className="p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 transition-all flex items-center justify-center"
+                      className="px-2 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 transition-all flex items-center justify-center"
                     >
                       <Plus size={14} />
                     </button>
@@ -568,7 +568,7 @@ export default function SardorDashboard() {
                           </div>
                           <button
                             onClick={() => setDutyAdmins(prev => prev.filter(a => a.id !== admin.id))}
-                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-400 transition-all"
+                            className="px-1.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-400 transition-all"
                           >
                             <X size={10} />
                           </button>
@@ -624,7 +624,7 @@ export default function SardorDashboard() {
                             setActiveSelectDay(day);
                             setActiveSelectAdmin(false);
                           }}
-                          className="p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 transition-all flex items-center justify-center"
+                          className="px-2 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 transition-all flex items-center justify-center"
                         >
                           <Plus size={12} />
                         </button>
@@ -645,7 +645,7 @@ export default function SardorDashboard() {
                                     [day]: (prev[day] || []).filter(d => d.id !== duty.id)
                                   }));
                                 }}
-                                className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-400 transition-all"
+                                className="px-1.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-400 transition-all"
                               >
                                 <X size={9} />
                               </button>

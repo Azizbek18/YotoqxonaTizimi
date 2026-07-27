@@ -617,7 +617,7 @@ function ArizalarContent() {
                 type="button"
                 disabled={isFull}
                 onClick={() => setSelectedRoom(room)}
-                className={`p-2.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
+                className={`px-2.5 py-2.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
                   isSelected
                     ? 'border-indigo-500 bg-indigo-500 text-white shadow-md shadow-indigo-500/20'
                     : isFull

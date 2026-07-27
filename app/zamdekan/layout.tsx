@@ -333,7 +333,7 @@ export default function ZamdekanLayout({
               <div className="relative" ref={notifRef}>
                 <button
                   onClick={() => setNotifOpen((prev) => !prev)}
-                  className={`relative p-2.5 rounded-xl border transition-all hover:scale-105 ${
+                  className={`relative px-2.5 py-2.5 rounded-xl border transition-all hover:scale-105 ${
                     pendingCount > 0
                       ? 'border-rose-500/30 bg-rose-500/10 text-rose-500'
                       : isLight ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-white/10 bg-white/5 text-white'

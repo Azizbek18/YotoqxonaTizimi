@@ -702,7 +702,10 @@ export default function AdminDashboard() {
           return (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={(e) => {
+                setActiveTab(tab)
+                e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+              }}
               className={`relative z-10 px-5 py-2.5 rounded-full text-xs sm:text-sm font-black transition-all duration-300 shrink-0 whitespace-nowrap ${
                 isActive
                   ? isLight ? 'text-purple-700' : 'text-white'

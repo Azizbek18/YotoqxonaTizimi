@@ -24,6 +24,7 @@ export async function GET() {
     const { data: requests, error } = await supabase
       .from('arizalar')
       .select('id, student_name, text, level, status, created_at')
+      .in('type', ['ariza', 'tushuntirish'])
       .neq('status', 'draft')
       .order('created_at', { ascending: false })
 

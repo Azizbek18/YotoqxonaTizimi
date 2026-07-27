@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
       .from('arizalar')
       .select('id, student_id, student_name, text, type, level, status, created_at, response_date')
       .in('student_id', studentIds)
+      .in('type', ['ariza', 'tushuntirish'])
       .neq('status', 'draft')
       .order('created_at', { ascending: false })
 

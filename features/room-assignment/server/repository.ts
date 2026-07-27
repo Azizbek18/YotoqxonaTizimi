@@ -23,30 +23,24 @@ export function createRoomAssignmentRepository() {
       if (error) throw error
       return data
     },
-    async roomOccupants(roomNumber: string) {
-      const [users, permits] = await Promise.all([
-        supabase.from('users').select('id', { count: 'exact', head: true }).eq('role', 'talaba').eq('room_number', roomNumber),
-        supabase.from('permit_requests').select('id', { count: 'exact', head: true }).eq('status', 'approved').eq('room_number', roomNumber),
-      ])
-      if (users.error) throw users.error
-      if (permits.error) throw permits.error
-      return (users.count ?? 0) + (permits.count ?? 0)
-    },
-    async roomGenders(roomNumber: string) {
-      const [users, permits] = await Promise.all([
-        supabase.from('users').select('gender').eq('role', 'talaba').eq('room_number', roomNumber),
-        supabase.from('permit_requests').select('gender').eq('status', 'approved').eq('room_number', roomNumber),
-      ])
-      if (users.error) throw users.error
-      if (permits.error) throw permits.error
-      const genders = new Set<string>()
-      users.data?.forEach((row) => row.gender && genders.add(row.gender))
-      permits.data?.forEach((row) => row.gender && genders.add(row.gender))
-      return Array.from(genders)
-    },
-    async updateStudentRoom(id: string, roomNumber: string | null) {
-      const { error } = await supabase.from('users').update({ room_number: roomNumber }).eq('id', id)
+    async clearStudentRoom(id: string) {
+      const { error } = await supabase.from('users').update({ room_number: null, assigned_floor: null }).eq('id', id)
       if (error) throw error
+    },
+    // Atomically checks room capacity/gender and assigns the student inside a
+    // single DB transaction (see assign_student_room_atomic in the DB
+    // migration) so two concurrent zamdekan assignments to the same room
+    // can't both pass a read-then-write capacity/gender check.
+    async assignRoomAtomic(studentId: string, roomNumber: string) {
+      const { error } = await supabase.rpc('assign_student_room_atomic', {
+        p_student_id: studentId,
+        p_room_number: roomNumber,
+      })
+      if (error) {
+        if (error.code === 'P0001') return false
+        throw error
+      }
+      return true
     },
   }
 }

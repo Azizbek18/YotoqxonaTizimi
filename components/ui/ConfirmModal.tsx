@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { useScopedFontFamily } from '@/lib/font-scope-context'
 
 interface ConfirmModalProps {
     isOpen: boolean
@@ -35,6 +36,7 @@ export default function ConfirmModal({
 }: ConfirmModalProps) {
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
+    const scopedFontFamily = useScopedFontFamily()
     const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
@@ -52,7 +54,7 @@ export default function ConfirmModal({
     return createPortal(
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ fontFamily: scopedFontFamily }}>
                     {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -72,7 +74,7 @@ export default function ConfirmModal({
                         {/* Header */}
                         <div className={`flex items-center justify-between p-4 sm:p-6 border-b shrink-0 ${borderCls}`}>
                             <div>
-                                <h2 className={`text-lg sm:text-xl font-black tracking-tight ${titleText}`}>{title}</h2>
+                                <h2 className={`text-lg sm:text-xl font-black tracking-tight ${titleText}`} style={{ fontFamily: scopedFontFamily }}>{title}</h2>
                                 {description && <p className={`text-xs sm:text-sm mt-1 leading-normal ${descText}`}>{description}</p>}
                             </div>
                             <button

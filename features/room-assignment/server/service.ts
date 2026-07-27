@@ -31,7 +31,7 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
       if (!sameFaculty(student.faculty, faculty)) throw new ApiError(403, 'Boshqa fakultet talabasini joylashtirib bo\'lmaydi')
 
       if (!roomNumber) {
-        await repository.updateStudentRoom(studentId, null)
+        await repository.clearStudentRoom(studentId)
         return { success: true as const }
       }
 
@@ -39,16 +39,10 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
         return { success: true as const }
       }
 
-      if (await repository.roomOccupants(roomNumber) >= 4) {
-        throw new ApiError(409, "Bu xonada bo'sh joy yo'q")
+      const assigned = await repository.assignRoomAtomic(studentId, roomNumber)
+      if (!assigned) {
+        throw new ApiError(409, "Bu xonada bo'sh joy yo'q yoki xonada boshqa jinsdagi talaba(lar) bor")
       }
-
-      const existingGenders = await repository.roomGenders(roomNumber)
-      if (student.gender && existingGenders.some((gender) => gender !== student.gender)) {
-        throw new ApiError(409, 'Xonada boshqa jinsdagi talaba(lar) bor')
-      }
-
-      await repository.updateStudentRoom(studentId, roomNumber)
       return { success: true as const }
     },
   }

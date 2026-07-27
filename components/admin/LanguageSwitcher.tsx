@@ -39,7 +39,7 @@ export default function LanguageSwitcher({ currentLang }: { currentLang: string 
                     <button
                         key={lang.code}
                         onClick={() => handleLanguageChange(lang.code)}
-                        className={`w-full text-left px-4 py-3 hover:bg-white/10 transition-colors flex items-center gap-2 border-b border-white/5 last:border-b-0 ${currentLang === lang.code ? 'bg-purple-500/20 text-purple-400' : 'text-slate-300'
+                        className={`no-shelf w-full text-left px-4 py-3 hover:bg-white/10 transition-colors flex items-center gap-2 border-b border-white/5 last:border-b-0 ${currentLang === lang.code ? 'bg-purple-500/20 text-purple-400' : 'text-slate-300'
                             }`}
                     >
                         <span>{lang.flag}</span>

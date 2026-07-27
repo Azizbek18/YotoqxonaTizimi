@@ -288,21 +288,105 @@ html.theme-light [class*="shadow-lg"] {
     0 26px 60px rgba(148, 163, 184, 0.18) !important;
 }
 
-html.theme-light [class*="bg-gradient-to-r"],
-html.theme-light [class*="bg-gradient-to-br"],
-html.theme-light [class*="bg-gradient-to-tr"],
-html.theme-light [class*="bg-linear-to-r"],
-html.theme-light [class*="bg-linear-to-br"],
-html.theme-light [class*="bg-linear-to-tr"],
-html.theme-light [class*="from-blue-600"],
-html.theme-light [class*="from-blue-500"],
-html.theme-light [class*="from-indigo-600"],
-html.theme-light [class*="from-indigo-700"],
-html.theme-light [class*="from-emerald-500"],
-html.theme-light [class*="from-red-500"] {
+/* Same problem as the gradient-button merge further down: any button/a
+   that happens to carry a plain (uncolored) shadow-lg/xl/2xl utility — a
+   generic choice, not a deliberate colored glow — gets this soft ambient
+   override instead of the chunky shelf press look every other light-mode
+   button gets, since this rule is !important and unlayered. Re-merge the
+   shelf's flat offset back in for button/a specifically (element+class
+   selector outranks the attribute-only rule above via specificity), same
+   icon/pill exclusions as the shelf rule itself. */
+html.theme-light :is(
+  button[class*="shadow-2xl"],
+  button[class*="shadow-xl"],
+  button[class*="shadow-lg"],
+  a[class*="border"][class*="shadow-2xl"],
+  a[class*="border"][class*="shadow-xl"],
+  a[class*="border"][class*="shadow-lg"]
+):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 5px 0 0 var(--shelf-shadow-button),
+    0 16px 34px -8px rgba(148, 163, 184, 0.28) !important;
+}
+
+html.theme-light :is(
+  button[class*="shadow-2xl"],
+  button[class*="shadow-xl"],
+  button[class*="shadow-lg"],
+  a[class*="border"][class*="shadow-2xl"],
+  a[class*="border"][class*="shadow-xl"],
+  a[class*="border"][class*="shadow-lg"]
+):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 0 0 0 var(--shelf-shadow-button) !important;
+}
+
+/* :not([class*="bg-clip-text"]) — bg-clip-text elements use the gradient as
+   clipped text fill, not a painted rectangle; box-shadow still outlines the
+   full element box regardless of clip, so without this exclusion gradient
+   headings got a floating glow/highlight box behind transparent text. */
+html.theme-light [class*="bg-gradient-to-r"]:not([class*="bg-clip-text"]),
+html.theme-light [class*="bg-gradient-to-br"]:not([class*="bg-clip-text"]),
+html.theme-light [class*="bg-gradient-to-tr"]:not([class*="bg-clip-text"]),
+html.theme-light [class*="bg-linear-to-r"]:not([class*="bg-clip-text"]),
+html.theme-light [class*="bg-linear-to-br"]:not([class*="bg-clip-text"]),
+html.theme-light [class*="bg-linear-to-tr"]:not([class*="bg-clip-text"]),
+html.theme-light [class*="from-blue-600"]:not([class*="bg-clip-text"]),
+html.theme-light [class*="from-blue-500"]:not([class*="bg-clip-text"]),
+html.theme-light [class*="from-indigo-600"]:not([class*="bg-clip-text"]),
+html.theme-light [class*="from-indigo-700"]:not([class*="bg-clip-text"]),
+html.theme-light [class*="from-emerald-500"]:not([class*="bg-clip-text"]),
+html.theme-light [class*="from-red-500"]:not([class*="bg-clip-text"]) {
   box-shadow:
     0 14px 30px rgba(96, 165, 250, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+}
+
+/* The rule above is deliberately broad (attribute-only selector) so it
+   also lights up small gradient badges/pills — but that breadth means it
+   also matches gradient CTA buttons, and being !important + unlayered, it
+   fully replaces the shelf's flat offset shadow rather than layering with
+   it, leaving primary buttons with only a soft ambient glow instead of the
+   chunky press look every other light-mode button gets. This element+class
+   selector is more specific than the attribute-only one above, so it wins
+   for button/a specifically (badges/pills, which aren't button or
+   border-carrying a tags, are untouched) — box-shadow merges the shelf's
+   flat offset with the glow instead of dropping it. */
+html.theme-light :is(
+  button[class*="bg-gradient-to-r"],
+  button[class*="bg-gradient-to-br"],
+  button[class*="bg-gradient-to-tr"],
+  button[class*="bg-linear-to-r"],
+  button[class*="bg-linear-to-br"],
+  button[class*="bg-linear-to-tr"],
+  a[class*="border"][class*="bg-gradient-to-r"],
+  a[class*="border"][class*="bg-gradient-to-br"],
+  a[class*="border"][class*="bg-gradient-to-tr"],
+  a[class*="border"][class*="bg-linear-to-r"],
+  a[class*="border"][class*="bg-linear-to-br"],
+  a[class*="border"][class*="bg-linear-to-tr"]
+):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 5px 0 0 var(--shelf-shadow-button),
+    0 14px 24px -4px rgba(96, 165, 250, 0.22) !important;
+}
+
+html.theme-light :is(
+  button[class*="bg-gradient-to-r"],
+  button[class*="bg-gradient-to-br"],
+  button[class*="bg-gradient-to-tr"],
+  button[class*="bg-linear-to-r"],
+  button[class*="bg-linear-to-br"],
+  button[class*="bg-linear-to-tr"],
+  a[class*="border"][class*="bg-gradient-to-r"],
+  a[class*="border"][class*="bg-gradient-to-br"],
+  a[class*="border"][class*="bg-gradient-to-tr"],
+  a[class*="border"][class*="bg-linear-to-r"],
+  a[class*="border"][class*="bg-linear-to-br"],
+  a[class*="border"][class*="bg-linear-to-tr"]
+):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 0 0 var(--shelf-shadow-button) !important;
 }
 
 html.theme-light button[class*="bg-gradient"],
@@ -376,11 +460,28 @@ html.theme-light [class*="border-[#0b1120]"] {
      AI-chat button) and round avatar links — a flat-bottomed
      rectangular "shelf" reads as a rendering glitch on a
      circular/pill shape, so those keep their own shadow instead.
+   - [class*="no-shelf"]: manual escape hatch for buttons that are
+     really rows in a flush list, not standalone CTAs — dropdown
+     option buttons (CustomSelect menu items) and scrollable list
+     rows (e.g. the Foydalanuvchilar account list) stack a chunky
+     shelf shadow under every single row otherwise, which reads as
+     a smear rather than a clean divider. Add `no-shelf` to opt out.
 
    <a> links only get this treatment when they carry both
    `border` and a `rounded-{xl,2xl,3xl,4xl,[...]}` class — the
    same "looks like a button/card" signal used for cards below —
    so plain text/nav links (no border) are never touched.
+
+   Cards (div[border][rounded-{xl,2xl,3xl,4xl,[...]}]) start at
+   rounded-xl, matching the <a> threshold above — this app uses
+   rounded-xl for plenty of real content cards/panels (stat tiles,
+   filter boxes, info panels), not just rounded-2xl+. rounded-lg
+   and smaller are deliberately excluded: at that radius the class
+   is ambiguous between a real small card and a status pill/badge
+   (`px-2.5 py-0.5 rounded-lg border`), and unlike p-1/1.5/2/2.5
+   there's no reliable padding signal to tell them apart, so those
+   are left to their author's own shadow/border rather than risk
+   slapping a chunky shelf on a tiny badge.
 
    box-shadow is intentionally declared WITHOUT !important, inside
    `@layer components` (a layer Tailwind's own utilities — incl.
@@ -396,12 +497,12 @@ html.theme-light [class*="border-[#0b1120]"] {
    ============================================================ */
 
 @layer components {
-  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
-  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
-  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
-  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
-  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
-  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]) {
+  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
+  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
+  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
+  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
+  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
+  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.22),
       0 5px 0 0 var(--shelf-shadow-button),
@@ -413,21 +514,21 @@ html.theme-light [class*="border-[#0b1120]"] {
       filter 0.15s ease !important;
   }
 
-  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):hover:not(:active):not(:disabled),
-  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):hover:not(:active),
-  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):hover:not(:active),
-  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):hover:not(:active),
-  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):hover:not(:active),
-  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):hover:not(:active) {
+  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):hover:not(:active):not(:disabled),
+  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):hover:not(:active),
+  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):hover:not(:active),
+  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):hover:not(:active),
+  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):hover:not(:active),
+  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):hover:not(:active) {
     filter: brightness(1.06);
   }
 
-  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active:not(:disabled),
-  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
-  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
-  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
-  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
-  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active {
+  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active:not(:disabled),
+  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
+  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
+  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
+  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
+  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active {
     transform: translateY(5px) !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 0 0 var(--shelf-shadow-button);
     transition:
@@ -435,35 +536,36 @@ html.theme-light [class*="border-[#0b1120]"] {
       box-shadow 0.05s ease !important;
   }
 
-  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):disabled {
+  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):disabled {
     box-shadow: 0 5px 0 0 var(--shelf-shadow-button-disabled);
   }
 
-  html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
-  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
-  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
-  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
-  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]),
-  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]) {
+  html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
+  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
+  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
+  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
+  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
+  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.5),
       0 5px 0 0 var(--shelf-shadow-button),
       0 9px 16px -6px rgba(15, 23, 42, 0.22);
   }
 
-  html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active:not(:disabled),
-  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
-  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
-  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
-  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active,
-  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):active {
+  html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active:not(:disabled),
+  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
+  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
+  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
+  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
+  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 0 0 var(--shelf-shadow-button);
   }
 
-  html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):disabled {
+  html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):disabled {
     box-shadow: 0 5px 0 0 var(--shelf-shadow-button-disabled);
   }
 
+  div[class*="rounded-xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
   div[class*="rounded-2xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
   div[class*="rounded-3xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
   div[class*="rounded-4xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
@@ -474,6 +576,7 @@ html.theme-light [class*="border-[#0b1120]"] {
       0 12px 26px -6px rgba(0, 0, 0, 0.32);
   }
 
+  html.theme-light div[class*="rounded-xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
   html.theme-light div[class*="rounded-2xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
   html.theme-light div[class*="rounded-3xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
   html.theme-light div[class*="rounded-4xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
@@ -495,12 +598,14 @@ html.theme-light [class*="border-[#0b1120]"] {
      regardless of source order — no !important needed. Depth-agnostic: a
      card three levels deep also matches and gets flattened. */
   :is(
+    div[class*="rounded-xl"][class*="border"],
     div[class*="rounded-2xl"][class*="border"],
     div[class*="rounded-3xl"][class*="border"],
     div[class*="rounded-4xl"][class*="border"],
     div[class*="rounded-["][class*="border"]
   ):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"])
   :is(
+    div[class*="rounded-xl"][class*="border"],
     div[class*="rounded-2xl"][class*="border"],
     div[class*="rounded-3xl"][class*="border"],
     div[class*="rounded-4xl"][class*="border"],
@@ -512,12 +617,14 @@ html.theme-light [class*="border-[#0b1120]"] {
   }
 
   html.theme-light :is(
+    div[class*="rounded-xl"][class*="border"],
     div[class*="rounded-2xl"][class*="border"],
     div[class*="rounded-3xl"][class*="border"],
     div[class*="rounded-4xl"][class*="border"],
     div[class*="rounded-["][class*="border"]
   ):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"])
   :is(
+    div[class*="rounded-xl"][class*="border"],
     div[class*="rounded-2xl"][class*="border"],
     div[class*="rounded-3xl"][class*="border"],
     div[class*="rounded-4xl"][class*="border"],
@@ -527,6 +634,172 @@ html.theme-light [class*="border-[#0b1120]"] {
       inset 0 1px 3px rgba(15, 23, 42, 0.12),
       inset 0 1px 0 rgba(255, 255, 255, 0.5);
   }
+}
+
+/* Spinning gradient border (landing page hero timeline, step 2) — a custom
+   border, not a plain ring. `@property` registers --gradient-angle as a real
+   <angle> so the browser can interpolate it smoothly frame-to-frame instead
+   of snapping between discrete values; the conic-gradient reads that angle,
+   so animating it spins the gradient itself while the element's own box
+   stays static (no shape wobble from rotating a rounded-square via
+   transform).
+
+   The frame itself is cut with `mask` (the standard CSS gradient-border
+   trick): `padding` insets the content-box by the border thickness, two
+   mask layers — one over the full border-box, one over just the
+   content-box — combined with `mask-composite: exclude` (XOR) leave only
+   the padding ring visible and force the content-box to fully transparent.
+   That transparency is baked into this element's own paint, so the step-2
+   icon underneath always shows through clean — it doesn't depend on the
+   icon being opaque or on DOM/stacking order (tried relying on an opaque
+   icon painting over the center first; it isn't reliably fully opaque here,
+   so the gradient bled through and washed out the icon). */
+@property --gradient-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes spin-gradient-angle {
+  to {
+    --gradient-angle: 360deg;
+  }
+}
+
+.gradient-border-spin {
+  padding: 4px;
+  background: conic-gradient(
+    from var(--gradient-angle),
+    transparent 0deg,
+    #6366f1 90deg,
+    #a855f7 180deg,
+    #22d3ee 270deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: spin-gradient-angle 2.2s linear infinite;
+}
+
+/* Landing page hero timeline (step 1 -> 2 -> 3) decorative sequence — driven
+   by plain CSS @keyframes on a single shared 6s clock instead of framer-
+   motion. Each piece previously had its own `animate={{...}}` + `repeat:
+   Infinity`; because that object literal is recreated on every React
+   render, framer-motion could restart individual elements' loops at
+   different real moments, letting them drift out of phase with each other
+   (the handshake badge popping in before the hands had actually met).
+   @keyframes on a stable class name runs on the browser's own compositor
+   timeline and is completely unaffected by React re-renders, so every piece
+   here stays locked to the same 0-100% timeline permanently. Percentages
+   below are just the old framer-motion `times` fractions x100. */
+@keyframes hero-doc-travel {
+  0%, 3% { left: 2%; opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+  6% { left: 2%; opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  32% { left: 98%; opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  38%, 100% { left: 98%; opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+}
+.hero-doc-travel {
+  animation: hero-doc-travel 6s infinite ease-in-out;
+}
+
+@keyframes hero-ring-show {
+  0%, 34% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  40%, 52% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  58%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+}
+/* `.gradient-border-spin` already declares its own `animation` (the
+   continuous angle spin) — `animation` is a single shorthand property, so
+   just adding `.hero-ring-show` alongside it would silently replace rather
+   than add. This combined-selector rule lists both animations together
+   (comma-separated) so the angle keeps spinning continuously while the
+   show/hide timeline runs on top of it. */
+.hero-ring-show.gradient-border-spin {
+  animation: spin-gradient-angle 2.2s linear infinite, hero-ring-show 6s infinite ease-in-out;
+}
+
+@keyframes hero-hand-left {
+  0%, 55% { left: 2%; opacity: 0; transform: translate(-50%, -50%) rotate(0deg) scale(0.8); }
+  62% { left: 2%; opacity: 1; transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+  74% { left: 46%; opacity: 1; transform: translate(-50%, -50%) rotate(-10deg) scale(1); }
+  78%, 80% { left: 49%; opacity: 1; transform: translate(-50%, -50%) rotate(-18deg) scale(1.3); }
+  83%, 100% { left: 49%; opacity: 0; transform: translate(-50%, -50%) rotate(-18deg) scale(1.3); }
+}
+.hero-hand-left {
+  animation: hero-hand-left 6s infinite ease-in-out;
+}
+
+@keyframes hero-hand-right {
+  0%, 55% { left: 98%; opacity: 0; transform: translate(-50%, -50%) rotate(0deg) scale(0.8); }
+  62% { left: 98%; opacity: 1; transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+  74% { left: 54%; opacity: 1; transform: translate(-50%, -50%) rotate(10deg) scale(1); }
+  78%, 80% { left: 51%; opacity: 1; transform: translate(-50%, -50%) rotate(18deg) scale(1.3); }
+  83%, 100% { left: 51%; opacity: 0; transform: translate(-50%, -50%) rotate(18deg) scale(1.3); }
+}
+.hero-hand-right {
+  animation: hero-hand-right 6s infinite ease-in-out;
+}
+
+@keyframes hero-burst {
+  0%, 83% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  84% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+  95%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(2); }
+}
+.hero-burst {
+  animation: hero-burst 6s infinite ease-out;
+}
+
+@keyframes hero-handshake {
+  0%, 83% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  85% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  89%, 93% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  97%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+}
+.hero-handshake {
+  animation: hero-handshake 6s infinite ease-out;
+}
+
+/* Recharts v3's accessibility layer focuses an internal <g> on click,
+   which paints the browser's default focus ring across the whole chart.
+   Suppress it for pointer clicks; keep it for real keyboard navigation. */
+.recharts-wrapper :focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* "Cyber-border" input focus-glow — an animated gradient sweep border that
+   appears on focus, used across the auth flow (login, admin login, permit
+   submission, register wizard) for a consistent chrome-y focus feel.
+   Centralized here so every page just applies the classes instead of each
+   duplicating its own <style> block. */
+@keyframes sweep {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.cyber-border {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  padding: 1px;
+  border-radius: 12px;
+  transition: all 0.35s ease;
+}
+.cyber-border.focused {
+  background: linear-gradient(90deg, #6366f1, #3b82f6, #ec4899, #6366f1);
+  background-size: 200% 200%;
+  animation: sweep 2s linear infinite;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+}
+html.theme-light .cyber-border.focused {
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.08);
+}
+.cyber-input-inner {
+  background: rgba(11, 17, 32, 0.75);
+  backdrop-filter: blur(15px);
+  border-radius: 11px;
+  transition: all 0.3s ease;
+}
+html.theme-light .cyber-input-inner {
+  background: rgba(255, 255, 255, 0.95);
 }
 
 * {

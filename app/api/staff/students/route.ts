@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     let studentsQuery = serviceSupabase
       .from('users')
-      .select('id, full_name, email, phone_number, faculty, direction, course, group, room_number, avatar_url, gender, status, warning_count, created_at')
+      .select('id, full_name, email, phone_number, faculty, direction, course, group, room_number, assigned_floor, avatar_url, gender, status, warning_count, created_at')
       .eq('role', 'talaba')
       .order('created_at', { ascending: false })
 
@@ -30,9 +30,7 @@ export async function GET(req: NextRequest) {
       return jsonError(studentsError.message, 500)
     }
 
-    const filteredStudents = (students ?? []).filter((student) =>
-      isWithinTarbiyachiFloor(staffUser, student.room_number as string | null | undefined)
-    )
+    const filteredStudents = (students ?? []).filter((student) => isWithinTarbiyachiFloor(staffUser, student))
 
     return NextResponse.json({
       ok: true,

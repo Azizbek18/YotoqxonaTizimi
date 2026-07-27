@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase'
 import { getSafeUser } from '@/lib/auth-session'
 import PageSkeleton from '@/components/ui/PageSkeleton'
 import { User } from '@supabase/supabase-js'
-import { fetchStudentPayments, submitStudentPayment } from '@/features/payments/client/api'
+import { fetchStudentPayments, submitStudentPayment, fetchReceiptSignedUrl } from '@/features/payments/client/api'
 import type { PaymentRecord } from '@/features/payments/types'
 
 interface ValidationResult {
@@ -397,9 +397,31 @@ export default function TolovaPage() {
         }
     }
 
-    const viewReceipt = (url?: string) => {
-        if (url) {
-            window.open(url, '_blank')
+    // receipt_url is now a private storage path — a fresh signed URL must be
+    // minted per view/download.
+    const viewReceipt = async (paymentId?: string) => {
+        if (!paymentId) return
+        try {
+            const url = await fetchReceiptSignedUrl(paymentId)
+            window.open(url, '_blank', 'noopener,noreferrer')
+        } catch {
+            toast.error('Kvitansiyani ochib bo\'lmadi')
+        }
+    }
+
+    const downloadReceipt = async (paymentId?: string) => {
+        if (!paymentId) return
+        try {
+            const url = await fetchReceiptSignedUrl(paymentId)
+            const link = document.createElement('a')
+            link.href = url
+            link.rel = 'noopener noreferrer'
+            link.target = '_blank'
+            document.body.appendChild(link)
+            link.click()
+            link.remove()
+        } catch {
+            toast.error('Kvitansiyani yuklab bo\'lmadi')
         }
     }
 
@@ -735,24 +757,21 @@ export default function TolovaPage() {
                                                 {record.receipt_url && (
                                                     <div className="flex items-center gap-2">
                                                         <button
-                                                            onClick={() => viewReceipt(record.receipt_url)}
+                                                            onClick={() => viewReceipt(record.id)}
                                                             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${isLight ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20'
                                                                 }`}
                                                         >
                                                             <Eye size={12} />
                                                             <span>Ko&apos;rish</span>
                                                         </button>
-                                                        <a
-                                                            href={record.receipt_url}
-                                                            download
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
+                                                        <button
+                                                            onClick={() => downloadReceipt(record.id)}
                                                             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
                                                                 }`}
                                                         >
                                                             <Download size={12} />
                                                             <span>Yuklab olish</span>
-                                                        </a>
+                                                        </button>
                                                     </div>
                                                 )}
                                             </div>

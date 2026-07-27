@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createApplicationService } from '@/features/applications/server/service'
 import { requireActiveStudent } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
+import { checkRateLimit, getClientIp } from '@/lib/security'
 
 function errorResponse(error: unknown) {
   console.error('Student applications API error:', error)
@@ -25,6 +26,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { student } = await requireActiveStudent(request)
+    const throttle = await checkRateLimit(`application-submit:${student.id}:${getClientIp(request)}`, 10, 15 * 60_000)
+    if (!throttle.allowed) {
+      return NextResponse.json({ error: 'Juda ko\'p urinish. Keyinroq qayta urinib ko\'ring.' }, { status: 429 })
+    }
     return NextResponse.json(await createApplicationService().create(student.id, await request.json()))
   } catch (error) {
     return errorResponse(error)

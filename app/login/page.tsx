@@ -3,11 +3,18 @@
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { Baloo_2 } from 'next/font/google'
 import { supabase } from '@/lib/supabase'
 import { Mail, Lock, ChevronRight, House, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
+
+const baloo2 = Baloo_2({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 function LoginContent() {
   const router = useRouter()
@@ -19,6 +26,7 @@ function LoginContent() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [focusedField, setFocusedField] = useState<string | null>(null)
 
   const show3DToast = (type: 'success' | 'error', message: string) => {
     if (type === 'success') {
@@ -93,7 +101,38 @@ function LoginContent() {
   }
 
   return (
-    <main className={`min-h-screen flex items-center justify-center p-3 sm:p-5 relative overflow-hidden ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'}`}>
+    <main className={`min-h-screen flex items-center justify-center p-3 sm:p-5 relative overflow-hidden ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'} ${baloo2.className}`} style={{ fontFamily: baloo2.style.fontFamily }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes sweep {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .cyber-border {
+          background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+          padding: 1px;
+          border-radius: 12px;
+          transition: all 0.35s ease;
+        }
+        .cyber-border.focused {
+          background: linear-gradient(90deg, #6366f1, #3b82f6, #ec4899, #6366f1);
+          background-size: 200% 200%;
+          animation: sweep 2s linear infinite;
+          box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+        }
+        .light .cyber-border.focused {
+          box-shadow: 0 0 8px rgba(99, 102, 241, 0.08);
+        }
+        .cyber-input-inner {
+          background: rgba(11, 17, 32, 0.75);
+          backdrop-filter: blur(15px);
+          border-radius: 11px;
+          transition: all 0.3s ease;
+        }
+        .light .cyber-input-inner {
+          background: rgba(255, 255, 255, 0.95);
+        }
+      `}} />
       {/* Theme Toggle */}
       <div className="absolute top-4 right-4 z-20">
         <ThemeToggle />
@@ -113,7 +152,10 @@ function LoginContent() {
               <House className="h-7 w-7 sm:h-10 sm:w-10" />
             </div>
           </div>
-          <h1 className={`text-xl sm:text-4xl font-black tracking-tighter uppercase italic leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
+          <h1
+            className="text-xl sm:text-4xl font-black tracking-tighter uppercase italic leading-none bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent"
+            style={{ fontFamily: baloo2.style.fontFamily }}
+          >
             Yotoqxona Tizimi
           </h1>
         </div>
@@ -121,56 +163,70 @@ function LoginContent() {
         <div className={`relative backdrop-blur-3xl border rounded-3xl sm:rounded-4xl p-3 sm:p-10 shadow-2xl overflow-hidden ${isLight ? 'bg-white/80 border-slate-200' : 'bg-[#0b1120]/80 border-white/10'}`}>
 
           {/* Tabs */}
-          <div className={`flex gap-1 rounded-xl p-1 mb-6 sm:mb-10 border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/5'}`}>
-            <div className={`flex-1 py-2 sm:py-3 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg shadow-lg ${isLight ? 'text-white bg-blue-600' : 'text-white bg-blue-600'}`}>Kirish</div>
-            <Link href="/register" className={`flex-1 py-2 sm:py-3 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg transition-all italic ${isLight ? 'text-slate-500 hover:text-slate-700' : 'text-slate-500 hover:text-white'}`}>Ro&apos;yxatdan o&apos;tish</Link>
+          <div className="flex gap-2.5 mb-6 sm:mb-10">
+            <button type="button" className={`flex-1 py-2 sm:py-3 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-widest rounded-xl border ${isLight ? 'text-white bg-blue-600 border-blue-700' : 'text-white bg-blue-600 border-blue-500'}`}>Kirish</button>
+            <Link href="/register" className={`flex-1 py-2 sm:py-3 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all italic ${isLight ? 'text-slate-500 hover:text-slate-700 bg-white border-slate-200' : 'text-slate-500 hover:text-white bg-white/5 border-white/10'}`}>Ro&apos;yxatdan o&apos;tish</Link>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6">
             <div className="space-y-2">
               <label className={`text-[9px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Email Manzil</label>
-              <div className="relative group">
-                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-blue-500 ${isLight ? 'text-slate-400 group-focus-within:text-blue-600' : 'text-slate-600'}`}>
-                  <Mail size={18} />
+              <div className={`cyber-border ${focusedField === 'email' ? 'focused' : ''}`}>
+                <div className="cyber-input-inner relative">
+                  <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'email' ? 'text-blue-500 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : isLight ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <Mail size={18} />
+                  </div>
+                  {focusedField === 'email' && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-500/10 blur-[6px] pointer-events-none" />
+                  )}
+                  <input
+                    type="email"
+                    value={email}
+                    onFocus={() => setFocusedField('email')}
+                    onBlur={() => setFocusedField(null)}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="misol@gmail.com"
+                    className={`w-full bg-transparent p-3 pl-12 rounded-xl text-sm outline-none transition-colors ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'}`}
+                    required
+                  />
                 </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="misol@gmail.com"
-                  className={`w-full border p-3 pl-12 rounded-xl text-sm outline-none transition-all font-sans ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200' : 'bg-slate-900/30 border-white/15 text-white placeholder:text-slate-400 focus:border-blue-500/50 focus:bg-slate-900/40'}`}
-                  required
-                />
               </div>
             </div>
 
             <div className="space-y-2">
               <label className={`text-[9px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Maxfiy Parol</label>
-              <div className="relative group">
-                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-blue-500 ${isLight ? 'text-slate-400 group-focus-within:text-blue-600' : 'text-slate-600'}`}>
-                  <Lock size={18} />
+              <div className={`cyber-border ${focusedField === 'password' ? 'focused' : ''}`}>
+                <div className="cyber-input-inner relative">
+                  <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'password' ? 'text-blue-500 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : isLight ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <Lock size={18} />
+                  </div>
+                  {focusedField === 'password' && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-500/10 blur-[6px] pointer-events-none" />
+                  )}
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onFocus={() => setFocusedField('password')}
+                    onBlur={() => setFocusedField(null)}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className={`w-full bg-transparent p-3 pl-12 pr-12 rounded-xl text-sm outline-none transition-colors ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'}`}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${isLight ? 'text-slate-400 hover:text-slate-600' : 'text-slate-500 hover:text-white'}`}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className={`w-full border p-3 pl-12 pr-12 rounded-xl text-sm outline-none transition-all font-sans ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200' : 'bg-slate-900/30 border-white/15 text-white placeholder:text-slate-400 focus:border-blue-500/50 focus:bg-slate-900/40'}`}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${isLight ? 'text-slate-400 hover:text-slate-600' : 'text-slate-500 hover:text-white'}`}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
               </div>
             </div>
 
             <button
               disabled={loading}
-              className={`w-full h-12 sm:h-14 rounded-xl sm:rounded-[22px] font-black text-[10px] sm:text-[12px] tracking-widest uppercase flex items-center justify-center gap-2 transition-all ${loading ? isLight ? 'bg-slate-100 text-slate-400' : 'bg-white/5 text-slate-600' : isLight ? 'bg-blue-600 text-white shadow-lg hover:bg-blue-700 active:scale-[0.98]' : 'bg-linear-to-r from-blue-600 to-indigo-700 text-white shadow-xl hover:shadow-blue-600/20 active:scale-[0.98]'}`}
+              className={`w-full h-12 sm:h-14 rounded-xl sm:rounded-[22px] font-black text-[10px] sm:text-[12px] tracking-widest uppercase flex items-center justify-center gap-2 transition-all ${loading ? isLight ? 'bg-slate-100 text-slate-400' : 'bg-white/5 text-slate-600' : isLight ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]' : 'bg-linear-to-r from-blue-600 to-indigo-700 text-white hover:shadow-blue-600/20 active:scale-[0.98]'}`}
             >
               {loading ? (
                 <div className={`w-5 h-5 border-2 rounded-full animate-spin ${isLight ? 'border-slate-300 border-t-slate-600' : 'border-white/20 border-t-white'}`} />

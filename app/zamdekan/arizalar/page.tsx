@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import {
   Search,
   FileText,
@@ -138,27 +138,89 @@ function ArizalarContent() {
     return matchesStatus && matchesSearch
   })
 
-  // Export to Excel helper
-  const exportToExcel = (dataToExport: PermitRequest[]) => {
-    const rows = dataToExport.map((req) => ({
-      'F.I.Sh.': req.full_name,
-      'Pasport Seriyasi': req.passport_series,
-      'JShSHIR': req.jshshir,
-      'Telefon': req.phone,
-      'Email': req.email,
-      'Jinsi': req.gender === 'male' ? 'Erkak' : 'Ayol',
-      'Fakultet': req.faculty,
-      'Yo‘nalish': req.direction,
-      'Kurs': `${req.course}-kurs`,
-      'Xona raqami': req.room_number || 'Biriktirilmagan',
-      'Status': req.status,
-      'Yuborilgan sana': new Date(req.created_at).toLocaleDateString('uz-UZ'),
-    }))
+  // Export to Excel helper — boshqa hisobot eksportlari bilan bir xil dizayn:
+  // № ustuni, qalin Times New Roman sarlavha, har bir katakka ramka
+  const exportToExcel = async (dataToExport: PermitRequest[]) => {
+    const headers = [
+      '№',
+      'F.I.Sh.',
+      'Pasport Seriyasi',
+      'JShSHIR',
+      'Telefon',
+      'Email',
+      'Jinsi',
+      'Fakultet',
+      "Yo'nalish",
+      'Kurs',
+      'Xona raqami',
+      'Status',
+      'Yuborilgan sana',
+    ]
 
-    const worksheet = XLSX.utils.json_to_sheet(rows)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Arizalar')
-    XLSX.writeFile(workbook, `yotoqxona_arizalar_${statusFilter}.xlsx`)
+    const rawRows = dataToExport.map((req, idx) => [
+      String(idx + 1),
+      req.full_name,
+      req.passport_series,
+      req.jshshir,
+      req.phone,
+      req.email,
+      req.gender === 'male' ? 'Erkak' : 'Ayol',
+      req.faculty,
+      req.direction,
+      `${req.course}-kurs`,
+      req.room_number ? `№-${req.room_number}` : 'Biriktirilmagan',
+      req.status,
+      new Date(req.created_at).toLocaleDateString('uz-UZ'),
+    ])
+
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Arizalar')
+    worksheet.addRow(headers)
+    rawRows.forEach((row) => worksheet.addRow(row))
+
+    const thinBorder = {
+      top: { style: 'thin' as const },
+      left: { style: 'thin' as const },
+      bottom: { style: 'thin' as const },
+      right: { style: 'thin' as const },
+    }
+    const centeredCols = new Set([1, 11]) // №, Xona raqami (1-indekslangan)
+
+    const headerRow = worksheet.getRow(1)
+    headerRow.eachCell({ includeEmpty: true }, (cell) => {
+      cell.font = { bold: true, name: 'Times New Roman', size: 12 }
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+      cell.border = thinBorder
+    })
+
+    for (let r = 2; r <= worksheet.rowCount; r++) {
+      worksheet.getRow(r).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        cell.font = { name: 'Times New Roman', size: 11 }
+        cell.alignment = {
+          vertical: 'middle',
+          horizontal: centeredCols.has(colNumber) ? 'center' : 'left',
+          wrapText: true,
+        }
+        cell.border = thinBorder
+      })
+    }
+
+    headers.forEach((h, i) => {
+      const maxLen = Math.max(h.length, ...rawRows.map(row => String(row[i] || '').length))
+      worksheet.getColumn(i + 1).width = i === 0 ? Math.max(maxLen + 2, 5) : maxLen + 4
+    })
+
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `yotoqxona_arizalar_${statusFilter}.xlsx`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
     toast.success("Excel muvaffaqiyatli yuklab olindi!")
   }
 

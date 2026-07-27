@@ -12,6 +12,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 
@@ -785,16 +786,17 @@ export default function SardorDashboard() {
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Turi / Toifa</label>
-                  <select
+                  <CustomSelect
                     value={newElonForm.type}
-                    onChange={(e) => setNewElonForm(prev => ({ ...prev, type: e.target.value as Elon['type'] }))}
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2.5 text-white transition-all focus:border-purple-500/50 outline-none text-sm"
-                  >
-                    <option value="Yangilik">Yangilik</option>
-                    <option value="Ogohlantirish">Ogohlantirish</option>
-                    <option value="Muhim">Muhim</option>
-                    <option value="Tadbir">Tadbir</option>
-                  </select>
+                    onChange={(val) => setNewElonForm(prev => ({ ...prev, type: val as Elon['type'] }))}
+                    options={[
+                      { value: 'Yangilik', label: 'Yangilik' },
+                      { value: 'Ogohlantirish', label: 'Ogohlantirish' },
+                      { value: 'Muhim', label: 'Muhim' },
+                      { value: 'Tadbir', label: 'Tadbir' },
+                    ]}
+                    className="rounded-xl border border-white/10 bg-slate-900 px-4 py-2.5 text-sm"
+                  />
                 </div>
 
                 <div className="space-y-1.5">

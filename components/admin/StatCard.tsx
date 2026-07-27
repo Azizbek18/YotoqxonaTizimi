@@ -4,6 +4,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion'
 
 interface StatCardProps {
     title: string
@@ -24,6 +25,7 @@ export default function StatCard({
 }: StatCardProps) {
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
+    const reduceMotion = useReducedMotion()
 
     return (
         <motion.div
@@ -71,15 +73,13 @@ export default function StatCard({
                     {/* 3D Icon Image */}
                     <motion.div
                         className="relative z-10 w-16 h-16 sm:w-20 sm:h-20"
-                        animate={{
-                            y: [0, -4, 0],
-                        }}
-                        transition={{
+                        animate={reduceMotion ? undefined : { y: [0, -4, 0] }}
+                        transition={reduceMotion ? undefined : {
                             duration: 4,
                             repeat: Infinity,
                             ease: 'easeInOut',
                         }}
-                        whileHover={{ scale: 1.1, rotate: [0, -5, 5, 0] }}
+                        whileHover={reduceMotion ? undefined : { scale: 1.1, rotate: [0, -5, 5, 0] }}
                     >
                         <Image
                             src={imageSrc}

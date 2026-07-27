@@ -14,7 +14,7 @@ async function getScopedStudentIds(
 ) {
   let query = serviceSupabase
     .from('users')
-    .select('id, room_number, gender')
+    .select('id, room_number, assigned_floor, gender')
     .eq('role', 'talaba')
 
   // Gender is an exact-match field, so it can be pushed down into SQL to cut
@@ -29,7 +29,7 @@ async function getScopedStudentIds(
   if (error) throw error
 
   return (students ?? [])
-    .filter((student) => isWithinTarbiyachiFloor(staffUser, student.room_number as string | null | undefined))
+    .filter((student) => isWithinTarbiyachiFloor(staffUser, student))
     .map((student) => student.id as string)
 }
 

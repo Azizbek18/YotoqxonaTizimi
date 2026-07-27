@@ -23,6 +23,7 @@ import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { motion, AnimatePresence } from 'framer-motion'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 
 type ElonType = 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish'
@@ -409,7 +410,7 @@ export default function AdminElonlarPage() {
           {/* Filtering controls */}
           <div className="flex flex-wrap items-center gap-3">
             {/* Status Pills */}
-            <div className={`flex rounded-xl p-1 border ${borderCol} bg-slate-950/20`}>
+            <div className={`flex rounded-full p-1 border ${borderCol} bg-slate-950/20`}>
               {([
                 { id: 'all', label: 'Barchasi' },
                 { id: 'published', label: 'Faol' },
@@ -418,7 +419,7 @@ export default function AdminElonlarPage() {
                 <button
                   key={tab.id}
                   onClick={() => setStatusFilter(tab.id)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                  className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
                     statusFilter === tab.id
                       ? 'bg-purple-600 text-white shadow-xs'
                       : `text-slate-400 hover:${textStrong}`
@@ -430,27 +431,31 @@ export default function AdminElonlarPage() {
             </div>
 
             {/* Type dropdown */}
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as 'all' | ElonType)}
-              className={`rounded-xl border px-3 py-2 text-xs font-bold outline-none transition cursor-pointer ${inputBg}`}
-            >
-              <option value="all">Barcha Turlar</option>
-              {TYPE_OPTIONS.map((type) => (
-                <option key={type} value={type} className={isLight ? 'bg-white text-slate-900' : 'bg-slate-900 text-white'}>{type}</option>
-              ))}
-            </select>
+            <div className="shrink-0 w-36">
+              <CustomSelect
+                value={typeFilter}
+                onChange={(val) => setTypeFilter(val as 'all' | ElonType)}
+                options={[
+                  { value: 'all', label: 'Barcha Turlar' },
+                  ...TYPE_OPTIONS.map((type) => ({ value: type, label: type })),
+                ]}
+                className={`rounded-xl border px-3 py-2 text-xs font-bold ${inputBg}`}
+              />
+            </div>
 
             {/* Audience filter */}
-            <select
-              value={audienceFilter}
-              onChange={(e) => setAudienceFilter(e.target.value as 'all' | 'dorm' | 'faculty')}
-              className={`rounded-xl border px-3 py-2 text-xs font-bold outline-none transition cursor-pointer ${inputBg}`}
-            >
-              <option value="all">Barcha Auditoriya</option>
-              <option value="dorm">Yotoqxona (Barchaga)</option>
-              <option value="faculty">Fakultet bo&apos;yicha</option>
-            </select>
+            <div className="shrink-0 w-44">
+              <CustomSelect
+                value={audienceFilter}
+                onChange={(val) => setAudienceFilter(val as 'all' | 'dorm' | 'faculty')}
+                options={[
+                  { value: 'all', label: 'Barcha Auditoriya' },
+                  { value: 'dorm', label: 'Yotoqxona (Barchaga)' },
+                  { value: 'faculty', label: "Fakultet bo'yicha" },
+                ]}
+                className={`rounded-xl border px-3 py-2 text-xs font-bold ${inputBg}`}
+              />
+            </div>
           </div>
 
         </div>
@@ -661,15 +666,12 @@ export default function AdminElonlarPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>E&apos;lon turi</label>
-                    <select
+                    <CustomSelect
                       value={form.type}
-                      onChange={(event) => setForm((current) => ({ ...current, type: event.target.value as ElonType }))}
-                      className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition cursor-pointer ${inputBg}`}
-                    >
-                      {TYPE_OPTIONS.map((type) => (
-                        <option key={type} value={type} className={isLight ? 'bg-white text-slate-900' : 'bg-slate-900 text-white'}>{type}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setForm((current) => ({ ...current, type: val as ElonType }))}
+                      options={TYPE_OPTIONS.map((type) => ({ value: type, label: type }))}
+                      className={`rounded-xl border px-4 py-3 text-sm ${inputBg}`}
+                    />
                   </div>
 
                   <div>
@@ -713,15 +715,12 @@ export default function AdminElonlarPage() {
                     exit={{ opacity: 0, height: 0 }}
                   >
                     <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>Fakultetni tanlang</label>
-                    <select
+                    <CustomSelect
                       value={form.faculty || ''}
-                      onChange={(event) => setForm((current) => ({ ...current, faculty: event.target.value }))}
-                      className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition cursor-pointer ${inputBg}`}
-                    >
-                      {FACULTY_OPTIONS.map((faculty) => (
-                        <option key={faculty} value={faculty} className={isLight ? 'bg-white text-slate-900' : 'bg-slate-900 text-white'}>{faculty}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setForm((current) => ({ ...current, faculty: val }))}
+                      options={FACULTY_OPTIONS.map((faculty) => ({ value: faculty, label: faculty }))}
+                      className={`rounded-xl border px-4 py-3 text-sm ${inputBg}`}
+                    />
                   </motion.div>
                 )}
 

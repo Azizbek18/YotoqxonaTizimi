@@ -1,11 +1,12 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { RegisterData } from './types'
 import toast from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 import { User, UserCircle, Users, ArrowRight, Sparkles, ShieldAlert, Phone } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import CustomSelect from '@/components/ui/CustomSelect'
 
 interface Props {
   data: RegisterData
@@ -17,6 +18,7 @@ interface Props {
 export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+  const [focusedField, setFocusedField] = useState<'lastName' | 'firstName' | 'middleName' | 'phone' | null>(null)
 
   const show3DToast = (message: string, type: 'success' | 'error' = 'error') => {
     toast.custom((t) => (
@@ -64,14 +66,14 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
   }
 
   const glassInput = `
-    w-full bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl
-    p-3.5 rounded-xl outline-none text-white placeholder:text-slate-600
-    transition-all duration-500 font-sans text-[13px]
-    pl-12 focus:border-indigo-500/40 focus:bg-white/[0.05] focus:ring-[4px] focus:ring-indigo-500/5
-    hover:border-white/20
+    w-full bg-transparent p-3.5 rounded-xl outline-none text-white
+    placeholder:text-slate-600 transition-colors duration-300 font-sans
+    text-[13px] pl-12
   `
 
   const labelClass = "text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block"
+
+  const dateSelectCls = "bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl p-3.5 rounded-xl text-[13px] pl-3 text-center transition-all duration-500 hover:border-white/20 relative"
 
   return (
     <motion.div
@@ -94,15 +96,19 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
         {/* Familiya */}
         <div className="space-y-1.5 group">
           <label className={labelClass}>Familiya</label>
-          <div className="relative flex items-center">
-            <Users className="absolute left-4 z-10 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={16} />
-            <input
-              type="text"
-              className={glassInput}
-              placeholder="Mo‘minov"
-              value={data.lastName || ''}
-              onChange={e => onChange({ lastName: e.target.value })}
-            />
+          <div className={`cyber-border ${focusedField === 'lastName' ? 'focused' : ''}`}>
+            <div className="cyber-input-inner relative flex items-center">
+              <Users className={`absolute left-4 z-10 transition-colors ${focusedField === 'lastName' ? 'text-indigo-400' : 'text-slate-500'}`} size={16} />
+              <input
+                type="text"
+                className={glassInput}
+                placeholder="Mo‘minov"
+                value={data.lastName || ''}
+                onFocus={() => setFocusedField('lastName')}
+                onBlur={() => setFocusedField(null)}
+                onChange={e => onChange({ lastName: e.target.value })}
+              />
+            </div>
           </div>
         </div>
 
@@ -110,28 +116,36 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5 group">
             <label className={labelClass}>Ism</label>
-            <div className="relative flex items-center">
-              <UserCircle className="absolute left-4 z-10 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={16} />
-              <input
-                type="text"
-                className={glassInput}
-                placeholder="Azizbek"
-                value={data.firstName || ''}
-                onChange={e => onChange({ firstName: e.target.value })}
-              />
+            <div className={`cyber-border ${focusedField === 'firstName' ? 'focused' : ''}`}>
+              <div className="cyber-input-inner relative flex items-center">
+                <UserCircle className={`absolute left-4 z-10 transition-colors ${focusedField === 'firstName' ? 'text-indigo-400' : 'text-slate-500'}`} size={16} />
+                <input
+                  type="text"
+                  className={glassInput}
+                  placeholder="Azizbek"
+                  value={data.firstName || ''}
+                  onFocus={() => setFocusedField('firstName')}
+                  onBlur={() => setFocusedField(null)}
+                  onChange={e => onChange({ firstName: e.target.value })}
+                />
+              </div>
             </div>
           </div>
           <div className="space-y-1.5 group">
             <label className={labelClass}>Otasining ismi</label>
-            <div className="relative flex items-center">
-              <Sparkles className="absolute left-4 z-10 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={16} />
-              <input
-                type="text"
-                className={glassInput}
-                placeholder="Otasining ismi"
-                value={data.middleName || ''}
-                onChange={e => onChange({ middleName: e.target.value })}
-              />
+            <div className={`cyber-border ${focusedField === 'middleName' ? 'focused' : ''}`}>
+              <div className="cyber-input-inner relative flex items-center">
+                <Sparkles className={`absolute left-4 z-10 transition-colors ${focusedField === 'middleName' ? 'text-indigo-400' : 'text-slate-500'}`} size={16} />
+                <input
+                  type="text"
+                  className={glassInput}
+                  placeholder="Otasining ismi"
+                  value={data.middleName || ''}
+                  onFocus={() => setFocusedField('middleName')}
+                  onBlur={() => setFocusedField(null)}
+                  onChange={e => onChange({ middleName: e.target.value })}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -143,56 +157,55 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
             {/* Kun */}
             <div className="relative group/date">
               <div className="absolute -inset-0.5 bg-linear-to-b from-indigo-500/20 to-transparent rounded-xl blur opacity-0 group-hover/date:opacity-100 transition duration-500" />
-              <select
-                className={`${glassInput} pl-3 text-center appearance-none cursor-pointer relative`}
+              <CustomSelect
+                className={dateSelectCls}
+                menuClassName="text-center"
+                placeholder="Kun"
                 value={data.birthDate?.split('-')[2] || ''}
-                onChange={e => {
+                onChange={val => {
                   const parts = (data.birthDate || '2000-01-01').split('-');
-                  onChange({ birthDate: `${parts[0]}-${parts[1]}-${e.target.value.padStart(2, '0')}` });
+                  onChange({ birthDate: `${parts[0]}-${parts[1]}-${val}` });
                 }}
-              >
-                <option value="" disabled className="bg-slate-900 text-slate-500">Kun</option>
-                {Array.from({ length: 31 }, (_, i) => (
-                  <option key={i + 1} value={i + 1} className="bg-slate-900 text-white">{i + 1}</option>
-                ))}
-              </select>
+                options={Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }))}
+              />
             </div>
 
             {/* Oy */}
             <div className="relative group/date">
               <div className="absolute -inset-0.5 bg-linear-to-b from-purple-500/20 to-transparent rounded-xl blur opacity-0 group-hover/date:opacity-100 transition duration-500" />
-              <select
-                className={`${glassInput} pl-3 text-center appearance-none cursor-pointer relative`}
+              <CustomSelect
+                className={dateSelectCls}
+                menuClassName="text-center"
+                placeholder="Oy"
                 value={data.birthDate?.split('-')[1] || ''}
-                onChange={e => {
+                onChange={val => {
                   const parts = (data.birthDate || '2000-01-01').split('-');
-                  onChange({ birthDate: `${parts[0]}-${e.target.value}-${parts[2]}` });
+                  onChange({ birthDate: `${parts[0]}-${val}-${parts[2]}` });
                 }}
-              >
-                <option value="" disabled className="bg-slate-900 text-slate-500">Oy</option>
-                {["Yan", "Fev", "Mar", "Apr", "May", "Iyun", "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek"].map((m, i) => (
-                  <option key={m} value={(i + 1).toString().padStart(2, '0')} className="bg-slate-900 text-white">{m}</option>
-                ))}
-              </select>
+                options={["Yan", "Fev", "Mar", "Apr", "May", "Iyun", "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek"].map((m, i) => ({
+                  value: (i + 1).toString().padStart(2, '0'),
+                  label: m,
+                }))}
+              />
             </div>
 
             {/* Yil */}
             <div className="relative group/date">
               <div className="absolute -inset-0.5 bg-linear-to-b from-blue-500/20 to-transparent rounded-xl blur opacity-0 group-hover/date:opacity-100 transition duration-500" />
-              <select
-                className={`${glassInput} pl-3 text-center appearance-none cursor-pointer relative`}
+              <CustomSelect
+                className={dateSelectCls}
+                menuClassName="text-center"
+                placeholder="Yil"
                 value={data.birthDate?.split('-')[0] || ''}
-                onChange={e => {
+                onChange={val => {
                   const parts = (data.birthDate || '2000-01-01').split('-');
-                  onChange({ birthDate: `${e.target.value}-${parts[1]}-${parts[2]}` });
+                  onChange({ birthDate: `${val}-${parts[1]}-${parts[2]}` });
                 }}
-              >
-                <option value="" disabled className="bg-slate-900 text-slate-500">Yil</option>
-                {Array.from({ length: 50 }, (_, i) => {
+                options={Array.from({ length: 50 }, (_, i) => {
                   const year = new Date().getFullYear() - 10 - i;
-                  return <option key={year} value={year} className="bg-slate-900 text-white">{year}</option>
+                  return { value: String(year), label: String(year) }
                 })}
-              </select>
+              />
             </div>
           </div>
         </div>
@@ -200,19 +213,23 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
         {/* Talaba telefon raqami - YANGI ELEMENT */}
         <div className="space-y-1.5 group">
           <label className={labelClass}>Telefon raqamingiz</label>
-          <div className="relative flex items-center">
-            <div className="absolute left-4 z-10 flex items-center gap-1.5 pointer-events-none border-r border-white/10 pr-2">
-              <Phone size={14} className="text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
-              <span className="text-[12px] font-bold text-slate-400">+998</span>
+          <div className={`cyber-border ${focusedField === 'phone' ? 'focused' : ''}`}>
+            <div className="cyber-input-inner relative flex items-center">
+              <div className="absolute left-4 z-10 flex items-center gap-1.5 pointer-events-none border-r border-white/10 pr-2">
+                <Phone size={14} className={`transition-colors ${focusedField === 'phone' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                <span className="text-[12px] font-bold text-slate-400">+998</span>
+              </div>
+              <input
+                type="tel"
+                className={`${glassInput} pl-20`}
+                placeholder="912461050"
+                maxLength={9}
+                value={data.phone || ''}
+                onFocus={() => setFocusedField('phone')}
+                onBlur={() => setFocusedField(null)}
+                onChange={e => onChange({ phone: e.target.value.replace(/\D/g, '') })}
+              />
             </div>
-            <input
-              type="tel"
-              className={`${glassInput} pl-20`}
-              placeholder="912461050"
-              maxLength={9}
-              value={data.phone || ''}
-              onChange={e => onChange({ phone: e.target.value.replace(/\D/g, '') })}
-            />
           </div>
         </div>
       </div>

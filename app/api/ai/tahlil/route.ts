@@ -3,7 +3,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import { callGemini } from '@/lib/gemini'
 import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
-import { assertSafeReceiptUrl, fetchReceipt } from '@/lib/safe-storage-url'
+import { extractReceiptPath } from '@/lib/safe-storage-url'
 
 // Looks up `role` for the given identity in `table`, trying `id` then
 // `email` as two safe, parameterized lookups — never interpolate
@@ -63,8 +63,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Ushbu to‘lovni tahlil qilishga ruxsat yo‘q' }, { status: 403 })
     }
 
-    const receiptUrl = assertSafeReceiptUrl(record.receipt_url, record.student_id)
-    if (!receiptUrl) {
+    const receiptPath = extractReceiptPath(record.receipt_url, record.student_id)
+    if (!receiptPath) {
       return NextResponse.json({ error: 'Ushbu to\'lovda yuklangan chek/kvitansiya mavjud emas' }, { status: 400 })
     }
 
@@ -79,11 +79,20 @@ export async function POST(req: NextRequest) {
     let aiAnalysis = ''
 
     try {
-        // 2. Download receipt file from the public URL
-        const { buffer, mimeType } = await fetchReceipt(receiptUrl)
+        // 2. Download the receipt file directly from private storage
+        // (service-role client, so this works regardless of bucket ACLs).
+        const { data: fileData, error: downloadError } = await supabase.storage.from('receipts').download(receiptPath)
+        if (downloadError || !fileData) {
+          return NextResponse.json({ error: 'Chek faylini yuklab bo‘lmadi' }, { status: 500 })
+        }
+        if (fileData.size > 8 * 1024 * 1024) {
+          return NextResponse.json({ error: 'Chek fayli juda katta' }, { status: 400 })
+        }
+        const mimeType = fileData.type || 'application/octet-stream'
         if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(mimeType)) {
           return NextResponse.json({ error: 'Chek fayli formati qo‘llab-quvvatlanmaydi' }, { status: 400 })
         }
+        const buffer = Buffer.from(await fileData.arrayBuffer())
         const base64Data = buffer.toString('base64')
 
         // 3. Prepare Prompt for Gemini to also extract transaction_id
@@ -138,17 +147,19 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown for
     if (aiTransactionId) {
       const { data: duplicateRecords, error: dupError } = await supabase
         .from('tolovlar')
-        .select('id, student_name, month, year')
+        .select('id')
         .eq('transaction_id', aiTransactionId)
         .neq('id', paymentId) // Exclude current payment
-        .neq('receipt_url', receiptUrl) // Exclude same batch uploads
+        .neq('receipt_url', record.receipt_url) // Exclude same batch uploads
         .limit(1)
 
-
+      // Deliberately does not name whose payment this was — the caller may
+      // not be authorized to see that student's identity (an attacker could
+      // forward someone else's real receipt as "their own" upload just to
+      // probe whose transaction ID it is).
       if (!dupError && duplicateRecords && duplicateRecords.length > 0) {
-        const dup = duplicateRecords[0]
         aiConfidence = 10 // Flag confidence extremely low for duplicates
-        aiAnalysis = `⚠️ DIQQAT: TAKRORAN YUKLANGAN CHEK (DUPLICATE DETECTION)! \n\nUshbu chekdagi tranzaksiya raqami (${aiTransactionId}) tizimdagi boshqa to'lovda allaqachon ro'yxatdan o'tgan! \n\nUshbu chek avval talaba "${dup.student_name}" tomonidan ${dup.month} ${dup.year} oyi to'lovi uchun ishlatilgan. Soxtalik va firibgarlik ehtimoli juda yuqori.`
+        aiAnalysis = `⚠️ DIQQAT: TAKRORAN YUKLANGAN CHEK (DUPLICATE DETECTION)! \n\nUshbu chekdagi tranzaksiya raqami (${aiTransactionId}) tizimdagi boshqa to'lovda allaqachon ro'yxatdan o'tgan! Soxtalik va firibgarlik ehtimoli juda yuqori.`
       }
     }
 

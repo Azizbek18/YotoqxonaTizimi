@@ -29,10 +29,11 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { usePollingEffect, useChatAutoScroll } from '@/lib/hooks/useChatPolling'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { fetchAdminPayments } from '@/features/payments/client/api'
+import { fetchAdminPayments, fetchReceiptSignedUrl } from '@/features/payments/client/api'
 import { fetchAdminChat, sendAdminChat } from '@/features/applications/client/admin-chat-api'
 
 type UserRow = {
@@ -868,7 +869,7 @@ export default function AdminUsersPage() {
                 <button
                   key={folder.key}
                   onClick={() => setActiveFolder(folder.key)}
-                  className={`relative shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`relative shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                     isActive
                       ? isLight
                         ? 'bg-blue-50 text-blue-600'
@@ -910,7 +911,7 @@ export default function AdminUsersPage() {
                   <button
                     key={`${user.id}-${user.source}`}
                     onClick={() => setSelectedUser(user)}
-                    className={`w-full text-left p-3 flex items-center gap-3 transition-colors border-b ${
+                    className={`no-shelf w-full text-left p-3 flex items-center gap-3 transition-colors border-b ${
                       isLight 
                         ? 'border-slate-100/50' 
                         : 'border-white/5'
@@ -1158,7 +1159,7 @@ export default function AdminUsersPage() {
               <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                 
                  {/* Details Tab Menu */}
-                <div className={`flex gap-1 rounded-xl p-1 border overflow-x-auto no-scrollbar flex-nowrap ${
+                <div className={`flex gap-1 rounded-full p-1 border overflow-x-auto no-scrollbar flex-nowrap ${
                   isLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/5'
                 }`}>
                   {([
@@ -1173,7 +1174,7 @@ export default function AdminUsersPage() {
                     <button
                       key={tab.key}
                       onClick={() => setDetailTab(tab.key as 'profil' | 'hujjatlar' | 'oila' | 'tolovlar' | 'chat')}
-                      className={`flex-1 shrink-0 whitespace-nowrap py-2 px-3 sm:px-4 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                      className={`flex-1 shrink-0 whitespace-nowrap py-2 px-3 sm:px-4 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
                         detailTab === tab.key
                           ? 'bg-purple-600 text-white shadow-lg'
                           : `${isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-white'}`
@@ -1388,7 +1389,13 @@ export default function AdminUsersPage() {
 
                                   {record.receipt_url && (
                                     <button
-                                      onClick={() => setFullScreenImage(record.receipt_url || null)}
+                                      onClick={async () => {
+                                        try {
+                                          setFullScreenImage(await fetchReceiptSignedUrl(record.id))
+                                        } catch {
+                                          toast.error('Kvitansiyani ochib bo\'lmadi')
+                                        }
+                                      }}
                                       className={`p-1.5 rounded-lg border transition-all ${
                                         isLight
                                           ? 'border-slate-200 bg-white hover:bg-slate-100 text-slate-600'
@@ -1562,23 +1569,15 @@ export default function AdminUsersPage() {
         <div className="space-y-4">
           <div>
             <label className="mb-2 block text-xs font-bold text-slate-400 uppercase tracking-wider">Yangi rol:</label>
-            <select
+            <CustomSelect
               value={editingRole}
-              onChange={(event) => setEditingRole(event.target.value as UserRow['role'])}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition-all focus:border-purple-500/50 outline-none"
-            >
-              {editModal.user
-                ? getAllowedRoles(editModal.user).map((role) => (
-                  <option key={role} value={role} className="bg-slate-950">
-                    {ROLE_LABELS[role]}
-                  </option>
-                ))
-                : ROLE_OPTIONS.map((role) => (
-                  <option key={role} value={role} className="bg-slate-950">
-                    {ROLE_LABELS[role]}
-                  </option>
-                ))}
-            </select>
+              onChange={(val) => setEditingRole(val as UserRow['role'])}
+              options={(editModal.user ? getAllowedRoles(editModal.user) : ROLE_OPTIONS).map((role) => ({
+                value: role,
+                label: ROLE_LABELS[role],
+              }))}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5"
+            />
           </div>
           <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
             <p className="text-sm text-blue-300 font-semibold">
@@ -1607,25 +1606,26 @@ export default function AdminUsersPage() {
               {editForm.is_floor_captain && (
                 <div className="space-y-1.5 pt-2 border-t border-purple-500/10">
                   <label className="block text-xs font-bold text-purple-300 uppercase tracking-wider">Biriktirilgan qavat:</label>
-                  <select
+                  <CustomSelect
                     value={editForm.assigned_floor || ''}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, assigned_floor: e.target.value }))}
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-white outline-none focus:border-purple-500"
-                  >
-                    <option value="">Qavatni tanlang</option>
-                    <option value="1">1-qavat</option>
-                    <option value="2">2-qavat</option>
-                    <option value="3">3-qavat</option>
-                    <option value="4">4-qavat</option>
-                    <option value="5">5-qavat</option>
-                  </select>
+                    onChange={(val) => setEditForm(prev => ({ ...prev, assigned_floor: val }))}
+                    placeholder="Qavatni tanlang"
+                    options={[
+                      { value: '1', label: '1-qavat' },
+                      { value: '2', label: '2-qavat' },
+                      { value: '3', label: '3-qavat' },
+                      { value: '4', label: '4-qavat' },
+                      { value: '5', label: '5-qavat' },
+                    ]}
+                    className="rounded-xl border border-white/10 bg-slate-900 px-4 py-2"
+                  />
                 </div>
               )}
             </div>
           )}
           {editModal.user?.source === 'users' && (
             <>
-              <div className="mb-6 flex gap-1 rounded-xl border border-white/5 bg-white/5 p-1">
+              <div className="mb-6 flex gap-1 rounded-full border border-white/5 bg-white/5 p-1">
                 {([
                   { key: 'asosiy', label: 'Asosiy' },
                   { key: 'hujjatlar', label: 'Hujjat & Manzil' },
@@ -1635,7 +1635,7 @@ export default function AdminUsersPage() {
                     key={tab.key}
                     type="button"
                     onClick={() => setActiveEditTab(tab.key)}
-                    className={`flex-1 rounded-lg py-2.5 text-center text-xs font-black uppercase tracking-widest transition-all ${
+                    className={`flex-1 rounded-full py-2.5 text-center text-xs font-black uppercase tracking-widest transition-all ${
                       activeEditTab === tab.key
                         ? 'bg-purple-600 text-white shadow-lg'
                         : 'text-slate-400 hover:text-white'
@@ -1691,15 +1691,17 @@ export default function AdminUsersPage() {
               ))}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Biriktirilgan jins</label>
-                <select
+                <CustomSelect
                   value={editForm.assigned_gender || ''}
-                  onChange={(event) => setEditForm((c) => ({ ...c, assigned_gender: event.target.value }))}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition-all focus:border-cyan-500/50 outline-none"
-                >
-                  <option value="" className="bg-slate-950">Tanlanmagan</option>
-                  <option value="male" className="bg-slate-950">Erkak</option>
-                  <option value="female" className="bg-slate-950">Ayol</option>
-                </select>
+                  onChange={(val) => setEditForm((c) => ({ ...c, assigned_gender: val }))}
+                  placeholder="Tanlanmagan"
+                  options={[
+                    { value: '', label: 'Tanlanmagan' },
+                    { value: 'male', label: 'Erkak' },
+                    { value: 'female', label: 'Ayol' },
+                  ]}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5"
+                />
               </div>
               <div className="md:col-span-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
                 <p className="text-xs text-amber-200/70 leading-relaxed">

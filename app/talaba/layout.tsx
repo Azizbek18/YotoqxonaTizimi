@@ -88,9 +88,9 @@ const NAV = [
 ]
 
 const QUICK_ACTIONS = [
-  { label: 'Tungi ruxsat', icon: Moon, color: 'text-purple-400' },
-  { label: 'Navbat almashish', icon: Zap, color: 'text-yellow-400' },
-  { label: 'Tozalik auditi', icon: ShieldCheck, color: 'text-green-400' },
+  { label: 'Tungi ruxsat', icon: Moon, bg: 'bg-purple-600', text: 'text-white' },
+  { label: 'Navbat almashish', icon: Zap, bg: 'bg-amber-400', text: 'text-slate-900' },
+  { label: 'Tozalik auditi', icon: ShieldCheck, bg: 'bg-emerald-600', text: 'text-white' },
 ]
 
 const PAGE_VARIANTS = {
@@ -338,13 +338,9 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                 key={action.label}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleQuickAction(action.label)}
-                className={`flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2.5 sm:py-3.5 rounded-2xl backdrop-blur-xl whitespace-nowrap transition-all text-xs sm:text-sm shrink-0 shadow-sm ${
-                  isLight
-                    ? 'bg-white border border-slate-200 text-slate-800 hover:border-blue-500/30 hover:bg-blue-50/10'
-                    : 'bg-slate-900/40 border border-white/5 text-white hover:border-cyan-500/20 hover:bg-cyan-500/[0.02]'
-                }`}
+                className={`flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2.5 sm:py-3.5 rounded-2xl whitespace-nowrap transition-all text-xs sm:text-sm shrink-0 ${action.bg} ${action.text}`}
               >
-                <action.icon size={16} className={`${action.color} shrink-0`} />
+                <action.icon size={16} className="shrink-0" />
                 <span className="font-bold tracking-wide">{action.label}</span>
               </motion.button>
             ))}

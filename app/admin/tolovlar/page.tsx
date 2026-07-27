@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { fetchAdminPayments, reviewAdminPayments } from '@/features/payments/client/api'
+import { fetchAdminPayments, reviewAdminPayments, fetchReceiptSignedUrl } from '@/features/payments/client/api'
 import type { PaymentRecord } from '@/features/payments/types'
 import {
   CreditCard, Search, Check, X, Clock, AlertCircle,
@@ -47,6 +47,24 @@ export default function AdminTolovlarPage() {
   const [rejectReason, setRejectReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [receiptSignedUrl, setReceiptSignedUrl] = useState<string | null>(null)
+
+  // The `receipts` bucket is private — resolve a fresh signed URL whenever
+  // the selected batch's receipt is shown, instead of using the stored
+  // storage path directly as an <img src>.
+  useEffect(() => {
+    const paymentId = selectedGroup?.records[0]?.id
+    if (!paymentId) {
+      setReceiptSignedUrl(null)
+      return
+    }
+    let cancelled = false
+    setReceiptSignedUrl(null)
+    fetchReceiptSignedUrl(paymentId)
+      .then((url) => { if (!cancelled) setReceiptSignedUrl(url) })
+      .catch(() => { if (!cancelled) setReceiptSignedUrl(null) })
+    return () => { cancelled = true }
+  }, [selectedGroup?.records])
 
   const handleRunAI = async (group: GroupedPayment) => {
     try {
@@ -310,14 +328,14 @@ export default function AdminTolovlarPage() {
         </div>
 
         {/* Tabs */}
-        <div className={`flex p-0.5 rounded-xl border shrink-0 max-w-full overflow-x-auto no-scrollbar flex-nowrap ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/60 border-white/5'}`}>
+        <div className={`flex p-0.5 rounded-full border shrink-0 max-w-full overflow-x-auto no-scrollbar flex-nowrap ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/60 border-white/5'}`}>
           {(['waiting', 'approved', 'rejected', 'all'] as const).map((tab) => {
             const isActive = activeTab === tab
             return (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-lg text-xs font-black transition-all shrink-0 whitespace-nowrap ${
+                className={`px-4 py-2 rounded-full text-xs font-black transition-all shrink-0 whitespace-nowrap ${
                   isActive
                     ? isLight ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'bg-white/[0.08] text-cyan-400 border border-cyan-400/20'
                     : isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
@@ -531,8 +549,9 @@ export default function AdminTolovlarPage() {
                           <p className={`text-xs mt-1 ${textMuted}`}>Ushbu kvitansiya PDF hujjat shaklida yuklangan.</p>
                         </div>
                         <button
-                          onClick={() => viewReceipt(selectedGroup.receipt_url)}
-                          className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border flex items-center gap-1.5 ${
+                          onClick={() => viewReceipt(receiptSignedUrl ?? undefined)}
+                          disabled={!receiptSignedUrl}
+                          className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border flex items-center gap-1.5 disabled:opacity-50 ${
                             isLight ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10'
                           }`}
                         >
@@ -540,16 +559,16 @@ export default function AdminTolovlarPage() {
                           <span>PDFni ochish</span>
                         </button>
                       </div>
-                    ) : (
+                    ) : receiptSignedUrl ? (
                       <>
                         {/* eslint-disable-next-line @next/next/no-img-element -- receipt image has unknown/variable aspect ratio, sized by intrinsic content within max-height */}
                         <img
-                          src={selectedGroup.receipt_url}
+                          src={receiptSignedUrl}
                           alt="Chek tasviri"
                           className="max-h-[180px] sm:max-h-[350px] object-contain rounded-xl shadow-md border"
                         />
                         <button
-                          onClick={() => viewReceipt(selectedGroup.receipt_url)}
+                          onClick={() => viewReceipt(receiptSignedUrl)}
                           className={`absolute bottom-3 right-3 p-2 rounded-xl border backdrop-blur-md transition-all ${
                             isLight ? 'bg-white/80 border-slate-200 text-slate-700 hover:bg-white' : 'bg-slate-900/80 border-white/5 text-slate-200 hover:bg-slate-900'
                           }`}
@@ -558,6 +577,8 @@ export default function AdminTolovlarPage() {
                           <Eye size={16} />
                         </button>
                       </>
+                    ) : (
+                      <Loader size={24} className="animate-spin text-slate-400" />
                     )}
                   </div>
                 ) : (

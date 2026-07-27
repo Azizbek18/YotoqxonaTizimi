@@ -50,6 +50,22 @@ export function createApplicationRepository() {
       return data
     },
 
+    // Only a still-draft application can be submitted — once staff/admin has
+    // decided it (approved/rejected) or the student already submitted it,
+    // this must not silently reset it back to 'pending'.
+    async submitOwnedDraft(studentId: string, id: string) {
+      const { data, error } = await supabase
+        .from('arizalar')
+        .update({ status: 'pending' })
+        .eq('id', id)
+        .eq('student_id', studentId)
+        .eq('status', 'draft')
+        .select()
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+
     async deleteOwned(studentId: string, id: string) {
       const { data, error } = await supabase
         .from('arizalar')

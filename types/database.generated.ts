@@ -212,6 +212,18 @@ export interface Database {
         Args: { required_roles: string[] }
         Returns: boolean
       }
+      assign_student_room_atomic: {
+        Args: { p_student_id: string; p_room_number: string; p_max_capacity?: number }
+        Returns: void
+      }
+      approve_permit_room_atomic: {
+        Args: { p_permit_id: string; p_room_number: string; p_max_capacity?: number }
+        Returns: PermitRequestRow[]
+      }
+      replace_floor_room_layout: {
+        Args: { p_floor_number: number; p_rows: Json }
+        Returns: void
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

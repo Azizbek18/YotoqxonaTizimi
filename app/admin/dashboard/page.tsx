@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import {
   AreaChart,
   Area,
@@ -19,8 +19,9 @@ import {
   Cell,
 } from 'recharts'
 import Link from 'next/link'
-import { AlertTriangle, Loader, X, Activity, Cpu } from 'lucide-react'
+import { AlertTriangle, Loader, X, Activity, Cpu, RefreshCw, ServerCog, ArrowRight } from 'lucide-react'
 import StatCard from '@/components/admin/StatCard'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { StaggerList, StaggerItem } from '@/components/motion/StaggerList'
 import { extractFloor } from '@/lib/floor'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -70,6 +71,16 @@ type StudentReportRow = {
   entry_date?: string | null
   status?: string | null
   created_at?: string | null
+  passport_series?: string | null
+  jshshir?: string | null
+  passport_date?: string | null
+  birth_date?: string | null
+  father_full_name?: string | null
+  father_workplace?: string | null
+  father_phone?: string | null
+  mother_full_name?: string | null
+  mother_workplace?: string | null
+  mother_phone?: string | null
 }
 
 type ArizaStatRow = {
@@ -352,35 +363,209 @@ export default function AdminDashboard() {
 
     setExporting(true)
     try {
-      const excelData = filteredStudents.map((s, idx) => ({
-        'T/r': idx + 1,
-        'F.I.Sh.': s.full_name || '-',
-        'Sharifi': s.middle_name || '-',
-        'Jinsi': s.gender === 'male' ? 'Erkak' : (s.gender === 'female' ? 'Ayol' : '-'),
-        'Millati': s.nationality || '-',
-        'Telefon': s.phone_number || s.phone || '-',
-        'Fakultet': s.faculty || '-',
-        'Yo\'nalish': s.direction || '-',
-        'Kurs': s.course || '-',
-        'Xona': s.room_number || '-',
-        'Viloyat': s.region || '-',
-        'Tuman': s.district || '-',
-        'Mahalla': s.mahalla || '-',
-        'Ta\'lim turi': s.study_type || '-',
-        'Kirgan sana': s.entry_date || '-'
-      }))
-
-      const worksheet = XLSX.utils.json_to_sheet(excelData)
-      const workbook = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Talabalar')
-
-      const max_widths = Object.keys(excelData[0] || {}).map(key => {
-        return Math.max(
-          key.length,
-          ...excelData.map(row => String(row[key as keyof typeof row] || '').length)
-        ) + 3
+      // Xona raqami bo'yicha tabiiy saralash — shu bilan birga qavat
+      // (xonadan hisoblanadi) ham o'sish tartibida guruhlanadi
+      const sortedStudents = [...filteredStudents].sort((a, b) => {
+        const roomA = a.room_number || ''
+        const roomB = b.room_number || ''
+        return roomA.localeCompare(roomB, undefined, { numeric: true, sensitivity: 'base' })
       })
-      worksheet['!cols'] = max_widths.map(w => ({ wch: w }))
+
+      // "YYYY-MM-DD" ni "DD.MM.YYYY" ko'rinishiga o'tkazish
+      const formatDate = (val?: string | null) => {
+        if (!val) return '-'
+        const match = val.match(/^(\d{4})-(\d{2})-(\d{2})/)
+        if (!match) return val
+        return `${match[3]}.${match[2]}.${match[1]}`
+      }
+
+      const headers = [
+        '№',
+        'Qavati',
+        'Xona raqami',
+        'F.I.Sh.',
+        'Viloyati',
+        'Tumani',
+        'MFY',
+        'Shartnoma raqami',
+        'Pasport seriya raqami',
+        'JSHSHIR',
+        'Pasport berilgan vaqti',
+        "Tug'ilgan kun, oy, yil",
+        'Fakulteti',
+        "Yo'nalish",
+        'Kursi',
+        'Millati',
+        'Moliya turi',
+        'Jinsi',
+        'Telefon raqami',
+        'Ijtimoiy holati',
+        'Ish joyi',
+        'Ish vaqti',
+        'TTJga joylashgan oyi',
+        "TTJdan chiqib ketgan sanasi",
+        'Tyutor',
+        'Telefon raqami',
+        'Otasining ismi va familiyasi',
+        'Ish joyi',
+        'Telefon nomeri',
+        'Onasining ismi va familiyasi',
+        'Onasining ish joyi',
+        'Telefon nomeri',
+      ]
+
+      // Har bir xonada 4 ta o'rin bor — talaba ma'lumotlaridan tashqari
+      // qolgan ustunlarni to'ldiruvchi yordamchi funksiya
+      const buildFields = (s: typeof sortedStudents[number]) => {
+        const gender = s.gender === 'male' ? 'Erkak' : (s.gender === 'female' ? 'Ayol' : (s.gender || '-'))
+        const phone = s.phone_number || s.phone || '-'
+        return [
+          s.full_name || '-',
+          s.region || '-',
+          s.district || '-',
+          s.mahalla || '-',
+          '-', // Shartnoma raqami — tizimda saqlanmaydi
+          s.passport_series || '-',
+          s.jshshir || '-',
+          formatDate(s.passport_date),
+          formatDate(s.birth_date),
+          s.faculty || '-',
+          s.direction || '-',
+          String(s.course ?? '-'),
+          s.nationality || '-',
+          s.study_type || '-',
+          gender,
+          phone,
+          '-', // Ijtimoiy holati — tizimda saqlanmaydi
+          '-', // Ish joyi (talabaning o'zi) — tizimda saqlanmaydi
+          '-', // Ish vaqti — tizimda saqlanmaydi
+          formatDate(s.entry_date),
+          '-', // TTJdan chiqib ketgan sanasi — tizimda saqlanmaydi
+          '-', // Tyutor — tizimda saqlanmaydi
+          '-', // Tyutor telefon raqami — tizimda saqlanmaydi
+          s.father_full_name || '-',
+          s.father_workplace || '-',
+          s.father_phone || '-',
+          s.mother_full_name || '-',
+          s.mother_workplace || '-',
+          s.mother_phone || '-',
+        ]
+      }
+      const emptyFields = () => Array(29).fill('')
+      const ROOM_CAPACITY = 4
+
+      // Ketma-ket bir xil xonadagi talabalarni guruhlash
+      type RoomGroup = { room: string | null; floor: number | null; students: typeof sortedStudents }
+      const roomGroups: RoomGroup[] = []
+      sortedStudents.forEach((s) => {
+        const room = s.room_number || null
+        const last = roomGroups[roomGroups.length - 1]
+        if (room && last && last.room === room) {
+          last.students.push(s)
+        } else {
+          roomGroups.push({ room, floor: extractFloor(s.room_number), students: [s] })
+        }
+      })
+
+      // Ma'lumotlarni shakllantirish — xona to'liq bo'lmasa ham qolgan
+      // 4 tagacha o'rin bo'sh qator sifatida qoldiriladi
+      const rawRows: string[][] = []
+      let seq = 1
+      roomGroups.forEach((group) => {
+        const qavatValue = group.floor ? String(group.floor) : '-'
+        const xonaValue = group.room ? `№-${group.room}` : '-'
+
+        group.students.forEach((s) => {
+          rawRows.push([String(seq), qavatValue, xonaValue, ...buildFields(s)])
+          seq++
+        })
+
+        if (group.room) {
+          const emptySlots = Math.max(0, ROOM_CAPACITY - group.students.length)
+          for (let k = 0; k < emptySlots; k++) {
+            rawRows.push(['', qavatValue, xonaValue, ...emptyFields()])
+          }
+        }
+      })
+
+      // Bir xil qavat va xonalarni guruhlash (vizual birlashtirish)
+      const displayRows = JSON.parse(JSON.stringify(rawRows))
+      const excelMerges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = []
+
+      const mergeColumn = (col: number) => {
+        let i = 0
+        while (i < displayRows.length) {
+          const value = displayRows[i][col]
+          if (value === '-' || !value) {
+            i++
+            continue
+          }
+
+          let j = i + 1
+          while (j < displayRows.length && rawRows[j][col] === value) {
+            displayRows[j][col] = ''
+            j++
+          }
+
+          if (j - i > 1) {
+            excelMerges.push({
+              s: { r: i + 1, c: col },
+              e: { r: j, c: col },
+            })
+          }
+          i = j
+        }
+      }
+
+      if (displayRows.length > 0) {
+        mergeColumn(1) // Qavati
+        mergeColumn(2) // Xona raqami
+      }
+
+      // ExcelJS orqali (bepul "xlsx" kutubxonasi katak stillarini — qalin
+      // shrift, ramka — faylga yoza olmaydi)
+      const workbook = new ExcelJS.Workbook()
+      const worksheet = workbook.addWorksheet('Talabalar')
+
+      worksheet.addRow(headers)
+      displayRows.forEach((row: string[]) => worksheet.addRow(row))
+
+      excelMerges.forEach(({ s, e }) => {
+        worksheet.mergeCells(s.r + 1, s.c + 1, e.r + 1, e.c + 1)
+      })
+
+      const thinBorder = {
+        top: { style: 'thin' as const },
+        left: { style: 'thin' as const },
+        bottom: { style: 'thin' as const },
+        right: { style: 'thin' as const },
+      }
+      const centeredCols = new Set([1, 2, 3]) // №, Qavati, Xona raqami (1-indekslangan)
+
+      const headerRow = worksheet.getRow(1)
+      headerRow.height = 40
+      headerRow.eachCell({ includeEmpty: true }, (cell) => {
+        cell.font = { bold: true, name: 'Times New Roman', size: 12 }
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+        cell.border = thinBorder
+      })
+
+      for (let r = 2; r <= worksheet.rowCount; r++) {
+        worksheet.getRow(r).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          cell.font = { name: 'Times New Roman', size: 11 }
+          cell.alignment = {
+            vertical: 'middle',
+            horizontal: centeredCols.has(colNumber) ? 'center' : 'left',
+            wrapText: true,
+          }
+          cell.border = thinBorder
+        })
+      }
+
+      headers.forEach((h, i) => {
+        const maxLen = Math.max(h.length, ...rawRows.map(row => String(row[i] || '').length))
+        worksheet.getColumn(i + 1).width = i === 0 ? Math.max(maxLen + 2, 5) : maxLen + 4
+      })
 
       let fileName = 'Talabalar_Hisoboti'
       if (reportFilters.gender !== 'all') fileName += `_${reportFilters.gender === 'male' ? 'Erkak' : 'Ayol'}`
@@ -393,7 +578,17 @@ export default function AdminDashboard() {
       }
       fileName += `_${new Date().toISOString().slice(0, 10)}.xlsx`
 
-      XLSX.writeFile(workbook, fileName)
+      const buffer = await workbook.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', fileName)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
       toast.success('Excel hisoboti muvaffaqiyatli yuklab olindi! 📊')
 
     } catch (err) {
@@ -497,9 +692,9 @@ export default function AdminDashboard() {
       )}
 
       {/* Pill Styled Glassmorphic Tabs */}
-      <div className={`inline-flex max-w-full overflow-x-auto no-scrollbar flex-nowrap p-1 rounded-2xl gap-1 border backdrop-blur-xl transition-all ${
-        isLight 
-          ? 'bg-slate-100/80 border-slate-200/80' 
+      <div className={`inline-flex max-w-full overflow-x-auto no-scrollbar flex-nowrap p-1 rounded-full gap-1 border backdrop-blur-xl transition-all ${
+        isLight
+          ? 'bg-slate-100/80 border-slate-200/80'
           : 'bg-[#0f172a]/60 border-white/5'
       }`}>
         {['overview', 'analytics', 'reports'].map((tab) => {
@@ -508,7 +703,7 @@ export default function AdminDashboard() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`relative z-10 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all duration-300 shrink-0 whitespace-nowrap ${
+              className={`relative z-10 px-5 py-2.5 rounded-full text-xs sm:text-sm font-black transition-all duration-300 shrink-0 whitespace-nowrap ${
                 isActive
                   ? isLight ? 'text-purple-700' : 'text-white'
                   : isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
@@ -517,9 +712,9 @@ export default function AdminDashboard() {
               {isActive && (
                 <motion.div
                   layoutId="activeTabIndicator"
-                  className={`absolute inset-0 rounded-xl -z-10 shadow-sm border ${
-                    isLight 
-                      ? 'bg-white border-slate-200' 
+                  className={`absolute inset-0 rounded-full -z-10 shadow-sm border ${
+                    isLight
+                      ? 'bg-white border-slate-200'
                       : 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 border-purple-500/30 shadow-purple-500/10'
                   }`}
                   transition={{ type: 'spring', stiffness: 380, damping: 30 }}
@@ -567,40 +762,31 @@ export default function AdminDashboard() {
               className={`backdrop-blur-xl border rounded-3xl p-6 ${surfaceBg}`}
             >
               <h2 className={`text-xl font-black mb-6 ${textStrong}`}>Tezkor Amallar</h2>
-              <StaggerList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <StaggerList className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                 {/* 1. Ma'lumotlarni Yangilash */}
                 <StaggerItem>
                 <button
                   onClick={handleRefreshStats}
                   disabled={isRefreshing}
-                  className={`relative overflow-hidden p-4 sm:p-5 text-left transition-all duration-300 group border rounded-2xl backdrop-blur-xl flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 ${
-                    isRefreshing ? 'opacity-80 cursor-not-allowed' : ''
+                  className={`group flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-300 ${
+                    isRefreshing ? 'opacity-70 cursor-not-allowed' : ''
                   } ${
-                    isLight 
-                      ? 'bg-slate-50/50 border-slate-200/80 hover:bg-white hover:border-purple-300 hover:shadow-lg hover:shadow-purple-500/5' 
-                      : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-purple-500/30 hover:shadow-[0_0_35px_rgba(168,85,247,0.08)]'
+                    isLight
+                      ? 'bg-slate-50/50 border-slate-200/80 hover:bg-white hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/5'
+                      : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-blue-500/30 hover:shadow-[0_0_35px_rgba(59,130,246,0.08)]'
                   }`}
                 >
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-blue-500 to-indigo-500" />
-                  <div className="pl-2 flex-1">
-                    <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${textMuted} group-hover:text-purple-500 flex items-center gap-1.5`}>
-                      {isRefreshing && <Loader className="animate-spin" size={12} />}
-                      Ma&apos;lumotlarni Yangilash
-                    </p>
-                    <p className={`text-sm sm:text-base md:text-lg font-black mt-1.5 transition-transform duration-300 group-hover:translate-x-1 ${textStrong}`}>
-                      Barcha Statistikalarni Yangilash &rarr;
-                    </p>
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+                    isLight ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/10 text-blue-400'
+                  }`}>
+                    {isRefreshing ? <Loader className="animate-spin" size={20} /> : <RefreshCw size={20} className="transition-transform duration-500 group-hover:rotate-180" />}
                   </div>
-                  <div className="relative w-12 h-12 sm:w-14 sm:h-14 self-end sm:self-auto shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
-                    <Image
-                      src="https://img.icons8.com/3d-fluency/94/synchronize.png"
-                      alt="Yangilash"
-                      fill
-                      unoptimized
-                      className="object-contain"
-                    />
+                  <div className="min-w-0 flex-1">
+                    <p className={`truncate text-sm font-black ${textStrong}`}>Ma&apos;lumotlarni yangilash</p>
+                    <p className={`truncate text-xs mt-0.5 ${textMuted}`}>Barcha statistikalarni qayta yuklash</p>
                   </div>
+                  <ArrowRight size={16} className={`shrink-0 transition-transform duration-300 group-hover:translate-x-1 ${textMuted}`} />
                 </button>
                 </StaggerItem>
 
@@ -609,33 +795,24 @@ export default function AdminDashboard() {
                 <button
                   onClick={handleCheckStatus}
                   disabled={isCheckingStatus}
-                  className={`relative overflow-hidden p-4 sm:p-5 text-left transition-all duration-300 group border rounded-2xl backdrop-blur-xl flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 ${
-                    isCheckingStatus ? 'opacity-80 cursor-not-allowed' : ''
+                  className={`group flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-300 ${
+                    isCheckingStatus ? 'opacity-70 cursor-not-allowed' : ''
                   } ${
-                    isLight 
-                      ? 'bg-slate-50/50 border-slate-200/80 hover:bg-white hover:border-purple-300 hover:shadow-lg hover:shadow-purple-500/5' 
+                    isLight
+                      ? 'bg-slate-50/50 border-slate-200/80 hover:bg-white hover:border-purple-300 hover:shadow-lg hover:shadow-purple-500/5'
                       : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-purple-500/30 hover:shadow-[0_0_35px_rgba(168,85,247,0.08)]'
                   }`}
                 >
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-purple-500 to-pink-500" />
-                  <div className="pl-2 flex-1">
-                    <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${textMuted} group-hover:text-purple-500 flex items-center gap-1.5`}>
-                      {isCheckingStatus && <Loader className="animate-spin" size={12} />}
-                      Tizim holati
-                    </p>
-                    <p className={`text-sm sm:text-base md:text-lg font-black mt-1.5 transition-transform duration-300 group-hover:translate-x-1 ${textStrong}`}>
-                      Server Holatini Tekshirish &rarr;
-                    </p>
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+                    isLight ? 'bg-purple-100 text-purple-600' : 'bg-purple-500/10 text-purple-400'
+                  }`}>
+                    {isCheckingStatus ? <Loader className="animate-spin" size={20} /> : <ServerCog size={20} />}
                   </div>
-                  <div className="relative w-12 h-12 sm:w-14 sm:h-14 self-end sm:self-auto shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
-                    <Image
-                      src="https://img.icons8.com/3d-fluency/94/server.png"
-                      alt="Server holati"
-                      fill
-                      unoptimized
-                      className="object-contain"
-                    />
+                  <div className="min-w-0 flex-1">
+                    <p className={`truncate text-sm font-black ${textStrong}`}>Tizim holati</p>
+                    <p className={`truncate text-xs mt-0.5 ${textMuted}`}>Server va bazaning holatini tekshirish</p>
                   </div>
+                  <ArrowRight size={16} className={`shrink-0 transition-transform duration-300 group-hover:translate-x-1 ${textMuted}`} />
                 </button>
                 </StaggerItem>
 
@@ -657,11 +834,11 @@ export default function AdminDashboard() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`backdrop-blur-xl border rounded-3xl p-6 ${surfaceBg}`}
+              className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-6 ${surfaceBg}`}
             >
               <h3 className={`text-lg font-black mb-6 ${textStrong}`}>Oylik Statistika</h3>
-              <ResponsiveContainer width="100%" height={320}>
-                <AreaChart data={monthlyData}>
+              <ResponsiveContainer width="100%" height={340}>
+                <AreaChart data={monthlyData} margin={{ top: 10, right: 16, left: -16, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
@@ -673,8 +850,8 @@ export default function AdminDashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)"} />
-                  <XAxis dataKey="month" stroke={isLight ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.4)"} style={{ fontSize: '11px', fontWeight: '600' }} />
-                  <YAxis stroke={isLight ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.4)"} style={{ fontSize: '11px', fontWeight: '600' }} />
+                  <XAxis dataKey="month" stroke={isLight ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.4)"} style={{ fontSize: '11px', fontWeight: '600' }} padding={{ left: 12, right: 12 }} />
+                  <YAxis stroke={isLight ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.4)"} style={{ fontSize: '11px', fontWeight: '600' }} width={44} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: isLight ? 'rgba(255, 255, 255, 0.85)' : 'rgba(15, 23, 42, 0.85)',
@@ -698,11 +875,11 @@ export default function AdminDashboard() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className={`backdrop-blur-xl border rounded-3xl p-6 ${surfaceBg}`}
+                className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-6 ${surfaceBg}`}
               >
                 <h3 className={`text-lg font-black mb-6 ${textStrong}`}>Qabul va Rad etishlar</h3>
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={monthlyData}>
+                <ResponsiveContainer width="100%" height={340}>
+                  <BarChart data={monthlyData} margin={{ top: 10, right: 16, left: -16, bottom: 0 }}>
                     <defs>
                       <linearGradient id="barApproved" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#10b981" stopOpacity={1}/>
@@ -714,8 +891,8 @@ export default function AdminDashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)"} />
-                    <XAxis dataKey="month" stroke={isLight ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.4)"} style={{ fontSize: '11px', fontWeight: '600' }} />
-                    <YAxis stroke={isLight ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.4)"} style={{ fontSize: '11px', fontWeight: '600' }} />
+                    <XAxis dataKey="month" stroke={isLight ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.4)"} style={{ fontSize: '11px', fontWeight: '600' }} padding={{ left: 12, right: 12 }} />
+                    <YAxis stroke={isLight ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.4)"} style={{ fontSize: '11px', fontWeight: '600' }} width={44} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: isLight ? 'rgba(255, 255, 255, 0.85)' : 'rgba(15, 23, 42, 0.85)',
@@ -737,10 +914,10 @@ export default function AdminDashboard() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className={`backdrop-blur-xl border rounded-3xl p-6 ${surfaceBg}`}
+                className={`backdrop-blur-xl border rounded-3xl p-4 sm:p-6 ${surfaceBg}`}
               >
                 <h3 className={`text-lg font-black mb-6 ${textStrong}`}>Ariza Holatlari</h3>
-                <div className="relative flex items-center justify-center h-[320px]">
+                <div className="relative flex items-center justify-center h-[340px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -814,19 +991,20 @@ export default function AdminDashboard() {
                 <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>
                   Jinsi bo&apos;yicha
                 </label>
-                <select
+                <CustomSelect
                   value={reportFilters.gender}
-                  onChange={(e) => setReportFilters(prev => ({ ...prev, gender: e.target.value }))}
-                  className={`w-full px-4 py-3 rounded-xl border outline-none text-sm transition-all ${
-                    isLight 
-                      ? 'bg-slate-50 border-slate-200 text-slate-800 focus:bg-white focus:border-purple-500' 
-                      : 'bg-[#0f172a]/80 border-white/5 text-white focus:bg-[#0f172a] focus:border-purple-500'
+                  onChange={(val) => setReportFilters(prev => ({ ...prev, gender: val }))}
+                  options={[
+                    { value: 'all', label: 'Barcha jinslar' },
+                    { value: 'male', label: "Faqat o'g'il bolalar (Erkak)" },
+                    { value: 'female', label: 'Faqat qiz bolalar (Ayol)' },
+                  ]}
+                  className={`px-4 py-3 rounded-xl border text-sm ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-200 text-slate-800'
+                      : 'bg-[#0f172a]/80 border-white/5 text-white'
                   }`}
-                >
-                  <option value="all" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>Barcha jinslar</option>
-                  <option value="male" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>Faqat o&apos;g&apos;il bolalar (Erkak)</option>
-                  <option value="female" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>Faqat qiz bolalar (Ayol)</option>
-                </select>
+                />
               </div>
 
               {/* 2. Millati */}
@@ -834,25 +1012,26 @@ export default function AdminDashboard() {
                 <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>
                   Millati bo&apos;yicha
                 </label>
-                <select
+                <CustomSelect
                   value={reportFilters.nationality}
-                  onChange={(e) => setReportFilters(prev => ({ ...prev, nationality: e.target.value }))}
-                  className={`w-full px-4 py-3 rounded-xl border outline-none text-sm transition-all ${
-                    isLight 
-                      ? 'bg-slate-50 border-slate-200 text-slate-800 focus:bg-white focus:border-purple-500' 
-                      : 'bg-[#0f172a]/80 border-white/5 text-white focus:bg-[#0f172a] focus:border-purple-500'
+                  onChange={(val) => setReportFilters(prev => ({ ...prev, nationality: val }))}
+                  options={[
+                    { value: 'all', label: 'Barcha millatlar' },
+                    { value: "O'zbek", label: "O'zbek" },
+                    { value: 'Tojik', label: 'Tojik' },
+                    { value: 'Qozoq', label: 'Qozoq' },
+                    { value: "Qirg'iz", label: "Qirg'iz" },
+                    { value: 'Turkman', label: 'Turkman' },
+                    { value: 'Rus', label: 'Rus' },
+                    { value: 'Qoraqalpoq', label: 'Qoraqalpoq' },
+                    { value: 'Boshqa', label: 'Boshqa' },
+                  ]}
+                  className={`px-4 py-3 rounded-xl border text-sm ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-200 text-slate-800'
+                      : 'bg-[#0f172a]/80 border-white/5 text-white'
                   }`}
-                >
-                  <option value="all" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>Barcha millatlar</option>
-                  <option value="O'zbek" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>O&apos;zbek</option>
-                  <option value="Tojik" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>Tojik</option>
-                  <option value="Qozoq" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>Qozoq</option>
-                  <option value="Qirg'iz" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>Qirg&apos;iz</option>
-                  <option value="Turkman" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>Turkman</option>
-                  <option value="Rus" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>Rus</option>
-                  <option value="Qoraqalpoq" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>Qoraqalpoq</option>
-                  <option value="Boshqa" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>Boshqa</option>
-                </select>
+                />
               </div>
 
               {/* 3. Qavati */}
@@ -860,22 +1039,23 @@ export default function AdminDashboard() {
                 <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>
                   Qavati bo&apos;yicha
                 </label>
-                <select
+                <CustomSelect
                   value={reportFilters.floor}
-                  onChange={(e) => setReportFilters(prev => ({ ...prev, floor: e.target.value }))}
-                  className={`w-full px-4 py-3 rounded-xl border outline-none text-sm transition-all ${
-                    isLight 
-                      ? 'bg-slate-50 border-slate-200 text-slate-800 focus:bg-white focus:border-purple-500' 
-                      : 'bg-[#0f172a]/80 border-white/5 text-white focus:bg-[#0f172a] focus:border-purple-500'
+                  onChange={(val) => setReportFilters(prev => ({ ...prev, floor: val }))}
+                  options={[
+                    { value: 'all', label: 'Barcha qavatlar' },
+                    { value: '1', label: '1-qavat' },
+                    { value: '2', label: '2-qavat' },
+                    { value: '3', label: '3-qavat' },
+                    { value: '4', label: '4-qavat' },
+                    { value: '5', label: '5-qavat' },
+                  ]}
+                  className={`px-4 py-3 rounded-xl border text-sm ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-200 text-slate-800'
+                      : 'bg-[#0f172a]/80 border-white/5 text-white'
                   }`}
-                >
-                  <option value="all" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>Barcha qavatlar</option>
-                  <option value="1" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>1-qavat</option>
-                  <option value="2" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>2-qavat</option>
-                  <option value="3" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>3-qavat</option>
-                  <option value="4" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>4-qavat</option>
-                  <option value="5" className={isLight ? 'text-slate-800' : 'bg-slate-900 text-white'}>5-qavat</option>
-                </select>
+                />
               </div>
             </div>
 

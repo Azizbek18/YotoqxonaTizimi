@@ -15,7 +15,7 @@ interface Props {
 
 export default function Step1Passport({ data, onChange, onNext }: Props) {
     // Har bir maydon uchun alohida focus holati
-    const [focusedField, setFocusedField] = useState<'place' | 'date' | null>(null)
+    const [focusedField, setFocusedField] = useState<'series' | 'jshshir' | 'place' | 'date' | null>(null)
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
 
@@ -61,11 +61,9 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
     }
 
     const glassInput = `
-        w-full bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl
-        p-3.5 rounded-xl outline-none text-white placeholder:text-slate-600
-        transition-all duration-500 font-sans text-[13px]
-        pl-12 focus:border-sky-500/40 focus:bg-white/[0.05] focus:ring-[4px] focus:ring-sky-500/5
-        hover:border-white/20
+        w-full bg-transparent p-3.5 rounded-xl outline-none text-white
+        placeholder:text-slate-600 transition-colors duration-300 font-sans
+        text-[13px] pl-12
     `
 
     return (
@@ -84,16 +82,20 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                 {/* Passport Seriya */}
                 <div className="group space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Passport Seriya</label>
-                    <div className="relative flex items-center">
-                        <CreditCard className="absolute left-4 z-10 text-slate-500 group-focus-within:text-sky-400 transition-colors" size={16} />
-                        <input
-                            type="text"
-                            className={glassInput}
-                            placeholder="AA1234567"
-                            maxLength={9}
-                            value={data.passportSeries || ''}
-                            onChange={e => onChange({ passportSeries: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })}
-                        />
+                    <div className={`cyber-border ${focusedField === 'series' ? 'focused' : ''}`}>
+                        <div className="cyber-input-inner relative flex items-center">
+                            <CreditCard className={`absolute left-4 z-10 transition-colors ${focusedField === 'series' ? 'text-sky-400' : 'text-slate-500'}`} size={16} />
+                            <input
+                                type="text"
+                                className={glassInput}
+                                placeholder="AA1234567"
+                                maxLength={9}
+                                value={data.passportSeries || ''}
+                                onFocus={() => setFocusedField('series')}
+                                onBlur={() => setFocusedField(null)}
+                                onChange={e => onChange({ passportSeries: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })}
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -101,47 +103,53 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                     {/* JSHSHIR */}
                     <div className="group space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">JSHSHIR</label>
-                        <div className="relative flex items-center">
-                            <Fingerprint className="absolute left-4 z-10 text-slate-500 group-focus-within:text-sky-400 transition-colors" size={18} />
-                            <input
-                                type="text"
-                                className={glassInput}
-                                placeholder="14 ta raqam"
-                                maxLength={14}
-                                value={data.jshshir || ''}
-                                onChange={e => onChange({ jshshir: e.target.value.replace(/\D/g, '') })}
-                            />
+                        <div className={`cyber-border ${focusedField === 'jshshir' ? 'focused' : ''}`}>
+                            <div className="cyber-input-inner relative flex items-center">
+                                <Fingerprint className={`absolute left-4 z-10 transition-colors ${focusedField === 'jshshir' ? 'text-sky-400' : 'text-slate-500'}`} size={18} />
+                                <input
+                                    type="text"
+                                    className={glassInput}
+                                    placeholder="14 ta raqam"
+                                    maxLength={14}
+                                    value={data.jshshir || ''}
+                                    onFocus={() => setFocusedField('jshshir')}
+                                    onBlur={() => setFocusedField(null)}
+                                    onChange={e => onChange({ jshshir: e.target.value.replace(/\D/g, '') })}
+                                />
+                            </div>
                         </div>
                     </div>
 
                     {/* Passport Berilgan Sanasi + TOOLTIP */}
                     <div className="group space-y-1.5 relative">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Berilgan sana</label>
-                        <div className="relative flex items-center">
-                            <AnimatePresence>
-                                {focusedField === 'date' && (
-                                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: -8 }} exit={{ opacity: 0, y: 10 }}
-                                        className="absolute bottom-full left-0 right-0 z-50 mb-2 pointer-events-none"
-                                    >
-                                        <div className="bg-[#1e293b]/95 border border-sky-500/30 p-2.5 rounded-xl shadow-2xl backdrop-blur-md">
-                                            <p className="text-sky-100 text-[10px] flex items-center gap-2">
-                                                <Info size={12} className="text-sky-400" /> Passportning amal qilish muddatini emas, berilgan sanasini tanlang.
-                                            </p>
-                                        </div>
-                                        <div className="absolute -bottom-1 left-6 w-2 h-2 bg-[#1e293b] border-r border-b border-sky-500/30 rotate-45" />
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                            <CalendarIcon className="absolute left-4 z-10 text-slate-500 group-focus-within:text-sky-400 transition-colors" size={16} />
-                            <input
-                                type="date"
-                                onFocus={() => setFocusedField('date')}
-                                onBlur={() => setFocusedField(null)}
-                                className={`${glassInput} appearance-none scheme-dark`}
-                                value={data.passportDate || ''}
-                                max={new Date().toISOString().split('T')[0]}
-                                onChange={e => onChange({ passportDate: e.target.value })}
-                            />
+                        <div className={`cyber-border ${focusedField === 'date' ? 'focused' : ''}`}>
+                            <div className="cyber-input-inner relative flex items-center">
+                                <AnimatePresence>
+                                    {focusedField === 'date' && (
+                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: -8 }} exit={{ opacity: 0, y: 10 }}
+                                            className="absolute bottom-full left-0 right-0 z-50 mb-2 pointer-events-none"
+                                        >
+                                            <div className="bg-[#1e293b]/95 border border-sky-500/30 p-2.5 rounded-xl shadow-2xl backdrop-blur-md">
+                                                <p className="text-sky-100 text-[10px] flex items-center gap-2">
+                                                    <Info size={12} className="text-sky-400" /> Passportning amal qilish muddatini emas, berilgan sanasini tanlang.
+                                                </p>
+                                            </div>
+                                            <div className="absolute -bottom-1 left-6 w-2 h-2 bg-[#1e293b] border-r border-b border-sky-500/30 rotate-45" />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                                <CalendarIcon className={`absolute left-4 z-10 transition-colors ${focusedField === 'date' ? 'text-sky-400' : 'text-slate-500'}`} size={16} />
+                                <input
+                                    type="date"
+                                    onFocus={() => setFocusedField('date')}
+                                    onBlur={() => setFocusedField(null)}
+                                    className={`${glassInput} appearance-none scheme-dark`}
+                                    value={data.passportDate || ''}
+                                    max={new Date().toISOString().split('T')[0]}
+                                    onChange={e => onChange({ passportDate: e.target.value })}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -149,31 +157,33 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                 {/* Berilgan joyi + TOOLTIP */}
                 <div className="group space-y-1.5 relative">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Berilgan joyi</label>
-                    <div className="relative">
-                        <AnimatePresence>
-                            {focusedField === 'place' && (
-                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: -8 }} exit={{ opacity: 0, y: 10 }}
-                                    className="absolute bottom-full left-0 right-0 z-50 mb-2 pointer-events-none"
-                                >
-                                    <div className="bg-[#1e293b]/95 border border-sky-500/30 p-2.5 rounded-xl shadow-2xl backdrop-blur-md">
-                                        <p className="text-sky-100 text-[10px] flex items-center gap-2">
-                                            <Info size={12} className="text-sky-400" /> Passportingizning orqa tarafidagi &quot;Berilgan joyi&quot; qismidagi matnni kiriting.
-                                        </p>
-                                    </div>
-                                    <div className="absolute -bottom-1 left-6 w-2 h-2 bg-[#1e293b] border-r border-b border-sky-500/30 rotate-45" />
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                        <MapPin className="absolute left-4 top-3.5 z-10 text-slate-500 group-focus-within:text-sky-400 transition-colors" size={17} />
-                        <textarea
-                            rows={1}
-                            onFocus={() => setFocusedField('place')}
-                            onBlur={() => setFocusedField(null)}
-                            className={`${glassInput} resize-none min-h-12 pt-3.25`}
-                            placeholder="Masalan: Toshkent sh. IIBB..."
-                            value={data.passportPlace || ''}
-                            onChange={e => onChange({ passportPlace: e.target.value })}
-                        />
+                    <div className={`cyber-border ${focusedField === 'place' ? 'focused' : ''}`}>
+                        <div className="cyber-input-inner relative">
+                            <AnimatePresence>
+                                {focusedField === 'place' && (
+                                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: -8 }} exit={{ opacity: 0, y: 10 }}
+                                        className="absolute bottom-full left-0 right-0 z-50 mb-2 pointer-events-none"
+                                    >
+                                        <div className="bg-[#1e293b]/95 border border-sky-500/30 p-2.5 rounded-xl shadow-2xl backdrop-blur-md">
+                                            <p className="text-sky-100 text-[10px] flex items-center gap-2">
+                                                <Info size={12} className="text-sky-400" /> Passportingizning orqa tarafidagi &quot;Berilgan joyi&quot; qismidagi matnni kiriting.
+                                            </p>
+                                        </div>
+                                        <div className="absolute -bottom-1 left-6 w-2 h-2 bg-[#1e293b] border-r border-b border-sky-500/30 rotate-45" />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                            <MapPin className={`absolute left-4 top-3.5 z-10 transition-colors ${focusedField === 'place' ? 'text-sky-400' : 'text-slate-500'}`} size={17} />
+                            <textarea
+                                rows={1}
+                                onFocus={() => setFocusedField('place')}
+                                onBlur={() => setFocusedField(null)}
+                                className={`${glassInput} resize-none min-h-12 pt-3.25`}
+                                placeholder="Masalan: Toshkent sh. IIBB..."
+                                value={data.passportPlace || ''}
+                                onChange={e => onChange({ passportPlace: e.target.value })}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

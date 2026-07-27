@@ -86,14 +86,21 @@ export function createPaymentService(repository: PaymentRepository = createPayme
 
       try {
         await repository.setReceiptPath(receiptHash, batchId, path)
-        const receiptUrl = repository.getPublicReceiptUrl(path)
-        const dividedAmount = Math.round(amount / months.length)
-        const rows = months.map((month) => ({
+        // The bucket is private; only the storage path is stored, and
+        // signed URLs are minted on demand (see /api/payments/receipt-url).
+        const receiptUrl = path
+        // Largest-remainder split so the per-month amounts always sum back
+        // to exactly `amount` (a plain Math.round(amount/n) per month can
+        // silently lose/gain currency units when amount isn't evenly
+        // divisible by months.length).
+        const baseAmount = Math.floor(amount / months.length)
+        const remainder = amount - baseAmount * months.length
+        const rows = months.map((month, index) => ({
           student_id: student.id,
           student_name: student.full_name || 'Talaba',
           month,
           year,
-          amount: dividedAmount,
+          amount: baseAmount + (index < remainder ? 1 : 0),
           status: 'waiting',
           receipt_url: receiptUrl,
           receipt_hash: receiptHash,
@@ -111,6 +118,10 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       } catch (error) {
         await repository.removeReceipt(path)
         await repository.releaseReceipt(receiptHash, batchId)
+        const code = (error as { code?: string } | null)?.code
+        if (code === '23505') {
+          throw new ApiError(409, 'Ushbu oy(lar) uchun to\'lov allaqachon yuborilgan yoki tasdiqlangan')
+        }
         throw error
       }
     },

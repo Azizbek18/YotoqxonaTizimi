@@ -353,14 +353,14 @@ export default function ArizalarContent() {
                     </h2>
                     <button
                         onClick={() => setShowNewForm(!showNewForm)}
-                        className={`shrink-0 px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-cyan-600 text-white hover:bg-cyan-700'}`}
+                        className="shrink-0 px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 bg-blue-600 text-white"
                     >
                         <Plus size={18} /> Yangi
                     </button>
                 </div>
 
                 {showNewForm && (
-                    <div className={`p-4 rounded-lg border-2 ${isLight ? 'border-slate-300 bg-slate-50' : 'border-slate-700 bg-slate-950/30'}`}>
+                    <div className={`p-4 rounded-xl border-2 ${isLight ? 'border-slate-300 bg-slate-50' : 'border-slate-700 bg-slate-950/30'}`}>
                         <div className="space-y-4">
                             <div>
                                 <label className={`block text-sm font-semibold mb-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
@@ -406,13 +406,11 @@ export default function ArizalarContent() {
                             <button
                                 onClick={generateWithAI}
                                 disabled={isGenerating || !newAppForm.title || !newAppForm.reason}
-                                className={`w-full py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${isGenerating || !newAppForm.title || !newAppForm.reason
+                                className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${isGenerating || !newAppForm.title || !newAppForm.reason
                                     ? isLight
                                         ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                                         : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                                    : isLight
-                                        ? 'bg-linear-to-r from-purple-600 to-pink-600 text-white hover:shadow-lg'
-                                        : 'bg-linear-to-r from-purple-600 to-pink-600 text-white hover:shadow-lg'
+                                    : 'bg-linear-to-r from-purple-600 to-pink-600 text-white'
                                     }`}
                             >
                                 <Sparkles size={18} />
@@ -438,7 +436,7 @@ export default function ArizalarContent() {
                         {applications.map((app) => (
                             <div
                                 key={app.id}
-                                className={`p-3 sm:p-4 rounded-lg border transition-all hover:shadow-md cursor-pointer overflow-hidden ${isLight ? 'bg-slate-50 border-slate-200 hover:bg-white' : 'bg-slate-800/30 border-slate-700 hover:bg-slate-800/50'}`}
+                                className={`p-3 sm:p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer overflow-hidden ${isLight ? 'bg-slate-50 border-slate-200 hover:bg-white' : 'bg-slate-800/30 border-slate-700 hover:bg-slate-800/50'}`}
                                 onClick={() => {
                                     setSelectedApp(app)
                                     setShowDetailModal(true)
@@ -472,7 +470,7 @@ export default function ArizalarContent() {
                                 </p>
 
                                 {app.adminResponse && (
-                                    <div className={`p-3 rounded-lg text-xs mb-3 border break-words ${isLight ? 'bg-blue-50 border-blue-200 text-blue-900' : 'bg-blue-900/20 border-blue-800 text-blue-300'}`}>
+                                    <div className={`p-3 rounded-xl text-xs mb-3 border break-words ${isLight ? 'bg-blue-50 border-blue-200 text-blue-900' : 'bg-blue-900/20 border-blue-800 text-blue-300'}`}>
                                         <p className="font-semibold mb-1">Admin xabari:</p>
                                         <p className="break-words">{app.adminResponse}</p>
                                     </div>
@@ -485,7 +483,7 @@ export default function ArizalarContent() {
                                                 e.stopPropagation()
                                                 submitApp(app)
                                             }}
-                                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${isLight ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-green-900/30 text-green-400 hover:bg-green-900/50'}`}
+                                            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-emerald-600 text-white"
                                         >
                                             <Send size={12} className="inline mr-1" /> Yuborish
                                         </button>
@@ -495,7 +493,7 @@ export default function ArizalarContent() {
                                             e.stopPropagation()
                                             downloadPDF(app)
                                         }}
-                                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${isLight ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'}`}
+                                        className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-blue-600 text-white"
                                     >
                                         <Download size={12} className="inline mr-1" /> PDF
                                     </button>
@@ -506,7 +504,7 @@ export default function ArizalarContent() {
                                                 setSelectedApp(app)
                                                 setShowDetailModal(true)
                                             }}
-                                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${isLight ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-yellow-900/30 text-yellow-400 hover:bg-yellow-900/50'}`}
+                                            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-amber-400 text-slate-900"
                                         >
                                             <Edit2 size={12} className="inline mr-1" /> Tahrir
                                         </button>
@@ -517,7 +515,7 @@ export default function ArizalarContent() {
                                                 e.stopPropagation()
                                                 deleteApp(app.id)
                                             }}
-                                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${isLight ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-red-900/30 text-red-400 hover:bg-red-900/50'}`}
+                                            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-rose-600 text-white"
                                         >
                                             <Trash2 size={12} className="inline mr-1" /> O&apos;chirish
                                         </button>
@@ -550,7 +548,7 @@ export default function ArizalarContent() {
                             </div>
                             <button
                                 onClick={() => setShowDetailModal(false)}
-                                className={`shrink-0 text-2xl font-bold ${isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white'}`}
+                                className={`shrink-0 p-1.5 rounded-full text-lg font-bold ${isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-400 hover:bg-white/10'}`}
                             >
                                 ✕
                             </button>
@@ -563,13 +561,13 @@ export default function ArizalarContent() {
                         <div className="flex flex-wrap gap-2">
                             <button
                                 onClick={() => downloadPDF(selectedApp)}
-                                className={`flex-1 sm:flex-none justify-center px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 ${isLight ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-cyan-600 text-white hover:bg-cyan-700'}`}
+                                className="flex-1 sm:flex-none justify-center px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 bg-blue-600 text-white"
                             >
                                 <Download size={18} /> PDF Yuklab Olish
                             </button>
                             <button
                                 onClick={() => setShowDetailModal(false)}
-                                className={`flex-1 sm:flex-none justify-center px-4 py-2 rounded-lg font-semibold transition-all flex items-center ${isLight ? 'bg-slate-200 text-slate-900 hover:bg-slate-300' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                                className={`flex-1 sm:flex-none justify-center px-4 py-2 rounded-xl font-bold transition-all flex items-center ${isLight ? 'bg-slate-200 text-slate-900' : 'bg-slate-800 text-white'}`}
                             >
                                 Yopish
                             </button>

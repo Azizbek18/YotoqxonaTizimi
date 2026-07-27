@@ -5,9 +5,10 @@ import { motion } from 'framer-motion'
 import { Download, BarChart3, TrendingUp, Users, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
+import { extractFloor } from '@/lib/floor'
 
 type MonthlyReportRow = {
     year: number
@@ -151,16 +152,17 @@ export default function AdminReportsPage() {
     const downloadUsersData = async (format: 'excel' | 'csv' | 'pdf') => {
         const toastId = toast.loading("Ma'lumotlar tayyorlanmoqda...")
         try {
-            // Barcha foydalanuvchilarni xona raqami bo'yicha saralab olish
-            const { users } = await fetchAdminDashboard()
+            // Faqat talabalarni (xodim/admin emas) xona raqami bo'yicha saralab olish
+            const { students } = await fetchAdminDashboard()
 
-            if (!users || users.length === 0) {
+            if (!students || students.length === 0) {
                 toast.error("Ma'lumot topilmadi", { id: toastId })
                 return
             }
 
-            // Xona raqami bo'yicha tabiiy (1, 2, 10...) saralash
-            const sortedUsers = [...users].sort((a, b) => {
+            // Xona raqami bo'yicha tabiiy (1, 2, 10...) saralash — shu bilan birga
+            // qavat ham (xonadan hisoblanadi) o'sish tartibida guruhlanadi
+            const sortedUsers = [...students].sort((a, b) => {
                 const roomA = a.room_number || '';
                 const roomB = b.room_number || '';
                 return roomA.localeCompare(roomB, undefined, { numeric: true, sensitivity: 'base' });
@@ -172,131 +174,218 @@ export default function AdminReportsPage() {
                 .replace(/\s+/g, ' ')
                 .trim();
 
-            // Foydalanuvchi taqdim etgan rasmdagi 14 ta sarlavha (tartib bilan)
+            // "YYYY-MM-DD" ni "DD.MM.YYYY" ko'rinishiga o'tkazish
+            const formatDate = (val?: string | null) => {
+                if (!val) return '-';
+                const match = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (!match) return val;
+                return `${match[3]}.${match[2]}.${match[1]}`;
+            };
+
             const headers = [
-                "Xonasi",
-                "F.I.O",
-                "Jinsi",
-                "Fakulteti",
-                "Yo'nalishi",
-                "Kursi",
-                "Viloyati",
-                "Pasport raqami",
-                "Doimiy yashash manzili",
-                "Telefon raqami",
-                "Ijtimoiy ahvoli",
-                "Daftar",
-                "kirgan sanasi",
-                "chiqqan sanasi"
+                '№',
+                'Qavati',
+                'Xona raqami',
+                'F.I.Sh.',
+                'Viloyati',
+                'Tumani',
+                'MFY',
+                'Shartnoma raqami',
+                'Pasport seriya raqami',
+                'JSHSHIR',
+                'Pasport berilgan vaqti',
+                "Tug'ilgan kun, oy, yil",
+                'Fakulteti',
+                "Yo'nalish",
+                'Kursi',
+                'Millati',
+                'Moliya turi',
+                'Jinsi',
+                'Telefon raqami',
+                'Ijtimoiy holati',
+                'Ish joyi',
+                'Ish vaqti',
+                'TTJga joylashgan oyi',
+                "TTJdan chiqib ketgan sanasi",
+                'Tyutor',
+                'Telefon raqami',
+                'Otasining ismi va familiyasi',
+                'Ish joyi',
+                'Telefon nomeri',
+                'Onasining ismi va familiyasi',
+                'Onasining ish joyi',
+                'Telefon nomeri',
             ]
 
-            // Ma'lumotlarni shakllantirish
-            const rawRows = sortedUsers.map(u => {
-                const fullFio = [u.full_name, u.middle_name].filter(Boolean).join(' ') || u.full_name || '-';
+            // Har bir xonada 4 ta o'rin bor — talaba ma'lumotlaridan tashqari
+            // qolgan ustunlarni to'ldiruvchi yordamchi funksiya
+            const buildFields = (u: typeof sortedUsers[number]) => {
                 const gender = u.gender === 'male' || u.gender === 'Erkak' ? 'Erkak' : u.gender === 'female' || u.gender === 'Ayol' ? 'Ayol' : (u.gender || '-');
-                const fullAddress = [u.region, u.district, u.mahalla].filter(Boolean).join(', ') || u.region || u.district || u.mahalla || '-';
                 const phone = u.phone_number || u.phone || '-';
-                const entryDate = u.entry_date || (u.created_at ? u.created_at.slice(0, 10) : '-');
-                const exitDate = (u as Record<string, unknown>).exit_date || (u as Record<string, unknown>).leave_date || '-';
-                const daftar = (u as Record<string, unknown>).daftar || u.status || '-';
-                const ijtimoiyAhvol = u.study_type || (u as Record<string, unknown>).ijtimoiy_ahvol || '-';
-
                 return [
-                    cleanText(u.room_number || '-'),
-                    cleanText(fullFio),
-                    cleanText(gender),
+                    cleanText(u.full_name || '-'),
+                    cleanText(u.region || '-'),
+                    cleanText(u.district || '-'),
+                    cleanText(u.mahalla || '-'),
+                    '-', // Shartnoma raqami — tizimda saqlanmaydi
+                    cleanText(u.passport_series || '-'),
+                    cleanText(u.jshshir || '-'),
+                    cleanText(formatDate(u.passport_date)),
+                    cleanText(formatDate(u.birth_date)),
                     cleanText(u.faculty || '-'),
                     cleanText(u.direction || '-'),
                     cleanText(u.course || '-'),
-                    cleanText(u.region || '-'),
-                    cleanText(u.passport_series || '-'),
-                    cleanText(fullAddress),
+                    cleanText(u.nationality || '-'),
+                    cleanText(u.study_type || '-'),
+                    cleanText(gender),
                     cleanText(phone),
-                    cleanText(ijtimoiyAhvol),
-                    cleanText(daftar),
-                    cleanText(entryDate),
-                    cleanText(exitDate)
+                    '-', // Ijtimoiy holati — tizimda saqlanmaydi
+                    '-', // Ish joyi (talabaning o'zi) — tizimda saqlanmaydi
+                    '-', // Ish vaqti — tizimda saqlanmaydi
+                    cleanText(formatDate(u.entry_date)),
+                    '-', // TTJdan chiqib ketgan sanasi — tizimda saqlanmaydi
+                    '-', // Tyutor — tizimda saqlanmaydi
+                    '-', // Tyutor telefon raqami — tizimda saqlanmaydi
+                    cleanText(u.father_full_name || '-'),
+                    cleanText(u.father_workplace || '-'),
+                    cleanText(u.father_phone || '-'),
+                    cleanText(u.mother_full_name || '-'),
+                    cleanText(u.mother_workplace || '-'),
+                    cleanText(u.mother_phone || '-'),
                 ]
+            }
+            const emptyFields = () => Array(29).fill('')
+            const ROOM_CAPACITY = 4
+
+            // Ketma-ket bir xil xonadagi talabalarni guruhlash
+            type RoomGroup = { room: string | null; floor: number | null; students: typeof sortedUsers }
+            const roomGroups: RoomGroup[] = []
+            sortedUsers.forEach((u) => {
+                const room = u.room_number || null
+                const last = roomGroups[roomGroups.length - 1]
+                if (room && last && last.room === room) {
+                    last.students.push(u)
+                } else {
+                    roomGroups.push({ room, floor: extractFloor(u.room_number), students: [u] })
+                }
             })
 
-            // Bir xil xonalarni guruhlash (vizual birlashtirish)
+            // Ma'lumotlarni shakllantirish — xona to'liq bo'lmasa ham qolgan
+            // 4 tagacha o'rin bo'sh qator sifatida qoldiriladi
+            const rawRows: string[][] = []
+            let seq = 1
+            roomGroups.forEach((group) => {
+                const qavatValue = group.floor ? String(group.floor) : '-'
+                const xonaValue = group.room ? `№-${group.room}` : '-'
+
+                group.students.forEach((u) => {
+                    rawRows.push([String(seq), qavatValue, xonaValue, ...buildFields(u)])
+                    seq++
+                })
+
+                if (group.room) {
+                    const emptySlots = Math.max(0, ROOM_CAPACITY - group.students.length)
+                    for (let k = 0; k < emptySlots; k++) {
+                        rawRows.push(['', qavatValue, xonaValue, ...emptyFields()])
+                    }
+                }
+            })
+
+            // Bir xil qavat va xonalarni guruhlash (vizual birlashtirish)
             const displayRows = JSON.parse(JSON.stringify(rawRows));
             const excelMerges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
 
-            if (displayRows.length > 0) {
+            const mergeColumn = (col: number) => {
                 let i = 0;
                 while (i < displayRows.length) {
-                    const roomValue = displayRows[i][0];
-                    if (roomValue === '-' || !roomValue) {
+                    const value = displayRows[i][col];
+                    if (value === '-' || !value) {
                         i++;
                         continue;
                     }
 
                     let j = i + 1;
-                    while (j < displayRows.length && rawRows[j][0] === roomValue) {
-                        displayRows[j][0] = ""; // Takrorlanmasligi uchun bo'shatish
+                    while (j < displayRows.length && rawRows[j][col] === value) {
+                        displayRows[j][col] = ""; // Takrorlanmasligi uchun bo'shatish
                         j++;
                     }
 
                     if (j - i > 1) {
                         excelMerges.push({
-                            s: { r: i + 1, c: 0 }, // s: start (header dan keyin)
-                            e: { r: j, c: 0 }      // e: end
+                            s: { r: i + 1, c: col }, // s: start (header dan keyin)
+                            e: { r: j, c: col }      // e: end
                         });
                     }
                     i = j;
                 }
+            };
+
+            if (displayRows.length > 0) {
+                mergeColumn(1); // Qavati
+                mergeColumn(2); // Xona raqami
             }
 
             if (format === 'excel') {
-                // Excel (.xlsx) yaratish
-                const worksheet = XLSX.utils.aoa_to_sheet([headers, ...displayRows]);
-                worksheet['!merges'] = excelMerges;
+                // Excel (.xlsx) yaratish — ExcelJS orqali (bepul "xlsx" kutubxonasi
+                // katak stillarini — qalin shrift, ramka — faylga yoza olmaydi)
+                const workbook = new ExcelJS.Workbook()
+                const worksheet = workbook.addWorksheet('Hisobot')
 
-                // Sarlavhalarni (birinchi qator) formatlash
-                const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
-                for (let C = range.s.c; C <= range.e.c; ++C) {
-                    const address = XLSX.utils.encode_cell({ r: 0, c: C });
-                    if (!worksheet[address]) continue;
+                worksheet.addRow(headers)
+                displayRows.forEach((row: string[]) => worksheet.addRow(row))
 
-                    worksheet[address].s = {
-                        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 12 },
-                        fill: { fgColor: { rgb: "4F46E5" } }, // Indigo fon rangi
-                        alignment: { horizontal: "center", vertical: "center" },
-                        border: {
-                            top: { style: "thin" }, bottom: { style: "thin" },
-                            left: { style: "thin" }, right: { style: "thin" }
+                excelMerges.forEach(({ s, e }) => {
+                    worksheet.mergeCells(s.r + 1, s.c + 1, e.r + 1, e.c + 1)
+                })
+
+                const thinBorder = {
+                    top: { style: 'thin' as const },
+                    left: { style: 'thin' as const },
+                    bottom: { style: 'thin' as const },
+                    right: { style: 'thin' as const },
+                }
+                const centeredCols = new Set([1, 2, 3]) // №, Qavati, Xona raqami (1-indekslangan)
+
+                // Sarlavhalarni (birinchi qator) formatlash — asosiy matn sifatida qalin qilib
+                const headerRow = worksheet.getRow(1)
+                headerRow.height = 40
+                headerRow.eachCell({ includeEmpty: true }, (cell) => {
+                    cell.font = { bold: true, name: 'Times New Roman', size: 12 }
+                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+                    cell.border = thinBorder
+                })
+
+                // Ma'lumotlar kataklarini formatlash — har bir katakka ramka
+                for (let r = 2; r <= worksheet.rowCount; r++) {
+                    worksheet.getRow(r).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                        cell.font = { name: 'Times New Roman', size: 11 }
+                        cell.alignment = {
+                            vertical: 'middle',
+                            horizontal: centeredCols.has(colNumber) ? 'center' : 'left',
+                            wrapText: true,
                         }
-                    };
+                        cell.border = thinBorder
+                    })
                 }
 
-                // Ma'lumotlar kataklarini formatlash (Xona ustunini markazlash)
-                for (let R = range.s.r + 1; R <= range.e.r; R++) {
-                    const cellAddress = XLSX.utils.encode_cell({ r: R, c: 0 });
-                    if (worksheet[cellAddress]) {
-                        worksheet[cellAddress].s = {
-                            alignment: { vertical: "center", horizontal: "center" },
-                            border: {
-                                bottom: { style: "thin", color: { rgb: "E2E8F0" } },
-                                right: { style: "thin", color: { rgb: "E2E8F0" } }
-                            }
-                        };
-                    }
-                }
-
-                // Ustun kengliklarini avtomatik hisoblash
-                const colWidths = headers.map((h, i) => {
-                    const column = [h, ...rawRows.map(row => String(row[i]))];
-                    const maxLen = Math.max(...column.map(v => v.length));
-                    return { wch: Math.max(maxLen + 4, 12) }; // +4 bo'sh joy qo'shish uchun
-                });
-                worksheet['!cols'] = colWidths;
-
-                const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, "Hisobot");
+                // Ustun kengliklarini avtomatik hisoblash (№ ustuni tor bo'lishi kerak)
+                headers.forEach((h, i) => {
+                    const maxLen = Math.max(h.length, ...rawRows.map(row => String(row[i]).length))
+                    worksheet.getColumn(i + 1).width = i === 0 ? Math.max(maxLen + 2, 5) : maxLen + 4
+                })
 
                 // Faylni yuklab olish
-                XLSX.writeFile(workbook, `foydalanuvchilar_${new Date().toISOString().slice(0, 10)}.xlsx`);
+                const buffer = await workbook.xlsx.writeBuffer()
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+                const url = URL.createObjectURL(blob)
+                const link = document.createElement('a')
+                link.href = url
+                link.setAttribute('download', `foydalanuvchilar_${new Date().toISOString().slice(0, 10)}.xlsx`)
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+                URL.revokeObjectURL(url)
+
                 toast.success("Excel fayl yuklab olindi", { id: toastId });
                 return;
             }
@@ -311,19 +400,24 @@ export default function AdminReportsPage() {
                 doc.text(`Sana: ${new Date().toLocaleDateString('uz-UZ')}`, 14, 22)
 
                 let startY = 28
-                const colWidths = [14, 32, 14, 22, 22, 10, 18, 18, 32, 20, 18, 14, 16, 16]
+                // 31 ta ustun bitta landscape A4 sahifasiga sig'mas darajada ko'p
+                // bo'lgani uchun kenglik sahifa bo'yicha teng taqsimlanadi (o'rniga
+                // hardcode qilingan 14 ta ustunlik kenglik ishlatilmaydi, aks holda
+                // ustunlar sahifadan chiqib ketardi)
+                const availableWidth = 277
+                const colWidth = availableWidth / headers.length
+                const maxChars = Math.max(3, Math.floor(colWidth / 1.8))
                 const rowHeight = 7
 
                 // Header drawing
                 let x = 10
-                doc.setFontSize(7)
+                doc.setFontSize(5)
                 doc.setFillColor(79, 70, 229)
                 doc.setTextColor(255, 255, 255)
-                headers.forEach((h, idx) => {
-                    const w = colWidths[idx] || 18
-                    doc.rect(x, startY, w, rowHeight, 'F')
-                    doc.text(h, x + 1, startY + 4.5)
-                    x += w
+                headers.forEach((h) => {
+                    doc.rect(x, startY, colWidth, rowHeight, 'F')
+                    doc.text(h.slice(0, maxChars), x + 0.5, startY + 4.5)
+                    x += colWidth
                 })
 
                 startY += rowHeight
@@ -335,12 +429,11 @@ export default function AdminReportsPage() {
                         startY = 15
                     }
                     let rx = 10
-                    row.forEach((cellText, idx) => {
-                        const w = colWidths[idx] || 18
-                        doc.rect(rx, startY, w, rowHeight)
-                        const str = String(cellText).slice(0, 16)
-                        doc.text(str, rx + 1, startY + 4.5)
-                        rx += w
+                    row.forEach((cellText) => {
+                        doc.rect(rx, startY, colWidth, rowHeight)
+                        const str = String(cellText).slice(0, maxChars)
+                        doc.text(str, rx + 0.5, startY + 4.5)
+                        rx += colWidth
                     })
                     startY += rowHeight
                 })
@@ -350,11 +443,14 @@ export default function AdminReportsPage() {
                 return
             }
 
-            // CSV formati
+            // CSV formati — merged-cell birlashtirish faqat Excelda ma'no
+            // beradi, CSVda esa bo'sh katak "ma'lumot yo'q" deb o'qilib
+            // qolishi mumkin, shuning uchun to'liq (blanklanmagan) qiymatlar
+            // ishlatiladi
             const content = [
                 'sep=,',
                 headers.join(','),
-                ...displayRows.map((row: string[]) => row.map((cell: string) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+                ...rawRows.map((row: string[]) => row.map((cell: string) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
             ].join('\n')
 
             const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' })

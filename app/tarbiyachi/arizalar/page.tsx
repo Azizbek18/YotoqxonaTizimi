@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Search, Check, X, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { getAuthHeaders } from '@/lib/auth-session'
 
 interface StaffAriza {
@@ -144,26 +145,32 @@ export default function TarbiyachiArizalarPage() {
               className={`rounded-xl border py-2 pl-8 pr-3 text-sm outline-none transition-colors ${inputCls}`}
             />
           </div>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className={`rounded-xl border px-3 py-2 text-sm transition-colors ${inputCls}`}
-          >
-            <option value="all">Barcha holatlar</option>
-            <option value="pending">Kutilmoqda</option>
-            <option value="approved">Tasdiqlangan</option>
-            <option value="rejected">Rad etilgan</option>
-          </select>
-          <select
-            value={level}
-            onChange={(e) => setLevel(e.target.value as 'all' | StaffAriza['level'])}
-            className={`rounded-xl border px-3 py-2 text-sm transition-colors ${inputCls}`}
-          >
-            <option value="all">Barcha darajalar</option>
-            <option value="info">Info</option>
-            <option value="warning">Ogohlantirish</option>
-            <option value="critical">Muhim</option>
-          </select>
+          <div className="shrink-0 w-44">
+            <CustomSelect
+              value={status}
+              onChange={(val) => setStatus(val)}
+              options={[
+                { value: 'all', label: 'Barcha holatlar' },
+                { value: 'pending', label: 'Kutilmoqda' },
+                { value: 'approved', label: 'Tasdiqlangan' },
+                { value: 'rejected', label: 'Rad etilgan' },
+              ]}
+              className={`rounded-xl border px-3 py-2 text-sm ${inputCls}`}
+            />
+          </div>
+          <div className="shrink-0 w-44">
+            <CustomSelect
+              value={level}
+              onChange={(val) => setLevel(val as 'all' | StaffAriza['level'])}
+              options={[
+                { value: 'all', label: 'Barcha darajalar' },
+                { value: 'info', label: 'Info' },
+                { value: 'warning', label: 'Ogohlantirish' },
+                { value: 'critical', label: 'Muhim' },
+              ]}
+              className={`rounded-xl border px-3 py-2 text-sm ${inputCls}`}
+            />
+          </div>
         </div>
       </div>
 

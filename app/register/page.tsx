@@ -4,10 +4,17 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Baloo_2 } from 'next/font/google'
 import { CheckCircle, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
+
+const baloo2 = Baloo_2({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 import StepProgress from '@/components/register/StepProgress'
 import Step1Passport from '@/components/register/Step1Passport'
@@ -98,7 +105,19 @@ export default function RegisterPage() {
   const isLight = theme === 'light'
 
   return (
-    <main className={`min-h-screen flex items-center justify-center p-2 sm:p-6 font-sans overflow-hidden relative ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'}`}>
+    <main className={`baloo-scope min-h-screen flex items-center justify-center p-2 sm:p-6 overflow-hidden relative ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'}`} style={{ fontFamily: baloo2.style.fontFamily }}>
+      {/* Every step component (Step1Passport..Step9Password) uses a
+          `font-sans` wrapper and plain <h2> headings, both of which resolve
+          through the global --app-font-sans / --app-font-display custom
+          properties. Overriding those two variables here — instead of
+          editing all 9 step files — cascades Baloo 2 through the whole
+          registration flow for free, since CSS custom properties inherit. */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .baloo-scope {
+          --app-font-sans: ${baloo2.style.fontFamily};
+          --app-font-display: ${baloo2.style.fontFamily};
+        }
+      `}} />
       {/* Theme Toggle */}
       <div className="absolute top-4 right-4 z-20">
         <ThemeToggle />
@@ -113,9 +132,9 @@ export default function RegisterPage() {
         <div className={`flex flex-col max-h-[94vh] rounded-3xl sm:rounded-4xl border backdrop-blur-3xl shadow-2xl overflow-hidden ${isLight ? 'bg-white/90 border-slate-200' : 'bg-[#111827]/80 border-white/10'}`}>
 
           <div className={`p-4 sm:pt-8 sm:pb-4 pb-2 shrink-0 border-b ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5'}`}>
-            <div className={`flex gap-1 rounded-xl p-1 mb-4 border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/5'}`}>
-              <Link href="/login" className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-lg transition-colors ${isLight ? 'text-slate-500 hover:text-slate-700' : 'text-slate-400'}`}>Kirish</Link>
-              <div className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-lg text-white bg-blue-600 shadow-lg ${isLight ? 'shadow-blue-400/30' : 'shadow-blue-600/20'}`}>Ro&apos;yxatdan o&apos;tish</div>
+            <div className="flex gap-2.5 mb-4">
+              <Link href="/login" className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-xl border transition-colors ${isLight ? 'text-slate-500 hover:text-slate-700 bg-white border-slate-200' : 'text-slate-400 bg-white/5 border-white/10'}`}>Kirish</Link>
+              <button type="button" className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-xl border text-white bg-blue-600 ${isLight ? 'border-blue-700' : 'border-blue-500'}`}>Ro&apos;yxatdan o&apos;tish</button>
             </div>
 
             <div className="w-full overflow-x-auto no-scrollbar py-2">

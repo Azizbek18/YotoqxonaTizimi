@@ -31,6 +31,14 @@ export async function fetchAdminPaymentSummary(): Promise<PaymentSummary> {
   }
 }
 
+// The `receipts` storage bucket is private; the stored `receipt_url` is
+// just an object path, so a fresh short-lived signed URL must be minted
+// per view/download instead of using it directly as an <img src>/href.
+export async function fetchReceiptSignedUrl(paymentId: string) {
+  const result = await requestJson<{ url: string }>(`/api/payments/receipt-url?id=${encodeURIComponent(paymentId)}`)
+  return result.url
+}
+
 export function reviewAdminPayments(input: {
   ids: string[]
   status: Extract<PaymentStatus, 'approved' | 'rejected'>

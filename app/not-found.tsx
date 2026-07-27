@@ -7,7 +7,7 @@ export default function NotFound() {
         <p className="text-indigo-400 font-black">404</p>
         <h1 className="text-3xl font-black">Sahifa topilmadi</h1>
         <p className="text-sm text-slate-400">Manzil noto‘g‘ri yoki sahifa ko‘chirilgan.</p>
-        <Link href="/" className="inline-block rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold hover:bg-indigo-500">
+        <Link href="/" className="inline-block rounded-xl border border-white/10 bg-indigo-600 px-5 py-3 text-sm font-bold hover:bg-indigo-500">
           Bosh sahifaga qaytish
         </Link>
       </div>

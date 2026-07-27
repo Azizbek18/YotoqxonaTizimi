@@ -6,6 +6,7 @@ import { Search, Eye, Edit2, Trash2, FileText, Filter, RotateCcw } from 'lucide-
 import toast from 'react-hot-toast'
 import AdminTable, { type TableColumn } from '@/components/admin/AdminTable'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 
@@ -367,20 +368,21 @@ export default function AdminArizalar() {
             />
           </div>
           <div className="relative">
-            <Filter className="absolute left-3 top-3.5 text-slate-400 pointer-events-none" size={18} />
-            <select
+            <Filter className="absolute left-3 top-3.5 text-slate-400 pointer-events-none z-10" size={18} />
+            <CustomSelect
               value={filterStatus}
-              onChange={(e) => {
-                setFilterStatus(e.target.value as 'all' | ApplicationRequest['level'])
+              onChange={(val) => {
+                setFilterStatus(val as 'all' | ApplicationRequest['level'])
                 setCurrentPage(1)
               }}
-              className={`w-full rounded-xl border py-3 pl-10 pr-4 text-sm outline-none transition-all appearance-none cursor-pointer ${inputBg}`}
-            >
-              <option value="all" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Barcha arizalar</option>
-              <option value="info" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Info</option>
-              <option value="warning" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Ogohlantirish</option>
-              <option value="critical" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Muhim</option>
-            </select>
+              options={[
+                { value: 'all', label: 'Barcha arizalar' },
+                { value: 'info', label: 'Info' },
+                { value: 'warning', label: 'Ogohlantirish' },
+                { value: 'critical', label: 'Muhim' },
+              ]}
+              className={`rounded-xl border py-3 pl-10 pr-4 text-sm ${inputBg}`}
+            />
           </div>
         </div>
       </div>
@@ -475,27 +477,29 @@ export default function AdminArizalar() {
         <div className="space-y-4">
           <div>
             <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>Yangi daraja:</label>
-            <select
+            <CustomSelect
               value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value as ApplicationRequest['level'])}
-              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputBg}`}
-            >
-              <option value="info" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Info</option>
-              <option value="warning" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Ogohlantirish</option>
-              <option value="critical" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Muhim</option>
-            </select>
+              onChange={(val) => setNewStatus(val as ApplicationRequest['level'])}
+              options={[
+                { value: 'info', label: 'Info' },
+                { value: 'warning', label: 'Ogohlantirish' },
+                { value: 'critical', label: 'Muhim' },
+              ]}
+              className={`rounded-xl border px-4 py-2.5 text-sm ${inputBg}`}
+            />
           </div>
           <div>
             <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>Yangi holat:</label>
-            <select
+            <CustomSelect
               value={newRealStatus}
-              onChange={(e) => setNewRealStatus(e.target.value)}
-              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputBg}`}
-            >
-              <option value="pending" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Kutilmoqda</option>
-              <option value="approved" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Tasdiqlangan</option>
-              <option value="rejected" className={isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}>Rad etilgan</option>
-            </select>
+              onChange={(val) => setNewRealStatus(val)}
+              options={[
+                { value: 'pending', label: 'Kutilmoqda' },
+                { value: 'approved', label: 'Tasdiqlangan' },
+                { value: 'rejected', label: 'Rad etilgan' },
+              ]}
+              className={`rounded-xl border px-4 py-2.5 text-sm ${inputBg}`}
+            />
           </div>
           <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl space-y-1">
             <p className="text-xs text-purple-300 font-semibold">

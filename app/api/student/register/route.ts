@@ -3,6 +3,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
 import { writeAuditLog } from '@/lib/audit-log'
+import { extractFloor } from '@/lib/floor'
 
 function text(body: Record<string, unknown>, key: string, maxLength = 200) {
   return String(body[key] ?? '').trim().slice(0, maxLength)
@@ -80,6 +81,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Bu email bilan akkaunt mavjud yoki akkaunt yaratib bo‘lmadi.' }, { status: 409 })
     }
 
+    let assignedFloor: number | null = null
+    if (permit.room_number) {
+      const { data: layoutRow } = await supabase
+        .from('floor_room_layout')
+        .select('floor_number')
+        .eq('room_number', permit.room_number)
+        .maybeSingle()
+      assignedFloor = layoutRow?.floor_number ?? extractFloor(permit.room_number)
+    }
+
     const userRow = {
       id: authData.user.id,
       email,
@@ -106,6 +117,7 @@ export async function POST(request: NextRequest) {
       mother_workplace: text(body, 'mother_workplace', 200) || null,
       mother_phone: text(body, 'mother_phone', 32) || null,
       room_number: permit.room_number,
+      assigned_floor: assignedFloor,
       entry_date: entryDate,
       role: 'talaba',
       status: 'active',

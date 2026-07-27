@@ -23,19 +23,26 @@ export function createPermitAdminRepository() {
         .from('permit_requests')
         .update(updates)
         .eq('id', id)
+        .eq('status', 'pending')
         .select()
         .maybeSingle()
       if (error) throw error
       return data
     },
-    async roomOccupancy(roomNumber: string) {
-      const [users, permits] = await Promise.all([
-        supabase.from('users').select('id', { count: 'exact', head: true }).eq('role', 'talaba').eq('room_number', roomNumber),
-        supabase.from('permit_requests').select('id', { count: 'exact', head: true }).eq('status', 'approved').eq('room_number', roomNumber),
-      ])
-      if (users.error) throw users.error
-      if (permits.error) throw permits.error
-      return (users.count ?? 0) + (permits.count ?? 0)
+    // Atomically checks room capacity/gender and flips status pending -> approved
+    // inside a single DB transaction (see assign_room_atomic in the DB migration)
+    // so two concurrent approvals for the same room can't both pass a
+    // read-then-write capacity check and overbook it.
+    async approveIntoRoom(id: string, roomNumber: string) {
+      const { data, error } = await supabase.rpc('approve_permit_room_atomic', {
+        p_permit_id: id,
+        p_room_number: roomNumber,
+      })
+      if (error) {
+        if (error.code === 'P0001') return null
+        throw error
+      }
+      return Array.isArray(data) ? data[0] ?? null : data
     },
   }
 }

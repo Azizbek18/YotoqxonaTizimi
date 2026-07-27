@@ -33,6 +33,7 @@ const CHECKS_META = [
 export default function Step7Password({ data, onChange, onSubmit, onBack, loading }: Props) {
   const [showPass, setShowPass] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
+  const [focusedField, setFocusedField] = useState<'email' | 'password' | 'confirm' | null>(null)
 
   const checks = getStrength(data.password ?? '')
   const score = checks.filter(Boolean).length
@@ -71,59 +72,63 @@ export default function Step7Password({ data, onChange, onSubmit, onBack, loadin
 
       <div className="space-y-2.5">
         {/* Email Input */}
-        <div className="relative group">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors z-10">
-            <Mail size={16} />
+        <div className={`cyber-border ${focusedField === 'email' ? 'focused' : ''}`}>
+          <div className="cyber-input-inner relative">
+            <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors z-10 ${focusedField === 'email' ? 'text-blue-400' : 'text-slate-500'}`}>
+              <Mail size={16} />
+            </div>
+            <input
+              type="email"
+              placeholder="Email manzilingiz"
+              onFocus={() => { setIsFocused(true); setFocusedField('email') }}
+              onBlur={() => { setIsFocused(false); setFocusedField(null) }}
+              value={data.email ?? ''}
+              onChange={e => onChange({ email: e.target.value })}
+              className={`w-full bg-transparent border p-3.5 pl-12 pr-12 rounded-xl text-white text-sm outline-none transition-colors
+                ${data.email
+                  ? isEmailValid
+                    ? 'border-emerald-500/40'
+                    : 'border-rose-500/40'
+                  : 'border-transparent'
+                }`}
+            />
+            <AnimatePresence>
+              {isEmailValid && (
+                <motion.div
+                  initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500 z-10"
+                >
+                  <Check size={14} strokeWidth={3} />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-          <input
-            type="email"
-            placeholder="Email manzilingiz"
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            value={data.email ?? ''}
-            onChange={e => onChange({ email: e.target.value })}
-            className={`w-full bg-white/[0.01] border p-3.5 pl-12 pr-12 rounded-xl text-white text-sm outline-none transition-all
-              ${data.email
-                ? isEmailValid
-                  ? 'border-emerald-500/40 focus:border-emerald-500/60'
-                  : 'border-rose-500/40 focus:border-rose-500/60'
-                : 'border-white/10 focus:border-blue-500/40'
-              }`}
-          />
-          <AnimatePresence>
-            {isEmailValid && (
-              <motion.div
-                initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500 z-10"
-              >
-                <Check size={14} strokeWidth={3} />
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
 
         {/* Parol Input va Progress Bar */}
         <div className="space-y-2">
-          <div className="relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors z-10">
-              <Lock size={16} />
+          <div className={`cyber-border ${focusedField === 'password' ? 'focused' : ''}`}>
+            <div className="cyber-input-inner relative">
+              <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors z-10 ${focusedField === 'password' ? 'text-blue-400' : 'text-slate-500'}`}>
+                <Lock size={16} />
+              </div>
+              <input
+                type={showPass ? 'text' : 'password'}
+                placeholder="Yangi parol"
+                onFocus={() => { setIsFocused(true); setFocusedField('password') }}
+                onBlur={() => { setIsFocused(false); setFocusedField(null) }}
+                value={data.password ?? ''}
+                onChange={e => onChange({ password: e.target.value })}
+                className="w-full bg-transparent p-3.5 pl-12 pr-12 rounded-xl text-white text-sm outline-none transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPass(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-slate-500 hover:text-blue-400 transition-colors z-10"
+              >
+                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
-            <input
-              type={showPass ? 'text' : 'password'}
-              placeholder="Yangi parol"
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              value={data.password ?? ''}
-              onChange={e => onChange({ password: e.target.value })}
-              className="w-full bg-white/[0.01] border border-white/10 p-3.5 pl-12 pr-12 rounded-xl text-white text-sm outline-none focus:border-blue-500/40 transition-all"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPass(v => !v)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-blue-400 transition-colors z-10"
-            >
-              {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
           </div>
 
           {/* Ixcham Progress Bar */}
@@ -157,38 +162,40 @@ export default function Step7Password({ data, onChange, onSubmit, onBack, loadin
         </div>
 
         {/* Parolni tasdiqlash */}
-        <div className="relative group">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors z-10">
-            <Lock size={16} />
-          </div>
-          <input
-            type={showPass ? 'text' : 'password'}
-            placeholder="Parolni tasdiqlang"
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            value={data.confirmPassword ?? ''}
-            onChange={e => onChange({ confirmPassword: e.target.value })}
-            className={`w-full p-3.5 pl-12 pr-12 rounded-xl text-white text-sm outline-none transition-all border
-              ${data.confirmPassword
-                ? match
-                  ? 'border-emerald-500/40 bg-emerald-500/5'
-                  : 'border-rose-500/40 bg-rose-500/5'
-                : 'border-white/10 bg-white/[0.01]'
-              }`}
-          />
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10">
-            <AnimatePresence mode="wait">
-              {match && (
-                <motion.div key="ok" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="text-emerald-500">
-                  <Check size={14} strokeWidth={3} />
-                </motion.div>
-              )}
-              {mismatch && (
-                <motion.div key="err" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="text-rose-500">
-                  <ShieldAlert size={14} />
-                </motion.div>
-              )}
-            </AnimatePresence>
+        <div className={`cyber-border ${focusedField === 'confirm' ? 'focused' : ''}`}>
+          <div className="cyber-input-inner relative">
+            <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors z-10 ${focusedField === 'confirm' ? 'text-blue-400' : 'text-slate-500'}`}>
+              <Lock size={16} />
+            </div>
+            <input
+              type={showPass ? 'text' : 'password'}
+              placeholder="Parolni tasdiqlang"
+              onFocus={() => { setIsFocused(true); setFocusedField('confirm') }}
+              onBlur={() => { setIsFocused(false); setFocusedField(null) }}
+              value={data.confirmPassword ?? ''}
+              onChange={e => onChange({ confirmPassword: e.target.value })}
+              className={`w-full bg-transparent p-3.5 pl-12 pr-12 rounded-xl text-white text-sm outline-none transition-colors border
+                ${data.confirmPassword
+                  ? match
+                    ? 'border-emerald-500/40 bg-emerald-500/5'
+                    : 'border-rose-500/40 bg-rose-500/5'
+                  : 'border-transparent'
+                }`}
+            />
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10">
+              <AnimatePresence mode="wait">
+                {match && (
+                  <motion.div key="ok" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="text-emerald-500">
+                    <Check size={14} strokeWidth={3} />
+                  </motion.div>
+                )}
+                {mismatch && (
+                  <motion.div key="err" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="text-rose-500">
+                    <ShieldAlert size={14} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Baloo_2 } from 'next/font/google'
 import { supabase } from '@/lib/supabase'
 import {
     Mail,
@@ -15,12 +16,19 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+const baloo2 = Baloo_2({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
+
 export default function AdminLoginPage() {
     const router = useRouter()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [focusedField, setFocusedField] = useState<string | null>(null)
 
     const show3DToast = (type: 'success' | 'error', message: string) => {
         if (type === 'success') {
@@ -85,7 +93,32 @@ export default function AdminLoginPage() {
     }
 
     return (
-        <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#020617] p-3 sm:p-5">
+        <main className={`relative flex min-h-screen items-center justify-center overflow-hidden bg-[#020617] p-3 sm:p-5 ${baloo2.className}`} style={{ fontFamily: baloo2.style.fontFamily }}>
+            <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes sweep {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
+                .cyber-border {
+                    background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+                    padding: 1px;
+                    border-radius: 12px;
+                    transition: all 0.35s ease;
+                }
+                .cyber-border.focused {
+                    background: linear-gradient(90deg, #6366f1, #3b82f6, #ec4899, #6366f1);
+                    background-size: 200% 200%;
+                    animation: sweep 2s linear infinite;
+                    box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+                }
+                .cyber-input-inner {
+                    background: rgba(11, 17, 32, 0.75);
+                    backdrop-filter: blur(15px);
+                    border-radius: 11px;
+                    transition: all 0.3s ease;
+                }
+            `}} />
             <div className="pointer-events-none absolute left-0 top-0 h-full w-full">
                 <div className="absolute left-[-10%] top-[-10%] h-[50%] w-[50%] rounded-full bg-blue-500/10 blur-[100px]" />
                 <div className="absolute bottom-[-10%] right-[-10%] h-[50%] w-[50%] rounded-full bg-indigo-500/10 blur-[100px]" />
@@ -98,7 +131,10 @@ export default function AdminLoginPage() {
                             <Shield className="h-7 w-7 sm:h-10 sm:w-10" />
                         </div>
                     </div>
-                    <h1 className="text-xl font-black uppercase italic leading-none tracking-tighter text-white sm:text-4xl">
+                    <h1
+                        className="text-xl font-black uppercase italic leading-none tracking-tighter text-white sm:text-4xl"
+                        style={{ fontFamily: baloo2.style.fontFamily }}
+                    >
                         Admin Portali
                     </h1>
                     <p className="mt-2 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 sm:text-xs">
@@ -118,18 +154,25 @@ export default function AdminLoginPage() {
                             <label className="ml-2 block text-[9px] font-black uppercase tracking-widest text-slate-500">
                                 Admin email
                             </label>
-                            <div className="group relative">
-                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 transition-colors group-focus-within:text-blue-500">
-                                    <Mail size={18} />
+                            <div className={`cyber-border ${focusedField === 'email' ? 'focused' : ''}`}>
+                                <div className="cyber-input-inner relative">
+                                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'email' ? 'text-blue-500 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : 'text-slate-600'}`}>
+                                        <Mail size={18} />
+                                    </div>
+                                    {focusedField === 'email' && (
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-500/10 blur-[6px] pointer-events-none" />
+                                    )}
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onFocus={() => setFocusedField('email')}
+                                        onBlur={() => setFocusedField(null)}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="admin@system.local"
+                                        className="w-full bg-transparent p-3 pl-12 rounded-xl text-sm text-white outline-none transition-colors placeholder:text-slate-500"
+                                        required
+                                    />
                                 </div>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="admin@system.local"
-                                    className="w-full rounded-xl border border-white/10 bg-white/3 p-3 pl-12 text-sm text-white outline-none transition-all focus:border-blue-500/50"
-                                    required
-                                />
                             </div>
                         </div>
 
@@ -137,25 +180,32 @@ export default function AdminLoginPage() {
                             <label className="ml-2 block text-[9px] font-black uppercase tracking-widest text-slate-500">
                                 Maxfiy parol
                             </label>
-                            <div className="group relative">
-                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 transition-colors group-focus-within:text-blue-500">
-                                    <Lock size={18} />
+                            <div className={`cyber-border ${focusedField === 'password' ? 'focused' : ''}`}>
+                                <div className="cyber-input-inner relative">
+                                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'password' ? 'text-blue-500 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : 'text-slate-600'}`}>
+                                        <Lock size={18} />
+                                    </div>
+                                    {focusedField === 'password' && (
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-500/10 blur-[6px] pointer-events-none" />
+                                    )}
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={password}
+                                        onFocus={() => setFocusedField('password')}
+                                        onBlur={() => setFocusedField(null)}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="********"
+                                        className="w-full bg-transparent p-3 pl-12 pr-12 rounded-xl text-sm text-white outline-none transition-colors placeholder:text-slate-500"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-slate-500 transition-colors hover:text-white"
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
                                 </div>
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="********"
-                                    className="w-full rounded-xl border border-white/10 bg-white/3 p-3 pl-12 pr-12 text-sm text-white outline-none transition-all focus:border-blue-500/50"
-                                    required
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-white"
-                                >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                </button>
                             </div>
                         </div>
 
@@ -164,7 +214,7 @@ export default function AdminLoginPage() {
                             disabled={loading}
                             className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl font-black uppercase tracking-widest transition-all sm:h-14 sm:rounded-[22px] sm:text-[12px] ${loading
                                 ? 'bg-white/5 text-slate-600'
-                                : 'bg-linear-to-r from-blue-600 to-indigo-700 text-white shadow-xl hover:shadow-blue-600/20 active:scale-[0.98]'
+                                : 'bg-linear-to-r from-blue-600 to-indigo-700 text-white hover:shadow-blue-600/20 active:scale-[0.98]'
                                 } text-[10px]`}
                         >
                             {loading ? (

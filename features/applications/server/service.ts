@@ -45,8 +45,8 @@ export function createApplicationService(repository: ApplicationRepository = cre
 
     async submit(studentId: string, idValue: unknown) {
       const id = text(idValue, 80, true)
-      const application = await repository.updateOwned(studentId, id, { status: 'pending' })
-      if (!application) throw new ApiError(404, 'Ariza topilmadi')
+      const application = await repository.submitOwnedDraft(studentId, id)
+      if (!application) throw new ApiError(404, 'Ariza topilmadi yoki allaqachon ko\'rib chiqilgan')
       return { success: true as const, application }
     },
 

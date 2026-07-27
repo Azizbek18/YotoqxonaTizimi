@@ -89,14 +89,17 @@ export async function POST(req: NextRequest) {
     const supabaseForHash = getServiceSupabase()
     const { data: hashMatches } = await supabaseForHash
       .from('tolovlar')
-      .select('id, student_name, month, year, created_at')
+      .select('id, created_at')
       .eq('receipt_hash', fileHash)
       .limit(1)
 
     if (hashMatches && hashMatches.length > 0) {
       const dup = hashMatches[0]
       const dupDate = new Date(dup.created_at).toLocaleDateString('uz-UZ')
-      const duplicateInfo = `⚠️ TAKRORIY CHEK ANIQLANDI!\n\nUshbu aynan bir xil chek fayli tizimda allaqachon mavjud!\n\nAvval "${dup.student_name}" tomonidan ${dup.month} ${dup.year} oyi to'lovi uchun ${dupDate} sanasida yuklangan.\n\nBu chekni qayta yuklash mumkin emas!`
+      // Deliberately does not name whose receipt this was — the caller may
+      // not be authorized to see that student's identity (see AI dup-check
+      // PII leak fix).
+      const duplicateInfo = `⚠️ TAKRORIY CHEK ANIQLANDI!\n\nUshbu aynan bir xil chek fayli tizimda allaqachon ${dupDate} sanasida yuklangan.\n\nBu chekni qayta yuklash mumkin emas!`
       return NextResponse.json({
         valid: false,
         confidence: 5,
@@ -222,7 +225,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
           const supabase = getServiceSupabase()
           const { data: existingRecords, error: dupError } = await supabase
             .from('tolovlar')
-            .select('id, student_name, month, year, created_at')
+            .select('id, created_at')
             .eq('transaction_id_normalized', normalizedId)
             .limit(1)
 
@@ -231,7 +234,9 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
             isDuplicate = true
             confidence = 5 // Very low confidence for duplicates
             const dupDate = new Date(dup.created_at).toLocaleDateString('uz-UZ')
-            duplicateInfo = `⚠️ TAKRORIY CHEK ANIQLANDI!\n\nUshbu chekdagi tranzaksiya raqami (${transactionId}) tizimda allaqachon mavjud!\n\nAvval "${dup.student_name}" tomonidan ${dup.month} ${dup.year} oyi to'lovi uchun ${dupDate} sanasida yuklangan.\n\nBu chekni qayta yuklash mumkin emas!`
+            // Deliberately does not name whose transaction this was — the
+            // caller may not be authorized to see that student's identity.
+            duplicateInfo = `⚠️ TAKRORIY CHEK ANIQLANDI!\n\nUshbu chekdagi tranzaksiya raqami (${transactionId}) tizimda allaqachon ${dupDate} sanasida yuklangan boshqa to'lovda qayd etilgan!\n\nBu chekni qayta yuklash mumkin emas!`
             analysis = duplicateInfo
             amountMatch = false // Force invalid
           }

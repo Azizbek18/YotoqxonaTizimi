@@ -90,10 +90,6 @@ export function createPaymentRepository() {
       })
     },
 
-    getPublicReceiptUrl(path: string) {
-      return supabase.storage.from('receipts').getPublicUrl(path).data.publicUrl
-    },
-
     async removeReceipt(path: string) {
       await supabase.storage.from('receipts').remove([path])
     },
@@ -103,10 +99,14 @@ export function createPaymentRepository() {
     },
 
     async review(ids: string[], status: Extract<PaymentStatus, 'approved' | 'rejected'>, adminMessage: string) {
+      // Only 'waiting' payments can be decided — prevents re-flipping a
+      // payment that's already been approved/rejected out from under a
+      // previous decision (no audit trail of what it changed from/to).
       const { data, error } = await supabase
         .from('tolovlar')
         .update({ status, admin_message: adminMessage })
         .in('id', ids)
+        .eq('status', 'waiting')
         .select('id')
       if (error) throw error
       return data ?? []

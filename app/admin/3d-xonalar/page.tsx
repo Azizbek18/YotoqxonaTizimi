@@ -10,6 +10,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { useScopedFontFamily } from '@/lib/font-scope-context'
 import toast from 'react-hot-toast'
 import * as THREE from 'three'
 import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
@@ -115,6 +116,7 @@ export default function Admin3DXonalarPage() {
 
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+  const scopedFontFamily = useScopedFontFamily()
 
   const surfaceBg = isLight ? 'bg-white/80 border-slate-200 shadow-lg' : 'bg-[#0b1120]/50 border-white/10 shadow-[0_0_20px_rgba(6,182,212,0.05)]'
   const cardBg = isLight ? 'bg-slate-100/70 border-slate-200' : 'bg-white/[0.04] border-white/10'
@@ -634,7 +636,7 @@ export default function Admin3DXonalarPage() {
                 return (
                   <div
                     className={`pointer-events-none fixed z-[9999] rounded-xl border px-3 py-2 shadow-2xl backdrop-blur-xl ${isLight ? 'bg-white/95 border-slate-200' : 'bg-[#0b101d]/95 border-white/10'}`}
-                    style={{ left: hoveredRoom.clientX + 14, top: hoveredRoom.clientY + 14 }}
+                    style={{ left: hoveredRoom.clientX + 14, top: hoveredRoom.clientY + 14, fontFamily: scopedFontFamily }}
                   >
                     <p className={`text-xs font-black ${textStrong}`}>Xona #{hoveredRoom.roomNumber}</p>
                     {snap && snap.students.length > 0 ? (

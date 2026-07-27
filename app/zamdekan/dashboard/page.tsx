@@ -411,7 +411,7 @@ export default function ZamdekanDashboard() {
           <div className="mt-4 flex justify-end">
             <Link
               href="/zamdekan/arizalar"
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 transition-all"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 transition-all"
             >
               Arizalar ro&apos;yxatiga o&apos;tish <ArrowRight size={12} />
             </Link>

@@ -82,11 +82,14 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
       const existing = await repository.find(id)
       if (!existing) throw new ApiError(404, 'Yo\'llanma topilmadi')
       if (!sameFaculty(existing.faculty, faculty)) throw new ApiError(403, 'Boshqa fakultet yo\'llanmasini boshqarib bo\'lmaydi')
+      if (existing.status !== 'pending') {
+        throw new ApiError(409, 'Bu yo\'llanma allaqachon ko\'rib chiqilgan')
+      }
       if (action === 'approve') {
         const roomNumber = typeof input.roomNumber === 'string' ? input.roomNumber.trim().slice(0, 20) : ''
         if (!roomNumber) throw new ApiError(400, 'Xona tanlanmagan')
-        if (await repository.roomOccupancy(roomNumber) >= 4) throw new ApiError(409, 'Bu xonada bo\'sh joy yo\'q')
-        const request = await repository.update(id, { status: 'approved', room_number: roomNumber, reject_reason: null })
+        const request = await repository.approveIntoRoom(id, roomNumber)
+        if (!request) throw new ApiError(409, 'Bu xonada bo\'sh joy yo\'q yoki yo\'llanma allaqachon ko\'rib chiqilgan')
         return { success: true as const, request }
       }
       const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 2000) : ''

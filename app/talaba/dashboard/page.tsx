@@ -850,12 +850,8 @@ export default function TalabaDashboard() {
         <div className="lg:col-span-4 space-y-6 sm:space-y-8">
           
           {/* Room Card & Cleaning Schedule (Tozalik Navbatchiligi) */}
-          <div 
-            className={`relative overflow-hidden p-6 rounded-[32px] shadow-2xl transition-all duration-300 ${
-              isLight 
-                ? 'bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white' 
-                : 'bg-gradient-to-br from-indigo-950 via-blue-900 to-slate-900 text-white border border-white/5 shadow-indigo-950/20'
-            }`}
+          <div
+            className="relative overflow-hidden p-6 rounded-[32px] bg-blue-600 text-white border border-blue-500/40 transition-all duration-300"
           >
             {/* Background Glow */}
             <div className="absolute right-[-10%] top-[-10%] w-[50%] h-[50%] rounded-full blur-[80px] bg-cyan-400/20" />
@@ -961,7 +957,7 @@ export default function TalabaDashboard() {
                 </p>
                 <Link
                   href="/sardor/dashboard"
-                  className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-lg shadow-purple-500/20 active:scale-98"
+                  className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-2xl border border-white/10 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-lg shadow-purple-500/20 active:scale-98"
                 >
                   Sardor paneliga o&apos;tish
                   <ArrowRight size={14} />
@@ -1054,7 +1050,12 @@ export default function TalabaDashboard() {
           </div>
 
           {/* Quick Support Contacts */}
-          <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg}`}>
+          {/* pr-20 (below lg): the floating AI-chat button is fixed at
+              bottom-24 right-6, which — once this card stacks full-width on
+              mobile — sits directly over its right-aligned "Call" links.
+              Reserve space so the tel: links stay reachable/visible instead
+              of getting hidden under the FAB while scrolling. */}
+          <div className={`backdrop-blur-xl border rounded-[32px] p-6 pr-20 lg:pr-6 ${surfaceBg}`}>
             <h3 className={`text-[10px] font-black tracking-[0.2em] mb-4 uppercase ${
               isLight ? 'text-blue-600' : 'text-cyan-400'
             }`}>
@@ -1105,64 +1106,23 @@ export default function TalabaDashboard() {
         {/* ================= RIGHT COLUMN ================= */}
         <div className="lg:col-span-8 space-y-6 sm:space-y-8">
           
-          {/* Quick Actions (Tezkor Xizmatlar) */}
-          <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg}`}>
-            <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 ${
-              isLight ? 'text-blue-600' : 'text-indigo-400'
-            }`}>
-              Tezkor Xizmatlar
-            </h3>
-            
-            <StaggerList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              <StaggerItem>
-                <Link href="/talaba/arizalar" className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
-                  isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
-                }`}>
-                  <FileText className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
-                  <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Ariza Yozish</span>
-                </Link>
-              </StaggerItem>
-
-              <StaggerItem>
-                <Link href="/talaba/tolova" className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
-                  isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
-                }`}>
-                  <CreditCard className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
-                  <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>To&apos;lov qilish</span>
-                </Link>
-              </StaggerItem>
-
-              <StaggerItem>
-                <Link href="/talaba/navbat" className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
-                  isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
-                }`}>
-                  <Plus className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
-                  <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Navbatga turish</span>
-                </Link>
-              </StaggerItem>
-
-              <StaggerItem>
-                <Link href="/talaba/qoidalar" className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group ${
-                  isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
-                }`}>
-                  <AlertTriangle className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
-                  <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Tizim qoidalari</span>
-                </Link>
-              </StaggerItem>
-
-              <StaggerItem>
-                <button
-                  onClick={() => setIsChatModalOpen(true)}
-                  className={`flex flex-col items-center text-center p-4 rounded-2xl border transition-all duration-300 group w-full ${
-                    isLight ? 'bg-slate-50 border-slate-200 hover:border-blue-500 hover:bg-white' : 'bg-white/5 border-white/5 hover:border-indigo-500/30 hover:bg-white/10'
-                  }`}
-                >
-                  <MessageSquare className={`size-6 mb-2.5 transition-transform duration-300 group-hover:scale-110 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`} />
-                  <span className={`text-[10px] font-black uppercase tracking-wider ${textStrong}`}>Xabarlar</span>
-                </button>
-              </StaggerItem>
-            </StaggerList>
-          </div>
+          {/* Admin bilan xabarlar — bu yerdagi 4 ta yo'naltiruvchi tugma pastdagi
+              doimiy navigatsiya paneli bilan takrorlangani uchun olib
+              tashlandi (Ariza/To'lov/Navbat/Qoidalar allaqachon bir bosishda
+              erishiladi); shu joyda faqat pastki navigatsiyada yo'q, alohida
+              amal bo'lgan "Xabarlar" qoldi, kattaroq va yorqinroq CTA sifatida. */}
+          <button
+            onClick={() => setIsChatModalOpen(true)}
+            className="w-full flex items-center gap-4 rounded-[32px] p-6 bg-blue-600 text-white text-left transition-all"
+          >
+            <div className="shrink-0 flex items-center justify-center size-14 rounded-2xl bg-white/15">
+              <MessageSquare className="size-7" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-black uppercase tracking-wider">Xabarlar</h3>
+              <p className="text-xs text-white/80 mt-0.5">Yotoqxona ma&apos;muriyati bilan yozishmalar</p>
+            </div>
+          </button>
 
           {/* E'lonlar Bo'limi (RE-DESIGNED NOTICE BOARD - TIMELINE CARDS) */}
           <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg}`}>
@@ -1341,9 +1301,9 @@ export default function TalabaDashboard() {
 
                   <Link 
                     href="/talaba/arizalar"
-                    className={`relative overflow-hidden px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-300 transform active:scale-95 shadow-lg ${
-                      isLight 
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/20 hover:shadow-blue-500/30' 
+                    className={`relative overflow-hidden px-5 py-2.5 rounded-xl border border-white/10 font-bold text-xs uppercase tracking-wider transition-all duration-300 transform active:scale-95 shadow-lg ${
+                      isLight
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/20 hover:shadow-blue-500/30'
                         : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-indigo-500/20 hover:shadow-indigo-500/30'
                     }`}
                   >
@@ -1482,7 +1442,7 @@ export default function TalabaDashboard() {
 
               <Link 
                 href="/talaba/tolova" 
-                className="w-full mt-5 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-center text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-500/25 transition-all"
+                className="w-full mt-5 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl border border-white/10 text-center text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-500/25 transition-all"
               >
                 Kvitansiya Boshqaruvi
               </Link>

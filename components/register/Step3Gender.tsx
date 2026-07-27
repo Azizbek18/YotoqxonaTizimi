@@ -184,7 +184,7 @@ export default function Step3Gender({ data, onChange, onNext, onBack }: Props) {
                         key={nat.value}
                         onClick={() => { onChange({ nationality: nat.value }); setIsNationOpen(false) }}
                         className={`
-                          w-full flex items-center justify-between p-3 rounded-xl text-[13px] transition-all duration-300 mb-0.5
+                          no-shelf w-full flex items-center justify-between p-3 rounded-xl text-[13px] transition-all duration-300 mb-0.5
                           ${isSel ? (isLight ? 'bg-sky-500 text-white' : 'bg-purple-600 text-white') : (isLight ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200')}
                         `}
                       >

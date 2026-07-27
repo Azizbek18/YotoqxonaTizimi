@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { RegisterData } from './types'
 import { motion, AnimatePresence } from 'framer-motion'
 import { User, Briefcase, Phone, ArrowRight, Users, Sparkles, ShieldAlert } from 'lucide-react'
@@ -93,11 +93,8 @@ export default function Step6Family({ data, onChange, onNext, onBack }: Props) {
   }
 
   const glassInput = `
-    w-full backdrop-blur-xl p-3.5 rounded-xl outline-none transition-all duration-500 font-sans text-[13px] pl-12
-    ${isLight
-      ? 'bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:bg-sky-50/30 hover:border-sky-300'
-      : 'bg-white/[0.02] border border-white/[0.08] text-white placeholder:text-slate-600 focus:border-sky-500/40 focus:bg-white/[0.05] focus:ring-[4px] focus:ring-sky-500/5 hover:border-white/20'
-    }
+    w-full bg-transparent p-3.5 rounded-xl outline-none transition-colors duration-300 font-sans text-[13px] pl-12
+    ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-600'}
   `;
 
   return (
@@ -165,15 +162,27 @@ interface PhoneInputProps {
 }
 
 function PhoneInput({ label, value, className, isLight, onChange }: PhoneInputProps) {
+  const [focused, setFocused] = useState(false)
   return (
-    <div className="group space-y-1.5 flex-1 text-left">
+    <div className="space-y-1.5 flex-1 text-left">
       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">{label}</label>
-      <div className="relative flex items-center">
-        <div className={`absolute left-4 z-10 flex items-center gap-1.5 pointer-events-none border-r pr-2 ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
-          <Phone size={14} className={`group-focus-within:text-sky-500 transition-colors ${isLight ? 'text-slate-400' : 'text-slate-600'}`} />
-          <span className={`text-[12px] font-bold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>+998</span>
+      <div className={`cyber-border ${focused ? 'focused' : ''}`}>
+        <div className="cyber-input-inner relative flex items-center">
+          <div className={`absolute left-4 z-10 flex items-center gap-1.5 pointer-events-none border-r pr-2 ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+            <Phone size={14} className={`transition-colors ${focused ? 'text-sky-500' : isLight ? 'text-slate-400' : 'text-slate-600'}`} />
+            <span className={`text-[12px] font-bold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>+998</span>
+          </div>
+          <input
+            className={`${className} pl-[80px]`}
+            placeholder="911234567"
+            maxLength={9}
+            type="tel"
+            value={value}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))}
+          />
         </div>
-        <input className={`${className} pl-[80px]`} placeholder="911234567" maxLength={9} type="tel" value={value} onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))} />
       </div>
     </div>
   )
@@ -190,12 +199,22 @@ interface InputGroupProps {
 }
 
 function InputGroup({ label, icon: Icon, placeholder, value, className, isLight, onChange }: InputGroupProps) {
+  const [focused, setFocused] = useState(false)
   return (
-    <div className="group space-y-1.5 flex-1 text-left">
+    <div className="space-y-1.5 flex-1 text-left">
       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">{label}</label>
-      <div className="relative flex items-center">
-        <Icon className={`absolute left-4 z-10 group-focus-within:text-sky-500 transition-colors ${isLight ? 'text-slate-400' : 'text-slate-600'}`} size={16} />
-        <input className={className} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
+      <div className={`cyber-border ${focused ? 'focused' : ''}`}>
+        <div className="cyber-input-inner relative flex items-center">
+          <Icon className={`absolute left-4 z-10 transition-colors ${focused ? 'text-sky-500' : isLight ? 'text-slate-400' : 'text-slate-600'}`} size={16} />
+          <input
+            className={className}
+            placeholder={placeholder}
+            value={value}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </div>
       </div>
     </div>
   )

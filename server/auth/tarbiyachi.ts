@@ -38,7 +38,16 @@ export async function requireScopedTarbiyachi(request: NextRequest) {
 }
 
 // Whether a student's room falls within this tarbiyachi's assigned floor
-// (an unset assigned_floor means "all floors").
-export function isWithinTarbiyachiFloor(staffUser: ScopedTarbiyachi, roomNumber: string | null | undefined) {
-  return staffUser.assigned_floor ? extractFloor(roomNumber ?? null) === staffUser.assigned_floor : true
+// (an unset assigned_floor means "all floors"). Prefers the student's own
+// `assigned_floor` column (kept in sync with floor_room_layout by the
+// room-assignment flow) over deriving it from room_number text, since the
+// latter only holds if rooms happen to follow the assumed 30-per-floor
+// numbering scheme.
+export function isWithinTarbiyachiFloor(
+  staffUser: ScopedTarbiyachi,
+  student: { room_number?: string | null; assigned_floor?: number | null },
+) {
+  if (!staffUser.assigned_floor) return true
+  const floor = student.assigned_floor ?? extractFloor(student.room_number ?? null)
+  return floor === staffUser.assigned_floor
 }

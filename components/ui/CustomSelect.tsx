@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, ChevronDown } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { useScopedFontFamily } from '@/lib/font-scope-context'
 
 export interface CustomSelectOption {
   value: string
@@ -21,6 +22,8 @@ interface CustomSelectProps {
   className?: string
   menuClassName?: string
   emptyText?: string
+  onFocus?: () => void
+  onBlur?: () => void
 }
 
 export default function CustomSelect({
@@ -32,9 +35,12 @@ export default function CustomSelect({
   className = '',
   menuClassName = '',
   emptyText = "Variantlar yo'q",
+  onFocus,
+  onBlur,
 }: CustomSelectProps) {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+  const scopedFontFamily = useScopedFontFamily()
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [rect, setRect] = useState<{ top: number; left: number; width: number; openUp: boolean } | null>(null)
@@ -95,6 +101,8 @@ export default function CustomSelect({
           e.stopPropagation()
           setOpen((o) => !o)
         }}
+        onFocus={onFocus}
+        onBlur={onBlur}
         className={`${baseTrigger} ${className}`}
       >
         <span className={`truncate ${!selected ? (isLight ? 'text-slate-400' : 'text-slate-500') : ''}`}>
@@ -124,6 +132,7 @@ export default function CustomSelect({
                   bottom: rect.openUp ? window.innerHeight - rect.top + 4 : undefined,
                   zIndex: 10000,
                   transformOrigin: rect.openUp ? 'bottom' : 'top',
+                  fontFamily: scopedFontFamily,
                 }}
                 className={`max-h-60 overflow-y-auto rounded-xl border shadow-2xl no-scrollbar ${
                   isLight ? 'bg-white border-slate-200 shadow-slate-300/40' : 'bg-slate-900 border-white/10 shadow-black/50'
@@ -142,7 +151,7 @@ export default function CustomSelect({
                         onChange(opt.value)
                         setOpen(false)
                       }}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-bold text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                      className={`no-shelf w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-bold text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                         opt.value === value
                           ? isLight
                             ? 'bg-blue-50 text-blue-700'

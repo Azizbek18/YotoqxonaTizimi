@@ -1,6 +1,15 @@
 -- ==========================================================
 -- YOTOQXONA TIZIMI - DATABASE SCHEMA CONSOLIDATION
 -- This file combines all database tables, policies, and setups.
+--
+-- OUTDATED / LEGACY FILE — DO NOT USE FOR NEW DEPLOYS.
+-- This snapshot predates several security-hardening migrations
+-- (receipt/permit hardening, staff RLS recursion fix, elonlar
+-- audience-leak fix, floor_room_layout table) and does not
+-- reflect the current schema or RLS policies. `supabase/migrations/`
+-- is the single source of truth — run `npx supabase db push`
+-- against that folder instead. Applying this file alone will
+-- reintroduce fixed security holes (see README.md).
 -- ==========================================================
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;

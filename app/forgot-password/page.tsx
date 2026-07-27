@@ -2,11 +2,18 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Baloo_2 } from 'next/font/google'
 import { Mail, ArrowLeft, Send, Sparkles, Orbit } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
+
+const baloo2 = Baloo_2({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -59,7 +66,7 @@ export default function ForgotPassword() {
   const stars = mounted ? Array.from({ length: 45 }) : []
 
   return (
-    <main className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-sans ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'}`}>
+    <main className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'} ${baloo2.className}`} style={{ fontFamily: baloo2.style.fontFamily }}>
       {/* Theme Toggle */}
       <div className="absolute top-4 right-4 z-20">
         <ThemeToggle />
@@ -104,7 +111,10 @@ export default function ForgotPassword() {
                   >
                     <Orbit size={28} />
                   </motion.div>
-                  <h1 className={`text-2xl sm:text-3xl font-black tracking-tighter uppercase leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  <h1
+                    className={`text-2xl sm:text-3xl font-black tracking-tighter uppercase leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}
+                    style={{ fontFamily: baloo2.style.fontFamily }}
+                  >
                     Parolni <span className={`italic ${isLight ? 'text-blue-600' : 'text-emerald-500'}`}>Qayta Tiklash</span>
                   </h1>
                 </div>
@@ -148,7 +158,7 @@ export default function ForgotPassword() {
                 <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mx-auto mb-6 border border-emerald-500/20">
                   <Sparkles size={32} className="animate-pulse" />
                 </div>
-                <h2 className="text-2xl font-black text-white uppercase mb-3">Havola Yuborildi</h2>
+                <h2 className="text-2xl font-black text-white uppercase mb-3" style={{ fontFamily: baloo2.style.fontFamily }}>Havola Yuborildi</h2>
                 <p className="text-slate-400 text-sm leading-relaxed mb-8 px-4">
                   <span className="text-emerald-400">{email}</span> manziliga xat yubordik.
                 </p>

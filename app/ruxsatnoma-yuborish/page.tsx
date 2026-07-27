@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
 interface Particle {
@@ -971,24 +972,28 @@ export default function RuxsatnomaYuborish() {
                             <label className={`text-[10px] sm:text-xs font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Fakultet</label>
                             <div className={`cyber-border ${focusedField === 'faculty' ? 'focused' : ''}`}>
                               <div className="cyber-input-inner relative">
-                                <select
+                                <CustomSelect
                                   value={faculty}
                                   onFocus={() => {
                                     setFocusedField('faculty')
                                     playSound('focus')
                                   }}
                                   onBlur={() => setFocusedField(null)}
-                                  onChange={(e) => handleInputChange(e, setFaculty, 'faculty')}
-                                  className={`w-full bg-transparent p-2.5 sm:p-3 rounded-xl text-sm sm:text-base outline-none font-black uppercase tracking-wider transition-colors duration-300 ${
+                                  onChange={(val) => {
+                                    setFaculty(val)
+                                    playSound('keypress')
+                                  }}
+                                  options={[
+                                    { value: 'amit', label: 'AMIT' },
+                                    { value: 'tarix', label: 'Tarix' },
+                                    { value: 'fizika', label: 'Fizika' },
+                                    { value: 'kimyo', label: 'Kimyo' },
+                                    { value: 'biologiya', label: 'Biologiya' },
+                                  ]}
+                                  className={`bg-transparent p-2.5 sm:p-3 rounded-xl text-sm sm:text-base font-black uppercase tracking-wider transition-colors duration-300 ${
                                     isLight ? 'text-slate-900' : 'text-white'
                                   }`}
-                                >
-                                  <option value="amit" className="bg-[#0f172a] text-white">AMIT</option>
-                                  <option value="tarix" className="bg-[#0f172a] text-white">Tarix</option>
-                                  <option value="fizika" className="bg-[#0f172a] text-white">Fizika</option>
-                                  <option value="kimyo" className="bg-[#0f172a] text-white">Kimyo</option>
-                                  <option value="biologiya" className="bg-[#0f172a] text-white">Biologiya</option>
-                                </select>
+                                />
                               </div>
                             </div>
                           </div>

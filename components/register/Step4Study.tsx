@@ -197,7 +197,7 @@ const CompactSelect = ({ label, value, options, onChange, icon: Icon, isLight }:
                       key={val}
                       onClick={() => { onChange(val); setIsOpen(false) }}
                       className={`
-                        w-full flex items-center justify-between p-3 rounded-xl text-[13px] font-medium transition-all duration-300 mb-0.5 last:mb-0
+                        no-shelf w-full flex items-center justify-between p-3 rounded-xl text-[13px] font-medium transition-all duration-300 mb-0.5 last:mb-0
                         ${isActive ? (isLight ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'bg-blue-600 text-white shadow-lg shadow-blue-600/20') : (isLight ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200')}
                       `}
                     >

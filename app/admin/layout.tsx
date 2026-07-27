@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
+import { Baloo_2 } from 'next/font/google'
 import { supabase } from '@/lib/supabase'
 import {
   BarChart3,
@@ -26,6 +27,13 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { getSafeSession } from '@/lib/auth-session'
 import { fetchAdminPaymentSummary } from '@/features/payments/client/api'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
+import { FontScopeProvider } from '@/lib/font-scope-context'
+
+const baloo2 = Baloo_2({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 export default function AdminLayout({
   children,
@@ -315,7 +323,24 @@ export default function AdminLayout({
   )
 
   return (
-    <div className={`min-h-screen ${shellBg} transition-colors`}>
+    <FontScopeProvider value={baloo2.style.fontFamily}>
+    <div className={`baloo-scope min-h-screen ${shellBg} transition-colors`} style={{ fontFamily: baloo2.style.fontFamily }}>
+      {/* Every /admin/* page (dashboard, foydalanuvchilar, tolovlar, arizalar,
+          elonlar, settings, reports, 3d-xonalar) renders through this layout
+          via {children}, and each uses `font-sans` wrappers / plain h1-h6
+          headings that resolve through the global --app-font-sans /
+          --app-font-display custom properties. Overriding those two
+          variables here — instead of editing every admin page — cascades
+          Baloo 2 through the entire admin section for free, since CSS
+          custom properties inherit down the tree. (/admin/login is exempt
+          — it returns early above and renders its own full-page markup,
+          see that page's own Baloo 2 setup.) */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .baloo-scope {
+          --app-font-sans: ${baloo2.style.fontFamily};
+          --app-font-display: ${baloo2.style.fontFamily};
+        }
+      `}} />
       {mobileSidebarOpen && (
         <button
           type="button"
@@ -397,5 +422,6 @@ export default function AdminLayout({
         </div>
       </div>
     </div>
+    </FontScopeProvider>
   )
 }

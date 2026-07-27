@@ -22,6 +22,7 @@ import { supabase } from '@/lib/supabase';
 import { fetchStudentAnnouncements } from '@/features/announcements/client/api';
 import PageSkeleton from '@/components/ui/PageSkeleton';
 import { StaggerList, StaggerItem } from '@/components/motion/StaggerList';
+import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
 interface Elon {
   id: string | number;
@@ -132,6 +133,7 @@ export default function ElonlarPage() {
   const theme = useThemeStore((state) => state.theme);
   const isLight = theme === 'light';
   const [mounted, setMounted] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     setMounted(true);
@@ -516,17 +518,17 @@ export default function ElonlarPage() {
         <AnimatePresence>
           {selectedElon && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          {...(reduceMotion ? {} : { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } })}
           className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
           onClick={() => setSelectedElon(null)}
         >
           <motion.div
-            initial={{ scale: 0.9, y: 20, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.9, y: 20, opacity: 0 }}
-            transition={{ type: 'spring', duration: 0.5 }}
+            {...(reduceMotion ? {} : {
+              initial: { scale: 0.9, y: 20, opacity: 0 },
+              animate: { scale: 1, y: 0, opacity: 1 },
+              exit: { scale: 0.9, y: 20, opacity: 0 },
+              transition: { type: 'spring' as const, duration: 0.5 },
+            })}
             className={`relative w-full max-w-lg overflow-hidden rounded-[36px] border p-0 shadow-2xl ${panel}`}
             onClick={(e) => e.stopPropagation()}
           >

@@ -199,7 +199,7 @@ export default function Custom3DToast({ toast: t }: Custom3DToastProps) {
       <motion.div
         className={`relative backdrop-blur-xl border pt-4.5 px-4.5 pb-6 rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] flex items-center gap-4 transition-all duration-300 transform-gpu will-change-[transform,opacity] ${
           isLight
-            ? 'bg-white/90 border-slate-200/90 text-slate-900 shadow-slate-900/10'
+            ? 'bg-white border-slate-200/90 text-slate-900 shadow-slate-900/10'
             : 'bg-[#090d16]/95 border-white/10 text-white shadow-black/60'
         }`}
         style={{

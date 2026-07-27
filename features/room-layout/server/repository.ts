@@ -15,21 +15,22 @@ export function createRoomLayoutRepository() {
       if (error) throw error
       return data ?? []
     },
+    // Delete-then-insert is done inside a single DB function (see
+    // replace_floor_room_layout in the DB migration) so a failed insert
+    // (e.g. duplicate room number) can't leave the floor's layout wiped
+    // with nothing re-inserted.
     async replaceFloor(floorNumber: number, blocks: RoomLayoutBlock[]) {
-      const { error: deleteError } = await supabase.from('floor_room_layout').delete().eq('floor_number', floorNumber)
-      if (deleteError) throw deleteError
-
-      if (blocks.length === 0) return
-
       const rows = blocks.map((block) => ({
-        floor_number: floorNumber,
-        room_number: block.roomNumber,
+        roomNumber: block.roomNumber,
         side: block.side,
         position: block.position,
         size: block.size,
       }))
-      const { error: insertError } = await supabase.from('floor_room_layout').insert(rows)
-      if (insertError) throw insertError
+      const { error } = await supabase.rpc('replace_floor_room_layout', {
+        p_floor_number: floorNumber,
+        p_rows: rows,
+      })
+      if (error) throw error
     },
   }
 }

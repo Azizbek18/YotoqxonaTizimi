@@ -3,12 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Baloo_2 } from 'next/font/google';
 import { motion } from 'framer-motion';
-import { 
-  Sparkles, ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw
+import {
+  Sparkles, ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw, FileText, Hand, Handshake
 } from 'lucide-react';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { useThemeStore } from '@/lib/stores/theme-store';
+
+const baloo2 = Baloo_2({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+});
 
 interface PermitRequest {
   status: 'pending' | 'rejected' | 'approved' | 'registered';
@@ -125,14 +132,12 @@ export default function Home() {
   return (
     <div className={`min-h-screen overflow-x-hidden relative pb-20 selection:bg-indigo-500 selection:text-white transition-colors duration-500 ${
       isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#02040c] text-white'
-    }`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      
-      {/* Import premium Google Fonts dynamically */}
+    } ${baloo2.className}`} style={{ fontFamily: baloo2.style.fontFamily }}>
+
       <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;950&family=Syne:wght@800;950&display=swap');
         .syne-font {
-          font-family: 'Syne', sans-serif;
-          letter-spacing: -0.04em;
+          font-family: ${baloo2.style.fontFamily};
+          letter-spacing: -0.02em;
         }
         .glass-panel {
           backdrop-filter: blur(28px) saturate(120%);
@@ -195,17 +200,17 @@ export default function Home() {
       }`} />
 
       {/* Navigation */}
-      <nav className={`relative z-50 max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-5 flex flex-wrap justify-between items-center gap-x-3 gap-y-3 border-b transition-colors duration-500 ${
+      <nav className={`relative z-50 max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-5 flex flex-nowrap justify-between items-center gap-x-2 sm:gap-x-3 gap-y-3 border-b transition-colors duration-500 ${
         isLight ? 'border-slate-200' : 'border-white/5'
       }`}>
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/30 border border-white/10 scale-105">
-            S
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
+          <div className="w-7 h-7 sm:w-10 sm:h-10 shrink-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/30 border border-white/10 scale-105">
+            🏠
           </div>
-          <span className={`text-base sm:text-xl font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r transition-colors duration-300 syne-font truncate ${
+          <span className={`text-sm sm:text-xl font-black uppercase tracking-[0.05em] sm:tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r transition-colors duration-300 syne-font truncate ${
             isLight ? 'from-slate-900 to-slate-600' : 'from-white via-gray-100 to-gray-300'
           }`}>
-            SmartDorm
+            Yotoqxona
           </span>
         </div>
 
@@ -219,7 +224,8 @@ export default function Home() {
                 : 'bg-white/5 hover:bg-white/10 border-white/10 text-white shadow-black/40'
             }`}
           >
-            <span>Tizimga Kirish</span>
+            <span className="sm:hidden">Kirish</span>
+            <span className="hidden sm:inline">Tizimga Kirish</span>
             <ArrowRight size={13} />
           </Link>
         </div>
@@ -263,7 +269,7 @@ export default function Home() {
             Yo&apos;llanma yuklashdan tizimga kirishgacha bo&apos;lgan yo&apos;l
           </p>
 
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative">
+          <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 relative">
             {/* Step 1 */}
             <div className="flex flex-col items-center text-center flex-1 z-10 relative">
               <motion.div 
@@ -291,15 +297,28 @@ export default function Home() {
               activeStep > 1 ? 'bg-emerald-500' : isLight ? 'bg-slate-200' : 'bg-white/10'
             }`} />
 
+            {/* Decorative loop: a document glides from step 1 to step 2 */}
+            <div className="hidden md:block absolute left-[18%] right-[52%] top-7 h-0 pointer-events-none">
+              <div
+                className={`hero-doc-travel absolute top-1/2 flex items-center justify-center w-11 h-11 rounded-xl shadow-lg ${
+                  isLight ? 'bg-white text-indigo-500 shadow-indigo-200' : 'bg-slate-900 text-indigo-400 shadow-indigo-950/50'
+                }`}
+              >
+                <FileText size={22} />
+              </div>
+            </div>
+
             {/* Step 2 */}
             <div className="flex flex-col items-center text-center flex-1 z-10 relative">
-              <motion.div 
+              {/* Decorative loop: spinning gradient border welcomes the arriving document, centered on the step-2 icon */}
+              <div className="hero-ring-show gradient-border-spin hidden md:block absolute top-7 left-1/2 w-16 h-16 rounded-[24px] pointer-events-none" />
+              <motion.div
                 whileHover={{ scale: 1.05 }}
                 className={`w-14 h-14 rounded-[20px] flex items-center justify-center font-black transition-all ${
-                  activeStep === 2 
+                  activeStep === 2
                     ? 'bg-amber-500 text-slate-950 ring-4 ring-amber-500/20 scale-110 shadow-lg shadow-amber-500/40 border border-amber-400/20'
-                    : activeStep > 2 
-                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
+                    : activeStep > 2
+                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
                       : isLight ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-white/5 text-slate-500 border border-white/5'
                 }`}
               >
@@ -317,6 +336,36 @@ export default function Home() {
             <div className={`hidden md:block absolute left-[52%] right-[18%] top-7 h-[3px] transition-colors ${
               activeStep > 2 ? 'bg-emerald-500' : isLight ? 'bg-slate-200' : 'bg-white/10'
             }`} />
+
+            {/* Decorative loop: hands reach out from step 2 and step 3, meet in the middle, and shake */}
+            <div className="hidden md:block absolute left-[52%] right-[18%] top-7 h-0 pointer-events-none">
+              {/* Hand from step 2 */}
+              <div
+                className={`hero-hand-left absolute top-1/2 flex items-center justify-center w-11 h-11 rounded-full ${
+                  isLight ? 'bg-white text-amber-500 shadow-md shadow-amber-200' : 'bg-slate-900 text-amber-400 shadow-md shadow-amber-950/50'
+                }`}
+              >
+                <Hand size={22} className="-scale-x-100" />
+              </div>
+              {/* Hand from step 3 */}
+              <div
+                className={`hero-hand-right absolute top-1/2 flex items-center justify-center w-11 h-11 rounded-full ${
+                  isLight ? 'bg-white text-emerald-500 shadow-md shadow-emerald-200' : 'bg-slate-900 text-emerald-400 shadow-md shadow-emerald-950/50'
+                }`}
+              >
+                <Hand size={22} />
+              </div>
+              {/* Impact burst on contact */}
+              <div className="hero-burst absolute top-1/2 left-1/2 w-24 h-24 rounded-full bg-emerald-400/50" />
+              {/* Handshake pop */}
+              <div
+                className={`hero-handshake absolute top-1/2 left-1/2 flex items-center justify-center w-15 h-15 rounded-full bg-emerald-500 text-white shadow-xl ${
+                  isLight ? 'shadow-emerald-300' : 'shadow-emerald-900/60'
+                }`}
+              >
+                <Handshake size={28} />
+              </div>
+            </div>
 
             {/* Step 3 */}
             <div className="flex flex-col items-center text-center flex-1 z-10 relative">
@@ -400,7 +449,7 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
                   <Link
                     href="/ruxsatnoma-yuborish"
-                    className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-black text-xs uppercase tracking-wider text-center transition-all shadow-lg shadow-rose-500/20 active:scale-[0.98]"
+                    className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-black text-xs uppercase tracking-wider text-center transition-all shadow-lg shadow-rose-500/20 active:scale-[0.98] border border-white/10"
                   >
                     Qayta yuborish (my.gov.uz)
                   </Link>
@@ -430,7 +479,7 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
                   <Link
                     href={`/register?k=${permitRequest.passport_series}&j=${permitRequest.jshshir}`}
-                    className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
+                    className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98] border border-white/10"
                   >
                     <UserPlus size={14} /> Ro&apos;yxatdan O&apos;tish
                   </Link>
@@ -460,7 +509,7 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
                   <Link
                     href="/login?student=1"
-                    className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-sky-500/20"
+                    className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-sky-500/20 border border-white/10"
                   >
                     <LogIn size={14} /> Tizimga Kirish
                   </Link>
@@ -564,7 +613,7 @@ export default function Home() {
 
               <Link 
                 href="/login"
-                className={`w-full mt-6 py-3 rounded-2xl bg-gradient-to-r ${role.btnColor} text-slate-950 font-black text-[10px] uppercase tracking-wider text-center flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all`}
+                className={`w-full mt-6 py-3 rounded-2xl bg-gradient-to-r ${role.btnColor} text-slate-950 font-black text-[10px] uppercase tracking-wider text-center flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all border border-white/10`}
               >
                 <span className="text-white">Tizimga Kirish</span>
                 <ArrowRight size={11} className="text-white group-hover:translate-x-1 transition-transform" />

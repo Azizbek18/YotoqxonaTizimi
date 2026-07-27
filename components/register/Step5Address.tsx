@@ -134,7 +134,7 @@ const Custom3DSelect = ({ label, value, options, onChange, icon: Icon, placehold
                         key={opt.value}
                         onClick={() => { onChange(opt.value); setIsOpen(false) }}
                         className={`
-                          w-full flex items-center justify-between p-2.5 rounded-lg text-left text-[12px] transition-all duration-300 mb-0.5 last:mb-0
+                          no-shelf w-full flex items-center justify-between p-2.5 rounded-lg text-left text-[12px] transition-all duration-300 mb-0.5 last:mb-0
                           ${isActive
                             ? (isLight ? 'bg-sky-50 text-sky-700' : 'bg-sky-600 text-white')
                             : (isLight ? 'text-slate-700 hover:bg-slate-100' : 'text-slate-400 hover:bg-white/5')
@@ -160,6 +160,7 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
 
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+  const [focusedField, setFocusedField] = useState<'qishloq' | 'street' | 'houseNumber' | null>(null)
   const [regionsData, setRegionsData] = useState<RegionRecord[]>([])
   const [districtsData, setDistrictsData] = useState<DistrictRecord[]>([])
   const [villagesData, setVillagesData] = useState<VillageRecord[]>([])
@@ -396,15 +397,19 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
                   ) : (
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block">Qishloq</label>
-                      <div className="relative flex items-center">
-                        <MapPin className={`absolute left-4 z-10 pointer-events-none ${isLight ? 'text-slate-400' : 'text-slate-600'}`} size={14} />
-                        <input
-                          className={`w-full p-3 pl-11 rounded-xl text-[13px] font-semibold outline-none transition-all ${isLight ? 'bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400' : 'bg-white/2 border border-white/8 text-white placeholder:text-slate-600 focus:border-sky-500/40'}`}
-                          placeholder={isVillageLoading ? 'Yuklanmoqda...' : 'Qishloq nomi'}
-                          value={data.qishloq}
-                          onChange={e => onChange({ qishloq: e.target.value })}
-                          disabled={isVillageLoading}
-                        />
+                      <div className={`cyber-border ${focusedField === 'qishloq' ? 'focused' : ''}`}>
+                        <div className="cyber-input-inner relative flex items-center">
+                          <MapPin className={`absolute left-4 z-10 transition-colors ${focusedField === 'qishloq' ? 'text-sky-400' : isLight ? 'text-slate-400' : 'text-slate-600'}`} size={14} />
+                          <input
+                            className={`w-full bg-transparent p-3 pl-11 rounded-xl text-[13px] font-semibold outline-none transition-colors ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-600'}`}
+                            placeholder={isVillageLoading ? 'Yuklanmoqda...' : 'Qishloq nomi'}
+                            value={data.qishloq}
+                            onFocus={() => setFocusedField('qishloq')}
+                            onBlur={() => setFocusedField(null)}
+                            onChange={e => onChange({ qishloq: e.target.value })}
+                            disabled={isVillageLoading}
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
@@ -412,26 +417,34 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_100px] gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block">Ko&apos;cha</label>
-                      <div className="relative flex items-center">
-                        <Navigation className={`absolute left-4 z-10 pointer-events-none ${isLight ? 'text-slate-400' : 'text-slate-600'}`} size={14} />
-                        <input
-                          className={`w-full p-3 pl-11 rounded-xl text-[13px] font-semibold outline-none transition-all ${isLight ? 'bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400' : 'bg-white/2 border border-white/8 text-white placeholder:text-slate-600 focus:border-sky-500/40'}`}
-                          placeholder="Ko'cha nomi"
-                          value={data.street}
-                          onChange={e => onChange({ street: e.target.value })}
-                        />
+                      <div className={`cyber-border ${focusedField === 'street' ? 'focused' : ''}`}>
+                        <div className="cyber-input-inner relative flex items-center">
+                          <Navigation className={`absolute left-4 z-10 transition-colors ${focusedField === 'street' ? 'text-sky-400' : isLight ? 'text-slate-400' : 'text-slate-600'}`} size={14} />
+                          <input
+                            className={`w-full bg-transparent p-3 pl-11 rounded-xl text-[13px] font-semibold outline-none transition-colors ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-600'}`}
+                            placeholder="Ko'cha nomi"
+                            value={data.street}
+                            onFocus={() => setFocusedField('street')}
+                            onBlur={() => setFocusedField(null)}
+                            onChange={e => onChange({ street: e.target.value })}
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block">Uy</label>
-                      <div className="relative flex items-center">
-                        <Hash className={`absolute left-4 z-10 pointer-events-none ${isLight ? 'text-slate-400' : 'text-slate-600'}`} size={14} />
-                        <input
-                          className={`w-full p-3 pl-11 rounded-xl text-[13px] font-semibold outline-none transition-all ${isLight ? 'bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400' : 'bg-white/2 border border-white/8 text-white placeholder:text-slate-600 focus:border-sky-500/40'}`}
-                          placeholder="14A"
-                          value={data.houseNumber}
-                          onChange={e => onChange({ houseNumber: e.target.value })}
-                        />
+                      <div className={`cyber-border ${focusedField === 'houseNumber' ? 'focused' : ''}`}>
+                        <div className="cyber-input-inner relative flex items-center">
+                          <Hash className={`absolute left-4 z-10 transition-colors ${focusedField === 'houseNumber' ? 'text-sky-400' : isLight ? 'text-slate-400' : 'text-slate-600'}`} size={14} />
+                          <input
+                            className={`w-full bg-transparent p-3 pl-11 rounded-xl text-[13px] font-semibold outline-none transition-colors ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-600'}`}
+                            placeholder="14A"
+                            value={data.houseNumber}
+                            onFocus={() => setFocusedField('houseNumber')}
+                            onBlur={() => setFocusedField(null)}
+                            onChange={e => onChange({ houseNumber: e.target.value })}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>

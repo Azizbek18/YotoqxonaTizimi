@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { RegisterData } from './types'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DoorOpen, Hash, Sparkles, ShieldAlert, ArrowRight, KeyRound } from 'lucide-react'
@@ -17,6 +17,7 @@ interface Props {
 export default function Step8Room({ data, onChange, onNext, onBack }: Props) {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+  const [focused, setFocused] = useState(false)
 
   const show3DToast = (message: string, type: 'success' | 'error' = 'error') => {
     toast.custom((t) => (
@@ -93,18 +94,22 @@ export default function Step8Room({ data, onChange, onNext, onBack }: Props) {
 
           <div className="space-y-3">
             <label className={`text-[10px] font-bold uppercase tracking-widest block ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Xona raqami</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-                <Hash className={`${isLight ? 'text-amber-600/40' : 'text-amber-500/40'}`} size={20} />
+            <div className={`cyber-border ${focused ? 'focused' : ''}`}>
+              <div className="cyber-input-inner relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+                  <Hash className={`transition-colors ${focused ? 'text-amber-400' : isLight ? 'text-amber-600/40' : 'text-amber-500/40'}`} size={20} />
+                </div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={data.room_number || ''}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
+                  onChange={handleInputChange}
+                  placeholder="000"
+                  className={`w-full bg-transparent text-2xl sm:text-3xl font-black tracking-widest pl-12 pr-4 py-4 rounded-2xl outline-none transition-colors ${isLight ? 'text-slate-900 placeholder:text-slate-300' : 'text-white placeholder:text-white/5'}`}
+                />
               </div>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={data.room_number || ''}
-                onChange={handleInputChange}
-                placeholder="000"
-                className={`w-full text-2xl sm:text-3xl font-black tracking-widest pl-12 pr-4 py-4 rounded-2xl outline-none transition-all ${isLight ? 'bg-white/95 border border-slate-200 text-slate-900 placeholder:text-slate-300 focus:border-sky-400 focus:bg-sky-50/30' : 'bg-white/[0.03] border border-white/10 text-white placeholder:text-white/5 focus:border-amber-500/50'}`}
-              />
             </div>
           </div>
 

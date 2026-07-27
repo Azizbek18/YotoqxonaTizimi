@@ -3,21 +3,62 @@
 import React, { useEffect, useState } from 'react'
 import { Toast, resolveValue } from 'react-hot-toast'
 import { motion, useMotionValue, useTransform, useSpring, useMotionTemplate } from 'framer-motion'
-import { Sparkles, ShieldAlert } from 'lucide-react'
+import { Sparkles, ShieldAlert, Loader2, Info } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
 interface Custom3DToastProps {
   toast: Toast
 }
 
-const playToastSound = (isSuccess: boolean) => {
+type ToastVariant = 'success' | 'error' | 'info'
+
+const VARIANT_STYLES: Record<ToastVariant, {
+  glow: string
+  particle: string
+  icon: string
+  ping: string
+  label: string
+  labelText: string
+  bar: string
+}> = {
+  success: {
+    glow: 'bg-emerald-500',
+    particle: 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]',
+    icon: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25 shadow-[0_0_15px_rgba(16,185,129,0.15)]',
+    ping: 'bg-emerald-500',
+    label: 'text-emerald-400',
+    labelText: 'Muvaffaqiyatli',
+    bar: 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_6px_rgba(16,185,129,0.6)]',
+  },
+  error: {
+    glow: 'bg-rose-500',
+    particle: 'bg-rose-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]',
+    icon: 'bg-rose-500/10 text-rose-400 border-rose-500/25 shadow-[0_0_15px_rgba(239,68,68,0.15)]',
+    ping: 'bg-rose-500',
+    label: 'text-rose-400',
+    labelText: 'Tizim xabari',
+    bar: 'bg-gradient-to-r from-rose-500 to-pink-500 shadow-[0_0_6px_rgba(239,68,68,0.6)]',
+  },
+  info: {
+    glow: 'bg-blue-500',
+    particle: 'bg-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.8)]',
+    icon: 'bg-blue-500/10 text-blue-400 border-blue-500/25 shadow-[0_0_15px_rgba(59,130,246,0.15)]',
+    ping: 'bg-blue-500',
+    label: 'text-blue-400',
+    labelText: "Ma'lumot",
+    bar: 'bg-gradient-to-r from-blue-500 to-cyan-400 shadow-[0_0_6px_rgba(59,130,246,0.6)]',
+  },
+}
+
+const playToastSound = (variant: ToastVariant) => {
+  if (variant === 'info') return
   try {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext
     if (!AudioCtx) return
     const ctx = new AudioCtx()
     const now = ctx.currentTime
 
-    if (isSuccess) {
+    if (variant === 'success') {
       // Harmonic arpeggio success chime: C5 -> E5 -> G5 -> C6
       const notes = [523.25, 659.25, 783.99, 1046.50]
       notes.forEach((freq, index) => {
@@ -84,7 +125,8 @@ const playToastSound = (isSuccess: boolean) => {
 export default function Custom3DToast({ toast: t }: Custom3DToastProps) {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
-  const isSuccess = t.type === 'success'
+  const variant: ToastVariant = t.type === 'success' ? 'success' : t.type === 'error' ? 'error' : 'info'
+  const styles = VARIANT_STYLES[variant]
 
   // Particle emission state
   const [particles] = useState(() =>
@@ -118,12 +160,12 @@ export default function Custom3DToast({ toast: t }: Custom3DToastProps) {
   const [showParticles, setShowParticles] = useState(true)
 
   useEffect(() => {
-    playToastSound(isSuccess)
-    
+    playToastSound(variant)
+
     // Unmount particles after animation finishes (1s) to save CPU
     const timer = setTimeout(() => setShowParticles(false), 1000)
     return () => clearTimeout(timer)
-  }, [isSuccess])
+  }, [variant])
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -162,9 +204,7 @@ export default function Custom3DToast({ toast: t }: Custom3DToastProps) {
     >
       {/* 1. Neon Aura Background Glow */}
       <div
-        className={`absolute -inset-1.5 rounded-2xl blur-xl opacity-25 group-hover:opacity-40 transition-opacity duration-500 ${
-          isSuccess ? 'bg-emerald-500' : 'bg-rose-500'
-        }`}
+        className={`absolute -inset-1.5 rounded-2xl blur-xl opacity-25 group-hover:opacity-40 transition-opacity duration-500 ${styles.glow}`}
       />
 
       {/* 2. Keypress/Mount Particle Spark Emitters */}
@@ -180,11 +220,7 @@ export default function Custom3DToast({ toast: t }: Custom3DToastProps) {
               scale: 0,
             }}
             transition={{ duration: 0.85, delay: p.delay, ease: 'easeOut' }}
-            className={`absolute pointer-events-none rounded-full blur-[0.4px] transform-gpu will-change-transform ${
-              isSuccess
-                ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
-                : 'bg-rose-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
-            }`}
+            className={`absolute pointer-events-none rounded-full blur-[0.4px] transform-gpu will-change-transform ${styles.particle}`}
             style={{
               width: p.size,
               height: p.size,
@@ -226,32 +262,28 @@ export default function Custom3DToast({ toast: t }: Custom3DToastProps) {
 
         {/* Left Side Icon Pod with Pulse animation */}
         <div
-          className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center border transition-all duration-300 relative overflow-hidden ${
-            isSuccess
-              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
-              : 'bg-rose-500/10 text-rose-400 border-rose-500/25 shadow-[0_0_15px_rgba(239,68,68,0.15)]'
-          }`}
+          className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center border transition-all duration-300 relative overflow-hidden ${styles.icon}`}
         >
           <div
-            className={`absolute inset-0 opacity-10 animate-ping rounded-xl ${
-              isSuccess ? 'bg-emerald-500' : 'bg-rose-500'
-            }`}
+            className={`absolute inset-0 opacity-10 rounded-xl ${styles.ping} ${variant !== 'info' ? 'animate-ping' : ''}`}
           />
-          {isSuccess ? (
+          {variant === 'success' ? (
             <Sparkles size={21} className="relative z-10 animate-pulse" />
-          ) : (
+          ) : variant === 'error' ? (
             <ShieldAlert size={21} className="relative z-10 animate-bounce" />
+          ) : t.type === 'loading' ? (
+            <Loader2 size={21} className="relative z-10 animate-spin" />
+          ) : (
+            <Info size={21} className="relative z-10" />
           )}
         </div>
 
         {/* Message and Status Type */}
         <div className="flex-1 min-w-0 relative z-10 text-left">
           <p
-            className={`text-[8.5px] font-black uppercase tracking-[0.2em] mb-0.5 ${
-              isSuccess ? 'text-emerald-400' : 'text-rose-400'
-            }`}
+            className={`text-[8.5px] font-black uppercase tracking-[0.2em] mb-0.5 ${styles.label}`}
           >
-            {isSuccess ? 'Muvaffaqiyatli' : 'Tizim xabari'}
+            {styles.labelText}
           </p>
           <p
             className={`text-[12px] font-bold tracking-tight leading-snug ${
@@ -265,13 +297,9 @@ export default function Custom3DToast({ toast: t }: Custom3DToastProps) {
         {/* Laser Timer progress bar */}
         <div className="absolute bottom-2.5 left-4.5 right-4.5 h-[2px] bg-slate-500/10 dark:bg-white/5 rounded-full overflow-hidden">
           <motion.div
-            className={`h-full rounded-full ${
-              isSuccess
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_6px_rgba(16,185,129,0.6)]'
-                : 'bg-gradient-to-r from-rose-500 to-pink-500 shadow-[0_0_6px_rgba(239,68,68,0.6)]'
-            }`}
+            className={`h-full rounded-full ${styles.bar}`}
             initial={{ width: '100%' }}
-            animate={{ width: '0%' }}
+            animate={{ width: t.type === 'loading' ? '100%' : '0%' }}
             transition={{ duration: t.duration ? t.duration / 1000 : 4, ease: 'linear' }}
           />
         </div>

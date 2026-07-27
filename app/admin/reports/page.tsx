@@ -399,41 +399,84 @@ export default function AdminReportsPage() {
                 doc.setFontSize(9)
                 doc.text(`Sana: ${new Date().toLocaleDateString('uz-UZ')}`, 14, 22)
 
-                let startY = 28
-                // 31 ta ustun bitta landscape A4 sahifasiga sig'mas darajada ko'p
-                // bo'lgani uchun kenglik sahifa bo'yicha teng taqsimlanadi (o'rniga
-                // hardcode qilingan 14 ta ustunlik kenglik ishlatilmaydi, aks holda
-                // ustunlar sahifadan chiqib ketardi)
-                const availableWidth = 277
-                const colWidth = availableWidth / headers.length
-                const maxChars = Math.max(3, Math.floor(colWidth / 1.8))
-                const rowHeight = 7
+                // Excel/CSV barcha 31 ta ustunni to'liq ma'lumot uchun beradi;
+                // ularni bitta PDF sahifasiga sig'dirishning iloji yo'q — 4
+                // belgigacha kesib tashlash hamma narsani o'qib bo'lmaydigan
+                // qilib qo'yardi. Shuning uchun PDF chop etish/ko'rish uchun
+                // eng muhim ustunlar bilan, HECH NARSA KESILMASDAN (uzun matn
+                // ko'p qatorga o'raladi) qisqa hisobot beradi.
+                const pdfHeaders = ['#', 'Qavat', 'Xona', 'F.I.Sh.', 'Fakulteti', 'Kursi', 'Jinsi', 'Telefon']
+                const colWidths = [10, 18, 22, 70, 70, 15, 20, 52]
+                const marginX = 10
+                const lineHeight = 4.5
+                const cellPaddingY = 1.5
+                const headerRowHeight = 8
 
-                // Header drawing
-                let x = 10
-                doc.setFontSize(5)
-                doc.setFillColor(79, 70, 229)
-                doc.setTextColor(255, 255, 255)
-                headers.forEach((h) => {
-                    doc.rect(x, startY, colWidth, rowHeight, 'F')
-                    doc.text(h.slice(0, maxChars), x + 0.5, startY + 4.5)
-                    x += colWidth
+                doc.setFontSize(8)
+
+                const pdfRows = sortedUsers.map((u, idx) => {
+                    const gender = u.gender === 'male' || u.gender === 'Erkak' ? 'Erkak' : u.gender === 'female' || u.gender === 'Ayol' ? 'Ayol' : (u.gender || '-')
+                    const floor = extractFloor(u.room_number)
+                    return [
+                        String(idx + 1),
+                        floor ? String(floor) : '-',
+                        // jsPDF'ning o'rnatilgan shrifti "№" belgisini
+                        // qo'llab-quvvatlamaydi (o'rniga "!" chiqadi) — ASCII
+                        // "#" ishlatiladi (faqat PDF uchun; Excel/CSV o'zgarmaydi)
+                        u.room_number ? `#${u.room_number}` : '-',
+                        cleanText(u.full_name || '-'),
+                        cleanText(u.faculty || '-'),
+                        cleanText(u.course || '-'),
+                        cleanText(gender),
+                        cleanText(u.phone_number || u.phone || '-'),
+                    ]
                 })
 
-                startY += rowHeight
-                doc.setTextColor(0, 0, 0)
+                let startY = 28
 
-                rawRows.forEach((row) => {
-                    if (startY > 185) {
+                const drawHeaderRow = () => {
+                    // jsPDF faqat sikl ichida rect('F'/'FD') va text() birga
+                    // chaqirilganda BIRINCHI katakchanigina to'ldiradi (haqiqiy
+                    // render xatosi) — shuning uchun avval BARCHA to'rtburchak,
+                    // keyin BARCHA matn alohida sikllarda chiziladi
+                    let x = marginX
+                    doc.setFillColor(79, 70, 229)
+                    pdfHeaders.forEach((_, i) => {
+                        doc.rect(x, startY, colWidths[i], headerRowHeight, 'FD')
+                        x += colWidths[i]
+                    })
+
+                    x = marginX
+                    doc.setTextColor(255, 255, 255)
+                    doc.setFont('helvetica', 'bold')
+                    pdfHeaders.forEach((h, i) => {
+                        doc.text(h, x + 1.5, startY + 5.5)
+                        x += colWidths[i]
+                    })
+
+                    startY += headerRowHeight
+                    doc.setTextColor(0, 0, 0)
+                    doc.setFont('helvetica', 'normal')
+                }
+
+                drawHeaderRow()
+
+                pdfRows.forEach((row) => {
+                    const wrapped = row.map((cell, i) => doc.splitTextToSize(String(cell), colWidths[i] - 3))
+                    const rowLines = Math.max(...wrapped.map((w) => w.length), 1)
+                    const rowHeight = rowLines * lineHeight + cellPaddingY * 2
+
+                    if (startY + rowHeight > 200) {
                         doc.addPage()
                         startY = 15
+                        drawHeaderRow()
                     }
-                    let rx = 10
-                    row.forEach((cellText) => {
-                        doc.rect(rx, startY, colWidth, rowHeight)
-                        const str = String(cellText).slice(0, maxChars)
-                        doc.text(str, rx + 0.5, startY + 4.5)
-                        rx += colWidth
+
+                    let rx = marginX
+                    wrapped.forEach((lines, i) => {
+                        doc.rect(rx, startY, colWidths[i], rowHeight)
+                        doc.text(lines, rx + 1.5, startY + cellPaddingY + lineHeight - 1)
+                        rx += colWidths[i]
                     })
                     startY += rowHeight
                 })

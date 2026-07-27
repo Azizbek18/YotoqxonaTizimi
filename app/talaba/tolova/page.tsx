@@ -678,10 +678,10 @@ export default function TolovaPage() {
                                 <button
                                     onClick={handleUpload}
                                     disabled={!newReceipt || uploading || validating || selectedMonths.length === 0}
-                                    className={`w-full mt-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg transition-all duration-300 flex items-center justify-center gap-2 ${newReceipt && !uploading && !validating && selectedMonths.length > 0
+                                    className={`w-full mt-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${newReceipt && !uploading && !validating && selectedMonths.length > 0
                                         ? isLight
-                                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20 hover:scale-102'
-                                            : 'bg-cyan-500 hover:bg-cyan-600 text-slate-950 shadow-cyan-500/15 hover:scale-102'
+                                            ? 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-102'
+                                            : 'bg-cyan-500 hover:bg-cyan-600 text-slate-950 hover:scale-102'
                                         : isLight
                                             ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
                                             : 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/5'

@@ -856,9 +856,9 @@ export default function StudentProfile() {
         >
           <button
             onClick={handleEditOpen}
-            className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all duration-200 active:scale-95 shadow-lg ${
-              isLight 
-                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25' 
+            className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all duration-200 active:scale-95 ${
+              isLight
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
                 : 'bg-white hover:bg-blue-600 text-slate-900 hover:text-white'
             }`}
           >
@@ -1135,8 +1135,8 @@ export default function StudentProfile() {
                       disabled={uploading}
                       className={`w-full px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 ${
                         isLight
-                          ? 'bg-gradient-to-r from-blue-500 to-violet-500 text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30'
-                          : 'bg-gradient-to-r from-blue-600/80 to-violet-600/80 text-white border border-white/10 shadow-lg shadow-blue-500/10 hover:from-blue-500 hover:to-violet-500'
+                          ? 'bg-gradient-to-r from-blue-500 to-violet-500 text-white'
+                          : 'bg-gradient-to-r from-blue-600/80 to-violet-600/80 text-white border border-white/10 hover:from-blue-500 hover:to-violet-500'
                       }`}
                     >
                       {uploading ? <Loader size={13} className="animate-spin" /> : <Camera size={13} />}
@@ -1425,7 +1425,7 @@ export default function StudentProfile() {
                 <button
                   onClick={handlePasswordChange}
                   disabled={changingPassword || !newPassword || !confirmNewPassword || newPassword !== confirmNewPassword}
-                  className="flex-1 py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center gap-1.5 shadow-lg shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="flex-1 py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {changingPassword ? <Loader size={14} className="animate-spin" /> : <Check size={14} />}
                   <span>{changingPassword ? 'Saqlanmoqda...' : 'Saqlash'}</span>
@@ -1481,7 +1481,7 @@ export default function StudentProfile() {
                       setShowDeleteConfirm(false)
                       setTimeout(() => setMessage(null), 5000)
                     }}
-                    className="flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/20 transition-all"
+                    className="flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest bg-red-600 hover:bg-red-700 text-white transition-all"
                   >
                     O&apos;chirish
                   </button>

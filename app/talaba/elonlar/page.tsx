@@ -306,8 +306,8 @@ export default function ElonlarPage() {
                 type="button"
                 onClick={() => switchView('dorm')}
                 className={`inline-flex shrink-0 items-center gap-2 rounded-2xl border px-5 py-3 text-xs font-black uppercase tracking-wider transition-all duration-200 ${
-                  view === 'dorm' 
-                    ? 'border-blue-500 bg-blue-600 text-white shadow-lg shadow-blue-500/25' 
+                  view === 'dorm'
+                    ? 'border-blue-500 bg-blue-600 text-white'
                     : isLight ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50' : 'border-white/5 bg-white/5 text-gray-300 hover:bg-white/10'
                 }`}
               >
@@ -319,8 +319,8 @@ export default function ElonlarPage() {
                 type="button"
                 onClick={() => switchView('faculty')}
                 className={`inline-flex shrink-0 items-center gap-2 rounded-2xl border px-5 py-3 text-xs font-black uppercase tracking-wider transition-all duration-200 ${
-                  view === 'faculty' 
-                    ? 'border-emerald-500 bg-emerald-600 text-white shadow-lg shadow-emerald-500/25' 
+                  view === 'faculty'
+                    ? 'border-emerald-500 bg-emerald-600 text-white'
                     : isLight ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50' : 'border-white/5 bg-white/5 text-gray-300 hover:bg-white/10'
                 }`}
               >
@@ -579,7 +579,7 @@ export default function ElonlarPage() {
               <button
                 type="button"
                 onClick={() => setSelectedElon(null)}
-                className="w-full mt-4 rounded-xl bg-blue-600 hover:bg-blue-700 py-3.5 text-xs font-black text-white shadow-lg shadow-blue-500/25 transition uppercase tracking-widest"
+                className="w-full mt-4 rounded-xl bg-blue-600 hover:bg-blue-700 py-3.5 text-xs font-black text-white transition uppercase tracking-widest"
               >
                 Tushunarli
               </button>

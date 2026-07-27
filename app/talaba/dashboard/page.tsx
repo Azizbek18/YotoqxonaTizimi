@@ -880,8 +880,8 @@ export default function TalabaDashboard() {
                   <button 
                     onClick={handleCleaningToggle}
                     className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-black transition-all uppercase ${
-                      cleaningDone 
-                        ? 'bg-green-500 text-white shadow-md shadow-green-500/30' 
+                      cleaningDone
+                        ? 'bg-green-500 text-white'
                         : 'bg-white/15 text-white/70 hover:bg-white/20'
                     }`}
                   >
@@ -1142,8 +1142,8 @@ export default function TalabaDashboard() {
                     key={cat}
                     onClick={() => setElonCategory(cat)}
                     className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all duration-200 shrink-0 ${
-                      elonCategory === cat 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' 
+                      elonCategory === cat
+                        ? 'bg-blue-600 text-white'
                         : isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-white/5 hover:bg-white/10 text-gray-300'
                     }`}
                   >
@@ -1812,8 +1812,8 @@ export default function TalabaDashboard() {
                       disabled={chatLoading || !userMessage.trim()}
                       className={`px-4 rounded-xl transition-all flex items-center justify-center ${
                         isLight
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
-                          : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
                       }`}
                     >
                       <ArrowRight size={16} />
@@ -2051,10 +2051,10 @@ export default function TalabaDashboard() {
                     <button
                       onClick={handleSaveSchedule}
                       disabled={isSavingSchedule}
-                      className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white shadow-lg active:scale-95 transition-all duration-300 disabled:opacity-50 cursor-pointer ${
+                      className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white active:scale-95 transition-all duration-300 disabled:opacity-50 cursor-pointer ${
                         isLight
-                          ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
-                          : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
+                          ? 'bg-blue-600 hover:bg-blue-700'
+                          : 'bg-indigo-600 hover:bg-indigo-700'
                       }`}
                     >
                       {isSavingSchedule ? (

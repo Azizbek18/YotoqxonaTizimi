@@ -470,7 +470,7 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
           onClick={handleValidate}
           className={`
             flex-1 relative overflow-hidden h-12 rounded-xl transition-all duration-500 group
-            ${isLight ? 'bg-linear-to-r from-sky-500 to-indigo-500 hover:shadow-lg hover:shadow-sky-500/15' : 'bg-linear-to-r from-sky-600 to-indigo-600 hover:shadow-lg hover:shadow-sky-500/20'}
+            ${isLight ? 'bg-linear-to-r from-sky-500 to-indigo-500' : 'bg-linear-to-r from-sky-600 to-indigo-600'}
           `}
         >
           <div className={`relative flex items-center justify-center gap-2 rounded-xl h-full ${isLight ? 'bg-white/90' : ''}`}>

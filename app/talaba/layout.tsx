@@ -738,8 +738,8 @@ function NightPermModal({ onClose, profile, isLight }: ModalProps) {
               disabled={submitting}
               className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all bg-gradient-to-r text-white ${
                 isLight
-                  ? 'from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/20'
-                  : 'from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg shadow-cyan-500/20'
+                  ? 'from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600'
+                  : 'from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {submitting ? 'Yuborilmoqda...' : 'Yuborish'}
@@ -914,8 +914,8 @@ function QueueSwapModal({ onClose, profile, roommates, isLight }: QueueSwapModal
               disabled={submitting || roommates.length === 0}
               className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all bg-gradient-to-r text-white ${
                 isLight
-                  ? 'from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/20'
-                  : 'from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg shadow-cyan-500/20'
+                  ? 'from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600'
+                  : 'from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {submitting ? 'Yuborilmoqda...' : 'Yuborish'}
@@ -1049,8 +1049,8 @@ function CleanAuditModal({ onClose, profile, isLight }: ModalProps) {
               disabled={submitting}
               className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all bg-gradient-to-r text-white ${
                 isLight
-                  ? 'from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/20'
-                  : 'from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg shadow-cyan-500/20'
+                  ? 'from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600'
+                  : 'from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {submitting ? 'Yuborilmoqda...' : 'Yuborish'}
@@ -1307,8 +1307,8 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
               disabled={submitting || aiChecking || !file || !aiResult?.is_human || !group.trim()}
               className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all bg-gradient-to-r text-white ${
                 isLight
-                  ? 'from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/20'
-                  : 'from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 shadow-lg shadow-cyan-500/20'
+                  ? 'from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600'
+                  : 'from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700'
               } disabled:opacity-30 disabled:cursor-not-allowed`}
             >
               {submitting ? "Saqlanmoqda..." : "Saqlash va davom etish"}
@@ -1477,8 +1477,8 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
               disabled={submitting || !feedback.trim()}
               className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-gradient-to-r text-white flex items-center justify-center gap-1.5 ${
                 isLight
-                  ? 'from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md shadow-blue-500/10'
-                  : 'from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 shadow-md shadow-cyan-500/15'
+                  ? 'from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600'
+                  : 'from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700'
               } disabled:opacity-30 disabled:cursor-not-allowed`}
             >
               <Send size={12} />

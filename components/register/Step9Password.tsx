@@ -230,7 +230,7 @@ export default function Step7Password({ data, onChange, onSubmit, onBack, loadin
           disabled={!canSubmit || loading}
           className={`flex-1 relative h-12 rounded-xl font-bold text-[11px] tracking-[0.2em] uppercase flex items-center justify-center gap-2 overflow-hidden transition-all
             ${canSubmit
-              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-900/30'
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
               : 'bg-white/5 text-slate-600 border border-white/5 cursor-not-allowed'
             }`}
         >

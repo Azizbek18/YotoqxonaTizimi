@@ -271,7 +271,7 @@ export default function ZamdekanXonalarMap() {
             onClick={() => setFloorFilter('all')}
             className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
               floorFilter === 'all'
-                ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25'
+                ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white'
                 : 'text-slate-500 hover:text-slate-700 dark:hover:text-white'
             }`}
           >
@@ -283,7 +283,7 @@ export default function ZamdekanXonalarMap() {
               onClick={() => setFloorFilter(fl)}
               className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
                 floorFilter === fl
-                  ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25'
+                  ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white'
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-white'
               }`}
             >
@@ -423,7 +423,7 @@ export default function ZamdekanXonalarMap() {
                 ) : (
                   <button
                     onClick={() => setAssignModalOpen(true)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-md shadow-indigo-500/25 transition-all active:scale-95"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-95"
                   >
                     <UserPlus size={14} /> Talaba joylashtirish
                   </button>

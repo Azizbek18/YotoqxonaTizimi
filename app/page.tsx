@@ -419,7 +419,7 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
                   <button
                     onClick={() => checkStatus(false)}
-                    className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]"
+                    className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
                   >
                     <RefreshCw size={14} className="animate-spin" style={{ animationDuration: '4s' }} /> Statusni yangilash
                   </button>

@@ -146,7 +146,7 @@ export default function Step6Date({ data, onChange, onNext, onBack }: Props) {
                           onClick={() => handleDateClick(day)}
                           className={`aspect-square rounded-lg flex items-center justify-center text-[13px] font-bold transition-all
                             ${isSelected(day)
-                              ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                              ? 'bg-emerald-500 text-white'
                               : disabled
                                 ? 'opacity-20 cursor-not-allowed text-slate-500'
                                 : (isLight ? 'text-slate-700 bg-white/90 hover:bg-slate-100 hover:text-slate-900' : 'text-slate-400 hover:bg-white/5 hover:text-white')

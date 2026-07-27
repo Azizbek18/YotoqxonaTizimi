@@ -214,7 +214,7 @@ export default function AdminLoginPage() {
                             disabled={loading}
                             className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl font-black uppercase tracking-widest transition-all sm:h-14 sm:rounded-[22px] sm:text-[12px] ${loading
                                 ? 'bg-white/5 text-slate-600'
-                                : 'bg-linear-to-r from-blue-600 to-indigo-700 text-white hover:shadow-blue-600/20 active:scale-[0.98]'
+                                : 'bg-linear-to-r from-blue-600 to-indigo-700 text-white active:scale-[0.98]'
                                 } text-[10px]`}
                         >
                             {loading ? (

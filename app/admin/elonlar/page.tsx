@@ -336,7 +336,7 @@ export default function AdminElonlarPage() {
               setEditingElon(null)
               setIsModalOpen(true)
             }}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 px-4 py-3 text-sm font-bold text-white transition-all shadow-lg shadow-purple-500/20 active:scale-95 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 px-4 py-3 text-sm font-bold text-white transition-all active:scale-95 cursor-pointer"
           >
             <Plus size={18} />
             Yangi e&apos;lon
@@ -683,7 +683,7 @@ export default function AdminElonlarPage() {
                         onClick={() => setForm((current) => ({ ...current, audience: 'all', faculty: '' }))}
                         className={`rounded-xl border py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${
                           form.audience === 'all'
-                            ? 'border-purple-600 bg-purple-600 text-white shadow-md'
+                            ? 'border-purple-600 bg-purple-600 text-white'
                             : isLight
                               ? 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                               : 'border-white/5 bg-white/5 text-slate-400 hover:bg-white/10'
@@ -696,7 +696,7 @@ export default function AdminElonlarPage() {
                         onClick={() => setForm((current) => ({ ...current, audience: 'faculty', faculty: current.faculty || FACULTY_OPTIONS[0] }))}
                         className={`rounded-xl border py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${
                           form.audience === 'faculty'
-                            ? 'border-purple-600 bg-purple-600 text-white shadow-md'
+                            ? 'border-purple-600 bg-purple-600 text-white'
                             : isLight
                               ? 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                               : 'border-white/5 bg-white/5 text-slate-400 hover:bg-white/10'
@@ -772,7 +772,7 @@ export default function AdminElonlarPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition disabled:cursor-not-allowed disabled:opacity-60 shadow-lg shadow-purple-500/20 active:scale-95 cursor-pointer"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition disabled:cursor-not-allowed disabled:opacity-60 active:scale-95 cursor-pointer"
                   >
                     <Send size={14} />
                     {submitting ? 'Saqlanmoqda...' : editingElon ? 'Saqlash' : 'Nashr qilish'}

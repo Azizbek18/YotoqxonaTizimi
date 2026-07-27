@@ -357,7 +357,7 @@ function ArizalarContent() {
                   }}
                   className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${
                     isActive
-                      ? `bg-gradient-to-r ${activeGradientMap[status]} text-white shadow-md`
+                      ? `bg-gradient-to-r ${activeGradientMap[status]} text-white`
                       : 'text-slate-500 hover:text-slate-700 dark:hover:text-white'
                   }`}
                 >
@@ -619,7 +619,7 @@ function ArizalarContent() {
                 onClick={() => setSelectedRoom(room)}
                 className={`px-2.5 py-2.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
                   isSelected
-                    ? 'border-indigo-500 bg-indigo-500 text-white shadow-md shadow-indigo-500/20'
+                    ? 'border-indigo-500 bg-indigo-500 text-white'
                     : isFull
                       ? 'border-red-500/20 bg-red-500/5 text-red-400 opacity-40 cursor-not-allowed'
                       : isLight

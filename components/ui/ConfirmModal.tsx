@@ -105,10 +105,10 @@ export default function ConfirmModal({
                                 <button
                                     onClick={onConfirm}
                                     disabled={isLoading}
-                                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50 text-white shadow-lg ${
+                                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50 text-white ${
                                         confirmVariant === 'danger'
-                                            ? 'bg-red-600 hover:bg-red-700 shadow-red-600/10'
-                                            : 'bg-purple-600 hover:bg-purple-700 shadow-purple-600/10'
+                                            ? 'bg-red-600 hover:bg-red-700'
+                                            : 'bg-purple-600 hover:bg-purple-700'
                                     }`}
                                 >
                                     {isLoading ? 'Jarayonda...' : confirmText}

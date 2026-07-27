@@ -322,7 +322,7 @@ export default function Step4Study({ data, onChange, onNext, onBack }: Props) {
                 className={`
                   relative h-10 rounded-2xl text-[15px] font-bold transition-all duration-500 border
                   ${data.course === c
-                    ? (isLight ? 'bg-sky-500 border-sky-300 text-white shadow-[0_10px_20px_rgba(56,189,248,0.22)]' : 'bg-blue-600 border-blue-400 text-white shadow-[0_10px_20px_rgba(59,130,246,0.3)]')
+                    ? (isLight ? 'bg-sky-500 border-sky-300 text-white' : 'bg-blue-600 border-blue-400 text-white')
                     : (isLight ? 'bg-white/90 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-100' : 'bg-white/2 border-white/8 text-slate-500 hover:border-white/20 hover:bg-white/5')
                   }
                 `}

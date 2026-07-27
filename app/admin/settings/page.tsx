@@ -253,7 +253,7 @@ export default function AdminSettingsPage() {
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="px-6 py-3 rounded-xl bg-linear-to-r from-purple-500 to-fuchsia-600 hover:from-purple-600 hover:to-fuchsia-700 text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-purple-500/10 transition-all disabled:opacity-50 active:scale-95 disabled:cursor-not-allowed"
+                    className="px-6 py-3 rounded-xl bg-linear-to-r from-purple-500 to-fuchsia-600 hover:from-purple-600 hover:to-fuchsia-700 text-white font-black uppercase tracking-widest text-xs transition-all disabled:opacity-50 active:scale-95 disabled:cursor-not-allowed"
                 >
                     {saving ? 'Saqlanmoqda...' : 'Sozlamalarni Saqlash'}
                 </button>

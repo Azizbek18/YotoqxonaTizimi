@@ -226,7 +226,7 @@ function LoginContent() {
 
             <button
               disabled={loading}
-              className={`w-full h-12 sm:h-14 rounded-xl sm:rounded-[22px] font-black text-[10px] sm:text-[12px] tracking-widest uppercase flex items-center justify-center gap-2 transition-all ${loading ? isLight ? 'bg-slate-100 text-slate-400' : 'bg-white/5 text-slate-600' : isLight ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]' : 'bg-linear-to-r from-blue-600 to-indigo-700 text-white hover:shadow-blue-600/20 active:scale-[0.98]'}`}
+              className={`w-full h-12 sm:h-14 rounded-xl sm:rounded-[22px] font-black text-[10px] sm:text-[12px] tracking-widest uppercase flex items-center justify-center gap-2 transition-all ${loading ? isLight ? 'bg-slate-100 text-slate-400' : 'bg-white/5 text-slate-600' : isLight ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]' : 'bg-linear-to-r from-blue-600 to-indigo-700 text-white active:scale-[0.98]'}`}
             >
               {loading ? (
                 <div className={`w-5 h-5 border-2 rounded-full animate-spin ${isLight ? 'border-slate-300 border-t-slate-600' : 'border-white/20 border-t-white'}`} />

@@ -151,7 +151,7 @@ function StatusCheckContent() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-wider text-xs shadow-xl transition-all active:scale-98 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-wider text-xs transition-all active:scale-98 disabled:opacity-50"
             >
               {loading ? (
                 <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -224,7 +224,7 @@ function StatusCheckContent() {
                         {/* Big CTA button to register */}
                         <button
                           onClick={() => router.push(`/register?k=${result.passport_series}&j=${result.jshshir}`)}
-                          className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-black uppercase tracking-wider text-xs shadow-xl shadow-emerald-500/10 active:scale-98 transition-all"
+                          className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-black uppercase tracking-wider text-xs active:scale-98 transition-all"
                         >
                           <span>Ro&apos;yxatdan O&apos;tish</span>
                           <ChevronRight size={14} />

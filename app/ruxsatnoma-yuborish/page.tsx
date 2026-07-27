@@ -1213,7 +1213,7 @@ export default function RuxsatnomaYuborish() {
                         <button
                           type="button"
                           onClick={handleNextStep}
-                          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-1.5 transition-all duration-300 shadow-md shadow-indigo-600/15 active:scale-95"
+                          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-95"
                         >
                           <span>Keyingi</span> <ChevronRight size={14} />
                         </button>
@@ -1221,7 +1221,7 @@ export default function RuxsatnomaYuborish() {
                         <button
                           type="submit"
                           disabled={loading}
-                          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-indigo-600/25 active:scale-95 disabled:opacity-50"
+                          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all duration-300 active:scale-95 disabled:opacity-50"
                         >
                           {loading ? (
                             <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1295,7 +1295,7 @@ export default function RuxsatnomaYuborish() {
                     playSound('tab')
                     router.push(`/ruxsatnoma-tekshirish?passport=${passportSeries}&jshshir=${jshshir}`)
                   }}
-                  className="flex-1 p-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest transition-all duration-300 active:scale-95 shadow-lg shadow-blue-500/20"
+                  className="flex-1 p-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest transition-all duration-300 active:scale-95"
                 >
                   Statusni Tekshirish
                 </button>

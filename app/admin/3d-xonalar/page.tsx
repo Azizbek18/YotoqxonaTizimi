@@ -552,7 +552,7 @@ export default function Admin3DXonalarPage() {
               onClick={() => setActiveFloor(fl)}
               className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 ${
                 active
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-500/10'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-white/5'
               }`}
             >
@@ -587,7 +587,7 @@ export default function Admin3DXonalarPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50"
                 >
                   <Save size={14} /> {saving ? 'Saqlanmoqda...' : 'Saqlash'}
                 </button>

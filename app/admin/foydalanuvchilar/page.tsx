@@ -1204,7 +1204,7 @@ export default function AdminUsersPage() {
                   {selectedUser.role === 'talaba' && (selectedUser.status === 'pending' || selectedUser.status === 'rejected') && (
                     <button
                       onClick={() => handleApprove(selectedUser.id)}
-                      className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-1 shadow-md shadow-emerald-500/10"
+                      className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-1"
                     >
                       <Check size={14} />
                       Tasdiqlash
@@ -1213,7 +1213,7 @@ export default function AdminUsersPage() {
                   {selectedUser.role === 'talaba' && selectedUser.status === 'pending' && (
                     <button
                       onClick={() => handleReject(selectedUser.id)}
-                      className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center gap-1 shadow-md shadow-rose-500/10"
+                      className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center gap-1"
                     >
                       <X size={14} />
                       Rad etish

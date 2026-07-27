@@ -101,7 +101,7 @@ export default function ZamdekanXodimlarPage() {
         <div className="flex gap-2">
           <button
             onClick={() => setAddModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-linear-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 px-5 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-purple-500/20 active:scale-[0.98] transition-all"
+            className="inline-flex items-center gap-2 rounded-xl bg-linear-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 px-5 py-3 text-xs font-black uppercase tracking-widest text-white active:scale-[0.98] transition-all"
           >
             <UserPlus size={16} />
             Xodim qo&apos;shish
@@ -198,14 +198,14 @@ export default function ZamdekanXodimlarPage() {
             <button
               type="button"
               onClick={() => setForm((f) => ({ ...f, role: 'tarbiyachi' }))}
-              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${form.role === 'tarbiyachi' ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md shadow-green-500/25' : isLight ? 'border border-slate-200 text-slate-500' : 'border border-white/10 text-slate-400'}`}
+              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${form.role === 'tarbiyachi' ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' : isLight ? 'border border-slate-200 text-slate-500' : 'border border-white/10 text-slate-400'}`}
             >
               <UserCog size={14} /> Tarbiyachi
             </button>
             <button
               type="button"
               onClick={() => setForm((f) => ({ ...f, role: 'admin' }))}
-              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${form.role === 'admin' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md shadow-red-500/25' : isLight ? 'border border-slate-200 text-slate-500' : 'border border-white/10 text-slate-400'}`}
+              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${form.role === 'admin' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white' : isLight ? 'border border-slate-200 text-slate-500' : 'border border-white/10 text-slate-400'}`}
             >
               <Shield size={14} /> Admin
             </button>
@@ -252,7 +252,7 @@ export default function ZamdekanXodimlarPage() {
           <button
             type="submit"
             disabled={creating}
-            className="w-full h-11 rounded-xl bg-linear-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-purple-500/10 transition-all disabled:opacity-50 active:scale-95"
+            className="w-full h-11 rounded-xl bg-linear-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white font-black uppercase tracking-widest text-[10px] transition-all disabled:opacity-50 active:scale-95"
           >
             {creating ? 'Yaratilmoqda...' : "Xodim yaratish"}
           </button>

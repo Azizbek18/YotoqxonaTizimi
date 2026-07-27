@@ -181,7 +181,7 @@ export default function UpdatePassword() {
                             whileHover={!loading ? { scale: 1.01 } : {}}
                             whileTap={!loading ? { scale: 0.98 } : {}}
                             disabled={loading}
-                            className={`w-full h-14 sm:h-16 rounded-2xl font-black text-[10px] sm:text-[11px] tracking-[0.3em] uppercase text-white shadow-xl flex items-center justify-center gap-3 relative overflow-hidden transition-all ${loading ? isLight ? 'bg-slate-200 text-slate-400' : 'bg-white/5 text-slate-600' : isLight ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-400/30' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-900/20'}`}
+                            className={`w-full h-14 sm:h-16 rounded-2xl font-black text-[10px] sm:text-[11px] tracking-[0.3em] uppercase text-white flex items-center justify-center gap-3 relative overflow-hidden transition-all ${loading ? isLight ? 'bg-slate-200 text-slate-400' : 'bg-white/5 text-slate-600' : isLight ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                         >
                             {loading ? (
                                 <div className={`w-5 h-5 border-2 rounded-full animate-spin ${isLight ? 'border-slate-300 border-t-slate-600' : 'border-white/20 border-t-white'}`} />

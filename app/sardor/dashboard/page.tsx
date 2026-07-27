@@ -314,7 +314,7 @@ export default function SardorDashboard() {
           onClick={() => setActiveTab('students')}
           className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'students'
-              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/10'
+              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
               : 'text-slate-400 hover:bg-white/5'
           }`}
         >
@@ -325,7 +325,7 @@ export default function SardorDashboard() {
           onClick={() => setActiveTab('elonlar')}
           className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'elonlar'
-              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/10'
+              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
               : 'text-slate-400 hover:bg-white/5'
           }`}
         >
@@ -336,7 +336,7 @@ export default function SardorDashboard() {
           onClick={() => setActiveTab('navbatchilik')}
           className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'navbatchilik'
-              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/10'
+              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
               : 'text-slate-400 hover:bg-white/5'
           }`}
         >
@@ -453,7 +453,7 @@ export default function SardorDashboard() {
               </div>
               <button
                 onClick={() => setNewElonOpen(true)}
-                className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-lg shadow-purple-500/20 whitespace-nowrap w-full sm:w-auto"
+                className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap w-full sm:w-auto"
               >
                 <Plus size={16} />
                 Yangi E&apos;lon
@@ -527,7 +527,7 @@ export default function SardorDashboard() {
               <button
                 onClick={handleSaveDuty}
                 disabled={savingDuty}
-                className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-lg shadow-purple-500/20 disabled:opacity-55 whitespace-nowrap w-full sm:w-auto"
+                className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 disabled:opacity-55 whitespace-nowrap w-full sm:w-auto"
               >
                 <ShieldCheck size={16} />
                 {savingDuty ? 'Saqlanmoqda...' : 'Jadvalni Saqlash'}
@@ -822,7 +822,7 @@ export default function SardorDashboard() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-lg shadow-purple-500/20 disabled:opacity-55"
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 disabled:opacity-55"
                   >
                     {isSubmitting ? 'Chop etilmoqda...' : 'Chop etish'}
                   </button>

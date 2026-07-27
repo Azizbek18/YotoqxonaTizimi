@@ -448,8 +448,8 @@ export default function AdminTolovlarPage() {
                   className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 ${
                     group.status === 'waiting'
                       ? isLight
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/10'
-                        : 'bg-cyan-500 hover:bg-cyan-600 text-slate-950 shadow-md shadow-cyan-500/10'
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-cyan-500 hover:bg-cyan-600 text-slate-950'
                       : isLight
                         ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                         : 'bg-white/5 hover:bg-white/10 text-slate-300'
@@ -620,9 +620,9 @@ export default function AdminTolovlarPage() {
                       onClick={() => handleRunAI(selectedGroup)}
                       disabled={analyzing}
                       className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 mx-auto ${
-                        isLight 
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md' 
-                          : 'bg-cyan-500 hover:bg-cyan-600 text-slate-950 shadow-md shadow-cyan-500/10'
+                        isLight
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                          : 'bg-cyan-500 hover:bg-cyan-600 text-slate-950'
                       }`}
                     >
                       {analyzing ? (
@@ -728,10 +728,10 @@ export default function AdminTolovlarPage() {
                   <button
                     onClick={() => handleReject(selectedGroup)}
                     disabled={submitting || !rejectReason.trim()}
-                    className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all text-white shadow-md ${
+                    className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all text-white ${
                       !rejectReason.trim()
                         ? 'bg-rose-500/50 cursor-not-allowed'
-                        : 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/10'
+                        : 'bg-rose-600 hover:bg-rose-700'
                     }`}
                   >
                     {submitting ? <Loader size={14} className="animate-spin inline mr-1" /> : <X size={14} className="inline mr-1" />}
@@ -754,8 +754,8 @@ export default function AdminTolovlarPage() {
                       <button
                         onClick={() => handleApprove(selectedGroup)}
                         disabled={submitting}
-                        className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all text-white shadow-lg flex items-center justify-center gap-1.5 ${
-                          isLight ? 'bg-green-600 hover:bg-green-700 shadow-green-600/15' : 'bg-green-600 hover:bg-green-700 shadow-green-600/15'
+                        className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all text-white flex items-center justify-center gap-1.5 ${
+                          isLight ? 'bg-green-600 hover:bg-green-700' : 'bg-green-600 hover:bg-green-700'
                         }`}
                       >
                         {submitting ? <Loader size={14} className="animate-spin" /> : <Check size={14} />}

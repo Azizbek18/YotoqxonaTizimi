@@ -1164,7 +1164,7 @@ export default function AdminDashboard() {
               <button
                 onClick={handleExportExcel}
                 disabled={exporting}
-                className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-lg shadow-purple-500/20 active:scale-95 flex items-center justify-center gap-2"
+                className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 active:scale-95 flex items-center justify-center gap-2"
               >
                 {exporting ? (
                   <>
@@ -1274,7 +1274,7 @@ export default function AdminDashboard() {
 
               <button
                 onClick={() => setStatusModalOpen(false)}
-                className="w-full mt-6 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-black text-sm transition-all duration-300 shadow-lg shadow-purple-500/20 active:scale-95"
+                className="w-full mt-6 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-black text-sm transition-all duration-300 active:scale-95"
               >
                 Yopish
               </button>

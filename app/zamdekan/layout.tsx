@@ -12,7 +12,6 @@ import {
   ChevronLeft,
   ChevronRight,
   UserCog,
-  UserPlus,
   Bell,
   Building2,
 } from 'lucide-react'
@@ -114,14 +113,6 @@ export default function ZamdekanLayout({
       icon: Boxes,
       accent: 'from-amber-500 to-orange-600',
       accentSoft: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-    },
-    {
-      label: 'Xodimlar',
-      caption: 'Admin va tarbiyachilar',
-      href: '/zamdekan/xodimlar',
-      icon: UserPlus,
-      accent: 'from-purple-500 to-violet-600',
-      accentSoft: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
     },
   ]), [pendingCount])
 

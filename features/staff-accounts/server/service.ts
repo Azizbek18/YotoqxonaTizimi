@@ -3,13 +3,23 @@ import { ApiError } from '@/server/http/api-error'
 import type { StaffAccountRow, ManagedStaffRole } from '../types'
 import { createStaffAccountRepository, type StaffAccountRepository } from './repository'
 
+// Creating a tarbiyachi account is admin-only (see app/api/admin/staff-accounts).
+// It used to also be reachable by zamdekan, scoped by a "does this floor
+// have any of my faculty's students" check — that check turned out to be
+// both incomplete (didn't verify gender) and bypassable (a zamdekan could
+// temporarily reassign one of their own students onto the target floor,
+// create the account, then move the student back), and dorms aren't
+// faculty-segregated by floor in the first place, so there was no way to
+// make it airtight without changing what a tarbiyachi's floor scope means
+// building-wide. Restricting creation to admin removes the incentive
+// entirely without touching that model.
 export function createStaffAccountService(repository: StaffAccountRepository = createStaffAccountRepository()) {
   return {
-    async list(creatorId: string): Promise<StaffAccountRow[]> {
-      return (await repository.listCreatedBy(creatorId)) as StaffAccountRow[]
+    async list(): Promise<StaffAccountRow[]> {
+      return (await repository.listAll()) as StaffAccountRow[]
     },
 
-    async create(creatorId: string, creatorFaculty: string, value: unknown) {
+    async create(creatorId: string, value: unknown) {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, "So'rov noto'g'ri")
       const input = value as Record<string, unknown>
 
@@ -22,10 +32,6 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
       const assignedFloor = Number(input.assignedFloor)
       const assignedGender = input.assignedGender as 'male' | 'female' | undefined
 
-      // Only ever called from /api/zamdekan/staff, gated to the 'zamdekan'
-      // role — a faculty-scoped role that must never be able to mint an
-      // 'admin' account (that would let it escalate to full system access
-      // with no ADMIN_PORTAL_KEY or other admin-panel gate involved at all).
       if (role !== 'tarbiyachi') throw new ApiError(400, "Noto'g'ri rol")
       if (fullName.length < 3) throw new ApiError(400, "F.I.Sh. kamida 3 belgidan iborat bo'lishi kerak")
       if (!/^\S+@\S+\.\S+$/.test(email)) throw new ApiError(400, "Email noto'g'ri")
@@ -34,24 +40,13 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
         throw new ApiError(400, "Parol kamida 8 belgi, harf va raqamdan iborat bo'lishi kerak")
       }
       // A tarbiyachi with no assigned floor/gender is treated as "sees every
-      // floor" (server/auth/tarbiyachi.ts isWithinTarbiyachiFloor) — without
-      // this, a faculty-scoped zamdekan could mint a tarbiyachi account with
-      // broader reach (every floor, every gender) than the zamdekan itself.
+      // floor" (server/auth/tarbiyachi.ts isWithinTarbiyachiFloor) — an
+      // unscoped tarbiyachi account would see every student building-wide.
       if (!Number.isInteger(assignedFloor) || assignedFloor < 1 || assignedFloor > 50) {
         throw new ApiError(400, 'Tarbiyachi uchun qavat tanlanishi shart')
       }
       if (assignedGender !== 'male' && assignedGender !== 'female') {
         throw new ApiError(400, 'Tarbiyachi uchun jins tanlanishi shart')
-      }
-      // Floors aren't faculty-segregated (a floor can house every faculty's
-      // students), so this can't fully confine the resulting tarbiyachi's
-      // reach to the zamdekan's own faculty — but requiring at least one of
-      // the zamdekan's own students to actually live on the target floor
-      // stops them from picking a floor with no connection to their
-      // faculty at all, purely to reach a specific unrelated resident.
-      const floorRelevant = await repository.floorHasFacultyStudents(assignedFloor, creatorFaculty)
-      if (!floorRelevant) {
-        throw new ApiError(400, "Bu qavatda sizning fakultetingiz talabalari yashamaydi")
       }
 
       const existing = await repository.findByEmail(email)

@@ -93,7 +93,7 @@ Migratsiyalar quyidagi jarayonlarni amalga oshiradi:
 
 ## 🔑 Administratorni yaratish
 
-Zamdekan tizimda eng yuqori lavozim hisoblanadi va `ZAMDEKAN_PORTAL_KEY`/`ZAMDEKAN_REGISTER_CODE` orqali `/register/zamdekan` sahifasida bir marta o'zi ro'yxatdan o'tadi. Shundan so'ng barcha admin va tarbiyachi akkauntlari zamdekan panelidagi "Xodimlar" bo'limi (`/zamdekan/xodimlar`) orqali to'g'ridan-to'g'ri parol bilan yaratiladi — alohida taklif kodi yoki bootstrap jarayoni endi kerak emas. Repository, hujjatlar yoki mijoz kodiga haqiqiy login/parol yozmang.
+Zamdekan tizimda eng yuqori lavozim hisoblanadi va `ZAMDEKAN_PORTAL_KEY`/`ZAMDEKAN_REGISTER_CODE` orqali `/register/zamdekan` sahifasida bir marta o'zi ro'yxatdan o'tadi. Admin akkaunti ham xuddi shunday, alohida jarayon orqali beriladi. Tarbiyachi akkauntlari esa admin panelidagi "Tarbiyachilar" bo'limi (`/admin/xodimlar`) orqali to'g'ridan-to'g'ri parol bilan yaratiladi (zamdekan bu imkoniyatga ega emas — faqat admin, chunki tarbiyachi butun qavatni, barcha fakultetlarni ko'radi). Repository, hujjatlar yoki mijoz kodiga haqiqiy login/parol yozmang.
 
 ---
 

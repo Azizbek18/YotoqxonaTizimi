@@ -29,7 +29,7 @@ const initialForm = {
   assignedGender: '' as '' | 'male' | 'female',
 }
 
-export default function ZamdekanXodimlarPage() {
+export default function AdminXodimlarPage() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
@@ -103,7 +103,7 @@ export default function ZamdekanXodimlarPage() {
             <div className="rounded-2xl bg-purple-500/10 p-2 text-purple-400 border border-purple-500/20">
               <UserCog size={26} />
             </div>
-            Xodimlar
+            Tarbiyachilar
           </h1>
           <p className={`mt-2 text-sm ${textMuted}`}>Tarbiyachi akkauntlarini shu yerdan qo&apos;shing</p>
         </div>
@@ -154,7 +154,7 @@ export default function ZamdekanXodimlarPage() {
             <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-full ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-white/5 text-slate-500'}`}>
               <UserCog size={22} />
             </div>
-            <p className={`text-sm font-bold ${textMuted}`}>Hozircha admin yoki tarbiyachi akkounti yo&apos;q.</p>
+            <p className={`text-sm font-bold ${textMuted}`}>Hozircha tarbiyachi akkounti yo&apos;q.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -203,10 +203,9 @@ export default function ZamdekanXodimlarPage() {
         }}
       >
         <form onSubmit={handleCreate} className="space-y-4">
-          {/* Zamdekan can only ever create tarbiyachi accounts — creating an
-              admin account is blocked server-side (a faculty-scoped role
-              must never be able to mint full admin access), so there's
-              nothing to pick here. */}
+          {/* Only tarbiyachi accounts can be created here — see
+              features/staff-accounts/server/service.ts for why this
+              creation flow is admin-only. */}
           <div className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-green-500 to-emerald-600 text-white`}>
             <UserCog size={14} /> Tarbiyachi
           </div>

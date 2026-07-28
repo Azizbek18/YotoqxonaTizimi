@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createStaffAccountService } from '@/features/staff-accounts/server/service'
-import { requireActiveStaff } from '@/server/auth/guards'
+import { requireAdmin } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
 import { checkRateLimit } from '@/lib/security'
 
 function errorResponse(error: unknown) {
-  console.error('Zamdekan staff API error:', error)
+  console.error('Admin staff-accounts API error:', error)
   const response = getApiError(error, "So'rovni bajarib bo'lmadi")
   return NextResponse.json(response.body, { status: response.status })
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const { staff: zamdekan } = await requireActiveStaff(request, ['zamdekan'])
-    const staff = await createStaffAccountService().list(zamdekan.id)
+    await requireAdmin(request)
+    const staff = await createStaffAccountService().list()
     return NextResponse.json({ staff })
   } catch (error) {
     return errorResponse(error)
@@ -22,16 +22,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { staff: zamdekan } = await requireActiveStaff(request, ['zamdekan'])
-    const throttle = await checkRateLimit(`zamdekan-staff-create:${zamdekan.id}`, 10, 60_000)
+    const { staff: admin } = await requireAdmin(request)
+    const throttle = await checkRateLimit(`admin-staff-create:${admin.id}`, 10, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: "Juda ko'p urinish. Keyinroq urinib ko'ring." }, { status: 429 })
     }
-    const faculty = zamdekan.faculty?.trim()
-    if (!faculty) {
-      return NextResponse.json({ error: 'Zamdekan fakulteti biriktirilmagan' }, { status: 403 })
-    }
-    const result = await createStaffAccountService().create(zamdekan.id, faculty, await request.json())
+    const result = await createStaffAccountService().create(admin.id, await request.json())
     return NextResponse.json(result, { status: 201 })
   } catch (error) {
     return errorResponse(error)

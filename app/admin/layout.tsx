@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
+  UserCog,
   CreditCard,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -129,6 +130,13 @@ export default function AdminLayout({
       href: '/admin/foydalanuvchilar',
       icon: Users,
       accent: 'from-amber-500 to-orange-600',
+    },
+    {
+      label: 'Tarbiyachilar',
+      caption: 'Yangi xodim qo‘shish',
+      href: '/admin/xodimlar',
+      icon: UserCog,
+      accent: 'from-purple-500 to-violet-600',
     },
     {
       label: "E'lonlar",

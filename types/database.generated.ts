@@ -158,27 +158,6 @@ export interface Database {
         schedule: Json
         updated_at: string | null
       }>
-      admin_invites: Table<{
-        id: string
-        code: string | null
-        token_hash: string
-        email: string
-        created_by: string | null
-        created_at: string
-        expires_at: string
-        used: boolean
-        used_at: string | null
-      }>
-      staff_invites: Table<{
-        id: string
-        token_hash: string
-        role: string
-        allowed_staff_id: string
-        expires_at: string
-        created_by: string | null
-        created_at: string
-        used_at: string | null
-      }>
       payment_receipt_uploads: Table<{
         receipt_hash: string
         batch_id: string

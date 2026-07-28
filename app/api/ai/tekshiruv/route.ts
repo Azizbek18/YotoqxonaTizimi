@@ -193,7 +193,11 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       if (typeof extractedAmount !== 'number' || !Number.isFinite(extractedAmount)) {
         amountMatch = false
       } else {
-        const tolerance = declaredAmount * 0.05
+        // Capped absolute slack, not a flat percentage — 5% of a 3,000,000
+        // so'm yearly contract payment is 150,000 so'm of unchecked room,
+        // which is real money for a financial control. This still tolerates
+        // the kind of minor digit misread OCR can produce on small amounts.
+        const tolerance = Math.min(declaredAmount * 0.05, 5000)
         amountMatch = Math.abs(extractedAmount - declaredAmount) <= tolerance
         if (jsonResult.amount_match === false) amountMatch = false
       }
@@ -219,7 +223,18 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
     let isSuspiciousId = false
     let duplicateInfo = ''
 
-    if (transactionId) {
+    // A receipt with no readable transaction id at all must never pass —
+    // without one there's nothing for the duplicate check below to compare
+    // against, so a real receipt with its transaction id cropped/blurred
+    // out (or a screenshot with it edited away) would otherwise skip
+    // fraud detection entirely while still coming back "valid".
+    if (!transactionId) {
+      isSuspiciousId = true
+      confidence = 5
+      duplicateInfo = `⚠️ TRANZAKSIYA RAQAMI ANIQLANMADI!\n\nChekdan tranzaksiya raqamini o'qib bo'lmadi, shuning uchun takroriy chek tekshiruvini o'tkazib bo'lmaydi.\n\nIltimos, chekning to'liq va aniq skrinshotini yuklang — tranzaksiya raqami ko'rinib turishi shart.`
+      analysis = duplicateInfo
+      amountMatch = false
+    } else {
       const normalizedId = normalizeTransactionId(transactionId)
 
       if (isSuspiciousTransactionId(normalizedId)) {

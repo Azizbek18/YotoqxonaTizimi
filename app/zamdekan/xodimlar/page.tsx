@@ -25,6 +25,8 @@ const initialForm = {
   role: 'tarbiyachi' as ManagedStaffRole,
   password: '',
   confirmPassword: '',
+  assignedFloor: '',
+  assignedGender: '' as '' | 'male' | 'female',
 }
 
 export default function ZamdekanXodimlarPage() {
@@ -70,10 +72,18 @@ export default function ZamdekanXodimlarPage() {
       toast.error('Parollar bir xil emas')
       return
     }
+    if (!form.assignedFloor || !form.assignedGender) {
+      toast.error("Tarbiyachi uchun qavat va jins tanlanishi shart")
+      return
+    }
 
     setCreating(true)
     try {
-      await createStaffAccount(form)
+      await createStaffAccount({
+        ...form,
+        assignedFloor: Number(form.assignedFloor),
+        assignedGender: form.assignedGender,
+      })
       toast.success("Xodim akkaunti yaratildi")
       setAddModalOpen(false)
       setForm(initialForm)
@@ -223,6 +233,31 @@ export default function ZamdekanXodimlarPage() {
             placeholder="Telefon (ixtiyoriy)"
             className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputCls}`}
           />
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={form.assignedFloor}
+              onChange={(e) => setForm((f) => ({ ...f, assignedFloor: e.target.value }))}
+              placeholder="Qavat"
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputCls}`}
+              required
+            />
+            <select
+              value={form.assignedGender}
+              onChange={(e) => setForm((f) => ({ ...f, assignedGender: e.target.value as 'male' | 'female' }))}
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputCls}`}
+              required
+            >
+              <option value="">Jinsi</option>
+              <option value="male">Erkak</option>
+              <option value="female">Ayol</option>
+            </select>
+          </div>
+          <p className={`text-[10px] ${textMuted}`}>
+            Tarbiyachi faqat shu qavat va jinsdagi talabalarni ko&apos;radi.
+          </p>
           <input
             type="password"
             value={form.password}

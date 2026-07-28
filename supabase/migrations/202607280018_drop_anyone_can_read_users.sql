@@ -1,0 +1,16 @@
+-- CRITICAL: discovered live on production while verifying an unrelated fix.
+-- "anyone_can_read_users" (USING (true), granted to role `public`, which in
+-- Postgres/PostgREST includes fully unauthenticated `anon` requests) let
+-- literally anyone with just the project's public anon key — no login, no
+-- session, nothing — read every column of every row in `users`: full name,
+-- passport series, JShSHIR, phone number, parents' names/phones/workplaces,
+-- room number, everything. This policy appears nowhere in this repo's
+-- migration history; it was created some other way, outside of what these
+-- files ever tracked (same class of undocumented drift as the stray
+-- columns fixed in 202607280014, just far more severe).
+--
+-- Drop it immediately. "Users can view own user profile" (auth.uid() = id,
+-- authenticated-only) already covers the one legitimate case (a signed-in
+-- user reading their own row); every staff-facing read goes through the
+-- properly-scoped API routes (service-role client, bypasses RLS).
+DROP POLICY IF EXISTS "anyone_can_read_users" ON public.users;

@@ -19,6 +19,8 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
       const role = input.role as ManagedStaffRole
       const password = typeof input.password === 'string' ? input.password : ''
       const confirmPassword = typeof input.confirmPassword === 'string' ? input.confirmPassword : ''
+      const assignedFloor = Number(input.assignedFloor)
+      const assignedGender = input.assignedGender as 'male' | 'female' | undefined
 
       // Only ever called from /api/zamdekan/staff, gated to the 'zamdekan'
       // role — a faculty-scoped role that must never be able to mint an
@@ -30,6 +32,16 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
       if (password !== confirmPassword) throw new ApiError(400, 'Parollar bir xil emas')
       if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
         throw new ApiError(400, "Parol kamida 8 belgi, harf va raqamdan iborat bo'lishi kerak")
+      }
+      // A tarbiyachi with no assigned floor/gender is treated as "sees every
+      // floor" (server/auth/tarbiyachi.ts isWithinTarbiyachiFloor) — without
+      // this, a faculty-scoped zamdekan could mint a tarbiyachi account with
+      // broader reach (every floor, every gender) than the zamdekan itself.
+      if (!Number.isInteger(assignedFloor) || assignedFloor < 1 || assignedFloor > 50) {
+        throw new ApiError(400, 'Tarbiyachi uchun qavat tanlanishi shart')
+      }
+      if (assignedGender !== 'male' && assignedGender !== 'female') {
+        throw new ApiError(400, 'Tarbiyachi uchun jins tanlanishi shart')
       }
 
       const existing = await repository.findByEmail(email)
@@ -47,6 +59,8 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
         phone_number: phone || null,
         role,
         status: 'active',
+        assigned_floor: assignedFloor,
+        assigned_gender: assignedGender,
       })
 
       if (insertError) {

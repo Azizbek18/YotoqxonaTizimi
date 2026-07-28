@@ -9,11 +9,25 @@
 -- phone_number itself is NULL for them, making those users' phone numbers
 -- invisible to the app. Backfill before dropping the column, or that data
 -- is lost permanently.
-UPDATE users
-SET phone_number = "phoneNumber"
-WHERE phone_number IS NULL AND "phoneNumber" IS NOT NULL;
+--
+-- Guarded by a column-existence check: "phoneNumber" only exists on the
+-- one live database this drift was found on, from schema history outside
+-- this repo's migrations — a database built purely from this migration
+-- history from scratch never has it, and the bare UPDATE below would fail
+-- with "column phoneNumber does not exist" on a fresh install.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'phoneNumber'
+  ) THEN
+    UPDATE users
+    SET phone_number = "phoneNumber"
+    WHERE phone_number IS NULL AND "phoneNumber" IS NOT NULL;
 
-ALTER TABLE users DROP COLUMN IF EXISTS "phoneNumber";
+    ALTER TABLE users DROP COLUMN "phoneNumber";
+  END IF;
+END $$;
 
 -- 2. staff.position / staff.work_start_date: same kind of stray columns,
 -- but confirmed empty on every row (no data to lose) and referenced by no

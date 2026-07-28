@@ -30,6 +30,8 @@ export function createStaffAccountRepository() {
       phone_number: string | null
       role: ManagedStaffRole
       status: 'active'
+      assigned_floor?: number
+      assigned_gender?: 'male' | 'female'
     }) {
       return supabase.from('staff').insert(row)
     },

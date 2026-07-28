@@ -220,7 +220,12 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown for
       }
     }
 
-    const { error: updateError } = await supabase
+    // Re-checks status = 'waiting' here too — the initial check at the top
+    // only proves the payment was still pending before the Gemini call,
+    // which can take several seconds; an admin could decide it in that
+    // window. Without this condition, this UPDATE would unconditionally
+    // overwrite an already-approved/rejected payment's audit fields.
+    const { data: updatedRow, error: updateError } = await supabase
       .from('tolovlar')
       .update({
         ai_confidence: aiConfidence,
@@ -229,9 +234,15 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown for
         transaction_id: aiTransactionId
       })
       .eq('id', paymentId)
+      .eq('status', 'waiting')
+      .select('id')
+      .maybeSingle()
 
     if (updateError) {
       throw updateError
+    }
+    if (!updatedRow) {
+      return NextResponse.json({ error: 'Bu to\'lov tahlil davomida allaqachon ko\'rib chiqilgan' }, { status: 409 })
     }
 
     return NextResponse.json({

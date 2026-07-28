@@ -11,23 +11,18 @@
 -- of which version of 001-004 (if any) already executed anywhere. Every
 -- statement below is the same idempotent logic those files now contain.
 
--- 1. tolovlar.transaction_id_normalized: global dedup (by transaction id
--- alone, including receipt_hash IS NULL rows) + unique index.
-WITH ranked AS (
-  SELECT id,
-         row_number() OVER (
-           PARTITION BY transaction_id_normalized
-           ORDER BY created_at ASC, id ASC
-         ) AS rn
-  FROM tolovlar
-  WHERE transaction_id_normalized <> ''
-)
-UPDATE tolovlar
-SET transaction_id = NULL
-WHERE id IN (SELECT id FROM ranked WHERE rn > 1);
-
-DROP INDEX IF EXISTS tolovlar_transaction_id_normalized_idx;
-CREATE UNIQUE INDEX IF NOT EXISTS tolovlar_transaction_id_normalized_unique_idx
+-- 1. tolovlar.transaction_id_normalized: NOTE — this migration originally
+-- recreated a UNIQUE index here to match 001/002's pre-007 design. That was
+-- wrong: 202607280007 (which runs before this file, chronologically, but
+-- represents a later design decision) deliberately replaced row-level
+-- uniqueness with receipt-hash-level enforcement via
+-- payment_receipt_transactions, specifically because a per-row UNIQUE
+-- index falsely flags the second row of a legitimate multi-month batch as
+-- a duplicate. Re-asserting a plain (non-unique) index here — see
+-- 202607280015 for the migration that corrects this on any environment
+-- that already ran the old version of this file.
+DROP INDEX IF EXISTS tolovlar_transaction_id_normalized_unique_idx;
+CREATE INDEX IF NOT EXISTS tolovlar_transaction_id_normalized_idx
   ON tolovlar(transaction_id_normalized) WHERE transaction_id_normalized <> '';
 
 -- 2. app_settings fee columns: normalize then re-assert whole-positive

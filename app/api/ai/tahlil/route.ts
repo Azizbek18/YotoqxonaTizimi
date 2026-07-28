@@ -184,72 +184,38 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown for
       }
     }
 
-    // 6. Atomic backstop for the soft check above, scoped to the physical
-    // receipt (receiptHash) rather than this one monthly row — a
-    // multi-month receipt is split across several `tolovlar` rows that all
-    // share the same receipt, and this endpoint can be called directly for
-    // any row of a batch, not just the first. The whole check-then-write is
-    // done inside claim_receipt_transaction (advisory-locked per
-    // receipt_hash), not as a separate SELECT + upsert here, so two
-    // concurrent analyses of the same receipt can't race each other into
-    // silently overwriting one another.
-    if (normalizedTransactionId) {
-      const { data: claimResult, error: claimError } = await supabase
-        .rpc('claim_receipt_transaction', {
-          p_receipt_hash: receiptHash,
-          p_transaction_id: aiTransactionId,
-          p_transaction_id_normalized: normalizedTransactionId,
-        })
-        .single()
-
-      if (claimError) {
-        throw claimError
-      }
-
-      if (claimResult.is_conflict) {
-        // A different receipt already legitimately holds this transaction id.
-        aiConfidence = 10
-        aiAnalysis = `⚠️ DIQQAT: TAKRORAN YUKLANGAN CHEK (DUPLICATE DETECTION)! \n\nUshbu chekdagi tranzaksiya raqami (${aiTransactionId}) tizimdagi boshqa to'lovda allaqachon ro'yxatdan o'tgan! Soxtalik va firibgarlik ehtimoli juda yuqori.`
-        aiTransactionId = null
-      } else if (claimResult.stored_transaction_id_normalized !== normalizedTransactionId) {
-        // This same receipt already has a different value on file from a
-        // previous analysis — don't silently overwrite it, flag for review.
-        aiConfidence = 10
-        aiTransactionId = null
-        aiAnalysis = `⚠️ AI bu chekdan oldingi tahlildan farqli tranzaksiya raqamini aniqladi. Qo'lda tekshiruv talab qilinadi.`
-      }
-    }
-
-    // Re-checks status = 'waiting' here too — the initial check at the top
-    // only proves the payment was still pending before the Gemini call,
-    // which can take several seconds; an admin could decide it in that
-    // window. Without this condition, this UPDATE would unconditionally
-    // overwrite an already-approved/rejected payment's audit fields.
-    const { data: updatedRow, error: updateError } = await supabase
-      .from('tolovlar')
-      .update({
-        ai_confidence: aiConfidence,
-        ai_extracted_amount: aiExtractedAmount,
-        ai_analysis: aiAnalysis,
-        transaction_id: aiTransactionId
+    // 6. Claiming the transaction id and writing the payment's audit fields
+    // happen inside one DB function (advisory-locked per receipt_hash),
+    // not as separate statements here — status='waiting' is re-checked
+    // and row-locked FIRST, before anything is claimed, so a payment that
+    // gets decided in the gap between the top-of-request check and now
+    // (the Gemini call can take several seconds) can't end up with a
+    // claimed-but-never-recorded transaction id permanently occupying it,
+    // nor can its audit fields get overwritten after the fact.
+    const { data: finalizeResult, error: finalizeError } = await supabase
+      .rpc('finalize_payment_analysis', {
+        p_payment_id: paymentId,
+        p_receipt_hash: receiptHash,
+        p_transaction_id: aiTransactionId,
+        p_transaction_id_normalized: normalizedTransactionId,
+        p_ai_confidence: aiConfidence,
+        p_ai_extracted_amount: aiExtractedAmount,
+        p_ai_analysis: aiAnalysis,
       })
-      .eq('id', paymentId)
-      .eq('status', 'waiting')
-      .select('id')
-      .maybeSingle()
+      .single()
 
-    if (updateError) {
-      throw updateError
+    if (finalizeError) {
+      throw finalizeError
     }
-    if (!updatedRow) {
+    if (!finalizeResult.applied) {
       return NextResponse.json({ error: 'Bu to\'lov tahlil davomida allaqachon ko\'rib chiqilgan' }, { status: 409 })
     }
 
     return NextResponse.json({
       success: true,
-      ai_confidence: aiConfidence,
+      ai_confidence: finalizeResult.final_confidence,
       ai_extracted_amount: aiExtractedAmount,
-      ai_analysis: aiAnalysis
+      ai_analysis: finalizeResult.final_analysis
     })
 
   } catch (error: unknown) {

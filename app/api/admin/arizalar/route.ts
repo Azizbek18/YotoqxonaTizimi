@@ -70,6 +70,12 @@ export async function PATCH(request: Request) {
       return jsonError("So'rov ma'lumotlari noto'g'ri", 400)
     }
 
+    // 'draft'/'submitted' are student-only pre-submission states — admin
+    // may only ever set a decided/pending outcome, never those two.
+    if (status !== undefined && status !== 'pending' && status !== 'approved' && status !== 'rejected') {
+      return jsonError("Status faqat 'pending', 'approved' yoki 'rejected' bo'lishi mumkin", 400)
+    }
+
     const updateFields: { level?: ApplicationLevel; status?: string; response_date?: string } = {}
     if (level !== undefined) updateFields.level = level
     if (status !== undefined) {

@@ -12,8 +12,8 @@ function errorResponse(error: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireActiveStaff(request, ['zamdekan'])
-    const staff = await createStaffAccountService().list()
+    const { staff: zamdekan } = await requireActiveStaff(request, ['zamdekan'])
+    const staff = await createStaffAccountService().list(zamdekan.id)
     return NextResponse.json({ staff })
   } catch (error) {
     return errorResponse(error)
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     if (!throttle.allowed) {
       return NextResponse.json({ error: "Juda ko'p urinish. Keyinroq urinib ko'ring." }, { status: 429 })
     }
-    const result = await createStaffAccountService().create(await request.json())
+    const result = await createStaffAccountService().create(zamdekan.id, await request.json())
     return NextResponse.json(result, { status: 201 })
   } catch (error) {
     return errorResponse(error)

@@ -64,6 +64,7 @@ export type StaffRow = {
   faculty: string | null
   assigned_floor: number | null
   assigned_gender: string | null
+  created_by: string | null
   created_at: string
   updated_at: string
 }
@@ -237,6 +238,24 @@ export interface Database {
       promote_floor_captain: {
         Args: { p_user_id: string; p_assigned_floor: number; p_gender: string; p_is_captain: boolean }
         Returns: void
+      }
+      finalize_payment_analysis: {
+        Args: {
+          p_payment_id: string
+          p_receipt_hash: string
+          p_transaction_id: string | null
+          p_transaction_id_normalized: string
+          p_ai_confidence: number
+          p_ai_extracted_amount: number
+          p_ai_analysis: string
+        }
+        Returns: {
+          applied: boolean
+          is_conflict: boolean
+          final_confidence: number
+          final_analysis: string
+          final_transaction_id: string | null
+        }[]
       }
     }
     Enums: Record<string, never>

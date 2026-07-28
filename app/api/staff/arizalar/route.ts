@@ -97,8 +97,11 @@ export async function PATCH(req: NextRequest) {
       return jsonError("So'rov ma'lumotlari noto'g'ri", 400)
     }
 
-    if (!status) {
-      return jsonError("Yangilash uchun ma'lumot yo'q", 400)
+    // Staff may only decide a pending application one way or the other —
+    // never set it to 'draft'/'submitted' (student-only states) and never
+    // re-open or flip an already-decided one after the fact.
+    if (status !== 'approved' && status !== 'rejected') {
+      return jsonError("Status faqat 'approved' yoki 'rejected' bo'lishi mumkin", 400)
     }
 
     // Security: only allow updating an ariza that belongs to a student within this staff member's scope
@@ -120,13 +123,19 @@ export async function PATCH(req: NextRequest) {
       return jsonError('Ushbu arizani boshqarish huquqingiz yo\'q', 403)
     }
 
-    const { error } = await serviceSupabase
+    const { data: updated, error } = await serviceSupabase
       .from('arizalar')
       .update({ status, response_date: new Date().toISOString() })
       .eq('id', id)
+      .eq('status', 'pending')
+      .select('id')
+      .maybeSingle()
 
     if (error) {
       return jsonError(error.message, 400)
+    }
+    if (!updated) {
+      return jsonError('Bu ariza allaqachon ko\'rib chiqilgan', 409)
     }
 
     return NextResponse.json({ ok: true })

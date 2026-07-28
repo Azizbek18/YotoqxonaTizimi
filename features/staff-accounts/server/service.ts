@@ -5,11 +5,11 @@ import { createStaffAccountRepository, type StaffAccountRepository } from './rep
 
 export function createStaffAccountService(repository: StaffAccountRepository = createStaffAccountRepository()) {
   return {
-    async list(): Promise<StaffAccountRow[]> {
-      return (await repository.list()) as StaffAccountRow[]
+    async list(creatorId: string): Promise<StaffAccountRow[]> {
+      return (await repository.listCreatedBy(creatorId)) as StaffAccountRow[]
     },
 
-    async create(value: unknown) {
+    async create(creatorId: string, value: unknown) {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, "So'rov noto'g'ri")
       const input = value as Record<string, unknown>
 
@@ -61,6 +61,7 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
         status: 'active',
         assigned_floor: assignedFloor,
         assigned_gender: assignedGender,
+        created_by: creatorId,
       })
 
       if (insertError) {

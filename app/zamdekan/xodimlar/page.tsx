@@ -187,28 +187,19 @@ export default function ZamdekanXodimlarPage() {
       <ConfirmModal
         isOpen={addModalOpen}
         title="Yangi xodim qo'shish"
-        description="Admin yoki tarbiyachi akkountini to'g'ridan-to'g'ri parol bilan yarating"
+        description="Tarbiyachi akkountini to'g'ridan-to'g'ri parol bilan yarating"
         onClose={() => {
           setAddModalOpen(false)
           setForm(initialForm)
         }}
       >
         <form onSubmit={handleCreate} className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, role: 'tarbiyachi' }))}
-              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${form.role === 'tarbiyachi' ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' : isLight ? 'border border-slate-200 text-slate-500' : 'border border-white/10 text-slate-400'}`}
-            >
-              <UserCog size={14} /> Tarbiyachi
-            </button>
-            <button
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, role: 'admin' }))}
-              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${form.role === 'admin' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white' : isLight ? 'border border-slate-200 text-slate-500' : 'border border-white/10 text-slate-400'}`}
-            >
-              <Shield size={14} /> Admin
-            </button>
+          {/* Zamdekan can only ever create tarbiyachi accounts — creating an
+              admin account is blocked server-side (a faculty-scoped role
+              must never be able to mint full admin access), so there's
+              nothing to pick here. */}
+          <div className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-green-500 to-emerald-600 text-white`}>
+            <UserCog size={14} /> Tarbiyachi
           </div>
 
           <input

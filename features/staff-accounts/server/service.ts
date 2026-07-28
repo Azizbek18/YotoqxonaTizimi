@@ -20,7 +20,11 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
       const password = typeof input.password === 'string' ? input.password : ''
       const confirmPassword = typeof input.confirmPassword === 'string' ? input.confirmPassword : ''
 
-      if (role !== 'admin' && role !== 'tarbiyachi') throw new ApiError(400, "Noto'g'ri rol")
+      // Only ever called from /api/zamdekan/staff, gated to the 'zamdekan'
+      // role — a faculty-scoped role that must never be able to mint an
+      // 'admin' account (that would let it escalate to full system access
+      // with no ADMIN_PORTAL_KEY or other admin-panel gate involved at all).
+      if (role !== 'tarbiyachi') throw new ApiError(400, "Noto'g'ri rol")
       if (fullName.length < 3) throw new ApiError(400, "F.I.Sh. kamida 3 belgidan iborat bo'lishi kerak")
       if (!/^\S+@\S+\.\S+$/.test(email)) throw new ApiError(400, "Email noto'g'ri")
       if (password !== confirmPassword) throw new ApiError(400, 'Parollar bir xil emas')

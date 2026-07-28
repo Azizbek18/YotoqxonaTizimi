@@ -2,6 +2,7 @@ import 'server-only'
 import { createHash, randomUUID } from 'crypto'
 import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 import { ApiError } from '@/server/http/api-error'
+import { createAppSettingsService } from '@/features/app-settings/server/service'
 import type { SubmitPaymentResult } from '../types'
 import {
   PAYMENT_MONTHS,
@@ -60,6 +61,10 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       if (!Number.isInteger(year) || year < 2020 || year > 2100) throw new ApiError(400, 'To‘lov yili noto‘g‘ri')
       if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100_000_000) {
         throw new ApiError(400, 'To‘lov summasi noto‘g‘ri')
+      }
+      const { monthlyFee } = await createAppSettingsService().get()
+      if (amount !== monthlyFee * months.length) {
+        throw new ApiError(400, `To‘lov summasi tanlangan oylar uchun kutilgan summaga (${(monthlyFee * months.length).toLocaleString('uz-UZ')} so'm) mos kelmayapti`)
       }
 
       const rule = PERMIT_FILE_RULES[file.type]

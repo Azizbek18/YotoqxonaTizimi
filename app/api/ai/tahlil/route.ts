@@ -143,12 +143,16 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown for
       return NextResponse.json({ error: 'AI tahlili yakunlanmadi; to‘lov qo‘lda tekshiriladi' }, { status: 502 })
     }
 
-    // 5.5 Check for duplicate transaction IDs in the database
-    if (aiTransactionId) {
+    // 5.5 Check for duplicate transaction IDs in the database. Compares the
+    // normalized form (same regexp as the generated transaction_id_normalized
+    // column) so formatting differences like "TX-778812340" vs
+    // "tx778812340" can't be used to dodge this soft, informational check.
+    const normalizedTransactionId = aiTransactionId ? aiTransactionId.toUpperCase().replace(/[^A-Z0-9]/g, '') : ''
+    if (normalizedTransactionId) {
       const { data: duplicateRecords, error: dupError } = await supabase
         .from('tolovlar')
         .select('id')
-        .eq('transaction_id', aiTransactionId)
+        .eq('transaction_id_normalized', normalizedTransactionId)
         .neq('id', paymentId) // Exclude current payment
         .neq('receipt_url', record.receipt_url) // Exclude same batch uploads
         .limit(1)
@@ -163,8 +167,13 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown for
       }
     }
 
-    // 6. Update the database record with the results including transaction_id
-    const { error: updateError } = await supabase
+    // 6. Update the database record with the results including transaction_id.
+    // transaction_id_normalized has a UNIQUE index (see migration
+    // 202607280001), so this is the atomic backstop for the soft check
+    // above: even if two analyses of the same transaction id race past
+    // step 5.5 concurrently, only one write can win here — the loser hits
+    // a 23505 conflict, which we treat as a confirmed duplicate.
+    let { error: updateError } = await supabase
       .from('tolovlar')
       .update({
         ai_confidence: aiConfidence,
@@ -173,6 +182,20 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown for
         transaction_id: aiTransactionId
       })
       .eq('id', paymentId)
+
+    if (updateError?.code === '23505') {
+      aiConfidence = 10
+      aiAnalysis = `⚠️ DIQQAT: TAKRORAN YUKLANGAN CHEK (DUPLICATE DETECTION)! \n\nUshbu chekdagi tranzaksiya raqami (${aiTransactionId}) tizimdagi boshqa to'lovda allaqachon ro'yxatdan o'tgan! Soxtalik va firibgarlik ehtimoli juda yuqori.`
+      ;({ error: updateError } = await supabase
+        .from('tolovlar')
+        .update({
+          ai_confidence: aiConfidence,
+          ai_extracted_amount: aiExtractedAmount,
+          ai_analysis: aiAnalysis,
+          transaction_id: null,
+        })
+        .eq('id', paymentId))
+    }
 
     if (updateError) {
       throw updateError

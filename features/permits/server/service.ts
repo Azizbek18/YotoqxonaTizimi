@@ -21,20 +21,32 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
         const linked = userByPassport.get(permit.passport_series) ?? userByJshshir.get(permit.jshshir)
         return { ...permit, warning_count: linked?.warning_count ?? 0, blacklisted: linked?.blacklisted ?? false }
       })
-      const usersWithRooms = students.filter((user) => Boolean(user.room_number)).map((user) => ({
-        id: user.id,
-        full_name: user.full_name,
-        passport_series: user.passport_series,
-        jshshir: user.jshshir,
-        phone_number: user.phone_number,
-        gender: user.gender,
-        faculty: user.faculty,
-        direction: user.direction,
-        course: user.course,
-        room_number: user.room_number,
-        warning_count: user.warning_count,
-      }))
-      const approvedPermitsWithRooms = permits.filter((permit) => permit.status === 'approved' && permit.room_number)
+      // Room occupancy/capacity math needs every occupant building-wide
+      // (rooms aren't segregated by faculty), but a zamdekan must only see
+      // the identifying details of students in their own faculty — PII for
+      // other faculties' occupants is redacted, not the whole row, so
+      // occupancy counts and gender-conflict checks below still work.
+      const usersWithRooms = students.filter((user) => Boolean(user.room_number)).map((user) => {
+        const own = sameFaculty(user.faculty, faculty)
+        return {
+          id: user.id,
+          full_name: own ? user.full_name : '',
+          passport_series: own ? user.passport_series : '',
+          jshshir: own ? user.jshshir : '',
+          phone_number: own ? user.phone_number : '',
+          gender: user.gender,
+          faculty: user.faculty,
+          direction: user.direction,
+          course: user.course,
+          room_number: user.room_number,
+          warning_count: own ? user.warning_count : null,
+        }
+      })
+      const approvedPermitsWithRooms = permits
+        .filter((permit) => permit.status === 'approved' && permit.room_number)
+        .map((permit) => sameFaculty(permit.faculty, faculty)
+          ? permit
+          : { ...permit, full_name: '', passport_series: '', jshshir: '', phone: '' })
       const roomOccupancy: Record<string, number> = {}
       usersWithRooms.forEach((user) => {
         if (user.room_number) roomOccupancy[user.room_number] = (roomOccupancy[user.room_number] ?? 0) + 1

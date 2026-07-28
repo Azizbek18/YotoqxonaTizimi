@@ -82,10 +82,10 @@ npx supabase link --project-ref YOUR_PROJECT_REF
 npx supabase db push
 ```
 
-Root papkadagi `DATABASE_SCHEMA.sql` va `MIGRATION_*.sql` fayllari eski o‘rnatish jarayonlari bilan moslik uchun saqlangan; yangi deploylarda `supabase/migrations/` yagona manba hisoblanadi. Oxirgi xavfsizlik migratsiyasini o‘tkazmasdan production deploy qilmang.
+`supabase/migrations/` — sxemaning yagona manbai. Oxirgi migratsiyani o‘tkazmasdan production deploy qilmang.
 
-Ushbu SQL fayl quyidagi jarayonlarni amalga oshiradi:
-1. `profiles`, `arizalar` (va chatlar), `elonlar`, `invites`, `tolovlar`, `cleaning_schedule` jadvallarini yaratadi.
+Migratsiyalar quyidagi jarayonlarni amalga oshiradi:
+1. `users`, `staff`, `arizalar`, `elonlar`, `tolovlar`, `permit_requests`, `cleaning_schedule`, `floor_room_layout`, `app_settings` jadvallarini yaratadi/yangilaydi.
 2. Jadvallar xavfsizligini ta'minlash uchun Row Level Security (RLS) qoidalarini o'rnatadi.
 3. Rolga asoslangan middleware uchun foydalanuvchi rollarini avtomatik hal qiluvchi funksiyalarni yaratadi.
 

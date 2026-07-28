@@ -18,7 +18,7 @@ if (error) throw error
 
 console.log(`Legacy public permit files found: ${rows.length}`)
 if (!confirmed) {
-  console.log('Dry run only. Re-run with --confirm after applying MIGRATION_production_security_hardening.sql.')
+  console.log('Dry run only. Re-run with --confirm after applying supabase/migrations/202607210002_production_security_hardening.sql.')
   process.exit(0)
 }
 

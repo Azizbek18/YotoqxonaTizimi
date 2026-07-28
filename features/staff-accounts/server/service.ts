@@ -9,7 +9,7 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
       return (await repository.listCreatedBy(creatorId)) as StaffAccountRow[]
     },
 
-    async create(creatorId: string, value: unknown) {
+    async create(creatorId: string, creatorFaculty: string, value: unknown) {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, "So'rov noto'g'ri")
       const input = value as Record<string, unknown>
 
@@ -42,6 +42,16 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
       }
       if (assignedGender !== 'male' && assignedGender !== 'female') {
         throw new ApiError(400, 'Tarbiyachi uchun jins tanlanishi shart')
+      }
+      // Floors aren't faculty-segregated (a floor can house every faculty's
+      // students), so this can't fully confine the resulting tarbiyachi's
+      // reach to the zamdekan's own faculty — but requiring at least one of
+      // the zamdekan's own students to actually live on the target floor
+      // stops them from picking a floor with no connection to their
+      // faculty at all, purely to reach a specific unrelated resident.
+      const floorRelevant = await repository.floorHasFacultyStudents(assignedFloor, creatorFaculty)
+      if (!floorRelevant) {
+        throw new ApiError(400, "Bu qavatda sizning fakultetingiz talabalari yashamaydi")
       }
 
       const existing = await repository.findByEmail(email)

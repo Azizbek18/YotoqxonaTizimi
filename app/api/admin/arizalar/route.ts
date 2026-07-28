@@ -76,13 +76,14 @@ export async function PATCH(request: Request) {
       return jsonError("Status faqat 'pending', 'approved' yoki 'rejected' bo'lishi mumkin", 400)
     }
 
-    const updateFields: { level?: ApplicationLevel; status?: string; response_date?: string } = {}
+    const updateFields: { level?: ApplicationLevel; status?: string; response_date?: string | null } = {}
     if (level !== undefined) updateFields.level = level
     if (status !== undefined) {
       updateFields.status = status
-      if (status !== 'pending') {
-        updateFields.response_date = new Date().toISOString()
-      }
+      // Reverting to 'pending' must clear any prior decision's response_date
+      // too — otherwise a still-pending application keeps showing a
+      // decision date from a previous approve/reject that was undone.
+      updateFields.response_date = status === 'pending' ? null : new Date().toISOString()
     }
 
     if (Object.keys(updateFields).length === 0) {

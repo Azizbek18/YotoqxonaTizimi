@@ -27,7 +27,11 @@ export async function POST(request: NextRequest) {
     if (!throttle.allowed) {
       return NextResponse.json({ error: "Juda ko'p urinish. Keyinroq urinib ko'ring." }, { status: 429 })
     }
-    const result = await createStaffAccountService().create(zamdekan.id, await request.json())
+    const faculty = zamdekan.faculty?.trim()
+    if (!faculty) {
+      return NextResponse.json({ error: 'Zamdekan fakulteti biriktirilmagan' }, { status: 403 })
+    }
+    const result = await createStaffAccountService().create(zamdekan.id, faculty, await request.json())
     return NextResponse.json(result, { status: 201 })
   } catch (error) {
     return errorResponse(error)

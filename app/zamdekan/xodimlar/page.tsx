@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { UserPlus, Mail, Phone, RotateCcw, Shield, UserCog } from 'lucide-react'
+import { UserPlus, Mail, Phone, RotateCcw, UserCog } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -105,7 +105,7 @@ export default function ZamdekanXodimlarPage() {
             </div>
             Xodimlar
           </h1>
-          <p className={`mt-2 text-sm ${textMuted}`}>Admin va tarbiyachi akkauntlarini shu yerdan qo&apos;shing</p>
+          <p className={`mt-2 text-sm ${textMuted}`}>Tarbiyachi akkauntlarini shu yerdan qo&apos;shing</p>
         </div>
 
         <div className="flex gap-2">
@@ -127,9 +127,8 @@ export default function ZamdekanXodimlarPage() {
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:max-w-md">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:max-w-xs">
         {[
-          { label: 'Adminlar', count: staff.filter((s) => s.role === 'admin').length, color: 'from-red-500 to-rose-600', icon: Shield },
           { label: 'Tarbiyachilar', count: staff.filter((s) => s.role === 'tarbiyachi').length, color: 'from-green-500 to-emerald-600', icon: UserCog },
         ].map((stat) => (
           <div key={stat.label} className={`relative overflow-hidden flex items-center gap-3 rounded-2xl border p-4 pt-5 ${cardSurface}`}>

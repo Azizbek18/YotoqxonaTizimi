@@ -46,4 +46,21 @@ REVOKE EXECUTE ON FUNCTION public.is_active_staff_role(text[]) FROM anon;
 REVOKE EXECUTE ON FUNCTION public.check_student_permit_approved() FROM anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.protect_application_moderation_fields() FROM anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.set_elonlar_updated_at() FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.update_warning_count() FROM anon, authenticated;
+
+-- update_warning_count() exists on this specific live database (found
+-- during the audit that produced this migration) but was never created by
+-- anything in this repo's migration history — same class of drift as the
+-- stray columns 202607280014 guards against. A database built from
+-- scratch from these migrations never has it, so the bare REVOKE below
+-- would fail with "function does not exist" and abort this entire
+-- migration (which would in turn block every migration after it,
+-- including 202607280022's fixes). Guard it the same way.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'update_warning_count' AND pg_get_function_identity_arguments(p.oid) = ''
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.update_warning_count() FROM anon, authenticated';
+  END IF;
+END $$;

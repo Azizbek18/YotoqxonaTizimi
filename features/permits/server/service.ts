@@ -1,5 +1,6 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
+import { createAppSettingsService } from '@/features/app-settings/server/service'
 import type { ZamdekanOverview } from '../types'
 import { createPermitAdminRepository, type PermitAdminRepository } from './repository'
 
@@ -100,7 +101,11 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
       if (action === 'approve') {
         const roomNumber = typeof input.roomNumber === 'string' ? input.roomNumber.trim().slice(0, 20) : ''
         if (!roomNumber) throw new ApiError(400, 'Xona tanlanmagan')
-        const request = await repository.approveIntoRoom(id, roomNumber)
+        if (!(await repository.roomExists(roomNumber))) {
+          throw new ApiError(404, 'Bunday xona xonalar sxemasida topilmadi')
+        }
+        const { defaultRoomCapacity } = await createAppSettingsService().get()
+        const request = await repository.approveIntoRoom(id, roomNumber, defaultRoomCapacity)
         if (!request) throw new ApiError(409, 'Bu xonada bo\'sh joy yo\'q yoki yo\'llanma allaqachon ko\'rib chiqilgan')
         return { success: true as const, request }
       }

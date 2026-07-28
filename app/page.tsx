@@ -37,8 +37,12 @@ export default function Home() {
 
   const checkStatus = async (silent = false) => {
     if (typeof window === 'undefined') return;
-    const passport = localStorage.getItem('student_permit_passport');
-    const jshshir = localStorage.getItem('student_permit_jshshir');
+    // sessionStorage, not localStorage — passport/JShSHIR are sensitive
+    // national ID fields; a session-scoped store means a shared/public
+    // device stops remembering them once the browser tab closes, instead
+    // of leaking the last applicant's status to the next visitor forever.
+    const passport = sessionStorage.getItem('student_permit_passport');
+    const jshshir = sessionStorage.getItem('student_permit_jshshir');
     if (passport && jshshir) {
       if (!silent) setCheckingPermit(true);
       try {
@@ -82,8 +86,8 @@ export default function Home() {
 
   const handleClearStatus = () => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('student_permit_passport');
-      localStorage.removeItem('student_permit_jshshir');
+      sessionStorage.removeItem('student_permit_passport');
+      sessionStorage.removeItem('student_permit_jshshir');
       setPermitRequest(null);
     }
   };

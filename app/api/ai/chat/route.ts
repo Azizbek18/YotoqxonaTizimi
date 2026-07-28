@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { callGemini } from '@/lib/gemini'
 import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+import { createAppSettingsService } from '@/features/app-settings/server/service'
 
 type ChatMessage = {
   role?: string
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY
+    const { monthlyFee, yearlyContractFee } = await createAppSettingsService().get()
 
     // Dormitory rules context for AI System Instructions
     const systemInstruction = `Siz O'zbekiston Milliy Universiteti Talabalar Yotoqxonasining aqlli virtual yordamchisisiz (ismingiz "Yotoqxona AI").
@@ -34,7 +36,7 @@ Siz faqat o'zbek tilida, do'stona, aniq va xushmuomala ohangda javob berishingiz
 
 Mavjud ma'lumotlar ro'yxati (savollarga javob berishda foydalaning):
 1. **Kirish-chiqish tartibi**: Yotoqxonaga kirish-chiqish 06:00 dan 23:00 gacha. Sukunat (tinchlik) vaqti 22:00 dan 07:00 gacha.
-2. **To'lovlar**: Bir oylik turarjoy to'lovi 300,000 UZS. Yillik shartnoma summasi 3,000,000 UZS (10 oy uchun). To'lov cheklarini talaba "To'lov qilish" sahifasida yuklab, tasdiqlash uchun yuborishi mumkin.
+2. **To'lovlar**: Bir oylik turarjoy to'lovi ${monthlyFee.toLocaleString('uz-UZ')} UZS. Yillik shartnoma summasi ${yearlyContractFee.toLocaleString('uz-UZ')} UZS. To'lov cheklarini talaba "To'lov qilish" sahifasida yuklab, tasdiqlash uchun yuborishi mumkin.
 3. **Arizalar**: Talaba o'z arizalarini (masalan: xonani o'zgartirish, texnik ta'mir, tushuntirish xati) dashboarddagi "Ariza Yozish" bo'limida yozib yuborishi mumkin. AI arizani chiroyli va rasmiy tilda yozishga yordam beradi.
 4. **Taqiqlar**: Yotoqxona hududida spirtli ichimliklar, tamaki mahsulotlari, ruxsatsiz isitgichlar, elektr plitkalaridan foydalanish taqiqlanadi. Tartibni buzganlarning intizom ko'rsatkichi tushib ketadi. 3 ta ogohlantirish olgan talaba yotoqxonadan chiqariladi.
 

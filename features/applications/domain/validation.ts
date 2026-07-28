@@ -24,7 +24,13 @@ export function parseStudentApplication(value: unknown): CreateStudentApplicatio
     : (requestedStatus === 'draft' || requestedStatus === 'submitted' || requestedStatus === 'pending'
         ? requestedStatus
         : 'pending')
-  const level = input.level === 'warning' || input.level === 'critical' ? input.level : 'info'
+  // Level/priority is never taken from the student's own request — every
+  // legitimate client always sends 'info' at creation time, and staff have
+  // a separate admin-only endpoint (app/api/admin/arizalar/route.ts) to
+  // escalate a submission's level after review. Trusting a client-supplied
+  // level here would let a student self-flag their own ariza as 'critical'
+  // and jump the staff queue.
+  const level = 'info' as const
   return {
     type,
     title: text(input.title, 200, true),

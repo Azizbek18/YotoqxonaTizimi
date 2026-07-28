@@ -63,8 +63,9 @@ function StatusCheckContent() {
       if (data) {
         setResult(data as PermitRequest)
         if (typeof window !== 'undefined') {
-          localStorage.setItem('student_permit_passport', cleanPassport)
-          localStorage.setItem('student_permit_jshshir', cleanJshshir)
+          // sessionStorage, not localStorage — see app/page.tsx for why.
+          sessionStorage.setItem('student_permit_passport', cleanPassport)
+          sessionStorage.setItem('student_permit_jshshir', cleanJshshir)
         }
       } else {
         setResult(null)

@@ -303,19 +303,22 @@ export default function TolovaPage() {
             const paymentResult = await submitStudentPayment(paymentForm)
             const insertedDatas = paymentResult.records
 
-            // 4. Trigger AI receipt analysis in the background for all batch records
-            if (Array.isArray(insertedDatas)) {
+            // 4. Trigger AI receipt analysis in the background — once per
+            // upload, not once per month. Every record in this batch shares
+            // the exact same receipt file, and the admin review UI groups
+            // them back together and only ever reads the first record's AI
+            // fields, so analyzing the rest would just be redundant Gemini
+            // calls for a result nobody sees.
+            if (Array.isArray(insertedDatas) && insertedDatas.length > 0) {
                 const { data: { session: tahlilSession } } = await supabase.auth.getSession()
-                insertedDatas.forEach(record => {
-                    fetch('/api/ai/tahlil', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...(tahlilSession?.access_token ? { Authorization: `Bearer ${tahlilSession.access_token}` } : {})
-                        },
-                        body: JSON.stringify({ paymentId: record.id })
-                    }).catch(err => console.error("Background AI trigger error:", err))
-                })
+                fetch('/api/ai/tahlil', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(tahlilSession?.access_token ? { Authorization: `Bearer ${tahlilSession.access_token}` } : {})
+                    },
+                    body: JSON.stringify({ paymentId: insertedDatas[0].id })
+                }).catch(err => console.error("Background AI trigger error:", err))
             }
 
             // Refresh state

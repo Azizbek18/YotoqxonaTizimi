@@ -15,6 +15,15 @@ export function createCleaningScheduleRepository() {
       if (error) throw error
       return data?.room_number ?? null
     },
+    async getRoommates(roomNumber: string) {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, full_name')
+        .eq('role', 'talaba')
+        .eq('room_number', roomNumber)
+      if (error) throw error
+      return data ?? []
+    },
     async get(roomNumber: string) {
       const { data, error } = await supabase
         .from('cleaning_schedule')

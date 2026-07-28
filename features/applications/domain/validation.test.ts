@@ -20,4 +20,10 @@ describe('parseStudentApplication', () => {
     expect(() => parseStudentApplication({ type: 'ariza', title: 'x', text: '   ' }))
       .toThrow('Majburiy maydonlar')
   })
+
+  it('ignores a client-supplied level and always forces info', () => {
+    expect(parseStudentApplication({
+      type: 'ariza', title: 'x', text: 'x', level: 'critical',
+    })).toMatchObject({ level: 'info' })
+  })
 })

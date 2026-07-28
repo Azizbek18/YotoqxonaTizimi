@@ -1,5 +1,6 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
+import { createAppSettingsService } from '@/features/app-settings/server/service'
 import type { FacultyStudentRow } from '../types'
 import { createRoomAssignmentRepository, type RoomAssignmentRepository } from './repository'
 
@@ -39,7 +40,12 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
         return { success: true as const }
       }
 
-      const assigned = await repository.assignRoomAtomic(studentId, roomNumber)
+      if (!(await repository.roomExists(roomNumber))) {
+        throw new ApiError(404, 'Bunday xona xonalar sxemasida topilmadi')
+      }
+
+      const { defaultRoomCapacity } = await createAppSettingsService().get()
+      const assigned = await repository.assignRoomAtomic(studentId, roomNumber, defaultRoomCapacity)
       if (!assigned) {
         throw new ApiError(409, "Bu xonada bo'sh joy yo'q yoki xonada boshqa jinsdagi talaba(lar) bor")
       }

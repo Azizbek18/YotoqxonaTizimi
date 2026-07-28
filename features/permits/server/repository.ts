@@ -29,14 +29,24 @@ export function createPermitAdminRepository() {
       if (error) throw error
       return data
     },
+    async roomExists(roomNumber: string) {
+      const { data, error } = await supabase
+        .from('floor_room_layout')
+        .select('room_number')
+        .eq('room_number', roomNumber)
+        .maybeSingle()
+      if (error) throw error
+      return Boolean(data)
+    },
     // Atomically checks room capacity/gender and flips status pending -> approved
     // inside a single DB transaction (see assign_room_atomic in the DB migration)
     // so two concurrent approvals for the same room can't both pass a
     // read-then-write capacity check and overbook it.
-    async approveIntoRoom(id: string, roomNumber: string) {
+    async approveIntoRoom(id: string, roomNumber: string, maxCapacity: number) {
       const { data, error } = await supabase.rpc('approve_permit_room_atomic', {
         p_permit_id: id,
         p_room_number: roomNumber,
+        p_max_capacity: maxCapacity,
       })
       if (error) {
         if (error.code === 'P0001') return null

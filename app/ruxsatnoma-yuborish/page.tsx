@@ -396,8 +396,11 @@ export default function RuxsatnomaYuborish() {
       }
 
       if (typeof window !== 'undefined') {
-        localStorage.setItem('student_permit_passport', cleanPassport)
-        localStorage.setItem('student_permit_jshshir', cleanJshshir)
+        // sessionStorage, not localStorage — these are sensitive national ID
+        // fields (passport/JShSHIR); persisting them indefinitely would leave
+        // them readable by the next person on a shared/public device.
+        sessionStorage.setItem('student_permit_passport', cleanPassport)
+        sessionStorage.setItem('student_permit_jshshir', cleanJshshir)
       }
 
       setSubmitted(true)

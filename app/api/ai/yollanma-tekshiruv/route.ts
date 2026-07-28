@@ -150,15 +150,19 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       extractedDormitoryName = String(jsonResult.extracted_dormitory_name || '')
       extractedDormitoryAddress = String(jsonResult.extracted_dormitory_address || '')
     } catch (geminiError: unknown) {
-      console.error('Gemini API call failed during yollanma check, falling back to manual validation:', geminiError)
-      isAuthentic = true
-      authenticityConfidence = 100
-      extractedFullName = declaredFullName
-      extractedJshshir = declaredJshshir
-      extractedPassport = declaredPassport
-      analysis = "Yo'llanma hujjati muvaffaqiyatli yuklandi va tekshirildi."
-      extractedDormitoryName = ''
-      extractedDormitoryAddress = ''
+      // Fail closed on the automated checks (don't fabricate a "verified"
+      // result), but still let the submission through for zamdekan manual
+      // review — same fallback used above when no API key is configured —
+      // so an AI outage doesn't permanently block genuine applicants.
+      console.error('Gemini API call failed during yollanma check, falling back to manual review:', geminiError)
+      return NextResponse.json({
+        valid: true,
+        confidence: 0,
+        is_authentic: null,
+        requires_manual_review: true,
+        mismatches: [],
+        analysis: "AI tekshiruvi vaqtincha ishlamadi. Hujjat zamdekan tomonidan qo'lda tekshirilishi shart."
+      })
     }
 
     const mismatches: string[] = []

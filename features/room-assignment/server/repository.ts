@@ -27,14 +27,24 @@ export function createRoomAssignmentRepository() {
       const { error } = await supabase.from('users').update({ room_number: null, assigned_floor: null }).eq('id', id)
       if (error) throw error
     },
+    async roomExists(roomNumber: string) {
+      const { data, error } = await supabase
+        .from('floor_room_layout')
+        .select('room_number')
+        .eq('room_number', roomNumber)
+        .maybeSingle()
+      if (error) throw error
+      return Boolean(data)
+    },
     // Atomically checks room capacity/gender and assigns the student inside a
     // single DB transaction (see assign_student_room_atomic in the DB
     // migration) so two concurrent zamdekan assignments to the same room
     // can't both pass a read-then-write capacity/gender check.
-    async assignRoomAtomic(studentId: string, roomNumber: string) {
+    async assignRoomAtomic(studentId: string, roomNumber: string, maxCapacity: number) {
       const { error } = await supabase.rpc('assign_student_room_atomic', {
         p_student_id: studentId,
         p_room_number: roomNumber,
+        p_max_capacity: maxCapacity,
       })
       if (error) {
         if (error.code === 'P0001') return false

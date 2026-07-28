@@ -463,18 +463,30 @@ export async function DELETE(request: Request) {
       }
     }
 
+    // Auth account first, profile row second: these are two separate
+    // systems with no shared transaction, so whichever step runs first is
+    // the one that can leave a dangling remnant if the second step fails.
+    // A dangling profile row (auth gone, row still there) is inert data an
+    // admin can clean up later; a dangling auth account (profile gone, auth
+    // still there) is a "ghost" that can still log in with none of the
+    // active-profile checks finding a row — the worse failure mode of the
+    // two, so it's the one we avoid by ordering this way.
+    const { error: authError } = await supabase.auth.admin.deleteUser(id)
+    if (authError) {
+      return jsonError(authError.message, 400)
+    }
+
     const { error: dbError } = await supabase
       .from(table)
       .delete()
       .eq('id', id)
 
     if (dbError) {
-      return jsonError(dbError.message, 400)
-    }
-
-    const { error: authError } = await supabase.auth.admin.deleteUser(id)
-    if (authError) {
-      return jsonError(authError.message, 400)
+      console.error(`Admin users DELETE: auth user ${id} was deleted but profile row cleanup failed:`, dbError)
+      return jsonError(
+        "Hisob o'chirildi, lekin profil yozuvini tozalashda xatolik yuz berdi. Administratorga murojaat qiling.",
+        500,
+      )
     }
 
     return NextResponse.json({ ok: true })

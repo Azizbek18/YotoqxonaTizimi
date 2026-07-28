@@ -1,19 +1,25 @@
 import 'server-only'
 
+const REQUEST_TIMEOUT_MS = 15_000
+
 export async function callGemini(payload: unknown, apiKey: string) {
   const models = ['gemini-2.5-flash', 'gemini-flash-latest']
   let lastError: unknown = null
 
   for (const model of models) {
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
-    
+
     // 2 attempts per model
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const response = await fetch(geminiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          // A hung upstream call would otherwise block the route until the
+          // platform's own function timeout, with no retry/fallback ever
+          // getting a chance to run.
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         })
 
         if (response.ok) {

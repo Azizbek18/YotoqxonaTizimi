@@ -155,6 +155,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [warningThreshold, setWarningThreshold] = useState(2)
+  const [yearlyContractFee, setYearlyContractFee] = useState(3000000)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRoom, setFilterRoom] = useState('')
   const [activeFolder, setActiveFolder] = useState<'all' | 'talaba' | 'tarbiyachi' | 'admin' | 'pending'>('all')
@@ -290,7 +291,10 @@ export default function AdminUsersPage() {
   }, [loadUsers])
 
   useEffect(() => {
-    fetchAppSettings().then((settings) => setWarningThreshold(settings.warningThreshold)).catch(() => {})
+    fetchAppSettings().then((settings) => {
+      setWarningThreshold(settings.warningThreshold)
+      setYearlyContractFee(settings.yearlyContractFee)
+    }).catch(() => {})
   }, [])
 
   const loadStudentPayments = async (studentId: string) => {
@@ -400,7 +404,7 @@ export default function AdminUsersPage() {
   }
 
   const paymentStats = useMemo(() => {
-    const totalContractFee = 3000000
+    const totalContractFee = yearlyContractFee
     const approvedPayments = payments.filter(p => p.status === 'paid' || p.status === 'approved')
     const waitingPayments = payments.filter(p => p.status === 'waiting' || p.status === 'pending')
     
@@ -416,7 +420,7 @@ export default function AdminUsersPage() {
       remainingAmount,
       progressPercent
     }
-  }, [payments])
+  }, [payments, yearlyContractFee])
 
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {

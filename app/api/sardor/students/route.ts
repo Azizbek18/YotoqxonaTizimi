@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { extractFloor } from '@/lib/floor'
 import { requireFloorCaptain } from '@/server/auth/sardor'
 
 export async function GET(req: NextRequest) {
@@ -15,25 +14,24 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Sardorlik qavati yoki jinsi belgilanmagan' }, { status: 400 })
     }
 
-    // Query students of same gender
+    // Query students of same gender and floor directly — assigned_floor is
+    // kept in sync with floor_room_layout by the room-assignment flow, so
+    // it's the correct source of truth (unlike deriving a floor from the
+    // room number's digits, which only holds for the assumed 30-rooms-per-
+    // floor numbering and breaks under a custom layout).
     const { data: students, error: studentsError } = await serviceSupabase
       .from('users')
       .select('id, full_name, email, phone_number, room_number, faculty, course, group, avatar_url, gender')
       .eq('role', 'talaba')
       .eq('status', 'active')
       .eq('gender', captainGender)
+      .eq('assigned_floor', captainFloor)
 
     if (studentsError) {
       return NextResponse.json({ error: studentsError.message }, { status: 500 })
     }
 
-    // Filter by floor
-    const floorStudents = (students ?? []).filter(s => {
-      const floor = extractFloor(s.room_number)
-      return floor === captainFloor
-    })
-
-    return NextResponse.json({ ok: true, students: floorStudents, floor: captainFloor, gender: captainGender })
+    return NextResponse.json({ ok: true, students: students ?? [], floor: captainFloor, gender: captainGender })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Server xatoligi'
     return NextResponse.json({ error: message }, { status: 500 })

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Building2, DoorOpen, Layers3, Users,
@@ -134,7 +134,7 @@ export default function Admin3DXonalarPage() {
   const textStrong = isLight ? 'text-slate-900' : 'text-white'
   const inputBg = isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-white/5 border-white/10 text-white'
 
-  const loadRoomOccupancy = async () => {
+  const loadRoomOccupancy = useCallback(async () => {
     try {
       const { students: data } = await fetchAdminDashboard()
       const occupancyMap = new Map<string, { count: number, students: StudentInfo[] }>()
@@ -158,7 +158,7 @@ export default function Admin3DXonalarPage() {
       console.error('Xona bandligini yuklashda xato:', error)
       toast.error('Bandlik ma\'lumotlarini yuklashda xatolik yuz berdi')
     }
-  }
+  }, [defaultRoomCapacity])
 
   const loadFloorLayout = async (floor: number) => {
     setLoading(true)
@@ -184,7 +184,7 @@ export default function Admin3DXonalarPage() {
   useEffect(() => {
     const loadId = window.setTimeout(() => void loadRoomOccupancy(), 0)
     return () => window.clearTimeout(loadId)
-  }, [defaultRoomCapacity])
+  }, [loadRoomOccupancy])
 
   useEffect(() => {
     (async () => {
@@ -359,7 +359,7 @@ export default function Admin3DXonalarPage() {
       const occupied = snap?.occupied ?? 0
 
       let color = 0x10b981
-      if (occupied >= 4) color = 0xef4444
+      if (occupied >= defaultRoomCapacity) color = 0xef4444
       else if (occupied > 0) color = 0xf59e0b
 
       const geo = new THREE.BoxGeometry(room.width, room.height, room.depth)
@@ -456,7 +456,7 @@ export default function Admin3DXonalarPage() {
       corridorMat.dispose()
       renderer.dispose()
     }
-  }, [positionedRooms, roomSnapshots, isLight])
+  }, [positionedRooms, roomSnapshots, isLight, defaultRoomCapacity])
 
   const summary = useMemo(() => {
     const roomCount = positionedRooms.rooms.length
@@ -741,7 +741,7 @@ export default function Admin3DXonalarPage() {
                     label="Bandlik holati"
                     value={`${selectedRoomData.occupied} / ${selectedRoomData.capacity}`}
                     icon={<Users size={16} />}
-                    status={selectedRoomData.occupied >= 4 ? 'full' : selectedRoomData.occupied > 0 ? 'partial' : 'empty'}
+                    status={selectedRoomData.occupied >= selectedRoomData.capacity ? 'full' : selectedRoomData.occupied > 0 ? 'partial' : 'empty'}
                     textStrong={textStrong}
                     cardBg={cardBg}
                   />

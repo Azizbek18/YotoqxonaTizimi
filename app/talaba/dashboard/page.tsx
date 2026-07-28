@@ -219,6 +219,7 @@ export default function TalabaDashboard() {
     talabaKengashiRaisiOgilName: '', talabaKengashiRaisiOgilPhone: '',
     talabaKengashiRaisiQizName: '', talabaKengashiRaisiQizPhone: '',
   });
+  const [yearlyContractFee, setYearlyContractFee] = useState(3000000);
 
   const getAppStatusInfo = (status: string) => {
     switch (status) {
@@ -367,6 +368,7 @@ export default function TalabaDashboard() {
           talabaKengashiRaisiOgilName: settings.talabaKengashiRaisiOgilName, talabaKengashiRaisiOgilPhone: settings.talabaKengashiRaisiOgilPhone,
           talabaKengashiRaisiQizName: settings.talabaKengashiRaisiQizName, talabaKengashiRaisiQizPhone: settings.talabaKengashiRaisiQizPhone,
         });
+        setYearlyContractFee(settings.yearlyContractFee);
       } catch {
         // Keep the default contact info if settings can't be loaded
       }
@@ -805,7 +807,7 @@ export default function TalabaDashboard() {
   const cardInnerBg = isLight ? 'bg-slate-50/70 hover:bg-slate-100/50' : 'bg-white/5 hover:bg-white/10';
 
   // Payment Calculations
-  const totalContractFee = 3000000; // 3,000,000 UZS total contract fee
+  const totalContractFee = yearlyContractFee;
   const paidAmount = payments
     .filter(p => p.status === 'paid' || p.status === 'approved')
     .reduce((sum, p) => sum + p.amount, 0);

@@ -21,10 +21,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Juda ko‘p so‘rov. Keyinroq urinib ko‘ring.' }, { status: 429 })
     }
 
-    const { message, history } = await req.json() as { message?: string; history?: ChatMessage[] }
-    if (!message) {
+    const body = await req.json().catch(() => null) as { message?: unknown; history?: unknown } | null
+    if (!body || typeof body.message !== 'string' || !body.message.trim()) {
       return NextResponse.json({ error: 'message kiritilishi shart' }, { status: 400 })
     }
+    const message = body.message.trim().slice(0, 4000)
+
+    // history is client-supplied conversational context sent straight into
+    // the Gemini prompt — bound its shape/size so a large or malformed
+    // payload can't blow up AI cost or crash the non-string-safe fallback
+    // paths below.
+    const MAX_HISTORY_ITEMS = 30
+    const MAX_HISTORY_TEXT_LENGTH = 2000
+    const history: ChatMessage[] = Array.isArray(body.history)
+      ? body.history
+          .filter((item): item is ChatMessage => Boolean(item) && typeof item === 'object')
+          .slice(-MAX_HISTORY_ITEMS)
+          .map((item) => ({
+            role: typeof item.role === 'string' ? item.role : undefined,
+            text: typeof item.text === 'string' ? item.text.slice(0, MAX_HISTORY_TEXT_LENGTH) : undefined,
+          }))
+      : []
 
     const geminiApiKey = process.env.GEMINI_API_KEY
     const { monthlyFee, yearlyContractFee } = await createAppSettingsService().get()
@@ -85,7 +102,7 @@ Javoblaringizni iloji boricha qisqa, tushunarli va chiroyli emojilar bilan bezab
         return NextResponse.json({
           reply: `🤖 Salom! [Gemini ulanish xatosi] Hozirda serverda texnik ishlar ketmoqda. Ammo men sizga quyidagicha yordam bera olaman:
 - 🚪 Kirish-chiqish 06:00 dan 23:00 gacha.
-- 💳 To'lov oyiga 300,000 UZS.
+- 💳 To'lov oyiga ${monthlyFee.toLocaleString('uz-UZ')} UZS.
 - 📞 Qavat sardori va ma'muriyat aloqasini "Navbat" sahifasidan ko'rishingiz mumkin.
 Sizga qanday yordam bera olaman?`
         })
@@ -95,7 +112,7 @@ Sizga qanday yordam bera olaman?`
       let reply = '🤖 Salom! Men sizning yotoqxona AI yordamchingizman. Loyihada GEMINI_API_KEY sozlanmaganligi sababli cheklangan rejimda javob beryapman. Qanday yordam kerak?'
       const lower = message.toLowerCase()
       if (lower.includes('to\'lov') || lower.includes('tolov') || lower.includes('pul') || lower.includes('kontrakt')) {
-        reply = '💳 Yotoqxona to\'lovi oyiga **300,000 UZS**ni tashkil etadi. Yillik jami shartnoma 10 oy uchun **3,000,000 UZS**. To\'lov chekini shaxsiy kabinetingizdagi "To\'lov qilish" bo\'limidan yuklashingiz mumkin.'
+        reply = `💳 Yotoqxona to'lovi oyiga **${monthlyFee.toLocaleString('uz-UZ')} UZS**ni tashkil etadi. Yillik jami shartnoma summasi **${yearlyContractFee.toLocaleString('uz-UZ')} UZS**. To'lov chekini shaxsiy kabinetingizdagi "To'lov qilish" bo'limidan yuklashingiz mumkin.`
       } else if (lower.includes('kirish') || lower.includes('chiqish') || lower.includes('vaqt') || lower.includes('yopiladi')) {
         reply = '🚪 Yotoqxonaga kirish-chiqish vaqti soat **06:00 dan 23:00 gacha**. Sukunat vaqti 22:00 dan 07:00 gacha. Iltimos, vaqtida yetib keling!'
       } else if (lower.includes('komendant') || lower.includes('tarbiyachi') || lower.includes('sardor') || lower.includes('boshliq') || lower.includes('navbatchi')) {

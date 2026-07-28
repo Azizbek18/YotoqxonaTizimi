@@ -6,9 +6,13 @@ import { createAppSettingsRepository, type AppSettingsRepository } from './repos
 
 type AppSettingsUpdate = Database['public']['Tables']['app_settings']['Update']
 
+// Whole so'm, positive — matches what features/payments/server/service.ts
+// actually requires (Number.isSafeInteger(amount) && amount >= 1). A zero
+// or fractional fee here would make every payment submission fail that
+// check downstream, since amount is required to equal monthlyFee * months.
 function parseAmount(value: unknown, field: string): number {
   const amount = Number(value)
-  if (!Number.isFinite(amount) || amount < 0 || amount > 1_000_000_000) {
+  if (!Number.isInteger(amount) || amount < 1 || amount > 1_000_000_000) {
     throw new ApiError(400, `${field} noto'g'ri`)
   }
   return amount

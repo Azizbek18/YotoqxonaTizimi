@@ -156,6 +156,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [warningThreshold, setWarningThreshold] = useState(2)
   const [yearlyContractFee, setYearlyContractFee] = useState(3000000)
+  const [floorCount, setFloorCount] = useState(5)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRoom, setFilterRoom] = useState('')
   const [activeFolder, setActiveFolder] = useState<'all' | 'talaba' | 'tarbiyachi' | 'admin' | 'pending'>('all')
@@ -294,6 +295,7 @@ export default function AdminUsersPage() {
     fetchAppSettings().then((settings) => {
       setWarningThreshold(settings.warningThreshold)
       setYearlyContractFee(settings.yearlyContractFee)
+      setFloorCount(settings.floorCount)
     }).catch(() => {})
   }, [])
 
@@ -1687,13 +1689,10 @@ export default function AdminUsersPage() {
                     value={editForm.assigned_floor || ''}
                     onChange={(val) => setEditForm(prev => ({ ...prev, assigned_floor: val }))}
                     placeholder="Qavatni tanlang"
-                    options={[
-                      { value: '1', label: '1-qavat' },
-                      { value: '2', label: '2-qavat' },
-                      { value: '3', label: '3-qavat' },
-                      { value: '4', label: '4-qavat' },
-                      { value: '5', label: '5-qavat' },
-                    ]}
+                    options={Array.from({ length: floorCount }, (_, i) => i + 1).map((floor) => ({
+                      value: String(floor),
+                      label: `${floor}-qavat`,
+                    }))}
                     className="rounded-xl border border-white/10 bg-slate-900 px-4 py-2"
                   />
                 </div>

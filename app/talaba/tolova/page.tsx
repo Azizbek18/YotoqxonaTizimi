@@ -31,6 +31,7 @@ interface ValidationResult {
     message?: string
     analysis?: string
     file_hash?: string
+    claim?: string | null
 }
 
 const MONTHS = [
@@ -279,7 +280,7 @@ export default function TolovaPage() {
             }
 
             // If valid — proceed to upload
-            await proceedWithUpload(result.file_hash)
+            await proceedWithUpload(result.claim ?? undefined)
         } catch (error) {
             console.error('AI validation error:', error)
             toast.error('AI tekshiruv tizimida xatolik. Qayta urinib ko\'ring.')
@@ -289,7 +290,7 @@ export default function TolovaPage() {
     }
 
     // Step 2: Actual upload after validation passes
-    const proceedWithUpload = async (fileHash?: string) => {
+    const proceedWithUpload = async (aiClaim?: string) => {
         if (!newReceipt || !user) return
         setUploading(true)
         try {
@@ -299,7 +300,7 @@ export default function TolovaPage() {
             paymentForm.append('amount', String(amount))
             paymentForm.append('year', String(selectedYear))
             paymentForm.append('months', JSON.stringify(monthsToPay))
-            if (fileHash) paymentForm.append('validatedHash', fileHash)
+            if (aiClaim) paymentForm.append('validatedHash', aiClaim)
             const paymentResult = await submitStudentPayment(paymentForm)
             const insertedDatas = paymentResult.records
 

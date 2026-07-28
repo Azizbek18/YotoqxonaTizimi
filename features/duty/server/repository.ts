@@ -21,6 +21,7 @@ export function createCleaningScheduleRepository() {
         .select('id, full_name')
         .eq('role', 'talaba')
         .eq('room_number', roomNumber)
+        .eq('status', 'active')
       if (error) throw error
       return data ?? []
     },

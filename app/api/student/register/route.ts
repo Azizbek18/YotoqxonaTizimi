@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
-import { isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
+import { isValidJshshir, isValidPassport, namesLikelyMatch, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
 import { writeAuditLog } from '@/lib/audit-log'
 import { extractFloor } from '@/lib/floor'
 
@@ -9,8 +9,14 @@ function text(body: Record<string, unknown>, key: string, maxLength = 200) {
   return String(body[key] ?? '').trim().slice(0, maxLength)
 }
 
+// A plain `new Date(...)` parse doesn't reject invalid calendar dates like
+// 2026-02-31 — JS silently rolls it forward to March. Round-tripping through
+// UTC field getters and comparing back to the input catches that.
 function validDate(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime())
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
 }
 
 export async function POST(request: NextRequest) {
@@ -67,7 +73,11 @@ export async function POST(request: NextRequest) {
       await writeAuditLog({ eventType: 'student.registration', status: 'denied', ipAddress: ip, targetRole: 'talaba' })
       return NextResponse.json({ error: 'Yo‘llanma hali tasdiqlanmagan yoki ma’lumotlar mos emas.' }, { status: 403 })
     }
-    if (permit.email.trim().toLowerCase() !== email || permit.faculty.trim().toLowerCase() !== faculty.toLowerCase()) {
+    if (
+      permit.email.trim().toLowerCase() !== email ||
+      permit.faculty.trim().toLowerCase() !== faculty.toLowerCase() ||
+      !namesLikelyMatch(fullName, permit.full_name)
+    ) {
       return NextResponse.json({ error: 'Ro‘yxatdan o‘tish ma’lumotlari tasdiqlangan yo‘llanma bilan mos emas.' }, { status: 403 })
     }
 

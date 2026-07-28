@@ -40,14 +40,21 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
         return { success: true as const }
       }
 
-      if (!(await repository.roomExists(roomNumber))) {
-        throw new ApiError(404, 'Bunday xona xonalar sxemasida topilmadi')
-      }
-
       const { defaultRoomCapacity } = await createAppSettingsService().get()
-      const assigned = await repository.assignRoomAtomic(studentId, roomNumber, defaultRoomCapacity)
-      if (!assigned) {
-        throw new ApiError(409, "Bu xonada bo'sh joy yo'q yoki xonada boshqa jinsdagi talaba(lar) bor")
+      // Room existence is checked inside the RPC itself (same advisory
+      // lock/transaction as the capacity check) — a separate SELECT here
+      // first would leave a window where the room could be deleted from
+      // floor_room_layout between the check and the actual assignment.
+      try {
+        const assigned = await repository.assignRoomAtomic(studentId, roomNumber, defaultRoomCapacity)
+        if (!assigned) {
+          throw new ApiError(409, "Bu xonada bo'sh joy yo'q yoki xonada boshqa jinsdagi talaba(lar) bor")
+        }
+      } catch (error) {
+        if ((error as { code?: string } | null)?.code === 'P0002') {
+          throw new ApiError(404, 'Bunday xona xonalar sxemasida topilmadi')
+        }
+        throw error
       }
       return { success: true as const }
     },

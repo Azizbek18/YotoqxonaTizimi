@@ -24,3 +24,22 @@ export function isValidJshshir(value: string) {
 export function hasAllowedSignature(buffer: Uint8Array, signatures: number[][]) {
   return signatures.some((signature) => signature.every((byte, index) => buffer[index] === byte))
 }
+
+function normalizeNameToken(s: string): string {
+  return s.toUpperCase().replace(/[ʻʼ'`´]/g, '').replace(/[^A-ZА-Я]/g, '')
+}
+
+// Lenient match: the compared full name may omit/reorder parts (e.g. a
+// document's formal "O'G'LI/QIZI" suffix), so we require most of one
+// name's tokens to appear somewhere in the other rather than an exact
+// string match.
+export function namesLikelyMatch(declared: string, other: string): boolean {
+  const declaredTokens = declared.split(/\s+/).map(normalizeNameToken).filter((t) => t.length >= 2)
+  if (declaredTokens.length === 0) return false
+  const otherFlat = normalizeNameToken(other.replace(/\s+/g, ' '))
+  if (!otherFlat) return false
+
+  const matches = declaredTokens.filter((t) => otherFlat.includes(t))
+  const requiredMatches = declaredTokens.length <= 2 ? declaredTokens.length : Math.ceil(declaredTokens.length * 0.7)
+  return matches.length >= requiredMatches
+}

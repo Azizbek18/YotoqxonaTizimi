@@ -1,29 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHash } from 'crypto'
 import { callGemini } from '@/lib/gemini'
 import { checkRateLimit, getClientIp } from '@/lib/security'
-import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
+import { PERMIT_FILE_RULES, hasAllowedSignature, namesLikelyMatch } from '@/lib/permit-validation'
+import { signFileClaim } from '@/lib/receipt-claim'
 
 // Public endpoint (students apply before they have an account), so we
 // rate-limit by IP only rather than requiring auth.
-
-function normalizeNameToken(s: string): string {
-  return s.toUpperCase().replace(/[ʻʼ'`´]/g, '').replace(/[^A-ZА-Я]/g, '')
-}
-
-// Lenient match: the form's full name may omit/reorder parts (e.g. the
-// document's formal "O'G'LI/QIZI" suffix), so we require most declared
-// name tokens to appear somewhere in the extracted name rather than an
-// exact string match.
-function namesLikelyMatch(declared: string, extracted: string): boolean {
-  const declaredTokens = declared.split(/\s+/).map(normalizeNameToken).filter((t) => t.length >= 2)
-  if (declaredTokens.length === 0) return false
-  const extractedFlat = normalizeNameToken(extracted.replace(/\s+/g, ' '))
-  if (!extractedFlat) return false
-
-  const matches = declaredTokens.filter((t) => extractedFlat.includes(t))
-  const requiredMatches = declaredTokens.length <= 2 ? declaredTokens.length : Math.ceil(declaredTokens.length * 0.7)
-  return matches.length >= requiredMatches
-}
 
 function normalizeDigits(s: string): string {
   return s.replace(/\D/g, '')
@@ -67,6 +50,7 @@ export async function POST(req: NextRequest) {
     if (!fileRule || !hasAllowedSignature(fileBuffer, fileRule.signatures) || (file.type === 'image/webp' && fileBuffer.subarray(8, 12).toString('ascii') !== 'WEBP')) {
       return NextResponse.json({ error: 'Fayl tarkibi e’lon qilingan formatga mos emas' }, { status: 400 })
     }
+    const fileHash = createHash('sha256').update(fileBuffer).digest('hex')
     const base64Data = fileBuffer.toString('base64')
     const mimeType = file.type || 'image/jpeg'
 
@@ -81,7 +65,8 @@ export async function POST(req: NextRequest) {
         is_authentic: null,
         requires_manual_review: true,
         mismatches: [],
-        analysis: 'AI mavjud emas. Hujjat zamdekan tomonidan qo‘lda tekshirilishi shart.'
+        analysis: 'AI mavjud emas. Hujjat zamdekan tomonidan qo‘lda tekshirilishi shart.',
+        claim: signFileClaim('permit', fileHash),
       })
     }
 
@@ -161,7 +146,8 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
         is_authentic: null,
         requires_manual_review: true,
         mismatches: [],
-        analysis: "AI tekshiruvi vaqtincha ishlamadi. Hujjat zamdekan tomonidan qo'lda tekshirilishi shart."
+        analysis: "AI tekshiruvi vaqtincha ishlamadi. Hujjat zamdekan tomonidan qo'lda tekshirilishi shart.",
+        claim: signFileClaim('permit', fileHash),
       })
     }
 
@@ -197,7 +183,8 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
         dormitory_name: extractedDormitoryName,
         dormitory_address: extractedDormitoryAddress
       },
-      analysis
+      analysis,
+      claim: valid ? signFileClaim('permit', fileHash) : null,
     })
   } catch (error: unknown) {
     console.error('Yo‘llanma AI tekshiruvi xatoligi:', error)

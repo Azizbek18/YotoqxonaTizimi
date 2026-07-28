@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { createHash, randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
@@ -11,6 +11,7 @@ import {
   normalizePassport,
 } from '@/lib/permit-validation'
 import { writeAuditLog } from '@/lib/audit-log'
+import { verifyFileClaim } from '@/lib/receipt-claim'
 
 function value(form: FormData, name: string, maxLength = 200) {
   return String(form.get(name) ?? '').trim().slice(0, maxLength)
@@ -63,6 +64,17 @@ export async function POST(request: NextRequest) {
     }
     if (file.type === 'image/webp' && buffer.subarray(8, 12).toString('ascii') !== 'WEBP') {
       return NextResponse.json({ error: 'WEBP fayl imzosi noto‘g‘ri.' }, { status: 400 })
+    }
+
+    // The AI precheck (/api/ai/yollanma-tekshiruv) and this submission are
+    // two independent requests — without this, a caller could skip
+    // straight here with no document check at all. The claim is an HMAC
+    // signature over this exact file's hash, only issued by the precheck
+    // when it actually passed (or explicitly fell back to manual review),
+    // so it can't be forged or reused for a different file.
+    const fileHash = createHash('sha256').update(buffer).digest('hex')
+    if (!verifyFileClaim('permit', form.get('aiClaim'), fileHash)) {
+      return NextResponse.json({ error: 'Hujjat avval AI orqali tekshirilishi shart.' }, { status: 400 })
     }
 
     const supabase = getServiceSupabase()

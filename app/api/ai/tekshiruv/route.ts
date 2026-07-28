@@ -5,6 +5,7 @@ import { callGemini } from '@/lib/gemini'
 import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
+import { signFileClaim } from '@/lib/receipt-claim'
 
 // Normalizes a transaction_id for comparison so trivial formatting
 // differences (case, spaces, dashes) can't be used to dodge the
@@ -247,8 +248,10 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       }
     }
 
+    const valid = !isDuplicate && !isSuspiciousId && confidence >= 50 && amountMatch !== false
+
     return NextResponse.json({
-      valid: !isDuplicate && !isSuspiciousId && confidence >= 50 && amountMatch !== false,
+      valid,
       confidence,
       extracted_amount: extractedAmount,
       transaction_id: transactionId,
@@ -258,7 +261,11 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       is_duplicate: isDuplicate,
       is_suspicious_id: isSuspiciousId,
       duplicate_info: duplicateInfo || null,
-      file_hash: fileHash
+      file_hash: fileHash,
+      // Only issued when the check actually passed — this is what proves to
+      // the real submission endpoint that this exact file was validated,
+      // instead of trusting a client-supplied hash at face value.
+      claim: valid ? signFileClaim('payment', fileHash) : null,
     })
 
   } catch (error: unknown) {

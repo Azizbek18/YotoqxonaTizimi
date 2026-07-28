@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAdminSession } from '@/lib/server-admin'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import { ApiError } from '@/server/http/api-error'
 import type { StaffRow, UserRow } from '@/types/database.generated'
 
 type UserSource = 'users' | 'staff'
@@ -167,6 +168,20 @@ function normalizeOptionalNumber(value: unknown) {
   return undefined
 }
 
+// Bounded integer variant for fields where a negative, fractional, or
+// absurdly large value would either be nonsensical (course, floor) or
+// silently corrupt downstream logic that assumes a small whole number.
+// Returns `null` (invalid) distinctly from `undefined` (field not sent).
+function normalizeBoundedInt(value: unknown, min: number, max: number): number | null | undefined {
+  const parsed = normalizeOptionalNumber(value)
+  if (parsed === undefined) return undefined
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) return null
+  return parsed
+}
+
+const VALID_STATUSES = new Set(['pending', 'active', 'rejected'])
+const VALID_GENDERS = new Set(['male', 'female'])
+
 function buildStudentUpdates(body: Record<string, unknown>) {
   const updates: Record<string, string | number | boolean | null> = {}
 
@@ -176,7 +191,6 @@ function buildStudentUpdates(body: Record<string, unknown>) {
     'direction',
     'group',
     'room_number',
-    'status',
     'middle_name',
     'region',
     'district',
@@ -187,7 +201,6 @@ function buildStudentUpdates(body: Record<string, unknown>) {
     'birth_date',
     'nationality',
     'study_type',
-    'gender',
     'father_full_name',
     'father_workplace',
     'father_phone',
@@ -213,11 +226,26 @@ function buildStudentUpdates(body: Record<string, unknown>) {
     }
   }
 
-  if ('course' in body) {
-    const normalizedCourse = normalizeOptionalNumber(body.course)
-    if (normalizedCourse !== undefined) {
-      updates.course = normalizedCourse
+  if ('status' in body) {
+    const status = normalizeOptionalString(body.status)
+    if (status !== undefined) {
+      if (status === null || !VALID_STATUSES.has(status)) throw new ApiError(400, "Status noto'g'ri")
+      updates.status = status
     }
+  }
+
+  if ('gender' in body) {
+    const gender = normalizeOptionalString(body.gender)
+    if (gender !== undefined) {
+      if (gender === null || !VALID_GENDERS.has(gender)) throw new ApiError(400, "Jins noto'g'ri")
+      updates.gender = gender
+    }
+  }
+
+  if ('course' in body) {
+    const course = normalizeBoundedInt(body.course, 1, 6)
+    if (course === null) throw new ApiError(400, "Kurs noto'g'ri")
+    if (course !== undefined) updates.course = course
   }
 
   if ('is_floor_captain' in body) {
@@ -225,13 +253,19 @@ function buildStudentUpdates(body: Record<string, unknown>) {
   }
 
   if ('assigned_floor' in body) {
-    const normalizedFloor = normalizeOptionalNumber(body.assigned_floor)
-    updates.assigned_floor = normalizedFloor ?? null
+    if (body.assigned_floor === null || body.assigned_floor === '') {
+      updates.assigned_floor = null
+    } else {
+      const floor = normalizeBoundedInt(body.assigned_floor, 1, 50)
+      if (floor === null) throw new ApiError(400, "Qavat noto'g'ri")
+      updates.assigned_floor = floor ?? null
+    }
   }
 
   if ('warning_count' in body) {
-    const normalizedWarning = normalizeOptionalNumber(body.warning_count)
-    updates.warning_count = normalizedWarning ?? 0
+    const warningCount = normalizeBoundedInt(body.warning_count, 0, 1000)
+    if (warningCount === null) throw new ApiError(400, "Ogohlantirishlar soni noto'g'ri")
+    updates.warning_count = warningCount ?? 0
   }
 
   return updates
@@ -247,14 +281,25 @@ function buildStaffUpdates(body: Record<string, unknown>) {
   if (phone !== undefined) updates.phone_number = phone
 
   const status = normalizeOptionalString(body.status)
-  if (status !== undefined) updates.status = status
+  if (status !== undefined) {
+    if (status === null || !VALID_STATUSES.has(status)) throw new ApiError(400, "Status noto'g'ri")
+    updates.status = status
+  }
 
   const assignedGender = normalizeOptionalString(body.assigned_gender)
-  if (assignedGender !== undefined) updates.assigned_gender = assignedGender
+  if (assignedGender !== undefined) {
+    if (assignedGender === null || !VALID_GENDERS.has(assignedGender)) throw new ApiError(400, "Jins noto'g'ri")
+    updates.assigned_gender = assignedGender
+  }
 
   if ('assigned_floor' in body) {
-    const assignedFloor = normalizeOptionalNumber(body.assigned_floor)
-    updates.assigned_floor = assignedFloor ?? null
+    if (body.assigned_floor === null || body.assigned_floor === '') {
+      updates.assigned_floor = null
+    } else {
+      const assignedFloor = normalizeBoundedInt(body.assigned_floor, 1, 50)
+      if (assignedFloor === null) throw new ApiError(400, "Qavat noto'g'ri")
+      updates.assigned_floor = assignedFloor ?? null
+    }
   }
 
   return updates
@@ -410,11 +455,17 @@ export async function PATCH(request: Request) {
       : await supabase.from('staff').update(updates as Partial<StaffRow>).eq('id', id)
 
     if (error) {
+      if (error.code === '23505' && source === 'users' && updates.is_floor_captain === true) {
+        return jsonError("Bu qavat va jins uchun sardor allaqachon tayinlangan", 409)
+      }
       return jsonError(error.message, 400)
     }
 
     return NextResponse.json({ ok: true })
   } catch (error) {
+    if (error instanceof ApiError) {
+      return jsonError(error.message, error.status)
+    }
     console.error('Admin users PATCH xato:', error)
     return jsonError("Foydalanuvchini yangilashda server xatosi yuz berdi", 500)
   }

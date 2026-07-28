@@ -28,6 +28,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import toast from 'react-hot-toast'
 import { fetchAdminPaymentSummary } from '@/features/payments/client/api'
 import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
+import { fetchAppSettings } from '@/features/app-settings/client/api'
 
 interface DashboardStats {
   totalStudents: number
@@ -157,6 +158,11 @@ export default function AdminDashboard() {
     roomStart: '',
     roomEnd: ''
   })
+  const [floorCount, setFloorCount] = useState(5)
+
+  useEffect(() => {
+    fetchAppSettings().then((settings) => setFloorCount(settings.floorCount)).catch(() => {})
+  }, [])
 
   const loadStats = async (silent = false) => {
     if (!silent) {
@@ -1047,11 +1053,10 @@ export default function AdminDashboard() {
                   onChange={(val) => setReportFilters(prev => ({ ...prev, floor: val }))}
                   options={[
                     { value: 'all', label: 'Barcha qavatlar' },
-                    { value: '1', label: '1-qavat' },
-                    { value: '2', label: '2-qavat' },
-                    { value: '3', label: '3-qavat' },
-                    { value: '4', label: '4-qavat' },
-                    { value: '5', label: '5-qavat' },
+                    ...Array.from({ length: floorCount }, (_, i) => i + 1).map((floor) => ({
+                      value: String(floor),
+                      label: `${floor}-qavat`,
+                    })),
                   ]}
                   className={`px-4 py-3 rounded-xl border text-sm ${
                     isLight

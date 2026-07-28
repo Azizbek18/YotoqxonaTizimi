@@ -45,9 +45,32 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
       })
       const approvedPermitsWithRooms = permits
         .filter((permit) => permit.status === 'approved' && permit.room_number)
-        .map((permit) => sameFaculty(permit.faculty, faculty)
-          ? permit
-          : { ...permit, full_name: '', passport_series: '', jshshir: '', phone: '' })
+        .map((permit) => {
+          if (sameFaculty(permit.faculty, faculty)) return permit
+          // Anonymous DTO for other-faculty occupants — every field the room
+          // map/occupancy math actually needs, nothing that identifies them
+          // (no name/passport/JShSHIR/phone/email/permit document link).
+          // Built from scratch rather than spreading `permit` so a future
+          // column added to permit_requests can't leak here by default.
+          return {
+            id: permit.id,
+            passport_series: '',
+            jshshir: '',
+            full_name: '',
+            email: '',
+            phone: '',
+            gender: permit.gender,
+            faculty: permit.faculty,
+            direction: permit.direction,
+            course: permit.course,
+            permit_url: '',
+            status: permit.status,
+            room_number: permit.room_number,
+            reject_reason: null,
+            created_at: '',
+            updated_at: '',
+          }
+        })
       const roomOccupancy: Record<string, number> = {}
       usersWithRooms.forEach((user) => {
         if (user.room_number) roomOccupancy[user.room_number] = (roomOccupancy[user.room_number] ?? 0) + 1
@@ -101,11 +124,20 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
       if (action === 'approve') {
         const roomNumber = typeof input.roomNumber === 'string' ? input.roomNumber.trim().slice(0, 20) : ''
         if (!roomNumber) throw new ApiError(400, 'Xona tanlanmagan')
-        if (!(await repository.roomExists(roomNumber))) {
-          throw new ApiError(404, 'Bunday xona xonalar sxemasida topilmadi')
-        }
         const { defaultRoomCapacity } = await createAppSettingsService().get()
-        const request = await repository.approveIntoRoom(id, roomNumber, defaultRoomCapacity)
+        // Room existence is checked inside the RPC itself (same advisory
+        // lock/transaction as the capacity check) — a separate SELECT here
+        // first would leave a window where the room could be deleted from
+        // floor_room_layout between the check and the actual approval.
+        let request
+        try {
+          request = await repository.approveIntoRoom(id, roomNumber, defaultRoomCapacity)
+        } catch (error) {
+          if ((error as { code?: string } | null)?.code === 'P0002') {
+            throw new ApiError(404, 'Bunday xona xonalar sxemasida topilmadi')
+          }
+          throw error
+        }
         if (!request) throw new ApiError(409, 'Bu xonada bo\'sh joy yo\'q yoki yo\'llanma allaqachon ko\'rib chiqilgan')
         return { success: true as const, request }
       }

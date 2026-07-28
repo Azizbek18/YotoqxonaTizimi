@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'crypto'
 import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 import { ApiError } from '@/server/http/api-error'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
+import { verifyFileClaim } from '@/lib/receipt-claim'
 import type { SubmitPaymentResult } from '../types'
 import {
   PAYMENT_MONTHS,
@@ -77,6 +78,16 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       }
 
       const receiptHash = createHash('sha256').update(buffer).digest('hex')
+      // The AI precheck (/api/ai/tekshiruv) and this submission are two
+      // independent requests — without this, a caller could skip straight
+      // here with a self-declared "already validated" flag. The claim is
+      // an HMAC signature over this exact file's hash, only issued by the
+      // precheck when it actually passed, so it can't be forged or reused
+      // for a different file.
+      const claim = form.get('validatedHash')
+      if (!verifyFileClaim('payment', claim, receiptHash)) {
+        throw new ApiError(400, 'Chek avval AI orqali tekshirilishi shart')
+      }
       const batchId = randomUUID()
       const { error: claimError } = await repository.claimReceipt(receiptHash, batchId, student.id)
       if (claimError?.code === '23505') throw new ApiError(409, 'Bu chek avval yuklangan')

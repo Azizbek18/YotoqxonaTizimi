@@ -385,6 +385,7 @@ export default function RuxsatnomaYuborish() {
       submission.append('faculty', faculty)
       submission.append('direction', direction.trim())
       submission.append('course', String(course))
+      if (aiResult.claim) submission.append('aiClaim', aiResult.claim)
 
       const submitResponse = await fetch('/api/permit-requests', {
         method: 'POST',

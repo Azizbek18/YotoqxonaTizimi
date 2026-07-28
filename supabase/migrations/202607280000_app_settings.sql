@@ -7,27 +7,46 @@
 --
 -- Single-row table (id is always 1) — a simple typed row is enough for this
 -- small, fixed set of values; no need for a generic key-value config store.
+-- Uses ADD COLUMN IF NOT EXISTS per-column rather than one CREATE TABLE
+-- block: this migration went through several rounds of schema changes
+-- before ever being applied to a real database, so an environment that
+-- ran an earlier draft only has a subset of these columns — a plain
+-- `CREATE TABLE IF NOT EXISTS` would then silently no-op and leave the
+-- newer columns missing entirely.
 CREATE TABLE IF NOT EXISTS app_settings (
-  id int PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-  monthly_fee numeric NOT NULL DEFAULT 300000 CHECK (monthly_fee >= 0),
-  yearly_contract_fee numeric NOT NULL DEFAULT 3000000 CHECK (yearly_contract_fee >= 0),
-  default_room_capacity int NOT NULL DEFAULT 4 CHECK (default_room_capacity > 0),
-  floor_count int NOT NULL DEFAULT 5 CHECK (floor_count > 0),
-  tarbiyachi_name text NOT NULL DEFAULT '',
-  tarbiyachi_phone text NOT NULL DEFAULT '',
-  komendant_name text NOT NULL DEFAULT '',
-  komendant_phone text NOT NULL DEFAULT '',
-  doctor_name text NOT NULL DEFAULT '',
-  doctor_phone text NOT NULL DEFAULT '',
-  talaba_kengashi_raisi_ogil_name text NOT NULL DEFAULT '',
-  talaba_kengashi_raisi_ogil_phone text NOT NULL DEFAULT '',
-  talaba_kengashi_raisi_qiz_name text NOT NULL DEFAULT '',
-  talaba_kengashi_raisi_qiz_phone text NOT NULL DEFAULT '',
-  security_phone text NOT NULL DEFAULT '',
-  max_upload_size_mb int NOT NULL DEFAULT 5 CHECK (max_upload_size_mb > 0),
-  warning_threshold int NOT NULL DEFAULT 2 CHECK (warning_threshold > 0),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  id int PRIMARY KEY DEFAULT 1 CHECK (id = 1)
 );
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS monthly_fee numeric NOT NULL DEFAULT 300000;
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS yearly_contract_fee numeric NOT NULL DEFAULT 3000000;
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS default_room_capacity int NOT NULL DEFAULT 4;
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS floor_count int NOT NULL DEFAULT 5;
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS tarbiyachi_name text NOT NULL DEFAULT '';
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS tarbiyachi_phone text NOT NULL DEFAULT '';
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS komendant_name text NOT NULL DEFAULT '';
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS komendant_phone text NOT NULL DEFAULT '';
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS doctor_name text NOT NULL DEFAULT '';
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS doctor_phone text NOT NULL DEFAULT '';
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS talaba_kengashi_raisi_ogil_name text NOT NULL DEFAULT '';
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS talaba_kengashi_raisi_ogil_phone text NOT NULL DEFAULT '';
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS talaba_kengashi_raisi_qiz_name text NOT NULL DEFAULT '';
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS talaba_kengashi_raisi_qiz_phone text NOT NULL DEFAULT '';
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS security_phone text NOT NULL DEFAULT '';
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS max_upload_size_mb int NOT NULL DEFAULT 5;
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS warning_threshold int NOT NULL DEFAULT 2;
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE app_settings DROP CONSTRAINT IF EXISTS app_settings_monthly_fee_check;
+ALTER TABLE app_settings ADD CONSTRAINT app_settings_monthly_fee_check CHECK (monthly_fee >= 0);
+ALTER TABLE app_settings DROP CONSTRAINT IF EXISTS app_settings_yearly_contract_fee_check;
+ALTER TABLE app_settings ADD CONSTRAINT app_settings_yearly_contract_fee_check CHECK (yearly_contract_fee >= 0);
+ALTER TABLE app_settings DROP CONSTRAINT IF EXISTS app_settings_default_room_capacity_check;
+ALTER TABLE app_settings ADD CONSTRAINT app_settings_default_room_capacity_check CHECK (default_room_capacity > 0);
+ALTER TABLE app_settings DROP CONSTRAINT IF EXISTS app_settings_floor_count_check;
+ALTER TABLE app_settings ADD CONSTRAINT app_settings_floor_count_check CHECK (floor_count > 0);
+ALTER TABLE app_settings DROP CONSTRAINT IF EXISTS app_settings_max_upload_size_mb_check;
+ALTER TABLE app_settings ADD CONSTRAINT app_settings_max_upload_size_mb_check CHECK (max_upload_size_mb > 0);
+ALTER TABLE app_settings DROP CONSTRAINT IF EXISTS app_settings_warning_threshold_check;
+ALTER TABLE app_settings ADD CONSTRAINT app_settings_warning_threshold_check CHECK (warning_threshold > 0);
 
 -- Seed the single row with today's previously-hardcoded values so nothing
 -- changes for end users until an admin actually edits something.

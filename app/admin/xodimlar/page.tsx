@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchStaffAccounts, createStaffAccount } from '@/features/staff-accounts/client/api'
+import { fetchAppSettings } from '@/features/app-settings/client/api'
 import type { ManagedStaffRole, StaffAccountRow } from '@/features/staff-accounts/types'
 
 const ROLE_LABELS: Record<ManagedStaffRole, string> = {
@@ -38,6 +39,18 @@ export default function AdminXodimlarPage() {
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState(initialForm)
+  const [floorCount, setFloorCount] = useState(5)
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const settings = await fetchAppSettings()
+        setFloorCount(settings.floorCount)
+      } catch {
+        // Keep the fallback default if settings can't be loaded
+      }
+    })()
+  }, [])
 
   const cardSurface = isLight ? 'bg-white/80 border-slate-200 shadow-sm' : 'bg-white/[0.03] border-white/10'
   const textMuted = isLight ? 'text-slate-500' : 'text-slate-400'
@@ -235,10 +248,10 @@ export default function AdminXodimlarPage() {
             <input
               type="number"
               min={1}
-              max={50}
+              max={floorCount}
               value={form.assignedFloor}
               onChange={(e) => setForm((f) => ({ ...f, assignedFloor: e.target.value }))}
-              placeholder="Qavat"
+              placeholder={`Qavat (1-${floorCount})`}
               className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputCls}`}
               required
             />

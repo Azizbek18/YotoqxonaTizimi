@@ -46,3 +46,8 @@ next-env.d.ts
 
 # supabase CLI local cache (project link/session state, not portable)
 supabase/.temp/
+
+# AI coding assistant local state (skill caches, agent config) - not app code
+.agents/
+.claude/
+skills-lock.json

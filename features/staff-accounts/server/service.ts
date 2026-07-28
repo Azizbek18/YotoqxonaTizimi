@@ -1,5 +1,6 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
+import { createAppSettingsService } from '@/features/app-settings/server/service'
 import type { StaffAccountRow, ManagedStaffRole } from '../types'
 import { createStaffAccountRepository, type StaffAccountRepository } from './repository'
 
@@ -42,8 +43,13 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
       // A tarbiyachi with no assigned floor/gender is treated as "sees every
       // floor" (server/auth/tarbiyachi.ts isWithinTarbiyachiFloor) — an
       // unscoped tarbiyachi account would see every student building-wide.
-      if (!Number.isInteger(assignedFloor) || assignedFloor < 1 || assignedFloor > 50) {
-        throw new ApiError(400, 'Tarbiyachi uchun qavat tanlanishi shart')
+      // Bounded by the real floor_count setting, not a generic guess — a
+      // fixed upper bound (e.g. 50) would let an admin pick a floor number
+      // that doesn't actually exist in this dorm, creating an account with
+      // no real students to ever supervise.
+      const { floorCount } = await createAppSettingsService().get()
+      if (!Number.isInteger(assignedFloor) || assignedFloor < 1 || assignedFloor > floorCount) {
+        throw new ApiError(400, `Tarbiyachi uchun qavat 1 dan ${floorCount} gacha bo'lishi kerak`)
       }
       if (assignedGender !== 'male' && assignedGender !== 'female') {
         throw new ApiError(400, 'Tarbiyachi uchun jins tanlanishi shart')

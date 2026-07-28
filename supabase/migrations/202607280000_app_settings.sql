@@ -1,0 +1,54 @@
+-- Replaces the admin Settings page's fake, unpersisted toggles
+-- (maintenance mode / 2FA / IP whitelist — none of which were wired to any
+-- real feature) with a small set of values that actually were hardcoded
+-- elsewhere in the app (monthly fee, contract fee, default room capacity,
+-- floor count, staff contact numbers) and genuinely benefit from being
+-- admin-editable.
+--
+-- Single-row table (id is always 1) — a simple typed row is enough for this
+-- small, fixed set of values; no need for a generic key-value config store.
+CREATE TABLE IF NOT EXISTS app_settings (
+  id int PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  monthly_fee numeric NOT NULL DEFAULT 300000 CHECK (monthly_fee >= 0),
+  yearly_contract_fee numeric NOT NULL DEFAULT 3000000 CHECK (yearly_contract_fee >= 0),
+  default_room_capacity int NOT NULL DEFAULT 4 CHECK (default_room_capacity > 0),
+  floor_count int NOT NULL DEFAULT 5 CHECK (floor_count > 0),
+  tarbiyachi_name text NOT NULL DEFAULT '',
+  tarbiyachi_phone text NOT NULL DEFAULT '',
+  komendant_name text NOT NULL DEFAULT '',
+  komendant_phone text NOT NULL DEFAULT '',
+  doctor_name text NOT NULL DEFAULT '',
+  doctor_phone text NOT NULL DEFAULT '',
+  talaba_kengashi_raisi_ogil_name text NOT NULL DEFAULT '',
+  talaba_kengashi_raisi_ogil_phone text NOT NULL DEFAULT '',
+  talaba_kengashi_raisi_qiz_name text NOT NULL DEFAULT '',
+  talaba_kengashi_raisi_qiz_phone text NOT NULL DEFAULT '',
+  security_phone text NOT NULL DEFAULT '',
+  max_upload_size_mb int NOT NULL DEFAULT 5 CHECK (max_upload_size_mb > 0),
+  warning_threshold int NOT NULL DEFAULT 2 CHECK (warning_threshold > 0),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Seed the single row with today's previously-hardcoded values so nothing
+-- changes for end users until an admin actually edits something.
+INSERT INTO app_settings (
+  id, monthly_fee, yearly_contract_fee, default_room_capacity, floor_count,
+  tarbiyachi_name, tarbiyachi_phone, komendant_name, komendant_phone,
+  doctor_name, doctor_phone,
+  talaba_kengashi_raisi_ogil_name, talaba_kengashi_raisi_ogil_phone,
+  talaba_kengashi_raisi_qiz_name, talaba_kengashi_raisi_qiz_phone,
+  security_phone, max_upload_size_mb, warning_threshold
+) VALUES (
+  1, 300000, 3000000, 4, 5,
+  'Mo''minov Azizbek', '+998909998877', 'Qodirov Sardor', '+998931112233',
+  'Sultonova Ra''no', '+998944445566',
+  '', '', '', '',
+  '+998712000000', 5, 2
+) ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
+
+-- No client-facing policies: only the service-role key (via
+-- /api/settings for reads, /api/admin/settings for admin writes) touches
+-- this table, matching how floor_room_layout is handled elsewhere in this
+-- schema.

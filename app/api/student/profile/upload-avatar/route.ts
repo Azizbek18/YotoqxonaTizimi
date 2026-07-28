@@ -4,6 +4,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 import { requireActiveStudent } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
+import { createAppSettingsService } from '@/features/app-settings/server/service'
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
@@ -53,8 +54,9 @@ export async function POST(request: NextRequest) {
     const form = await request.formData()
     const file = form.get('file')
     if (!(file instanceof File)) return NextResponse.json({ error: 'Fayl topilmadi' }, { status: 400 })
-    if (!ALLOWED_IMAGE_TYPES.has(file.type) || file.size < 16 || file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Faqat JPEG, PNG yoki WEBP (5 MB gacha) qabul qilinadi' }, { status: 400 })
+    const { maxUploadSizeMb } = await createAppSettingsService().get()
+    if (!ALLOWED_IMAGE_TYPES.has(file.type) || file.size < 16 || file.size > maxUploadSizeMb * 1024 * 1024) {
+      return NextResponse.json({ error: `Faqat JPEG, PNG yoki WEBP (${maxUploadSizeMb} MB gacha) qabul qilinadi` }, { status: 400 })
     }
 
     const rule = PERMIT_FILE_RULES[file.type]

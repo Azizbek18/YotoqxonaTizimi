@@ -205,6 +205,27 @@ export interface Database {
         size: string
         created_at: string
       }>
+      app_settings: Table<{
+        id: number
+        monthly_fee: number
+        yearly_contract_fee: number
+        default_room_capacity: number
+        floor_count: number
+        tarbiyachi_name: string
+        tarbiyachi_phone: string
+        komendant_name: string
+        komendant_phone: string
+        doctor_name: string
+        doctor_phone: string
+        talaba_kengashi_raisi_ogil_name: string
+        talaba_kengashi_raisi_ogil_phone: string
+        talaba_kengashi_raisi_qiz_name: string
+        talaba_kengashi_raisi_qiz_phone: string
+        security_phone: string
+        max_upload_size_mb: number
+        warning_threshold: number
+        updated_at: string
+      }>
     }
     Views: Record<string, never>
     Functions: {

@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Megaphone, ListOrdered, ShieldCheck,
   UserCircle, Bell, Moon, Zap, Clock, CreditCard, FileText,
   X, AlertTriangle, CheckCircle2, AlertCircle, Upload, Sparkles,
-  Code, Send, Phone, ExternalLink
+  Code, Send, Phone, ExternalLink, Camera
 } from 'lucide-react'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
@@ -18,6 +18,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchStudentProfile, updateStudentProfile, uploadStudentAvatar } from '@/features/profile/client/api'
 import { createStudentApplication, fetchStudentApplications } from '@/features/applications/client/api'
 import { fetchStudentAnnouncements } from '@/features/announcements/client/api'
+import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { supabase } from '@/lib/supabase'
 import { getSafeUser } from '@/lib/auth-session'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
@@ -1079,6 +1080,11 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
   const [aiResult, setAiResult] = useState<{ is_human: boolean; description: string; reason?: string | null } | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [maxUploadSizeMb, setMaxUploadSizeMb] = useState(5)
+
+  useEffect(() => {
+    fetchAppSettings().then((settings) => setMaxUploadSizeMb(settings.maxUploadSizeMb)).catch(() => {})
+  }, [])
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -1091,9 +1097,9 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
       return
     }
 
-    // Validate size (5MB)
-    if (selectedFile.size > 5 * 1024 * 1024) {
-      toast.error("Rasm hajmi 5MB dan kichik bo'lishi shart")
+    // Validate size
+    if (selectedFile.size > maxUploadSizeMb * 1024 * 1024) {
+      toast.error(`Rasm hajmi ${maxUploadSizeMb}MB dan kichik bo'lishi shart`)
       return
     }
 
@@ -1407,7 +1413,7 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
           {/* Developer Photo */}
           <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-purple-500/50 shrink-0 shadow-md">
             <Image
-              src="/logo.png"
+              src="https://qgnjhkvmuywlfdnjfpqg.supabase.co/storage/v1/object/public/avatar/005d251c-5116-4e1e-926f-4cdb97915743/1781451759533.jpg"
               alt="Azizbek Mo'minov"
               fill
               className="object-cover"
@@ -1416,7 +1422,7 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
           {/* Details */}
           <div className="min-w-0 flex-1 text-center sm:text-left">
             <h4 className="text-sm font-black tracking-tight leading-tight">Mo&apos;minov Azizbek</h4>
-            <p className="text-[10px] text-purple-400 font-bold uppercase tracking-wider mt-0.5">Senior Full-Stack Developer</p>
+            <p className="text-[10px] text-purple-400 font-bold uppercase tracking-wider mt-0.5">Strong Junior dasturchi</p>
             <div className="mt-2.5 space-y-1.5 text-xs">
               <a 
                 href="tel:+998912461050" 
@@ -1437,6 +1443,18 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
               >
                 <Send size={12} className="rotate-45 shrink-0" />
                 Telegram: @Azizbek_04_18
+                <ExternalLink size={10} className="shrink-0" />
+              </a>
+              <a
+                href="https://instagram.com/muminov_azizbek_18"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center justify-center sm:justify-start gap-1.5 font-medium transition-colors ${
+                  isLight ? 'text-slate-600 hover:text-blue-600' : 'text-slate-300 hover:text-cyan-400'
+                }`}
+              >
+                <Camera size={12} className="shrink-0" />
+                Instagram: @muminov_azizbek_18
                 <ExternalLink size={10} className="shrink-0" />
               </a>
             </div>

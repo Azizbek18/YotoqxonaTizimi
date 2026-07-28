@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { getSafeSession } from '@/lib/auth-session'
 import { fetchAdminPaymentSummary } from '@/features/payments/client/api'
@@ -47,6 +48,7 @@ export default function AdminLayout({
   const [isMobile, setIsMobile] = useState(false)
   const [waitingCount, setWaitingCount] = useState(0)
   const [mounted, setMounted] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
@@ -165,6 +167,8 @@ export default function AdminLayout({
       router.push('/login')
     } catch {
       toast.error("Chiqib ketishda xato!")
+    } finally {
+      setShowLogoutConfirm(false)
     }
   }
 
@@ -312,7 +316,7 @@ export default function AdminLayout({
             {!compact && (
               <div>
                 <p className={`text-[9px] font-black uppercase tracking-[0.26em] leading-tight ${mutedText}`}>Tema</p>
-                <p className={`mt-1 text-xs font-semibold ${strongText}`}>Görünüş</p>
+                <p className={`mt-1 text-xs font-semibold ${strongText}`}>Ko&apos;rinish</p>
               </div>
             )}
             <ThemeToggle />
@@ -388,30 +392,28 @@ export default function AdminLayout({
               </div>
             </div>
 
-            <div className={`hidden items-center gap-3 rounded-2xl border px-4 py-2 sm:flex ${panelSurface}`}>
-              {pathname === '/admin/settings' ? (
-                <button
-                  onClick={handleLogout}
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-all ${isLight
-                    ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
-                    : 'border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15'
-                    }`}
-                >
-                  <LogOut size={16} />
-                  <span>Chiqib ketish</span>
-                </button>
-              ) : (
-                <>
-                  <div className={`rounded-xl p-2 ${isLight ? 'bg-sky-100 text-sky-600' : 'bg-cyan-400/10 text-cyan-300'}`}>
-                    <ShieldCheck size={16} />
-                  </div>
-                  <div>
-                    <p className={`text-[10px] font-black uppercase tracking-[0.22em] ${mutedText}`}>Holat</p>
-                    <p className={`text-sm font-semibold ${strongText}`}>Boshqaruv faol</p>
-                  </div>
-                </>
-              )}
-            </div>
+            {pathname === '/admin/settings' ? (
+              <button
+                onClick={() => setShowLogoutConfirm(true)}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-all ${isLight
+                  ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
+                  : 'border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15'
+                  }`}
+              >
+                <LogOut size={16} />
+                <span className="hidden sm:inline">Chiqib ketish</span>
+              </button>
+            ) : (
+              <div className={`hidden items-center gap-3 rounded-2xl border px-4 py-2 sm:flex ${panelSurface}`}>
+                <div className={`rounded-xl p-2 ${isLight ? 'bg-sky-100 text-sky-600' : 'bg-cyan-400/10 text-cyan-300'}`}>
+                  <ShieldCheck size={16} />
+                </div>
+                <div>
+                  <p className={`text-[10px] font-black uppercase tracking-[0.22em] ${mutedText}`}>Holat</p>
+                  <p className={`text-sm font-semibold ${strongText}`}>Boshqaruv faol</p>
+                </div>
+              </div>
+            )}
           </div>
         </header>
 
@@ -422,6 +424,15 @@ export default function AdminLayout({
         </div>
       </div>
     </div>
+    <ConfirmModal
+      isOpen={showLogoutConfirm}
+      title="Chiqishni tasdiqlang"
+      description="Rostdan ham tizimdan chiqmoqchimisiz?"
+      onClose={() => setShowLogoutConfirm(false)}
+      onConfirm={handleLogout}
+      confirmText="Ha, chiqish"
+      confirmVariant="danger"
+    />
     </FontScopeProvider>
   )
 }

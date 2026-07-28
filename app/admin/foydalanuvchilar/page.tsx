@@ -36,6 +36,7 @@ import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { usePollingEffect, useChatAutoScroll } from '@/lib/hooks/useChatPolling'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchAdminPayments, fetchReceiptSignedUrl } from '@/features/payments/client/api'
+import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { fetchAdminChat, sendAdminChat } from '@/features/applications/client/admin-chat-api'
 
 type UserRow = {
@@ -153,6 +154,7 @@ export default function AdminUsersPage() {
 
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [warningThreshold, setWarningThreshold] = useState(2)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRoom, setFilterRoom] = useState('')
   const [activeFolder, setActiveFolder] = useState<'all' | 'talaba' | 'tarbiyachi' | 'admin' | 'pending'>('all')
@@ -286,6 +288,10 @@ export default function AdminUsersPage() {
     }
     void init()
   }, [loadUsers])
+
+  useEffect(() => {
+    fetchAppSettings().then((settings) => setWarningThreshold(settings.warningThreshold)).catch(() => {})
+  }, [])
 
   const loadStudentPayments = async (studentId: string) => {
     try {
@@ -1012,7 +1018,7 @@ export default function AdminUsersPage() {
                               ? 'bg-white/20 text-white border-white/10'
                               : (user.warning_count ?? 0) === 0
                                 ? 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20'
-                                : (user.warning_count ?? 0) <= 2
+                                : (user.warning_count ?? 0) <= warningThreshold
                                   ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
                                   : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 animate-pulse'
                           }`}>
@@ -1023,7 +1029,7 @@ export default function AdminUsersPage() {
                               </>
                             ) : (
                               <>
-                                <span className={`w-1 h-1 rounded-full ${isActive ? 'bg-white' : (user.warning_count ?? 0) <= 2 ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                                <span className={`w-1 h-1 rounded-full ${isActive ? 'bg-white' : (user.warning_count ?? 0) <= warningThreshold ? 'bg-amber-500' : 'bg-rose-500'}`} />
                                 {user.warning_count} ta
                               </>
                             )}
@@ -1115,7 +1121,7 @@ export default function AdminUsersPage() {
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border shrink-0 whitespace-nowrap ${
                           (selectedUser.warning_count ?? 0) === 0
                             ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                            : (selectedUser.warning_count ?? 0) <= 2
+                            : (selectedUser.warning_count ?? 0) <= warningThreshold
                               ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
                               : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 animate-pulse'
                         }`}>
@@ -1126,7 +1132,7 @@ export default function AdminUsersPage() {
                             </>
                           ) : (
                             <>
-                              <span className={`w-1.5 h-1.5 rounded-full ${(selectedUser.warning_count ?? 0) <= 2 ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                              <span className={`w-1.5 h-1.5 rounded-full ${(selectedUser.warning_count ?? 0) <= warningThreshold ? 'bg-amber-500' : 'bg-rose-500'}`} />
                               {selectedUser.warning_count} ta ogohlantirish
                             </>
                           )}

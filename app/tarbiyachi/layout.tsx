@@ -7,6 +7,7 @@ import { Bell, ClipboardList, LayoutDashboard, LogOut, Users } from 'lucide-reac
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { getAuthHeaders } from '@/lib/auth-session'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
@@ -32,6 +33,7 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
   const [mounted, setMounted] = useState(false)
   const [pending, setPending] = useState<PendingAriza[]>([])
   const [notifOpen, setNotifOpen] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -143,7 +145,7 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
               )}
             </div>
             <button
-              onClick={handleLogout}
+              onClick={() => setShowLogoutConfirm(true)}
               className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all ${isLight ? 'border-red-300 bg-red-100 text-red-600 hover:bg-red-200' : 'border-red-400/30 bg-red-500/10 text-red-300'}`}
             >
               <LogOut size={14} /> Chiqish
@@ -171,6 +173,15 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
         </aside>
         <section>{children}</section>
       </main>
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        title="Chiqishni tasdiqlang"
+        description="Rostdan ham tizimdan chiqmoqchimisiz?"
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        confirmText="Ha, chiqish"
+        confirmVariant="danger"
+      />
     </div>
   )
 }

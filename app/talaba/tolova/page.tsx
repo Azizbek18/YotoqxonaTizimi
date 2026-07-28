@@ -17,6 +17,7 @@ import PageSkeleton from '@/components/ui/PageSkeleton'
 import { User } from '@supabase/supabase-js'
 import { fetchStudentPayments, submitStudentPayment, fetchReceiptSignedUrl } from '@/features/payments/client/api'
 import type { PaymentRecord } from '@/features/payments/types'
+import { fetchAppSettings } from '@/features/app-settings/client/api'
 
 interface ValidationResult {
     valid: boolean
@@ -52,6 +53,8 @@ export default function TolovaPage() {
     const [selectedMonths, setSelectedMonths] = useState<string[]>([])
     const [selectedYear, setSelectedYear] = useState<number>(2026)
     const [amount, setAmount] = useState<number>(300000)
+    const [monthlyFee, setMonthlyFee] = useState<number>(300000)
+    const [yearlyContractFee, setYearlyContractFee] = useState<number>(3000000)
 
     // AI Validation states
     const [validating, setValidating] = useState(false)
@@ -61,6 +64,18 @@ export default function TolovaPage() {
 
     useEffect(() => {
         setMounted(true)
+    }, [])
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const settings = await fetchAppSettings()
+                setMonthlyFee(settings.monthlyFee)
+                setYearlyContractFee(settings.yearlyContractFee)
+            } catch {
+                // Keep the default fee values if settings can't be loaded
+            }
+        })()
     }, [])
 
     const loadPayments = async () => {
@@ -159,7 +174,7 @@ export default function TolovaPage() {
             if (clickedIdx === maxSelectedIndex) {
                 const nextSelected = selectedMonths.filter(month => month !== m)
                 setSelectedMonths(nextSelected)
-                setAmount(nextSelected.length * 300000)
+                setAmount(nextSelected.length * monthlyFee)
                 if (nextSelected.length === 0) {
                     setSelectedMonth("")
                 } else {
@@ -189,7 +204,7 @@ export default function TolovaPage() {
                 const nextSelected = [...selectedMonths, m]
                 setSelectedMonths(nextSelected)
                 setSelectedMonth(m)
-                setAmount(nextSelected.length * 300000)
+                setAmount(nextSelected.length * monthlyFee)
             } else {
                 const nextLabel = expectedIdx < MONTHS.length ? MONTHS[expectedIdx] : null
                 toast.error(
@@ -211,14 +226,14 @@ export default function TolovaPage() {
             if (firstUnpaid) {
                 setSelectedMonth(firstUnpaid)
                 setSelectedMonths([firstUnpaid])
-                setAmount(300000)
+                setAmount(monthlyFee)
             } else {
                 setSelectedMonths([])
                 setSelectedMonth("")
                 setAmount(0)
             }
         }
-    }, [payments, selectedYear, loading, getMonthStatus])
+    }, [payments, selectedYear, loading, getMonthStatus, monthlyFee])
 
     // Step 1: AI Validation — check receipt before saving
     const handleUpload = async () => {
@@ -325,7 +340,7 @@ export default function TolovaPage() {
     const paidRecords = payments.filter(p => p.status === 'paid' || p.status === 'approved')
     const waitingRecords = payments.filter(p => p.status === 'waiting')
     const paidMonths = paidRecords.length
-    const totalContractFee = 3000000 // 3M default contract fee
+    const totalContractFee = yearlyContractFee
     const paidAmount = paidRecords.reduce((sum, p) => sum + p.amount, 0)
     const waitingAmount = waitingRecords.reduce((sum, p) => sum + p.amount, 0)
     const remainingAmount = Math.max(0, totalContractFee - paidAmount)

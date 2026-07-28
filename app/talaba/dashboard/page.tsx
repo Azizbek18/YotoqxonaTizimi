@@ -30,6 +30,7 @@ import {
   createStudentApplication,
   fetchStudentApplications,
 } from '@/features/applications/client/api';
+import { fetchAppSettings } from '@/features/app-settings/client/api';
 
 
 interface Task {
@@ -211,6 +212,13 @@ export default function TalabaDashboard() {
   const [loadingAdminChat, setLoadingAdminChat] = useState(false);
   const [sendingAdminChat, setSendingAdminChat] = useState(false);
   const [adminChatInput, setAdminChatInput] = useState('');
+  const [contacts, setContacts] = useState({
+    tarbiyachiName: 'Mo\'minov Azizbek', tarbiyachiPhone: '+998909998877',
+    komendantName: 'Qodirov Sardor', komendantPhone: '+998931112233',
+    doctorName: 'Sultonova Ra\'no', doctorPhone: '+998944445566',
+    talabaKengashiRaisiOgilName: '', talabaKengashiRaisiOgilPhone: '',
+    talabaKengashiRaisiQizName: '', talabaKengashiRaisiQizPhone: '',
+  });
 
   const getAppStatusInfo = (status: string) => {
     switch (status) {
@@ -347,6 +355,23 @@ export default function TalabaDashboard() {
 
     loadSchedule();
   }, [profile, roommates, allResidents]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const settings = await fetchAppSettings();
+        setContacts({
+          tarbiyachiName: settings.tarbiyachiName, tarbiyachiPhone: settings.tarbiyachiPhone,
+          komendantName: settings.komendantName, komendantPhone: settings.komendantPhone,
+          doctorName: settings.doctorName, doctorPhone: settings.doctorPhone,
+          talabaKengashiRaisiOgilName: settings.talabaKengashiRaisiOgilName, talabaKengashiRaisiOgilPhone: settings.talabaKengashiRaisiOgilPhone,
+          talabaKengashiRaisiQizName: settings.talabaKengashiRaisiQizName, talabaKengashiRaisiQizPhone: settings.talabaKengashiRaisiQizPhone,
+        });
+      } catch {
+        // Keep the default contact info if settings can't be loaded
+      }
+    })();
+  }, []);
 
   // Sync draft with confirmed schedule when modal opens
   useEffect(() => {
@@ -1066,9 +1091,9 @@ export default function TalabaDashboard() {
               <div className="flex justify-between items-center">
                 <div>
                   <p className={`text-xs font-bold ${textStrong}`}>Tarbiyachi (Navbatchi)</p>
-                  <p className={`text-[9px] ${textMuted}`}>Mo&apos;minov Azizbek</p>
+                  <p className={`text-[9px] ${textMuted}`}>{contacts.tarbiyachiName}</p>
                 </div>
-                <a href="tel:+998909998877" className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
+                <a href={`tel:${contacts.tarbiyachiPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
                   isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
                 }`}>
                   <Phone size={10} /> Call
@@ -1078,9 +1103,9 @@ export default function TalabaDashboard() {
               <div className="flex justify-between items-center pt-2.5 border-t border-white/5">
                 <div>
                   <p className={`text-xs font-bold ${textStrong}`}>Komedant</p>
-                  <p className={`text-[9px] ${textMuted}`}>Qodirov Sardor</p>
+                  <p className={`text-[9px] ${textMuted}`}>{contacts.komendantName}</p>
                 </div>
-                <a href="tel:+998931112233" className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
+                <a href={`tel:${contacts.komendantPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
                   isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
                 }`}>
                   <Phone size={10} /> Call
@@ -1090,14 +1115,42 @@ export default function TalabaDashboard() {
               <div className="flex justify-between items-center pt-2.5 border-t border-white/5">
                 <div>
                   <p className={`text-xs font-bold ${textStrong}`}>Tibbiy yordam xonasi</p>
-                  <p className={`text-[9px] ${textMuted}`}>Sultonova Ra&apos;no (Shifokor)</p>
+                  <p className={`text-[9px] ${textMuted}`}>{contacts.doctorName} (Shifokor)</p>
                 </div>
-                <a href="tel:+998944445566" className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
+                <a href={`tel:${contacts.doctorPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
                   isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
                 }`}>
                   <Phone size={10} /> Call
                 </a>
               </div>
+
+              {contacts.talabaKengashiRaisiOgilPhone && (
+                <div className="flex justify-between items-center pt-2.5 border-t border-white/5">
+                  <div>
+                    <p className={`text-xs font-bold ${textStrong}`}>Talaba kengashi raisi (o&apos;g&apos;il)</p>
+                    <p className={`text-[9px] ${textMuted}`}>{contacts.talabaKengashiRaisiOgilName}</p>
+                  </div>
+                  <a href={`tel:${contacts.talabaKengashiRaisiOgilPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
+                    isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
+                  }`}>
+                    <Phone size={10} /> Call
+                  </a>
+                </div>
+              )}
+
+              {contacts.talabaKengashiRaisiQizPhone && (
+                <div className="flex justify-between items-center pt-2.5 border-t border-white/5">
+                  <div>
+                    <p className={`text-xs font-bold ${textStrong}`}>Talaba kengashi raisi (qiz)</p>
+                    <p className={`text-[9px] ${textMuted}`}>{contacts.talabaKengashiRaisiQizName}</p>
+                  </div>
+                  <a href={`tel:${contacts.talabaKengashiRaisiQizPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
+                    isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
+                  }`}>
+                    <Phone size={10} /> Call
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 

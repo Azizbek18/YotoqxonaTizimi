@@ -15,12 +15,14 @@ import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import ProfileLoadError from '@/components/talaba/ProfileLoadError'
 import PageSkeleton from '@/components/ui/PageSkeleton'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 import {
   deleteStudentAvatar,
   fetchStudentProfile,
   updateStudentProfile,
   uploadStudentAvatar,
 } from '@/features/profile/client/api'
+import { fetchAppSettings } from '@/features/app-settings/client/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Profile {
@@ -295,9 +297,17 @@ export default function StudentProfile() {
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
+  // Logout confirmation state
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+
   // Last login
   const [lastLogin, setLastLogin] = useState<string | null>(null)
-  
+
+  const [maxUploadSizeMb, setMaxUploadSizeMb] = useState(5)
+  useEffect(() => {
+    fetchAppSettings().then((settings) => setMaxUploadSizeMb(settings.maxUploadSizeMb)).catch(() => {})
+  }, [])
+
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
     setMounted(true)
@@ -305,7 +315,7 @@ export default function StudentProfile() {
 
   // Lock body scroll when any modal is open
   useEffect(() => {
-    if (showEditModal || showPasswordModal || showDeleteConfirm) {
+    if (showEditModal || showPasswordModal || showDeleteConfirm || showLogoutConfirm) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -313,7 +323,7 @@ export default function StudentProfile() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showEditModal, showPasswordModal, showDeleteConfirm]);
+  }, [showEditModal, showPasswordModal, showDeleteConfirm, showLogoutConfirm]);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -396,8 +406,8 @@ export default function StudentProfile() {
       return
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage({ type: 'error', text: 'Rasm 5MB dan kichik bo\'lishi shart' })
+    if (file.size > maxUploadSizeMb * 1024 * 1024) {
+      setMessage({ type: 'error', text: `Rasm ${maxUploadSizeMb}MB dan kichik bo'lishi shart` })
       return
     }
 
@@ -593,7 +603,7 @@ export default function StudentProfile() {
           </div>
 
           <button
-            onClick={handleLogout}
+            onClick={() => setShowLogoutConfirm(true)}
             className={`flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${
               isLight 
                 ? 'bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 shadow-sm' 
@@ -1494,6 +1504,15 @@ export default function StudentProfile() {
       document.body
     )}
 
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        title="Chiqishni tasdiqlang"
+        description="Rostdan ham tizimdan chiqmoqchimisiz?"
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        confirmText="Ha, chiqish"
+        confirmVariant="danger"
+      />
     </div>
   )
 }

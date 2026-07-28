@@ -13,7 +13,7 @@ export default function ThemeToggle() {
     <motion.button
       type="button"
       onClick={toggleTheme}
-      aria-label={isLight ? 'Dark mode ga otish' : 'Light mode ga otish'}
+      aria-label={isLight ? "Tungi rejimga o'tish" : "Kunduzgi rejimga o'tish"}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       whileHover={{ scale: 1.05 }}

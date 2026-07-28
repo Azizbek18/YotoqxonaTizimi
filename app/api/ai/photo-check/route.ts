@@ -3,6 +3,7 @@ import { callGemini } from '@/lib/gemini'
 import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
+import { createAppSettingsService } from '@/features/app-settings/server/service'
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,8 +29,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Faqat JPEG, PNG yoki WebP rasmlar qabul qilinadi' }, { status: 400 })
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Rasm hajmi 5MB dan kichik bo‘lishi kerak' }, { status: 400 })
+    const { maxUploadSizeMb } = await createAppSettingsService().get()
+    if (file.size > maxUploadSizeMb * 1024 * 1024) {
+      return NextResponse.json({ error: `Rasm hajmi ${maxUploadSizeMb}MB dan kichik bo‘lishi kerak` }, { status: 400 })
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())

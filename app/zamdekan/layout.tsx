@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useZamdekanScope } from '@/lib/hooks/useZamdekanScope'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
@@ -35,6 +36,7 @@ export default function ZamdekanLayout({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const { faculty: zamdekanFaculty, fullName: zamdekanName, resolved: facultyResolved } = useZamdekanScope()
   useToastOffset(84)
   const [recentPending, setRecentPending] = useState<{ id: string; full_name: string; direction: string; created_at: string | null }[]>([])
@@ -130,6 +132,8 @@ export default function ZamdekanLayout({
       router.push('/login')
     } catch {
       toast.error('Chiqib ketishda xato!')
+    } finally {
+      setShowLogoutConfirm(false)
     }
   }
 
@@ -259,7 +263,7 @@ export default function ZamdekanLayout({
           </div>
         )}
         <button
-          onClick={handleLogout}
+          onClick={() => setShowLogoutConfirm(true)}
           className={`flex w-full items-center gap-3 rounded-xl p-3 text-xs font-black uppercase tracking-wider transition-all active:scale-95 ${
             isLight
               ? 'text-rose-600 hover:bg-rose-50 bg-rose-500/5'
@@ -395,6 +399,15 @@ export default function ZamdekanLayout({
           </div>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        title="Chiqishni tasdiqlang"
+        description="Rostdan ham tizimdan chiqmoqchimisiz?"
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        confirmText="Ha, chiqish"
+        confirmVariant="danger"
+      />
     </div>
   )
 }

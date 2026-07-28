@@ -16,6 +16,7 @@ import * as THREE from 'three'
 import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
 import { fetchFloorLayout, saveFloorLayout } from '@/features/room-layout/client/api'
 import type { RoomBlockSide, RoomBlockSize, RoomLayoutBlock } from '@/features/room-layout/types'
+import { fetchAppSettings } from '@/features/app-settings/client/api'
 
 interface StudentInfo {
   id: string
@@ -98,7 +99,9 @@ export default function Admin3DXonalarPage() {
   const [hoveredRoom, setHoveredRoom] = useState<{ roomNumber: string; clientX: number; clientY: number } | null>(null)
 
   const [activeFloor, setActiveFloor] = useState<number>(1)
-  const floors = [1, 2, 3, 4, 5]
+  const [floorCount, setFloorCount] = useState<number>(5)
+  const [defaultRoomCapacity, setDefaultRoomCapacity] = useState<number>(4)
+  const floors = Array.from({ length: floorCount }, (_, i) => i + 1)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -148,7 +151,7 @@ export default function Admin3DXonalarPage() {
           roomNumber,
           occupied: info.count,
           students: info.students,
-          capacity: 4,
+          capacity: defaultRoomCapacity,
         }))
       )
     } catch (error) {
@@ -181,6 +184,18 @@ export default function Admin3DXonalarPage() {
   useEffect(() => {
     const loadId = window.setTimeout(() => void loadRoomOccupancy(), 0)
     return () => window.clearTimeout(loadId)
+  }, [defaultRoomCapacity])
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const settings = await fetchAppSettings()
+        setFloorCount(settings.floorCount)
+        setDefaultRoomCapacity(settings.defaultRoomCapacity)
+      } catch {
+        // Keep the default floor/capacity values if settings can't be loaded
+      }
+    })()
   }, [])
 
   useEffect(() => {
@@ -451,9 +466,9 @@ export default function Admin3DXonalarPage() {
     return {
       occupiedPlaces,
       totalRooms: roomCount,
-      freePlaces: Math.max(roomCount * 4 - occupiedPlaces, 0),
+      freePlaces: Math.max(roomCount * defaultRoomCapacity - occupiedPlaces, 0),
     }
-  }, [roomSnapshots, positionedRooms])
+  }, [roomSnapshots, positionedRooms, defaultRoomCapacity])
 
   const selectedRoomData = useMemo(() => {
     if (!selectedRoomNumber) return null
@@ -461,10 +476,10 @@ export default function Admin3DXonalarPage() {
     return {
       number: selectedRoomNumber,
       occupied: snap?.occupied ?? 0,
-      capacity: 4,
+      capacity: defaultRoomCapacity,
       students: snap?.students ?? []
     }
-  }, [selectedRoomNumber, roomSnapshots])
+  }, [selectedRoomNumber, roomSnapshots, defaultRoomCapacity])
 
   const renderBlockColumn = (side: RoomBlockSide, blocks: EditableBlock[]) => (
     <div className={`rounded-2xl border p-4 ${cardBg}`}>

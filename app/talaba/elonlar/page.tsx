@@ -20,6 +20,7 @@ import {
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { supabase } from '@/lib/supabase';
 import { fetchStudentAnnouncements } from '@/features/announcements/client/api';
+import { fetchAppSettings } from '@/features/app-settings/client/api';
 import PageSkeleton from '@/components/ui/PageSkeleton';
 import { StaggerList, StaggerItem } from '@/components/motion/StaggerList';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
@@ -134,9 +135,24 @@ export default function ElonlarPage() {
   const isLight = theme === 'light';
   const [mounted, setMounted] = useState(false);
   const reduceMotion = useReducedMotion();
+  const [emergencyContacts, setEmergencyContacts] = useState({
+    securityPhone: '+998712000000',
+    doctorPhone: '+998944445566',
+  });
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const settings = await fetchAppSettings();
+        setEmergencyContacts({ securityPhone: settings.securityPhone, doctorPhone: settings.doctorPhone });
+      } catch {
+        // Keep the default emergency contact numbers if settings can't be loaded
+      }
+    })();
   }, []);
 
   // Lock body scroll when any modal is open
@@ -498,11 +514,11 @@ export default function ElonlarPage() {
               <div className="space-y-1.5 pt-2 text-xs font-bold">
                 <div className="flex justify-between">
                   <span className="opacity-60">Xavfsizlik:</span>
-                  <a href="tel:+998712000000" className="text-rose-500 hover:underline">+998 71 200-00-00</a>
+                  <a href={`tel:${emergencyContacts.securityPhone}`} className="text-rose-500 hover:underline">{emergencyContacts.securityPhone}</a>
                 </div>
                 <div className="flex justify-between">
                   <span className="opacity-60">Shifokor:</span>
-                  <a href="tel:+998944445566" className="text-blue-500 hover:underline">+998 94 444-55-66</a>
+                  <a href={`tel:${emergencyContacts.doctorPhone}`} className="text-blue-500 hover:underline">{emergencyContacts.doctorPhone}</a>
                 </div>
               </div>
             </div>

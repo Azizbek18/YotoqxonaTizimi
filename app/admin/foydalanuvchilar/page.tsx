@@ -156,7 +156,9 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [warningThreshold, setWarningThreshold] = useState(2)
   const [yearlyContractFee, setYearlyContractFee] = useState(3000000)
-  const [floorCount, setFloorCount] = useState(5)
+  // null (not a guessed default) while settings are loading or unavailable —
+  // a wrong guess would silently hide real floors above it from the filter.
+  const [floorCount, setFloorCount] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRoom, setFilterRoom] = useState('')
   const [activeFolder, setActiveFolder] = useState<'all' | 'talaba' | 'tarbiyachi' | 'admin' | 'pending'>('all')
@@ -296,7 +298,7 @@ export default function AdminUsersPage() {
       setWarningThreshold(settings.warningThreshold)
       setYearlyContractFee(settings.yearlyContractFee)
       setFloorCount(settings.floorCount)
-    }).catch(() => {})
+    }).catch(() => toast.error("Qavatlar sozlamasini yuklab bo'lmadi"))
   }, [])
 
   const loadStudentPayments = async (studentId: string) => {
@@ -1689,7 +1691,7 @@ export default function AdminUsersPage() {
                     value={editForm.assigned_floor || ''}
                     onChange={(val) => setEditForm(prev => ({ ...prev, assigned_floor: val }))}
                     placeholder="Qavatni tanlang"
-                    options={Array.from({ length: floorCount }, (_, i) => i + 1).map((floor) => ({
+                    options={Array.from({ length: floorCount ?? 0 }, (_, i) => i + 1).map((floor) => ({
                       value: String(floor),
                       label: `${floor}-qavat`,
                     }))}

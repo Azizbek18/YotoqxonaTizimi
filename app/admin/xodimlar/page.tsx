@@ -39,7 +39,10 @@ export default function AdminXodimlarPage() {
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState(initialForm)
-  const [floorCount, setFloorCount] = useState(5)
+  // null (not a guessed default) while settings are loading or unavailable —
+  // a wrong guess here would set the input's native `max`, which the browser
+  // enforces on submit and would block legitimate floors above the guess.
+  const [floorCount, setFloorCount] = useState<number | null>(null)
 
   useEffect(() => {
     (async () => {
@@ -47,7 +50,7 @@ export default function AdminXodimlarPage() {
         const settings = await fetchAppSettings()
         setFloorCount(settings.floorCount)
       } catch {
-        // Keep the fallback default if settings can't be loaded
+        toast.error("Qavatlar sozlamasini yuklab bo'lmadi — qavat cheklovi tekshirilmayapti")
       }
     })()
   }, [])
@@ -248,10 +251,10 @@ export default function AdminXodimlarPage() {
             <input
               type="number"
               min={1}
-              max={floorCount}
+              max={floorCount ?? undefined}
               value={form.assignedFloor}
               onChange={(e) => setForm((f) => ({ ...f, assignedFloor: e.target.value }))}
-              placeholder={`Qavat (1-${floorCount})`}
+              placeholder={floorCount ? `Qavat (1-${floorCount})` : 'Qavat'}
               className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputCls}`}
               required
             />

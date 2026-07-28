@@ -12,6 +12,7 @@ import {
   HelpCircle, ChevronRight
 } from 'lucide-react'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
+import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import ProfileLoadError from '@/components/talaba/ProfileLoadError'
 import PageSkeleton from '@/components/ui/PageSkeleton'
@@ -303,9 +304,14 @@ export default function StudentProfile() {
   // Last login
   const [lastLogin, setLastLogin] = useState<string | null>(null)
 
-  const [maxUploadSizeMb, setMaxUploadSizeMb] = useState(5)
+  // null (not a guessed default) while settings are loading or unavailable —
+  // a wrong guess would wrongly block an upload the server would accept
+  // (the server enforces the real limit regardless, see upload-avatar route).
+  const [maxUploadSizeMb, setMaxUploadSizeMb] = useState<number | null>(null)
   useEffect(() => {
-    fetchAppSettings().then((settings) => setMaxUploadSizeMb(settings.maxUploadSizeMb)).catch(() => {})
+    fetchAppSettings()
+      .then((settings) => setMaxUploadSizeMb(settings.maxUploadSizeMb))
+      .catch(() => toast.error("Fayl hajmi sozlamasini yuklab bo'lmadi"))
   }, [])
 
   const [mounted, setMounted] = useState(false)
@@ -406,7 +412,7 @@ export default function StudentProfile() {
       return
     }
 
-    if (file.size > maxUploadSizeMb * 1024 * 1024) {
+    if (maxUploadSizeMb !== null && file.size > maxUploadSizeMb * 1024 * 1024) {
       setMessage({ type: 'error', text: `Rasm ${maxUploadSizeMb}MB dan kichik bo'lishi shart` })
       return
     }

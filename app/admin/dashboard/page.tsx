@@ -158,10 +158,14 @@ export default function AdminDashboard() {
     roomStart: '',
     roomEnd: ''
   })
-  const [floorCount, setFloorCount] = useState(5)
+  // null (not a guessed default) while settings are loading or unavailable —
+  // a wrong guess would silently hide real floors above it from the filter.
+  const [floorCount, setFloorCount] = useState<number | null>(null)
 
   useEffect(() => {
-    fetchAppSettings().then((settings) => setFloorCount(settings.floorCount)).catch(() => {})
+    fetchAppSettings()
+      .then((settings) => setFloorCount(settings.floorCount))
+      .catch(() => toast.error("Qavatlar sozlamasini yuklab bo'lmadi"))
   }, [])
 
   const loadStats = async (silent = false) => {
@@ -1053,7 +1057,7 @@ export default function AdminDashboard() {
                   onChange={(val) => setReportFilters(prev => ({ ...prev, floor: val }))}
                   options={[
                     { value: 'all', label: 'Barcha qavatlar' },
-                    ...Array.from({ length: floorCount }, (_, i) => i + 1).map((floor) => ({
+                    ...Array.from({ length: floorCount ?? 0 }, (_, i) => i + 1).map((floor) => ({
                       value: String(floor),
                       label: `${floor}-qavat`,
                     })),

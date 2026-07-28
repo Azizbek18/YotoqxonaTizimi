@@ -99,9 +99,11 @@ export default function Admin3DXonalarPage() {
   const [hoveredRoom, setHoveredRoom] = useState<{ roomNumber: string; clientX: number; clientY: number } | null>(null)
 
   const [activeFloor, setActiveFloor] = useState<number>(1)
-  const [floorCount, setFloorCount] = useState<number>(5)
+  // null (not a guessed default) while settings are loading or unavailable —
+  // a wrong guess would silently hide real floors above it from the tab list.
+  const [floorCount, setFloorCount] = useState<number | null>(null)
   const [defaultRoomCapacity, setDefaultRoomCapacity] = useState<number>(4)
-  const floors = Array.from({ length: floorCount }, (_, i) => i + 1)
+  const floors = floorCount ? Array.from({ length: floorCount }, (_, i) => i + 1) : []
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -193,7 +195,7 @@ export default function Admin3DXonalarPage() {
         setFloorCount(settings.floorCount)
         setDefaultRoomCapacity(settings.defaultRoomCapacity)
       } catch {
-        // Keep the default floor/capacity values if settings can't be loaded
+        toast.error("Qavatlar sozlamasini yuklab bo'lmadi")
       }
     })()
   }, [])

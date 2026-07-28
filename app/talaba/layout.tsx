@@ -1080,10 +1080,15 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
   const [aiResult, setAiResult] = useState<{ is_human: boolean; description: string; reason?: string | null } | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const [maxUploadSizeMb, setMaxUploadSizeMb] = useState(5)
+  // null (not a guessed default) while settings are loading or unavailable —
+  // a wrong guess would wrongly block an upload the server would accept
+  // (the server enforces the real limit regardless, see upload-avatar route).
+  const [maxUploadSizeMb, setMaxUploadSizeMb] = useState<number | null>(null)
 
   useEffect(() => {
-    fetchAppSettings().then((settings) => setMaxUploadSizeMb(settings.maxUploadSizeMb)).catch(() => {})
+    fetchAppSettings()
+      .then((settings) => setMaxUploadSizeMb(settings.maxUploadSizeMb))
+      .catch(() => toast.error("Fayl hajmi sozlamasini yuklab bo'lmadi"))
   }, [])
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1097,8 +1102,9 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
       return
     }
 
-    // Validate size
-    if (selectedFile.size > maxUploadSizeMb * 1024 * 1024) {
+    // Validate size (skipped if the real limit hasn't loaded yet — the
+    // server enforces it regardless, so this is a UX hint, not the guard)
+    if (maxUploadSizeMb !== null && selectedFile.size > maxUploadSizeMb * 1024 * 1024) {
       toast.error(`Rasm hajmi ${maxUploadSizeMb}MB dan kichik bo'lishi shart`)
       return
     }

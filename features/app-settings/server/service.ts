@@ -72,8 +72,26 @@ export function createAppSettingsService(repository: AppSettingsRepository = cre
       return repository.get()
     },
 
-    update(input: unknown): Promise<AppSettings> {
-      return repository.update(parseUpdate(input))
+    async update(input: unknown): Promise<AppSettings> {
+      const row = parseUpdate(input)
+
+      // yearlyContractFee must stay a whole multiple of monthlyFee — the
+      // payment endpoint requires monthlyFee * months exactly, while the
+      // student dashboard shows progress as paidAmount / yearlyContractFee;
+      // an inconsistent pair would make those two disagree about what
+      // "fully paid" means. Merge against the current row so a partial
+      // update (changing only one of the two fields) is still checked
+      // against the other's actual current value, not a stale default.
+      if ('monthly_fee' in row || 'yearly_contract_fee' in row) {
+        const current = await repository.get()
+        const monthlyFee = 'monthly_fee' in row ? Number(row.monthly_fee) : current.monthlyFee
+        const yearlyContractFee = 'yearly_contract_fee' in row ? Number(row.yearly_contract_fee) : current.yearlyContractFee
+        if (yearlyContractFee % monthlyFee !== 0) {
+          throw new ApiError(400, "Yillik shartnoma summasi oylik to'lovning butun karralisi bo'lishi kerak")
+        }
+      }
+
+      return repository.update(row)
     },
   }
 }

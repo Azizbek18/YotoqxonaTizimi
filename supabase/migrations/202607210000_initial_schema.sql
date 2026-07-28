@@ -48,6 +48,15 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
+-- The live table predates this consolidated file and was built through a
+-- different, independent path (it also carries a stray `phoneNumber`
+-- column that never appears anywhere in this repo's migrations) —
+-- CREATE TABLE IF NOT EXISTS above is a no-op against it, so columns this
+-- file and later migrations rely on (e.g. 202607280004's floor-captain
+-- dedup ORDER BY updated_at) must be added explicitly.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now());
+
 
 CREATE TABLE IF NOT EXISTS staff (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -62,6 +71,15 @@ CREATE TABLE IF NOT EXISTS staff (
   created_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+-- The live table predates this consolidated file and was built through a
+-- different, independent path (it also carries extra columns like
+-- `position`/`work_start_date` that never appear anywhere in this repo's
+-- migrations) — CREATE TABLE IF NOT EXISTS above is a no-op against it, so
+-- staff_id/updated_at (both referenced later in this file and in later
+-- migrations) must be added explicitly rather than assumed to exist.
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS staff_id text UNIQUE;
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now());
 
 CREATE TABLE IF NOT EXISTS arizalar (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -199,10 +217,12 @@ USING (bucket_id IN ('avatar', 'avatars'));
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for profiles table
+DROP POLICY IF EXISTS "Users can view their own profile" ON profiles;
 CREATE POLICY "Users can view their own profile"
 ON profiles FOR SELECT
 USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
 CREATE POLICY "Users can update their own profile"
 ON profiles FOR UPDATE
 USING (auth.uid() = id)
@@ -263,10 +283,12 @@ EXECUTE FUNCTION set_elonlar_updated_at();
 
 ALTER TABLE elonlar ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Published elonlar are readable" ON elonlar;
 CREATE POLICY "Published elonlar are readable"
 ON elonlar FOR SELECT
 USING (is_published = true);
 
+DROP POLICY IF EXISTS "Admins can view all elonlar" ON elonlar;
 CREATE POLICY "Admins can view all elonlar"
 ON elonlar FOR SELECT
 USING (
@@ -280,6 +302,7 @@ USING (
   )
 );
 
+DROP POLICY IF EXISTS "Admins can insert elonlar" ON elonlar;
 CREATE POLICY "Admins can insert elonlar"
 ON elonlar FOR INSERT
 WITH CHECK (
@@ -293,6 +316,7 @@ WITH CHECK (
   )
 );
 
+DROP POLICY IF EXISTS "Admins can update elonlar" ON elonlar;
 CREATE POLICY "Admins can update elonlar"
 ON elonlar FOR UPDATE
 USING (
@@ -316,6 +340,7 @@ WITH CHECK (
   )
 );
 
+DROP POLICY IF EXISTS "Admins can delete elonlar" ON elonlar;
 CREATE POLICY "Admins can delete elonlar"
 ON elonlar FOR DELETE
 USING (
@@ -360,7 +385,8 @@ CREATE TABLE IF NOT EXISTS admin_invites (
 ALTER TABLE admin_invites ENABLE ROW LEVEL SECURITY;
 
 -- Policy to allow ALL other actions only for admins
-CREATE POLICY "Admins have full control over admin_invites" 
+DROP POLICY IF EXISTS "Admins have full control over admin_invites" ON admin_invites;
+CREATE POLICY "Admins have full control over admin_invites"
 ON admin_invites 
 FOR ALL 
 TO authenticated 
@@ -393,7 +419,8 @@ CREATE TABLE IF NOT EXISTS staff_invites (
 ALTER TABLE staff_invites ENABLE ROW LEVEL SECURITY;
 
 -- Policy to allow ALL other actions only for admins
-CREATE POLICY "Admins have full control over staff_invites" 
+DROP POLICY IF EXISTS "Admins have full control over staff_invites" ON staff_invites;
+CREATE POLICY "Admins have full control over staff_invites"
 ON staff_invites 
 FOR ALL 
 TO authenticated 
@@ -839,10 +866,12 @@ ALTER TABLE cleaning_schedule ENABLE ROW LEVEL SECURITY;
 
 -- Create Policies for RLS
 -- 1. Allow everyone to read the cleaning schedule
+DROP POLICY IF EXISTS "Allow public read access" ON cleaning_schedule;
 CREATE POLICY "Allow public read access" ON cleaning_schedule
     FOR SELECT TO public USING (true);
 
 -- 2. Allow authenticated users to insert/update schedule
+DROP POLICY IF EXISTS "Allow authenticated insert/update" ON cleaning_schedule;
 CREATE POLICY "Allow authenticated insert/update" ON cleaning_schedule
     FOR ALL TO authenticated USING (true) WITH CHECK (true);
 

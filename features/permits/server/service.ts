@@ -24,21 +24,29 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
       })
       // Room occupancy/capacity math needs every occupant building-wide
       // (rooms aren't segregated by faculty), but a zamdekan must only see
-      // the identifying details of students in their own faculty — PII for
-      // other faculties' occupants is redacted, not the whole row, so
-      // occupancy counts and gender-conflict checks below still work.
-      const usersWithRooms = students.filter((user) => Boolean(user.room_number)).map((user) => {
+      // the identifying details of students in their own faculty — PII AND
+      // demographic/identifying metadata (auth id, faculty, direction,
+      // course) for other faculties' occupants is redacted, not the whole
+      // row, so occupancy counts and gender-conflict checks below still
+      // work. Only `gender` survives redaction, since the room map's
+      // mixed-gender warning genuinely needs it building-wide; a zamdekan
+      // has no jurisdiction to act on another faculty's student, so their
+      // auth id is dropped too (the UI's "remove from room" action keys off
+      // it, and the server independently re-checks faculty ownership
+      // anyway — this just stops the id from being visible at all).
+      const studentsWithRooms = students.filter((user) => Boolean(user.room_number))
+      const usersWithRooms = studentsWithRooms.map((user) => {
         const own = sameFaculty(user.faculty, faculty)
         return {
-          id: user.id,
+          id: own ? user.id : '',
           full_name: own ? user.full_name : '',
           passport_series: own ? user.passport_series : '',
           jshshir: own ? user.jshshir : '',
           phone_number: own ? user.phone_number : '',
           gender: user.gender,
-          faculty: user.faculty,
-          direction: user.direction,
-          course: user.course,
+          faculty: own ? user.faculty : null,
+          direction: own ? user.direction : null,
+          course: own ? user.course : null,
           room_number: user.room_number,
           warning_count: own ? user.warning_count : null,
         }
@@ -49,20 +57,21 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
           if (sameFaculty(permit.faculty, faculty)) return permit
           // Anonymous DTO for other-faculty occupants — every field the room
           // map/occupancy math actually needs, nothing that identifies them
-          // (no name/passport/JShSHIR/phone/email/permit document link).
+          // (no name/passport/JShSHIR/phone/email/permit document link/auth
+          // id/faculty/direction/course).
           // Built from scratch rather than spreading `permit` so a future
           // column added to permit_requests can't leak here by default.
           return {
-            id: permit.id,
+            id: '',
             passport_series: '',
             jshshir: '',
             full_name: '',
             email: '',
             phone: '',
             gender: permit.gender,
-            faculty: permit.faculty,
-            direction: permit.direction,
-            course: permit.course,
+            faculty: '',
+            direction: '',
+            course: 0,
             permit_url: '',
             status: permit.status,
             room_number: permit.room_number,
@@ -86,7 +95,11 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
       }
       permits.filter((permit) => permit.status === 'approved' || permit.status === 'registered')
         .forEach((permit) => addDistribution(permit.course, permit.faculty))
-      usersWithRooms.forEach((user) => addDistribution(user.course, user.faculty))
+      // Sourced from the pre-redaction `studentsWithRooms`, not the
+      // client-facing `usersWithRooms` — the latter has faculty/course
+      // blanked out for other-faculty rows, which would otherwise silently
+      // zero out this dashboard's cross-faculty distribution stats.
+      studentsWithRooms.forEach((user) => addDistribution(user.course, user.faculty))
       return {
         faculty,
         requests,

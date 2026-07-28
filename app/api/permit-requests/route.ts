@@ -4,6 +4,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import {
   PERMIT_FILE_RULES,
+  canonicalizeFullName,
   hasAllowedSignature,
   isValidJshshir,
   isValidPassport,
@@ -73,7 +74,16 @@ export async function POST(request: NextRequest) {
     // when it actually passed (or explicitly fell back to manual review),
     // so it can't be forged or reused for a different file.
     const fileHash = createHash('sha256').update(buffer).digest('hex')
-    if (!verifyFileClaim('permit', form.get('aiClaim'), fileHash)) {
+    // Bound to the exact identity the precheck validated this file against
+    // (see /api/ai/yollanma-tekshiruv) — otherwise a real, AI-approved
+    // document could be resubmitted here claiming a different F.I.Sh./
+    // passport/JShSHIR than what was actually checked.
+    const claimContext = {
+      fullName: canonicalizeFullName(fullName),
+      passport,
+      jshshir,
+    }
+    if (!verifyFileClaim('permit', form.get('aiClaim'), fileHash, claimContext)) {
       return NextResponse.json({ error: 'Hujjat avval AI orqali tekshirilishi shart.' }, { status: 400 })
     }
 

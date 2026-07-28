@@ -184,11 +184,18 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       analysis = jsonResult.analysis || ''
       paymentDate = jsonResult.payment_date || null
 
-      // Determine amount match
-      amountMatch = jsonResult.amount_match
-      if (extractedAmount !== null && typeof amountMatch === 'undefined') {
+      // Determine amount match. Never trust jsonResult.amount_match at face
+      // value — it can be undefined/null/a "false" string (all truthy in a
+      // loose check), which would let a claim through despite no real
+      // amount evidence. The tolerance check against a real, finite
+      // extracted number is the actual source of truth; the AI's own flag
+      // can only veto it (force a reject), never approve on its own.
+      if (typeof extractedAmount !== 'number' || !Number.isFinite(extractedAmount)) {
+        amountMatch = false
+      } else {
         const tolerance = declaredAmount * 0.05
         amountMatch = Math.abs(extractedAmount - declaredAmount) <= tolerance
+        if (jsonResult.amount_match === false) amountMatch = false
       }
     } catch (geminiError: unknown) {
       console.error('Gemini API call failed:', geminiError)
@@ -248,7 +255,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       }
     }
 
-    const valid = !isDuplicate && !isSuspiciousId && confidence >= 50 && amountMatch !== false
+    const valid = !isDuplicate && !isSuspiciousId && confidence >= 50 && amountMatch === true
 
     return NextResponse.json({
       valid,
@@ -264,8 +271,13 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       file_hash: fileHash,
       // Only issued when the check actually passed — this is what proves to
       // the real submission endpoint that this exact file was validated,
-      // instead of trusting a client-supplied hash at face value.
-      claim: valid ? signFileClaim('payment', fileHash) : null,
+      // instead of trusting a client-supplied hash at face value. Binding
+      // userId+amount (not just the file hash) closes a bypass where a real,
+      // AI-approved receipt for one amount/user gets resubmitted claiming a
+      // different amount (e.g. more months) or by a different account —
+      // the submission endpoint can only check amount == fee*months
+      // arithmetically, it has no other way to know what the AI verified.
+      claim: valid ? signFileClaim('payment', fileHash, { userId: user.id, amount: declaredAmount }) : null,
     })
 
   } catch (error: unknown) {

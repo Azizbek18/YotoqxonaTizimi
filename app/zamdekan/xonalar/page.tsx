@@ -88,7 +88,10 @@ export default function ZamdekanXonalarMap() {
       users?.forEach((u) => {
         if (!u.room_number) return
         const occupant: Occupant = {
-          id: u.id,
+          // Other-faculty occupants have their auth id redacted server-side
+          // (a zamdekan has no jurisdiction to act on them) — falls back to
+          // '' rather than undefined so it never collides with a real id.
+          id: u.id || '',
           full_name: u.full_name || 'Noma‘lum',
           passport_series: u.passport_series || '',
           jshshir: u.jshshir || '',
@@ -96,7 +99,7 @@ export default function ZamdekanXonalarMap() {
           gender: u.gender || '',
           faculty: u.faculty || '',
           direction: u.direction || '',
-          course: u.course || 1,
+          course: u.course || 0,
           status: 'registered',
           warning_count: u.warning_count ?? 0
         }
@@ -109,7 +112,7 @@ export default function ZamdekanXonalarMap() {
       permits?.forEach((p) => {
         if (!p.room_number) return
         const occupant: Occupant = {
-          id: p.id,
+          id: p.id || '',
           full_name: p.full_name,
           passport_series: p.passport_series,
           jshshir: p.jshshir,
@@ -124,8 +127,10 @@ export default function ZamdekanXonalarMap() {
         if (!occupantsMap[p.room_number]) {
           occupantsMap[p.room_number] = []
         }
-        // Avoid duplicate if already registered (though status 'approved' vs 'registered' should handle this)
-        const exists = occupantsMap[p.room_number].some((o) => o.passport_series === p.passport_series)
+        // Avoid duplicate if already registered (though status 'approved' vs 'registered' should handle this).
+        // Redacted cross-faculty rows share the same blank passport_series,
+        // so only apply this de-dup when there's an actual passport to match on.
+        const exists = Boolean(p.passport_series) && occupantsMap[p.room_number].some((o) => o.passport_series === p.passport_series)
         if (!exists) {
           occupantsMap[p.room_number].push(occupant)
         }
@@ -447,9 +452,9 @@ export default function ZamdekanXonalarMap() {
                   {selectedRoom.occupants.length === 0 ? (
                     <div className="text-center py-8 text-xs font-bold text-slate-500">Xona bo‘sh</div>
                   ) : (
-                    selectedRoom.occupants.map((occ) => (
+                    selectedRoom.occupants.map((occ, occIndex) => (
                       <div
-                        key={occ.id}
+                        key={occ.id || `${selectedRoom.roomNumber}-anon-${occIndex}`}
                         className={`p-3 rounded-2xl border ${
                           isLight ? 'bg-slate-50/50 border-slate-200' : 'bg-white/[0.02] border-white/5'
                         } space-y-2`}
@@ -471,13 +476,13 @@ export default function ZamdekanXonalarMap() {
                           <div>
                             <span className={textMuted}>Fakultet:</span>
                             <p className={`truncate ${textStrong}`} title={occ.faculty}>
-                              {occ.faculty}
+                              {occ.faculty || '—'}
                             </p>
                           </div>
                           <div>
                             <span className={textMuted}>Kurs/Jinsi:</span>
                             <p className={textStrong}>
-                              {occ.course}-kurs • {occ.gender === 'male' ? 'Erkak' : 'Ayol'}
+                              {occ.course ? `${occ.course}-kurs • ` : ''}{occ.gender === 'male' ? 'Erkak' : 'Ayol'}
                             </p>
                           </div>
                           <div>
@@ -492,7 +497,7 @@ export default function ZamdekanXonalarMap() {
                           ) : null}
                         </div>
 
-                        {occ.status === 'registered' && (
+                        {occ.status === 'registered' && occ.id && (
                           confirmRemoveId === occ.id ? (
                             <div className="flex items-center gap-2 pt-1">
                               <span className={`flex-1 text-[9px] font-bold ${textMuted}`}>Rostdan chiqarasizmi?</span>

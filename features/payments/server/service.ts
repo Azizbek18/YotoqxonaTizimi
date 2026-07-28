@@ -81,11 +81,13 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       // The AI precheck (/api/ai/tekshiruv) and this submission are two
       // independent requests — without this, a caller could skip straight
       // here with a self-declared "already validated" flag. The claim is
-      // an HMAC signature over this exact file's hash, only issued by the
-      // precheck when it actually passed, so it can't be forged or reused
-      // for a different file.
+      // an HMAC signature over this exact file's hash AND the userId/amount
+      // the precheck actually validated, only issued by the precheck when
+      // it passed — so it can't be forged, reused for a different file, or
+      // replayed to submit a different amount (e.g. more months) than what
+      // the AI actually verified.
       const claim = form.get('validatedHash')
-      if (!verifyFileClaim('payment', claim, receiptHash)) {
+      if (!verifyFileClaim('payment', claim, receiptHash, { userId: student.id, amount })) {
         throw new ApiError(400, 'Chek avval AI orqali tekshirilishi shart')
       }
       const batchId = randomUUID()

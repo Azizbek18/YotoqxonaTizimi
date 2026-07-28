@@ -29,17 +29,26 @@ function normalizeNameToken(s: string): string {
   return s.toUpperCase().replace(/[ʻʼ'`´]/g, '').replace(/[^A-ZА-Я]/g, '')
 }
 
-// Lenient match: the compared full name may omit/reorder parts (e.g. a
-// document's formal "O'G'LI/QIZI" suffix), so we require most of one
-// name's tokens to appear somewhere in the other rather than an exact
-// string match.
-export function namesLikelyMatch(declared: string, other: string): boolean {
-  const declaredTokens = declared.split(/\s+/).map(normalizeNameToken).filter((t) => t.length >= 2)
-  if (declaredTokens.length === 0) return false
-  const otherFlat = normalizeNameToken(other.replace(/\s+/g, ' '))
-  if (!otherFlat) return false
+export function canonicalizeFullName(input: unknown): string {
+  return String(input ?? '').trim().slice(0, 160)
+}
 
-  const matches = declaredTokens.filter((t) => otherFlat.includes(t))
+// Lenient match: the compared full name may omit/reorder parts (e.g. a
+// document's formal "O'G'LI/QIZI" suffix), so we require most of one name's
+// tokens to have an exact counterpart among the other name's tokens, rather
+// than requiring every token in the same order. This must NOT be substring
+// containment ("ALI".includes-style) — that would match "Ali Karim" against
+// "Vali Karim" too, since "ALI" is a substring of "VALI".
+export function namesLikelyMatch(declared: string, other: string): boolean {
+  // De-duplicated — otherwise a declared name repeating a token (e.g. "Ali
+  // Ali") would count that single shared token twice, inflating the match
+  // ratio against a name that only actually shares one real token with it.
+  const declaredTokens = Array.from(new Set(declared.split(/\s+/).map(normalizeNameToken).filter((t) => t.length >= 2)))
+  if (declaredTokens.length === 0) return false
+  const otherTokens = new Set(other.split(/\s+/).map(normalizeNameToken).filter((t) => t.length >= 2))
+  if (otherTokens.size === 0) return false
+
+  const matches = declaredTokens.filter((t) => otherTokens.has(t))
   const requiredMatches = declaredTokens.length <= 2 ? declaredTokens.length : Math.ceil(declaredTokens.length * 0.7)
   return matches.length >= requiredMatches
 }

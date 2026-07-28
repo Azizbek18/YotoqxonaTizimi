@@ -1,5 +1,16 @@
 -- Final security/integrity migration. Apply after all earlier migrations.
 
+-- This live database predates 202607210000's consolidated schema and was
+-- built through an independent path, so it's missing columns that file and
+-- this one assume exist (it also carries extra columns, e.g. staff's
+-- position/work_start_date, that appear nowhere in these migrations).
+-- staff_id/updated_at are needed by the INSERT below; add them explicitly
+-- rather than assuming 202607210000's inline column list ever ran.
+ALTER TABLE public.staff ADD COLUMN IF NOT EXISTS staff_id text UNIQUE;
+ALTER TABLE public.staff ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now());
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT timezone('utc'::text, now());
+
 ALTER TABLE public.staff ADD COLUMN IF NOT EXISTS phone_number text;
 
 -- Move legacy administrator rows out of the student table before removing
@@ -15,8 +26,11 @@ ALTER TABLE public.admin_invites
   ADD COLUMN IF NOT EXISTS expires_at timestamptz;
 ALTER TABLE public.admin_invites
   ADD COLUMN IF NOT EXISTS token_hash text;
+-- pgcrypto lives in the `extensions` schema on this project (not on the
+-- default search_path for migration runs), so digest() must be schema-
+-- qualified rather than called bare.
 UPDATE public.admin_invites
-SET token_hash = encode(digest(code, 'sha256'), 'hex')
+SET token_hash = encode(extensions.digest(code, 'sha256'), 'hex')
 WHERE token_hash IS NULL AND code IS NOT NULL;
 ALTER TABLE public.admin_invites
   ALTER COLUMN code DROP NOT NULL,

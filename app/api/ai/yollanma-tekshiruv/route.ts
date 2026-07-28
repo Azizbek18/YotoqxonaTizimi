@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
 import { callGemini } from '@/lib/gemini'
 import { checkRateLimit, getClientIp } from '@/lib/security'
-import { PERMIT_FILE_RULES, hasAllowedSignature, namesLikelyMatch } from '@/lib/permit-validation'
+import {
+  PERMIT_FILE_RULES,
+  canonicalizeFullName,
+  hasAllowedSignature,
+  namesLikelyMatch,
+  normalizeJshshir,
+  normalizePassport,
+} from '@/lib/permit-validation'
 import { signFileClaim } from '@/lib/receipt-claim'
 
 // Public endpoint (students apply before they have an account), so we
@@ -10,10 +17,6 @@ import { signFileClaim } from '@/lib/receipt-claim'
 
 function normalizeDigits(s: string): string {
   return s.replace(/\D/g, '')
-}
-
-function normalizePassport(s: string): string {
-  return s.toUpperCase().replace(/[^A-Z0-9]/g, '')
 }
 
 export async function POST(req: NextRequest) {
@@ -36,12 +39,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Talaba ma’lumotlari to‘liq emas' }, { status: 400 })
     }
 
+    // Bound into the claim below so it can only be redeemed for the exact
+    // identity it was checked against — otherwise a real, AI-approved
+    // document could be resubmitted under a different F.I.Sh./passport/
+    // JShSHIR, since /api/permit-requests only checks the claim proves
+    // *some* file passed, not which identity it was checked for.
+    const claimContext = {
+      fullName: canonicalizeFullName(declaredFullName),
+      passport: normalizePassport(declaredPassport),
+      jshshir: normalizeJshshir(declaredJshshir),
+    }
+
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json({ error: 'Faqat rasm yoki PDF hujjat qabul qilinadi' }, { status: 400 })
     }
-    if (file.size > 8 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Fayl hajmi 8MB dan kichik bo‘lishi kerak' }, { status: 400 })
+    // Matches /api/permit-requests' actual limit (5MB) — accepting up to
+    // 8MB here would let a file pass this precheck and only then get
+    // rejected at the real submission step.
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Fayl hajmi 5MB dan kichik bo‘lishi kerak' }, { status: 400 })
     }
 
     const arrayBuffer = await file.arrayBuffer()
@@ -66,7 +83,7 @@ export async function POST(req: NextRequest) {
         requires_manual_review: true,
         mismatches: [],
         analysis: 'AI mavjud emas. Hujjat zamdekan tomonidan qo‘lda tekshirilishi shart.',
-        claim: signFileClaim('permit', fileHash),
+        claim: signFileClaim('permit', fileHash, claimContext),
       })
     }
 
@@ -126,7 +143,10 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       const textResponse = apiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
       const jsonResult = JSON.parse(textResponse.trim())
 
-      isAuthentic = Boolean(jsonResult.is_authentic)
+      // Strict === true, not Boolean(...) — a loosely-formatted AI response
+      // with is_authentic as the STRING "false" would otherwise come out
+      // truthy (Boolean("false") === true), inverting the result.
+      isAuthentic = jsonResult.is_authentic === true
       authenticityConfidence = typeof jsonResult.authenticity_confidence === 'number' ? jsonResult.authenticity_confidence : 0
       extractedFullName = String(jsonResult.extracted_full_name || '')
       extractedJshshir = String(jsonResult.extracted_jshshir || '')
@@ -147,7 +167,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
         requires_manual_review: true,
         mismatches: [],
         analysis: "AI tekshiruvi vaqtincha ishlamadi. Hujjat zamdekan tomonidan qo'lda tekshirilishi shart.",
-        claim: signFileClaim('permit', fileHash),
+        claim: signFileClaim('permit', fileHash, claimContext),
       })
     }
 
@@ -157,16 +177,21 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       mismatches.push('Hujjat rasmiy my.gov.uz Yo‘llanma namunasiga o‘xshamayapti.')
     }
 
-    if (extractedJshshir && normalizeDigits(extractedJshshir) !== normalizeDigits(declaredJshshir)) {
-      mismatches.push('Hujjatdagi JSHSHIR formada kiritilgan JSHSHIR bilan mos kelmadi.')
+    // Each check fails closed on a blank extraction (not just a mismatch) —
+    // otherwise a document the AI can't read these fields from, but still
+    // rates as "authentic-looking", would sail through with every identity
+    // field unverified, letting a claim be issued for whatever identity the
+    // caller declared in the form with nothing to contradict it.
+    if (!extractedJshshir || normalizeDigits(extractedJshshir) !== normalizeDigits(declaredJshshir)) {
+      mismatches.push('Hujjatdagi JSHSHIR aniqlanmadi yoki formada kiritilgan JSHSHIR bilan mos kelmadi.')
     }
 
-    if (extractedPassport && normalizePassport(extractedPassport) !== normalizePassport(declaredPassport)) {
-      mismatches.push('Hujjatdagi pasport seriya/raqami formada kiritilgan ma’lumot bilan mos kelmadi.')
+    if (!extractedPassport || normalizePassport(extractedPassport) !== normalizePassport(declaredPassport)) {
+      mismatches.push('Hujjatdagi pasport seriya/raqami aniqlanmadi yoki formada kiritilgan ma’lumot bilan mos kelmadi.')
     }
 
-    if (extractedFullName && !namesLikelyMatch(declaredFullName, extractedFullName)) {
-      mismatches.push('Hujjatdagi F.I.Sh formada kiritilgan ism-familiya bilan mos kelmadi.')
+    if (!extractedFullName || !namesLikelyMatch(declaredFullName, extractedFullName)) {
+      mismatches.push('Hujjatdagi F.I.Sh aniqlanmadi yoki formada kiritilgan ism-familiya bilan mos kelmadi.')
     }
 
     const valid = mismatches.length === 0
@@ -184,7 +209,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
         dormitory_address: extractedDormitoryAddress
       },
       analysis,
-      claim: valid ? signFileClaim('permit', fileHash) : null,
+      claim: valid ? signFileClaim('permit', fileHash, claimContext) : null,
     })
   } catch (error: unknown) {
     console.error('Yo‘llanma AI tekshiruvi xatoligi:', error)

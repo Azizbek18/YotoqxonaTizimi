@@ -1,26 +1,22 @@
--- 202607280001 added a UNIQUE index on tolovlar.transaction_id_normalized,
--- assuming only one row per receipt upload ever carries a transaction_id.
--- That's true going forward (the AI analysis route is only ever triggered
--- for the first row of a batch — see app/talaba/tolova/page.tsx and
--- app/admin/tolovlar/page.tsx, both of which analyze records[0]/
--- insertedDatas[0] and nothing else), but a multi-month receipt is split
--- across several `tolovlar` rows, and before that "one call per batch"
--- behavior existed, every row in a batch could independently get analyzed
--- and end up with the exact same transaction_id. Any such historical rows
--- would make `CREATE UNIQUE INDEX` fail outright over existing data.
---
--- Clean that up first — keep the transaction_id on the earliest row of
--- each (receipt_hash, transaction_id_normalized) group, clear it from the
--- rest — so the index can be (re)created safely regardless of whether
--- 202607280001 already ran, partially ran, or never ran.
+-- 202607280001 now does this same dedup itself, before creating the unique
+-- index (a failed CREATE UNIQUE INDEX there would otherwise abort the
+-- migration run and permanently block this file from ever being reached).
+-- This is kept as a harmless, idempotent defense-in-depth pass — re-running
+-- the same dedup + DROP/CREATE INDEX here is a no-op once 001 has already
+-- succeeded, but guards against any environment that somehow already had
+-- 202607280001 applied in an older, pre-dedup form.
+-- Partitioned by transaction_id_normalized alone (not receipt_hash) and not
+-- filtered by receipt_hash IS NOT NULL — matches the global scope of the
+-- unique index below (see 202607280001 for why: a narrower partition would
+-- leave two different receipts sharing a transaction id undeduped).
 WITH ranked AS (
   SELECT id,
          row_number() OVER (
-           PARTITION BY receipt_hash, transaction_id_normalized
+           PARTITION BY transaction_id_normalized
            ORDER BY created_at ASC, id ASC
          ) AS rn
   FROM tolovlar
-  WHERE transaction_id_normalized <> '' AND receipt_hash IS NOT NULL
+  WHERE transaction_id_normalized <> ''
 )
 UPDATE tolovlar
 SET transaction_id = NULL

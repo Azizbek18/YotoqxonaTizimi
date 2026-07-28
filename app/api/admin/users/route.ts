@@ -431,23 +431,57 @@ export async function PATCH(request: Request) {
       return jsonError("Yangilash uchun ma'lumot topilmadi", 400)
     }
 
-    const assignedFloor = typeof updates.assigned_floor === 'number' ? updates.assigned_floor : null
-    if (source === 'users' && updates.is_floor_captain === true && assignedFloor) {
-      const { data: genderData } = await supabase
+    if (source === 'users' && updates.is_floor_captain === true) {
+      // is_floor_captain=true is only meaningful together with a floor and
+      // a gender — the uniqueness guarantee (users_floor_captain_unique_idx
+      // on (assigned_floor, gender) WHERE is_floor_captain) doesn't catch
+      // NULLs (SQL never treats NULL = NULL), so without this check an
+      // admin could create multiple "captain" rows with no floor/gender at
+      // all, none of which would ever conflict with each other.
+      const { data: currentUser } = await supabase
         .from('users')
-        .select('gender')
+        .select('assigned_floor, gender')
         .eq('id', id)
         .maybeSingle()
 
-      if (genderData?.gender) {
-        await supabase
-          .from('users')
-          .update({ is_floor_captain: false })
-          .eq('is_floor_captain', true)
-          .eq('assigned_floor', assignedFloor)
-          .eq('gender', genderData.gender)
-          .neq('id', id)
+      const effectiveAssignedFloor = 'assigned_floor' in updates
+        ? (typeof updates.assigned_floor === 'number' ? updates.assigned_floor : null)
+        : (currentUser?.assigned_floor ?? null)
+      // Uses updates.gender (this same request's new value) when present —
+      // not just currentUser's pre-update gender — so a request that
+      // changes floor/gender AND promotes to captain in one call demotes
+      // the *correct* (new) bucket's existing captain, not the old one.
+      const effectiveGender = 'gender' in updates
+        ? (typeof updates.gender === 'string' ? updates.gender : null)
+        : (currentUser?.gender ?? null)
+
+      if (!effectiveAssignedFloor || !effectiveGender) {
+        return jsonError("Sardor tayinlash uchun talabaga qavat va jins belgilangan bo'lishi shart", 400)
       }
+
+      // Demoting the previous captain and writing this user's own
+      // assigned_floor/gender/is_floor_captain happens in a single atomic
+      // RPC call (see 202607280012) — two separate UPDATEs here would let
+      // a failure on the second leave the floor with no captain at all,
+      // and updates.gender wouldn't actually reach the users row until the
+      // later generic update ran (a second non-atomic step).
+      const { error: promoteError } = await supabase.rpc('promote_floor_captain', {
+        p_user_id: id,
+        p_assigned_floor: effectiveAssignedFloor,
+        p_gender: effectiveGender,
+        p_is_captain: true,
+      })
+      if (promoteError) {
+        return jsonError(promoteError.message, 500)
+      }
+
+      delete updates.assigned_floor
+      delete updates.gender
+      delete updates.is_floor_captain
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ ok: true })
     }
 
     const { error } = source === 'users'

@@ -186,6 +186,12 @@ export interface Database {
         object_path: string | null
         created_at: string
       }>
+      payment_receipt_transactions: Table<{
+        receipt_hash: string
+        transaction_id: string | null
+        transaction_id_normalized: string
+        updated_at: string
+      }>
       security_audit_logs: Table<{
         id: string
         event_type: string
@@ -243,6 +249,14 @@ export interface Database {
       }
       replace_floor_room_layout: {
         Args: { p_floor_number: number; p_rows: Json }
+        Returns: void
+      }
+      claim_receipt_transaction: {
+        Args: { p_receipt_hash: string; p_transaction_id: string | null; p_transaction_id_normalized: string }
+        Returns: { stored_transaction_id_normalized: string; is_conflict: boolean }[]
+      }
+      promote_floor_captain: {
+        Args: { p_user_id: string; p_assigned_floor: number; p_gender: string; p_is_captain: boolean }
         Returns: void
       }
     }

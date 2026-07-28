@@ -64,6 +64,9 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
         if (code === '23505') {
           throw new ApiError(409, "Bu xona raqami boshqa qavatda allaqachon ishlatilgan")
         }
+        if (code === 'P0003') {
+          throw new ApiError(409, "Band xonani sxemadan olib tashlab bo'lmaydi — avval talaba yoki yo'llanmani boshqa xonaga ko'chiring")
+        }
         throw error
       }
 

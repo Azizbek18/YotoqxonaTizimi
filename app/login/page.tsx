@@ -51,7 +51,8 @@ function LoginContent() {
         password: password,
       })
 
-      // Agar parol xato bo'lsa Supabase 'Invalid login credentials' qaytaradi
+      // Mavjud bo'lmagan hisob va noto'g'ri parol uchun bir xil xabar
+      // qaytaramiz; aks holda login formasi account-enumeration oracle bo'ladi.
       if (authError) {
         if (authError.message.includes("Invalid login credentials")) {
           throw new Error("Email yoki parol noto'g'ri.")
@@ -75,6 +76,11 @@ function LoginContent() {
         }
       } catch (roleError) {
         console.error('Role resolution error:', roleError)
+      }
+
+      if (!userRole) {
+        await supabase.auth.signOut()
+        throw new Error("Hisob faol emas yoki tizim roliga biriktirilmagan.")
       }
 
       show3DToast('success', 'Xush kelibsiz!')

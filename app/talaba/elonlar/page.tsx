@@ -18,7 +18,6 @@ import {
   Info
 } from 'lucide-react';
 import { useThemeStore } from '@/lib/stores/theme-store';
-import { supabase } from '@/lib/supabase';
 import { fetchStudentAnnouncements } from '@/features/announcements/client/api';
 import { fetchAppSettings } from '@/features/app-settings/client/api';
 import PageSkeleton from '@/components/ui/PageSkeleton';
@@ -172,6 +171,7 @@ export default function ElonlarPage() {
 
   useEffect(() => {
     let isMounted = true;
+    let hasLoaded = false;
 
     const loadElonlar = async () => {
       try {
@@ -182,51 +182,26 @@ export default function ElonlarPage() {
           setElonlar(mapped);
           setCurrentFaculty(typeof result.currentFaculty === 'string' ? result.currentFaculty : null);
         }
+        hasLoaded = true;
       } catch (error) {
         console.error("E'lonlarni yuklashda xatolik:", error);
-        if (isMounted) setElonlar([]);
+        if (isMounted && !hasLoaded) setElonlar([]);
       } finally {
         if (isMounted) setLoading(false);
       }
     };
 
-    loadElonlar();
-
-    const channel = supabase
-      .channel('talaba-elonlar')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'elonlar' },
-        (payload) => {
-          const next = payload.new as DbElon | null;
-          const old = payload.old as { id?: string } | null;
-
-          if (payload.eventType === 'INSERT' && next?.is_published) {
-            setElonlar((current) => [mapDbElon(next), ...current.filter((item) => item.id !== next.id)]);
-          }
-
-          if (payload.eventType === 'UPDATE' && next) {
-            setElonlar((current) => {
-              if (!next.is_published) {
-                return current.filter((item) => item.id !== next.id);
-              }
-
-              const mapped = mapDbElon(next);
-              const exists = current.some((item) => item.id === next.id);
-              return exists ? current.map((item) => (item.id === next.id ? mapped : item)) : [mapped, ...current];
-            });
-          }
-
-          if (payload.eventType === 'DELETE' && old?.id) {
-            setElonlar((current) => current.filter((item) => item.id !== old.id));
-          }
-        }
-      )
-      .subscribe();
+    void loadElonlar();
+    // Direct Realtime subscriptions require a broad SELECT policy on
+    // `elonlar`, which would expose faculty/floor-targeted announcements to
+    // other students. Poll the audience-filtered server API instead.
+    const interval = window.setInterval(() => {
+      void loadElonlar();
+    }, 30_000);
 
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
+      window.clearInterval(interval);
     };
   }, []);
 

@@ -3,6 +3,7 @@ import { ApiError } from '@/server/http/api-error'
 import type { UserRow } from '@/types/database.generated'
 import type { StudentProfilePayload, StudentProfileUpdate } from '../types'
 import { createProfileRepository, type ProfileRepository } from './repository'
+import { extractFloor } from '@/lib/floor'
 
 function optionalText(value: unknown, maxLength: number) {
   if (value === undefined) return undefined
@@ -19,7 +20,7 @@ export function createProfileService(repository: ProfileRepository = createProfi
         ? await repository.listRoommates(studentId, profile.room_number)
         : []
       const floor = profile.assigned_floor
-        ?? (typeof profile.room_number === 'string' ? Number(profile.room_number.match(/^\d/)?.[0]) || null : null)
+        ?? extractFloor(profile.room_number)
       const floorCaptain = floor && profile.gender
         ? await repository.findFloorCaptain(floor, profile.gender)
         : null

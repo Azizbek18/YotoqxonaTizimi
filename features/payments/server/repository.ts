@@ -94,8 +94,30 @@ export function createPaymentRepository() {
       await supabase.storage.from('receipts').remove([path])
     },
 
-    async insertBatch(rows: Array<Record<string, unknown>>) {
-      return supabase.from('tolovlar').insert(rows).select('id, month, year, status')
+    async submitBatchAtomic(input: {
+      studentId: string
+      studentName: string
+      months: string[]
+      amounts: number[]
+      year: number
+      receiptUrl: string
+      receiptHash: string
+      batchId: string
+      transactionId: string
+      normalizedTransactionId: string
+    }) {
+      return supabase.rpc('submit_payment_batch_atomic', {
+        p_student_id: input.studentId,
+        p_student_name: input.studentName,
+        p_months: input.months,
+        p_amounts: input.amounts,
+        p_year: input.year,
+        p_receipt_url: input.receiptUrl,
+        p_receipt_hash: input.receiptHash,
+        p_batch_id: input.batchId,
+        p_transaction_id: input.transactionId,
+        p_transaction_id_normalized: input.normalizedTransactionId,
+      })
     },
 
     async review(ids: string[], status: Extract<PaymentStatus, 'approved' | 'rejected'>, adminMessage: string) {

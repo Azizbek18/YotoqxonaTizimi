@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
     const password = typeof body.password === 'string' ? body.password : ''
     const confirmPassword = typeof body.confirmPassword === 'string' ? body.confirmPassword : ''
-    const staffId = typeof body.staffId === 'string' ? body.staffId : ''
+    const staffId = typeof body.staffId === 'string' ? body.staffId.trim() : ''
     const registerCode = typeof body.registerCode === 'string' ? body.registerCode : ''
     const linkKey = typeof body.linkKey === 'string' ? body.linkKey : ''
     const faculty = typeof body.faculty === 'string' ? body.faculty.trim() : ''
@@ -67,10 +67,16 @@ export async function POST(request: Request) {
       role,
       status: 'active',
       faculty,
+      // staff_id has a UNIQUE constraint. Persisting the validated allow-list
+      // id makes the registration credential single-use under concurrent calls.
+      staff_id: staffId,
     })
 
     if (userError) {
       await deleteAuthUserSafely(authData.user.id)
+      if (userError.code === '23505') {
+        return NextResponse.json({ ok: false, error: 'Bu maxsus ID yoki email avval ishlatilgan' }, { status: 409 })
+      }
       return NextResponse.json({ ok: false, error: userError.message }, { status: 400 })
     }
 

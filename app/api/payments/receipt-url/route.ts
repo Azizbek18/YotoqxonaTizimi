@@ -5,7 +5,7 @@ import { extractReceiptPath } from '@/lib/safe-storage-url'
 
 // The `receipts` bucket is private (see production-hardening migration);
 // receipt images/PDFs are only reachable through this short-lived signed
-// URL, scoped to the payment's owner or active admin/tarbiyachi staff.
+// URL, scoped to the payment's owner or an active administrator.
 export async function GET(request: NextRequest) {
   const user = await getRequestUser(request)
   if (!user) return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi.' }, { status: 401 })
@@ -16,17 +16,23 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = getServiceSupabase()
-  const [{ data: payment }, { data: staff }] = await Promise.all([
+  const [paymentResult, staffResult] = await Promise.all([
     supabase.from('tolovlar').select('student_id, receipt_url').eq('id', id).maybeSingle(),
     supabase.from('staff').select('role, status').eq('id', user.id).maybeSingle(),
   ])
+  if (paymentResult.error || staffResult.error) {
+    console.error('Receipt authorization lookup failed:', paymentResult.error ?? staffResult.error)
+    return NextResponse.json({ error: 'Kvitansiyani tekshirib bo‘lmadi.' }, { status: 500 })
+  }
+  const payment = paymentResult.data
+  const staff = staffResult.data
   if (!payment || !payment.receipt_url) {
     return NextResponse.json({ error: 'Kvitansiya topilmadi.' }, { status: 404 })
   }
 
   const isOwner = payment.student_id === user.id
-  const isStaff = staff?.status === 'active' && (staff.role === 'admin' || staff.role === 'tarbiyachi')
-  if (!isOwner && !isStaff) {
+  const isAdmin = staff?.status === 'active' && staff.role === 'admin'
+  if (!isOwner && !isAdmin) {
     return NextResponse.json({ error: 'Ruxsat berilmadi.' }, { status: 403 })
   }
 

@@ -2,61 +2,30 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { callGemini } from '@/lib/gemini'
-import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 import { signFileClaim } from '@/lib/receipt-claim'
-
-// Normalizes a transaction_id for comparison so trivial formatting
-// differences (case, spaces, dashes) can't be used to dodge the
-// duplicate check — must mirror the `transaction_id_normalized`
-// generated column added in MIGRATION_receipt_duplicate_hardening.sql.
-function normalizeTransactionId(id: string): string {
-  return id.toUpperCase().replace(/[^A-Z0-9]/g, '')
-}
-
-// Catches placeholder/example IDs (including the literal example used
-// in the prompt below) and trivially-guessable sequences that carry no
-// real evidence of an actual transaction.
-function isSuspiciousTransactionId(normalizedId: string): boolean {
-  if (normalizedId.length < 6) return true
-
-  const knownPlaceholders = ['TX12345678', 'TX99281726', 'NA', 'TEST', 'TXXXXXXXXX']
-  if (knownPlaceholders.includes(normalizedId)) return true
-
-  const digitsOnly = normalizedId.replace(/[^0-9]/g, '')
-  if (digitsOnly.length >= 6) {
-    if (/^(\d)\1+$/.test(digitsOnly)) return true // all same digit
-
-    let ascending = true
-    let descending = true
-    for (let i = 1; i < digitsOnly.length; i++) {
-      const prev = Number(digitsOnly[i - 1])
-      const cur = Number(digitsOnly[i])
-      if (cur !== (prev + 1) % 10) ascending = false
-      if (cur !== (prev + 9) % 10) descending = false
-    }
-    if (ascending || descending) return true
-  }
-
-  return false
-}
+import {
+  isSuspiciousPaymentTransactionId,
+  normalizePaymentTransactionId,
+  parsePaymentAmount,
+  PaymentValidationError,
+} from '@/features/payments/domain/validation'
+import { requireActiveStudent } from '@/server/auth/guards'
+import { getApiError } from '@/server/http/api-error'
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getRequestUser(req)
-    if (!user) {
-      return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
-    }
+    const { student } = await requireActiveStudent(req)
 
-    const throttle = await checkRateLimit(`ai-tekshiruv:${user.id}:${getClientIp(req)}`, 12, 60_000)
+    const throttle = await checkRateLimit(`ai-tekshiruv:${student.id}:${getClientIp(req)}`, 12, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: 'Juda ko‘p chek tekshirildi. Keyinroq urinib ko‘ring.' }, { status: 429 })
     }
 
     const formData = await req.formData()
     const file = formData.get('file') as File | null
-    const declaredAmount = Number(formData.get('amount') || 0)
+    const declaredAmount = parsePaymentAmount(formData.get('amount'))
 
     if (!file) {
       return NextResponse.json({ error: 'Fayl yuklanmadi' }, { status: 400 })
@@ -88,12 +57,13 @@ export async function POST(req: NextRequest) {
     // someone else's receipt), it's a guaranteed duplicate regardless of what
     // the AI extracts this time.
     const supabaseForHash = getServiceSupabase()
-    const { data: hashMatches } = await supabaseForHash
+    const { data: hashMatches, error: hashError } = await supabaseForHash
       .from('tolovlar')
       .select('id, created_at')
       .eq('receipt_hash', fileHash)
       .limit(1)
 
+    if (hashError) throw hashError
     if (hashMatches && hashMatches.length > 0) {
       const dup = hashMatches[0]
       const dupDate = new Date(dup.created_at).toLocaleDateString('uz-UZ')
@@ -235,9 +205,9 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       analysis = duplicateInfo
       amountMatch = false
     } else {
-      const normalizedId = normalizeTransactionId(transactionId)
+      const normalizedId = normalizePaymentTransactionId(transactionId)
 
-      if (isSuspiciousTransactionId(normalizedId)) {
+      if (isSuspiciousPaymentTransactionId(normalizedId)) {
         isSuspiciousId = true
         confidence = 5
         duplicateInfo = `⚠️ SHUBHALI TRANZAKSIYA RAQAMI!\n\nAniqlangan tranzaksiya raqami (${transactionId}) haqiqiy to'lov tizimlariga xos ko'rinmayapti (juda qisqa, na'muna yoki ketma-ket raqamlarga o'xshaydi).\n\nIltimos, chekning asl, aniq skrinshotini yuklang.`
@@ -247,16 +217,18 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
         try {
           const supabase = getServiceSupabase()
           const { data: existingRecords, error: dupError } = await supabase
-            .from('tolovlar')
-            .select('id, created_at')
+            .from('payment_receipt_transactions')
+            .select('receipt_hash, updated_at')
             .eq('transaction_id_normalized', normalizedId)
+            .neq('receipt_hash', fileHash)
             .limit(1)
 
-          if (!dupError && existingRecords && existingRecords.length > 0) {
+          if (dupError) throw dupError
+          if (existingRecords && existingRecords.length > 0) {
             const dup = existingRecords[0]
             isDuplicate = true
             confidence = 5 // Very low confidence for duplicates
-            const dupDate = new Date(dup.created_at).toLocaleDateString('uz-UZ')
+            const dupDate = new Date(dup.updated_at).toLocaleDateString('uz-UZ')
             // Deliberately does not name whose transaction this was — the
             // caller may not be authorized to see that student's identity.
             duplicateInfo = `⚠️ TAKRORIY CHEK ANIQLANDI!\n\nUshbu chekdagi tranzaksiya raqami (${transactionId}) tizimda allaqachon ${dupDate} sanasida yuklangan boshqa to'lovda qayd etilgan!\n\nBu chekni qayta yuklash mumkin emas!`
@@ -265,7 +237,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
           }
         } catch (dbErr: unknown) {
           console.error('Duplicate check DB error:', dbErr)
-          // Don't block the validation if DB check fails
+          throw dbErr
         }
       }
     }
@@ -287,24 +259,31 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       // Only issued when the check actually passed — this is what proves to
       // the real submission endpoint that this exact file was validated,
       // instead of trusting a client-supplied hash at face value. Binding
-      // userId+amount (not just the file hash) closes a bypass where a real,
-      // AI-approved receipt for one amount/user gets resubmitted claiming a
-      // different amount (e.g. more months) or by a different account —
-      // the submission endpoint can only check amount == fee*months
-      // arithmetically, it has no other way to know what the AI verified.
-      claim: valid ? signFileClaim('payment', fileHash, { userId: user.id, amount: declaredAmount }) : null,
+      // The normalized transaction id is signed as well, so the submission
+      // endpoint can reserve it atomically instead of relying on a later,
+      // client-triggered background analysis.
+      claim: valid
+        ? signFileClaim('payment', fileHash, {
+            userId: student.id,
+            amount: declaredAmount,
+            transactionId: normalizePaymentTransactionId(transactionId),
+          })
+        : null,
     })
 
   } catch (error: unknown) {
     console.error('AI tekshiruv xatoligi:', error)
-    const message = error instanceof Error ? error.message : 'Noma\'lum xatolik'
+    if (error instanceof PaymentValidationError) {
+      return NextResponse.json({ error: error.message, valid: false }, { status: 400 })
+    }
+    const apiError = getApiError(error, 'AI tekshiruvda server xatoligi yuz berdi')
     return NextResponse.json({
-      error: message || 'Ichki server xatoligi',
+      ...apiError.body,
       valid: false,
       confidence: 0,
       extracted_amount: null,
-      analysis: 'AI tekshiruvda xatolik yuz berdi: ' + message,
+      analysis: 'AI tekshiruvni yakunlab bo‘lmadi.',
       is_duplicate: false
-    }, { status: 500 })
+    }, { status: apiError.status })
   }
 }

@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callGemini } from '@/lib/gemini'
-import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
+import { requireActiveStudent } from '@/server/auth/guards'
+import { getApiError } from '@/server/http/api-error'
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getRequestUser(req)
-    if (!user) {
-      return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
-    }
+    const { student } = await requireActiveStudent(req)
 
-    const throttle = await checkRateLimit(`ai-photo:${user.id}:${getClientIp(req)}`, 12, 60_000)
+    const throttle = await checkRateLimit(`ai-photo:${student.id}:${getClientIp(req)}`, 12, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: 'Juda ko‘p rasm tekshirildi. Keyinroq urinib ko‘ring.' }, { status: 429 })
     }
@@ -126,13 +124,13 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering. Hech qanday markdown (ma
 
   } catch (error: unknown) {
     console.error('AI rasm tekshiruv xatoligi:', error)
-    const message = error instanceof Error ? error.message : 'Noma\'lum xatolik'
+    const apiError = getApiError(error, 'AI rasm tekshiruvida server xatoligi yuz berdi')
     return NextResponse.json({
-      error: message || 'Ichki server xatoligi',
+      ...apiError.body,
       is_human: false,
       confidence: 0,
-      description: 'AI tekshiruvda xatolik yuz berdi: ' + message,
+      description: 'AI tekshiruvni yakunlab bo‘lmadi.',
       reason: 'Tizim xatoligi'
-    }, { status: 500 })
+    }, { status: apiError.status })
   }
 }

@@ -108,37 +108,18 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Navbatchilik jadvali juda katta' }, { status: 413 })
     }
 
-    const { data: existing } = await serviceSupabase
-      .from('elonlar')
-      .select('id')
-      .eq('title', 'HAFTALIK_NAVBATCHILIK_JADVALI')
-      .eq('target_floor', caller.assigned_floor)
-      .eq('target_gender', caller.gender)
-      .maybeSingle()
-
-    const payload = {
-      text,
-      updated_at: new Date().toISOString(),
-    }
-    const query = existing
-      ? serviceSupabase.from('elonlar').update({ ...payload, created_by: caller.id }).eq('id', existing.id)
-      : serviceSupabase.from('elonlar').insert({
-          title: 'HAFTALIK_NAVBATCHILIK_JADVALI',
-          text,
-          type: 'Yangilik',
-          audience: 'internal',
-          faculty: caller.faculty || 'Barchasi',
-          is_published: true,
-          created_by: caller.id,
-          target_floor: caller.assigned_floor,
-          target_gender: caller.gender,
-        })
-    const { data, error } = await query.select('id').single()
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    const { data: id, error } = await serviceSupabase.rpc('upsert_floor_duty_schedule', {
+      p_creator_id: caller.id,
+      p_floor: caller.assigned_floor,
+      p_gender: caller.gender,
+      p_faculty: caller.faculty || 'Barchasi',
+      p_text: text,
+    })
+    if (error || !id) {
+      return NextResponse.json({ error: error?.message ?? 'Navbatchilik jadvalini saqlab bo‘lmadi' }, { status: 500 })
     }
 
-    return NextResponse.json({ ok: true, id: data.id })
+    return NextResponse.json({ ok: true, id })
   } catch (error: unknown) {
     return NextResponse.json({ error: errorMessage(error) }, { status: 500 })
   }

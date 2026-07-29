@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { errorMessage, isPermissionDeniedError } from './verify-remote-helpers.mjs'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -17,17 +18,6 @@ const anon = createClient(url, anonKey, {
 
 const checks = []
 
-function errorMessage(error) {
-  if (error instanceof Error) return error.message
-  if (error && typeof error === 'object') {
-    const source = error
-    return [source.code, source.message, source.details, source.hint]
-      .filter(Boolean)
-      .join(' | ')
-  }
-  return String(error)
-}
-
 async function check(name, run) {
   try {
     await run()
@@ -45,9 +35,13 @@ function assert(condition, message) {
   if (!condition) throw new Error(message)
 }
 
-function assertValidApiKeyError(error, label) {
+function assertPermissionDenied(error, label) {
+  assert(Boolean(error), `${label} request unexpectedly succeeded`)
   const message = errorMessage(error)
-  assert(!/invalid api key/i.test(message), `${label} API key was rejected`)
+  assert(
+    isPermissionDeniedError(error),
+    `${label} request failed for an unrelated reason: ${message}`,
+  )
 }
 
 await check('Supabase API keys are accepted', async () => {
@@ -79,7 +73,7 @@ await check('app_settings schema and constraints', async () => {
 
 await check('latest table columns are deployed', async () => {
   const probes = [
-    service.from('staff').select('id,created_by').limit(1),
+    service.from('staff').select('id,created_by,staff_id').limit(1),
     service.from('tolovlar').select('id,transaction_id_normalized').limit(1),
     service.from('payment_receipt_transactions').select('receipt_hash,transaction_id_normalized').limit(1),
     service.from('floor_room_layout').select('id,floor_number,room_number,side,position,size').limit(1),
@@ -99,8 +93,7 @@ await check('anonymous users cannot read sensitive tables', async () => {
       .limit(1)
 
     if (error) {
-      assertValidApiKeyError(error, 'anonymous')
-      continue
+      throw new Error(`anonymous read probe failed for ${table}: ${errorMessage(error)}`)
     }
     assert((data?.length ?? 0) === 0, `anonymous read returned rows from ${table}`)
     assert((count ?? 0) === 0, `anonymous read exposed the row count of ${table}`)
@@ -111,8 +104,41 @@ await check('default function execute is not exposed to anonymous users', async 
   const { error } = await anon.rpc('is_active_staff_role', {
     required_roles: ['admin'],
   })
-  assertValidApiKeyError(error, 'anonymous')
-  assert(Boolean(error), 'anonymous role could execute is_active_staff_role')
+  assertPermissionDenied(error, 'anonymous function execution')
+})
+
+await check('atomic payment and duty RPCs are deployed and service-only', async () => {
+  const paymentArgs = {
+    p_student_id: '00000000-0000-0000-0000-000000000000',
+    p_student_name: '',
+    p_months: [],
+    p_amounts: [],
+    p_year: 0,
+    p_receipt_url: '',
+    p_receipt_hash: '',
+    p_batch_id: '00000000-0000-0000-0000-000000000000',
+    p_transaction_id: '',
+    p_transaction_id_normalized: '',
+  }
+  const dutyArgs = {
+    p_creator_id: '00000000-0000-0000-0000-000000000000',
+    p_floor: 0,
+    p_gender: '',
+    p_faculty: '',
+    p_text: '{}',
+  }
+
+  const [paymentService, dutyService, paymentAnon, dutyAnon] = await Promise.all([
+    service.rpc('submit_payment_batch_atomic', paymentArgs),
+    service.rpc('upsert_floor_duty_schedule', dutyArgs),
+    anon.rpc('submit_payment_batch_atomic', paymentArgs),
+    anon.rpc('upsert_floor_duty_schedule', dutyArgs),
+  ])
+
+  assert(paymentService.error?.code === '22023', `atomic payment RPC validation is missing: ${errorMessage(paymentService.error)}`)
+  assert(dutyService.error?.code === '22023', `duty schedule RPC validation is missing: ${errorMessage(dutyService.error)}`)
+  assertPermissionDenied(paymentAnon.error, 'anonymous atomic payment RPC')
+  assertPermissionDenied(dutyAnon.error, 'anonymous duty schedule RPC')
 })
 
 const failed = checks.filter((item) => !item.ok)

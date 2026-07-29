@@ -6,6 +6,9 @@ import { createAppSettingsService } from '@/features/app-settings/server/service
 import { verifyFileClaim } from '@/lib/receipt-claim'
 import type { SubmitPaymentResult } from '../types'
 import {
+  isSuspiciousPaymentTransactionId,
+  normalizePaymentTransactionId,
+  parsePaymentAmount,
   PAYMENT_MONTHS,
   PaymentValidationError,
   validatePaymentReview,
@@ -55,13 +58,21 @@ export function createPaymentService(repository: PaymentRepository = createPayme
 
     async submit(student: StudentForPayment, form: FormData): Promise<SubmitPaymentResult> {
       const file = form.get('file')
-      const amount = Number(form.get('amount'))
+      let amount: number
+      try {
+        amount = parsePaymentAmount(form.get('amount'))
+      } catch (error) {
+        if (error instanceof PaymentValidationError) throw new ApiError(400, error.message, error.code)
+        throw error
+      }
       const year = Number(form.get('year'))
       const months = parseMonths(form.get('months'))
+      const transactionId = String(form.get('transactionId') ?? '').trim()
+      const normalizedTransactionId = normalizePaymentTransactionId(transactionId)
       if (!(file instanceof File)) throw new ApiError(400, 'Chek fayli topilmadi')
       if (!Number.isInteger(year) || year < 2020 || year > 2100) throw new ApiError(400, 'To‘lov yili noto‘g‘ri')
-      if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100_000_000) {
-        throw new ApiError(400, 'To‘lov summasi noto‘g‘ri')
+      if (transactionId.length > 256 || isSuspiciousPaymentTransactionId(normalizedTransactionId)) {
+        throw new ApiError(400, 'Chek tranzaksiya raqami noto‘g‘ri')
       }
       const { monthlyFee } = await createAppSettingsService().get()
       if (amount !== monthlyFee * months.length) {
@@ -81,13 +92,16 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       // The AI precheck (/api/ai/tekshiruv) and this submission are two
       // independent requests — without this, a caller could skip straight
       // here with a self-declared "already validated" flag. The claim is
-      // an HMAC signature over this exact file's hash AND the userId/amount
-      // the precheck actually validated, only issued by the precheck when
-      // it passed — so it can't be forged, reused for a different file, or
-      // replayed to submit a different amount (e.g. more months) than what
-      // the AI actually verified.
+      // an HMAC signature over this exact file's hash, user/amount and the
+      // normalized transaction id the AI extracted. The transaction id is
+      // then reserved in the same database transaction that inserts the
+      // payment rows, so a caller cannot skip a later background request.
       const claim = form.get('validatedHash')
-      if (!verifyFileClaim('payment', claim, receiptHash, { userId: student.id, amount })) {
+      if (!verifyFileClaim('payment', claim, receiptHash, {
+        userId: student.id,
+        amount,
+        transactionId: normalizedTransactionId,
+      })) {
         throw new ApiError(400, 'Chek avval AI orqali tekshirilishi shart')
       }
       const batchId = randomUUID()
@@ -113,18 +127,19 @@ export function createPaymentService(repository: PaymentRepository = createPayme
         // divisible by months.length).
         const baseAmount = Math.floor(amount / months.length)
         const remainder = amount - baseAmount * months.length
-        const rows = months.map((month, index) => ({
-          student_id: student.id,
-          student_name: student.full_name || 'Talaba',
-          month,
+        const amounts = months.map((_, index) => baseAmount + (index < remainder ? 1 : 0))
+        const { data, error } = await repository.submitBatchAtomic({
+          studentId: student.id,
+          studentName: student.full_name || 'Talaba',
+          months,
+          amounts,
           year,
-          amount: baseAmount + (index < remainder ? 1 : 0),
-          status: 'waiting',
-          receipt_url: receiptUrl,
-          receipt_hash: receiptHash,
-          admin_message: 'Tekshirilmoqda...',
-        }))
-        const { data, error } = await repository.insertBatch(rows)
+          receiptUrl,
+          receiptHash,
+          batchId,
+          transactionId,
+          normalizedTransactionId,
+        })
         if (error) throw error
         return {
           ok: true,
@@ -138,7 +153,7 @@ export function createPaymentService(repository: PaymentRepository = createPayme
         await repository.releaseReceipt(receiptHash, batchId)
         const code = (error as { code?: string } | null)?.code
         if (code === '23505') {
-          throw new ApiError(409, 'Ushbu oy(lar) uchun to\'lov allaqachon yuborilgan yoki tasdiqlangan')
+          throw new ApiError(409, 'Bu chek/tranzaksiya yoki ushbu oy(lar) uchun to‘lov avval yuborilgan')
         }
         throw error
       }

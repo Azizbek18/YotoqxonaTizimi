@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callGemini } from '@/lib/gemini'
-import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
+import { requireActiveStudent } from '@/server/auth/guards'
+import { getApiError } from '@/server/http/api-error'
 
 type ChatMessage = {
   role?: string
@@ -11,12 +12,9 @@ type ChatMessage = {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getRequestUser(req)
-    if (!user) {
-      return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
-    }
+    const { student } = await requireActiveStudent(req)
 
-    const throttle = await checkRateLimit(`ai-chat:${user.id}:${getClientIp(req)}`, 20, 60_000)
+    const throttle = await checkRateLimit(`ai-chat:${student.id}:${getClientIp(req)}`, 20, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: 'Juda ko‘p so‘rov. Keyinroq urinib ko‘ring.' }, { status: 429 })
     }
@@ -127,7 +125,7 @@ Sizga qanday yordam bera olaman?`
 
   } catch (error: unknown) {
     console.error('Chat API Error:', error)
-    const message = error instanceof Error ? error.message : 'Ichki server xatoligi'
-    return NextResponse.json({ error: message }, { status: 500 })
+    const response = getApiError(error, 'Ichki server xatoligi')
+    return NextResponse.json(response.body, { status: response.status })
   }
 }

@@ -1,0 +1,89 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const verifyFileClaim = vi.fn()
+const getSettings = vi.fn()
+
+vi.mock('@/lib/receipt-claim', () => ({
+  verifyFileClaim: (...args: unknown[]) => verifyFileClaim(...args),
+}))
+vi.mock('@/features/app-settings/server/service', () => ({
+  createAppSettingsService: () => ({ get: getSettings }),
+}))
+
+const { createPaymentService } = await import('./service')
+
+function paymentForm(transactionId = 'TRX-9A7B-4C2D') {
+  const form = new FormData()
+  const bytes = new Uint8Array(32)
+  bytes.set([0x89, 0x50, 0x4e, 0x47])
+  form.set('file', new File([bytes], 'receipt.png', { type: 'image/png' }))
+  form.set('amount', '500000')
+  form.set('year', '2026')
+  form.set('months', JSON.stringify(['Sentabr']))
+  form.set('validatedHash', 'signed-claim')
+  form.set('transactionId', transactionId)
+  return form
+}
+
+function repository() {
+  return {
+    listForStudent: vi.fn(),
+    listAll: vi.fn(),
+    countWaiting: vi.fn(),
+    review: vi.fn(),
+    claimReceipt: vi.fn(async () => ({ error: null })),
+    releaseReceipt: vi.fn(async () => undefined),
+    setReceiptPath: vi.fn(async () => undefined),
+    uploadReceipt: vi.fn(async () => ({ error: null })),
+    removeReceipt: vi.fn(async () => undefined),
+    submitBatchAtomic: vi.fn(async () => ({
+      data: [{ id: 'payment-1', month: 'Sentabr', year: 2026, status: 'waiting' }],
+      error: null,
+    })),
+  }
+}
+
+describe('payment submission service', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getSettings.mockResolvedValue({ monthlyFee: 500000 })
+    verifyFileClaim.mockReturnValue(true)
+  })
+
+  it('binds and atomically persists the AI-verified transaction id', async () => {
+    const repo = repository()
+    const result = await createPaymentService(repo as never).submit(
+      { id: '00000000-0000-4000-8000-000000000001', full_name: 'Test Student' },
+      paymentForm(),
+    )
+
+    expect(result.ok).toBe(true)
+    expect(verifyFileClaim).toHaveBeenCalledWith(
+      'payment',
+      'signed-claim',
+      expect.stringMatching(/^[0-9a-f]{64}$/),
+      {
+        userId: '00000000-0000-4000-8000-000000000001',
+        amount: 500000,
+        transactionId: 'TRX9A7B4C2D',
+      },
+    )
+    expect(repo.submitBatchAtomic).toHaveBeenCalledWith(expect.objectContaining({
+      transactionId: 'TRX-9A7B-4C2D',
+      normalizedTransactionId: 'TRX9A7B4C2D',
+      months: ['Sentabr'],
+      amounts: [500000],
+    }))
+  })
+
+  it('rejects a missing or suspicious transaction id before reserving the receipt', async () => {
+    const repo = repository()
+    await expect(createPaymentService(repo as never).submit(
+      { id: '00000000-0000-4000-8000-000000000001', full_name: 'Test Student' },
+      paymentForm('TX12345678'),
+    )).rejects.toThrow('Chek tranzaksiya raqami noto‘g‘ri')
+
+    expect(repo.claimReceipt).not.toHaveBeenCalled()
+    expect(repo.submitBatchAtomic).not.toHaveBeenCalled()
+  })
+})

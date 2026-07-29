@@ -304,7 +304,7 @@ export default function TolovaPage() {
             }
 
             // If valid — proceed to upload
-            await proceedWithUpload(result.claim ?? undefined)
+            await proceedWithUpload(result.claim ?? undefined, result.transaction_id ?? undefined)
         } catch (error) {
             console.error('AI validation error:', error)
             toast.error('AI tekshiruv tizimida xatolik. Qayta urinib ko\'ring.')
@@ -314,7 +314,7 @@ export default function TolovaPage() {
     }
 
     // Step 2: Actual upload after validation passes
-    const proceedWithUpload = async (aiClaim?: string) => {
+    const proceedWithUpload = async (aiClaim?: string, transactionId?: string) => {
         if (!newReceipt || !user) return
         setUploading(true)
         try {
@@ -325,6 +325,7 @@ export default function TolovaPage() {
             paymentForm.append('year', String(selectedYear))
             paymentForm.append('months', JSON.stringify(monthsToPay))
             if (aiClaim) paymentForm.append('validatedHash', aiClaim)
+            if (transactionId) paymentForm.append('transactionId', transactionId)
             const paymentResult = await submitStudentPayment(paymentForm)
             const insertedDatas = paymentResult.records
 

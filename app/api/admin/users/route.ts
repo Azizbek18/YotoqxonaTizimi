@@ -7,6 +7,26 @@ import type { StaffRow, UserRow } from '@/types/database.generated'
 type UserSource = 'users' | 'staff'
 type UserRole = 'talaba' | 'tarbiyachi' | 'zamdekan' | 'admin'
 
+export function resolveDeleteTarget(
+  submittedSource: UserSource,
+  student: { id: string } | null,
+  staff: { id: string; role: string } | null,
+): UserSource {
+  if (student && staff) {
+    throw new ApiError(409, "Hisob bir nechta profil jadvalida topildi; o'chirish xavfsizlik sabab to'xtatildi")
+  }
+  if (!student && !staff) throw new ApiError(404, 'Foydalanuvchi topilmadi')
+
+  const resolvedSource: UserSource = staff ? 'staff' : 'users'
+  if (submittedSource !== resolvedSource) {
+    throw new ApiError(409, "Foydalanuvchi manbasi eskirgan yoki noto'g'ri")
+  }
+  if (staff?.role === 'zamdekan') {
+    throw new ApiError(403, "Zamdekan profilini admin panelidan o'chirib bo'lmaydi")
+  }
+  return resolvedSource
+}
+
 type AdminUserRow = {
   id: string
   full_name: string
@@ -530,23 +550,25 @@ export async function DELETE(request: Request) {
     }
 
     const supabase = getServiceSupabase()
-    const table = source === 'users' ? 'users' : 'staff'
-
-    if (source === 'staff') {
-      const { data: existingStaff, error: existingError } = await supabase
-        .from('staff')
-        .select('role')
+    // `source` comes from the browser and cannot decide which authorization
+    // rules apply. Resolve the target from the database first, then require
+    // the submitted source to match that server-side result.
+    const [studentResult, staffResult] = await Promise.all([
+      supabase
+        .from('users')
+        .select('id')
         .eq('id', id)
-        .maybeSingle()
+        .maybeSingle(),
+      supabase
+        .from('staff')
+        .select('id, role')
+        .eq('id', id)
+        .maybeSingle(),
+    ])
 
-      if (existingError) {
-        return jsonError(existingError.message, 500)
-      }
-
-      if (existingStaff?.role === 'zamdekan') {
-        return jsonError("Zamdekan profilini admin panelidan o'chirib bo'lmaydi", 403)
-      }
-    }
+    if (studentResult.error) return jsonError(studentResult.error.message, 500)
+    if (staffResult.error) return jsonError(staffResult.error.message, 500)
+    const table = resolveDeleteTarget(source, studentResult.data, staffResult.data)
 
     // Auth account first, profile row second: these are two separate
     // systems with no shared transaction, so whichever step runs first is
@@ -576,6 +598,9 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ ok: true })
   } catch (error) {
+    if (error instanceof ApiError) {
+      return jsonError(error.message, error.status)
+    }
     console.error('Admin users DELETE xato:', error)
     return jsonError("Foydalanuvchini o'chirishda server xatosi yuz berdi", 500)
   }

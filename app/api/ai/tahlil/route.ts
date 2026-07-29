@@ -5,6 +5,7 @@ import { callGemini } from '@/lib/gemini'
 import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { extractReceiptPath } from '@/lib/safe-storage-url'
+import { normalizePaymentTransactionId } from '@/features/payments/domain/validation'
 
 // Looks up `role` for the given identity in `table`, trying `id` then
 // `email` as two safe, parameterized lookups — never interpolate
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
     // 1. Fetch the payment record
     const { data: record, error: fetchError } = await supabase
       .from('tolovlar')
-      .select('id, student_id, student_name, month, year, amount, receipt_url, status')
+      .select('id, student_id, student_name, month, year, amount, receipt_url, status, transaction_id')
       .eq('id', paymentId)
       .single()
 
@@ -152,7 +153,12 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown for
         const jsonResult = JSON.parse(textResponse.trim())
         aiConfidence = typeof jsonResult.confidence === 'number' ? jsonResult.confidence : 95
         aiExtractedAmount = typeof jsonResult.extracted_amount === 'number' ? jsonResult.extracted_amount : record.amount
-        aiTransactionId = jsonResult.transaction_id ? String(jsonResult.transaction_id) : null
+        // Submission already reserved a verified transaction id atomically.
+        // Preserve it when a later background analysis cannot read the id,
+        // rather than erasing the canonical value from this payment row.
+        aiTransactionId = jsonResult.transaction_id
+          ? String(jsonResult.transaction_id)
+          : record.transaction_id
         aiAnalysis = jsonResult.analysis || 'Tahlil muvaffaqiyatli yakunlandi.'
 
     } catch (geminiError: unknown) {
@@ -164,7 +170,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown for
     // normalized form (same regexp as the generated transaction_id_normalized
     // column) so formatting differences like "TX-778812340" vs
     // "tx778812340" can't be used to dodge this soft, informational check.
-    const normalizedTransactionId = aiTransactionId ? aiTransactionId.toUpperCase().replace(/[^A-Z0-9]/g, '') : ''
+    const normalizedTransactionId = normalizePaymentTransactionId(aiTransactionId)
     if (normalizedTransactionId) {
       const { data: duplicateRecords, error: dupError } = await supabase
         .from('tolovlar')

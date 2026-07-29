@@ -43,6 +43,10 @@ export async function GET(request: NextRequest) {
         .eq('target_gender', profile.gender)
         .maybeSingle(),
     ])
+    if (captainsResult.error || scheduleResult.error) {
+      console.error('Duty schedule query error:', captainsResult.error ?? scheduleResult.error)
+      return NextResponse.json({ error: 'Navbatchilik ma’lumotlarini yuklab bo‘lmadi' }, { status: 500 })
+    }
 
     let schedule = {}
     let admins: unknown[] = []

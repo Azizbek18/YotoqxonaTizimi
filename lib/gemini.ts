@@ -11,8 +11,9 @@ export async function callGemini(payload: unknown, apiKey: string) {
 
     // 2 attempts per model
     for (let attempt = 1; attempt <= 2; attempt++) {
+      let response: Response
       try {
-        const response = await fetch(geminiUrl, {
+        response = await fetch(geminiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -21,27 +22,38 @@ export async function callGemini(payload: unknown, apiKey: string) {
           // getting a chance to run.
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         })
-
-        if (response.ok) {
-          return await response.json()
+      } catch (error: unknown) {
+        lastError = error
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, attempt * 500))
+          continue
         }
+        break
+      }
 
-        const errText = await response.text()
-        lastError = new Error(`Gemini API error (${response.status}): ${errText}`)
+      if (response.ok) {
+        return await response.json()
+      }
 
-        // Retry on transient errors (503, 429, 500)
-        if (response.status === 503 || response.status === 429 || response.status === 500) {
+      const errText = await response.text()
+      lastError = new Error(`Gemini API error (${response.status}): ${errText}`)
+
+      // A missing/deprecated model may legitimately be recovered by trying
+      // the configured fallback model, but repeating the same 404 is useless.
+      if (response.status === 404) break
+
+      // Retry only transient upstream/quota errors. Other 4xx responses mean
+      // the request itself is invalid and must fail immediately rather than
+      // consuming quota across every model and attempt.
+      if (response.status === 429 || response.status >= 500) {
+        if (attempt < 2) {
           await new Promise(resolve => setTimeout(resolve, attempt * 1000))
           continue
         }
-
-        // Fail immediately on client errors (400, etc.)
-        throw lastError
-
-      } catch (e: unknown) {
-        lastError = e
-        await new Promise(resolve => setTimeout(resolve, 500))
+        break
       }
+
+      throw lastError
     }
   }
 

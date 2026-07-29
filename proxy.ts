@@ -17,6 +17,19 @@ function homeFor(role: AppRole, fallback: string): string {
   return role ? ROLE_HOME[role] : fallback
 }
 
+export function publicEntryRedirectTarget(
+  hasSession: boolean,
+  role: AppRole,
+  path: string,
+): string | null {
+  if (!hasSession) return null
+  if (role && (path === '/login' || path === '/register' || path === '/')) {
+    return homeFor(role, '/login')
+  }
+  if (!role && (path === '/register' || path === '/')) return '/login'
+  return null
+}
+
 export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDev = process.env.NODE_ENV === 'development'
@@ -156,10 +169,11 @@ export async function proxy(request: NextRequest) {
   // ========================
   // LOGIN VA REGISTER SAHIFALARI
   // ========================
-  // Login qilgan bo'lsa, o'ziga mos dashboardga yo'naltirish
-  if (session && (path === '/login' || path === '/register' || path === '/')) {
-    return redirect(homeFor(userRole, '/talaba/dashboard'))
-  }
+  // Faqat faol rol topilgan sessiyani dashboardga yo'naltiramiz. Auth'da
+  // mavjud, ammo pending/rejected/orphan profilga ega foydalanuvchini
+  // /login -> /talaba/dashboard -> /login sikliga tushirmaymiz.
+  const publicEntryRedirect = publicEntryRedirectTarget(Boolean(session), userRole, path)
+  if (publicEntryRedirect) return redirect(publicEntryRedirect)
 
   return allow()
 }

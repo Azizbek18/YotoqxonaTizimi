@@ -257,6 +257,36 @@ export interface Database {
           final_transaction_id: string | null
         }[]
       }
+      upsert_floor_duty_schedule: {
+        Args: {
+          p_creator_id: string
+          p_floor: number
+          p_gender: string
+          p_faculty: string
+          p_text: string
+        }
+        Returns: string
+      }
+      submit_payment_batch_atomic: {
+        Args: {
+          p_student_id: string
+          p_student_name: string
+          p_months: string[]
+          p_amounts: number[]
+          p_year: number
+          p_receipt_url: string
+          p_receipt_hash: string
+          p_batch_id: string
+          p_transaction_id: string
+          p_transaction_id_normalized: string
+        }
+        Returns: {
+          id: string
+          month: string
+          year: number
+          status: string
+        }[]
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

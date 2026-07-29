@@ -25,13 +25,18 @@ function claimKey(purpose: string) {
   return createHmac('sha256', secret).update(`ai-receipt-claim:${purpose}`).digest()
 }
 
-// Canonical, order-independent serialization so the signer and verifier
-// always agree on the same string for equivalent context objects.
+// Canonical, order-independent and unambiguous serialization. A hand-built
+// `key=value&...` string is unsafe for attacker-controlled values because
+// separators inside a value can make two different context objects serialize
+// identically.
 function stableContext(context: ClaimContext): string {
-  return Object.keys(context)
+  const sorted = Object.keys(context)
     .sort()
-    .map((key) => `${key}=${String(context[key])}`)
-    .join('&')
+    .reduce<Record<string, string | number>>((result, key) => {
+      result[key] = context[key]
+      return result
+    }, {})
+  return JSON.stringify(sorted)
 }
 
 export function signFileClaim(purpose: string, fileHash: string, context: ClaimContext = {}): string {

@@ -5,6 +5,7 @@ import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 import { requireActiveStudent } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
+import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
@@ -51,11 +52,11 @@ export async function POST(request: NextRequest) {
   try {
     const context = await requireStudent(request)
 
-    const form = await request.formData()
+    const form = await readMultipartForm(request)
     const file = form.get('file')
     if (!(file instanceof File)) return NextResponse.json({ error: 'Fayl topilmadi' }, { status: 400 })
     const { maxUploadSizeMb } = await createAppSettingsService().get()
-    if (!ALLOWED_IMAGE_TYPES.has(file.type) || file.size < 16 || file.size > maxUploadSizeMb * 1024 * 1024) {
+    if (!ALLOWED_IMAGE_TYPES.has(file.type) || file.size < 16 || file.size > Math.min(maxUploadSizeMb * 1024 * 1024, MAX_UPLOAD_SIZE_BYTES)) {
       return NextResponse.json({ error: `Faqat JPEG, PNG yoki WEBP (${maxUploadSizeMb} MB gacha) qabul qilinadi` }, { status: 400 })
     }
 

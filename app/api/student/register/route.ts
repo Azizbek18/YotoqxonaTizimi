@@ -1,40 +1,50 @@
+import { randomBytes } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
-import { isValidJshshir, isValidPassport, namesLikelyMatch, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
+import {
+  isValidJshshir,
+  isValidPassport,
+  namesLikelyMatch,
+  normalizeJshshir,
+  normalizePassport,
+} from '@/lib/permit-validation'
 import { writeAuditLog } from '@/lib/audit-log'
 import { extractFloor } from '@/lib/floor'
+import { createAuthUserSafely, deleteAuthUserSafely } from '@/lib/supabase-admin-auth'
 
 function text(body: Record<string, unknown>, key: string, maxLength = 200) {
   return String(body[key] ?? '').trim().slice(0, maxLength)
 }
 
-// A plain `new Date(...)` parse doesn't reject invalid calendar dates like
-// 2026-02-31 — JS silently rolls it forward to March. Round-tripping through
-// UTC field getters and comparing back to the input catches that.
 function validDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const [year, month, day] = value.split('-').map(Number)
   const date = new Date(Date.UTC(year, month - 1, day))
-  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day
 }
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)
   const throttle = await checkRateLimit(`student-register:${ip}`, 5, 15 * 60_000)
   if (!throttle.allowed) {
-    return NextResponse.json({ error: 'Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.' }, { status: 429 })
+    return NextResponse.json(
+      { error: 'Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.' },
+      { status: 429 },
+    )
   }
 
   try {
     const body = await request.json().catch(() => null) as Record<string, unknown> | null
-    if (!body) return NextResponse.json({ error: 'Noto‘g‘ri so‘rov' }, { status: 400 })
+    if (!body) {
+      return NextResponse.json({ error: 'Noto‘g‘ri so‘rov' }, { status: 400 })
+    }
 
     const passport = normalizePassport(body.passportSeries)
     const jshshir = normalizeJshshir(body.jshshir)
     const email = text(body, 'email', 254).toLowerCase()
-    const password = String(body.password ?? '')
-    const confirmPassword = String(body.confirmPassword ?? '')
     const firstName = text(body, 'firstName', 80)
     const lastName = text(body, 'lastName', 80)
     const middleName = text(body, 'middleName', 80)
@@ -48,47 +58,115 @@ export async function POST(request: NextRequest) {
     const birthDate = text(body, 'birthDate', 10)
     const entryDate = text(body, 'entryDate', 10)
 
-    if (!isValidPassport(passport) || !isValidJshshir(jshshir) || !/^\S+@\S+\.\S+$/.test(email)) {
-      return NextResponse.json({ error: 'Pasport, JShSHIR yoki email formati noto‘g‘ri.' }, { status: 400 })
+    if (
+      !isValidPassport(passport)
+      || !isValidJshshir(jshshir)
+      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
+      return NextResponse.json(
+        { error: 'Pasport, JShSHIR yoki email formati noto‘g‘ri.' },
+        { status: 400 },
+      )
     }
-    if (password !== confirmPassword || password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-      return NextResponse.json({ error: 'Parol kamida 8 belgi, harf va raqamdan iborat bo‘lishi kerak.' }, { status: 400 })
+    if (
+      fullName.length < 5
+      || !phone
+      || !['male', 'female'].includes(gender)
+      || !faculty
+      || !direction
+    ) {
+      return NextResponse.json(
+        { error: 'Majburiy shaxsiy va ta’lim ma’lumotlari to‘liq emas.' },
+        { status: 400 },
+      )
     }
-    if (fullName.length < 5 || !phone || !['male', 'female'].includes(gender) || !faculty || !direction) {
-      return NextResponse.json({ error: 'Majburiy shaxsiy va ta’lim ma’lumotlari to‘liq emas.' }, { status: 400 })
-    }
-    if (!Number.isInteger(course) || course < 1 || course > 6 || !validDate(passportDate) || !validDate(birthDate) || !validDate(entryDate)) {
-      return NextResponse.json({ error: 'Kurs yoki sana ma’lumotlari noto‘g‘ri.' }, { status: 400 })
+    if (
+      !Number.isInteger(course)
+      || course < 1
+      || course > 6
+      || !validDate(passportDate)
+      || !validDate(birthDate)
+      || !validDate(entryDate)
+    ) {
+      return NextResponse.json(
+        { error: 'Kurs yoki sana ma’lumotlari noto‘g‘ri.' },
+        { status: 400 },
+      )
     }
 
     const supabase = getServiceSupabase()
     const { data: permit, error: permitError } = await supabase
       .from('permit_requests')
-      .select('id, email, full_name, gender, faculty, direction, course, room_number, status')
+      .select('email, full_name, gender, faculty, direction, course, room_number, status')
       .eq('passport_series', passport)
       .eq('jshshir', jshshir)
       .maybeSingle()
     if (permitError) throw permitError
+
     if (!permit || permit.status !== 'approved') {
-      await writeAuditLog({ eventType: 'student.registration', status: 'denied', ipAddress: ip, targetRole: 'talaba' })
-      return NextResponse.json({ error: 'Yo‘llanma hali tasdiqlanmagan yoki ma’lumotlar mos emas.' }, { status: 403 })
-    }
-    if (
-      permit.email.trim().toLowerCase() !== email ||
-      permit.faculty.trim().toLowerCase() !== faculty.toLowerCase() ||
-      !namesLikelyMatch(fullName, permit.full_name)
-    ) {
-      return NextResponse.json({ error: 'Ro‘yxatdan o‘tish ma’lumotlari tasdiqlangan yo‘llanma bilan mos emas.' }, { status: 403 })
+      await writeAuditLog({
+        eventType: 'student.registration',
+        status: 'denied',
+        ipAddress: ip,
+        targetRole: 'talaba',
+      })
+      return NextResponse.json(
+        { error: 'Yo‘llanma hali tasdiqlanmagan yoki ma’lumotlar mos emas.' },
+        { status: 403 },
+      )
     }
 
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    if (
+      permit.email.trim().toLowerCase() !== email
+      || permit.faculty.trim().toLowerCase() !== faculty.toLowerCase()
+      || !namesLikelyMatch(fullName, permit.full_name)
+    ) {
+      return NextResponse.json(
+        { error: 'Ro‘yxatdan o‘tish ma’lumotlari tasdiqlangan yo‘llanma bilan mos emas.' },
+        { status: 403 },
+      )
+    }
+
+    const { data: existingUser, error: existingUserError } = await supabase
+      .from('users')
+      .select('id, email, role, status')
+      .eq('passport_series', passport)
+      .eq('jshshir', jshshir)
+      .maybeSingle()
+    if (existingUserError) throw existingUserError
+
+    if (existingUser) {
+      const isSamePendingStudent =
+        existingUser.role === 'talaba'
+        && existingUser.status === 'pending'
+        && existingUser.email?.trim().toLowerCase() === email
+
+      if (!isSamePendingStudent) {
+        return NextResponse.json(
+          { error: 'Bu ma’lumotlar bilan akkaunt mavjud.' },
+          { status: 409 },
+        )
+      }
+
+      return NextResponse.json(
+        { ok: true, requiresEmailVerification: true },
+        { status: 202 },
+      )
+    }
+
+    // The requester never chooses a usable password before proving control of
+    // the approved email. This random password is not returned or logged.
+    const inaccessiblePassword = randomBytes(48).toString('base64url')
+    const { data: authData, error: authError } = await createAuthUserSafely(
       email,
-      password,
-      email_confirm: true,
-      user_metadata: { role: 'talaba' },
-    })
+      inaccessiblePassword,
+      { role: 'talaba', registration_pending: true },
+    )
     if (authError || !authData.user) {
-      return NextResponse.json({ error: 'Bu email bilan akkaunt mavjud yoki akkaunt yaratib bo‘lmadi.' }, { status: 409 })
+      return NextResponse.json(
+        { error: 'Bu email bilan akkaunt mavjud yoki akkaunt yaratib bo‘lmadi.' },
+        { status: 409 },
+      )
     }
 
     let assignedFloor: number | null = null
@@ -101,7 +179,7 @@ export async function POST(request: NextRequest) {
       assignedFloor = layoutRow?.floor_number ?? extractFloor(permit.room_number)
     }
 
-    const userRow = {
+    const { error: insertError } = await supabase.from('users').insert({
       id: authData.user.id,
       email,
       full_name: fullName,
@@ -130,26 +208,16 @@ export async function POST(request: NextRequest) {
       assigned_floor: assignedFloor,
       entry_date: entryDate,
       role: 'talaba',
-      status: 'active',
-    }
+      status: 'pending',
+    })
 
-    const { error: insertError } = await supabase.from('users').insert(userRow)
     if (insertError) {
-      await supabase.auth.admin.deleteUser(authData.user.id)
-      return NextResponse.json({ error: 'Profil yaratilmadi: ' + insertError.message }, { status: 409 })
-    }
-
-    const { data: updatedPermit, error: permitUpdateError } = await supabase
-      .from('permit_requests')
-      .update({ status: 'registered', updated_at: new Date().toISOString() })
-      .eq('id', permit.id)
-      .eq('status', 'approved')
-      .select('id')
-      .maybeSingle()
-    if (permitUpdateError || !updatedPermit) {
-      await supabase.from('users').delete().eq('id', authData.user.id)
-      await supabase.auth.admin.deleteUser(authData.user.id)
-      throw permitUpdateError ?? new Error('Yo‘llanma holati parallel so‘rovda o‘zgardi')
+      const { error: cleanupError } = await deleteAuthUserSafely(authData.user.id)
+      if (cleanupError) {
+        console.error('Student Auth cleanup failed:', cleanupError)
+      }
+      console.error('Student pending profile insert failed:', insertError)
+      return NextResponse.json({ error: 'Akkaunt yaratib bo‘lmadi.' }, { status: 409 })
     }
 
     await writeAuditLog({
@@ -158,10 +226,17 @@ export async function POST(request: NextRequest) {
       ipAddress: ip,
       actorUserId: authData.user.id,
       targetRole: 'talaba',
+      details: { stage: 'pending_email_verification' },
     })
-    return NextResponse.json({ ok: true }, { status: 201 })
+    return NextResponse.json(
+      { ok: true, requiresEmailVerification: true },
+      { status: 202 },
+    )
   } catch (error) {
     console.error('Student registration failed:', error)
-    return NextResponse.json({ error: 'Ro‘yxatdan o‘tishda server xatoligi yuz berdi.' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Ro‘yxatdan o‘tishda server xatoligi yuz berdi.' },
+      { status: 500 },
+    )
   }
 }

@@ -10,11 +10,16 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json().catch(() => null) as { passportSeries?: unknown; jshshir?: unknown } | null
+    const body = await request.json().catch(() => null) as {
+      passportSeries?: unknown
+      jshshir?: unknown
+      email?: unknown
+    } | null
     const passport = normalizePassport(body?.passportSeries)
     const jshshir = normalizeJshshir(body?.jshshir)
-    if (!isValidPassport(passport) || !isValidJshshir(jshshir)) {
-      return NextResponse.json({ error: 'Pasport yoki JShSHIR formati noto‘g‘ri.' }, { status: 400 })
+    const email = String(body?.email ?? '').trim().toLowerCase().slice(0, 254)
+    if (!isValidPassport(passport) || !isValidJshshir(jshshir) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: 'Pasport, JShSHIR yoki email formati noto‘g‘ri.' }, { status: 400 })
     }
 
     const { data, error } = await getServiceSupabase()
@@ -22,6 +27,7 @@ export async function POST(request: NextRequest) {
       .select('id, full_name, status, room_number, reject_reason, created_at')
       .eq('passport_series', passport)
       .eq('jshshir', jshshir)
+      .eq('email', email)
       .maybeSingle()
     if (error) throw error
 

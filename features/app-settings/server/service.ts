@@ -47,7 +47,7 @@ const UPDATABLE_FIELDS: Record<keyof AppSettings, { column: string; parse: (valu
   talabaKengashiRaisiQizName: { column: 'talaba_kengashi_raisi_qiz_name', parse: (v) => parseText(v, 'Talaba kengashi raisi (qiz) ismi', 100) },
   talabaKengashiRaisiQizPhone: { column: 'talaba_kengashi_raisi_qiz_phone', parse: (v) => parseText(v, 'Talaba kengashi raisi (qiz) telefoni', 30) },
   securityPhone: { column: 'security_phone', parse: (v) => parseText(v, 'Xavfsizlik telefoni', 30) },
-  maxUploadSizeMb: { column: 'max_upload_size_mb', parse: (v) => parseCount(v, 'Fayl yuklash hajmi', 50) },
+  maxUploadSizeMb: { column: 'max_upload_size_mb', parse: (v) => parseCount(v, 'Fayl yuklash hajmi', 4) },
   warningThreshold: { column: 'warning_threshold', parse: (v) => parseCount(v, 'Ogohlantirish chegarasi', 20) },
 }
 

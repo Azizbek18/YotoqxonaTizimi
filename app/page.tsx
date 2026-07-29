@@ -3,19 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Baloo_2 } from 'next/font/google';
 import { motion } from 'framer-motion';
 import {
   Sparkles, ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw, FileText, Hand, Handshake
 } from 'lucide-react';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { useThemeStore } from '@/lib/stores/theme-store';
-
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  display: 'swap',
-});
+import { appFont as baloo2 } from '@/lib/app-font';
 
 interface PermitRequest {
   status: 'pending' | 'rejected' | 'approved' | 'registered';
@@ -43,13 +37,14 @@ export default function Home() {
     // of leaking the last applicant's status to the next visitor forever.
     const passport = sessionStorage.getItem('student_permit_passport');
     const jshshir = sessionStorage.getItem('student_permit_jshshir');
-    if (passport && jshshir) {
+    const email = sessionStorage.getItem('student_permit_email');
+    if (passport && jshshir && email) {
       if (!silent) setCheckingPermit(true);
       try {
         const response = await fetch('/api/permit-requests/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ passportSeries: passport, jshshir }),
+          body: JSON.stringify({ passportSeries: passport, jshshir, email }),
         });
         const result = await response.json();
 
@@ -88,6 +83,7 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('student_permit_passport');
       sessionStorage.removeItem('student_permit_jshshir');
+      sessionStorage.removeItem('student_permit_email');
       setPermitRequest(null);
     }
   };
@@ -477,12 +473,12 @@ export default function Home() {
                 <div className="space-y-3">
                   <h3 className="text-xl font-black uppercase tracking-wider text-emerald-500 syne-font">Yo&apos;llanmangiz tasdiqlandi!</h3>
                   <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-600' : 'text-slate-200'}`}>
-                    Tabriklaymiz, <b>{permitRequest.full_name}</b>! Yo&apos;llanma tasdiqlandi va sizga <b>{permitRequest.room_number}-xona</b> ajratildi. Quyidagi tugmani bosib, akkauntingiz uchun parol belgilang.
+                    Tabriklaymiz, <b>{permitRequest.full_name}</b>! Yo&apos;llanma tasdiqlandi va sizga <b>{permitRequest.room_number}-xona</b> ajratildi. Quyidagi tugma orqali emailingizni tasdiqlab, akkauntni faollashtiring.
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
                   <Link
-                    href={`/register?k=${permitRequest.passport_series}&j=${permitRequest.jshshir}`}
+                    href="/register"
                     className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98] border border-white/10"
                   >
                     <UserPlus size={14} /> Ro&apos;yxatdan O&apos;tish

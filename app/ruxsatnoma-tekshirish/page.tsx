@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -26,13 +26,13 @@ interface PermitRequest {
 
 function StatusCheckContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
   // Input states
   const [passportSeries, setPassportSeries] = useState('')
   const [jshshir, setJshshir] = useState('')
+  const [email, setEmail] = useState('')
   
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
@@ -42,7 +42,7 @@ function StatusCheckContent() {
     toast.error(message)
   }
 
-  const handleSearch = useCallback(async (passport: string, pin: string) => {
+  const handleSearch = useCallback(async (passport: string, pin: string, applicantEmail: string) => {
     setLoading(true)
     setSearched(true)
     setResult(null)
@@ -50,11 +50,12 @@ function StatusCheckContent() {
     try {
       const cleanPassport = passport.toUpperCase().replace(/\s/g, '')
       const cleanJshshir = pin.trim()
+      const cleanEmail = applicantEmail.trim().toLowerCase()
 
       const response = await fetch('/api/permit-requests/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passportSeries: cleanPassport, jshshir: cleanJshshir }),
+        body: JSON.stringify({ passportSeries: cleanPassport, jshshir: cleanJshshir, email: cleanEmail }),
       })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Qidirishda xatolik yuz berdi')
@@ -66,6 +67,7 @@ function StatusCheckContent() {
           // sessionStorage, not localStorage — see app/page.tsx for why.
           sessionStorage.setItem('student_permit_passport', cleanPassport)
           sessionStorage.setItem('student_permit_jshshir', cleanJshshir)
+          sessionStorage.setItem('student_permit_email', cleanEmail)
         }
       } else {
         setResult(null)
@@ -78,24 +80,30 @@ function StatusCheckContent() {
     }
   }, [])
 
-  // Auto search if params are present
+  // Restore only from this tab's session storage. National ID fields never
+  // appear in URLs, referrers, browser history or server access logs.
   useEffect(() => {
-    const passportParam = searchParams.get('passport')
-    const jshshirParam = searchParams.get('jshshir')
-    if (passportParam && jshshirParam) {
-      setPassportSeries(passportParam)
-      setJshshir(jshshirParam)
-      handleSearch(passportParam, jshshirParam)
-    }
-  }, [searchParams, handleSearch])
+    const restoreId = window.setTimeout(() => {
+      const passportValue = sessionStorage.getItem('student_permit_passport') ?? ''
+      const jshshirValue = sessionStorage.getItem('student_permit_jshshir') ?? ''
+      const emailValue = sessionStorage.getItem('student_permit_email') ?? ''
+      if (passportValue && jshshirValue && emailValue) {
+        setPassportSeries(passportValue)
+        setJshshir(jshshirValue)
+        setEmail(emailValue)
+        handleSearch(passportValue, jshshirValue, emailValue)
+      }
+    }, 0)
+    return () => window.clearTimeout(restoreId)
+  }, [handleSearch])
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!passportSeries || !jshshir) {
-      showToast("Pasport va JShSHIR ma'lumotlarini kiriting!")
+    if (!passportSeries || !jshshir || !email) {
+      showToast("Pasport, JShSHIR va email ma'lumotlarini kiriting!")
       return
     }
-    handleSearch(passportSeries, jshshir)
+    handleSearch(passportSeries, jshshir, email)
   }
 
   return (
@@ -120,7 +128,7 @@ function StatusCheckContent() {
             </div>
             <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight">Statusni Tekshirish</h1>
             <p className={`text-[10px] sm:text-xs font-medium mt-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-              Pasport seriyasi va JShSHIR ma&apos;lumotlarini kiritib, yo&apos;llanma tasdiqlanish holatini tekshiring.
+              Pasport, JShSHIR va arizada ko&apos;rsatilgan email orqali yo&apos;llanma holatini tekshiring.
             </p>
           </div>
 
@@ -129,6 +137,9 @@ function StatusCheckContent() {
               <label className={`text-[9px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Pasport Seriyasi & Raqami</label>
               <input
                 type="text"
+                name="passport"
+                autoComplete="off"
+                maxLength={9}
                 value={passportSeries}
                 onChange={(e) => setPassportSeries(e.target.value)}
                 placeholder="AA1234567"
@@ -140,10 +151,27 @@ function StatusCheckContent() {
               <label className={`text-[9px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>JSHSHIR (14 ta raqam)</label>
               <input
                 type="text"
+                name="jshshir"
+                inputMode="numeric"
+                autoComplete="off"
                 maxLength={14}
                 value={jshshir}
                 onChange={(e) => setJshshir(e.target.value)}
                 placeholder="30102030405060"
+                className={`w-full border p-3 rounded-xl text-xs outline-none transition-all font-sans ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200' : 'bg-slate-900/30 border-white/15 text-white placeholder:text-slate-400 focus:border-blue-500/50'}`}
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className={`text-[9px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Arizadagi email</label>
+              <input
+                type="email"
+                name="email"
+                autoComplete="email"
+                maxLength={254}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="talaba@example.com"
                 className={`w-full border p-3 rounded-xl text-xs outline-none transition-all font-sans ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200' : 'bg-slate-900/30 border-white/15 text-white placeholder:text-slate-400 focus:border-blue-500/50'}`}
                 required
               />
@@ -224,7 +252,7 @@ function StatusCheckContent() {
 
                         {/* Big CTA button to register */}
                         <button
-                          onClick={() => router.push(`/register?k=${result.passport_series}&j=${result.jshshir}`)}
+                          onClick={() => router.push('/register')}
                           className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-black uppercase tracking-wider text-xs active:scale-98 transition-all"
                         >
                           <span>Ro&apos;yxatdan O&apos;tish</span>

@@ -80,7 +80,7 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
             updated_at: '',
           }
         })
-      const roomOccupancy: Record<string, number> = {}
+      const roomOccupancy: Record<string, number> = Object.create(null)
       usersWithRooms.forEach((user) => {
         if (user.room_number) roomOccupancy[user.room_number] = (roomOccupancy[user.room_number] ?? 0) + 1
       })
@@ -88,7 +88,7 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
         if (permit.room_number) roomOccupancy[permit.room_number] = (roomOccupancy[permit.room_number] ?? 0) + 1
       })
       const courses: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
-      const faculties: Record<string, number> = {}
+      const faculties: Record<string, number> = Object.create(null)
       const addDistribution = (course: number | null, targetFaculty: string | null) => {
         if (course && courses[course] !== undefined) courses[course]++
         if (targetFaculty) faculties[targetFaculty] = (faculties[targetFaculty] ?? 0) + 1

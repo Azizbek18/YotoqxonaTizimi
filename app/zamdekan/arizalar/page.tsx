@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import ExcelJS from 'exceljs'
+import { downloadXlsx } from '@/lib/spreadsheet-export'
 import {
   Search,
   FileText,
@@ -173,53 +173,12 @@ function ArizalarContent() {
       new Date(req.created_at).toLocaleDateString('uz-UZ'),
     ])
 
-    const workbook = new ExcelJS.Workbook()
-    const worksheet = workbook.addWorksheet('Arizalar')
-    worksheet.addRow(headers)
-    rawRows.forEach((row) => worksheet.addRow(row))
-
-    const thinBorder = {
-      top: { style: 'thin' as const },
-      left: { style: 'thin' as const },
-      bottom: { style: 'thin' as const },
-      right: { style: 'thin' as const },
-    }
-    const centeredCols = new Set([1, 11]) // №, Xona raqami (1-indekslangan)
-
-    const headerRow = worksheet.getRow(1)
-    headerRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.font = { bold: true, name: 'Times New Roman', size: 12 }
-      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-      cell.border = thinBorder
+    downloadXlsx({
+      filename: `yotoqxona_arizalar_${statusFilter}.xlsx`,
+      sheetName: 'Arizalar',
+      headers,
+      rows: rawRows,
     })
-
-    for (let r = 2; r <= worksheet.rowCount; r++) {
-      worksheet.getRow(r).eachCell({ includeEmpty: true }, (cell, colNumber) => {
-        cell.font = { name: 'Times New Roman', size: 11 }
-        cell.alignment = {
-          vertical: 'middle',
-          horizontal: centeredCols.has(colNumber) ? 'center' : 'left',
-          wrapText: true,
-        }
-        cell.border = thinBorder
-      })
-    }
-
-    headers.forEach((h, i) => {
-      const maxLen = Math.max(h.length, ...rawRows.map(row => String(row[i] || '').length))
-      worksheet.getColumn(i + 1).width = i === 0 ? Math.max(maxLen + 2, 5) : maxLen + 4
-    })
-
-    const buffer = await workbook.xlsx.writeBuffer()
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `yotoqxona_arizalar_${statusFilter}.xlsx`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
 
     toast.success("Excel muvaffaqiyatli yuklab olindi!")
   }

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireFloorCaptain } from '@/server/auth/sardor'
 
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'Server xatoligi'
-}
+const ALLOWED_TYPES = new Set(['Muhim', 'Tadbir', 'Yangilik', 'Ogohlantirish'])
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +16,8 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (elonError) {
-      return NextResponse.json({ error: elonError.message }, { status: 500 })
+      console.error('Captain announcements lookup failed:', elonError)
+      return NextResponse.json({ error: 'E’lonlarni yuklab bo‘lmadi' }, { status: 500 })
     }
 
     const dutyRow = (elonlar ?? []).find((item) => item.title === 'HAFTALIK_NAVBATCHILIK_JADVALI') ?? null
@@ -37,7 +36,8 @@ export async function GET(request: NextRequest) {
       dutySchedule,
     })
   } catch (error: unknown) {
-    return NextResponse.json({ error: errorMessage(error) }, { status: 500 })
+    console.error('Captain announcements GET failed:', error)
+    return NextResponse.json({ error: 'Server xatoligi' }, { status: 500 })
   }
 }
 
@@ -48,10 +48,15 @@ export async function POST(request: NextRequest) {
     const { caller, serviceSupabase } = scoped
 
     const body = await request.json()
-    const { title, text, type } = body
+    const title = typeof body?.title === 'string' ? body.title.trim() : ''
+    const text = typeof body?.text === 'string' ? body.text.trim() : ''
+    const type = typeof body?.type === 'string' ? body.type : 'Yangilik'
 
-    if (!title || !text) {
-      return NextResponse.json({ error: 'Sarlavha va matn talab etiladi' }, { status: 400 })
+    if (title.length < 3 || title.length > 160 || text.length < 5 || text.length > 20_000) {
+      return NextResponse.json({ error: 'Sarlavha yoki matn uzunligi noto‘g‘ri' }, { status: 400 })
+    }
+    if (!ALLOWED_TYPES.has(type)) {
+      return NextResponse.json({ error: 'E’lon turi noto‘g‘ri' }, { status: 400 })
     }
 
     const captainFloor = caller.assigned_floor
@@ -77,12 +82,14 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 500 })
+      console.error('Captain announcement insert failed:', insertError)
+      return NextResponse.json({ error: 'E’lonni saqlab bo‘lmadi' }, { status: 500 })
     }
 
     return NextResponse.json({ ok: true, elon: newElon })
   } catch (error: unknown) {
-    return NextResponse.json({ error: errorMessage(error) }, { status: 500 })
+    console.error('Captain announcement POST failed:', error)
+    return NextResponse.json({ error: 'Server xatoligi' }, { status: 500 })
   }
 }
 
@@ -116,12 +123,14 @@ export async function PATCH(request: NextRequest) {
       p_text: text,
     })
     if (error || !id) {
-      return NextResponse.json({ error: error?.message ?? 'Navbatchilik jadvalini saqlab bo‘lmadi' }, { status: 500 })
+      console.error('Captain duty schedule upsert failed:', error)
+      return NextResponse.json({ error: 'Navbatchilik jadvalini saqlab bo‘lmadi' }, { status: 500 })
     }
 
     return NextResponse.json({ ok: true, id })
   } catch (error: unknown) {
-    return NextResponse.json({ error: errorMessage(error) }, { status: 500 })
+    console.error('Captain duty schedule PATCH failed:', error)
+    return NextResponse.json({ error: 'Server xatoligi' }, { status: 500 })
   }
 }
 
@@ -145,11 +154,13 @@ export async function DELETE(request: NextRequest) {
       .eq('created_by', caller.id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('Captain announcement delete failed:', error)
+      return NextResponse.json({ error: 'E’lonni o‘chirib bo‘lmadi' }, { status: 500 })
     }
 
     return NextResponse.json({ ok: true })
   } catch (error: unknown) {
-    return NextResponse.json({ error: errorMessage(error) }, { status: 500 })
+    console.error('Captain announcement DELETE failed:', error)
+    return NextResponse.json({ error: 'Server xatoligi' }, { status: 500 })
   }
 }

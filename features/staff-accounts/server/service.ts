@@ -3,6 +3,7 @@ import { ApiError } from '@/server/http/api-error'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 import type { StaffAccountRow, ManagedStaffRole } from '../types'
 import { createStaffAccountRepository, type StaffAccountRepository } from './repository'
+import { getPasswordPolicyError } from '@/lib/password-policy'
 
 // Creating a tarbiyachi account is admin-only (see app/api/admin/staff-accounts).
 // It used to also be reachable by zamdekan, scoped by a "does this floor
@@ -37,9 +38,8 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
       if (fullName.length < 3) throw new ApiError(400, "F.I.Sh. kamida 3 belgidan iborat bo'lishi kerak")
       if (!/^\S+@\S+\.\S+$/.test(email)) throw new ApiError(400, "Email noto'g'ri")
       if (password !== confirmPassword) throw new ApiError(400, 'Parollar bir xil emas')
-      if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-        throw new ApiError(400, "Parol kamida 8 belgi, harf va raqamdan iborat bo'lishi kerak")
-      }
+      const passwordError = getPasswordPolicyError(password)
+      if (passwordError) throw new ApiError(400, passwordError)
       // A tarbiyachi with no assigned floor/gender is treated as "sees every
       // floor" (server/auth/tarbiyachi.ts isWithinTarbiyachiFloor) — an
       // unscoped tarbiyachi account would see every student building-wide.
@@ -60,7 +60,8 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
 
       const { data: authData, error: authError } = await repository.createAuthUser(email, password, role)
       if (authError || !authData.user) {
-        throw new ApiError(400, authError?.message ?? "Xodim akkauntini yaratib bo'lmadi")
+        console.error('Staff Auth user creation failed:', authError)
+        throw new ApiError(400, "Xodim akkauntini yaratib bo'lmadi")
       }
 
       const { error: insertError } = await repository.insertStaffRow({
@@ -77,7 +78,10 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
 
       if (insertError) {
         await repository.deleteAuthUser(authData.user.id)
-        throw new ApiError(400, insertError.message)
+        console.error('Staff profile insert failed:', insertError)
+        throw new ApiError(insertError.code === '23505' ? 409 : 500, insertError.code === '23505'
+          ? "Bu email bilan xodim akkaunti mavjud"
+          : "Xodim profilini yaratib bo'lmadi")
       }
 
       return { success: true as const }

@@ -3,6 +3,7 @@ import { createPaymentService } from '@/features/payments/server/service'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { requireActiveStudent } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
+import { readMultipartForm } from '@/lib/upload-limits'
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Juda ko‘p urinish' }, { status: 429 })
     }
 
-    const result = await createPaymentService().submit(student, await request.formData())
+    const result = await createPaymentService().submit(student, await readMultipartForm(request))
     return NextResponse.json(result, { status: 201 })
   } catch (error) {
     console.error('Student payments POST error:', error)

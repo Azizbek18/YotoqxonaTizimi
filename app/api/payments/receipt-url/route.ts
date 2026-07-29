@@ -41,7 +41,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Kvitansiya manzili noto‘g‘ri.' }, { status: 500 })
   }
 
-  const { data, error } = await supabase.storage.from('receipts').createSignedUrl(path, 60)
+  const { data, error } = await supabase.storage
+    .from('receipts')
+    .createSignedUrl(path, 60, path.toLowerCase().endsWith('.pdf') ? { download: true } : undefined)
   if (error || !data?.signedUrl) {
     return NextResponse.json({ error: 'Kvitansiya havolasini yaratib bo‘lmadi.' }, { status: 500 })
   }

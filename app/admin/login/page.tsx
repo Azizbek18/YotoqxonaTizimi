@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Baloo_2 } from 'next/font/google'
 import { supabase } from '@/lib/supabase'
 import {
     Mail,
@@ -15,12 +14,7 @@ import {
     KeyRound,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  display: 'swap',
-})
+import { appFont as baloo2 } from '@/lib/app-font'
 
 export default function AdminLoginPage() {
     const router = useRouter()
@@ -164,6 +158,10 @@ export default function AdminLoginPage() {
                                     )}
                                     <input
                                         type="email"
+                                        name="email"
+                                        autoComplete="email"
+                                        inputMode="email"
+                                        maxLength={254}
                                         value={email}
                                         onFocus={() => setFocusedField('email')}
                                         onBlur={() => setFocusedField(null)}
@@ -190,6 +188,9 @@ export default function AdminLoginPage() {
                                     )}
                                     <input
                                         type={showPassword ? 'text' : 'password'}
+                                        name="password"
+                                        autoComplete="current-password"
+                                        maxLength={128}
                                         value={password}
                                         onFocus={() => setFocusedField('password')}
                                         onBlur={() => setFocusedField(null)}

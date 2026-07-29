@@ -6,6 +6,7 @@ import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { extractReceiptPath } from '@/lib/safe-storage-url'
 import { normalizePaymentTransactionId } from '@/features/payments/domain/validation'
+import { MAX_UPLOAD_SIZE_BYTES } from '@/lib/upload-limits'
 
 // Looks up `role` for the given identity in `table`, trying `id` then
 // `email` as two safe, parameterized lookups — never interpolate
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
         if (downloadError || !fileData) {
           return NextResponse.json({ error: 'Chek faylini yuklab bo‘lmadi' }, { status: 500 })
         }
-        if (fileData.size > 8 * 1024 * 1024) {
+        if (fileData.size > MAX_UPLOAD_SIZE_BYTES) {
           return NextResponse.json({ error: 'Chek fayli juda katta' }, { status: 400 })
         }
         const mimeType = fileData.type || 'application/octet-stream'
@@ -226,7 +227,6 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown for
 
   } catch (error: unknown) {
     console.error('AI analysis API error:', error)
-    const message = error instanceof Error ? error.message : 'Ichki server xatoligi'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: 'AI tahlilida server xatoligi yuz berdi' }, { status: 500 })
   }
 }

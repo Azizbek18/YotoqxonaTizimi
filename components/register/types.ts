@@ -38,8 +38,6 @@ export interface RegisterData {
   room_number: string
   //Step 9
   email: string
-  password: string
-  confirmPassword: string
 }
 
 export const initialData: RegisterData = {
@@ -71,8 +69,6 @@ export const initialData: RegisterData = {
   mother_workplace: '',
   mother_phone: '',
   entryDate: '',
-  password: '',
   room_number: '',
   email: '',
-  confirmPassword: '',
 }

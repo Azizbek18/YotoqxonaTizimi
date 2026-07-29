@@ -1,29 +1,26 @@
 "use client"
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Baloo_2 } from 'next/font/google'
 import { Mail, ArrowLeft, Send, Sparkles, Orbit } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { appFont as baloo2 } from '@/lib/app-font'
 
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  display: 'swap',
-})
+const STARS = Array.from({ length: 45 }, (_, index) => ({
+  top: `${(index * 47 + 11) % 100}%`,
+  left: `${(index * 73 + 19) % 100}%`,
+  size: `${0.6 + ((index * 17) % 20) / 10}px`,
+}))
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [isSent, setIsSent] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
-
-  useEffect(() => setMounted(true), [])
 
   // 3D Toast Funksiyasi (Emerald rangiga moslangan)
   const show3DToast = (type: 'success' | 'error', message: string) => {
@@ -63,8 +60,6 @@ export default function ForgotPassword() {
     }
   }
 
-  const stars = mounted ? Array.from({ length: 45 }) : []
-
   return (
     <main className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'} ${baloo2.className}`} style={{ fontFamily: baloo2.style.fontFamily }}>
       {/* Theme Toggle */}
@@ -74,15 +69,15 @@ export default function ForgotPassword() {
 
       {/* Fon effektlari */}
       <div className={`absolute inset-0 z-0 ${isLight ? 'opacity-30' : ''}`}>
-        {stars.map((_, i) => (
+        {STARS.map((star, i) => (
           <motion.div
             key={i}
             className={`absolute rounded-full blur-[0.5px] ${isLight ? 'bg-blue-400' : 'bg-emerald-200'}`}
             style={{
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              width: `${Math.random() * 2.5}px`,
-              height: `${Math.random() * 2.5}px`,
+              top: star.top,
+              left: star.left,
+              width: star.size,
+              height: star.size,
             }}
           />
         ))}

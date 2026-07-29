@@ -3,7 +3,6 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { Baloo_2 } from 'next/font/google'
 import { supabase } from '@/lib/supabase'
 import {
   BarChart3,
@@ -30,12 +29,7 @@ import { getSafeSession } from '@/lib/auth-session'
 import { fetchAdminPaymentSummary } from '@/features/payments/client/api'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
 import { FontScopeProvider } from '@/lib/font-scope-context'
-
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  display: 'swap',
-})
+import { appFont as baloo2 } from '@/lib/app-font'
 
 export default function AdminLayout({
   children,

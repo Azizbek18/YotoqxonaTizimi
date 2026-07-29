@@ -36,8 +36,8 @@ function validInput(overrides: Record<string, unknown> = {}) {
     email: 'tarbiyachi@example.com',
     phone: '+998901234567',
     role: 'tarbiyachi',
-    password: 'password1',
-    confirmPassword: 'password1',
+    password: 'SecurePass123!',
+    confirmPassword: 'SecurePass123!',
     assignedFloor: 3,
     assignedGender: 'male',
     ...overrides,
@@ -121,7 +121,10 @@ describe('staff account service: create', () => {
     })
     const service = createStaffAccountService(repository)
 
-    await expect(service.create(creatorId, validInput())).rejects.toMatchObject({ status: 400, message: 'duplicate key' })
+    await expect(service.create(creatorId, validInput())).rejects.toMatchObject({
+      status: 500,
+      message: "Xodim profilini yaratib bo'lmadi",
+    })
     expect(repository.deleteAuthUser).toHaveBeenCalledWith('orphan-id')
   })
 

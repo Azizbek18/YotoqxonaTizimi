@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { UserCog } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/password-policy'
 
 type StaffRole = 'zamdekan'
 
@@ -53,6 +54,11 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
       showToast('error', 'Parollar bir xil emas')
       return
     }
+    const passwordError = getPasswordPolicyError(password)
+    if (passwordError) {
+      showToast('error', passwordError)
+      return
+    }
 
     setLoading(true)
     try {
@@ -79,7 +85,7 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
 
       showToast('success', "Muvaffaqiyatli ro'yxatdan o'tdingiz")
       setTimeout(() => {
-        router.push(`/login?portal=${role}&k=${encodeURIComponent(linkKey)}`)
+        router.push(`/login?portal=${role}`)
       }, 1000)
     } catch (error: unknown) {
       showToast('error', error instanceof Error ? error.message : 'Nomaʼlum xatolik')
@@ -109,6 +115,9 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
           />
           <input
             type="email"
+            name="email"
+            autoComplete="email"
+            maxLength={254}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
@@ -144,6 +153,10 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
           />
           <input
             type="password"
+            name="new-password"
+            autoComplete="new-password"
+            minLength={PASSWORD_MIN_LENGTH}
+            maxLength={PASSWORD_MAX_LENGTH}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
@@ -152,6 +165,10 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
           />
           <input
             type="password"
+            name="confirm-password"
+            autoComplete="new-password"
+            minLength={PASSWORD_MIN_LENGTH}
+            maxLength={PASSWORD_MAX_LENGTH}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
@@ -168,7 +185,7 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
 
         <p className="mt-5 text-center text-xs text-slate-400">
           Akkauntingiz bormi?{' '}
-          <Link href={`${ROLE_META[role].loginUrl}?k=${encodeURIComponent(linkKey)}`} className="text-indigo-400 hover:underline">
+          <Link href={`${ROLE_META[role].loginUrl}?portal=${role}`} className="text-indigo-400 hover:underline">
             Kirish sahifasi
           </Link>
         </p>

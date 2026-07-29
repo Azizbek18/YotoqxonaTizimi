@@ -50,8 +50,8 @@ for (const row of rows) {
     continue
   }
   const buffer = Buffer.from(await response.arrayBuffer())
-  if (buffer.length > 5 * 1024 * 1024) {
-    console.warn(`Skipping ${row.id}: file exceeds 5 MB.`)
+  if (buffer.length > 4 * 1024 * 1024) {
+    console.warn(`Skipping ${row.id}: file exceeds 4 MB.`)
     continue
   }
 

@@ -4,6 +4,7 @@ import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 import { ApiError } from '@/server/http/api-error'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 import { verifyFileClaim } from '@/lib/receipt-claim'
+import { MAX_UPLOAD_SIZE_BYTES } from '@/lib/upload-limits'
 import type { SubmitPaymentResult } from '../types'
 import {
   isSuspiciousPaymentTransactionId,
@@ -80,8 +81,8 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       }
 
       const rule = PERMIT_FILE_RULES[file.type]
-      if (!rule || file.size < 16 || file.size > 8 * 1024 * 1024) {
-        throw new ApiError(400, 'Faqat PDF, JPG, PNG yoki WEBP (8 MB gacha) qabul qilinadi')
+      if (!rule || file.size < 16 || file.size > MAX_UPLOAD_SIZE_BYTES) {
+        throw new ApiError(file.size > MAX_UPLOAD_SIZE_BYTES ? 413 : 400, 'Faqat PDF, JPG, PNG yoki WEBP (4 MB gacha) qabul qilinadi')
       }
       const buffer = Buffer.from(await file.arrayBuffer())
       if (!hasAllowedSignature(buffer, rule.signatures) || (file.type === 'image/webp' && buffer.subarray(8, 12).toString('ascii') !== 'WEBP')) {

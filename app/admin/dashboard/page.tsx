@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
-import ExcelJS from 'exceljs'
+import { downloadXlsx } from '@/lib/spreadsheet-export'
 import {
   AreaChart,
   Area,
@@ -532,51 +532,6 @@ export default function AdminDashboard() {
         mergeColumn(2) // Xona raqami
       }
 
-      // ExcelJS orqali (bepul "xlsx" kutubxonasi katak stillarini — qalin
-      // shrift, ramka — faylga yoza olmaydi)
-      const workbook = new ExcelJS.Workbook()
-      const worksheet = workbook.addWorksheet('Talabalar')
-
-      worksheet.addRow(headers)
-      displayRows.forEach((row: string[]) => worksheet.addRow(row))
-
-      excelMerges.forEach(({ s, e }) => {
-        worksheet.mergeCells(s.r + 1, s.c + 1, e.r + 1, e.c + 1)
-      })
-
-      const thinBorder = {
-        top: { style: 'thin' as const },
-        left: { style: 'thin' as const },
-        bottom: { style: 'thin' as const },
-        right: { style: 'thin' as const },
-      }
-      const centeredCols = new Set([1, 2, 3]) // №, Qavati, Xona raqami (1-indekslangan)
-
-      const headerRow = worksheet.getRow(1)
-      headerRow.height = 40
-      headerRow.eachCell({ includeEmpty: true }, (cell) => {
-        cell.font = { bold: true, name: 'Times New Roman', size: 12 }
-        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-        cell.border = thinBorder
-      })
-
-      for (let r = 2; r <= worksheet.rowCount; r++) {
-        worksheet.getRow(r).eachCell({ includeEmpty: true }, (cell, colNumber) => {
-          cell.font = { name: 'Times New Roman', size: 11 }
-          cell.alignment = {
-            vertical: 'middle',
-            horizontal: centeredCols.has(colNumber) ? 'center' : 'left',
-            wrapText: true,
-          }
-          cell.border = thinBorder
-        })
-      }
-
-      headers.forEach((h, i) => {
-        const maxLen = Math.max(h.length, ...rawRows.map(row => String(row[i] || '').length))
-        worksheet.getColumn(i + 1).width = i === 0 ? Math.max(maxLen + 2, 5) : maxLen + 4
-      })
-
       let fileName = 'Talabalar_Hisoboti'
       if (reportFilters.gender !== 'all') fileName += `_${reportFilters.gender === 'male' ? 'Erkak' : 'Ayol'}`
       if (reportFilters.nationality !== 'all') fileName += `_${reportFilters.nationality}`
@@ -588,16 +543,13 @@ export default function AdminDashboard() {
       }
       fileName += `_${new Date().toISOString().slice(0, 10)}.xlsx`
 
-      const buffer = await workbook.xlsx.writeBuffer()
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', fileName)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      downloadXlsx({
+        filename: fileName,
+        sheetName: 'Talabalar',
+        headers,
+        rows: displayRows,
+        merges: excelMerges,
+      })
 
       toast.success('Excel hisoboti muvaffaqiyatli yuklab olindi! 📊')
 

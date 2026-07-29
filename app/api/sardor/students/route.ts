@@ -28,12 +28,13 @@ export async function GET(req: NextRequest) {
       .eq('assigned_floor', captainFloor)
 
     if (studentsError) {
-      return NextResponse.json({ error: studentsError.message }, { status: 500 })
+      console.error('Captain student lookup failed:', studentsError)
+      return NextResponse.json({ error: 'Talabalarni yuklab bo‘lmadi' }, { status: 500 })
     }
 
     return NextResponse.json({ ok: true, students: students ?? [], floor: captainFloor, gender: captainGender })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Server xatoligi'
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('Captain students GET failed:', error)
+    return NextResponse.json({ error: 'Server xatoligi' }, { status: 500 })
   }
 }

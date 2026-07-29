@@ -11,6 +11,8 @@ import {
   normalizePassport,
 } from '@/lib/permit-validation'
 import { signFileClaim } from '@/lib/receipt-claim'
+import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
+import { getApiError } from '@/server/http/api-error'
 
 // Public endpoint (students apply before they have an account), so we
 // rate-limit by IP only rather than requiring auth.
@@ -26,7 +28,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.' }, { status: 429 })
     }
 
-    const formData = await req.formData()
+    const formData = await readMultipartForm(req)
     const file = formData.get('file') as File | null
     const declaredFullName = String(formData.get('fullName') || '').trim()
     const declaredJshshir = String(formData.get('jshshir') || '').trim()
@@ -54,11 +56,10 @@ export async function POST(req: NextRequest) {
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json({ error: 'Faqat rasm yoki PDF hujjat qabul qilinadi' }, { status: 400 })
     }
-    // Matches /api/permit-requests' actual limit (5MB) — accepting up to
-    // 8MB here would let a file pass this precheck and only then get
-    // rejected at the real submission step.
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Fayl hajmi 5MB dan kichik bo‘lishi kerak' }, { status: 400 })
+    // Matches /api/permit-requests and the hosting platform's effective
+    // request-body ceiling.
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+      return NextResponse.json({ error: 'Fayl hajmi 4 MB dan oshmasligi kerak' }, { status: 413 })
     }
 
     const arrayBuffer = await file.arrayBuffer()
@@ -213,13 +214,13 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
     })
   } catch (error: unknown) {
     console.error('Yo‘llanma AI tekshiruvi xatoligi:', error)
-    const message = error instanceof Error ? error.message : 'Noma’lum xatolik'
+    const apiError = getApiError(error, 'Yo‘llanma tekshiruvida server xatoligi yuz berdi')
     return NextResponse.json({
-      error: message || 'Ichki server xatoligi',
+      ...apiError.body,
       valid: false,
       confidence: 0,
       mismatches: [],
-      analysis: 'AI tekshiruvda xatolik yuz berdi: ' + message
-    }, { status: 500 })
+      analysis: 'AI tekshiruvni yakunlab bo‘lmadi',
+    }, { status: apiError.status })
   }
 }

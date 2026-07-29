@@ -34,20 +34,36 @@ export async function requireScopedTarbiyachi(request: NextRequest) {
     return { error: NextResponse.json({ ok: false, error: 'Tarbiyachi huquqi talab qilinadi' }, { status: 403 }) } as const
   }
 
+  if (
+    !Number.isInteger(staffUser.assigned_floor)
+    || Number(staffUser.assigned_floor) < 1
+    || !['male', 'female'].includes(staffUser.assigned_gender ?? '')
+  ) {
+    console.error('Active tarbiyachi has no valid floor/gender scope:', staffUser.id)
+    return {
+      error: NextResponse.json(
+        { ok: false, error: 'Tarbiyachi profili qavat va jins doirasiga biriktirilmagan' },
+        { status: 403 },
+      ),
+    } as const
+  }
+
   return { staffUser, serviceSupabase } as const
 }
 
 // Whether a student's room falls within this tarbiyachi's assigned floor
-// (an unset assigned_floor means "all floors"). Prefers the student's own
-// `assigned_floor` column (kept in sync with floor_room_layout by the
-// room-assignment flow) over deriving it from room_number text, since the
-// latter only holds if rooms happen to follow the assumed 30-per-floor
-// numbering scheme.
+// and gender scope. Missing or malformed staff scope fails closed instead of
+// silently widening access to the entire dormitory.
 export function isWithinTarbiyachiFloor(
   staffUser: ScopedTarbiyachi,
-  student: { room_number?: string | null; assigned_floor?: number | null },
+  student: { room_number?: string | null; assigned_floor?: number | null; gender?: string | null },
 ) {
-  if (!staffUser.assigned_floor) return true
+  if (
+    !Number.isInteger(staffUser.assigned_floor)
+    || Number(staffUser.assigned_floor) < 1
+    || !['male', 'female'].includes(staffUser.assigned_gender ?? '')
+  ) return false
+
   const floor = student.assigned_floor ?? extractFloor(student.room_number ?? null)
-  return floor === staffUser.assigned_floor
+  return floor === staffUser.assigned_floor && student.gender === staffUser.assigned_gender
 }

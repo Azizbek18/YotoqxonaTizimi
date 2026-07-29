@@ -24,6 +24,7 @@ import {
   uploadStudentAvatar,
 } from '@/features/profile/client/api'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
+import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/password-policy'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Profile {
@@ -479,14 +480,15 @@ export default function StudentProfile() {
 
   // ─── Password change handler ─────────────────────────────────────────────────
   const passwordChecks = {
-    length: newPassword.length >= 8,
+    length: newPassword.length >= PASSWORD_MIN_LENGTH && newPassword.length <= PASSWORD_MAX_LENGTH,
     upper: /[A-Z]/.test(newPassword),
     lower: /[a-z]/.test(newPassword),
     number: /[0-9]/.test(newPassword),
+    symbol: /[^A-Za-z0-9]/.test(newPassword),
   }
   const passwordStrength = Object.values(passwordChecks).filter(Boolean).length
-  const strengthLabel = ['', 'Juda zaif', 'Zaif', 'O\'rtacha', 'Kuchli'][passwordStrength] || ''
-  const strengthColor = ['', '#ef4444', '#f97316', '#eab308', '#22c55e'][passwordStrength] || '#64748b'
+  const strengthLabel = ['', 'Juda zaif', 'Zaif', 'O\'rtacha', 'Yaxshi', 'Kuchli'][passwordStrength] || ''
+  const strengthColor = ['', '#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e'][passwordStrength] || '#64748b'
 
   const handlePasswordChange = async () => {
     if (!newPassword || !confirmNewPassword) {
@@ -499,8 +501,9 @@ export default function StudentProfile() {
       setTimeout(() => setMessage(null), 4000)
       return
     }
-    if (newPassword.length < 6) {
-      setMessage({ type: 'error', text: 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak' })
+    const passwordError = getPasswordPolicyError(newPassword)
+    if (passwordError) {
+      setMessage({ type: 'error', text: passwordError })
       setTimeout(() => setMessage(null), 4000)
       return
     }
@@ -1319,6 +1322,10 @@ export default function StudentProfile() {
                   <div className="relative">
                     <input
                       type={showNewPass ? 'text' : 'password'}
+                      name="new-password"
+                      autoComplete="new-password"
+                      minLength={PASSWORD_MIN_LENGTH}
+                      maxLength={PASSWORD_MAX_LENGTH}
                       placeholder="Yangi parolni kiriting"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
@@ -1344,7 +1351,7 @@ export default function StudentProfile() {
                 {newPassword.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex gap-1">
-                      {[1, 2, 3, 4].map((level) => (
+                      {[1, 2, 3, 4, 5].map((level) => (
                         <div
                           key={level}
                           className="flex-1 h-1.5 rounded-full transition-all duration-300"
@@ -1361,10 +1368,11 @@ export default function StudentProfile() {
                     </div>
                     <div className="grid grid-cols-2 gap-1">
                       {[
-                        { key: 'length', label: '8+ belgi' },
+                        { key: 'length', label: '12–128 belgi' },
                         { key: 'upper', label: 'Katta harf' },
                         { key: 'lower', label: 'Kichik harf' },
                         { key: 'number', label: 'Raqam' },
+                        { key: 'symbol', label: 'Maxsus belgi' },
                       ].map(({ key, label }) => (
                         <div key={key} className="flex items-center gap-1">
                           {passwordChecks[key as keyof typeof passwordChecks] ? (
@@ -1389,6 +1397,10 @@ export default function StudentProfile() {
                   <div className="relative">
                     <input
                       type={showConfirmPass ? 'text' : 'password'}
+                      name="confirm-password"
+                      autoComplete="new-password"
+                      minLength={PASSWORD_MIN_LENGTH}
+                      maxLength={PASSWORD_MAX_LENGTH}
                       placeholder="Parolni qayta kiriting"
                       value={confirmNewPassword}
                       onChange={(e) => setConfirmNewPassword(e.target.value)}
@@ -1440,7 +1452,7 @@ export default function StudentProfile() {
                 
                 <button
                   onClick={handlePasswordChange}
-                  disabled={changingPassword || !newPassword || !confirmNewPassword || newPassword !== confirmNewPassword}
+                  disabled={changingPassword || !newPassword || !confirmNewPassword || newPassword !== confirmNewPassword || Boolean(getPasswordPolicyError(newPassword))}
                   className="flex-1 py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {changingPassword ? <Loader size={14} className="animate-spin" /> : <Check size={14} />}

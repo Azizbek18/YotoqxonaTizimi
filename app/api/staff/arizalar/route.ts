@@ -58,7 +58,8 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      return jsonError(error.message, 500)
+      console.error('Scoped staff applications lookup failed:', error)
+      return jsonError('Arizalarni yuklab bo‘lmadi', 500)
     }
 
     const formatted = (requests ?? []).map((request) => ({
@@ -112,7 +113,8 @@ export async function PATCH(req: NextRequest) {
       .maybeSingle<{ student_id: string | null }>()
 
     if (fetchError) {
-      return jsonError(fetchError.message, 500)
+      console.error('Scoped staff application lookup failed:', fetchError)
+      return jsonError('Arizani tekshirib bo‘lmadi', 500)
     }
     if (!existing?.student_id) {
       return jsonError('Ariza topilmadi', 404)
@@ -132,7 +134,8 @@ export async function PATCH(req: NextRequest) {
       .maybeSingle()
 
     if (error) {
-      return jsonError(error.message, 400)
+      console.error('Scoped staff application update failed:', error)
+      return jsonError('Ariza holatini yangilab bo‘lmadi', 500)
     }
     if (!updated) {
       return jsonError('Bu ariza allaqachon ko\'rib chiqilgan', 409)

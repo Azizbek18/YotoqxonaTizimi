@@ -29,7 +29,8 @@ export async function GET() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      return jsonError(error.message, 500)
+      console.error('Admin applications lookup failed:', error)
+      return jsonError('Arizalarni yuklab bo‘lmadi', 500)
     }
 
     const formatted = (requests ?? []).map((request) => ({
@@ -97,7 +98,8 @@ export async function PATCH(request: Request) {
       .eq('id', id)
 
     if (error) {
-      return jsonError(error.message, 400)
+      console.error('Admin application update failed:', error)
+      return jsonError('Ariza holatini yangilab bo‘lmadi', 500)
     }
 
     return NextResponse.json({ ok: true })
@@ -133,7 +135,8 @@ export async function DELETE(request: Request) {
       .eq('id', id)
 
     if (error) {
-      return jsonError(error.message, 400)
+      console.error('Admin application delete failed:', error)
+      return jsonError('Arizani o‘chirib bo‘lmadi', 500)
     }
 
     return NextResponse.json({ ok: true })

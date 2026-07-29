@@ -1,20 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Baloo_2 } from 'next/font/google'
 import { CheckCircle, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
-
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  display: 'swap',
-})
+import { appFont as baloo2 } from '@/lib/app-font'
 
 import StepProgress from '@/components/register/StepProgress'
 import Step1Passport from '@/components/register/Step1Passport'
@@ -25,8 +19,9 @@ import Step5Address from '@/components/register/Step5Address'
 import Step6Family from '@/components/register/Step6Family'
 import Step7Date from '@/components/register/Step7Date'
 import Step8Room from '@/components/register/Step8Room'      // Yangi qo'shildi
-import Step9Password from '@/components/register/Step9Password' // Oxiriga surildi
+import Step9Password from '@/components/register/Step9Password'
 import { initialData, RegisterData } from '@/components/register/types'
+import { supabase } from '@/lib/supabase'
 
 const TOTAL = 9 // Jami qadamlar 9 taga yetdi
 
@@ -35,6 +30,18 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1)
   const [data, setData] = useState<RegisterData>(initialData)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const restoreId = window.setTimeout(() => {
+      const passportSeries = sessionStorage.getItem('student_permit_passport') ?? ''
+      const jshshir = sessionStorage.getItem('student_permit_jshshir') ?? ''
+      const email = sessionStorage.getItem('student_permit_email') ?? ''
+      if (passportSeries || jshshir || email) {
+        setData((current) => ({ ...current, passportSeries, jshshir, email }))
+      }
+    }, 0)
+    return () => window.clearTimeout(restoreId)
+  }, [])
 
   function update(partial: Partial<RegisterData>) {
     setData(prev => ({ ...prev, ...partial }))
@@ -68,11 +75,6 @@ export default function RegisterPage() {
   };
 
   async function handleSubmit() {
-    // Parollarni tekshirish
-    if (data.password !== data.confirmPassword) {
-      return show3DToast('error', "Parollar mos kelmadi!")
-    }
-
     setLoading(true)
     try {
       const userEmail = data.email.trim().toLowerCase()
@@ -87,10 +89,19 @@ export default function RegisterPage() {
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || "Ro'yxatdan o'tishda xatolik")
 
-      show3DToast('success', "Muvaffaqiyatli ro'yxatdan o'tdingiz!")
+      // The browser creates the PKCE verifier used by the recovery link.
+      // Sending this from the server would leave the verifier on the server
+      // and make the emailed link unusable by this browser client.
+      const { error: emailError } = await supabase.auth.resetPasswordForEmail(userEmail, {
+        redirectTo: `${window.location.origin}/update-password?registration=1`,
+      })
+      if (emailError) {
+        throw new Error("Akkaunt tayyorlandi, ammo tasdiqlash emailini yuborib bo'lmadi. Birozdan keyin qayta urinib ko'ring.")
+      }
 
-      // 2 soniyadan keyin login sahifasiga yuborish
-      setTimeout(() => router.push('/login?registered=1'), 2000)
+      show3DToast('success', "Tasdiqlash havolasi emailingizga yuborildi!")
+
+      setTimeout(() => router.push('/login?verification=sent'), 2500)
 
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Noma\'lum xatolik'

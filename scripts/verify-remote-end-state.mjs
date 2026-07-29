@@ -52,6 +52,9 @@ await check('Supabase API keys are accepted', async () => {
   ])
   assert(anonResponse.ok, `anonymous API key was rejected (${anonResponse.status})`)
   assert(serviceResponse.ok, `service-role API key was rejected (${serviceResponse.status})`)
+  const authSettings = await anonResponse.json()
+  assert(authSettings.disable_signup === true, 'public Supabase Auth signup is enabled')
+  assert(authSettings.mailer_autoconfirm === false, 'Supabase email auto-confirm is enabled')
 })
 
 await check('app_settings schema and constraints', async () => {
@@ -67,7 +70,7 @@ await check('app_settings schema and constraints', async () => {
   assert(data.yearly_contract_fee % data.monthly_fee === 0, 'yearly fee is not a multiple of monthly fee')
   assert(Number.isInteger(data.default_room_capacity) && data.default_room_capacity >= 1 && data.default_room_capacity <= 20, 'room capacity is invalid')
   assert(Number.isInteger(data.floor_count) && data.floor_count >= 1 && data.floor_count <= 50, 'floor count is invalid')
-  assert(Number.isInteger(data.max_upload_size_mb) && data.max_upload_size_mb >= 1 && data.max_upload_size_mb <= 50, 'upload limit is invalid')
+  assert(Number.isInteger(data.max_upload_size_mb) && data.max_upload_size_mb >= 1 && data.max_upload_size_mb <= 4, 'upload limit is invalid')
   assert(Number.isInteger(data.warning_threshold) && data.warning_threshold >= 1 && data.warning_threshold <= 20, 'warning threshold is invalid')
 })
 
@@ -85,7 +88,17 @@ await check('latest table columns are deployed', async () => {
 })
 
 await check('anonymous users cannot read sensitive tables', async () => {
-  const sensitiveTables = ['users', 'staff', 'tolovlar', 'permit_requests']
+  const sensitiveTables = [
+    'users',
+    'staff',
+    'tolovlar',
+    'permit_requests',
+    'arizalar',
+    'cleaning_schedule',
+    'security_audit_logs',
+    'payment_receipt_uploads',
+    'payment_receipt_transactions',
+  ]
   for (const table of sensitiveTables) {
     const { data, error, count } = await anon
       .from(table)
@@ -97,6 +110,38 @@ await check('anonymous users cannot read sensitive tables', async () => {
     }
     assert((data?.length ?? 0) === 0, `anonymous read returned rows from ${table}`)
     assert((count ?? 0) === 0, `anonymous read exposed the row count of ${table}`)
+  }
+})
+
+await check('storage buckets are private and size/type constrained', async () => {
+  const { data: buckets, error } = await service.storage.listBuckets()
+  if (error) throw error
+  const byId = new Map((buckets ?? []).map((bucket) => [bucket.id, bucket]))
+
+  const avatar = byId.get('avatar')
+  assert(Boolean(avatar?.public), 'avatar bucket must remain public-read')
+  assert(avatar?.file_size_limit === 4 * 1024 * 1024, 'avatar bucket size limit is not 4 MiB')
+  assert(
+    ['image/jpeg', 'image/png', 'image/webp'].every((type) => avatar?.allowed_mime_types?.includes(type)),
+    'avatar MIME allow-list is incomplete',
+  )
+
+  for (const id of ['avatars', 'permits', 'receipts', 'cheklar']) {
+    const bucket = byId.get(id)
+    if (!bucket && (id === 'avatars' || id === 'cheklar')) continue
+    assert(Boolean(bucket), `${id} bucket is missing`)
+    assert(bucket?.public === false, `${id} bucket is public`)
+    assert(bucket?.file_size_limit === 4 * 1024 * 1024, `${id} bucket size limit is not 4 MiB`)
+  }
+})
+
+await check('anonymous users cannot list private document buckets', async () => {
+  for (const bucket of ['avatars', 'permits', 'receipts', 'cheklar']) {
+    const { data, error } = await anon.storage.from(bucket).list('', { limit: 1 })
+    if (error && !isPermissionDeniedError(error)) {
+      throw new Error(`anonymous storage probe failed for ${bucket}: ${errorMessage(error)}`)
+    }
+    assert((data?.length ?? 0) === 0, `anonymous list returned objects from ${bucket}`)
   }
 })
 
@@ -139,6 +184,21 @@ await check('atomic payment and duty RPCs are deployed and service-only', async 
   assert(dutyService.error?.code === '22023', `duty schedule RPC validation is missing: ${errorMessage(dutyService.error)}`)
   assertPermissionDenied(paymentAnon.error, 'anonymous atomic payment RPC')
   assertPermissionDenied(dutyAnon.error, 'anonymous duty schedule RPC')
+})
+
+await check('pending student activation RPC is deployed and service-only', async () => {
+  const args = {
+    p_user_id: '00000000-0000-0000-0000-000000000000',
+    p_email: 'nobody@example.invalid',
+  }
+  const [serviceResult, anonResult] = await Promise.all([
+    service.rpc('activate_pending_student', args),
+    anon.rpc('activate_pending_student', args),
+  ])
+
+  if (serviceResult.error) throw serviceResult.error
+  assert(serviceResult.data === false, 'invalid pending student was unexpectedly activated')
+  assertPermissionDenied(anonResult.error, 'anonymous student activation RPC')
 })
 
 const failed = checks.filter((item) => !item.ok)

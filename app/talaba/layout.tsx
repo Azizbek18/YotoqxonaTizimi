@@ -1245,7 +1245,7 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
                   >
                     <Upload size={24} className="text-gray-400" />
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Rasm yuklash</span>
-                    <span className="text-[10px] text-gray-500">JPG, PNG (max. 5MB)</span>
+                    <span className="text-[10px] text-gray-500">JPG, PNG, WEBP (maks. 4 MB)</span>
                     <input
                       type="file"
                       accept="image/*"

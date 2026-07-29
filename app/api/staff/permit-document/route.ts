@@ -35,7 +35,13 @@ export async function GET(request: NextRequest) {
     if (/^https:\/\//i.test(permit.permit_url)) {
       return NextResponse.json({ url: permit.permit_url })
     }
-    const { data, error } = await supabase.storage.from('permits').createSignedUrl(permit.permit_url, 60)
+    const { data, error } = await supabase.storage
+      .from('permits')
+      .createSignedUrl(
+        permit.permit_url,
+        60,
+        permit.permit_url.toLowerCase().endsWith('.pdf') ? { download: true } : undefined,
+      )
     if (error || !data?.signedUrl) {
       return NextResponse.json({ error: 'Hujjat havolasini yaratib bo‘lmadi.' }, { status: 500 })
     }

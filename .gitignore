@@ -51,3 +51,6 @@ supabase/.temp/
 .agents/
 .claude/
 skills-lock.json
+
+# local npm cache (accidental local NPM_CONFIG_CACHE target, not app code)
+.npm-cache/

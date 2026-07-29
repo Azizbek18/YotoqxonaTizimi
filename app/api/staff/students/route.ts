@@ -27,7 +27,8 @@ export async function GET(req: NextRequest) {
     const { data: students, error: studentsError } = await studentsQuery
 
     if (studentsError) {
-      return jsonError(studentsError.message, 500)
+      console.error('Scoped staff student lookup failed:', studentsError)
+      return jsonError('Talabalarni yuklab bo‘lmadi', 500)
     }
 
     const filteredStudents = (students ?? []).filter((student) => isWithinTarbiyachiFloor(staffUser, student))

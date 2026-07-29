@@ -3,6 +3,7 @@ import { getAdminSession } from '@/lib/server-admin'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { ApiError } from '@/server/http/api-error'
 import type { StaffRow, UserRow } from '@/types/database.generated'
+import { createAppSettingsService } from '@/features/app-settings/server/service'
 
 type UserSource = 'users' | 'staff'
 type UserRole = 'talaba' | 'tarbiyachi' | 'zamdekan' | 'admin'
@@ -351,11 +352,13 @@ export async function GET() {
     ])
 
     if (studentsError) {
-      return jsonError(studentsError.message, 500)
+      console.error('Admin student lookup failed:', studentsError)
+      return jsonError('Talabalarni yuklab bo‘lmadi', 500)
     }
 
     if (staffError) {
-      return jsonError(staffError.message, 500)
+      console.error('Admin staff lookup failed:', staffError)
+      return jsonError('Xodimlarni yuklab bo‘lmadi', 500)
     }
 
     const combined: AdminUserRow[] = [
@@ -422,15 +425,23 @@ export async function PATCH(request: Request) {
 
     const supabase = getServiceSupabase()
 
+    let existingStaff: {
+      role: string
+      status: string | null
+      assigned_floor: number | null
+      assigned_gender: string | null
+    } | null = null
     if (source === 'staff') {
-      const { data: existingStaff, error: existingError } = await supabase
+      const { data, error: existingError } = await supabase
         .from('staff')
-        .select('role')
+        .select('role, status, assigned_floor, assigned_gender')
         .eq('id', id)
         .maybeSingle()
+      existingStaff = data
 
       if (existingError) {
-        return jsonError(existingError.message, 500)
+        console.error('Admin staff scope lookup failed:', existingError)
+        return jsonError('Xodim profilini tekshirib bo‘lmadi', 500)
       }
 
       if (existingStaff?.role === 'zamdekan') {
@@ -445,6 +456,32 @@ export async function PATCH(request: Request) {
 
     if (role) {
       updates.role = role
+    }
+
+    if (source === 'staff' && existingStaff) {
+      const effectiveRole = typeof updates.role === 'string' ? updates.role : existingStaff.role
+      const effectiveStatus = typeof updates.status === 'string' ? updates.status : existingStaff.status
+      const effectiveFloor = 'assigned_floor' in updates
+        ? updates.assigned_floor
+        : existingStaff.assigned_floor
+      const effectiveGender = 'assigned_gender' in updates
+        ? updates.assigned_gender
+        : existingStaff.assigned_gender
+
+      if (effectiveRole === 'tarbiyachi' && effectiveStatus === 'active') {
+        const { floorCount } = await createAppSettingsService().get()
+        if (
+          typeof effectiveFloor !== 'number'
+          || !Number.isInteger(effectiveFloor)
+          || effectiveFloor < 1
+          || effectiveFloor > floorCount
+        ) {
+          return jsonError(`Faol tarbiyachi uchun 1–${floorCount} oralig‘idagi qavat majburiy`, 400)
+        }
+        if (effectiveGender !== 'male' && effectiveGender !== 'female') {
+          return jsonError('Faol tarbiyachi uchun jins doirasi majburiy', 400)
+        }
+      }
     }
 
     if (Object.keys(updates).length === 0) {
@@ -492,7 +529,8 @@ export async function PATCH(request: Request) {
         p_is_captain: true,
       })
       if (promoteError) {
-        return jsonError(promoteError.message, 500)
+        console.error('Floor captain promotion failed:', promoteError)
+        return jsonError('Qavat sardorini tayinlab bo‘lmadi', 500)
       }
 
       delete updates.assigned_floor
@@ -512,7 +550,8 @@ export async function PATCH(request: Request) {
       if (error.code === '23505' && source === 'users' && updates.is_floor_captain === true) {
         return jsonError("Bu qavat va jins uchun sardor allaqachon tayinlangan", 409)
       }
-      return jsonError(error.message, 400)
+      console.error('Admin user update failed:', error)
+      return jsonError('Foydalanuvchini yangilab bo‘lmadi', 500)
     }
 
     return NextResponse.json({ ok: true })
@@ -566,8 +605,10 @@ export async function DELETE(request: Request) {
         .maybeSingle(),
     ])
 
-    if (studentResult.error) return jsonError(studentResult.error.message, 500)
-    if (staffResult.error) return jsonError(staffResult.error.message, 500)
+    if (studentResult.error || staffResult.error) {
+      console.error('Admin delete target lookup failed:', studentResult.error ?? staffResult.error)
+      return jsonError('Foydalanuvchini tekshirib bo‘lmadi', 500)
+    }
     const table = resolveDeleteTarget(source, studentResult.data, staffResult.data)
 
     // Auth account first, profile row second: these are two separate
@@ -580,7 +621,8 @@ export async function DELETE(request: Request) {
     // two, so it's the one we avoid by ordering this way.
     const { error: authError } = await supabase.auth.admin.deleteUser(id)
     if (authError) {
-      return jsonError(authError.message, 400)
+      console.error('Admin Auth user delete failed:', authError)
+      return jsonError("Hisobni o'chirib bo'lmadi", 500)
     }
 
     const { error: dbError } = await supabase

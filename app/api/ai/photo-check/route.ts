@@ -5,6 +5,7 @@ import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 import { requireActiveStudent } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
+import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Juda ko‘p rasm tekshirildi. Keyinroq urinib ko‘ring.' }, { status: 429 })
     }
 
-    const formData = await req.formData()
+    const formData = await readMultipartForm(req)
     const file = formData.get('file') as File | null
 
     if (!file) {
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { maxUploadSizeMb } = await createAppSettingsService().get()
-    if (file.size > maxUploadSizeMb * 1024 * 1024) {
+    if (file.size > Math.min(maxUploadSizeMb * 1024 * 1024, MAX_UPLOAD_SIZE_BYTES)) {
       return NextResponse.json({ error: `Rasm hajmi ${maxUploadSizeMb}MB dan kichik bo‘lishi kerak` }, { status: 400 })
     }
 

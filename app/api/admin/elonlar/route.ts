@@ -32,7 +32,8 @@ export async function GET() {
     .order('created_at', { ascending: false })
 
   if (error) {
-    return jsonError(error.message, 500)
+    console.error('Admin announcements lookup failed:', error)
+    return jsonError("E'lonlarni yuklab bo'lmadi", 500)
   }
 
   return NextResponse.json({ elonlar: data ?? [] })
@@ -52,19 +53,19 @@ export async function POST(request: Request) {
   const faculty = audience === 'faculty' ? String(body?.faculty ?? '').trim() : null
   const isPublished = body?.is_published !== false
 
-  if (title.length < 3) {
-    return jsonError("Sarlavha kamida 3 ta belgidan iborat bo'lishi kerak", 400)
+  if (title.length < 3 || title.length > 160) {
+    return jsonError("Sarlavha 3–160 belgidan iborat bo'lishi kerak", 400)
   }
 
-  if (text.length < 5) {
-    return jsonError("Xabar matni kamida 5 ta belgidan iborat bo'lishi kerak", 400)
+  if (text.length < 5 || text.length > 20_000) {
+    return jsonError("Xabar matni 5–20000 belgidan iborat bo'lishi kerak", 400)
   }
 
   if (!ALLOWED_TYPES.includes(type)) {
     return jsonError("E'lon turi noto'g'ri", 400)
   }
 
-  if (audience === 'faculty' && !faculty) {
+  if (audience === 'faculty' && (!faculty || faculty.length > 160)) {
     return jsonError('Fakultet tanlanishi kerak', 400)
   }
 
@@ -85,7 +86,8 @@ export async function POST(request: Request) {
     .single()
 
   if (error) {
-    return jsonError(error.message, 500)
+    console.error('Admin announcement insert failed:', error)
+    return jsonError("E'lonni saqlab bo'lmadi", 500)
   }
 
   return NextResponse.json({ elon: data }, { status: 201 })
@@ -108,13 +110,13 @@ export async function PATCH(request: Request) {
 
   if (body?.title !== undefined) {
     const title = String(body.title).trim()
-    if (title.length < 3) return jsonError("Sarlavha kamida 3 ta belgidan iborat bo'lishi kerak", 400)
+    if (title.length < 3 || title.length > 160) return jsonError("Sarlavha 3–160 belgidan iborat bo'lishi kerak", 400)
     updates.title = title
   }
 
   if (body?.text !== undefined) {
     const text = String(body.text).trim()
-    if (text.length < 5) return jsonError("Xabar matni kamida 5 ta belgidan iborat bo'lishi kerak", 400)
+    if (text.length < 5 || text.length > 20_000) return jsonError("Xabar matni 5–20000 belgidan iborat bo'lishi kerak", 400)
     updates.text = text
   }
 
@@ -129,7 +131,9 @@ export async function PATCH(request: Request) {
   }
 
   if (body?.faculty !== undefined) {
-    updates.faculty = String(body.faculty).trim() || null
+    const faculty = String(body.faculty).trim()
+    if (faculty.length > 160) return jsonError('Fakultet nomi juda uzun', 400)
+    updates.faculty = faculty || null
   }
 
   if (body?.is_published !== undefined) {
@@ -148,7 +152,8 @@ export async function PATCH(request: Request) {
     .single()
 
   if (error) {
-    return jsonError(error.message, 500)
+    console.error('Admin announcement update failed:', error)
+    return jsonError("E'lonni yangilab bo'lmadi", 500)
   }
 
   return NextResponse.json({ elon: data })
@@ -171,7 +176,8 @@ export async function DELETE(request: Request) {
   const { error } = await supabase.from('elonlar').delete().eq('id', id)
 
   if (error) {
-    return jsonError(error.message, 500)
+    console.error('Admin announcement delete failed:', error)
+    return jsonError("E'lonni o'chirib bo'lmadi", 500)
   }
 
   return NextResponse.json({ ok: true })

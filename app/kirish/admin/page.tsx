@@ -10,5 +10,5 @@ export default async function AdminKirishPage({ searchParams }: Props) {
   if (!validateStaffLink('admin', k)) {
     notFound()
   }
-  redirect(`/login?portal=admin&k=${encodeURIComponent(k!)}`)
+  redirect('/admin/login')
 }

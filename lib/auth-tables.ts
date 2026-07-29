@@ -68,10 +68,7 @@ export async function findRoleByIdentity(supabase: SupabaseClient, identity: Ide
       .eq('id', identity.id)
       .maybeSingle()
 
-    if (userById?.role === 'talaba') {
-      if (userById.status === 'pending') {
-        return null
-      }
+    if (userById?.role === 'talaba' && userById.status === 'active') {
       return 'talaba'
     }
   }
@@ -83,10 +80,7 @@ export async function findRoleByIdentity(supabase: SupabaseClient, identity: Ide
       .eq('email', cleanEmail)
       .maybeSingle()
 
-    if (userByEmail?.role === 'talaba') {
-      if (userByEmail.status === 'pending') {
-        return null
-      }
+    if (userByEmail?.role === 'talaba' && userByEmail.status === 'active') {
       return 'talaba'
     }
   }

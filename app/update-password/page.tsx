@@ -7,6 +7,7 @@ import { Lock, Eye, EyeOff, Save, ShieldCheck, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/password-policy'
 
 export default function UpdatePassword() {
     const [password, setPassword] = useState('')
@@ -30,10 +31,11 @@ export default function UpdatePassword() {
 
     // --- PASSWORD STRENGTH LOGIC ---
     const checks = {
-        length: password.length >= 8,
+        length: password.length >= PASSWORD_MIN_LENGTH && password.length <= PASSWORD_MAX_LENGTH,
         upper: /[A-Z]/.test(password),
         lower: /[a-z]/.test(password),
         number: /[0-9]/.test(password),
+        symbol: /[^A-Za-z0-9]/.test(password),
     }
     const strength = Object.values(checks).filter(Boolean).length
 
@@ -47,18 +49,39 @@ export default function UpdatePassword() {
 
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (strength < 4) return show3DToast('error', "Barcha xavfsizlik shartlarini bajaring!")
+        const passwordError = getPasswordPolicyError(password)
+        if (passwordError) return show3DToast('error', passwordError)
         if (password !== confirmPassword) return show3DToast('error', "Parollar bir-biriga mos kelmadi!")
 
         setLoading(true)
         try {
-            const { error } = await supabase.auth.updateUser({ password })
+            const { data: updatedAuth, error } = await supabase.auth.updateUser({ password })
             if (error) {
                 if (error.message.includes("New password should be different")) throw new Error("Yangi parol eskisi bilan bir xil bo'lmasligi kerak!")
                 throw error
             }
             show3DToast('success', "Parolingiz muvaffaqiyatli yangilandi!")
-            setTimeout(() => router.push('/login'), 2000)
+
+            let destination = '/login'
+            const token = updatedAuth.user
+                ? (await supabase.auth.getSession()).data.session?.access_token
+                : null
+            if (token) {
+                const roleResponse = await fetch('/api/auth/resolve-role', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}` },
+                })
+                if (roleResponse.ok) {
+                    const roleResult = await roleResponse.json() as { role?: string | null }
+                    destination =
+                        roleResult.role === 'admin' ? '/admin/dashboard'
+                        : roleResult.role === 'tarbiyachi' ? '/tarbiyachi/dashboard'
+                        : roleResult.role === 'zamdekan' ? '/zamdekan/dashboard'
+                        : roleResult.role === 'talaba' ? '/talaba/dashboard'
+                        : '/login'
+                }
+            }
+            setTimeout(() => router.push(destination), 2000)
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : 'Xatolik yuz berdi'
             show3DToast('error', errorMessage || "Xatolik yuz berdi")
@@ -119,6 +142,10 @@ export default function UpdatePassword() {
                                 </div>
                                 <input
                                     type={showPassword ? "text" : "password"}
+                                    name="new-password"
+                                    autoComplete="new-password"
+                                    minLength={PASSWORD_MIN_LENGTH}
+                                    maxLength={PASSWORD_MAX_LENGTH}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="••••••••"
@@ -137,7 +164,7 @@ export default function UpdatePassword() {
                             {/* Strength Logic */}
                             <div className="pt-2 px-1">
                                 <div className="flex gap-1 mb-3">
-                                    {[1, 2, 3, 4].map((step) => (
+                                    {[1, 2, 3, 4, 5].map((step) => (
                                         <div
                                             key={step}
                                             className={`h-1 flex-1 rounded-full transition-all duration-500 ${strength >= step
@@ -148,7 +175,7 @@ export default function UpdatePassword() {
                                     ))}
                                 </div>
                                 <div className={`grid grid-cols-2 gap-2 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-600'}`}>
-                                    {Object.entries({ length: '8 ta belgi', upper: 'Katta harf', lower: 'Kichik harf', number: 'Raqam' }).map(([key, label]) => (
+                                    {Object.entries({ length: '12–128 belgi', upper: 'Katta harf', lower: 'Kichik harf', number: 'Raqam', symbol: 'Maxsus belgi' }).map(([key, label]) => (
                                         <div key={key} className={`flex items-center gap-1.5 transition-colors ${checks[key as keyof typeof checks] ? isLight ? 'text-blue-600' : 'text-emerald-400' : ''}`}>
                                             <div className={`w-1 h-1 rounded-full ${checks[key as keyof typeof checks] ? isLight ? 'bg-blue-600 shadow-[0_0_4px_blue]' : 'bg-emerald-400 shadow-[0_0_4px_emerald]' : isLight ? 'bg-slate-400' : 'bg-slate-800'}`} />
                                             {label}
@@ -167,6 +194,10 @@ export default function UpdatePassword() {
                                 </div>
                                 <input
                                     type={showPassword ? "text" : "password"}
+                                    name="confirm-password"
+                                    autoComplete="new-password"
+                                    minLength={PASSWORD_MIN_LENGTH}
+                                    maxLength={PASSWORD_MAX_LENGTH}
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     placeholder="••••••••"

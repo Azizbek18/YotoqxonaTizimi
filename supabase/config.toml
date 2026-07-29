@@ -11,3 +11,15 @@ max_rows = 1000
 port = 54322
 shadow_port = 54320
 major_version = 15
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://yotoqxona-tizimi.vercel.app/update-password"]
+enable_signup = false
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = false
+enable_confirmations = true
+double_confirm_changes = true

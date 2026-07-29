@@ -13,6 +13,8 @@ import {
 } from '@/lib/permit-validation'
 import { writeAuditLog } from '@/lib/audit-log'
 import { verifyFileClaim } from '@/lib/receipt-claim'
+import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
+import { getApiError } from '@/server/http/api-error'
 
 function value(form: FormData, name: string, maxLength = 200) {
   return String(form.get(name) ?? '').trim().slice(0, maxLength)
@@ -26,10 +28,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const contentLength = Number(request.headers.get('content-length') ?? 0)
-    if (contentLength > 6 * 1024 * 1024) {
-      return NextResponse.json({ error: 'So‘rov hajmi 6 MB dan oshmasligi kerak.' }, { status: 413 })
+    if (contentLength > 4_400_000) {
+      return NextResponse.json({ error: 'So‘rov hajmi 4 MB fayl chegarasidan oshmasligi kerak.' }, { status: 413 })
     }
-    const form = await request.formData()
+    const form = await readMultipartForm(request)
     const file = form.get('file')
     if (!(file instanceof File)) {
       return NextResponse.json({ error: 'Yo‘llanma fayli topilmadi.' }, { status: 400 })
@@ -56,8 +58,8 @@ export async function POST(request: NextRequest) {
     }
 
     const fileRule = PERMIT_FILE_RULES[file.type]
-    if (!fileRule || file.size < 16 || file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Faqat PDF, JPG, PNG yoki WEBP (5 MB gacha) qabul qilinadi.' }, { status: 400 })
+    if (!fileRule || file.size < 16 || file.size > MAX_UPLOAD_SIZE_BYTES) {
+      return NextResponse.json({ error: 'Faqat PDF, JPG, PNG yoki WEBP (4 MB gacha) qabul qilinadi.' }, { status: file.size > MAX_UPLOAD_SIZE_BYTES ? 413 : 400 })
     }
     const buffer = Buffer.from(await file.arrayBuffer())
     if (!hasAllowedSignature(buffer, fileRule.signatures)) {
@@ -137,6 +139,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true }, { status: 201 })
   } catch (error) {
     console.error('Permit submission failed:', error)
-    return NextResponse.json({ error: 'Arizani saqlashda server xatoligi yuz berdi.' }, { status: 500 })
+    const response = getApiError(error, 'Arizani saqlashda server xatoligi yuz berdi.')
+    return NextResponse.json(response.body, { status: response.status })
   }
 }

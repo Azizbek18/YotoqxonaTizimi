@@ -10,5 +10,5 @@ export default async function TarbiyachiKirishPage({ searchParams }: Props) {
   if (!validateStaffLink('tarbiyachi', k)) {
     notFound()
   }
-  redirect(`/login?portal=tarbiyachi&k=${encodeURIComponent(k!)}`)
+  redirect('/login?portal=tarbiyachi')
 }

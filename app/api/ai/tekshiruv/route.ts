@@ -13,6 +13,7 @@ import {
 } from '@/features/payments/domain/validation'
 import { requireActiveStudent } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
+import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Juda ko‘p chek tekshirildi. Keyinroq urinib ko‘ring.' }, { status: 429 })
     }
 
-    const formData = await req.formData()
+    const formData = await readMultipartForm(req)
     const file = formData.get('file') as File | null
     const declaredAmount = parsePaymentAmount(formData.get('amount'))
 
@@ -36,8 +37,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Faqat rasm yoki PDF chek qabul qilinadi' }, { status: 400 })
     }
 
-    if (file.size > 8 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Chek hajmi 8MB dan kichik bo‘lishi kerak' }, { status: 400 })
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+      return NextResponse.json({ error: 'Chek hajmi 4 MB dan oshmasligi kerak' }, { status: 413 })
     }
 
     // Read file once — used for both the byte-level duplicate check and the AI call.

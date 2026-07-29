@@ -287,6 +287,13 @@ export interface Database {
           status: string
         }[]
       }
+      activate_pending_student: {
+        Args: {
+          p_user_id: string
+          p_email: string
+        }
+        Returns: boolean
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

@@ -8,42 +8,71 @@ export async function POST(request: Request) {
     const ip = getClientIp(request)
     const throttle = await checkRateLimit(`resolve-role:${ip}`, 30, 60_000)
     if (!throttle.allowed) {
-      return NextResponse.json({ ok: false, error: 'Juda ko\'p urinish. Keyinroq urinib ko\'ring.' }, { status: 429 })
+      return NextResponse.json(
+        { ok: false, error: 'Juda ko‘p urinish. Keyinroq urinib ko‘ring.' },
+        { status: 429 },
+      )
     }
 
-    // Require a verified session and always resolve the role for that
-    // session's OWN email — never trust an arbitrary email from the request
-    // body, since that would let anyone probe whether any email belongs to
-    // an admin/staff account without authenticating at all.
     const requestUser = await getRequestUser(request)
-    if (!requestUser?.email) {
-      return NextResponse.json({ ok: false, error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
+    if (!requestUser?.id || !requestUser.email) {
+      return NextResponse.json(
+        { ok: false, error: 'Autentifikatsiya talab qilinadi' },
+        { status: 401 },
+      )
     }
     const email = requestUser.email.trim().toLowerCase()
-
     const supabase = getServiceSupabase()
+
     const { data: staffUser, error: staffError } = await supabase
       .from('staff')
       .select('role, status')
       .eq('email', email)
       .maybeSingle()
-
     if (staffError) {
-      return NextResponse.json({ ok: false, error: staffError.message }, { status: 500 })
+      console.error('Role resolution staff lookup failed:', staffError)
+      return NextResponse.json(
+        { ok: false, error: 'Rolni aniqlab bo‘lmadi' },
+        { status: 500 },
+      )
     }
 
-    if (staffUser?.status === 'active' && (staffUser.role === 'admin' || staffUser.role === 'tarbiyachi' || staffUser.role === 'zamdekan')) {
+    if (
+      staffUser?.status === 'active'
+      && ['admin', 'tarbiyachi', 'zamdekan'].includes(staffUser.role)
+    ) {
       return NextResponse.json({ ok: true, role: staffUser.role })
     }
 
-    const { data: studentUser, error: userError } = await supabase
+    const { data: initialStudentUser, error: userError } = await supabase
       .from('users')
       .select('role, status')
-      .eq('email', email)
+      .eq('id', requestUser.id)
       .maybeSingle()
-
     if (userError) {
-      return NextResponse.json({ ok: false, error: userError.message }, { status: 500 })
+      console.error('Role resolution student lookup failed:', userError)
+      return NextResponse.json(
+        { ok: false, error: 'Rolni aniqlab bo‘lmadi' },
+        { status: 500 },
+      )
+    }
+    let studentUser = initialStudentUser
+
+    if (studentUser?.role === 'talaba' && studentUser.status === 'pending') {
+      const { data: activated, error: activationError } = await supabase.rpc(
+        'activate_pending_student',
+        { p_user_id: requestUser.id, p_email: email },
+      )
+      if (activationError) {
+        console.error('Pending student activation failed:', activationError)
+        return NextResponse.json(
+          { ok: false, error: 'Akkauntni faollashtirib bo‘lmadi' },
+          { status: 500 },
+        )
+      }
+      if (activated) {
+        studentUser = { role: 'talaba', status: 'active' }
+      }
     }
 
     if (studentUser?.role === 'talaba' && studentUser.status === 'active') {
@@ -51,7 +80,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ ok: true, role: null })
-  } catch {
+  } catch (error) {
+    console.error('Role resolution failed:', error)
     return NextResponse.json({ ok: false, error: 'Server xatoligi' }, { status: 500 })
   }
 }

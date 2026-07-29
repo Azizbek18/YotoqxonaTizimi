@@ -245,8 +245,8 @@ export default function RuxsatnomaYuborish() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0]
-      if (selected.size > 5 * 1024 * 1024) {
-        showToast('error', "Fayl o'lchami 5MB dan oshmasligi kerak!")
+      if (selected.size > 4 * 1024 * 1024) {
+        showToast('error', "Fayl o'lchami 4 MB dan oshmasligi kerak!")
         return
       }
       setFile(selected)
@@ -402,6 +402,7 @@ export default function RuxsatnomaYuborish() {
         // them readable by the next person on a shared/public device.
         sessionStorage.setItem('student_permit_passport', cleanPassport)
         sessionStorage.setItem('student_permit_jshshir', cleanJshshir)
+        sessionStorage.setItem('student_permit_email', cleanEmail)
       }
 
       setSubmitted(true)
@@ -1189,7 +1190,7 @@ export default function RuxsatnomaYuborish() {
                                 {file ? file.name : "Ruxsatnoma faylini tanlang"}
                               </span>
                               <span className="text-[10px] text-slate-500 font-sans">
-                                {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : "PDF, PNG, JPG (Maks. 5MB)"}
+                                {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : "PDF, PNG, JPG (Maks. 4 MB)"}
                               </span>
                             </div>
                           </motion.div>
@@ -1297,7 +1298,7 @@ export default function RuxsatnomaYuborish() {
                 <button
                   onClick={() => {
                     playSound('tab')
-                    router.push(`/ruxsatnoma-tekshirish?passport=${passportSeries}&jshshir=${jshshir}`)
+                    router.push('/ruxsatnoma-tekshirish')
                   }}
                   className="flex-1 p-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest transition-all duration-300 active:scale-95"
                 >

@@ -3,18 +3,12 @@
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Baloo_2 } from 'next/font/google'
 import { supabase } from '@/lib/supabase'
 import { Mail, Lock, ChevronRight, House, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
-
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  display: 'swap',
-})
+import { appFont as baloo2 } from '@/lib/app-font'
 
 function LoginContent() {
   const router = useRouter()
@@ -187,6 +181,10 @@ function LoginContent() {
                   )}
                   <input
                     type="email"
+                    name="email"
+                    autoComplete="email"
+                    inputMode="email"
+                    maxLength={254}
                     value={email}
                     onFocus={() => setFocusedField('email')}
                     onBlur={() => setFocusedField(null)}
@@ -211,6 +209,9 @@ function LoginContent() {
                   )}
                   <input
                     type={showPassword ? "text" : "password"}
+                    name="password"
+                    autoComplete="current-password"
+                    maxLength={128}
                     value={password}
                     onFocus={() => setFocusedField('password')}
                     onBlur={() => setFocusedField(null)}

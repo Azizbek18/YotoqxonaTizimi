@@ -8,6 +8,7 @@ import {
   type StaffRole,
 } from '@/lib/staff-access'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+import { getPasswordPolicyError } from '@/lib/password-policy'
 
 export async function POST(request: Request) {
   try {
@@ -41,8 +42,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Majburiy maydonlar to'ldirilmagan" }, { status: 400 })
     }
 
-    if (password !== confirmPassword || password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-      return NextResponse.json({ ok: false, error: 'Parol kamida 8 belgi, harf va raqamdan iborat bo‘lishi kerak' }, { status: 400 })
+    const passwordError = getPasswordPolicyError(password)
+    if (password !== confirmPassword || passwordError) {
+      return NextResponse.json({ ok: false, error: password !== confirmPassword ? 'Parollar bir xil emas' : passwordError }, { status: 400 })
     }
 
     const linkOk = validateStaffLink(role, linkKey)
@@ -77,7 +79,8 @@ export async function POST(request: Request) {
       if (userError.code === '23505') {
         return NextResponse.json({ ok: false, error: 'Bu maxsus ID yoki email avval ishlatilgan' }, { status: 409 })
       }
-      return NextResponse.json({ ok: false, error: userError.message }, { status: 400 })
+      console.error('Staff profile insert failed:', userError)
+      return NextResponse.json({ ok: false, error: "Xodim profilini yaratib bo'lmadi" }, { status: 400 })
     }
 
     return NextResponse.json({ ok: true })

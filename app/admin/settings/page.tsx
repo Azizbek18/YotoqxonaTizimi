@@ -1,32 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Settings as SettingsIcon, Wallet, Boxes, Phone, ShieldAlert } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchAppSettings, updateAppSettings } from '@/features/app-settings/client/api'
 import type { AppSettings } from '@/features/app-settings/types'
-
-const DEFAULT_SETTINGS: AppSettings = {
-    monthlyFee: 300000,
-    yearlyContractFee: 3000000,
-    defaultRoomCapacity: 4,
-    floorCount: 5,
-    tarbiyachiName: '',
-    tarbiyachiPhone: '',
-    komendantName: '',
-    komendantPhone: '',
-    doctorName: '',
-    doctorPhone: '',
-    talabaKengashiRaisiOgilName: '',
-    talabaKengashiRaisiOgilPhone: '',
-    talabaKengashiRaisiQizName: '',
-    talabaKengashiRaisiQizPhone: '',
-    securityPhone: '',
-    maxUploadSizeMb: 5,
-    warningThreshold: 2,
-}
 
 type NumberField = {
     key: 'monthlyFee' | 'yearlyContractFee' | 'defaultRoomCapacity' | 'floorCount' | 'maxUploadSizeMb' | 'warningThreshold'
@@ -45,33 +25,44 @@ export default function AdminSettingsPage() {
     const inputBg = isLight ? 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-500/50' : 'bg-white/5 border-white/10 text-white placeholder-slate-500 focus:border-purple-500/50'
     const borderCol = isLight ? 'border-slate-200' : 'border-white/10'
 
-    const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
-    const [savedSettings, setSavedSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
+    const [settings, setSettings] = useState<AppSettings | null>(null)
+    const [savedSettings, setSavedSettings] = useState<AppSettings | null>(null)
     const [loading, setLoading] = useState(true)
+    const [loadError, setLoadError] = useState<string | null>(null)
     const [saving, setSaving] = useState(false)
 
-    useEffect(() => {
-        (async () => {
-            try {
-                const data = await fetchAppSettings()
-                setSettings(data)
-                setSavedSettings(data)
-            } catch (error) {
-                const message = error instanceof Error ? error.message : "Sozlamalarni yuklab bo'lmadi"
-                toast.error(message)
-            } finally {
-                setLoading(false)
-            }
-        })()
+    const loadSettings = useCallback(async () => {
+        setLoading(true)
+        setLoadError(null)
+        try {
+            const data = await fetchAppSettings()
+            setSettings(data)
+            setSavedSettings(data)
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Sozlamalarni yuklab bo'lmadi"
+            setSettings(null)
+            setSavedSettings(null)
+            setLoadError(message)
+            toast.error(message)
+        } finally {
+            setLoading(false)
+        }
     }, [])
 
+    useEffect(() => {
+        void loadSettings()
+    }, [loadSettings])
+
     const handleChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
-        setSettings((prev) => ({ ...prev, [key]: value }))
+        setSettings((prev) => prev ? { ...prev, [key]: value } : prev)
     }
 
-    const handleCancel = () => setSettings(savedSettings)
+    const handleCancel = () => {
+        if (savedSettings) setSettings(savedSettings)
+    }
 
     const handleSave = async () => {
+        if (!settings) return
         try {
             setSaving(true)
             const updated = await updateAppSettings(settings)
@@ -110,7 +101,8 @@ export default function AdminSettingsPage() {
         { title: 'Xavfsizlik bo\'limi', nameKey: 'securityPhone', phoneKey: 'securityPhone', hasName: false },
     ]
 
-    const isDirty = JSON.stringify(settings) !== JSON.stringify(savedSettings)
+    const isDirty = settings !== null && savedSettings !== null
+        && JSON.stringify(settings) !== JSON.stringify(savedSettings)
 
     return (
         <div className="space-y-6">
@@ -130,6 +122,21 @@ export default function AdminSettingsPage() {
             {loading ? (
                 <div className={`flex items-center justify-center rounded-2xl border p-16 ${surfaceBg}`}>
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
+                </div>
+            ) : loadError || !settings ? (
+                <div className={`rounded-2xl border p-8 text-center ${surfaceBg}`}>
+                    <ShieldAlert className="mx-auto h-10 w-10 text-rose-500" />
+                    <h2 className={`mt-4 text-lg font-black ${textStrong}`}>Sozlamalar ochilmadi</h2>
+                    <p className={`mx-auto mt-2 max-w-xl text-sm ${textMuted}`}>
+                        {loadError ?? "Sozlamalarni yuklab bo'lmadi"}. Xavfsizlik uchun standart qiymatlar bilan tahrirlash bloklandi.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => void loadSettings()}
+                        className="mt-5 rounded-xl bg-purple-600 px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white transition-colors hover:bg-purple-700"
+                    >
+                        Qayta urinish
+                    </button>
                 </div>
             ) : (
                 <>
@@ -158,9 +165,9 @@ export default function AdminSettingsPage() {
                                         <div className="sm:ml-4 shrink-0 flex items-center gap-2 w-full sm:w-auto">
                                             <input
                                                 type="number"
-                                                min={0}
+                                                min={1}
                                                 value={settings[field.key]}
-                                                onChange={(e) => handleChange(field.key, Math.max(0, Number(e.target.value)) as AppSettings[typeof field.key])}
+                                                onChange={(e) => handleChange(field.key, Math.max(1, Number(e.target.value)) as AppSettings[typeof field.key])}
                                                 className={`w-full sm:w-36 px-3 py-2 rounded-xl border text-sm outline-none transition-all ${inputBg}`}
                                             />
                                             <span className={`text-xs font-bold shrink-0 ${textMuted}`}>{field.suffix}</span>

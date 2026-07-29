@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
@@ -31,6 +31,8 @@ import {
   fetchStudentApplications,
 } from '@/features/applications/client/api';
 import { fetchAppSettings } from '@/features/app-settings/client/api';
+import type { AppSettings } from '@/features/app-settings/types';
+import { getPaymentStats } from '@/features/app-settings/presentation';
 
 
 interface Task {
@@ -38,6 +40,20 @@ interface Task {
   text: string;
   completed: boolean;
 }
+
+type SupportContacts = Pick<
+  AppSettings,
+  | 'tarbiyachiName'
+  | 'tarbiyachiPhone'
+  | 'komendantName'
+  | 'komendantPhone'
+  | 'doctorName'
+  | 'doctorPhone'
+  | 'talabaKengashiRaisiOgilName'
+  | 'talabaKengashiRaisiOgilPhone'
+  | 'talabaKengashiRaisiQizName'
+  | 'talabaKengashiRaisiQizPhone'
+>;
 
 interface Ariza {
   id: string | number;
@@ -212,14 +228,9 @@ export default function TalabaDashboard() {
   const [loadingAdminChat, setLoadingAdminChat] = useState(false);
   const [sendingAdminChat, setSendingAdminChat] = useState(false);
   const [adminChatInput, setAdminChatInput] = useState('');
-  const [contacts, setContacts] = useState({
-    tarbiyachiName: 'Mo\'minov Azizbek', tarbiyachiPhone: '+998909998877',
-    komendantName: 'Qodirov Sardor', komendantPhone: '+998931112233',
-    doctorName: 'Sultonova Ra\'no', doctorPhone: '+998944445566',
-    talabaKengashiRaisiOgilName: '', talabaKengashiRaisiOgilPhone: '',
-    talabaKengashiRaisiQizName: '', talabaKengashiRaisiQizPhone: '',
-  });
-  const [yearlyContractFee, setYearlyContractFee] = useState(3000000);
+  const [contacts, setContacts] = useState<SupportContacts | null>(null);
+  const [yearlyContractFee, setYearlyContractFee] = useState<number | null>(null);
+  const [settingsStatus, setSettingsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
   const getAppStatusInfo = (status: string) => {
     switch (status) {
@@ -357,23 +368,30 @@ export default function TalabaDashboard() {
     loadSchedule();
   }, [profile, roommates, allResidents]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const settings = await fetchAppSettings();
-        setContacts({
-          tarbiyachiName: settings.tarbiyachiName, tarbiyachiPhone: settings.tarbiyachiPhone,
-          komendantName: settings.komendantName, komendantPhone: settings.komendantPhone,
-          doctorName: settings.doctorName, doctorPhone: settings.doctorPhone,
-          talabaKengashiRaisiOgilName: settings.talabaKengashiRaisiOgilName, talabaKengashiRaisiOgilPhone: settings.talabaKengashiRaisiOgilPhone,
-          talabaKengashiRaisiQizName: settings.talabaKengashiRaisiQizName, talabaKengashiRaisiQizPhone: settings.talabaKengashiRaisiQizPhone,
-        });
-        setYearlyContractFee(settings.yearlyContractFee);
-      } catch {
-        // Keep the default contact info if settings can't be loaded
-      }
-    })();
+  const loadSettings = useCallback(async () => {
+    setSettingsStatus('loading');
+    try {
+      const settings = await fetchAppSettings();
+      setContacts({
+        tarbiyachiName: settings.tarbiyachiName, tarbiyachiPhone: settings.tarbiyachiPhone,
+        komendantName: settings.komendantName, komendantPhone: settings.komendantPhone,
+        doctorName: settings.doctorName, doctorPhone: settings.doctorPhone,
+        talabaKengashiRaisiOgilName: settings.talabaKengashiRaisiOgilName, talabaKengashiRaisiOgilPhone: settings.talabaKengashiRaisiOgilPhone,
+        talabaKengashiRaisiQizName: settings.talabaKengashiRaisiQizName, talabaKengashiRaisiQizPhone: settings.talabaKengashiRaisiQizPhone,
+      });
+      setYearlyContractFee(settings.yearlyContractFee);
+      setSettingsStatus('ready');
+    } catch {
+      setContacts(null);
+      setYearlyContractFee(null);
+      setSettingsStatus('error');
+      toast.error("To'lov va aloqa sozlamalarini yuklab bo'lmadi");
+    }
   }, []);
+
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
 
   // Sync draft with confirmed schedule when modal opens
   useEffect(() => {
@@ -807,13 +825,13 @@ export default function TalabaDashboard() {
   const cardInnerBg = isLight ? 'bg-slate-50/70 hover:bg-slate-100/50' : 'bg-white/5 hover:bg-white/10';
 
   // Payment Calculations
-  const totalContractFee = yearlyContractFee;
   const paidAmount = payments
     .filter(p => p.status === 'paid' || p.status === 'approved')
     .reduce((sum, p) => sum + p.amount, 0);
-  const remainingAmount = Math.max(0, totalContractFee - paidAmount);
-  const progressPercent = Math.min(100, Math.round((paidAmount / totalContractFee) * 100));
-  const strokeDashoffset = Math.max(0, 213 - (213 * progressPercent) / 100);
+  const paymentStats = getPaymentStats(yearlyContractFee, paidAmount);
+  const strokeDashoffset = paymentStats
+    ? Math.max(0, 213 - (213 * paymentStats.progressPercent) / 100)
+    : 213;
 
   if (loadingProfile) {
     return (
@@ -1061,9 +1079,15 @@ export default function TalabaDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <a href={`tel:${roommate.phone_number || '+998900000000'}`} className={`p-1.5 rounded-lg border hover:bg-blue-500/10 ${isLight ? 'border-slate-200 text-slate-600' : 'border-white/5 text-gray-400'}`}>
-                          <Phone size={12} />
-                        </a>
+                        {roommate.phone_number ? (
+                          <a href={`tel:${roommate.phone_number}`} aria-label={`${roommate.full_name}ga qo'ng'iroq qilish`} className={`p-1.5 rounded-lg border hover:bg-blue-500/10 ${isLight ? 'border-slate-200 text-slate-600' : 'border-white/5 text-gray-400'}`}>
+                            <Phone size={12} />
+                          </a>
+                        ) : (
+                          <span title="Telefon raqami kiritilmagan" className={`p-1.5 rounded-lg border opacity-40 ${isLight ? 'border-slate-200 text-slate-400' : 'border-white/5 text-gray-500'}`}>
+                            <Phone size={12} />
+                          </span>
+                        )}
                         <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
                       </div>
                     </div>
@@ -1089,17 +1113,20 @@ export default function TalabaDashboard() {
               Yordam & Aloqa (Qo&apos;llab-quvvatlash)
             </h3>
             
+            {contacts ? (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <div>
                   <p className={`text-xs font-bold ${textStrong}`}>Tarbiyachi (Navbatchi)</p>
                   <p className={`text-[9px] ${textMuted}`}>{contacts.tarbiyachiName}</p>
                 </div>
-                <a href={`tel:${contacts.tarbiyachiPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
-                  isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
-                }`}>
-                  <Phone size={10} /> Call
-                </a>
+                {contacts.tarbiyachiPhone ? (
+                  <a href={`tel:${contacts.tarbiyachiPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
+                    isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
+                  }`}>
+                    <Phone size={10} /> Call
+                  </a>
+                ) : <span className={`text-[10px] ${textMuted}`}>Raqam kiritilmagan</span>}
               </div>
 
               <div className="flex justify-between items-center pt-2.5 border-t border-white/5">
@@ -1107,11 +1134,13 @@ export default function TalabaDashboard() {
                   <p className={`text-xs font-bold ${textStrong}`}>Komedant</p>
                   <p className={`text-[9px] ${textMuted}`}>{contacts.komendantName}</p>
                 </div>
-                <a href={`tel:${contacts.komendantPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
-                  isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
-                }`}>
-                  <Phone size={10} /> Call
-                </a>
+                {contacts.komendantPhone ? (
+                  <a href={`tel:${contacts.komendantPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
+                    isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
+                  }`}>
+                    <Phone size={10} /> Call
+                  </a>
+                ) : <span className={`text-[10px] ${textMuted}`}>Raqam kiritilmagan</span>}
               </div>
 
               <div className="flex justify-between items-center pt-2.5 border-t border-white/5">
@@ -1119,11 +1148,13 @@ export default function TalabaDashboard() {
                   <p className={`text-xs font-bold ${textStrong}`}>Tibbiy yordam xonasi</p>
                   <p className={`text-[9px] ${textMuted}`}>{contacts.doctorName} (Shifokor)</p>
                 </div>
-                <a href={`tel:${contacts.doctorPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
-                  isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
-                }`}>
-                  <Phone size={10} /> Call
-                </a>
+                {contacts.doctorPhone ? (
+                  <a href={`tel:${contacts.doctorPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
+                    isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
+                  }`}>
+                    <Phone size={10} /> Call
+                  </a>
+                ) : <span className={`text-[10px] ${textMuted}`}>Raqam kiritilmagan</span>}
               </div>
 
               {contacts.talabaKengashiRaisiOgilPhone && (
@@ -1154,6 +1185,22 @@ export default function TalabaDashboard() {
                 </div>
               )}
             </div>
+            ) : (
+              <div className={`rounded-2xl border p-4 text-center text-xs ${
+                isLight ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-rose-500/20 bg-rose-500/5 text-rose-300'
+              }`}>
+                <p>{settingsStatus === 'loading' ? 'Aloqa ma’lumotlari yuklanmoqda...' : 'Aloqa ma’lumotlarini yuklab bo‘lmadi.'}</p>
+                {settingsStatus === 'error' && (
+                  <button
+                    type="button"
+                    onClick={() => void loadSettings()}
+                    className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 font-black uppercase tracking-wider hover:bg-rose-500/20"
+                  >
+                    Qayta urinish
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
         </div>
@@ -1455,44 +1502,63 @@ export default function TalabaDashboard() {
                   <CreditCard className={isLight ? "text-blue-600" : "text-indigo-400"} /> To&apos;lov holati
                 </h4>
                 
-                <div className="flex gap-4 items-center mb-6">
-                  <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
-                    <svg className="w-full h-full transform -rotate-90">
-                      <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" className={isLight ? "text-slate-100" : "text-white/5"} />
-                      <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="213" strokeDashoffset={strokeDashoffset} className={isLight ? "text-blue-600" : "text-indigo-500"} style={{ transition: 'all 1000ms' }} />
-                    </svg>
-                    <div className={`absolute flex flex-col items-center ${textStrong}`}>
-                      <span className="text-sm font-black italic">{progressPercent}%</span>
-                    </div>
-                  </div>
+                {paymentStats ? (
+                  <>
+                    <div className="flex gap-4 items-center mb-6">
+                      <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
+                        <svg className="w-full h-full transform -rotate-90">
+                          <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" className={isLight ? "text-slate-100" : "text-white/5"} />
+                          <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="213" strokeDashoffset={strokeDashoffset} className={isLight ? "text-blue-600" : "text-indigo-500"} style={{ transition: 'all 1000ms' }} />
+                        </svg>
+                        <div className={`absolute flex flex-col items-center ${textStrong}`}>
+                          <span className="text-sm font-black italic">{paymentStats.progressPercent}%</span>
+                        </div>
+                      </div>
 
-                  <div className="space-y-1">
-                    <p className={`text-xs font-bold ${textStrong}`}>{paidAmount.toLocaleString('uz-UZ')} UZS to&apos;landi</p>
-                    <p className={`text-[10px] ${textMuted}`}>Shartnoma: {totalContractFee.toLocaleString('uz-UZ')} UZS</p>
-                  </div>
-                </div>
+                      <div className="space-y-1">
+                        <p className={`text-xs font-bold ${textStrong}`}>{paidAmount.toLocaleString('uz-UZ')} UZS to&apos;landi</p>
+                        <p className={`text-[10px] ${textMuted}`}>Shartnoma: {paymentStats.totalContractFee.toLocaleString('uz-UZ')} UZS</p>
+                      </div>
+                    </div>
 
-                <div className="space-y-2.5">
-                  <div className={`flex justify-between items-center p-3 rounded-xl border ${cardBorder} ${cardInnerBg}`}>
-                    <span className={`text-[9px] font-black uppercase ${textMuted}`}>Qolgan to&apos;lov</span>
-                    <span className={`text-xs font-black ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>{remainingAmount.toLocaleString('uz-UZ')} UZS</span>
+                    <div className="space-y-2.5">
+                      <div className={`flex justify-between items-center p-3 rounded-xl border ${cardBorder} ${cardInnerBg}`}>
+                        <span className={`text-[9px] font-black uppercase ${textMuted}`}>Qolgan to&apos;lov</span>
+                        <span className={`text-xs font-black ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>{paymentStats.remainingAmount.toLocaleString('uz-UZ')} UZS</span>
+                      </div>
+                      {paymentStats.remainingAmount > 0 ? (
+                        <div className={`flex justify-between items-center p-3 rounded-xl border animate-pulse ${
+                          isLight ? 'bg-red-50 border-red-200' : 'bg-red-500/10 border-red-500/20'
+                        }`}>
+                          <span className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-red-600' : 'text-red-400'}`}>Muddati</span>
+                          <span className={`text-xs font-black ${isLight ? 'text-red-600' : 'text-red-400'}`}>Kutilmoqda</span>
+                        </div>
+                      ) : (
+                        <div className={`flex justify-between items-center p-3 rounded-xl border ${
+                          isLight ? 'bg-green-50 border-green-200 text-green-700' : 'bg-green-500/10 border-green-500/20 text-green-400'
+                        }`}>
+                          <span className="text-[9px] font-black uppercase tracking-wider">Holat</span>
+                          <span className="text-xs font-black">To&apos;liq to&apos;langan ✅</span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className={`rounded-2xl border p-4 text-center text-xs ${
+                    isLight ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-rose-500/20 bg-rose-500/5 text-rose-300'
+                  }`}>
+                    <p>{settingsStatus === 'loading' ? 'Shartnoma summasi yuklanmoqda...' : 'Shartnoma summasini yuklab bo‘lmadi.'}</p>
+                    {settingsStatus === 'error' && (
+                      <button
+                        type="button"
+                        onClick={() => void loadSettings()}
+                        className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 font-black uppercase tracking-wider hover:bg-rose-500/20"
+                      >
+                        Qayta urinish
+                      </button>
+                    )}
                   </div>
-                  {remainingAmount > 0 ? (
-                    <div className={`flex justify-between items-center p-3 rounded-xl border animate-pulse ${
-                      isLight ? 'bg-red-50 border-red-200' : 'bg-red-500/10 border-red-500/20'
-                    }`}>
-                      <span className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-red-600' : 'text-red-400'}`}>Muddati</span>
-                      <span className={`text-xs font-black ${isLight ? 'text-red-600' : 'text-red-400'}`}>Kutilmoqda</span>
-                    </div>
-                  ) : (
-                    <div className={`flex justify-between items-center p-3 rounded-xl border ${
-                      isLight ? 'bg-green-50 border-green-200 text-green-700' : 'bg-green-500/10 border-green-500/20 text-green-400'
-                    }`}>
-                      <span className={`text-[9px] font-black uppercase tracking-wider`}>Holat</span>
-                      <span className="text-xs font-black">To&apos;liq to&apos;langan ✅</span>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
 
               <Link 

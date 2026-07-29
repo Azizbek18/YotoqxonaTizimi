@@ -17,6 +17,7 @@ import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
 import { fetchFloorLayout, saveFloorLayout } from '@/features/room-layout/client/api'
 import type { RoomBlockSide, RoomBlockSize, RoomLayoutBlock } from '@/features/room-layout/types'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
+import { getFreePlaces, getRoomOccupancyTone, type RoomOccupancyTone } from '@/features/app-settings/presentation'
 
 interface StudentInfo {
   id: string
@@ -26,7 +27,6 @@ interface StudentInfo {
 interface RoomOccupancySnapshot {
   roomNumber: string
   occupied: number
-  capacity: number
   students: StudentInfo[]
 }
 
@@ -102,7 +102,11 @@ export default function Admin3DXonalarPage() {
   // null (not a guessed default) while settings are loading or unavailable —
   // a wrong guess would silently hide real floors above it from the tab list.
   const [floorCount, setFloorCount] = useState<number | null>(null)
-  const [defaultRoomCapacity, setDefaultRoomCapacity] = useState<number>(4)
+  // null (not a guessed default) while settings are loading or unavailable —
+  // a wrong guess would color a room "full" or compute free places against a
+  // capacity that isn't the real one.
+  const [defaultRoomCapacity, setDefaultRoomCapacity] = useState<number | null>(null)
+  const [settingsStatus, setSettingsStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const floors = floorCount ? Array.from({ length: floorCount }, (_, i) => i + 1) : []
 
   const [loading, setLoading] = useState(true)
@@ -153,14 +157,13 @@ export default function Admin3DXonalarPage() {
           roomNumber,
           occupied: info.count,
           students: info.students,
-          capacity: defaultRoomCapacity,
         }))
       )
     } catch (error) {
       console.error('Xona bandligini yuklashda xato:', error)
       toast.error('Bandlik ma\'lumotlarini yuklashda xatolik yuz berdi')
     }
-  }, [defaultRoomCapacity])
+  }, [])
 
   const loadFloorLayout = async (floor: number) => {
     setLoading(true)
@@ -188,17 +191,24 @@ export default function Admin3DXonalarPage() {
     return () => window.clearTimeout(loadId)
   }, [loadRoomOccupancy])
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const settings = await fetchAppSettings()
-        setFloorCount(settings.floorCount)
-        setDefaultRoomCapacity(settings.defaultRoomCapacity)
-      } catch {
-        toast.error("Qavatlar sozlamasini yuklab bo'lmadi")
-      }
-    })()
+  const loadSettings = useCallback(async () => {
+    setSettingsStatus('loading')
+    try {
+      const settings = await fetchAppSettings()
+      setFloorCount(settings.floorCount)
+      setDefaultRoomCapacity(settings.defaultRoomCapacity)
+      setSettingsStatus('ready')
+    } catch {
+      setFloorCount(null)
+      setDefaultRoomCapacity(null)
+      setSettingsStatus('error')
+      toast.error("Xona va qavat sozlamalarini yuklab bo'lmadi")
+    }
   }, [])
+
+  useEffect(() => {
+    void loadSettings()
+  }, [loadSettings])
 
   useEffect(() => {
     void loadFloorLayout(activeFloor)
@@ -359,10 +369,14 @@ export default function Admin3DXonalarPage() {
     rooms.forEach((room) => {
       const snap = roomSnapshots.find((s) => s.roomNumber === room.roomNumber)
       const occupied = snap?.occupied ?? 0
+      const occupancyTone = getRoomOccupancyTone(occupied, defaultRoomCapacity)
 
-      let color = 0x10b981
-      if (occupied >= defaultRoomCapacity) color = 0xef4444
-      else if (occupied > 0) color = 0xf59e0b
+      const color = {
+        empty: 0x10b981,
+        partial: 0xf59e0b,
+        full: 0xef4444,
+        unknown: 0x64748b,
+      }[occupancyTone]
 
       const geo = new THREE.BoxGeometry(room.width, room.height, room.depth)
       const material = new THREE.MeshStandardMaterial({
@@ -468,7 +482,10 @@ export default function Admin3DXonalarPage() {
     return {
       occupiedPlaces,
       totalRooms: roomCount,
-      freePlaces: Math.max(roomCount * defaultRoomCapacity - occupiedPlaces, 0),
+      freePlaces: getFreePlaces(
+        defaultRoomCapacity === null ? null : roomCount * defaultRoomCapacity,
+        occupiedPlaces,
+      ),
     }
   }, [roomSnapshots, positionedRooms, defaultRoomCapacity])
 
@@ -573,7 +590,7 @@ export default function Admin3DXonalarPage() {
               <DoorOpen className="h-4 w-4 text-emerald-400" />
               <span className="text-xs font-bold uppercase tracking-[0.18em]">Bo&apos;sh joy</span>
             </div>
-            <p className={`mt-2 text-2xl font-black ${textStrong}`}>{summary.freePlaces}</p>
+            <p className={`mt-2 text-2xl font-black ${textStrong}`}>{summary.freePlaces ?? '—'}</p>
           </div>
           <div className={`rounded-xl border p-4 ${cardBg}`}>
             <div className={`flex items-center gap-2 ${textMuted}`}>
@@ -613,6 +630,21 @@ export default function Admin3DXonalarPage() {
           )
         })}
       </div>
+
+      {settingsStatus === 'error' && (
+        <div className={`flex flex-col gap-3 rounded-2xl border p-4 text-xs sm:flex-row sm:items-center sm:justify-between ${
+          isLight ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-rose-500/20 bg-rose-500/5 text-rose-300'
+        }`}>
+          <span>Xona sig&apos;imi va qavatlar sonini yuklab bo&apos;lmadi. Sig&apos;imga bog&apos;liq statuslar noma&apos;lum deb ko&apos;rsatilmoqda.</span>
+          <button
+            type="button"
+            onClick={() => void loadSettings()}
+            className="shrink-0 rounded-lg bg-rose-500/10 px-3 py-2 font-black uppercase tracking-wider hover:bg-rose-500/20"
+          >
+            Qayta urinish
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className={`backdrop-blur-xl border rounded-[2rem] p-16 ${surfaceBg} flex items-center justify-center`}>
@@ -662,14 +694,23 @@ export default function Admin3DXonalarPage() {
                 <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                 <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>Bo&apos;sh</span>
               </div>
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
-                <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>Qisman</span>
-              </div>
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
-                <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
-                <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>To&apos;la</span>
-              </div>
+              {defaultRoomCapacity === null ? (
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
+                  <div className="w-2 h-2 rounded-full bg-slate-500 shadow-[0_0_8px_rgba(100,116,139,0.5)]" />
+                  <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>Sig&apos;im noma&apos;lum</span>
+                </div>
+              ) : (
+                <>
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
+                    <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                    <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>Qisman</span>
+                  </div>
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
+                    <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
+                    <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>To&apos;la</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {positionedRooms.rooms.length === 0 ? (
@@ -741,15 +782,17 @@ export default function Admin3DXonalarPage() {
                   <Detail label="Xona raqami" value={`#${selectedRoomData.number}`} icon={<MousePointer2 size={16} />} textStrong={textStrong} cardBg={cardBg} />
                   <Detail
                     label="Bandlik holati"
-                    value={`${selectedRoomData.occupied} / ${selectedRoomData.capacity}`}
+                    value={`${selectedRoomData.occupied} / ${selectedRoomData.capacity ?? '?'}`}
                     icon={<Users size={16} />}
-                    status={selectedRoomData.occupied >= selectedRoomData.capacity ? 'full' : selectedRoomData.occupied > 0 ? 'partial' : 'empty'}
+                    status={getRoomOccupancyTone(selectedRoomData.occupied, selectedRoomData.capacity)}
                     textStrong={textStrong}
                     cardBg={cardBg}
                   />
                   <Detail
                     label="Bo'sh joylar"
-                    value={`${selectedRoomData.capacity - selectedRoomData.occupied} ta`}
+                    value={selectedRoomData.capacity === null
+                      ? "Noma'lum"
+                      : `${getFreePlaces(selectedRoomData.capacity, selectedRoomData.occupied)} ta`}
                     icon={<DoorOpen size={16} />}
                     textStrong={textStrong}
                     cardBg={cardBg}
@@ -788,11 +831,12 @@ export default function Admin3DXonalarPage() {
   )
 }
 
-function Detail({ label, value, icon, status, textStrong, cardBg }: { label: string; value: string; icon?: React.ReactNode; status?: 'empty' | 'partial' | 'full'; textStrong: string; cardBg: string }) {
-  const statusColors = {
+function Detail({ label, value, icon, status, textStrong, cardBg }: { label: string; value: string; icon?: React.ReactNode; status?: RoomOccupancyTone; textStrong: string; cardBg: string }) {
+  const statusColors: Record<RoomOccupancyTone, string> = {
     empty: 'text-emerald-400',
     partial: 'text-amber-400',
-    full: 'text-rose-400'
+    full: 'text-rose-400',
+    unknown: 'text-slate-400',
   }
 
   return (

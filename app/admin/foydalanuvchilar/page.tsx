@@ -148,14 +148,43 @@ const OILA_FIELDS = [
   { key: 'mother_phone', label: 'Ona telefoni', type: 'text' },
 ] as const
 
+type WarningTone = 'ok' | 'warn' | 'danger' | 'unknown'
+
+// threshold=null means the real warningThreshold setting hasn't loaded yet —
+// treat that as "unknown" rather than guessing, so a warning count isn't
+// colored as if it were confirmed within/past a threshold we don't actually have.
+function getWarningTone(count: number, threshold: number | null): WarningTone {
+  if (count === 0) return 'ok'
+  if (threshold === null) return 'unknown'
+  return count <= threshold ? 'warn' : 'danger'
+}
+
+const WARNING_BADGE_CLASSES: Record<WarningTone, string> = {
+  ok: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  warn: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  danger: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 animate-pulse',
+  unknown: 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/20',
+}
+
+const WARNING_DOT_CLASSES: Record<WarningTone, string> = {
+  ok: 'bg-emerald-500',
+  warn: 'bg-amber-500',
+  danger: 'bg-rose-500',
+  unknown: 'bg-slate-400',
+}
+
 export default function AdminUsersPage() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [warningThreshold, setWarningThreshold] = useState(2)
-  const [yearlyContractFee, setYearlyContractFee] = useState(3000000)
+  // null (not a guessed default) while settings are loading or unavailable —
+  // a wrong guess would color warning badges or show a debt/progress figure
+  // as if it were the real threshold/contract fee.
+  const [warningThreshold, setWarningThreshold] = useState<number | null>(null)
+  const [yearlyContractFee, setYearlyContractFee] = useState<number | null>(null)
+  const [settingsStatus, setSettingsStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   // null (not a guessed default) while settings are loading or unavailable —
   // a wrong guess would silently hide real floors above it from the filter.
   const [floorCount, setFloorCount] = useState<number | null>(null)
@@ -293,13 +322,26 @@ export default function AdminUsersPage() {
     void init()
   }, [loadUsers])
 
-  useEffect(() => {
-    fetchAppSettings().then((settings) => {
+  const loadSettings = useCallback(async () => {
+    setSettingsStatus('loading')
+    try {
+      const settings = await fetchAppSettings()
       setWarningThreshold(settings.warningThreshold)
       setYearlyContractFee(settings.yearlyContractFee)
       setFloorCount(settings.floorCount)
-    }).catch(() => toast.error("Qavatlar sozlamasini yuklab bo'lmadi"))
+      setSettingsStatus('ready')
+    } catch {
+      setWarningThreshold(null)
+      setYearlyContractFee(null)
+      setFloorCount(null)
+      setSettingsStatus('error')
+      toast.error("Tizim sozlamalarini yuklab bo'lmadi")
+    }
   }, [])
+
+  useEffect(() => {
+    void loadSettings()
+  }, [loadSettings])
 
   const loadStudentPayments = async (studentId: string) => {
     try {
@@ -407,11 +449,16 @@ export default function AdminUsersPage() {
     }
   }
 
+  // null while the real yearlyContractFee hasn't loaded — remainingAmount and
+  // progressPercent are computed against it, so a guessed fee would show a
+  // debt/progress figure that looks real but isn't.
   const paymentStats = useMemo(() => {
+    if (yearlyContractFee === null) return null
+
     const totalContractFee = yearlyContractFee
     const approvedPayments = payments.filter(p => p.status === 'paid' || p.status === 'approved')
     const waitingPayments = payments.filter(p => p.status === 'waiting' || p.status === 'pending')
-    
+
     const paidAmount = approvedPayments.reduce((sum, p) => sum + p.amount, 0)
     const waitingAmount = waitingPayments.reduce((sum, p) => sum + p.amount, 0)
     const remainingAmount = Math.max(0, totalContractFee - paidAmount)
@@ -1024,11 +1071,7 @@ export default function AdminUsersPage() {
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1 border shrink-0 ${
                             isActive
                               ? 'bg-white/20 text-white border-white/10'
-                              : (user.warning_count ?? 0) === 0
-                                ? 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20'
-                                : (user.warning_count ?? 0) <= warningThreshold
-                                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 animate-pulse'
+                              : WARNING_BADGE_CLASSES[getWarningTone(user.warning_count ?? 0, warningThreshold)]
                           }`}>
                             {(user.warning_count ?? 0) === 0 ? (
                               <>
@@ -1037,7 +1080,7 @@ export default function AdminUsersPage() {
                               </>
                             ) : (
                               <>
-                                <span className={`w-1 h-1 rounded-full ${isActive ? 'bg-white' : (user.warning_count ?? 0) <= warningThreshold ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                                <span className={`w-1 h-1 rounded-full ${isActive ? 'bg-white' : WARNING_DOT_CLASSES[getWarningTone(user.warning_count ?? 0, warningThreshold)]}`} />
                                 {user.warning_count} ta
                               </>
                             )}
@@ -1127,11 +1170,7 @@ export default function AdminUsersPage() {
                       </p>
                       {selectedUser.role === 'talaba' && (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border shrink-0 whitespace-nowrap ${
-                          (selectedUser.warning_count ?? 0) === 0
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                            : (selectedUser.warning_count ?? 0) <= warningThreshold
-                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                              : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 animate-pulse'
+                          WARNING_BADGE_CLASSES[getWarningTone(selectedUser.warning_count ?? 0, warningThreshold)]
                         }`}>
                           {(selectedUser.warning_count ?? 0) === 0 ? (
                             <>
@@ -1140,7 +1179,7 @@ export default function AdminUsersPage() {
                             </>
                           ) : (
                             <>
-                              <span className={`w-1.5 h-1.5 rounded-full ${(selectedUser.warning_count ?? 0) <= warningThreshold ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                              <span className={`w-1.5 h-1.5 rounded-full ${WARNING_DOT_CLASSES[getWarningTone(selectedUser.warning_count ?? 0, warningThreshold)]}`} />
                               {selectedUser.warning_count} ta ogohlantirish
                             </>
                           )}
@@ -1347,84 +1386,107 @@ export default function AdminUsersPage() {
                 {/* Tab: To'lovlar */}
                 {detailTab === 'tolovlar' && selectedUser.role === 'talaba' && (
                   <div className="space-y-4">
-                    {/* Summary cards grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Paid card */}
-                      <div className={`rounded-2xl border p-4 shadow-md flex items-center gap-3 ${
-                        isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                    {settingsStatus === 'loading' ? (
+                      <div className={`rounded-2xl border p-6 text-center text-xs shadow-md ${
+                        isLight ? 'bg-white border-slate-200/50 text-slate-500' : 'bg-[#182533] border-white/5 text-slate-400'
                       }`}>
-                        <div className="rounded-lg p-2.5 bg-emerald-500/10 text-emerald-500 shrink-0">
-                          <CheckCircle2 size={20} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-sm font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                            {paymentStats.paidAmount.toLocaleString('uz-UZ')} UZS
-                          </p>
-                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">To&apos;langan summa</p>
-                        </div>
+                        Shartnoma summasi sozlamasi yuklanmoqda...
                       </div>
-
-                      {/* Remaining card */}
-                      <div className={`rounded-2xl border p-4 shadow-md flex items-center gap-3 ${
-                        isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                    ) : settingsStatus === 'error' ? (
+                      <div className={`rounded-2xl border p-6 text-center text-xs shadow-md ${
+                        isLight ? 'bg-white border-rose-200 text-rose-600' : 'bg-[#182533] border-rose-500/20 text-rose-400'
                       }`}>
-                        <div className="rounded-lg p-2.5 bg-rose-500/10 text-rose-500 shrink-0">
-                          <DollarSign size={20} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-sm font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                            {paymentStats.remainingAmount.toLocaleString('uz-UZ')} UZS
-                          </p>
-                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Qolgan summa</p>
-                        </div>
+                        <p>Shartnoma summasi sozlamasini yuklab bo&apos;lmadi.</p>
+                        <button
+                          type="button"
+                          onClick={() => void loadSettings()}
+                          className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 font-black uppercase tracking-wider transition-colors hover:bg-rose-500/20"
+                        >
+                          Qayta urinish
+                        </button>
                       </div>
+                    ) : paymentStats ? (
+                      <>
+                        {/* Summary cards grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Paid card */}
+                          <div className={`rounded-2xl border p-4 shadow-md flex items-center gap-3 ${
+                            isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                          }`}>
+                            <div className="rounded-lg p-2.5 bg-emerald-500/10 text-emerald-500 shrink-0">
+                              <CheckCircle2 size={20} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-sm font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                {paymentStats.paidAmount.toLocaleString('uz-UZ')} UZS
+                              </p>
+                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">To&apos;langan summa</p>
+                            </div>
+                          </div>
 
-                      {/* Contract Fee card */}
-                      <div className={`rounded-2xl border p-4 shadow-md flex items-center gap-3 ${
-                        isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
-                      }`}>
-                        <div className="rounded-lg p-2.5 bg-purple-500/10 text-purple-400 shrink-0">
-                          <FileText size={20} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-sm font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                            {paymentStats.totalContractFee.toLocaleString('uz-UZ')} UZS
-                          </p>
-                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Shartnoma miqdori</p>
-                        </div>
-                      </div>
+                          {/* Remaining card */}
+                          <div className={`rounded-2xl border p-4 shadow-md flex items-center gap-3 ${
+                            isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                          }`}>
+                            <div className="rounded-lg p-2.5 bg-rose-500/10 text-rose-500 shrink-0">
+                              <DollarSign size={20} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-sm font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                {paymentStats.remainingAmount.toLocaleString('uz-UZ')} UZS
+                              </p>
+                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Qolgan summa</p>
+                            </div>
+                          </div>
 
-                      {/* Waiting Approval card */}
-                      <div className={`rounded-2xl border p-4 shadow-md flex items-center gap-3 ${
-                        isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
-                      }`}>
-                        <div className="rounded-lg p-2.5 bg-amber-500/10 text-amber-500 shrink-0">
-                          <Clock size={20} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-sm font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                            {paymentStats.waitingAmount.toLocaleString('uz-UZ')} UZS
-                          </p>
-                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Kutilayotgan to&apos;lovlar</p>
-                        </div>
-                      </div>
-                    </div>
+                          {/* Contract Fee card */}
+                          <div className={`rounded-2xl border p-4 shadow-md flex items-center gap-3 ${
+                            isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                          }`}>
+                            <div className="rounded-lg p-2.5 bg-purple-500/10 text-purple-400 shrink-0">
+                              <FileText size={20} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-sm font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                {paymentStats.totalContractFee.toLocaleString('uz-UZ')} UZS
+                              </p>
+                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Shartnoma miqdori</p>
+                            </div>
+                          </div>
 
-                    {/* Progress Bar Card */}
-                    <div className={`rounded-2xl border p-4 shadow-md ${
-                      isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
-                    }`}>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">To&apos;lov progressi</span>
-                        <span className="text-xs font-black text-emerald-500">{paymentStats.progressPercent}%</span>
-                      </div>
-                      <div className="w-full bg-slate-800/40 rounded-full h-2.5 overflow-hidden border border-white/5">
-                        <div 
-                          className="bg-linear-to-r from-emerald-500 to-teal-500 h-2.5 rounded-full transition-all duration-500" 
-                          style={{ width: `${paymentStats.progressPercent}%` }}
-                        />
-                      </div>
-                    </div>
+                          {/* Waiting Approval card */}
+                          <div className={`rounded-2xl border p-4 shadow-md flex items-center gap-3 ${
+                            isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                          }`}>
+                            <div className="rounded-lg p-2.5 bg-amber-500/10 text-amber-500 shrink-0">
+                              <Clock size={20} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-sm font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                {paymentStats.waitingAmount.toLocaleString('uz-UZ')} UZS
+                              </p>
+                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Kutilayotgan to&apos;lovlar</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar Card */}
+                        <div className={`rounded-2xl border p-4 shadow-md ${
+                          isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
+                        }`}>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">To&apos;lov progressi</span>
+                            <span className="text-xs font-black text-emerald-500">{paymentStats.progressPercent}%</span>
+                          </div>
+                          <div className="w-full bg-slate-800/40 rounded-full h-2.5 overflow-hidden border border-white/5">
+                            <div
+                              className="bg-linear-to-r from-emerald-500 to-teal-500 h-2.5 rounded-full transition-all duration-500"
+                              style={{ width: `${paymentStats.progressPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
 
                     {/* Payments list / history */}
                     <div className={`rounded-2xl border p-4 shadow-md ${

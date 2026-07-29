@@ -12,6 +12,8 @@
     "check": "npm run lint && npm run typecheck && npm run test && npm run build",
     "validate:env": "node --env-file=.env.local scripts/validate-env.mjs",
     "validate:env:ci": "node scripts/validate-env.mjs",
+    "verify:http": "node scripts/verify-local-http.mjs",
+    "verify:remote": "node --env-file=.env.local scripts/verify-remote-end-state.mjs",
     "build:production": "npm run validate:env:ci && next build",
     "migrate:legacy-permits": "node --env-file=.env.local scripts/migrate-legacy-permit-files.mjs",
     "mobile:sync": "npx cap sync",

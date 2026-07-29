@@ -18,6 +18,7 @@ import { User } from '@supabase/supabase-js'
 import { fetchStudentPayments, submitStudentPayment, fetchReceiptSignedUrl } from '@/features/payments/client/api'
 import type { PaymentRecord } from '@/features/payments/types'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
+import { getPaymentStats, getPaymentYears } from '@/features/app-settings/presentation'
 
 interface ValidationResult {
     valid: boolean
@@ -52,10 +53,13 @@ export default function TolovaPage() {
     const [newReceipt, setNewReceipt] = useState<File | null>(null)
     const [selectedMonth, setSelectedMonth] = useState<string>('')
     const [selectedMonths, setSelectedMonths] = useState<string[]>([])
-    const [selectedYear, setSelectedYear] = useState<number>(2026)
-    const [amount, setAmount] = useState<number>(300000)
-    const [monthlyFee, setMonthlyFee] = useState<number>(300000)
-    const [yearlyContractFee, setYearlyContractFee] = useState<number>(3000000)
+    const paymentYears = getPaymentYears()
+    const currentYear = paymentYears[1]
+    const [selectedYear, setSelectedYear] = useState<number>(currentYear)
+    const [amount, setAmount] = useState<number>(0)
+    const [monthlyFee, setMonthlyFee] = useState<number | null>(null)
+    const [yearlyContractFee, setYearlyContractFee] = useState<number | null>(null)
+    const [settingsStatus, setSettingsStatus] = useState<'loading' | 'ready' | 'error'>('loading')
 
     // AI Validation states
     const [validating, setValidating] = useState(false)
@@ -67,17 +71,27 @@ export default function TolovaPage() {
         setMounted(true)
     }, [])
 
-    useEffect(() => {
-        (async () => {
-            try {
-                const settings = await fetchAppSettings()
-                setMonthlyFee(settings.monthlyFee)
-                setYearlyContractFee(settings.yearlyContractFee)
-            } catch {
-                // Keep the default fee values if settings can't be loaded
-            }
-        })()
+    const loadSettings = useCallback(async () => {
+        setSettingsStatus('loading')
+        try {
+            const settings = await fetchAppSettings()
+            setMonthlyFee(settings.monthlyFee)
+            setYearlyContractFee(settings.yearlyContractFee)
+            setSettingsStatus('ready')
+        } catch {
+            setMonthlyFee(null)
+            setYearlyContractFee(null)
+            setAmount(0)
+            setSelectedMonth('')
+            setSelectedMonths([])
+            setSettingsStatus('error')
+            toast.error("To'lov sozlamalarini yuklab bo'lmadi")
+        }
     }, [])
+
+    useEffect(() => {
+        void loadSettings()
+    }, [loadSettings])
 
     const loadPayments = async () => {
         try {
@@ -143,6 +157,11 @@ export default function TolovaPage() {
     }
 
     const handleMonthClick = (m: string) => {
+        if (monthlyFee === null || settingsStatus !== 'ready') {
+            toast.error("To'lov summasi yuklanmaguncha oy tanlab bo'lmaydi")
+            return
+        }
+
         const status = getMonthStatus(m, selectedYear)
         if (status === 'paid' || status === 'approved' || status === 'waiting') {
             toast(`${m} oyi uchun to'lov allaqachon ${status === 'waiting' ? 'tekshirilmoqda' : 'tasdiqlangan'}! ✅`, { icon: 'ℹ️' })
@@ -219,6 +238,7 @@ export default function TolovaPage() {
 
     // Auto-select first unpaid month on mount/year changes
     useEffect(() => {
+        if (monthlyFee === null || settingsStatus !== 'ready') return
         if (payments.length > 0 || !loading) {
             const firstUnpaid = MONTHS.find(m => {
                 const s = getMonthStatus(m, selectedYear)
@@ -234,11 +254,15 @@ export default function TolovaPage() {
                 setAmount(0)
             }
         }
-    }, [payments, selectedYear, loading, getMonthStatus, monthlyFee])
+    }, [payments, selectedYear, loading, getMonthStatus, monthlyFee, settingsStatus])
 
     // Step 1: AI Validation — check receipt before saving
     const handleUpload = async () => {
         if (!newReceipt || !user) return
+        if (monthlyFee === null || settingsStatus !== 'ready') {
+            toast.error("To'lov sozlamalari yuklanmagan. Qayta urinib ko'ring.")
+            return
+        }
 
         if (selectedMonths.length === 0) {
             toast.error("Iltimos, avval to'lov qilmoqchi bo'lgan oyni tanlang!")
@@ -344,11 +368,9 @@ export default function TolovaPage() {
     const paidRecords = payments.filter(p => p.status === 'paid' || p.status === 'approved')
     const waitingRecords = payments.filter(p => p.status === 'waiting')
     const paidMonths = paidRecords.length
-    const totalContractFee = yearlyContractFee
     const paidAmount = paidRecords.reduce((sum, p) => sum + p.amount, 0)
     const waitingAmount = waitingRecords.reduce((sum, p) => sum + p.amount, 0)
-    const remainingAmount = Math.max(0, totalContractFee - paidAmount)
-    const progressPercent = Math.min(100, Math.round((paidAmount / totalContractFee) * 100))
+    const paymentStats = getPaymentStats(yearlyContractFee, paidAmount)
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -488,7 +510,9 @@ export default function TolovaPage() {
                             <p className={`text-3xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                 {(paidAmount).toLocaleString('uz-UZ')} UZS
                             </p>
-                            <p className={`text-[10px] mt-2 ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Jami shartnoma: {(totalContractFee / 1000000).toFixed(1)}M</p>
+                            <p className={`text-[10px] mt-2 ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>
+                                {paymentStats ? `Jami shartnoma: ${(paymentStats.totalContractFee / 1000000).toFixed(1)}M` : "Shartnoma summasi noma'lum"}
+                            </p>
                         </div>
 
                         {/* Waiting Sum */}
@@ -533,21 +557,38 @@ export default function TolovaPage() {
                                     <TrendingUp size={16} />
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
-                                    <svg className="w-full h-full transform -rotate-90">
-                                        <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="transparent" className={isLight ? "text-slate-100" : "text-white/5"} />
-                                        <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="transparent" strokeDasharray="125" strokeDashoffset={125 - (125 * progressPercent) / 100} className="text-purple-500" style={{ transition: 'stroke-dashoffset 800ms ease-out' }} />
-                                    </svg>
-                                    <span className={`absolute text-[10px] font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{progressPercent}%</span>
+                            {paymentStats ? (
+                                <div className="flex items-center gap-3">
+                                    <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
+                                        <svg className="w-full h-full transform -rotate-90">
+                                            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="transparent" className={isLight ? "text-slate-100" : "text-white/5"} />
+                                            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="transparent" strokeDasharray="125" strokeDashoffset={125 - (125 * paymentStats.progressPercent) / 100} className="text-purple-500" style={{ transition: 'stroke-dashoffset 800ms ease-out' }} />
+                                        </svg>
+                                        <span className={`absolute text-[10px] font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{paymentStats.progressPercent}%</span>
+                                    </div>
+                                    <div>
+                                        <p className={`text-xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                            {paymentStats.progressPercent}% bajarildi
+                                        </p>
+                                        <p className={`text-[9px] ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Qolgan to&apos;lov: {paymentStats.remainingAmount.toLocaleString('uz-UZ')} UZS</p>
+                                    </div>
                                 </div>
+                            ) : (
                                 <div>
-                                    <p className={`text-xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                                        {progressPercent}% bajarildi
+                                    <p className={`text-sm font-black ${settingsStatus === 'loading' ? (isLight ? 'text-slate-500' : 'text-slate-400') : isLight ? 'text-rose-600' : 'text-rose-400'}`}>
+                                        {settingsStatus === 'loading' ? "To'lov sozlamasi yuklanmoqda..." : "To'lov sozlamasi ochilmadi"}
                                     </p>
-                                    <p className={`text-[9px] ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Qolgan to&apos;lov: {remainingAmount.toLocaleString('uz-UZ')} UZS</p>
+                                    {settingsStatus === 'error' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => void loadSettings()}
+                                            className="mt-2 rounded-lg bg-rose-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-rose-500 hover:bg-rose-500/20"
+                                        >
+                                            Qayta urinish
+                                        </button>
+                                    )}
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
 
@@ -569,7 +610,7 @@ export default function TolovaPage() {
 
                                     {/* Year selector Tabs */}
                                     <div className={`flex p-0.5 rounded-xl border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/60 border-white/5'}`}>
-                                        {[2025, 2026, 2027].map((y) => (
+                                        {paymentYears.map((y) => (
                                             <button
                                                 key={y}
                                                 onClick={() => setSelectedYear(y)}
@@ -696,8 +737,8 @@ export default function TolovaPage() {
 
                                 <button
                                     onClick={handleUpload}
-                                    disabled={!newReceipt || uploading || validating || selectedMonths.length === 0}
-                                    className={`w-full mt-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${newReceipt && !uploading && !validating && selectedMonths.length > 0
+                                    disabled={!newReceipt || uploading || validating || selectedMonths.length === 0 || settingsStatus !== 'ready'}
+                                    className={`w-full mt-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${newReceipt && !uploading && !validating && selectedMonths.length > 0 && settingsStatus === 'ready'
                                         ? isLight
                                             ? 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-102'
                                             : 'bg-cyan-500 hover:bg-cyan-600 text-slate-950 hover:scale-102'

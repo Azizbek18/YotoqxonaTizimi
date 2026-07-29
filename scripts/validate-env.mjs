@@ -15,9 +15,46 @@ const required = [
   'ZAMDEKAN_ALLOWED_IDS',
 ]
 
-const missing = required.filter((name) => !process.env[name] || process.env[name].includes('replace-with'))
+const PLACEHOLDER_PATTERN = /^(your-|replace-with|change-?me|changeme|example\b)/i
+
+const missing = required.filter((name) => {
+  const value = process.env[name]?.trim()
+  return !value || PLACEHOLDER_PATTERN.test(value) || value.includes('replace-with')
+})
 if (missing.length > 0) {
-  console.error(`Production environment variables are missing: ${missing.join(', ')}`)
+  console.error(`Production environment variables are missing or still placeholders: ${missing.join(', ')}`)
+  process.exit(1)
+}
+
+function jwtRole(value) {
+  const parts = value.split('.')
+  if (parts.length !== 3) return null
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'))
+    return typeof payload.role === 'string' ? payload.role : null
+  } catch {
+    return null
+  }
+}
+
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.trim()
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY.trim()
+const validAnonKey = (
+  (anonKey.startsWith('sb_publishable_') && anonKey.length >= 30)
+  || jwtRole(anonKey) === 'anon'
+)
+const validServiceRoleKey = (
+  (serviceRoleKey.startsWith('sb_secret_') && serviceRoleKey.length >= 30)
+  || jwtRole(serviceRoleKey) === 'service_role'
+)
+
+if (!validAnonKey) {
+  console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY is not a valid publishable/anon Supabase key.')
+  process.exit(1)
+}
+
+if (!validServiceRoleKey) {
+  console.error('SUPABASE_SERVICE_ROLE_KEY is not a valid secret/service_role Supabase key.')
   process.exit(1)
 }
 

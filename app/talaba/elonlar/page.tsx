@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -135,25 +135,28 @@ export default function ElonlarPage() {
   const isLight = theme === 'light';
   const [mounted, setMounted] = useState(false);
   const reduceMotion = useReducedMotion();
-  const [emergencyContacts, setEmergencyContacts] = useState({
-    securityPhone: '+998712000000',
-    doctorPhone: '+998944445566',
-  });
+  const [emergencyContacts, setEmergencyContacts] = useState<{ securityPhone: string; doctorPhone: string } | null>(null);
+  const [settingsStatus, setSettingsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const settings = await fetchAppSettings();
-        setEmergencyContacts({ securityPhone: settings.securityPhone, doctorPhone: settings.doctorPhone });
-      } catch {
-        // Keep the default emergency contact numbers if settings can't be loaded
-      }
-    })();
+  const loadSettings = useCallback(async () => {
+    setSettingsStatus('loading');
+    try {
+      const settings = await fetchAppSettings();
+      setEmergencyContacts({ securityPhone: settings.securityPhone, doctorPhone: settings.doctorPhone });
+      setSettingsStatus('ready');
+    } catch {
+      setEmergencyContacts(null);
+      setSettingsStatus('error');
+    }
   }, []);
+
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
 
   // Lock body scroll when any modal is open
   useEffect(() => {
@@ -511,16 +514,39 @@ export default function ElonlarPage() {
               <p className={`text-xs leading-relaxed ${textMuted}`}>
                 Agarda yotoqxonada texnik yoki boshqa xavfli holatlar yuzaga kelsa, zudlik bilan navbatchi tarbiyachiga yoki xavfsizlik bo&apos;limiga xabar bering.
               </p>
-              <div className="space-y-1.5 pt-2 text-xs font-bold">
-                <div className="flex justify-between">
-                  <span className="opacity-60">Xavfsizlik:</span>
-                  <a href={`tel:${emergencyContacts.securityPhone}`} className="text-rose-500 hover:underline">{emergencyContacts.securityPhone}</a>
+              {emergencyContacts ? (
+                <div className="space-y-1.5 pt-2 text-xs font-bold">
+                  <div className="flex justify-between">
+                    <span className="opacity-60">Xavfsizlik:</span>
+                    {emergencyContacts.securityPhone ? (
+                      <a href={`tel:${emergencyContacts.securityPhone}`} className="text-rose-500 hover:underline">{emergencyContacts.securityPhone}</a>
+                    ) : (
+                      <span className="opacity-50">Kiritilmagan</span>
+                    )}
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="opacity-60">Shifokor:</span>
+                    {emergencyContacts.doctorPhone ? (
+                      <a href={`tel:${emergencyContacts.doctorPhone}`} className="text-blue-500 hover:underline">{emergencyContacts.doctorPhone}</a>
+                    ) : (
+                      <span className="opacity-50">Kiritilmagan</span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="opacity-60">Shifokor:</span>
-                  <a href={`tel:${emergencyContacts.doctorPhone}`} className="text-blue-500 hover:underline">{emergencyContacts.doctorPhone}</a>
+              ) : (
+                <div className="pt-2 text-xs">
+                  <p className="opacity-60">{settingsStatus === 'loading' ? 'Kontaktlar yuklanmoqda...' : 'Kontaktlarni yuklab bo‘lmadi.'}</p>
+                  {settingsStatus === 'error' && (
+                    <button
+                      type="button"
+                      onClick={() => void loadSettings()}
+                      className="mt-2 rounded-lg bg-rose-500/10 px-3 py-2 font-black text-rose-500 hover:bg-rose-500/20"
+                    >
+                      Qayta urinish
+                    </button>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
 
           </div>

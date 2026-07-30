@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import AppProviders from "@/components/providers/AppProviders";
 import PwaInstallPrompt from "@/components/pwa/PwaInstallPrompt";
 import { THEME_STORAGE_KEY } from "@/lib/theme/constants";
+import { appFont } from "@/lib/app-font";
 import "./globals.css";
 
 const getBaseUrl = () => {
@@ -83,7 +84,7 @@ export default async function RootLayout({
     <html
       lang="uz"
       suppressHydrationWarning
-      className="h-full antialiased"
+      className={`h-full antialiased ${appFont.variable}`}
     >
       <head>
         <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeInitScript }} />

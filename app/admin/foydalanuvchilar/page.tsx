@@ -37,6 +37,7 @@ import { usePollingEffect, useChatAutoScroll } from '@/lib/hooks/useChatPolling'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchAdminPayments, fetchReceiptSignedUrl } from '@/features/payments/client/api'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
+import { GENDER_OPTIONS } from '@/lib/gender'
 import { fetchAdminChat, sendAdminChat } from '@/features/applications/client/admin-chat-api'
 
 type UserRow = {
@@ -1798,17 +1799,25 @@ export default function AdminUsersPage() {
                 ).map((field) => (
                   <div key={field.key} className="space-y-1">
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">{field.label}</label>
-                    <input
-                      type={field.type}
-                      value={(editForm[field.key as keyof typeof editForm] as string | number) || ''}
-                      onChange={(event) =>
-                        setEditForm((current) => ({
-                          ...current,
-                          [field.key]: event.target.value,
-                        }))
-                      }
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition-all focus:border-purple-500/50 outline-none"
-                    />
+                    {field.key === 'gender' ? (
+                      <CustomSelect
+                        value={(editForm.gender as string) || ''}
+                        onChange={(val) => setEditForm((current) => ({ ...current, gender: val }))}
+                        options={GENDER_OPTIONS}
+                      />
+                    ) : (
+                      <input
+                        type={field.type}
+                        value={(editForm[field.key as keyof typeof editForm] as string | number) || ''}
+                        onChange={(event) =>
+                          setEditForm((current) => ({
+                            ...current,
+                            [field.key]: event.target.value,
+                          }))
+                        }
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition-all focus:border-purple-500/50 outline-none"
+                      />
+                    )}
                   </div>
                 ))}
               </div>

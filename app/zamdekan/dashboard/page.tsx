@@ -28,6 +28,7 @@ import {
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useZamdekanScope } from '@/lib/hooks/useZamdekanScope'
 import { fetchZamdekanOverview } from '@/features/permits/client/admin-api'
+import { permitFacultyLabel } from '@/lib/faculties'
 
 interface DashboardStats {
   pendingCount: number
@@ -388,8 +389,8 @@ export default function ZamdekanDashboard() {
                   <div key={req.id} className="flex items-center justify-between py-3">
                     <div className="min-w-0">
                       <h4 className={`text-xs font-bold truncate ${textStrong}`}>{req.full_name}</h4>
-                      <p className={`text-[9px] mt-0.5 truncate ${textMuted}`}>
-                        {req.faculty} • {req.direction} • {req.course}-kurs
+                      <p className={`text-[10px] mt-0.5 truncate ${textMuted}`}>
+                        {permitFacultyLabel(req.faculty)} • {req.direction} • {req.course}-kurs
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -430,7 +431,12 @@ export default function ZamdekanDashboard() {
 
             <div className="mt-4 space-y-3">
               {facultyDistribution.length === 0 ? (
-                <div className="text-center py-8 text-xs font-bold text-slate-500">Ma&apos;lumotlar mavjud emas</div>
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="p-3 rounded-full bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-600 mb-2">
+                    <Layers size={22} />
+                  </div>
+                  <p className="text-xs font-bold text-slate-500">Ma&apos;lumotlar mavjud emas</p>
+                </div>
               ) : (
                 facultyDistribution.map((fac, idx) => {
                   const percent = stats.totalOccupiedBeds > 0
@@ -439,7 +445,7 @@ export default function ZamdekanDashboard() {
                   return (
                     <div key={idx} className="space-y-1">
                       <div className="flex items-center justify-between text-xs font-bold">
-                        <span className={`truncate max-w-[70%] ${textStrong}`}>{fac.name}</span>
+                        <span className={`truncate max-w-[70%] ${textStrong}`}>{permitFacultyLabel(fac.name)}</span>
                         <span className={textMuted}>{fac.talabalar} ta ({percent}%)</span>
                       </div>
                       <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-white/5 overflow-hidden">

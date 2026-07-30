@@ -9,6 +9,7 @@ import {
 } from '@/lib/staff-access'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { getPasswordPolicyError } from '@/lib/password-policy'
+import { isPermitFacultyValue } from '@/lib/faculties'
 
 export async function POST(request: Request) {
   try {
@@ -34,8 +35,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Noto'g'ri rol" }, { status: 400 })
     }
 
-    if (!faculty) {
-      return NextResponse.json({ ok: false, error: 'Fakultet kiritilishi shart' }, { status: 400 })
+    if (!isPermitFacultyValue(faculty)) {
+      return NextResponse.json({ ok: false, error: "Fakultet noto'g'ri tanlangan" }, { status: 400 })
     }
 
     if (fullName.length < 3 || !/^\S+@\S+\.\S+$/.test(email) || !password || !confirmPassword) {

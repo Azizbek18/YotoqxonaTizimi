@@ -12,6 +12,7 @@ import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { PERMIT_FACULTIES } from '@/lib/faculties'
 
 interface Particle {
   id: number
@@ -40,7 +41,7 @@ export default function RuxsatnomaYuborish() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [gender, setGender] = useState<'male' | 'female' | ''>('')
-  const [faculty, setFaculty] = useState('amit')
+  const [faculty, setFaculty] = useState<string>(PERMIT_FACULTIES[0].value)
   const [direction, setDirection] = useState('')
   const [course, setCourse] = useState('1')
   const [file, setFile] = useState<File | null>(null)
@@ -263,8 +264,8 @@ export default function RuxsatnomaYuborish() {
       showToast('error', 'To‘g‘ri email manzilini kiriting!')
       return false
     }
-    if (!phone.trim()) {
-      showToast('error', 'Telefon raqamini kiriting!')
+    if (!/^\d{9}$/.test(phone.trim())) {
+      showToast('error', "Telefon raqamini to'liq kiriting! (9 ta raqam)")
       return false
     }
     if (!gender) {
@@ -380,7 +381,7 @@ export default function RuxsatnomaYuborish() {
       submission.append('jshshir', cleanJshshir)
       submission.append('fullName', fullName.trim())
       submission.append('email', cleanEmail)
-      submission.append('phone', phone.trim())
+      submission.append('phone', `+998${phone.trim()}`)
       submission.append('gender', gender)
       submission.append('faculty', faculty)
       submission.append('direction', direction.trim())
@@ -722,10 +723,12 @@ export default function RuxsatnomaYuborish() {
                             else if (s.step === 2 && formStep === 1 && validateStep1()) setFormStep(2)
                             else if (s.step === 3 && formStep === 2 && validateStep1() && validateStep2()) setFormStep(3)
                           }}
-                          className={`flex-1 py-1.5 sm:py-2 text-center rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider relative transition-all duration-300 z-10 ${
+                          className={`flex-1 min-w-0 py-1.5 sm:py-2 px-1 text-center rounded-lg border text-[10px] sm:text-xs font-black uppercase tracking-wide sm:tracking-wider relative transition-all duration-300 z-10 ${
                             isActive
-                              ? 'text-white font-bold'
-                              : 'text-slate-400 hover:text-slate-200'
+                              ? 'text-white font-bold border-transparent'
+                              : isLight
+                                ? 'text-slate-500 border-slate-200 hover:text-slate-700 hover:bg-slate-50'
+                                : 'text-slate-400 border-white/5 hover:text-slate-200 hover:bg-white/5'
                           }`}
                         >
                           {/* Active Tab sliding backplate */}
@@ -736,7 +739,7 @@ export default function RuxsatnomaYuborish() {
                               transition={{ type: "spring", stiffness: 350, damping: 25 }}
                             />
                           )}
-                          <span className="relative z-20">{s.step}. {s.label}</span>
+                          <span className="relative z-20 block truncate">{s.step}. {s.label}</span>
                         </button>
                       )
                     })}
@@ -800,7 +803,7 @@ export default function RuxsatnomaYuborish() {
                                 }}
                                 onBlur={() => setFocusedField(null)}
                                 onChange={(e) => handleInputChange(e, setFullName, 'fullName')}
-                                placeholder="Ismoilov Jasur Baxtiyorovich"
+                                placeholder="Ism Familya Sharif"
                                 className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-sm sm:text-base outline-none transition-colors duration-300 ${
                                   isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
                                 }`}
@@ -853,14 +856,17 @@ export default function RuxsatnomaYuborish() {
                           <div className="space-y-1">
                             <div className="flex justify-between items-center ml-2">
                               <label className={`text-[10px] sm:text-xs font-black uppercase tracking-widest block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Telefon raqam</label>
-                              {phone.trim().length > 8 && (
+                              {phone.length === 9 && (
                                 <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
                               )}
                             </div>
                             <div className={`cyber-border ${focusedField === 'phone' ? 'focused' : ''}`}>
-                              <div className="cyber-input-inner relative">
-                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'phone' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-500'}`}>
+                              <div className="cyber-input-inner relative flex items-center">
+                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none border-r pr-2 transition-all duration-300 ${
+                                  focusedField === 'phone' ? 'text-indigo-400 border-indigo-500/30' : `text-slate-500 ${isLight ? 'border-slate-200' : 'border-white/10'}`
+                                }`}>
                                   <Phone size={16} />
+                                  <span className="text-sm sm:text-base font-bold">+998</span>
                                 </div>
 
                                 {focusedField === 'phone' && (
@@ -869,15 +875,17 @@ export default function RuxsatnomaYuborish() {
 
                                 <input
                                   type="tel"
+                                  inputMode="numeric"
                                   value={phone}
+                                  maxLength={9}
                                   onFocus={() => {
                                     setFocusedField('phone')
                                     playSound('focus')
                                   }}
                                   onBlur={() => setFocusedField(null)}
-                                  onChange={(e) => handleInputChange(e, setPhone, 'phone')}
-                                  placeholder="+998901234567"
-                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-sm sm:text-base outline-none transition-colors duration-300 ${
+                                  onChange={(e) => handleInputChange(e, (val) => setPhone(val.replace(/\D/g, '').slice(0, 9)), 'phone')}
+                                  placeholder="901234567"
+                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-24 sm:pl-28 rounded-xl text-sm sm:text-base outline-none transition-colors duration-300 ${
                                     isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
                                   }`}
                                   required
@@ -988,13 +996,7 @@ export default function RuxsatnomaYuborish() {
                                     setFaculty(val)
                                     playSound('keypress')
                                   }}
-                                  options={[
-                                    { value: 'amit', label: 'AMIT' },
-                                    { value: 'tarix', label: 'Tarix' },
-                                    { value: 'fizika', label: 'Fizika' },
-                                    { value: 'kimyo', label: 'Kimyo' },
-                                    { value: 'biologiya', label: 'Biologiya' },
-                                  ]}
+                                  options={[...PERMIT_FACULTIES]}
                                   className={`bg-transparent p-2.5 sm:p-3 rounded-xl text-sm sm:text-base font-black uppercase tracking-wider transition-colors duration-300 ${
                                     isLight ? 'text-slate-900' : 'text-white'
                                   }`}

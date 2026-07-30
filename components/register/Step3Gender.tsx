@@ -80,8 +80,8 @@ export default function Step3Gender({ data, onChange, onNext, onBack }: Props) {
   }
 
   const options = [
-    { id: 'Erkak', label: 'Erkak', icon: Mars, color: 'from-blue-500 to-sky-400', shadow: 'shadow-blue-500/20' },
-    { id: 'Ayol', label: 'Ayol', icon: Venus, color: 'from-rose-500 to-pink-400', shadow: 'shadow-rose-500/20' }
+    { id: 'male', label: 'Erkak', icon: Mars, color: 'from-blue-500 to-sky-400', shadow: 'shadow-blue-500/20' },
+    { id: 'female', label: 'Ayol', icon: Venus, color: 'from-rose-500 to-pink-400', shadow: 'shadow-rose-500/20' }
   ]
 
   return (

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { UserCog } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/password-policy'
+import { PERMIT_FACULTIES } from '@/lib/faculties'
 
 type StaffRole = 'zamdekan'
 
@@ -46,7 +47,7 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
     }
 
     if (!faculty.trim()) {
-      showToast('error', 'Fakultetni kiriting')
+      showToast('error', 'Fakultetni tanlang')
       return
     }
 
@@ -137,13 +138,17 @@ export default function StaffRegisterForm({ role, linkKey }: { role: StaffRole; 
             placeholder="Maxsus ID"
             required
           />
-          <input
+          <select
             value={faculty}
             onChange={(e) => setFaculty(e.target.value)}
             className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-            placeholder="Fakultet (masalan: Amaliy Matematika va Informatika Texnologiyalari)"
             required
-          />
+          >
+            <option value="" disabled>Fakultetni tanlang</option>
+            {PERMIT_FACULTIES.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
           <input
             value={registerCode}
             onChange={(e) => setRegisterCode(e.target.value)}

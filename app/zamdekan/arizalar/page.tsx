@@ -25,6 +25,8 @@ import {
   fetchZamdekanOverview,
   rejectPermitRequest,
 } from '@/features/permits/client/admin-api'
+import { permitFacultyLabel } from '@/lib/faculties'
+import { genderAccent, genderLabel } from '@/lib/gender'
 
 interface PermitRequest {
   id: string
@@ -164,8 +166,8 @@ function ArizalarContent() {
       req.jshshir,
       req.phone,
       req.email,
-      req.gender === 'male' ? 'Erkak' : 'Ayol',
-      req.faculty,
+      genderLabel(req.gender),
+      permitFacultyLabel(req.faculty),
       req.direction,
       `${req.course}-kurs`,
       req.room_number ? `№-${req.room_number}` : 'Biriktirilmagan',
@@ -372,9 +374,7 @@ function ArizalarContent() {
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className={`hidden sm:flex h-9 w-9 shrink-0 rounded-full items-center justify-center text-xs font-black ${
-                        req.gender === 'male' ? 'bg-sky-500/10 text-sky-500' : 'bg-rose-500/10 text-rose-500'
-                      }`}>
+                      <div className={`hidden sm:flex h-9 w-9 shrink-0 rounded-full items-center justify-center text-xs font-black ${genderAccent(req.gender).badgeBg} ${genderAccent(req.gender).text}`}>
                         {req.full_name.trim().charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
@@ -392,7 +392,7 @@ function ArizalarContent() {
                         ) : null}
                       </div>
                       <p className={`text-[10px] mt-1 ${textMuted}`}>
-                        {req.faculty} • {req.direction} • {req.course}-kurs
+                        {permitFacultyLabel(req.faculty)} • {req.direction} • {req.course}-kurs
                       </p>
                       </div>
                     </div>
@@ -440,14 +440,12 @@ function ArizalarContent() {
 
               {/* Student Header */}
               <div className="flex items-center gap-3">
-                <div className={`h-11 w-11 rounded-full flex items-center justify-center text-sm font-black shrink-0 ${
-                  selectedReq.gender === 'male' ? 'bg-sky-500/10 text-sky-500' : 'bg-rose-500/10 text-rose-500'
-                }`}>
+                <div className={`h-11 w-11 rounded-full flex items-center justify-center text-sm font-black shrink-0 ${genderAccent(selectedReq.gender).badgeBg} ${genderAccent(selectedReq.gender).text}`}>
                   {selectedReq.full_name.trim().charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
                   <h4 className={`text-xs font-bold leading-tight truncate ${textStrong}`}>{selectedReq.full_name}</h4>
-                  <p className={`text-[9px] mt-0.5 truncate ${textMuted}`}>{selectedReq.email}</p>
+                  <p className={`text-[10px] mt-0.5 truncate ${textMuted}`}>{selectedReq.email}</p>
                 </div>
               </div>
 
@@ -488,8 +486,8 @@ function ArizalarContent() {
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-white/5">
                   <span className={textMuted}>Fakultet</span>
-                  <span className={`font-bold text-right max-w-[60%] truncate ${textStrong}`} title={selectedReq.faculty}>
-                    {selectedReq.faculty}
+                  <span className={`font-bold text-right max-w-[60%] truncate ${textStrong}`} title={permitFacultyLabel(selectedReq.faculty)}>
+                    {permitFacultyLabel(selectedReq.faculty)}
                   </span>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-white/5">
@@ -504,7 +502,7 @@ function ArizalarContent() {
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-white/5">
                   <span className={textMuted}>Jinsi</span>
-                  <span className={`font-bold ${textStrong}`}>{selectedReq.gender === 'male' ? 'Erkak' : 'Ayol'}</span>
+                  <span className={`font-bold ${textStrong}`}>{genderLabel(selectedReq.gender)}</span>
                 </div>
                 {selectedReq.reject_reason && (
                   <div className="py-2.5 p-3 rounded-2xl bg-rose-500/10 text-rose-500 mt-2">
@@ -546,8 +544,11 @@ function ArizalarContent() {
               )}
             </motion.div>
           ) : (
-            <div className={`p-6 rounded-3xl border ${surfaceBg} text-center ${textMuted} text-xs font-bold`}>
-              Tafsilotlarni ko‘rish uchun ro‘yxatdan arizani tanlang
+            <div className={`p-10 rounded-3xl border ${surfaceBg} flex flex-col items-center justify-center text-center`}>
+              <div className="mx-auto w-12 h-12 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 mb-3">
+                <FileText size={20} />
+              </div>
+              <p className={`text-xs font-bold ${textMuted}`}>Tafsilotlarni ko‘rish uchun ro‘yxatdan arizani tanlang</p>
             </div>
           )}
         </AnimatePresence>
@@ -557,7 +558,7 @@ function ArizalarContent() {
       <ConfirmModal
         isOpen={roomModalOpen && !!selectedReq}
         title="Xona biriktirish"
-        description={selectedReq ? `${selectedReq.full_name} (${selectedReq.gender === 'male' ? 'Erkak' : 'Ayol'})` : undefined}
+        description={selectedReq ? `${selectedReq.full_name} (${genderLabel(selectedReq.gender)})` : undefined}
         maxWidthClass="max-w-lg"
         onClose={() => setRoomModalOpen(false)}
         onConfirm={handleAssignRoom}

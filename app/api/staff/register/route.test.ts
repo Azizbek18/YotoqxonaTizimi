@@ -38,7 +38,7 @@ function registrationRequest() {
       staffId: '  dean-001  ',
       registerCode: 'code',
       linkKey: 'link',
-      faculty: 'Matematika',
+      faculty: 'amit',
     }),
   })
 }

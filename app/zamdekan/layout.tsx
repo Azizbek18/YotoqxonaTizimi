@@ -88,22 +88,24 @@ export default function ZamdekanLayout({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Each item keeps its own icon tint as a wayfinding cue (visible whether
+  // active or not), while "you are here" is always the same single indigo
+  // treatment — matching the admin sidebar's convention instead of diluting
+  // "selected" across three unrelated hues.
   const menuItems = useMemo(() => ([
     {
       label: 'Dashboard',
       caption: 'Umumiy hisobot',
       href: '/zamdekan/dashboard',
       icon: LayoutDashboard,
-      accent: 'from-sky-500 to-blue-600',
-      accentSoft: 'bg-sky-500/10 text-sky-500 border-sky-500/20',
+      iconTint: 'text-sky-500 bg-sky-500/10',
     },
     {
       label: 'Yo‘llanmalar',
       caption: 'Yangi arizalar',
       href: '/zamdekan/arizalar',
       icon: FileText,
-      accent: 'from-emerald-500 to-green-600',
-      accentSoft: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+      iconTint: 'text-emerald-500 bg-emerald-500/10',
       badge: pendingCount > 0 ? pendingCount : undefined,
     },
     {
@@ -111,8 +113,7 @@ export default function ZamdekanLayout({
       caption: 'Joylashtirish holati',
       href: '/zamdekan/xonalar',
       icon: Boxes,
-      accent: 'from-amber-500 to-orange-600',
-      accentSoft: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+      iconTint: 'text-amber-500 bg-amber-500/10',
     },
   ]), [pendingCount])
 
@@ -206,35 +207,47 @@ export default function ZamdekanLayout({
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileSidebarOpen(false)}
-                className={`group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-xs font-bold tracking-wide transition-all ${
+                className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border px-3 py-2.5 text-xs font-bold tracking-wide transition-all duration-200 ${
                   active
-                    ? `bg-gradient-to-r ${item.accent} text-white shadow-lg`
+                    ? isLight
+                      ? 'border-indigo-300 bg-indigo-100/70 text-indigo-800 shadow-sm shadow-indigo-300/30'
+                      : 'border-indigo-400/30 bg-gradient-to-r from-indigo-500/[0.14] to-violet-500/[0.08] text-white shadow-sm shadow-indigo-500/10'
                     : isLight
-                      ? 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
-                      : 'text-slate-400 hover:bg-white/[0.05] hover:text-white'
+                      ? 'border-slate-200/50 text-slate-600 hover:border-slate-300/60 hover:bg-slate-100/60'
+                      : 'border-white/5 text-slate-400 hover:border-white/15 hover:bg-white/[0.05] hover:text-white'
                 } ${compact ? 'justify-center px-2' : ''}`}
               >
-                <div className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all ${
-                  active
-                    ? 'bg-white/20 text-white'
-                    : isLight ? 'bg-slate-100 text-slate-500 group-hover:bg-slate-200' : 'bg-white/[0.04] text-slate-400 group-hover:bg-white/10'
+                <div className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all ${item.iconTint} ${
+                  active ? (isLight ? 'border-indigo-300/60 shadow-sm' : 'border-indigo-400/30 shadow-sm shadow-indigo-500/10') : 'border-transparent'
                 }`}>
                   <Icon size={16} strokeWidth={2.2} />
                 </div>
 
                 {!compact && (
                   <div className="min-w-0 flex-1">
-                    <p className={active ? 'text-white' : ''}>{item.label}</p>
-                    <p className={`text-[9px] font-medium mt-0.5 truncate ${active ? 'text-white/75' : mutedText}`}>
+                    <p className={active ? (isLight ? 'text-indigo-900' : 'text-white') : ''}>{item.label}</p>
+                    <p className={`text-[9px] font-medium mt-0.5 truncate ${active ? (isLight ? 'text-indigo-700/80' : 'text-indigo-200/70') : mutedText}`}>
                       {item.caption}
                     </p>
                   </div>
                 )}
 
                 {!compact && item.badge !== undefined && (
-                  <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black shadow-[0_0_8px_rgba(244,63,94,0.5)] ${active ? 'bg-white text-rose-600' : 'bg-rose-500 text-white'}`}>
+                  <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white shadow-[0_0_8px_rgba(244,63,94,0.5)]">
                     {item.badge}
                   </span>
+                )}
+
+                {!compact && (
+                  <ChevronRight
+                    size={14}
+                    strokeWidth={2.5}
+                    className={`shrink-0 transition-all ${
+                      active
+                        ? `translate-x-0 opacity-100 ${isLight ? 'text-indigo-500' : 'text-indigo-300'}`
+                        : 'translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 text-slate-500'
+                    }`}
+                  />
                 )}
               </Link>
             )

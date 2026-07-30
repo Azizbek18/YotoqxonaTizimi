@@ -19,6 +19,8 @@ import { fetchZamdekanOverview } from '@/features/permits/client/admin-api'
 import { fetchAssignableStudents, assignStudentRoom } from '@/features/room-assignment/client/api'
 import type { FacultyStudentRow } from '@/features/room-assignment/types'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import { permitFacultyLabel } from '@/lib/faculties'
+import { normalizeGender, genderLabel, genderAccent } from '@/lib/gender'
 
 interface Occupant {
   id: string
@@ -153,7 +155,7 @@ export default function ZamdekanXonalarMap() {
         // Gender mapping/warnings
         let gender: string | null = null
         if (roomOccs.length > 0) {
-          const genders = roomOccs.map((o) => o.gender)
+          const genders = roomOccs.map((o) => normalizeGender(o.gender))
           const allMale = genders.every((g) => g === 'male')
           const allFemale = genders.every((g) => g === 'female')
           if (allMale) gender = 'male'
@@ -338,12 +340,10 @@ export default function ZamdekanXonalarMap() {
                   roomBorderColor = 'border-rose-500 bg-rose-500/5 ring-2 ring-rose-500/20'
                 } else if (isSelected) {
                   roomBorderColor = 'border-indigo-500 bg-indigo-500/[0.05] ring-2 ring-indigo-500/20'
-                } else if (room.gender === 'male') {
-                  roomBgColor = isLight ? 'bg-sky-100/70' : 'bg-sky-500/[0.08]'
-                  roomBorderColor = isLight ? 'border-sky-300' : 'border-sky-500/25'
-                } else if (room.gender === 'female') {
-                  roomBgColor = isLight ? 'bg-rose-100/70' : 'bg-rose-500/[0.08]'
-                  roomBorderColor = isLight ? 'border-rose-300' : 'border-rose-500/25'
+                } else if (room.gender === 'male' || room.gender === 'female') {
+                  const accent = genderAccent(room.gender)
+                  roomBgColor = isLight ? accent.badgeBgLight : accent.badgeBg
+                  roomBorderColor = isLight ? accent.borderLight : accent.border
                 }
 
                 return (
@@ -374,9 +374,8 @@ export default function ZamdekanXonalarMap() {
 
                         let dotColor = isLight ? 'bg-slate-200' : 'bg-slate-800'
                         if (isOccupied) {
-                          if (occ.gender === 'male') dotColor = 'bg-sky-500'
-                          else if (occ.gender === 'female') dotColor = 'bg-rose-500'
-                          else dotColor = 'bg-indigo-500'
+                          const occGender = normalizeGender(occ.gender)
+                          dotColor = occGender ? genderAccent(occGender).dot : 'bg-indigo-500'
                         }
 
                         return (
@@ -459,10 +458,13 @@ export default function ZamdekanXonalarMap() {
                           isLight ? 'bg-slate-50/50 border-slate-200' : 'bg-white/[0.02] border-white/5'
                         } space-y-2`}
                       >
-                        <div className="flex items-center justify-between">
-                          <h4 className={`text-xs font-bold ${textStrong}`}>{occ.full_name}</h4>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`h-2 w-2 rounded-full shrink-0 ${genderAccent(occ.gender).dot}`} />
+                            <h4 className={`text-xs font-bold truncate ${textStrong}`}>{occ.full_name}</h4>
+                          </div>
                           <span
-                            className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
+                            className={`shrink-0 px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
                               occ.status === 'registered'
                                 ? 'bg-emerald-500/10 text-emerald-500'
                                 : 'bg-amber-500/10 text-amber-500'
@@ -472,17 +474,17 @@ export default function ZamdekanXonalarMap() {
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 text-[9px] font-bold">
+                        <div className="grid grid-cols-2 gap-2.5 text-[10px] font-bold">
                           <div>
                             <span className={textMuted}>Fakultet:</span>
-                            <p className={`truncate ${textStrong}`} title={occ.faculty}>
-                              {occ.faculty || '—'}
+                            <p className={`truncate ${textStrong}`} title={permitFacultyLabel(occ.faculty)}>
+                              {permitFacultyLabel(occ.faculty) || '—'}
                             </p>
                           </div>
                           <div>
                             <span className={textMuted}>Kurs/Jinsi:</span>
                             <p className={textStrong}>
-                              {occ.course ? `${occ.course}-kurs • ` : ''}{occ.gender === 'male' ? 'Erkak' : 'Ayol'}
+                              {occ.course ? `${occ.course}-kurs • ` : ''}{genderLabel(occ.gender)}
                             </p>
                           </div>
                           <div>
@@ -535,8 +537,11 @@ export default function ZamdekanXonalarMap() {
                 </div>
               </motion.div>
             ) : (
-              <div className={`p-6 rounded-3xl border ${surfaceBg} text-center ${textMuted} text-xs font-bold`}>
-                Xona tafsilotlarini ko‘rish uchun xarita bo‘limidan xonani bosing
+              <div className={`p-10 rounded-3xl border ${surfaceBg} flex flex-col items-center justify-center text-center`}>
+                <div className="mx-auto w-12 h-12 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 mb-3">
+                  <BedDouble size={20} />
+                </div>
+                <p className={`text-xs font-bold ${textMuted}`}>Xona tafsilotlarini ko‘rish uchun xarita bo‘limidan xonani bosing</p>
               </div>
             )}
           </AnimatePresence>
@@ -571,7 +576,8 @@ export default function ZamdekanXonalarMap() {
               .filter((s) => s.room_number !== selectedRoom?.roomNumber)
               .filter((s) => s.full_name.toLowerCase().includes(assignSearch.toLowerCase()))
               .map((s) => {
-                const genderMismatch = Boolean(selectedRoom?.gender && selectedRoom.gender !== 'mixed' && s.gender && s.gender !== selectedRoom.gender)
+                const studentGender = normalizeGender(s.gender)
+                const genderMismatch = Boolean(selectedRoom?.gender && selectedRoom.gender !== 'mixed' && studentGender && studentGender !== selectedRoom.gender)
                 return (
                   <button
                     key={s.id}
@@ -586,14 +592,17 @@ export default function ZamdekanXonalarMap() {
                           : 'border-white/5 bg-white/[0.02] hover:border-indigo-500/30'
                     }`}
                   >
-                    <div className="min-w-0">
-                      <p className={`text-xs font-bold truncate ${textStrong}`}>{s.full_name}</p>
-                      <p className={`text-[9px] mt-0.5 ${textMuted}`}>
-                        {s.direction ? `${s.direction} • ` : ''}{s.course ? `${s.course}-kurs • ` : ''}
-                        {s.gender === 'male' ? 'Erkak' : 'Ayol'}
-                        {genderMismatch && ' • jinsi mos kelmaydi'}
-                        {s.room_number ? ` • Hozir: ${s.room_number}-xona` : ' • Xonasiz'}
-                      </p>
+                    <div className="min-w-0 flex items-start gap-2">
+                      <span className={`h-2 w-2 rounded-full shrink-0 mt-1 ${genderAccent(s.gender).dot}`} />
+                      <div className="min-w-0">
+                        <p className={`text-xs font-bold truncate ${textStrong}`}>{s.full_name}</p>
+                        <p className={`text-[10px] mt-0.5 ${genderMismatch ? 'text-rose-500' : textMuted}`}>
+                          {s.direction ? `${s.direction} • ` : ''}{s.course ? `${s.course}-kurs • ` : ''}
+                          {genderLabel(s.gender)}
+                          {genderMismatch && ' • jinsi mos kelmaydi'}
+                          {s.room_number ? ` • Hozir: ${s.room_number}-xona` : ' • Xonasiz'}
+                        </p>
+                      </div>
                     </div>
                     {assigningId === s.id ? (
                       <span className="shrink-0 text-[9px] font-black uppercase text-indigo-500">...</span>

@@ -587,7 +587,6 @@ export default function ZamdekanXonalarMap() {
 
           <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1 custom-scrollbar">
             {students
-              .filter((s) => s.room_number !== selectedRoom?.roomNumber)
               .filter((s) => s.full_name.toLowerCase().includes(assignSearch.toLowerCase()))
               .map((s) => {
                 const studentGender = normalizeGender(s.gender)
@@ -614,7 +613,6 @@ export default function ZamdekanXonalarMap() {
                           {s.direction ? `${s.direction} • ` : ''}{s.course ? `${s.course}-kurs • ` : ''}
                           {genderLabel(s.gender)}
                           {genderMismatch && ' • jinsi mos kelmaydi'}
-                          {s.room_number ? ` • Hozir: ${s.room_number}-xona` : ' • Xonasiz'}
                         </p>
                       </div>
                     </div>
@@ -627,7 +625,7 @@ export default function ZamdekanXonalarMap() {
                 )
               })}
 
-            {students.filter((s) => s.room_number !== selectedRoom?.roomNumber && s.full_name.toLowerCase().includes(assignSearch.toLowerCase())).length === 0 && (
+            {students.filter((s) => s.full_name.toLowerCase().includes(assignSearch.toLowerCase())).length === 0 && (
               <p className={`py-6 text-center text-xs font-bold ${textMuted}`}>Talaba topilmadi</p>
             )}
           </div>

@@ -5,11 +5,15 @@ export function createRoomAssignmentRepository() {
   const supabase = getServiceSupabase()
   return {
     async listFacultyStudents(faculty: string) {
+      // Only students without a room yet are assignable here — someone
+      // already housed must be removed from their current room first
+      // (see clearStudentRoom) before they can show up to be placed again.
       const { data, error } = await supabase
         .from('users')
         .select('id, full_name, gender, room_number, course, direction')
         .eq('role', 'talaba')
         .ilike('faculty', faculty)
+        .is('room_number', null)
         .order('full_name', { ascending: true })
       if (error) throw error
       return data ?? []

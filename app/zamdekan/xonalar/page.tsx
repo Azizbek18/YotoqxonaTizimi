@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
@@ -69,6 +69,18 @@ export default function ZamdekanXonalarMap() {
   const [assigningId, setAssigningId] = useState<string | null>(null)
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const detailPanelRef = useRef<HTMLDivElement>(null)
+
+  const selectRoom = (room: RoomData) => {
+    setSelectedRoom(room)
+    // On mobile the detail panel sits below the room grid (no sticky sidebar),
+    // so bring it into view instead of leaving the user scrolled elsewhere.
+    if (window.innerWidth < 1024) {
+      window.requestAnimationFrame(() => {
+        detailPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+  }
 
   const loadStudents = async () => {
     try {
@@ -349,7 +361,7 @@ export default function ZamdekanXonalarMap() {
                 return (
                   <div
                     key={room.roomNumber}
-                    onClick={() => setSelectedRoom(room)}
+                    onClick={() => selectRoom(room)}
                     className={`p-3 rounded-2xl border cursor-pointer hover:scale-105 hover:shadow-lg active:scale-95 transition-all text-center flex flex-col justify-between h-24 ${roomBorderColor} ${roomBgColor}`}
                   >
                     <div className="flex items-center justify-between">
@@ -395,7 +407,7 @@ export default function ZamdekanXonalarMap() {
         </div>
 
         {/* Room Detail Sidebar (Right) */}
-        <div className="lg:col-span-4">
+        <div ref={detailPanelRef} className="lg:col-span-4 lg:sticky lg:top-24 self-start scroll-mt-24">
           <AnimatePresence mode="wait">
             {selectedRoom ? (
               <motion.div
@@ -403,9 +415,9 @@ export default function ZamdekanXonalarMap() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className={`p-5 rounded-3xl border ${surfaceBg} space-y-4`}
+                className={`flex flex-col max-h-[calc(100vh-7.5rem)] p-5 rounded-3xl border ${surfaceBg}`}
               >
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3 shrink-0">
                   <div>
                     <h3 className={`text-sm font-black uppercase tracking-wider ${textStrong}`}>
                       {selectedRoom.roomNumber}-xona tafsiloti
@@ -420,6 +432,7 @@ export default function ZamdekanXonalarMap() {
                   </button>
                 </div>
 
+                <div className="flex-1 min-h-0 space-y-4 overflow-y-auto custom-scrollbar pt-4 -mr-1 pr-1">
                 {selectedRoom.gender === 'mixed' ? null : selectedRoom.occupants.length >= 4 ? (
                   <div className={`p-2.5 rounded-xl text-center text-[10px] font-bold ${isLight ? 'bg-slate-100 text-slate-500' : 'bg-white/5 text-slate-400'}`}>
                     Xona to&apos;la — yangi talaba joylashtirib bo&apos;lmaydi
@@ -530,8 +543,9 @@ export default function ZamdekanXonalarMap() {
                     ))
                   )}
                 </div>
+                </div>
 
-                <div className="pt-2 text-[9px] font-bold text-slate-500 flex justify-between">
+                <div className={`shrink-0 pt-3 mt-1 border-t text-[9px] font-bold flex justify-between ${isLight ? 'border-slate-100 text-slate-500' : 'border-white/5 text-slate-500'}`}>
                   <span>Jami o‘rindagi joylar:</span>
                   <span>{selectedRoom.occupants.length} / 4 band</span>
                 </div>

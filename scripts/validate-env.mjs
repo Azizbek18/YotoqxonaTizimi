@@ -5,14 +5,14 @@ const required = [
   'NEXT_PUBLIC_APP_URL',
   'RATE_LIMIT_REDIS_REST_URL',
   'RATE_LIMIT_REDIS_REST_TOKEN',
-  // Gate the admin/tarbiyachi/zamdekan login links (lib/staff-access.ts) —
+  // Gate the admin/tarbiyachi/dekan login links (lib/staff-access.ts) —
   // without these, every staff portal is silently unreachable in
   // production (safeEqual(undefined, key) always fails).
   'ADMIN_PORTAL_KEY',
   'TARBIYACHI_PORTAL_KEY',
-  'ZAMDEKAN_PORTAL_KEY',
-  'ZAMDEKAN_REGISTER_CODE',
-  'ZAMDEKAN_ALLOWED_IDS',
+  'DEKAN_PORTAL_KEY',
+  'DEKAN_REGISTER_CODE',
+  'DEKAN_ALLOWED_IDS',
 ]
 
 const PLACEHOLDER_PATTERN = /^(your-|replace-with|change-?me|changeme|example\b)/i

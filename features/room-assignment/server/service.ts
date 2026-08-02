@@ -1,6 +1,7 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
+import { sendRoomAssignedEmail } from '@/lib/email'
 import type { FacultyStudentRow } from '../types'
 import { createRoomAssignmentRepository, type RoomAssignmentRepository } from './repository'
 
@@ -12,13 +13,13 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
   return {
     async listStudents(facultyValue: string | null): Promise<FacultyStudentRow[]> {
       const faculty = facultyValue?.trim()
-      if (!faculty) throw new ApiError(403, 'Zamdekan fakulteti biriktirilmagan')
+      if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
       return (await repository.listFacultyStudents(faculty)) as FacultyStudentRow[]
     },
 
     async assignRoom(facultyValue: string | null, value: unknown) {
       const faculty = facultyValue?.trim()
-      if (!faculty) throw new ApiError(403, 'Zamdekan fakulteti biriktirilmagan')
+      if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, "So'rov noto'g'ri")
       const input = value as Record<string, unknown>
 
@@ -56,6 +57,9 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
         }
         throw error
       }
+      // Faqat haqiqatan biriktirilgandan keyin — yuqoridagi erta return'lar
+      // (xona tozalash yoki ayni o'sha xona) xat yuborishga sabab bo'lmaydi.
+      await sendRoomAssignedEmail(student.email ?? '', student.full_name ?? 'Talaba', roomNumber)
       return { success: true as const }
     },
   }

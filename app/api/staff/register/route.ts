@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const linkKey = typeof body.linkKey === 'string' ? body.linkKey : ''
     const faculty = typeof body.faculty === 'string' ? body.faculty.trim() : ''
 
-    if (role !== 'zamdekan') {
+    if (role !== 'dekan') {
       return NextResponse.json({ ok: false, error: "Noto'g'ri rol" }, { status: 400 })
     }
 

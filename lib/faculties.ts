@@ -1,10 +1,10 @@
 /**
  * Canonical faculty codes for the pre-enrollment permit-request flow
- * (ruxsatnoma-yuborish) and zamdekan registration. Both sides must use the
- * exact same `value`s — zamdekan overview matches permit_requests.faculty
+ * (ruxsatnoma-yuborish) and dekan registration. Both sides must use the
+ * exact same `value`s — dekan overview matches permit_requests.faculty
  * against staff.faculty via a case-insensitive string equality check, so any
  * drift here (e.g. a free-typed faculty name vs. one of these codes) means a
- * zamdekan silently never sees permit requests meant for them.
+ * dekan silently never sees permit requests meant for them.
  */
 export const PERMIT_FACULTIES = [
   { value: 'amit', label: 'AMIT' },

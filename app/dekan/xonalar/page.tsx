@@ -15,11 +15,12 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { fetchZamdekanOverview } from '@/features/permits/client/admin-api'
+import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { fetchAssignableStudents, assignStudentRoom } from '@/features/room-assignment/client/api'
 import type { FacultyStudentRow } from '@/features/room-assignment/types'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { permitFacultyLabel } from '@/lib/faculties'
+import { directionLabel } from '@/lib/directions'
 import { normalizeGender, genderLabel, genderAccent } from '@/lib/gender'
 
 interface Occupant {
@@ -43,7 +44,7 @@ interface RoomData {
   gender: string | null // 'male', 'female', or 'mixed' (warning)
 }
 
-export default function ZamdekanXonalarMap() {
+export default function DekanXonalarMap() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
@@ -94,7 +95,7 @@ export default function ZamdekanXonalarMap() {
   const fetchRoomsData = async () => {
     setLoading(true)
     try {
-      const { usersWithRooms: users, approvedPermitsWithRooms: permits } = await fetchZamdekanOverview()
+      const { usersWithRooms: users, approvedPermitsWithRooms: permits } = await fetchDekanOverview()
 
       // Map to combined occupants list
       const occupantsMap: Record<string, Occupant[]> = {}
@@ -103,7 +104,7 @@ export default function ZamdekanXonalarMap() {
         if (!u.room_number) return
         const occupant: Occupant = {
           // Other-faculty occupants have their auth id redacted server-side
-          // (a zamdekan has no jurisdiction to act on them) — falls back to
+          // (a dekan has no jurisdiction to act on them) — falls back to
           // '' rather than undefined so it never collides with a real id.
           id: u.id || '',
           full_name: u.full_name || 'Noma‘lum',
@@ -245,6 +246,15 @@ export default function ZamdekanXonalarMap() {
     return matchesFloor && matchesSearch
   })
 
+  // Assignable students for the currently selected room: name search, plus
+  // gender-matched to existing occupants (an empty/mixed room allows anyone).
+  const assignableStudents = students
+    .filter((s) => s.full_name.toLowerCase().includes(assignSearch.toLowerCase()))
+    .filter((s) => {
+      if (!selectedRoom?.gender || selectedRoom.gender === 'mixed') return true
+      return normalizeGender(s.gender) === selectedRoom.gender
+    })
+
   // Calculate totals
   const totalOccupiedBeds = rooms.reduce((acc, r) => acc + r.occupants.length, 0)
   const totalRoomsWithMixedGenders = rooms.filter((r) => r.gender === 'mixed').length
@@ -283,7 +293,29 @@ export default function ZamdekanXonalarMap() {
       </div>
 
       {/* 2. Map Controls */}
-      <div className={`p-4 rounded-3xl border ${surfaceBg} flex flex-col md:flex-row md:items-center justify-between gap-3`}>
+      <div className={`p-4 rounded-3xl border ${surfaceBg} flex flex-col gap-3`}>
+        {/* Search — o'z qatorida, to'liq kenglikda */}
+        <div className="relative">
+          <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${textMuted}`} />
+          <input
+            type="text"
+            placeholder="Xona raqami yoki talaba ismi bo'yicha qidirish..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={`w-full text-sm font-medium py-3.5 pl-12 pr-11 rounded-2xl outline-none border transition-all placeholder:font-normal focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 ${inputBg}`}
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              aria-label="Qidiruvni tozalash"
+              className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors hover:bg-slate-200/70 dark:hover:bg-white/10 ${textMuted}`}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
         {/* Floor Selection */}
         <div className="flex flex-wrap gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-2xl">
           <button
@@ -311,17 +343,6 @@ export default function ZamdekanXonalarMap() {
           ))}
         </div>
 
-        {/* Search */}
-        <div className="relative flex-1 md:max-w-xs">
-          <Search size={14} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${textMuted}`} />
-          <input
-            type="text"
-            placeholder="Xona raqami yoki talaba ismi..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full text-xs py-2.5 pl-9 pr-4 rounded-xl outline-none border transition-all ${inputBg}`}
-          />
-        </div>
       </div>
 
       {/* 3. Main Occupancy Grid and Side Detail panel */}
@@ -574,58 +595,59 @@ export default function ZamdekanXonalarMap() {
       >
         <div className="space-y-3">
           <div className="relative">
-            <Search size={14} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${textMuted}`} />
+            <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${textMuted}`} />
             <input
               type="text"
               autoFocus
               placeholder="Talaba ismi bo'yicha qidirish..."
               value={assignSearch}
               onChange={(e) => setAssignSearch(e.target.value)}
-              className={`w-full text-xs py-2.5 pl-9 pr-4 rounded-xl outline-none border transition-all ${inputBg}`}
+              className={`w-full text-sm font-medium py-3.5 pl-12 pr-11 rounded-2xl outline-none border transition-all placeholder:font-normal focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 ${inputBg}`}
             />
+            {assignSearch && (
+              <button
+                type="button"
+                onClick={() => setAssignSearch('')}
+                aria-label="Qidiruvni tozalash"
+                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors hover:bg-slate-200/70 dark:hover:bg-white/10 ${textMuted}`}
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1 custom-scrollbar">
-            {students
-              .filter((s) => s.full_name.toLowerCase().includes(assignSearch.toLowerCase()))
-              .map((s) => {
-                const studentGender = normalizeGender(s.gender)
-                const genderMismatch = Boolean(selectedRoom?.gender && selectedRoom.gender !== 'mixed' && studentGender && studentGender !== selectedRoom.gender)
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    disabled={genderMismatch || assigningId === s.id}
-                    onClick={() => handleAssignStudent(s.id)}
-                    className={`w-full flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all ${
-                      genderMismatch
-                        ? 'opacity-40 cursor-not-allowed border-transparent'
-                        : isLight
-                          ? 'border-slate-200 bg-white hover:border-indigo-300'
-                          : 'border-white/5 bg-white/[0.02] hover:border-indigo-500/30'
-                    }`}
-                  >
-                    <div className="min-w-0 flex items-start gap-2">
-                      <span className={`h-2 w-2 rounded-full shrink-0 mt-1 ${genderAccent(s.gender).dot}`} />
-                      <div className="min-w-0">
-                        <p className={`text-xs font-bold truncate ${textStrong}`}>{s.full_name}</p>
-                        <p className={`text-[10px] mt-0.5 ${genderMismatch ? 'text-rose-500' : textMuted}`}>
-                          {s.direction ? `${s.direction} • ` : ''}{s.course ? `${s.course}-kurs • ` : ''}
-                          {genderLabel(s.gender)}
-                          {genderMismatch && ' • jinsi mos kelmaydi'}
-                        </p>
-                      </div>
-                    </div>
-                    {assigningId === s.id ? (
-                      <span className="shrink-0 text-[9px] font-black uppercase text-indigo-500">...</span>
-                    ) : (
-                      <UserPlus size={16} className={genderMismatch ? textMuted : 'shrink-0 text-indigo-500'} />
-                    )}
-                  </button>
-                )
-              })}
+            {assignableStudents.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                disabled={assigningId === s.id}
+                onClick={() => handleAssignStudent(s.id)}
+                className={`w-full flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all ${
+                  isLight
+                    ? 'border-slate-200 bg-white hover:border-indigo-300'
+                    : 'border-white/5 bg-white/[0.02] hover:border-indigo-500/30'
+                }`}
+              >
+                <div className="min-w-0 flex items-start gap-2">
+                  <span className={`h-2 w-2 rounded-full shrink-0 mt-1 ${genderAccent(s.gender).dot}`} />
+                  <div className="min-w-0">
+                    <p className={`text-xs font-bold truncate ${textStrong}`}>{s.full_name}</p>
+                    <p className={`text-[10px] mt-0.5 ${textMuted}`}>
+                      {s.direction ? `${directionLabel(s.direction)} • ` : ''}{s.course ? `${s.course}-kurs • ` : ''}
+                      {genderLabel(s.gender)}
+                    </p>
+                  </div>
+                </div>
+                {assigningId === s.id ? (
+                  <span className="shrink-0 text-[9px] font-black uppercase text-indigo-500">...</span>
+                ) : (
+                  <UserPlus size={16} className="shrink-0 text-indigo-500" />
+                )}
+              </button>
+            ))}
 
-            {students.filter((s) => s.full_name.toLowerCase().includes(assignSearch.toLowerCase())).length === 0 && (
+            {assignableStudents.length === 0 && (
               <p className={`py-6 text-center text-xs font-bold ${textMuted}`}>Talaba topilmadi</p>
             )}
           </div>

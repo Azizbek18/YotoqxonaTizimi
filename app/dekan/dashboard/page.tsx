@@ -26,9 +26,10 @@ import {
   AlertTriangle
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { useZamdekanScope } from '@/lib/hooks/useZamdekanScope'
-import { fetchZamdekanOverview } from '@/features/permits/client/admin-api'
+import { useDekanScope } from '@/lib/hooks/useDekanScope'
+import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { permitFacultyLabel } from '@/lib/faculties'
+import { directionLabel } from '@/lib/directions'
 
 interface DashboardStats {
   pendingCount: number
@@ -51,7 +52,7 @@ interface RecentRequest {
   created_at: string
 }
 
-export default function ZamdekanDashboard() {
+export default function DekanDashboard() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
@@ -74,12 +75,12 @@ export default function ZamdekanDashboard() {
   const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([])
   const [courseDistribution, setCourseDistribution] = useState<{ course: string; talabalar: number }[]>([])
   const [facultyDistribution, setFacultyDistribution] = useState<{ name: string; talabalar: number }[]>([])
-  const { faculty: zamdekanFaculty, resolved: facultyResolved } = useZamdekanScope()
+  const { faculty: dekanFaculty, resolved: facultyResolved } = useDekanScope()
 
   const loadData = async (faculty: string | null) => {
     try {
       if (!faculty) throw new Error('Fakultet biriktirilmagan')
-      const { dashboard } = await fetchZamdekanOverview()
+      const { dashboard } = await fetchDekanOverview()
       setCourseDistribution(dashboard.courseDistribution)
       setFacultyDistribution(dashboard.facultyDistribution)
       setRecentRequests(dashboard.recentRequests)
@@ -100,10 +101,10 @@ export default function ZamdekanDashboard() {
 
   useEffect(() => {
     if (!facultyResolved) return
-    loadData(zamdekanFaculty)
-    const interval = setInterval(() => loadData(zamdekanFaculty), 30000)
+    loadData(dekanFaculty)
+    const interval = setInterval(() => loadData(dekanFaculty), 30000)
     return () => clearInterval(interval)
-  }, [facultyResolved, zamdekanFaculty])
+  }, [facultyResolved, dekanFaculty])
 
   // Capacity calculations
   const totalBedsCapacity = 600 // 150 rooms * 4 beds
@@ -123,7 +124,7 @@ export default function ZamdekanDashboard() {
       color: 'from-amber-500 to-orange-500',
       glow: 'rgba(245, 158, 11, 0.35)',
       description: "Ko'rib chiqilishi kerak bo'lgan yo'llanmalar",
-      link: '/zamdekan/arizalar',
+      link: '/dekan/arizalar',
     },
     {
       title: 'Faol talabalar',
@@ -132,7 +133,7 @@ export default function ZamdekanDashboard() {
       color: 'from-sky-500 to-blue-600',
       glow: 'rgba(14, 165, 233, 0.35)',
       description: "Tizimda ro'yxatdan o'tganlar",
-      link: '/zamdekan/xonalar',
+      link: '/dekan/xonalar',
     },
     {
       title: 'Joylashtirilganlar',
@@ -141,7 +142,7 @@ export default function ZamdekanDashboard() {
       color: 'from-indigo-500 to-purple-600',
       glow: 'rgba(99, 102, 241, 0.35)',
       description: `${occupancyRate}% bandlik darajasi`,
-      link: '/zamdekan/xonalar',
+      link: '/dekan/xonalar',
     },
     {
       title: 'Tasdiqlangan yo‘llanmalar',
@@ -150,7 +151,7 @@ export default function ZamdekanDashboard() {
       color: 'from-emerald-500 to-teal-600',
       glow: 'rgba(16, 185, 129, 0.35)',
       description: 'Tasdiqlangan jami arizalar',
-      link: '/zamdekan/arizalar',
+      link: '/dekan/arizalar',
     }
   ]
 
@@ -181,16 +182,16 @@ export default function ZamdekanDashboard() {
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black mt-3 tracking-tight text-white">
-              Xush kelibsiz, Zamdekan!
+              Xush kelibsiz, Dekan!
             </h1>
             <p className="text-xs sm:text-sm mt-1.5 max-w-xl leading-relaxed text-indigo-100">
-              {zamdekanFaculty
-                ? `${zamdekanFaculty.toUpperCase()} fakulteti bo'yicha yo'llanmalar (arizalar) ko'rib chiqilishini boshqaring.`
+              {dekanFaculty
+                ? `${dekanFaculty.toUpperCase()} fakulteti bo'yicha yo'llanmalar (arizalar) ko'rib chiqilishini boshqaring.`
                 : "Yotoqxona tizimidagi talabalar oqimi, yo'llanmalar (arizalar) ko'rib chiqilishi va xonalar taqsimotini real vaqt rejimida boshqaring."}
             </p>
           </div>
           <button
-            onClick={() => loadData(zamdekanFaculty)}
+            onClick={() => loadData(dekanFaculty)}
             className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all bg-white text-indigo-700 hover:bg-indigo-50 shadow-lg shadow-black/10 active:scale-95"
           >
             Ma&apos;lumotlarni yangilash
@@ -198,7 +199,7 @@ export default function ZamdekanDashboard() {
         </div>
       </motion.div>
 
-      {facultyResolved && !zamdekanFaculty && (
+      {facultyResolved && !dekanFaculty && (
         <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs font-bold flex items-start gap-2">
           <AlertTriangle size={16} className="shrink-0 mt-0.5" />
           <span>
@@ -351,7 +352,7 @@ export default function ZamdekanDashboard() {
             </ResponsiveContainer>
           </div>
           <div className="flex justify-end mt-2 text-[10px] font-black uppercase tracking-widest text-indigo-500">
-            <Link href="/zamdekan/xonalar" className="flex items-center gap-1">
+            <Link href="/dekan/xonalar" className="flex items-center gap-1">
               Barcha talabalarni ko&apos;rish <ArrowRight size={10} />
             </Link>
           </div>
@@ -390,7 +391,7 @@ export default function ZamdekanDashboard() {
                     <div className="min-w-0">
                       <h4 className={`text-xs font-bold truncate ${textStrong}`}>{req.full_name}</h4>
                       <p className={`text-[10px] mt-0.5 truncate ${textMuted}`}>
-                        {permitFacultyLabel(req.faculty)} • {req.direction} • {req.course}-kurs
+                        {permitFacultyLabel(req.faculty)} • {directionLabel(req.direction)} • {req.course}-kurs
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -398,7 +399,7 @@ export default function ZamdekanDashboard() {
                         {new Date(req.created_at).toLocaleDateString('uz-UZ')}
                       </span>
                       <Link
-                        href={`/zamdekan/arizalar?id=${req.id}`}
+                        href={`/dekan/arizalar?id=${req.id}`}
                         className="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500 text-indigo-500 hover:text-white transition-all"
                       >
                         <ArrowRight size={14} />
@@ -411,7 +412,7 @@ export default function ZamdekanDashboard() {
           </div>
           <div className="mt-4 flex justify-end">
             <Link
-              href="/zamdekan/arizalar"
+              href="/dekan/arizalar"
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 transition-all"
             >
               Arizalar ro&apos;yxatiga o&apos;tish <ArrowRight size={12} />

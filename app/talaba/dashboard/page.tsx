@@ -198,6 +198,9 @@ export default function TalabaDashboard() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [profileError, setProfileError] = useState(false);
   const [floorCaptain, setFloorCaptain] = useState<CaptainInfo | null>(null);
+  // Xona biriktirilgani haqidagi bannerni talaba yopgani — xona raqami bilan
+  // birga saqlanadi, shunda keyinchalik xona almashtirilsa banner qayta chiqadi.
+  const [seenRoomAssignment, setSeenRoomAssignment] = useState<string | null>(null);
 
 
   // State - UI
@@ -816,8 +819,19 @@ export default function TalabaDashboard() {
     });
   }, [elonlar, searchQuery, elonCategory]);
 
-  const surfaceBg = isLight 
-    ? 'bg-white/80 border-slate-200/80 shadow-xl shadow-slate-100/40' 
+  useEffect(() => {
+    setSeenRoomAssignment(localStorage.getItem('seen_room_assignment'));
+  }, []);
+
+  const dismissRoomBanner = useCallback(() => {
+    const room = profile?.room_number;
+    if (!room) return;
+    localStorage.setItem('seen_room_assignment', room);
+    setSeenRoomAssignment(room);
+  }, [profile?.room_number]);
+
+  const surfaceBg = isLight
+    ? 'bg-white/80 border-slate-200/80 shadow-xl shadow-slate-100/40'
     : 'bg-[#0f172a]/30 border-white/5 shadow-[0_0_50px_rgba(0,0,0,0.3)]';
   const textMuted = isLight ? 'text-slate-500' : 'text-slate-400';
   const textStrong = isLight ? 'text-slate-900' : 'text-white';
@@ -887,6 +901,72 @@ export default function TalabaDashboard() {
           />
         </div>
       </header>
+
+      {/* Xona holati haqida xabar */}
+      <AnimatePresence initial={false}>
+        {profile.room_number ? (
+          seenRoomAssignment !== profile.room_number && (
+            <motion.div
+              key={`room-assigned-${profile.room_number}`}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className={`relative flex items-start gap-3 p-4 pr-12 rounded-3xl border ${
+                isLight
+                  ? 'bg-emerald-50 border-emerald-200'
+                  : 'bg-emerald-500/10 border-emerald-500/20'
+              }`}
+            >
+              <div className="shrink-0 h-10 w-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center">
+                <CheckCircle2 size={20} />
+              </div>
+              <div className="min-w-0 space-y-0.5">
+                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-500">
+                  Sizga xona biriktirildi!
+                </h3>
+                <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+                  Yotoqxonadan <b>{profile.room_number}-xona</b>
+                  {floor ? ` (${floor}-qavat)` : ''} ajratildi. Ko&apos;chib o&apos;tish tartibi va
+                  qoidalar bilan tanishib chiqing.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={dismissRoomBanner}
+                aria-label="Xabarni yopish"
+                className={`absolute right-3 top-3 p-1.5 rounded-lg transition-colors ${
+                  isLight ? 'text-slate-400 hover:bg-emerald-100' : 'text-slate-400 hover:bg-white/10'
+                }`}
+              >
+                <X size={14} />
+              </button>
+            </motion.div>
+          )
+        ) : (
+          <motion.div
+            key="room-pending"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className={`flex items-start gap-3 p-4 rounded-3xl border ${
+              isLight ? 'bg-amber-50 border-amber-200' : 'bg-amber-500/10 border-amber-500/20'
+            }`}
+          >
+            <div className="shrink-0 h-10 w-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center">
+              <Clock size={20} />
+            </div>
+            <div className="min-w-0 space-y-0.5">
+              <h3 className="text-xs font-black uppercase tracking-wider text-amber-500">
+                Xona biriktirilishi kutilmoqda
+              </h3>
+              <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+                Fakultet dekani sizga xona biriktirgach, bu haqda shu yerda va
+                email orqali xabar beriladi.
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">

@@ -38,6 +38,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchAdminPayments, fetchReceiptSignedUrl } from '@/features/payments/client/api'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { GENDER_OPTIONS } from '@/lib/gender'
+import { directionLabel, directionsForFaculty, normalizeDirection } from '@/lib/directions'
 import { fetchAdminChat, sendAdminChat } from '@/features/applications/client/admin-chat-api'
 
 type UserRow = {
@@ -729,7 +730,7 @@ export default function AdminUsersPage() {
       { icon: Mail, label: 'Email', value: user.email },
       { icon: Phone, label: 'Telefon', value: user.phone_number },
       { icon: GraduationCap, label: 'Fakultet', value: user.faculty },
-      { icon: GraduationCap, label: "Yo'nalish", value: user.direction },
+      { icon: GraduationCap, label: "Yo'nalish", value: directionLabel(user.direction) || undefined },
       { icon: ShieldCheck, label: 'Kurs', value: user.course ? `${user.course}-kurs` : undefined },
       { icon: Home, label: 'Xona', value: user.room_number },
       { icon: Home, label: 'Biriktirilgan qavat', value: user.assigned_floor ? `${user.assigned_floor}-qavat` : undefined },
@@ -1804,6 +1805,18 @@ export default function AdminUsersPage() {
                         value={(editForm.gender as string) || ''}
                         onChange={(val) => setEditForm((current) => ({ ...current, gender: val }))}
                         options={GENDER_OPTIONS}
+                      />
+                    ) : field.key === 'direction' ? (
+                      // Erkin matn emas — bir yo'nalish ikki xil yozilib
+                      // ketmasligi uchun (qarang: lib/directions.ts)
+                      <CustomSelect
+                        value={normalizeDirection(editForm.direction) ?? ''}
+                        onChange={(val) => setEditForm((current) => ({ ...current, direction: val }))}
+                        placeholder="Yo'nalishni tanlang"
+                        options={directionsForFaculty(editForm.faculty).map((option) => ({
+                          value: option.value,
+                          label: option.label,
+                        }))}
                       />
                     ) : (
                       <input

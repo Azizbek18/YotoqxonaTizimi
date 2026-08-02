@@ -19,10 +19,9 @@ export type PermitRoomUser = {
   warning_count: number | null
 }
 
-export type ZamdekanOverview = {
+export type DekanOverview = {
   faculty: string
   requests: EnrichedPermitRequest[]
-  roomOccupancy: Record<string, number>
   usersWithRooms: PermitRoomUser[]
   approvedPermitsWithRooms: PermitRequestRow[]
   dashboard: {

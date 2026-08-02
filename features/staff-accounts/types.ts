@@ -21,8 +21,8 @@ export type CreateStaffAccountInput = {
   confirmPassword: string
   // Required for role: 'tarbiyachi' — an unscoped tarbiyachi (no assigned
   // floor/gender) sees every floor's students, which would let a
-  // faculty-scoped zamdekan mint an account with broader reach than its
-  // own. Not applicable to 'admin' (zamdekan can't create that role at all).
+  // faculty-scoped dekan mint an account with broader reach than its
+  // own. Not applicable to 'admin' (dekan can't create that role at all).
   assignedFloor?: number
   assignedGender?: 'male' | 'female'
 }

@@ -5,10 +5,17 @@ import { motion } from 'framer-motion'
 import { Download, BarChart3, TrendingUp, Users, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
-import { downloadXlsx, sanitizeSpreadsheetCell } from '@/lib/spreadsheet-export'
+import { downloadXlsx } from '@/lib/spreadsheet-export'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
 import { extractFloor } from '@/lib/floor'
+import {
+  buildStudentReportCsv,
+  buildStudentReportTable,
+  cleanReportText,
+  downloadTextFile,
+  reportGenderLabel,
+} from '@/lib/student-report-table'
 
 type MonthlyReportRow = {
     year: number
@@ -160,170 +167,18 @@ export default function AdminReportsPage() {
                 return
             }
 
-            // Xona raqami bo'yicha tabiiy (1, 2, 10...) saralash — shu bilan birga
-            // qavat ham (xonadan hisoblanadi) o'sish tartibida guruhlanadi
+            // Ustunlar, xona bo'yicha guruhlash va bo'sh o'rinlar bilan
+            // to'ldirish — dekan paneli bilan bir xil jadval chiqishi
+            // uchun umumiy modulda (lib/student-report-table.ts)
+            const { headers, rawRows, displayRows, merges: excelMerges } = buildStudentReportTable(students)
+
+            // PDF o'z qisqa jadvalini quradi (xonalar bo'yicha guruhlanmagan,
+            // bo'sh o'rinlarsiz) — unga faqat bir xil tartibdagi ro'yxat kerak
             const sortedUsers = [...students].sort((a, b) => {
                 const roomA = a.room_number || '';
                 const roomB = b.room_number || '';
                 return roomA.localeCompare(roomB, undefined, { numeric: true, sensitivity: 'base' });
             });
-
-            // Matnni tozalash funksiyasi (apostroflar va ortiqcha bo'shliqlar uchun)
-            const cleanText = (val: unknown) => String(val ?? '')
-                .replace(/[ʻʼ‘’`‘]/g, "'")
-                .replace(/\s+/g, ' ')
-                .trim();
-
-            // "YYYY-MM-DD" ni "DD.MM.YYYY" ko'rinishiga o'tkazish
-            const formatDate = (val?: string | null) => {
-                if (!val) return '-';
-                const match = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
-                if (!match) return val;
-                return `${match[3]}.${match[2]}.${match[1]}`;
-            };
-
-            const headers = [
-                '№',
-                'Qavati',
-                'Xona raqami',
-                'F.I.Sh.',
-                'Viloyati',
-                'Tumani',
-                'MFY',
-                'Shartnoma raqami',
-                'Pasport seriya raqami',
-                'JSHSHIR',
-                'Pasport berilgan vaqti',
-                "Tug'ilgan kun, oy, yil",
-                'Fakulteti',
-                "Yo'nalish",
-                'Kursi',
-                'Millati',
-                'Moliya turi',
-                'Jinsi',
-                'Telefon raqami',
-                'Ijtimoiy holati',
-                'Ish joyi',
-                'Ish vaqti',
-                'TTJga joylashgan oyi',
-                "TTJdan chiqib ketgan sanasi",
-                'Tyutor',
-                'Telefon raqami',
-                'Otasining ismi va familiyasi',
-                'Ish joyi',
-                'Telefon nomeri',
-                'Onasining ismi va familiyasi',
-                'Onasining ish joyi',
-                'Telefon nomeri',
-            ]
-
-            // Har bir xonada 4 ta o'rin bor — talaba ma'lumotlaridan tashqari
-            // qolgan ustunlarni to'ldiruvchi yordamchi funksiya
-            const buildFields = (u: typeof sortedUsers[number]) => {
-                const gender = u.gender === 'male' || u.gender === 'Erkak' ? 'Erkak' : u.gender === 'female' || u.gender === 'Ayol' ? 'Ayol' : (u.gender || '-');
-                const phone = u.phone_number || u.phone || '-';
-                return [
-                    cleanText(u.full_name || '-'),
-                    cleanText(u.region || '-'),
-                    cleanText(u.district || '-'),
-                    cleanText(u.mahalla || '-'),
-                    '-', // Shartnoma raqami — tizimda saqlanmaydi
-                    cleanText(u.passport_series || '-'),
-                    cleanText(u.jshshir || '-'),
-                    cleanText(formatDate(u.passport_date)),
-                    cleanText(formatDate(u.birth_date)),
-                    cleanText(u.faculty || '-'),
-                    cleanText(u.direction || '-'),
-                    cleanText(u.course || '-'),
-                    cleanText(u.nationality || '-'),
-                    cleanText(u.study_type || '-'),
-                    cleanText(gender),
-                    cleanText(phone),
-                    '-', // Ijtimoiy holati — tizimda saqlanmaydi
-                    '-', // Ish joyi (talabaning o'zi) — tizimda saqlanmaydi
-                    '-', // Ish vaqti — tizimda saqlanmaydi
-                    cleanText(formatDate(u.entry_date)),
-                    '-', // TTJdan chiqib ketgan sanasi — tizimda saqlanmaydi
-                    '-', // Tyutor — tizimda saqlanmaydi
-                    '-', // Tyutor telefon raqami — tizimda saqlanmaydi
-                    cleanText(u.father_full_name || '-'),
-                    cleanText(u.father_workplace || '-'),
-                    cleanText(u.father_phone || '-'),
-                    cleanText(u.mother_full_name || '-'),
-                    cleanText(u.mother_workplace || '-'),
-                    cleanText(u.mother_phone || '-'),
-                ]
-            }
-            const emptyFields = () => Array(29).fill('')
-            const ROOM_CAPACITY = 4
-
-            // Ketma-ket bir xil xonadagi talabalarni guruhlash
-            type RoomGroup = { room: string | null; floor: number | null; students: typeof sortedUsers }
-            const roomGroups: RoomGroup[] = []
-            sortedUsers.forEach((u) => {
-                const room = u.room_number || null
-                const last = roomGroups[roomGroups.length - 1]
-                if (room && last && last.room === room) {
-                    last.students.push(u)
-                } else {
-                    roomGroups.push({ room, floor: extractFloor(u.room_number), students: [u] })
-                }
-            })
-
-            // Ma'lumotlarni shakllantirish — xona to'liq bo'lmasa ham qolgan
-            // 4 tagacha o'rin bo'sh qator sifatida qoldiriladi
-            const rawRows: string[][] = []
-            let seq = 1
-            roomGroups.forEach((group) => {
-                const qavatValue = group.floor ? String(group.floor) : '-'
-                const xonaValue = group.room ? `№-${group.room}` : '-'
-
-                group.students.forEach((u) => {
-                    rawRows.push([String(seq), qavatValue, xonaValue, ...buildFields(u)])
-                    seq++
-                })
-
-                if (group.room) {
-                    const emptySlots = Math.max(0, ROOM_CAPACITY - group.students.length)
-                    for (let k = 0; k < emptySlots; k++) {
-                        rawRows.push(['', qavatValue, xonaValue, ...emptyFields()])
-                    }
-                }
-            })
-
-            // Bir xil qavat va xonalarni guruhlash (vizual birlashtirish)
-            const displayRows = JSON.parse(JSON.stringify(rawRows));
-            const excelMerges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
-
-            const mergeColumn = (col: number) => {
-                let i = 0;
-                while (i < displayRows.length) {
-                    const value = displayRows[i][col];
-                    if (value === '-' || !value) {
-                        i++;
-                        continue;
-                    }
-
-                    let j = i + 1;
-                    while (j < displayRows.length && rawRows[j][col] === value) {
-                        displayRows[j][col] = ""; // Takrorlanmasligi uchun bo'shatish
-                        j++;
-                    }
-
-                    if (j - i > 1) {
-                        excelMerges.push({
-                            s: { r: i + 1, c: col }, // s: start (header dan keyin)
-                            e: { r: j, c: col }      // e: end
-                        });
-                    }
-                    i = j;
-                }
-            };
-
-            if (displayRows.length > 0) {
-                mergeColumn(1); // Qavati
-                mergeColumn(2); // Xona raqami
-            }
 
             if (format === 'excel') {
                 downloadXlsx({
@@ -363,7 +218,6 @@ export default function AdminReportsPage() {
                 doc.setFontSize(8)
 
                 const pdfRows = sortedUsers.map((u, idx) => {
-                    const gender = u.gender === 'male' || u.gender === 'Erkak' ? 'Erkak' : u.gender === 'female' || u.gender === 'Ayol' ? 'Ayol' : (u.gender || '-')
                     const floor = extractFloor(u.room_number)
                     return [
                         String(idx + 1),
@@ -372,11 +226,11 @@ export default function AdminReportsPage() {
                         // qo'llab-quvvatlamaydi (o'rniga "!" chiqadi) — ASCII
                         // "#" ishlatiladi (faqat PDF uchun; Excel/CSV o'zgarmaydi)
                         u.room_number ? `#${u.room_number}` : '-',
-                        cleanText(u.full_name || '-'),
-                        cleanText(u.faculty || '-'),
-                        cleanText(u.course || '-'),
-                        cleanText(gender),
-                        cleanText(u.phone_number || u.phone || '-'),
+                        cleanReportText(u.full_name || '-'),
+                        cleanReportText(u.faculty || '-'),
+                        cleanReportText(u.course || '-'),
+                        cleanReportText(reportGenderLabel(u.gender)),
+                        cleanReportText(u.phone_number || u.phone || '-'),
                     ]
                 })
 
@@ -451,20 +305,11 @@ export default function AdminReportsPage() {
             // beradi, CSVda esa bo'sh katak "ma'lumot yo'q" deb o'qilib
             // qolishi mumkin, shuning uchun to'liq (blanklanmagan) qiymatlar
             // ishlatiladi
-            const content = [
-                'sep=,',
-                headers.join(','),
-                ...rawRows.map((row: string[]) => row.map((cell: string) => `"${String(sanitizeSpreadsheetCell(cell)).replace(/"/g, '""')}"`).join(','))
-            ].join('\n')
-
-            const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' })
-            const url = URL.createObjectURL(blob)
-            const link = document.createElement('a')
-            link.href = url
-            link.setAttribute('download', `foydalanuvchilar_xonalar_boyicha_${new Date().toISOString().slice(0, 10)}.csv`)
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
+            downloadTextFile(
+                `foydalanuvchilar_xonalar_boyicha_${new Date().toISOString().slice(0, 10)}.csv`,
+                buildStudentReportCsv(headers, rawRows),
+                'text/csv;charset=utf-8;',
+            )
 
             toast.success("CSV fayl yuklab olindi", { id: toastId })
         } catch (error) {

@@ -29,13 +29,13 @@ describe('GET /api/staff/permit-document', () => {
     const response = await GET(req)
 
     expect(response.status).toBe(403)
-    expect(requireActiveStaff).toHaveBeenCalledWith(req, ['admin', 'zamdekan'])
+    expect(requireActiveStaff).toHaveBeenCalledWith(req, ['admin', 'dekan'])
     expect(getServiceSupabase).not.toHaveBeenCalled()
   })
 
-  it('does not expose another faculty permit to a zamdekan', async () => {
+  it('does not expose another faculty permit to a dekan', async () => {
     requireActiveStaff.mockResolvedValue({
-      staff: { id: 'staff-id', role: 'zamdekan', status: 'active', faculty: 'Matematika' },
+      staff: { id: 'staff-id', role: 'dekan', status: 'active', faculty: 'Matematika' },
     })
     const maybeSingle = vi.fn(async () => ({
       data: { permit_url: '2026/file.pdf', faculty: 'Fizika' },

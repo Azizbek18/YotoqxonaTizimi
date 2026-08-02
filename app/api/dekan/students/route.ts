@@ -5,14 +5,14 @@ import { getApiError } from '@/server/http/api-error'
 import { checkRateLimit } from '@/lib/security'
 
 function errorResponse(error: unknown) {
-  console.error('Zamdekan students API error:', error)
+  console.error('Dekan students API error:', error)
   const response = getApiError(error, "So'rovni bajarib bo'lmadi")
   return NextResponse.json(response.body, { status: response.status })
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['zamdekan'])
+    const { staff } = await requireActiveStaff(request, ['dekan'])
     const students = await createRoomAssignmentService().listStudents(staff.faculty)
     return NextResponse.json({ students })
   } catch (error) {
@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['zamdekan'])
-    const throttle = await checkRateLimit(`zamdekan-room-assign:${staff.id}`, 20, 60_000)
+    const { staff } = await requireActiveStaff(request, ['dekan'])
+    const throttle = await checkRateLimit(`dekan-room-assign:${staff.id}`, 20, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: "Juda ko'p urinish. Keyinroq urinib ko'ring." }, { status: 429 })
     }

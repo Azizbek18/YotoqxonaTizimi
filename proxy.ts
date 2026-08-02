@@ -6,7 +6,7 @@ import type { Database } from '@/types/database.generated'
 const ROLE_HOME: Record<Exclude<AppRole, null>, string> = {
   admin: '/admin/dashboard',
   tarbiyachi: '/tarbiyachi/dashboard',
-  zamdekan: '/zamdekan/dashboard',
+  dekan: '/dekan/dashboard',
   talaba: '/talaba/dashboard',
 }
 
@@ -154,10 +154,10 @@ export async function proxy(request: NextRequest) {
   if (tarbiyachiGuard) return tarbiyachiGuard
 
   // ========================
-  // ZAMDEKAN ROUTES HIMOYASI
+  // DEKAN ROUTES HIMOYASI
   // ========================
-  const zamdekanGuard = guardRole('/zamdekan', 'zamdekan', '/login')
-  if (zamdekanGuard) return zamdekanGuard
+  const dekanGuard = guardRole('/dekan', 'dekan', '/login')
+  if (dekanGuard) return dekanGuard
 
   // ========================
   // SARDOR ROUTES HIMOYASI

@@ -211,7 +211,7 @@ function StatusCheckContent() {
                         <div className="space-y-1">
                           <h3 className="text-xs font-black uppercase tracking-wider text-amber-400">Ko&apos;rib chiqilmoqda</h3>
                           <p className={`text-[11px] leading-relaxed font-sans ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                            Hurmatli {result.full_name}, siz yuborgan yo&apos;llanma arizasi hozirda kutilmoqda. Zamdekan arizani ko&apos;rib chiqib, xona raqamini belgilaganidan so&apos;ng bu yerda ro&apos;yxatdan o&apos;tish tugmasi ochiladi.
+                            Hurmatli {result.full_name}, siz yuborgan yo&apos;llanma arizasi hozirda kutilmoqda. Dekan arizani ko&apos;rib chiqib, xona raqamini belgilaganidan so&apos;ng bu yerda ro&apos;yxatdan o&apos;tish tugmasi ochiladi.
                           </p>
                         </div>
                       </div>
@@ -245,7 +245,9 @@ function StatusCheckContent() {
                           <div className="space-y-1">
                             <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 font-sans">Yo&apos;llanma Tasdiqlangan!</h3>
                             <p className={`text-xs leading-relaxed font-sans ${isLight ? 'text-slate-600' : 'text-slate-200'}`}>
-                              Tabriklaymiz, yo&apos;llanmangiz tasdiqlandi! Sizga yotoqxonadan <b>{result.room_number}-xona</b> ajratildi.
+                              Tabriklaymiz, yo&apos;llanmangiz tasdiqlandi! Endi <b>ro&apos;yxatdan o&apos;tishingiz</b> mumkin.
+                              Xona ro&apos;yxatdan o&apos;tganingizdan so&apos;ng biriktiriladi va bu haqda sizga
+                              email orqali xabar yuboriladi.
                             </p>
                           </div>
                         </div>

@@ -12,6 +12,9 @@ import {
   ChevronLeft,
   ChevronRight,
   UserCog,
+  Users,
+  Megaphone,
+  FileSpreadsheet,
   Bell,
   Building2,
 } from 'lucide-react'
@@ -19,12 +22,13 @@ import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { useZamdekanScope } from '@/lib/hooks/useZamdekanScope'
+import { useDekanScope } from '@/lib/hooks/useDekanScope'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
-import { fetchZamdekanOverview } from '@/features/permits/client/admin-api'
+import { fetchDekanOverview } from '@/features/permits/client/admin-api'
+import { directionLabel } from '@/lib/directions'
 import { supabase } from '@/lib/supabase'
 
-export default function ZamdekanLayout({
+export default function DekanLayout({
   children,
 }: {
   children: React.ReactNode
@@ -36,7 +40,7 @@ export default function ZamdekanLayout({
   const [mounted, setMounted] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
-  const { faculty: zamdekanFaculty, fullName: zamdekanName, resolved: facultyResolved } = useZamdekanScope()
+  const { faculty: dekanFaculty, fullName: dekanName, resolved: facultyResolved } = useDekanScope()
   useToastOffset(84)
   const [recentPending, setRecentPending] = useState<{ id: string; full_name: string; direction: string; created_at: string | null }[]>([])
   const [notifOpen, setNotifOpen] = useState(false)
@@ -54,14 +58,14 @@ export default function ZamdekanLayout({
     if (!facultyResolved) return
 
     async function fetchPendingPermits() {
-      if (!zamdekanFaculty) {
+      if (!dekanFaculty) {
         setPendingCount(0)
         setRecentPending([])
         return
       }
 
       try {
-        const { dashboard } = await fetchZamdekanOverview()
+        const { dashboard } = await fetchDekanOverview()
         setPendingCount(dashboard.pendingCount)
         setRecentPending(dashboard.recentRequests.map((request) => ({
           id: request.id,
@@ -76,7 +80,7 @@ export default function ZamdekanLayout({
     fetchPendingPermits()
     const interval = setInterval(fetchPendingPermits, 15000)
     return () => clearInterval(interval)
-  }, [facultyResolved, zamdekanFaculty])
+  }, [facultyResolved, dekanFaculty])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -96,14 +100,14 @@ export default function ZamdekanLayout({
     {
       label: 'Dashboard',
       caption: 'Umumiy hisobot',
-      href: '/zamdekan/dashboard',
+      href: '/dekan/dashboard',
       icon: LayoutDashboard,
       iconTint: 'text-sky-500 bg-sky-500/10',
     },
     {
       label: 'Yo‘llanmalar',
       caption: 'Yangi arizalar',
-      href: '/zamdekan/arizalar',
+      href: '/dekan/arizalar',
       icon: FileText,
       iconTint: 'text-emerald-500 bg-emerald-500/10',
       badge: pendingCount > 0 ? pendingCount : undefined,
@@ -111,9 +115,30 @@ export default function ZamdekanLayout({
     {
       label: 'Xonalar xaritasi',
       caption: 'Joylashtirish holati',
-      href: '/zamdekan/xonalar',
+      href: '/dekan/xonalar',
       icon: Boxes,
       iconTint: 'text-amber-500 bg-amber-500/10',
+    },
+    {
+      label: 'Talabalar',
+      caption: 'Joylashgan talabalar',
+      href: '/dekan/talabalar',
+      icon: Users,
+      iconTint: 'text-violet-500 bg-violet-500/10',
+    },
+    {
+      label: 'E‘lonlar',
+      caption: 'Fakultet talabalariga',
+      href: '/dekan/elonlar',
+      icon: Megaphone,
+      iconTint: 'text-sky-500 bg-sky-500/10',
+    },
+    {
+      label: 'Hisobotlar',
+      caption: 'Excel eksport',
+      href: '/dekan/hisobotlar',
+      icon: FileSpreadsheet,
+      iconTint: 'text-emerald-500 bg-emerald-500/10',
     },
   ]), [pendingCount])
 
@@ -158,19 +183,19 @@ export default function ZamdekanLayout({
 
         <div className={`relative flex items-center gap-3 min-w-0 ${compact ? 'justify-center w-full' : ''}`}>
           <div className="shrink-0 flex items-center justify-center h-11 w-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-black text-sm shadow-lg shadow-indigo-500/40 ring-2 ring-white/20">
-            {zamdekanName ? zamdekanName.trim().charAt(0).toUpperCase() : <UserCog size={20} strokeWidth={2.5} />}
+            {dekanName ? dekanName.trim().charAt(0).toUpperCase() : <UserCog size={20} strokeWidth={2.5} />}
           </div>
 
           {!compact && (
             <div className="min-w-0 flex-1">
               <p className={`text-[10px] font-black uppercase tracking-[0.32em] leading-none bg-gradient-to-r bg-clip-text text-transparent ${isLight ? 'from-indigo-600 to-violet-600' : 'from-indigo-300 to-violet-300'}`}>
-                ZAMDEKAN
+                DEKAN
               </p>
               <h2 className={`text-sm font-black tracking-tight leading-tight mt-1 truncate ${strongText}`}>
-                {zamdekanName || 'Yotoqxona'}
+                {dekanName || 'Yotoqxona'}
               </h2>
               <p className={`text-[9px] font-medium mt-0.5 truncate ${mutedText}`}>
-                {zamdekanFaculty ? zamdekanFaculty.toUpperCase() : 'Fakultet sozlanmagan'}
+                {dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet sozlanmagan'}
               </p>
             </div>
           )}
@@ -323,7 +348,7 @@ export default function ZamdekanLayout({
               </button>
 
               <div className="min-w-0">
-                <p className={`text-[10px] font-black uppercase tracking-[0.24em] ${isLight ? 'text-sky-600' : 'text-indigo-400'}`}>Zamdekan Paneli</p>
+                <p className={`text-[10px] font-black uppercase tracking-[0.24em] ${isLight ? 'text-sky-600' : 'text-indigo-400'}`}>Dekan Paneli</p>
                 <h1 className={`truncate text-base sm:text-lg font-black tracking-tight ${strongText}`}>
                   {activeItem?.label ?? 'Yotoqxona boshqaruvi'}
                 </h1>
@@ -334,7 +359,7 @@ export default function ZamdekanLayout({
               <div className="hidden md:flex items-center gap-2 rounded-xl px-3 py-2 bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-500/20 text-indigo-500 dark:text-indigo-300">
                 <Building2 size={14} />
                 <span className="text-[11px] font-bold truncate max-w-[160px]">
-                  {zamdekanFaculty ? zamdekanFaculty.toUpperCase() : 'Fakultet yo‘q'}
+                  {dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet yo‘q'}
                 </span>
               </div>
 
@@ -363,26 +388,26 @@ export default function ZamdekanLayout({
                     <div className="max-h-80 overflow-y-auto">
                       {recentPending.length === 0 ? (
                         <p className={`px-4 py-6 text-center text-xs ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-                          {zamdekanFaculty ? 'Kutilayotgan yo\'llanma yo\'q.' : 'Fakultet sozlanmagan.'}
+                          {dekanFaculty ? 'Kutilayotgan yo\'llanma yo\'q.' : 'Fakultet sozlanmagan.'}
                         </p>
                       ) : (
                         recentPending.map((item) => (
                           <Link
                             key={item.id}
-                            href={`/zamdekan/arizalar?id=${item.id}`}
+                            href={`/dekan/arizalar?id=${item.id}`}
                             onClick={() => setNotifOpen(false)}
                             className={`block px-4 py-3 border-b last:border-b-0 transition-colors ${
                               isLight ? 'border-slate-100 hover:bg-slate-50' : 'border-white/5 hover:bg-white/5'
                             }`}
                           >
                             <p className="text-xs font-bold truncate">{item.full_name}</p>
-                            <p className={`text-[11px] mt-0.5 truncate ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{item.direction}</p>
+                            <p className={`text-[11px] mt-0.5 truncate ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{directionLabel(item.direction)}</p>
                           </Link>
                         ))
                       )}
                     </div>
                     <Link
-                      href="/zamdekan/arizalar"
+                      href="/dekan/arizalar"
                       onClick={() => setNotifOpen(false)}
                       className={`block px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-wider transition-colors ${
                         isLight ? 'text-sky-600 hover:bg-slate-50' : 'text-indigo-400 hover:bg-white/5'

@@ -85,8 +85,8 @@ function LoginContent() {
           router.push('/admin/dashboard')
         } else if (userRole === 'tarbiyachi') {
           router.push('/tarbiyachi/dashboard')
-        } else if (userRole === 'zamdekan') {
-          router.push('/zamdekan/dashboard')
+        } else if (userRole === 'dekan') {
+          router.push('/dekan/dashboard')
         } else {
           router.push('/talaba/dashboard')
         }

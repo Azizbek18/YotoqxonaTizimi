@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { GraduationCap, BookOpen, ChevronDown, Check, ArrowRight, Sparkles, ShieldAlert, Wallet } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { FACULTY_OPTIONS, directionsForFaculty } from '@/lib/directions'
 
 interface Props {
   data: RegisterData
@@ -14,122 +15,17 @@ interface Props {
   onBack: () => void
 }
 
-const FACULTIES = [
-  { value: 'matematika', label: 'Matematika' },
-  { value: 'amaliy-matematika', label: 'Amaliy matematika va intellektual texnologiyalar' },
-  { value: 'fizika', label: 'Fizika' },
-  { value: 'kimyo', label: 'Kimyo' },
-  { value: 'biologiya', label: 'Biologiya' },
-  { value: 'geologiya', label: 'Geologiya' },
-  { value: 'geografiya', label: 'Geografiya va tabiiy resurslar' },
-  { value: 'tarix', label: 'Tarix' },
-  { value: 'ijtimoiy-fanlar', label: 'Ijtimoiy fanlar' },
-  { value: 'huquq', label: 'Huquqshunoslik' },
-  { value: 'iqtisod', label: 'Iqtisodiyot' },
-  { value: 'filologiya', label: 'O‘zbek filologiyasi' },
-  { value: 'xorijiy-filologiya', label: 'Xorijiy filologiya' },
-  { value: 'jurnalistika', label: 'Jurnalistika va ommaviy kommunikatsiyalar' },
-  { value: 'sharqshunoslik', label: 'Sharqshunoslik' },
-  { value: 'axborot-texnologiyalari', label: 'Axborot texnologiyalari va sun’iy intellekt' },
-  { value: 'kiberxavfsizlik', label: 'Kiberxavfsizlik va raqamli kriminalistika' },
-]
-
-const DIRECTIONS: Record<string, Option[]> = {
-  matematika: [
-    { value: 'matematik-tahlil', label: 'Matematik tahlil' },
-    { value: 'funksional-tahlil', label: 'Funksional tahlil' },
-    { value: 'differensial-tenglamalar', label: 'Differensial tenglamalar' },
-  ],
-  'amaliy-matematika': [
-    { value: 'amaliy-matematika', label: 'Amaliy matematika' },
-    { value: 'dasturiy-injiniring', label: 'Dasturiy injiniring' },
-    { value: 'suniy-intellekt', label: 'Sun’iy intellekt' },
-    { value: 'kompyuter-ilmlari', label: 'Kompyuter ilmlari' },
-    { value: 'axborot-xavfsizligi', label: 'Axborot xavfsizligi' },
-  ],
-  fizika: [
-    { value: 'nazariy-fizika', label: 'Nazariy fizika' },
-    { value: 'atom-fizikasi', label: 'Atom va molekulyar fizika' },
-    { value: 'energetika', label: 'Energetika' },
-  ],
-  kimyo: [
-    { value: 'organik-kimyo', label: 'Organik kimyo' },
-    { value: 'analitik-kimyo', label: 'Analitik kimyo' },
-    { value: 'noorganik-kimyo', label: 'Noorganik kimyo' },
-  ],
-  biologiya: [
-    { value: 'genetika', label: 'Genetika' },
-    { value: 'mikrobiologiya', label: 'Mikrobiologiya' },
-    { value: 'biotexnologiya', label: 'Biotexnologiya' },
-  ],
-  geologiya: [
-    { value: 'geologiya-umumiy', label: 'Umumiy geologiya' },
-    { value: 'kon-geologiyasi', label: 'Kon geologiyasi' },
-    { value: 'gidrogeologiya', label: 'Gidrogeologiya' },
-  ],
-  geografiya: [
-    { value: 'geoekologiya', label: 'Geoekologiya' },
-    { value: 'geoinformatika', label: 'Geoinformatika' },
-    { value: 'turizm', label: 'Turizm' },
-  ],
-  tarix: [
-    { value: 'uzbekiston-tarixi', label: 'O‘zbekiston tarixi' },
-    { value: 'jahon-tarixi', label: 'Jahon tarixi' },
-    { value: 'arxeologiya', label: 'Arxeologiya' },
-  ],
-  'ijtimoiy-fanlar': [
-    { value: 'sotsiologiya', label: 'Sotsiologiya' },
-    { value: 'psixologiya', label: 'Psixologiya' },
-    { value: 'falsafa', label: 'Falsafa' },
-  ],
-  huquq: [
-    { value: 'fuqarolik-huquqi', label: 'Fuqarolik huquqi' },
-    { value: 'jinoyat-huquqi', label: 'Jinoyat huquqi' },
-    { value: 'xalqaro-huquq', label: 'Xalqaro huquq' },
-  ],
-  iqtisod: [
-    { value: 'iqtisodiyot', label: 'Iqtisodiyot' },
-    { value: 'moliya', label: 'Moliya' },
-    { value: 'menejment', label: 'Menejment' },
-    { value: 'marketing', label: 'Marketing' },
-  ],
-  filologiya: [
-    { value: 'ozbek-filologiyasi', label: 'O‘zbek filologiyasi' },
-    { value: 'ozbek-tilshunosligi', label: 'O‘zbek tilshunosligi' },
-    { value: 'adabiyotshunoslik', label: 'Adabiyotshunoslik' },
-  ],
-  'xorijiy-filologiya': [
-    { value: 'ingliz-filologiyasi', label: 'Ingliz filologiyasi' },
-    { value: 'nemis-filologiyasi', label: 'Nemis filologiyasi' },
-    { value: 'fransuz-filologiyasi', label: 'Fransuz filologiyasi' },
-  ],
-  jurnalistika: [
-    { value: 'televideniye', label: 'Televideniye' },
-    { value: 'radio', label: 'Radio jurnalistikasi' },
-    { value: 'multimedia', label: 'Multimedia jurnalistikasi' },
-  ],
-  sharqshunoslik: [
-    { value: 'arabshunoslik', label: 'Arabshunoslik' },
-    { value: 'xitoyshunoslik', label: 'Xitoyshunoslik' },
-    { value: 'turkshunoslik', label: 'Turkshunoslik' },
-  ],
-  'axborot-texnologiyalari': [
-    { value: 'dasturiy-injiniring', label: 'Dasturiy injiniring' },
-    { value: 'kompyuter-tarmoqlari', label: 'Kompyuter tarmoqlari' },
-    { value: 'suniy-intellekt', label: 'Sun’iy intellekt' },
-  ],
-  kiberxavfsizlik: [
-    { value: 'kiberxavfsizlik', label: 'Kiberxavfsizlik' },
-    { value: 'raqamli-forensika', label: 'Raqamli forensika' },
-  ],
-}
+// Fakultet va yo'nalish ro'yxatlari bu yerda takrorlanmaydi: yo'llanma
+// (ruxsatnoma) oqimi bilan aynan bir xil bo'lishi shart. Ro'yxatdan o'tishda
+// kiritilgan fakultet yo'llanmadagi fakultet bilan solishtiriladi
+// (app/api/student/register), shuning uchun ikkita alohida ro'yxat bo'lsa
+// mos kelmay qoladi.
+const FACULTIES = [...FACULTY_OPTIONS]
 
 const STUDY_TYPES = [
   { value: 'grant', label: 'Davlat granti' },
   { value: 'kontrakt', label: "To'lov-shartnoma" },
 ]
-
-const ALL_DIRECTION_OPTIONS: Option[] = Object.values(DIRECTIONS).flat()
 
 // PREMIUM SELECT COMPONENT
 interface Option {
@@ -296,14 +192,14 @@ export default function Step4Study({ data, onChange, onNext, onBack }: Props) {
           options={FACULTIES}
           icon={GraduationCap}
           isLight={isLight}
-          onChange={(f: string) => onChange({ faculty: f, direction: DIRECTIONS[f]?.[0]?.value ?? '' })}
+          onChange={(f: string) => onChange({ faculty: f, direction: directionsForFaculty(f)[0]?.value ?? '' })}
         />
 
         {/* YO'NALISH */}
         <CompactSelect
           label="Yo'nalish"
           value={data.direction}
-          options={DIRECTIONS[data.faculty] || ALL_DIRECTION_OPTIONS}
+          options={[...directionsForFaculty(data.faculty)]}
           icon={BookOpen}
           isLight={isLight}
           onChange={(val: string) => onChange({ direction: val })}

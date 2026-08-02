@@ -8,10 +8,13 @@ export function createRoomAssignmentRepository() {
       // Only students without a room yet are assignable here — someone
       // already housed must be removed from their current room first
       // (see clearStudentRoom) before they can show up to be placed again.
+      // status='active' excludes students who registered but haven't yet
+      // verified their email (still 'pending'), i.e. not actually approved.
       const { data, error } = await supabase
         .from('users')
         .select('id, full_name, gender, room_number, course, direction')
         .eq('role', 'talaba')
+        .eq('status', 'active')
         .ilike('faculty', faculty)
         .is('room_number', null)
         .order('full_name', { ascending: true })
@@ -21,7 +24,7 @@ export function createRoomAssignmentRepository() {
     async findStudent(id: string) {
       const { data, error } = await supabase
         .from('users')
-        .select('id, faculty, gender, room_number, role')
+        .select('id, faculty, gender, room_number, role, email, full_name')
         .eq('id', id)
         .maybeSingle()
       if (error) throw error
@@ -33,7 +36,7 @@ export function createRoomAssignmentRepository() {
     },
     // Atomically checks room capacity/gender and assigns the student inside a
     // single DB transaction (see assign_student_room_atomic in the DB
-    // migration) so two concurrent zamdekan assignments to the same room
+    // migration) so two concurrent dekan assignments to the same room
     // can't both pass a read-then-write capacity/gender check.
     async assignRoomAtomic(studentId: string, roomNumber: string, maxCapacity: number) {
       const { error } = await supabase.rpc('assign_student_room_atomic', {

@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     const geminiApiKey = process.env.GEMINI_API_KEY
     if (!geminiApiKey) {
       // No AI key configured — skip the automated check and let the
-      // zamdekan's manual review be the only gate, same fallback used
+      // dekan's manual review be the only gate, same fallback used
       // by the payment receipt checker.
       return NextResponse.json({
         valid: true,
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         is_authentic: null,
         requires_manual_review: true,
         mismatches: [],
-        analysis: 'AI mavjud emas. Hujjat zamdekan tomonidan qo‘lda tekshirilishi shart.',
+        analysis: 'AI mavjud emas. Hujjat dekan tomonidan qo‘lda tekshirilishi shart.',
         claim: signFileClaim('permit', fileHash, claimContext),
       })
     }
@@ -157,7 +157,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       extractedDormitoryAddress = String(jsonResult.extracted_dormitory_address || '')
     } catch (geminiError: unknown) {
       // Fail closed on the automated checks (don't fabricate a "verified"
-      // result), but still let the submission through for zamdekan manual
+      // result), but still let the submission through for dekan manual
       // review — same fallback used above when no API key is configured —
       // so an AI outage doesn't permanently block genuine applicants.
       console.error('Gemini API call failed during yollanma check, falling back to manual review:', geminiError)
@@ -167,7 +167,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
         is_authentic: null,
         requires_manual_review: true,
         mismatches: [],
-        analysis: "AI tekshiruvi vaqtincha ishlamadi. Hujjat zamdekan tomonidan qo'lda tekshirilishi shart.",
+        analysis: "AI tekshiruvi vaqtincha ishlamadi. Hujjat dekan tomonidan qo'lda tekshirilishi shart.",
         claim: signFileClaim('permit', fileHash, claimContext),
       })
     }

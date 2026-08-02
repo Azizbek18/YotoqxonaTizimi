@@ -1,4 +1,4 @@
-export type AppRole = 'talaba' | 'tarbiyachi' | 'zamdekan' | 'admin'
+export type AppRole = 'talaba' | 'tarbiyachi' | 'dekan' | 'admin'
 
 export type RoleRecord = {
   role: string | null

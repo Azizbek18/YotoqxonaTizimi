@@ -29,9 +29,9 @@ function registrationRequest() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      role: 'zamdekan',
-      fullName: 'Test Zamdekan',
-      email: 'zamdekan@example.com',
+      role: 'dekan',
+      fullName: 'Test Dekan',
+      email: 'dekan@example.com',
       phone: '+998901234567',
       password: 'SecurePass123!',
       confirmPassword: 'SecurePass123!',

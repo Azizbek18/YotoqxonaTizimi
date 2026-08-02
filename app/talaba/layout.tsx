@@ -72,6 +72,7 @@ type ArizaNotificationRow = {
   date?: string | null
   type?: string | null
   status?: string | null
+  level?: string | null
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -175,14 +176,23 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
 
               if (arizalarData) {
                 ;(arizalarData as ArizaNotificationRow[]).forEach((ar) => {
-                  if (ar.type === 'tushuntirish' || ar.status === 'rejected' || ar.status === 'approved') {
+                  const isStaffWarning = ar.type === 'ogohlantirish'
+                  if (isStaffWarning || ar.type === 'tushuntirish' || ar.status === 'rejected' || ar.status === 'approved') {
                     combinedList.push({
                       id: `ariza-${ar.id}`,
-                      title: ar.title || (ar.type === 'tushuntirish' ? 'Tushuntirish xati talabi' : 'Ariza holati o\'zgardi'),
+                      title: ar.title || (
+                        isStaffWarning
+                          ? 'Ogohlantirish'
+                          : ar.type === 'tushuntirish' ? 'Tushuntirish xati talabi' : 'Ariza holati o\'zgardi'
+                      ),
                       desc: ar.text || ar.reason || '',
                       time: ar.date || new Date().toISOString(),
                       type: 'ariza',
-                      level: ar.status === 'rejected' ? 'danger' : ar.status === 'approved' ? 'success' : 'warning'
+                      level: isStaffWarning
+                        // An 'info' eslatma is not a disciplinary warning —
+                        // colouring it red would misrepresent it.
+                        ? (ar.level === 'warning' || ar.level === 'critical' ? 'danger' : 'info')
+                        : ar.status === 'rejected' ? 'danger' : ar.status === 'approved' ? 'success' : 'warning'
                     })
                   }
                 })

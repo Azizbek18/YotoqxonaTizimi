@@ -6,11 +6,11 @@ type Props = {
   searchParams: Promise<{ k?: string }>
 }
 
-export default async function ZamdekanRegisterPage({ searchParams }: Props) {
+export default async function DekanRegisterPage({ searchParams }: Props) {
   const { k } = await searchParams
-  if (!validateStaffLink('zamdekan', k)) {
+  if (!validateStaffLink('dekan', k)) {
     notFound()
   }
 
-  return <StaffRegisterForm role="zamdekan" linkKey={k!} />
+  return <StaffRegisterForm role="dekan" linkKey={k!} />
 }

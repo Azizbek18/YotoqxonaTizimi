@@ -11,6 +11,8 @@ import {
   normalizeJshshir,
   normalizePassport,
 } from '@/lib/permit-validation'
+import { normalizeDirection } from '@/lib/directions'
+import { isPermitFacultyValue } from '@/lib/faculties'
 import { writeAuditLog } from '@/lib/audit-log'
 import { verifyFileClaim } from '@/lib/receipt-claim'
 import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
@@ -43,8 +45,11 @@ export async function POST(request: NextRequest) {
     const email = value(form, 'email', 254).toLowerCase()
     const phone = value(form, 'phone', 32)
     const gender = value(form, 'gender', 10)
-    const faculty = value(form, 'faculty', 160)
-    const direction = value(form, 'direction', 200)
+    const faculty = value(form, 'faculty', 160).toLowerCase()
+    // Yo'nalish endi ro'yxatdan tanlanadi — kanonik qiymatga keltiriladi, aks
+    // holda bitta yo'nalish "amaliy-matematika" va "Amaliy matematika" bo'lib
+    // ikkiga bo'linib ketadi (guruhlash, filtr va eksport buziladi).
+    const direction = normalizeDirection(value(form, 'direction', 200))
     const course = Number(value(form, 'course', 1))
 
     if (!isValidPassport(passport) || !isValidJshshir(jshshir)) {
@@ -53,7 +58,14 @@ export async function POST(request: NextRequest) {
     if (fullName.length < 3 || !/^\S+@\S+\.\S+$/.test(email) || phone.length < 7) {
       return NextResponse.json({ error: 'Shaxsiy ma’lumotlar to‘liq yoki to‘g‘ri kiritilmagan.' }, { status: 400 })
     }
-    if (!['male', 'female'].includes(gender) || !faculty || !direction || !Number.isInteger(course) || course < 1 || course > 6) {
+    if (
+      !['male', 'female'].includes(gender)
+      || !isPermitFacultyValue(faculty)
+      || !direction
+      || !Number.isInteger(course)
+      || course < 1
+      || course > 6
+    ) {
       return NextResponse.json({ error: 'Ta’lim ma’lumotlari noto‘g‘ri.' }, { status: 400 })
     }
 

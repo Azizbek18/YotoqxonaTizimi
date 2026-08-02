@@ -6,16 +6,16 @@ describe('admin users delete target resolution', () => {
     expect(() => resolveDeleteTarget(
       'users',
       null,
-      { id: 'zamdekan-id', role: 'zamdekan' },
+      { id: 'dekan-id', role: 'dekan' },
     )).toThrow(/manbasi/)
   })
 
-  it('blocks zamdekan deletion even when the submitted source is correct', () => {
+  it('blocks dekan deletion even when the submitted source is correct', () => {
     expect(() => resolveDeleteTarget(
       'staff',
       null,
-      { id: 'zamdekan-id', role: 'zamdekan' },
-    )).toThrow(/Zamdekan/)
+      { id: 'dekan-id', role: 'dekan' },
+    )).toThrow(/Dekan/)
   })
 
   it('rejects ambiguous and missing profile rows', () => {

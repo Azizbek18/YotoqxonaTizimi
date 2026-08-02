@@ -1,7 +1,7 @@
 /**
  * Canonical internal gender codes. Every form must store 'male'/'female' —
  * never the Uzbek display words directly — because several places (the
- * zamdekan room map's mixed-gender check, admin reports, room assignment)
+ * dekan room map's mixed-gender check, admin reports, room assignment)
  * compare this value with `=== 'male'`/`=== 'female'`. A free-text field
  * that let someone type "Erkak"/"Ayol" straight into the column silently
  * broke those comparisons: rooms full of only male students got flagged as
@@ -35,7 +35,7 @@ export function genderLabel(value: string | null | undefined): string {
 }
 
 /**
- * Shared color identity for gender across the zamdekan panel (room map,
+ * Shared color identity for gender across the dekan panel (room map,
  * arizalar avatars/badges) — sky for male, rose for female everywhere, so
  * the same entity never gets recolored between pages.
  */

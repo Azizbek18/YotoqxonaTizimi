@@ -5,10 +5,10 @@ import { getApiError } from '@/server/http/api-error'
 
 export async function GET(request: NextRequest) {
   try {
-    // Permit hujjatlari zamdekan ish oqimiga tegishli. Tarbiyachi o'z
+    // Permit hujjatlari dekan ish oqimiga tegishli. Tarbiyachi o'z
     // qavati talabalarini boshqarsa ham, barcha fakultetlarning qabul
     // yo'llanmalarini ko'rish vakolatiga ega emas.
-    const { staff } = await requireActiveStaff(request, ['admin', 'zamdekan'])
+    const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
 
     const id = request.nextUrl.searchParams.get('id')
     if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     if (!permit) return NextResponse.json({ error: 'Yo‘llanma topilmadi.' }, { status: 404 })
 
     if (
-      staff.role === 'zamdekan'
+      staff.role === 'dekan'
       && (!staff.faculty || staff.faculty.trim().toLocaleLowerCase() !== permit.faculty.trim().toLocaleLowerCase())
     ) {
       return NextResponse.json({ error: 'Ruxsat berilmadi.' }, { status: 403 })

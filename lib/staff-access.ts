@@ -1,7 +1,7 @@
 import 'server-only'
 import { safeEqual } from '@/lib/security'
 
-export type StaffRole = 'admin' | 'tarbiyachi' | 'zamdekan'
+export type StaffRole = 'admin' | 'tarbiyachi' | 'dekan'
 
 function envByRole(role: StaffRole) {
   if (role === 'admin') {
@@ -17,9 +17,9 @@ function envByRole(role: StaffRole) {
   }
 
   return {
-    linkKey: process.env.ZAMDEKAN_PORTAL_KEY,
-    accessCode: process.env.ZAMDEKAN_REGISTER_CODE,
-    allowedIds: process.env.ZAMDEKAN_ALLOWED_IDS,
+    linkKey: process.env.DEKAN_PORTAL_KEY,
+    accessCode: process.env.DEKAN_REGISTER_CODE,
+    allowedIds: process.env.DEKAN_ALLOWED_IDS,
   }
 }
 
@@ -31,7 +31,7 @@ export function validateStaffLink(role: StaffRole, key: string | null | undefine
 }
 
 export function validateStaffId(staffId: string | null | undefined) {
-  const { allowedIds } = envByRole('zamdekan')
+  const { allowedIds } = envByRole('dekan')
   if (!allowedIds || !staffId) return false
   const normalized = staffId.trim()
   const list = allowedIds.split(',').map((item) => item.trim()).filter(Boolean)
@@ -39,6 +39,6 @@ export function validateStaffId(staffId: string | null | undefined) {
 }
 
 export function validateRegisterCode(code: string | null | undefined) {
-  const { accessCode } = envByRole('zamdekan')
+  const { accessCode } = envByRole('dekan')
   return safeEqual(accessCode, code ?? undefined)
 }

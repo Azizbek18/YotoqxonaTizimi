@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server'
 import { getAdminSession } from '@/lib/server-admin'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { ApiError } from '@/server/http/api-error'
+import { normalizeDirection } from '@/lib/directions'
 import type { StaffRow, UserRow } from '@/types/database.generated'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 
 type UserSource = 'users' | 'staff'
-type UserRole = 'talaba' | 'tarbiyachi' | 'zamdekan' | 'admin'
+type UserRole = 'talaba' | 'tarbiyachi' | 'dekan' | 'admin'
 
 export function resolveDeleteTarget(
   submittedSource: UserSource,
@@ -22,8 +23,8 @@ export function resolveDeleteTarget(
   if (submittedSource !== resolvedSource) {
     throw new ApiError(409, "Foydalanuvchi manbasi eskirgan yoki noto'g'ri")
   }
-  if (staff?.role === 'zamdekan') {
-    throw new ApiError(403, "Zamdekan profilini admin panelidan o'chirib bo'lmaydi")
+  if (staff?.role === 'dekan') {
+    throw new ApiError(403, "Dekan profilini admin panelidan o'chirib bo'lmaydi")
   }
   return resolvedSource
 }
@@ -209,7 +210,6 @@ function buildStudentUpdates(body: Record<string, unknown>) {
   const stringFields: Array<keyof AdminUserUpdates> = [
     'full_name',
     'faculty',
-    'direction',
     'group',
     'room_number',
     'middle_name',
@@ -244,6 +244,21 @@ function buildStudentUpdates(body: Record<string, unknown>) {
     const normalizedPhone = normalizeOptionalString(body.phone)
     if (normalizedPhone !== undefined) {
       updates.phone_number = normalizedPhone
+    }
+  }
+
+  // Yo'nalish kanonik ro'yxatdan bo'lishi shart — bo'lmasa bir yo'nalish
+  // ikki xil yozuvda saqlanib, guruhlash/filtr/eksport buziladi.
+  if ('direction' in body) {
+    const rawDirection = normalizeOptionalString(body.direction)
+    if (rawDirection !== undefined) {
+      if (rawDirection === null) {
+        updates.direction = null
+      } else {
+        const canonical = normalizeDirection(rawDirection)
+        if (!canonical) throw new ApiError(400, "Yo'nalish noto'g'ri")
+        updates.direction = canonical
+      }
     }
   }
 
@@ -412,11 +427,11 @@ export async function PATCH(request: Request) {
       return jsonError("Staff yozuvini talaba roliga o'tkazib bo'lmaydi", 400)
     }
 
-    // Zamdekan admindan yuqori lavozim: bu rolga faqat maxfiy ro'yxatdan
+    // Dekan admindan yuqori lavozim: bu rolga faqat maxfiy ro'yxatdan
     // o'tish oqimi (portal link + register kod + ruxsat etilgan ID) orqali
     // tayinlanadi, admin panelidan emas.
-    if (role === 'zamdekan') {
-      return jsonError("Zamdekan roli faqat rasmiy ro'yxatdan o'tish orqali beriladi", 403)
+    if (role === 'dekan') {
+      return jsonError("Dekan roli faqat rasmiy ro'yxatdan o'tish orqali beriladi", 403)
     }
 
     if (role && !['talaba', 'tarbiyachi', 'admin'].includes(role)) {
@@ -444,8 +459,8 @@ export async function PATCH(request: Request) {
         return jsonError('Xodim profilini tekshirib bo‘lmadi', 500)
       }
 
-      if (existingStaff?.role === 'zamdekan') {
-        return jsonError("Zamdekan profilini admin panelidan o'zgartirib bo'lmaydi", 403)
+      if (existingStaff?.role === 'dekan') {
+        return jsonError("Dekan profilini admin panelidan o'zgartirib bo'lmaydi", 403)
       }
     }
 

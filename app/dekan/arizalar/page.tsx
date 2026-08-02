@@ -17,15 +17,16 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { useZamdekanScope } from '@/lib/hooks/useZamdekanScope'
+import { useDekanScope } from '@/lib/hooks/useDekanScope'
 import { getAuthHeaders } from '@/lib/auth-session'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import {
   approvePermitRequest,
-  fetchZamdekanOverview,
+  fetchDekanOverview,
   rejectPermitRequest,
 } from '@/features/permits/client/admin-api'
 import { permitFacultyLabel } from '@/lib/faculties'
+import { directionLabel } from '@/lib/directions'
 import { genderAccent, genderLabel } from '@/lib/gender'
 
 interface PermitRequest {
@@ -67,12 +68,10 @@ function ArizalarContent() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected' | 'registered'>('pending')
   const [selectedReq, setSelectedReq] = useState<PermitRequest | null>(null)
-  const { faculty: zamdekanFaculty, resolved: facultyResolved } = useZamdekanScope()
+  const { faculty: dekanFaculty, resolved: facultyResolved } = useDekanScope()
 
-  // Room Assignment Modal
-  const [roomModalOpen, setRoomModalOpen] = useState(false)
-  const [roomOccupancy, setRoomOccupancy] = useState<Record<string, number>>({})
-  const [selectedRoom, setSelectedRoom] = useState<string>('')
+  // Approve confirmation
+  const [approveModalOpen, setApproveModalOpen] = useState(false)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [processing, setProcessing] = useState(false)
@@ -90,20 +89,18 @@ function ArizalarContent() {
     window.open(result.url, '_blank', 'noopener,noreferrer')
   }
 
-  // Fetch all requests (scoped to this zamdekan's own faculty)
+  // Fetch all requests (scoped to this dekan's own faculty)
   const fetchRequests = async (faculty: string | null) => {
     setLoading(true)
     try {
       if (!faculty) {
         setRequests([])
-        setRoomOccupancy({})
         setLoading(false)
         return
       }
 
-      const overview = await fetchZamdekanOverview()
+      const overview = await fetchDekanOverview()
       setRequests(overview.requests as PermitRequest[])
-      setRoomOccupancy(overview.roomOccupancy)
     } catch (err) {
       console.error('Error fetching permits:', err)
       toast.error("Yo'llanmalarni yuklashda xatolik yuz berdi")
@@ -114,8 +111,8 @@ function ArizalarContent() {
 
   useEffect(() => {
     if (!facultyResolved) return
-    fetchRequests(zamdekanFaculty)
-  }, [facultyResolved, zamdekanFaculty])
+    fetchRequests(dekanFaculty)
+  }, [facultyResolved, dekanFaculty])
 
   // Auto-open request from URL query params
   useEffect(() => {
@@ -168,7 +165,7 @@ function ArizalarContent() {
       req.email,
       genderLabel(req.gender),
       permitFacultyLabel(req.faculty),
-      req.direction,
+      directionLabel(req.direction),
       `${req.course}-kurs`,
       req.room_number ? `№-${req.room_number}` : 'Biriktirilmagan',
       req.status,
@@ -185,38 +182,23 @@ function ArizalarContent() {
     toast.success("Excel muvaffaqiyatli yuklab olindi!")
   }
 
-  // Handle room assignment
-  const handleAssignRoom = async () => {
+  // Handle approval — room assignment happens later, in the roomless-students
+  // queue on the Xonalar page, once the student has self-registered.
+  const handleApprove = async () => {
     if (!selectedReq) return
-    if (!selectedRoom) {
-      toast.error('Xona tanlang!')
-      return
-    }
-
-    const currentOccupancy = roomOccupancy[selectedRoom] || 0
-    if (currentOccupancy >= 4) {
-      toast.error("Bu xonada bo'sh joy yo'q (maksimal 4 kishi)!")
-      return
-    }
 
     setProcessing(true)
     try {
-      await approvePermitRequest(selectedReq.id, selectedRoom)
+      await approvePermitRequest(selectedReq.id)
 
-      toast.success(`${selectedReq.full_name}ga ${selectedRoom}-xona biriktirildi va ariza tasdiqlandi!`)
-      setRoomModalOpen(false)
-      setSelectedRoom('')
+      toast.success(`${selectedReq.full_name}ning arizasi tasdiqlandi. Xona ro'yxatdan o'tgach, Xonalar sahifasidagi navbatda biriktiriladi.`)
+      setApproveModalOpen(false)
 
-      // Auto-trigger Excel download for this approved request
-      const updatedReq = { ...selectedReq, status: 'approved' as const, room_number: selectedRoom }
-      exportToExcel([updatedReq])
-
-      // Refresh list
-      await fetchRequests(zamdekanFaculty)
+      await fetchRequests(dekanFaculty)
       setSelectedReq(null)
     } catch (err) {
       console.error(err)
-      toast.error("Xona biriktirishda xatolik yuz berdi")
+      toast.error("Tasdiqlashda xatolik yuz berdi")
     } finally {
       setProcessing(false)
     }
@@ -238,7 +220,7 @@ function ArizalarContent() {
       setRejectModalOpen(false)
       setRejectReason('')
 
-      await fetchRequests(zamdekanFaculty)
+      await fetchRequests(dekanFaculty)
       setSelectedReq(null)
     } catch (err) {
       console.error(err)
@@ -247,9 +229,6 @@ function ArizalarContent() {
       setProcessing(false)
     }
   }
-
-  // Generate 150 rooms
-  const roomsList = Array.from({ length: 150 }, (_, i) => String(i + 1))
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -260,8 +239,8 @@ function ArizalarContent() {
           <div>
             <h1 className={`text-lg font-black uppercase tracking-wider ${textStrong}`}>Yo‘llanmalar ro‘yxati</h1>
             <p className={`text-[10px] font-medium ${textMuted}`}>
-              {zamdekanFaculty
-                ? `${zamdekanFaculty.toUpperCase()} fakulteti bo'yicha kelib tushgan ruxsatnomalar`
+              {dekanFaculty
+                ? `${dekanFaculty.toUpperCase()} fakulteti bo'yicha kelib tushgan ruxsatnomalar`
                 : 'Kelib tushgan ruxsatnomalarni tekshirish va tasdiqlash'}
             </p>
           </div>
@@ -275,7 +254,7 @@ function ArizalarContent() {
           </button>
         </div>
 
-        {facultyResolved && !zamdekanFaculty && (
+        {facultyResolved && !dekanFaculty && (
           <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs font-bold flex items-start gap-2">
             <AlertTriangle size={16} className="shrink-0 mt-0.5" />
             <span>
@@ -285,7 +264,29 @@ function ArizalarContent() {
         )}
 
         {/* Filters */}
-        <div className={`p-4 rounded-3xl border ${surfaceBg} flex flex-col md:flex-row md:items-center justify-between gap-3`}>
+        <div className={`p-4 rounded-3xl border ${surfaceBg} flex flex-col gap-3`}>
+          {/* Search Box — o'z qatorida, to'liq kenglikda */}
+          <div className="relative">
+            <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${textMuted}`} />
+            <input
+              type="text"
+              placeholder="Qidirish (ism, pasport, JShSHIR, fakultet)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`w-full text-sm font-medium py-3.5 pl-12 pr-11 rounded-2xl outline-none border transition-all placeholder:font-normal focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 ${inputBg}`}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                aria-label="Qidiruvni tozalash"
+                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors hover:bg-slate-200/70 dark:hover:bg-white/10 ${textMuted}`}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
           {/* Status Tabs */}
           <div className="flex flex-wrap gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-2xl">
             {(['pending', 'approved', 'rejected', 'registered'] as const).map((status) => {
@@ -327,18 +328,6 @@ function ArizalarContent() {
                 </button>
               )
             })}
-          </div>
-
-          {/* Search Box */}
-          <div className="relative flex-1 md:max-w-xs">
-            <Search size={14} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${textMuted}`} />
-            <input
-              type="text"
-              placeholder="Qidirish (ism, pasport, fakultet)..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full text-xs py-2.5 pl-9 pr-4 rounded-xl outline-none border transition-all ${inputBg}`}
-            />
           </div>
         </div>
 
@@ -392,7 +381,7 @@ function ArizalarContent() {
                         ) : null}
                       </div>
                       <p className={`text-[10px] mt-1 ${textMuted}`}>
-                        {permitFacultyLabel(req.faculty)} • {req.direction} • {req.course}-kurs
+                        {permitFacultyLabel(req.faculty)} • {directionLabel(req.direction)} • {req.course}-kurs
                       </p>
                       </div>
                     </div>
@@ -492,8 +481,8 @@ function ArizalarContent() {
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-white/5">
                   <span className={textMuted}>Yo‘nalish</span>
-                  <span className={`font-bold text-right max-w-[60%] truncate ${textStrong}`} title={selectedReq.direction}>
-                    {selectedReq.direction}
+                  <span className={`font-bold text-right max-w-[60%] truncate ${textStrong}`} title={directionLabel(selectedReq.direction)}>
+                    {directionLabel(selectedReq.direction)}
                   </span>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-white/5">
@@ -535,10 +524,10 @@ function ArizalarContent() {
                     <XCircle size={14} /> Rad etish
                   </button>
                   <button
-                    onClick={() => setRoomModalOpen(true)}
+                    onClick={() => setApproveModalOpen(true)}
                     className="flex items-center justify-center gap-1.5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider bg-indigo-500 text-white hover:bg-indigo-600 transition-all"
                   >
-                    <CheckCircle size={14} /> Xona biriktirish
+                    <CheckCircle size={14} /> Tasdiqlash
                   </button>
                 </div>
               )}
@@ -554,47 +543,20 @@ function ArizalarContent() {
         </AnimatePresence>
       </div>
 
-      {/* 3. Assign Room Modal */}
+      {/* 3. Approve Confirmation Modal */}
       <ConfirmModal
-        isOpen={roomModalOpen && !!selectedReq}
-        title="Xona biriktirish"
+        isOpen={approveModalOpen && !!selectedReq}
+        title="Arizani tasdiqlash"
         description={selectedReq ? `${selectedReq.full_name} (${genderLabel(selectedReq.gender)})` : undefined}
-        maxWidthClass="max-w-lg"
-        onClose={() => setRoomModalOpen(false)}
-        onConfirm={handleAssignRoom}
-        confirmText="Tasdiqlash va Excel yaratish"
+        onClose={() => setApproveModalOpen(false)}
+        onConfirm={handleApprove}
+        confirmText="Tasdiqlash"
         isLoading={processing}
       >
-        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[50vh] overflow-y-auto pr-1 custom-scrollbar">
-          {roomsList.map((room) => {
-            const count = roomOccupancy[room] || 0
-            const isFull = count >= 4
-            const isSelected = selectedRoom === room
-
-            return (
-              <button
-                key={room}
-                type="button"
-                disabled={isFull}
-                onClick={() => setSelectedRoom(room)}
-                className={`px-2.5 py-2.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
-                  isSelected
-                    ? 'border-indigo-500 bg-indigo-500 text-white'
-                    : isFull
-                      ? 'border-red-500/20 bg-red-500/5 text-red-400 opacity-40 cursor-not-allowed'
-                      : isLight
-                        ? 'border-slate-200 bg-white hover:border-indigo-300 text-slate-900'
-                        : 'border-white/5 bg-white/[0.02] hover:border-indigo-500/30 text-white'
-                }`}
-              >
-                <span className="text-xs font-black">{room}-xona</span>
-                <span className="text-[9px] font-bold mt-0.5">
-                  {isFull ? 'To‘la' : `${count}/4 band`}
-                </span>
-              </button>
-            )
-          })}
-        </div>
+        <p>
+          Ariza tasdiqlanadi va talaba ro&apos;yxatdan o&apos;ta oladi. Xona keyinroq, ro&apos;yxatdan o&apos;tgach,
+          <strong> Xonalar</strong> sahifasidagi xonasiz talabalar navbatida biriktiriladi.
+        </p>
       </ConfirmModal>
 
       {/* 4. Reject Request Modal */}
@@ -623,7 +585,7 @@ function ArizalarContent() {
   )
 }
 
-export default function ZamdekanArizalarPage() {
+export default function DekanArizalarPage() {
   return (
     <Suspense fallback={
       <div className="flex h-64 items-center justify-center">

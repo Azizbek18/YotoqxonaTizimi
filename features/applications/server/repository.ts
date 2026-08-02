@@ -19,9 +19,11 @@ export function createApplicationRepository() {
     async list(studentId: string, kind: 'documents' | 'warnings' | 'chat' | 'notifications', limit: number) {
       let query = supabase.from('arizalar').select('*').eq('student_id', studentId)
       if (kind === 'chat') query = query.eq('type', 'chat')
-      if (kind === 'documents' || kind === 'notifications') {
-        query = query.in('type', ['ariza', 'tushuntirish'])
-      }
+      // 'documents' is the student's own paperwork ("Murojaatlarim"), so a
+      // staff-issued 'ogohlantirish' must stay out of it — but it does
+      // belong in the notification bell alongside it.
+      if (kind === 'documents') query = query.in('type', ['ariza', 'tushuntirish'])
+      if (kind === 'notifications') query = query.in('type', ['ariza', 'tushuntirish', 'ogohlantirish'])
       if (kind === 'warnings') {
         query = query.neq('status', 'draft').neq('type', 'chat').in('level', ['warning', 'critical'])
       }

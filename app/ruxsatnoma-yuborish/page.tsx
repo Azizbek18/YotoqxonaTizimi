@@ -13,6 +13,7 @@ import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
+import { directionsForFaculty } from '@/lib/directions'
 
 interface Particle {
   id: number
@@ -994,6 +995,11 @@ export default function RuxsatnomaYuborish() {
                                   onBlur={() => setFocusedField(null)}
                                   onChange={(val) => {
                                     setFaculty(val)
+                                    // Yo'nalishlar fakultetga bog'liq — eskisi
+                                    // yangi fakultetda mavjud bo'lmasligi mumkin
+                                    setDirection((prev) =>
+                                      directionsForFaculty(val).some((option) => option.value === prev) ? prev : ''
+                                    )
                                     playSound('keypress')
                                   }}
                                   options={[...PERMIT_FACULTIES]}
@@ -1009,13 +1015,13 @@ export default function RuxsatnomaYuborish() {
                           <div className="space-y-1 sm:col-span-2">
                             <div className="flex justify-between items-center ml-2">
                               <label className={`text-[10px] sm:text-xs font-black uppercase tracking-widest block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Yo&apos;nalish / Guruh</label>
-                              {direction.trim().length > 3 && (
+                              {direction.trim().length > 0 && (
                                 <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
                               )}
                             </div>
                             <div className={`cyber-border ${focusedField === 'direction' ? 'focused' : ''}`}>
                               <div className="cyber-input-inner relative">
-                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'direction' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-500'}`}>
+                                <div className={`absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none transition-all duration-300 ${focusedField === 'direction' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-500'}`}>
                                   <GraduationCap size={16} />
                                 </div>
 
@@ -1023,20 +1029,28 @@ export default function RuxsatnomaYuborish() {
                                   <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-indigo-500/10 blur-[6px] pointer-events-none" />
                                 )}
 
-                                <input
-                                  type="text"
+                                {/* Erkin matn emas, ro'yxatdan tanlash: "Amaliy
+                                    matematika" va "amaliy-matematika" bir xil
+                                    yo'nalish sifatida saqlanishi uchun */}
+                                <CustomSelect
                                   value={direction}
                                   onFocus={() => {
                                     setFocusedField('direction')
                                     playSound('focus')
                                   }}
                                   onBlur={() => setFocusedField(null)}
-                                  onChange={(e) => handleInputChange(e, setDirection, 'direction')}
-                                  placeholder="Dasturiy muhandislik, 301-guruh"
-                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-sm sm:text-base outline-none transition-colors duration-300 ${
-                                    isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
+                                  onChange={(val) => {
+                                    setDirection(val)
+                                    playSound('keypress')
+                                  }}
+                                  placeholder="Yo'nalishni tanlang"
+                                  options={directionsForFaculty(faculty).map((option) => ({
+                                    value: option.value,
+                                    label: option.label,
+                                  }))}
+                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-sm sm:text-base transition-colors duration-300 ${
+                                    isLight ? 'text-slate-900' : 'text-white'
                                   }`}
-                                  required
                                 />
                               </div>
                             </div>
@@ -1274,7 +1288,7 @@ export default function RuxsatnomaYuborish() {
               <div className="space-y-2">
                 <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-emerald-400">Muvaffaqiyatli yuborildi!</h2>
                 <p className={`text-xs leading-relaxed font-sans ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                  Sizning yotoqxona ruxsatnoma yo&apos;llanmangiz ko&apos;rib chiqish uchun qabul qilindi. Hujjat Zamdekan tomonidan tasdiqlanganidan so&apos;ng sizga xona biriktiriladi va tizimda to&apos;liq ro&apos;yxatdan o&apos;tishingiz mumkin bo&apos;ladi.
+                  Sizning yotoqxona ruxsatnoma yo&apos;llanmangiz ko&apos;rib chiqish uchun qabul qilindi. Hujjat Dekan tomonidan tasdiqlanganidan so&apos;ng sizga xona biriktiriladi va tizimda to&apos;liq ro&apos;yxatdan o&apos;tishingiz mumkin bo&apos;ladi.
                 </p>
               </div>
 

@@ -6,9 +6,9 @@ import { createStaffAccountRepository, type StaffAccountRepository } from './rep
 import { getPasswordPolicyError } from '@/lib/password-policy'
 
 // Creating a tarbiyachi account is admin-only (see app/api/admin/staff-accounts).
-// It used to also be reachable by zamdekan, scoped by a "does this floor
+// It used to also be reachable by dekan, scoped by a "does this floor
 // have any of my faculty's students" check — that check turned out to be
-// both incomplete (didn't verify gender) and bypassable (a zamdekan could
+// both incomplete (didn't verify gender) and bypassable (a dekan could
 // temporarily reassign one of their own students onto the target floor,
 // create the account, then move the student back), and dorms aren't
 // faculty-segregated by floor in the first place, so there was no way to

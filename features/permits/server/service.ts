@@ -1,7 +1,7 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
-import { createAppSettingsService } from '@/features/app-settings/server/service'
-import type { ZamdekanOverview } from '../types'
+import { sendPermitApprovedEmail } from '@/lib/email'
+import type { DekanOverview } from '../types'
 import { createPermitAdminRepository, type PermitAdminRepository } from './repository'
 
 function sameFaculty(value: string | null, faculty: string) {
@@ -10,9 +10,9 @@ function sameFaculty(value: string | null, faculty: string) {
 
 export function createPermitAdminService(repository: PermitAdminRepository = createPermitAdminRepository()) {
   return {
-    async overview(facultyValue: string | null): Promise<ZamdekanOverview> {
+    async overview(facultyValue: string | null): Promise<DekanOverview> {
       const faculty = facultyValue?.trim()
-      if (!faculty) throw new ApiError(403, 'Zamdekan fakulteti biriktirilmagan')
+      if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
       const { permits, users } = await repository.load()
       const students = users.filter((user) => user.role === 'talaba')
       const scoped = permits.filter((permit) => sameFaculty(permit.faculty, faculty))
@@ -23,13 +23,13 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
         return { ...permit, warning_count: linked?.warning_count ?? 0, blacklisted: linked?.blacklisted ?? false }
       })
       // Room occupancy/capacity math needs every occupant building-wide
-      // (rooms aren't segregated by faculty), but a zamdekan must only see
+      // (rooms aren't segregated by faculty), but a dekan must only see
       // the identifying details of students in their own faculty — PII AND
       // demographic/identifying metadata (auth id, faculty, direction,
       // course) for other faculties' occupants is redacted, not the whole
       // row, so occupancy counts and gender-conflict checks below still
       // work. Only `gender` survives redaction, since the room map's
-      // mixed-gender warning genuinely needs it building-wide; a zamdekan
+      // mixed-gender warning genuinely needs it building-wide; a dekan
       // has no jurisdiction to act on another faculty's student, so their
       // auth id is dropped too (the UI's "remove from room" action keys off
       // it, and the server independently re-checks faculty ownership
@@ -80,13 +80,6 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
             updated_at: '',
           }
         })
-      const roomOccupancy: Record<string, number> = Object.create(null)
-      usersWithRooms.forEach((user) => {
-        if (user.room_number) roomOccupancy[user.room_number] = (roomOccupancy[user.room_number] ?? 0) + 1
-      })
-      approvedPermitsWithRooms.forEach((permit) => {
-        if (permit.room_number) roomOccupancy[permit.room_number] = (roomOccupancy[permit.room_number] ?? 0) + 1
-      })
       const courses: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
       const faculties: Record<string, number> = Object.create(null)
       const addDistribution = (course: number | null, targetFaculty: string | null) => {
@@ -103,7 +96,6 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
       return {
         faculty,
         requests,
-        roomOccupancy,
         usersWithRooms,
         approvedPermitsWithRooms,
         dashboard: {
@@ -122,7 +114,7 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
 
     async update(facultyValue: string | null, value: unknown) {
       const faculty = facultyValue?.trim()
-      if (!faculty) throw new ApiError(403, 'Zamdekan fakulteti biriktirilmagan')
+      if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, 'So\'rov noto\'g\'ri')
       const input = value as Record<string, unknown>
       const id = typeof input.id === 'string' ? input.id.trim() : ''
@@ -135,23 +127,14 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
         throw new ApiError(409, 'Bu yo\'llanma allaqachon ko\'rib chiqilgan')
       }
       if (action === 'approve') {
-        const roomNumber = typeof input.roomNumber === 'string' ? input.roomNumber.trim().slice(0, 20) : ''
-        if (!roomNumber) throw new ApiError(400, 'Xona tanlanmagan')
-        const { defaultRoomCapacity } = await createAppSettingsService().get()
-        // Room existence is checked inside the RPC itself (same advisory
-        // lock/transaction as the capacity check) — a separate SELECT here
-        // first would leave a window where the room could be deleted from
-        // floor_room_layout between the check and the actual approval.
-        let request
-        try {
-          request = await repository.approveIntoRoom(id, roomNumber, defaultRoomCapacity)
-        } catch (error) {
-          if ((error as { code?: string } | null)?.code === 'P0002') {
-            throw new ApiError(404, 'Bunday xona xonalar sxemasida topilmadi')
-          }
-          throw error
-        }
-        if (!request) throw new ApiError(409, 'Bu xonada bo\'sh joy yo\'q yoki yo\'llanma allaqachon ko\'rib chiqilgan')
+        // Approval only flips the status — the student registers afterwards
+        // and then waits, roomless, in the separate room-assignment queue
+        // (features/room-assignment) rather than getting a room up front.
+        const request = await repository.update(id, { status: 'approved', room_number: null, reject_reason: null })
+        if (!request) throw new ApiError(409, 'Bu yo\'llanma allaqachon ko\'rib chiqilgan')
+        // Xat yuborilmasa ham tasdiqlash kuchda qoladi — sendMail o'zi
+        // xatolarni yutadi, shuning uchun bu yerda try/catch shart emas.
+        await sendPermitApprovedEmail(request.email, request.full_name)
         return { success: true as const, request }
       }
       const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 2000) : ''

@@ -8,11 +8,11 @@ import toast from 'react-hot-toast'
 import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/password-policy'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 
-type StaffRole = 'zamdekan'
+type StaffRole = 'dekan'
 
 const ROLE_META: Record<StaffRole, { title: string; icon: React.ReactNode; loginUrl: string }> = {
-  zamdekan: {
-    title: "Zamdekan ro'yxatdan o'tishi",
+  dekan: {
+    title: "Dekan ro'yxatdan o'tishi",
     icon: <UserCog size={22} />,
     loginUrl: '/login',
   },

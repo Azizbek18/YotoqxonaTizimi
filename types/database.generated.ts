@@ -239,6 +239,10 @@ export interface Database {
         Args: { p_user_id: string; p_assigned_floor: number; p_gender: string; p_is_captain: boolean }
         Returns: void
       }
+      create_student_warning_atomic: {
+        Args: { p_student_id: string; p_title: string; p_text: string; p_level: string }
+        Returns: { warning_id: string; new_warning_count: number }[]
+      }
       finalize_payment_analysis: {
         Args: {
           p_payment_id: string

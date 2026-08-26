@@ -148,7 +148,15 @@ export type StudentReportTable = {
   merges: SpreadsheetMerge[]
 }
 
-export function buildStudentReportTable(students: readonly StudentReportRow[]): StudentReportTable {
+/**
+ * `floorOf` lets the caller resolve floors from the admin's qavat tarxi
+ * (see lib/hooks/useRoomFloors). It defaults to the room-number guess so the
+ * pure-function tests and any caller without the map keep their old output.
+ */
+export function buildStudentReportTable(
+  students: readonly StudentReportRow[],
+  floorOf: (roomNumber?: string | null) => number | null = extractFloor,
+): StudentReportTable {
   // Natural room order (1, 2, 10 …) rather than lexicographic, which also
   // groups floors in ascending order since floors derive from room numbers.
   // Students with no room yet go last: the sheet is organised around rooms,
@@ -169,7 +177,7 @@ export function buildStudentReportTable(students: readonly StudentReportRow[]): 
     if (room && last && last.room === room) {
       last.students.push(student)
     } else {
-      roomGroups.push({ room, floor: extractFloor(student.room_number), students: [student] })
+      roomGroups.push({ room, floor: floorOf(student.room_number), students: [student] })
     }
   })
 

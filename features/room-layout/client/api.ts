@@ -1,7 +1,28 @@
 'use client'
 
 import { apiRequest as requestJson } from '@/lib/api-client'
-import type { RoomLayoutBlock } from '../types'
+import type { FloorRoomPlan, RoomFloorStatus, RoomLayoutBlock, RoomNumbering } from '../types'
+
+export async function fetchRoomFloors() {
+  const result = await requestJson<{ rooms: RoomFloorStatus[] }>('/api/room-floors')
+  return result.rooms
+}
+
+export function setRoomFrozen(roomNumber: string, frozen: boolean, reason?: string | null) {
+  return requestJson<{ success: true; roomNumber: string; frozen: boolean }>('/api/room-floors/freeze', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomNumber, frozen, reason: reason ?? null }),
+  })
+}
+
+export function generateRoomFloors(floors: FloorRoomPlan[], numbering: RoomNumbering) {
+  return requestJson<{ success: true; created: number }>('/api/room-floors/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ floors, numbering }),
+  })
+}
 
 export async function fetchFloorLayout(floorNumber: number) {
   const result = await requestJson<{ blocks: RoomLayoutBlock[] }>(`/api/admin/room-layout?floor=${floorNumber}`)

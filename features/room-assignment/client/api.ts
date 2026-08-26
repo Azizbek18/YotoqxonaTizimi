@@ -8,7 +8,7 @@ export async function fetchAssignableStudents() {
   return result.students
 }
 
-export function assignStudentRoom(input: { studentId: string; roomNumber: string | null }) {
+export function assignStudentRoom(input: { studentId: string; roomNumber: string | null; source?: 'user' | 'permit' }) {
   return requestJson<{ success: true }>('/api/dekan/students', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },

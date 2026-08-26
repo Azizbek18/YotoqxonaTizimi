@@ -9,12 +9,79 @@ function sameFaculty(value: string | null | undefined, faculty: string) {
   return (value ?? '').trim().toLocaleLowerCase() === faculty.trim().toLocaleLowerCase()
 }
 
+// Both assignRoomAtomic and assignPermitRoomAtomic raise the same error
+// codes for the same reasons (P0002 room missing, P0004 frozen, P0001
+// generic capacity/gender) — one mapping for both callers.
+function throwForRoomError(error: unknown): never {
+  const code = (error as { code?: string } | null)?.code
+  if (code === 'P0002') {
+    throw new ApiError(404, 'Bunday xona xonalar sxemasida topilmadi')
+  }
+  if (code === 'P0004') {
+    throw new ApiError(409, "Bu xona ta'mirlash tufayli muzlatilgan — talaba joylashtirib bo'lmaydi")
+  }
+  throw error as Error
+}
+
+// Pre-assigns (or clears) a room on an approved-but-unregistered permit.
+// No email here: the approval email already told this person to register,
+// and they have no account yet to receive a personalized "your room is X"
+// notice at — app/api/student/register/route.ts picks up the room the
+// moment they actually do register.
+async function assignPermitRoom(
+  repository: RoomAssignmentRepository,
+  faculty: string,
+  permitId: string,
+  roomNumber: string,
+) {
+  const permit = await repository.findPermit(permitId)
+  if (!permit) throw new ApiError(404, "Yo'llanma topilmadi")
+  if (permit.status !== 'approved') throw new ApiError(409, "Faqat tasdiqlangan yo'llanmalarga xona biriktirish mumkin")
+  if (!sameFaculty(permit.faculty, faculty)) throw new ApiError(403, 'Boshqa fakultet yo\'llanmasini boshqarib bo\'lmaydi')
+
+  if (!roomNumber) {
+    await repository.clearPermitRoom(permitId)
+    return { success: true as const }
+  }
+
+  if (roomNumber === permit.room_number) {
+    return { success: true as const }
+  }
+
+  const { defaultRoomCapacity } = await createAppSettingsService().get()
+  try {
+    const assigned = await repository.assignPermitRoomAtomic(permitId, roomNumber, defaultRoomCapacity)
+    if (!assigned) {
+      throw new ApiError(409, "Bu xonada bo'sh joy yo'q yoki xonada boshqa jinsdagi talaba(lar) bor")
+    }
+  } catch (error) {
+    if (error instanceof ApiError) throw error
+    throwForRoomError(error)
+  }
+  return { success: true as const }
+}
+
 export function createRoomAssignmentService(repository: RoomAssignmentRepository = createRoomAssignmentRepository()) {
   return {
+    // The roomless queue is two things stitched together: real accounts
+    // waiting for a room, and approved yo'llanmalar nobody has
+    // self-registered from yet. A dekan can place either into a room —
+    // see assignRoom's 'permit' branch — so both belong in one list.
     async listStudents(facultyValue: string | null): Promise<FacultyStudentRow[]> {
       const faculty = facultyValue?.trim()
       if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
-      return (await repository.listFacultyStudents(faculty)) as FacultyStudentRow[]
+
+      const [students, permits] = await Promise.all([
+        repository.listFacultyStudents(faculty),
+        repository.listApprovedUnregisteredPermits(faculty),
+      ])
+
+      const rows: FacultyStudentRow[] = [
+        ...students.map((row) => ({ ...row, full_name: row.full_name || 'Noma\'lum', source: 'user' as const })),
+        ...permits.map((row) => ({ ...row, source: 'permit' as const })),
+      ]
+      rows.sort((a, b) => a.full_name.localeCompare(b.full_name, 'uz'))
+      return rows
     },
 
     async assignRoom(facultyValue: string | null, value: unknown) {
@@ -26,6 +93,9 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
       const studentId = typeof input.studentId === 'string' ? input.studentId.trim() : ''
       if (!studentId) throw new ApiError(400, "Talaba tanlanmagan")
       const roomNumber = typeof input.roomNumber === 'string' ? input.roomNumber.trim().slice(0, 20) : ''
+      const source = input.source === 'permit' ? 'permit' as const : 'user' as const
+
+      if (source === 'permit') return assignPermitRoom(repository, faculty, studentId, roomNumber)
 
       const student = await repository.findStudent(studentId)
       if (!student) throw new ApiError(404, 'Talaba topilmadi')
@@ -52,10 +122,8 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
           throw new ApiError(409, "Bu xonada bo'sh joy yo'q yoki xonada boshqa jinsdagi talaba(lar) bor")
         }
       } catch (error) {
-        if ((error as { code?: string } | null)?.code === 'P0002') {
-          throw new ApiError(404, 'Bunday xona xonalar sxemasida topilmadi')
-        }
-        throw error
+        if (error instanceof ApiError) throw error
+        throwForRoomError(error)
       }
       // Faqat haqiqatan biriktirilgandan keyin — yuqoridagi erta return'lar
       // (xona tozalash yoki ayni o'sha xona) xat yuborishga sabab bo'lmaydi.

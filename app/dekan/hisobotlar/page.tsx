@@ -8,6 +8,7 @@ import {
   FileSpreadsheet,
   FileText,
   Filter,
+  FilterX,
   RotateCcw,
   Search,
   Users,
@@ -31,7 +32,7 @@ import {
   buildStudentReportTable,
   downloadTextFile,
 } from '@/lib/student-report-table'
-import { extractFloor } from '@/lib/floor'
+import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { genderLabel, normalizeGender } from '@/lib/gender'
 import { directionLabel, normalizeDirection } from '@/lib/directions'
 
@@ -96,6 +97,8 @@ export default function DekanReportsPage() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
+  const { floors: layoutFloors, floorOf } = useRoomFloors()
+
   const [students, setStudents] = useState<StudentProfileRow[]>([])
   const [payments, setPayments] = useState<FacultyPaymentRecord[]>([])
   const [yearlyContractFee, setYearlyContractFee] = useState<number | null>(null)
@@ -148,12 +151,16 @@ export default function DekanReportsPage() {
       ),
     [students]
   )
+  // Floors come from the admin's qavat tarxi, not from whichever floors the
+  // current students happen to occupy — an empty floor still has to be
+  // selectable, and "1-qavat" has to mean the rooms the admin put there.
   const floors = useMemo(
-    () =>
-      [...new Set(students.map((s) => extractFloor(s.room_number)).filter((f): f is number => f !== null))].sort(
-        (a, b) => a - b
-      ),
-    [students]
+    () => (layoutFloors.length > 0
+      ? layoutFloors
+      : [...new Set(students.map((s) => floorOf(s.room_number)).filter((f): f is number => f !== null))].sort(
+          (a, b) => a - b
+        )),
+    [layoutFloors, students, floorOf]
   )
 
   const filteredStudents = useMemo(() => {
@@ -172,7 +179,7 @@ export default function DekanReportsPage() {
       if (filters.studyType && (student.study_type ?? '').trim() !== filters.studyType) return false
       if (filters.region && (student.region ?? '').trim() !== filters.region) return false
       if (filters.course && String(student.course ?? '') !== filters.course) return false
-      if (filters.floor && String(extractFloor(student.room_number) ?? '') !== filters.floor) return false
+      if (filters.floor && String(floorOf(student.room_number) ?? '') !== filters.floor) return false
       if (filters.onlyCaptains && !student.is_floor_captain) return false
       if (filters.onlyWarned && (student.warning_count ?? 0) === 0) return false
 
@@ -187,7 +194,7 @@ export default function DekanReportsPage() {
 
       return true
     })
-  }, [students, filters, paySummaries])
+  }, [students, filters, paySummaries, floorOf])
 
   const activeFilterChips = useMemo(() => {
     const chips: { key: keyof Filters; label: string }[] = []
@@ -243,7 +250,7 @@ export default function DekanReportsPage() {
     }
     const toastId = toast.loading("Fayl tayyorlanmoqda...")
     try {
-      const { headers, rawRows, displayRows, merges } = buildStudentReportTable(filteredStudents)
+      const { headers, rawRows, displayRows, merges } = buildStudentReportTable(filteredStudents, floorOf)
 
       if (format === 'excel') {
         downloadXlsx({
@@ -361,12 +368,17 @@ export default function DekanReportsPage() {
               {preset.label}
             </button>
           ))}
+          {/* Same rose "clear" signal as the one in the Batafsil filtrlar
+              header, so the action looks like one thing wherever it appears. */}
           <button
             onClick={() => setFilters(EMPTY_FILTERS)}
-            className={`rounded-xl border px-3 py-2 text-[11px] font-bold transition-all hover:scale-[1.03] active:scale-95 ${
-              isLight ? 'border-slate-200 bg-slate-50 text-slate-500' : 'border-white/10 bg-white/5 text-slate-400'
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-bold transition-all hover:scale-[1.03] active:scale-95 ${
+              isLight
+                ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
+                : 'border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
             }`}
           >
+            <FilterX size={13} />
             Filtrlarni tozalash
           </button>
         </div>
@@ -374,10 +386,39 @@ export default function DekanReportsPage() {
 
       {/* Filters */}
       <div className={`rounded-3xl border p-5 ${surface}`}>
-        <h3 className={`mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] ${textMuted}`}>
-          <Filter size={13} />
-          Batafsil filtrlar
-        </h3>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h3 className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] ${textMuted}`}>
+            <Filter size={13} />
+            Batafsil filtrlar
+            {activeFilterChips.length > 0 && (
+              <span className="rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[9px] leading-none text-indigo-500 dark:text-indigo-300">
+                {activeFilterChips.length}
+              </span>
+            )}
+          </h3>
+
+          {/* Always rendered in the same spot (disabled when there is nothing
+              to clear) rather than appearing only once filters are set — a
+              button that pops in and out is exactly the one users can't find
+              when they need it. */}
+          <button
+            onClick={() => setFilters(EMPTY_FILTERS)}
+            disabled={activeFilterChips.length === 0}
+            title="Barcha filtrlarni tozalash"
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 ${
+              activeFilterChips.length === 0
+                ? isLight
+                  ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
+                  : 'cursor-not-allowed border-white/10 bg-white/5 text-slate-500'
+                : isLight
+                  ? 'border-rose-200 bg-rose-50 text-rose-600 hover:border-rose-300 hover:bg-rose-100'
+                  : 'border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300'
+            }`}
+          >
+            <FilterX size={13} />
+            Filtrlarni tozalash
+          </button>
+        </div>
 
         <div className="relative mb-4">
           <Search size={16} className={`pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 ${textMuted}`} />
@@ -561,6 +602,21 @@ export default function DekanReportsPage() {
                 <X size={11} />
               </button>
             ))}
+
+            {/* Second, contextual clear: on mobile the filter grid is one
+                column tall, so the header button is far off-screen by the
+                time the chips are read. */}
+            <button
+              onClick={() => setFilters(EMPTY_FILTERS)}
+              className={`ml-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition-colors ${
+                isLight
+                  ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
+                  : 'border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
+              }`}
+            >
+              <FilterX size={11} />
+              Barchasini tozalash
+            </button>
           </div>
         )}
       </div>

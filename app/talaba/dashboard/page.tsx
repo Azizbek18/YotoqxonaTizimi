@@ -12,7 +12,7 @@ import {
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { supabase } from '@/lib/supabase';
 import { getSafeUser } from '@/lib/auth-session';
-import { extractFloor } from '@/lib/floor';
+import { useRoomFloors } from '@/lib/hooks/useRoomFloors';
 import { usePollingEffect, useChatAutoScroll } from '@/lib/hooks/useChatPolling';
 import ProfileLoadError from '@/components/talaba/ProfileLoadError';
 import CustomSelect from '@/components/ui/CustomSelect';
@@ -181,6 +181,7 @@ const ChatMarkdownMessage = React.memo(({ text }: { text: string }) => {
 ChatMarkdownMessage.displayName = 'ChatMarkdownMessage'
 
 export default function TalabaDashboard() {
+  const { floorOf } = useRoomFloors();
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -803,7 +804,7 @@ export default function TalabaDashboard() {
 
   // Room parameters - Fully visible room number
   const roomNumberFull = profile?.room_number || '—';
-  const floor = extractFloor(profile?.room_number);
+  const floor = floorOf(profile?.room_number);
   const fullName = profile?.full_name || 'Talaba';
   const faculty = profile?.faculty || 'Fakultet';
   const course = Number(profile?.course ?? 1);
@@ -1108,7 +1109,7 @@ export default function TalabaDashboard() {
                   <div>
                     <p className={`text-sm font-black tracking-tight ${textStrong}`}>{floorCaptain.full_name}</p>
                     <p className={`text-[10px] ${textMuted} font-semibold mt-0.5`}>
-                      Sizning qavatingiz ({extractFloor(profile?.room_number) ?? ''}-qavat) sardori
+                      Sizning qavatingiz ({floor ?? ''}-qavat) sardori
                     </p>
                   </div>
                 </div>

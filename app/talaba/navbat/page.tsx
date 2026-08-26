@@ -6,7 +6,7 @@ import {
   ListOrdered, ShieldCheck, User, Sparkles
 } from 'lucide-react'
 import { getSafeSession } from '@/lib/auth-session'
-import { extractFloor } from '@/lib/floor'
+import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import PageSkeleton from '@/components/ui/PageSkeleton'
 
@@ -37,6 +37,7 @@ interface DutyMember {
 export default function NavbatPage() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+  const { floorOf } = useRoomFloors()
 
   const textMuted = isLight ? 'text-slate-500' : 'text-slate-400'
   const textStrong = isLight ? 'text-slate-900' : 'text-white'
@@ -92,7 +93,7 @@ export default function NavbatPage() {
     )
   }
 
-  const floorNumber = extractFloor(profile?.room_number) ?? '—'
+  const floorNumber = floorOf(profile?.room_number) ?? '—'
 
   return (
     <div className={`min-h-screen font-sans relative pb-24 transition-colors duration-300 ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#020617] text-white'}`}>

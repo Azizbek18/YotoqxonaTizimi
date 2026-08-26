@@ -1,0 +1,75 @@
+'use client'
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { fetchRoomFloors } from '@/features/room-layout/client/api'
+import { buildRoomFloorMap, resolveFloor } from '@/features/room-layout/floor-map'
+import type { RoomFloorStatus } from '@/features/room-layout/types'
+
+export interface RoomFloors {
+  /** Admin-entered room -> floor pairs (plus ta'mirlash freeze state), in floor then room order. */
+  rooms: RoomFloorStatus[]
+  /** Every floor that actually has at least one room, ascending. */
+  floors: number[]
+  /** Room number -> floor, for callers that need the raw map. */
+  map: Map<string, number>
+  /** Resolved floor for a room, falling back to the legacy guess. */
+  floorOf: (roomNumber?: string | null) => number | null
+  loaded: boolean
+  /** Re-fetches the map, e.g. right after rooms are created. */
+  reload: () => Promise<void>
+}
+
+/**
+ * Loads the admin's "qaysi xona qaysi qavatda" map once per mount.
+ *
+ * Every page that shows or filters by floor should go through this instead
+ * of `extractFloor`, so changing a room's floor in the Qavat tarxi
+ * quruvchisi is reflected everywhere without touching the students' stored
+ * `assigned_floor`. Until the fetch resolves, `floorOf` still answers using
+ * the old room-number guess so nothing renders blank mid-load.
+ */
+export function useRoomFloors(): RoomFloors {
+  const [rooms, setRooms] = useState<RoomFloorStatus[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  const reload = useCallback(async () => {
+    try {
+      setRooms(await fetchRoomFloors())
+    } catch (error) {
+      console.error('Qavat ma\'lumotini yuklashda xato:', error)
+    } finally {
+      setLoaded(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    fetchRoomFloors()
+      .then((result) => {
+        if (!cancelled) setRooms(result)
+      })
+      .catch((error) => {
+        console.error('Qavat ma\'lumotini yuklashda xato:', error)
+      })
+      .finally(() => {
+        if (!cancelled) setLoaded(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const map = useMemo(() => buildRoomFloorMap(rooms), [rooms])
+  const floors = useMemo(
+    () => [...new Set(rooms.map((room) => room.floor))].sort((a, b) => a - b),
+    [rooms],
+  )
+  const floorOf = useCallback(
+    (roomNumber?: string | null) => resolveFloor(map, roomNumber),
+    [map],
+  )
+
+  return { rooms, floors, map, floorOf, loaded, reload }
+}

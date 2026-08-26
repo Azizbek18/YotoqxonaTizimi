@@ -8,7 +8,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { downloadXlsx } from '@/lib/spreadsheet-export'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
-import { extractFloor } from '@/lib/floor'
+import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import {
   buildStudentReportCsv,
   buildStudentReportTable,
@@ -36,6 +36,7 @@ type MonthlyChartRow = {
 export default function AdminReportsPage() {
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
+    const { floorOf } = useRoomFloors()
     const [mounted, setMounted] = useState(false)
     const [stats, setStats] = useState({
         totalUsers: 0,
@@ -170,7 +171,7 @@ export default function AdminReportsPage() {
             // Ustunlar, xona bo'yicha guruhlash va bo'sh o'rinlar bilan
             // to'ldirish — dekan paneli bilan bir xil jadval chiqishi
             // uchun umumiy modulda (lib/student-report-table.ts)
-            const { headers, rawRows, displayRows, merges: excelMerges } = buildStudentReportTable(students)
+            const { headers, rawRows, displayRows, merges: excelMerges } = buildStudentReportTable(students, floorOf)
 
             // PDF o'z qisqa jadvalini quradi (xonalar bo'yicha guruhlanmagan,
             // bo'sh o'rinlarsiz) — unga faqat bir xil tartibdagi ro'yxat kerak
@@ -218,7 +219,7 @@ export default function AdminReportsPage() {
                 doc.setFontSize(8)
 
                 const pdfRows = sortedUsers.map((u, idx) => {
-                    const floor = extractFloor(u.room_number)
+                    const floor = floorOf(u.room_number)
                     return [
                         String(idx + 1),
                         floor ? String(floor) : '-',

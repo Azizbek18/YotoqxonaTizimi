@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { downloadXlsx } from '@/lib/spreadsheet-export'
@@ -23,7 +23,7 @@ import { AlertTriangle, Loader, X, Activity, Cpu, RefreshCw, ServerCog, ArrowRig
 import StatCard from '@/components/admin/StatCard'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { StaggerList, StaggerItem } from '@/components/motion/StaggerList'
-import { extractFloor } from '@/lib/floor'
+import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import toast from 'react-hot-toast'
 import { fetchAdminPaymentSummary } from '@/features/payments/client/api'
@@ -162,11 +162,33 @@ export default function AdminDashboard() {
   // a wrong guess would silently hide real floors above it from the filter.
   const [floorCount, setFloorCount] = useState<number | null>(null)
 
+  // Room -> floor as entered in the Qavat tarxi quruvchisi. floorCount stays
+  // the fallback for floors that exist in settings but have no rooms drawn yet.
+  const { rooms: layoutRooms, floors: layoutFloors, floorOf } = useRoomFloors()
+
   useEffect(() => {
     fetchAppSettings()
       .then((settings) => setFloorCount(settings.floorCount))
       .catch(() => toast.error("Qavatlar sozlamasini yuklab bo'lmadi"))
   }, [])
+
+  const floorOptions = useMemo(
+    () => (layoutFloors.length > 0 ? layoutFloors : Array.from({ length: floorCount ?? 0 }, (_, i) => i + 1)),
+    [layoutFloors, floorCount],
+  )
+
+  // Placeholder hints for the room-range inputs: the real first/last room of
+  // the selected floor, instead of assuming 30 rooms per floor.
+  const selectedFloorRoomRange = useMemo(() => {
+    if (reportFilters.floor === 'all') return null
+    const target = parseInt(reportFilters.floor)
+    const numbers = layoutRooms
+      .filter((room) => room.floor === target)
+      .map((room) => Number(room.roomNumber.match(/\d+/)?.[0]))
+      .filter((value) => Number.isFinite(value))
+    if (numbers.length === 0) return null
+    return { start: Math.min(...numbers), end: Math.max(...numbers) }
+  }, [layoutRooms, reportFilters.floor])
 
   const loadStats = async (silent = false) => {
     if (!silent) {
@@ -346,7 +368,7 @@ export default function AdminDashboard() {
     // Qavat bo'yicha filter
     if (reportFilters.floor !== 'all') {
       const targetFloor = parseInt(reportFilters.floor)
-      filtered = filtered.filter(s => extractFloor(s.room_number) === targetFloor)
+      filtered = filtered.filter(s => floorOf(s.room_number) === targetFloor)
     }
 
     // Xona oralig'i bo'yicha filter (faqat qavat tanlangan bo'lsa)
@@ -363,7 +385,7 @@ export default function AdminDashboard() {
     }
 
     return filtered
-  }, [allStudents, reportFilters])
+  }, [allStudents, reportFilters, floorOf])
 
   const handleExportExcel = async () => {
     if (filteredStudents.length === 0) {
@@ -473,7 +495,7 @@ export default function AdminDashboard() {
         if (room && last && last.room === room) {
           last.students.push(s)
         } else {
-          roomGroups.push({ room, floor: extractFloor(s.room_number), students: [s] })
+          roomGroups.push({ room, floor: floorOf(s.room_number), students: [s] })
         }
       })
 
@@ -1009,7 +1031,7 @@ export default function AdminDashboard() {
                   onChange={(val) => setReportFilters(prev => ({ ...prev, floor: val }))}
                   options={[
                     { value: 'all', label: 'Barcha qavatlar' },
-                    ...Array.from({ length: floorCount ?? 0 }, (_, i) => i + 1).map((floor) => ({
+                    ...floorOptions.map((floor) => ({
                       value: String(floor),
                       label: `${floor}-qavat`,
                     })),
@@ -1047,7 +1069,7 @@ export default function AdminDashboard() {
                           type="number"
                           value={reportFilters.roomStart}
                           onChange={(e) => setReportFilters(prev => ({ ...prev, roomStart: e.target.value }))}
-                          placeholder={String((parseInt(reportFilters.floor) - 1) * 30 + 1)}
+                          placeholder={selectedFloorRoomRange ? String(selectedFloorRoomRange.start) : ""}
                           className={`w-full px-4 py-3 rounded-xl border outline-none text-sm transition-all ${
                             isLight 
                               ? 'bg-white border-slate-200 text-slate-800 focus:border-purple-500' 
@@ -1063,7 +1085,7 @@ export default function AdminDashboard() {
                           type="number"
                           value={reportFilters.roomEnd}
                           onChange={(e) => setReportFilters(prev => ({ ...prev, roomEnd: e.target.value }))}
-                          placeholder={String(parseInt(reportFilters.floor) * 30)}
+                          placeholder={selectedFloorRoomRange ? String(selectedFloorRoomRange.end) : ""}
                           className={`w-full px-4 py-3 rounded-xl border outline-none text-sm transition-all ${
                             isLight 
                               ? 'bg-white border-slate-200 text-slate-800 focus:border-purple-500' 

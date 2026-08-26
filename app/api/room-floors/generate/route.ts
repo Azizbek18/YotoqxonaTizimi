@@ -1,0 +1,21 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { requireActiveStaff } from '@/server/auth/guards'
+import { createRoomLayoutService } from '@/features/room-layout/server/service'
+import { getApiError } from '@/server/http/api-error'
+
+// Open to dekan as well as admin: the dekan is the one blocked by an empty
+// room map (they can't place anyone until rooms exist), so they can bootstrap
+// it themselves. The service refuses to run once any room exists, so this can
+// only ever fill a blank building — never overwrite the admin's own layout.
+export async function POST(request: NextRequest) {
+  try {
+    await requireActiveStaff(request, ['admin', 'dekan'])
+    const body = await request.json()
+    const result = await createRoomLayoutService().generateFloors(body?.floors, body?.numbering)
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error('Room floors generate error:', error)
+    const response = getApiError(error, "Xonalarni yaratib bo'lmadi")
+    return NextResponse.json(response.body, { status: response.status })
+  }
+}

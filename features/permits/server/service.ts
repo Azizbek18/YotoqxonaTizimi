@@ -127,9 +127,12 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
         throw new ApiError(409, 'Bu yo\'llanma allaqachon ko\'rib chiqilgan')
       }
       if (action === 'approve') {
-        // Approval only flips the status — the student registers afterwards
-        // and then waits, roomless, in the separate room-assignment queue
-        // (features/room-assignment) rather than getting a room up front.
+        // Approval only flips the status — it never picks a room itself.
+        // The now-approved permit shows up in the room-assignment queue
+        // (features/room-assignment) right away, though, so the dekan can
+        // reserve a room for this person before they've even registered;
+        // app/api/student/register/route.ts seeds the new account with
+        // whatever room ends up on the permit by the time they do.
         const request = await repository.update(id, { status: 'approved', room_number: null, reject_reason: null })
         if (!request) throw new ApiError(409, 'Bu yo\'llanma allaqachon ko\'rib chiqilgan')
         // Xat yuborilmasa ham tasdiqlash kuchda qoladi — sendMail o'zi

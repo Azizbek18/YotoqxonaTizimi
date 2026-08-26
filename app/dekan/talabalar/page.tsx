@@ -48,6 +48,7 @@ import {
   formatSum,
 } from '@/features/faculty-students/domain/payment-summary'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
+import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { directionLabel } from '@/lib/directions'
 import { genderAccent, genderLabel, normalizeGender } from '@/lib/gender'
@@ -84,6 +85,8 @@ type FolderKey = 'all' | 'debtor' | 'paid' | 'male' | 'female' | 'captain' | 'wa
 export default function DekanStudentsPage() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+
+  const { floorOf } = useRoomFloors()
 
   const [students, setStudents] = useState<StudentProfileRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -230,15 +233,19 @@ export default function DekanStudentsPage() {
     )
   }, [students, selectedStudent])
 
-  const studentInfoItems = (student: StudentProfileRow) =>
-    [
+  const studentInfoItems = (student: StudentProfileRow) => {
+    // Read the floor off the admin's qavat tarxi rather than the student's
+    // stored assigned_floor, so a room moved between floors shows up here
+    // immediately instead of after the next re-assignment.
+    const floor = floorOf(student.room_number) ?? student.assigned_floor
+    return [
       { icon: Mail, label: 'Email', value: student.email },
       { icon: Phone, label: 'Telefon', value: student.phone_number },
       { icon: GraduationCap, label: 'Fakultet', value: permitFacultyLabel(student.faculty) || undefined },
       { icon: GraduationCap, label: "Yo'nalish", value: directionLabel(student.direction) || undefined },
       { icon: ShieldCheck, label: 'Kurs', value: student.course ? `${student.course}-kurs` : undefined },
       { icon: Home, label: 'Xona', value: student.room_number },
-      { icon: BedDouble, label: 'Qavat', value: student.assigned_floor ? `${student.assigned_floor}-qavat` : undefined },
+      { icon: BedDouble, label: 'Qavat', value: floor ? `${floor}-qavat` : undefined },
       { icon: ShieldCheck, label: 'Sardorlik holati', value: student.is_floor_captain ? 'Qavat sardori' : undefined },
       {
         icon: CalendarDays,
@@ -267,6 +274,7 @@ export default function DekanStudentsPage() {
       { icon: UserRound, label: 'Millati', value: student.nationality },
       { icon: UserRound, label: 'Jinsi', value: student.gender ? genderLabel(student.gender) : undefined },
     ].filter((item) => item.value)
+  }
 
   const familyInfoItems = (student: StudentProfileRow) =>
     [

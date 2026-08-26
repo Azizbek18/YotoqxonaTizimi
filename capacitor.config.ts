@@ -8,8 +8,9 @@ const config: CapacitorConfig = {
     // Mobil ilova yuklaydigan jonli server manzili.
     // Next.js API maruzalari, Supabase Middleware va barcha server-side funksiyalarni
     // buzilmasdan ishlashini ta'minlash uchun ilovani jonli veb-saytga yo'naltiramiz.
-    // Deploj qilganingizdan so'ng ushbu manzilni o'z veb-saytingiz URL manziliga o'zgartiring (masalan: https://yotoqxona.uz).
-    url: process.env.CAPACITOR_SERVER_URL || 'https://yotoqxona.uz',
+    // Haqiqiy domen (masalan yotoqxona.uz) sotib olinib Vercel'ga ulangach,
+    // shu yerni o'sha manzilga o'zgartiring.
+    url: process.env.CAPACITOR_SERVER_URL || 'https://yotoqxona-tizimi.vercel.app',
     cleartext: false
   }
 };

@@ -1,6 +1,5 @@
 "use client"
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, ArrowLeft, Send, Sparkles, Orbit } from 'lucide-react'
 import Link from 'next/link'
@@ -40,12 +39,18 @@ export default function ForgotPassword() {
       const cleanEmail = email.trim().toLowerCase()
 
       // Account enumerationni oldini olish uchun emailning mavjudligini
-      // public jadvaldan tekshirmaymiz. Supabase mavjud hisob bo‘lsa xat yuboradi.
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${window.location.origin}/update-password`,
+      // public jadvaldan tekshirmaymiz — server ham har doim bir xil javob
+      // qaytaradi. Xat serverdan yuboriladi, chunki brauzerdagi PKCE oqimi
+      // havolani shu brauzerga bog'lab qo'yadi (app/api/auth/recovery/route.ts).
+      const resetResponse = await fetch('/api/auth/recovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail }),
       })
-
-      if (resetError) throw resetError
+      if (!resetResponse.ok) {
+        const result = await resetResponse.json().catch(() => null)
+        throw new Error(result?.error || "Xatni yuborib bo'lmadi. Birozdan keyin urinib ko'ring.")
+      }
 
       setIsSent(true)
       show3DToast('success', "Agar bu email ro‘yxatdan o‘tgan bo‘lsa, tiklash havolasi yuborildi.")

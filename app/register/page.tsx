@@ -21,7 +21,6 @@ import Step7Date from '@/components/register/Step7Date'
 import Step8Room from '@/components/register/Step8Room'      // Yangi qo'shildi
 import Step9Password from '@/components/register/Step9Password'
 import { initialData, RegisterData } from '@/components/register/types'
-import { supabase } from '@/lib/supabase'
 
 const TOTAL = 9 // Jami qadamlar 9 taga yetdi
 
@@ -89,13 +88,15 @@ export default function RegisterPage() {
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || "Ro'yxatdan o'tishda xatolik")
 
-      // The browser creates the PKCE verifier used by the recovery link.
-      // Sending this from the server would leave the verifier on the server
-      // and make the emailed link unusable by this browser client.
-      const { error: emailError } = await supabase.auth.resetPasswordForEmail(userEmail, {
-        redirectTo: `${window.location.origin}/update-password?registration=1`,
+      // Xat serverdan yuboriladi, brauzerdan emas: brauzerdagi PKCE oqimi
+      // code verifier'ni shu brauzerda qoldiradi va xat boshqa qurilmada
+      // ochilsa havola ishlamaydi. Batafsil: app/api/auth/recovery/route.ts
+      const emailResponse = await fetch('/api/auth/recovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail }),
       })
-      if (emailError) {
+      if (!emailResponse.ok) {
         throw new Error("Akkaunt tayyorlandi, ammo tasdiqlash emailini yuborib bo'lmadi. Birozdan keyin qayta urinib ko'ring.")
       }
 

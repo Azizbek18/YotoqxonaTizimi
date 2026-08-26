@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import { Lock, Eye, EyeOff, Save, ShieldCheck, Sparkles } from 'lucide-react'
@@ -15,11 +16,24 @@ export default function UpdatePassword() {
     const [showPassword, setShowPassword] = useState(false)
     const [loading, setLoading] = useState(false)
     const [mounted, setMounted] = useState(false)
+    const [hasSession, setHasSession] = useState(true)
     const router = useRouter()
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
 
-    useEffect(() => setMounted(true), [])
+    // Bu sahifaga faqat /auth/confirm sessiya cookie'sini o'rnatgandan keyin
+    // kelinadi. Sessiyasiz kirilsa (eski xatcho'p, muddati o'tgan cookie)
+    // updateUser inglizcha "Auth session missing!" beradi — buni oldindan
+    // tushunarli xabar bilan almashtiramiz.
+    useEffect(() => {
+        let active = true
+        supabase.auth.getSession().then(({ data }) => {
+            if (!active) return
+            setHasSession(Boolean(data.session))
+            setMounted(true)
+        })
+        return () => { active = false }
+    }, [])
 
     // --- 3D INTERACTIVE EFFECTS ---
     const x = useMotionValue(0)
@@ -91,6 +105,30 @@ export default function UpdatePassword() {
     }
 
     if (!mounted) return null;
+
+    if (!hasSession) {
+        return (
+            <main className={`min-h-screen flex items-center justify-center p-4 ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'}`}>
+                <div className={`w-full max-w-105 text-center backdrop-blur-2xl border rounded-[2.5rem] p-8 sm:p-10 shadow-2xl ${isLight ? 'bg-white/80 border-slate-200' : 'bg-[#0b1120]/70 border-white/10'}`}>
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-6 border ${isLight ? 'bg-amber-100 text-amber-600 border-amber-300' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
+                        <ShieldCheck size={28} />
+                    </div>
+                    <h1 className={`text-xl sm:text-2xl font-black tracking-tighter uppercase italic ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                        Havola ishlamadi
+                    </h1>
+                    <p className={`text-xs sm:text-sm mt-3 leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                        Parol o&apos;rnatish havolasining muddati tugagan yoki u allaqachon ishlatilgan. Yangi havola so&apos;rab, xatdagi tugmani qaytadan bosing.
+                    </p>
+                    <Link
+                        href="/forgot-password"
+                        className={`mt-7 inline-flex w-full h-13 items-center justify-center rounded-2xl font-black text-[10px] tracking-[0.3em] uppercase text-white transition-colors ${isLight ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                    >
+                        Yangi havola so&apos;rash
+                    </Link>
+                </div>
+            </main>
+        )
+    }
 
     return (
         <main className={`min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-hidden perspective-1000 ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'}`}>

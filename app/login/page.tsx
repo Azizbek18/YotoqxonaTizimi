@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -21,6 +21,19 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [focusedField, setFocusedField] = useState<string | null>(null)
+
+  // /auth/confirm buzilgan yoki muddati o'tgan havolani shu yerga qaytaradi.
+  const linkError = searchParams.get('error')
+  useEffect(() => {
+    if (!linkError) return
+    toast.error(
+      linkError === 'link_expired'
+        ? "Havolaning muddati tugagan yoki u allaqachon ishlatilgan. Quyidagi “Tiklash” orqali yangi havola so'rang."
+        : linkError === 'link_invalid'
+          ? "Havola noto'g'ri. Emaildagi havolani to'liq nusxalab ko'ring."
+          : "Server xatoligi yuz berdi. Birozdan keyin qayta urinib ko'ring.",
+    )
+  }, [linkError])
 
   const show3DToast = (type: 'success' | 'error', message: string) => {
     if (type === 'success') {

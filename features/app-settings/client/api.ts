@@ -8,7 +8,7 @@ export function fetchAppSettings() {
 }
 
 export function updateAppSettings(input: Partial<AppSettings>) {
-  return apiRequest<AppSettings>('/api/admin/settings', {
+  return apiRequest<AppSettings>('/api/dekan/settings', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),

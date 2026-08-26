@@ -68,6 +68,6 @@ INSERT INTO app_settings (
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 
 -- No client-facing policies: only the service-role key (via
--- /api/settings for reads, /api/admin/settings for admin writes) touches
+-- /api/settings for reads, /api/dekan/settings for dekan writes) touches
 -- this table, matching how floor_room_layout is handled elsewhere in this
 -- schema.

@@ -1,9 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Settings as SettingsIcon, Wallet, Boxes, Phone, ShieldAlert } from 'lucide-react'
+import { Settings as SettingsIcon, Wallet, Boxes, Phone, ShieldAlert, LayoutGrid, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchAppSettings, updateAppSettings } from '@/features/app-settings/client/api'
 import type { AppSettings } from '@/features/app-settings/types'
@@ -15,7 +17,7 @@ type NumberField = {
     suffix: string
 }
 
-export default function AdminSettingsPage() {
+export default function DekanSozlamalarPage() {
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
 
@@ -24,6 +26,8 @@ export default function AdminSettingsPage() {
     const textStrong = isLight ? 'text-slate-900' : 'text-white'
     const inputBg = isLight ? 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-500/50' : 'bg-white/5 border-white/10 text-white placeholder-slate-500 focus:border-purple-500/50'
     const borderCol = isLight ? 'border-slate-200' : 'border-white/10'
+
+    const { rooms: layoutRooms, loaded: layoutLoaded } = useRoomFloors()
 
     const [settings, setSettings] = useState<AppSettings | null>(null)
     const [savedSettings, setSavedSettings] = useState<AppSettings | null>(null)
@@ -83,7 +87,7 @@ export default function AdminSettingsPage() {
     ]
 
     const roomFields: NumberField[] = [
-        { key: 'defaultRoomCapacity', label: 'Xonaning standart sig\'imi', description: '3D xonalar bo\'limida yangi xonalar uchun standart qiymat', suffix: 'kishi' },
+        { key: 'defaultRoomCapacity', label: 'Xonaning standart sig\'imi', description: 'Xonalar xaritasi bo\'limida yangi xonalar uchun standart qiymat', suffix: 'kishi' },
         { key: 'floorCount', label: 'Qavatlar soni', description: 'Yotoqxonadagi umumiy qavatlar soni', suffix: 'qavat' },
     ]
 
@@ -100,6 +104,24 @@ export default function AdminSettingsPage() {
         { title: 'Talaba kengashi raisi (qiz)', nameKey: 'talabaKengashiRaisiQizName', phoneKey: 'talabaKengashiRaisiQizPhone', hasName: true },
         { title: 'Xavfsizlik bo\'limi', nameKey: 'securityPhone', phoneKey: 'securityPhone', hasName: false },
     ]
+
+    // One row per floor the dekan declared in "Qavatlar soni", with how many
+    // rooms are actually mapped to it. A floor with 0 rooms is the failure
+    // this whole section exists to make visible: nobody can be filtered or
+    // shown as living on a floor that has no rooms assigned to it.
+    const floorRoomCounts = useMemo(() => {
+        const counts = new Map<number, number>()
+        layoutRooms.forEach((room) => counts.set(room.floor, (counts.get(room.floor) ?? 0) + 1))
+        const declared = Array.from({ length: settings?.floorCount ?? 0 }, (_, i) => i + 1)
+        const allFloors = [...new Set([...declared, ...counts.keys()])].sort((a, b) => a - b)
+        return allFloors.map((floor) => ({
+            floor,
+            rooms: counts.get(floor) ?? 0,
+            // A floor with rooms but beyond floorCount means the two settings
+            // disagree — worth showing rather than hiding.
+            beyondDeclared: floor > (settings?.floorCount ?? 0),
+        }))
+    }, [layoutRooms, settings?.floorCount])
 
     const isDirty = settings !== null && savedSettings !== null
         && JSON.stringify(settings) !== JSON.stringify(savedSettings)
@@ -210,6 +232,65 @@ export default function AdminSettingsPage() {
                                         </div>
                                     </div>
                                 ))}
+
+                                {/* Room -> floor map. Not editable here on purpose: it lives in
+                                    floor_room_layout, which the Xonalar xaritasi bo'limi (va uning
+                                    "O'zingiz kiriting" quruvchisi) yozadi. A second input for the
+                                    same data would let the two disagree. */}
+                                <div className={`rounded-2xl border p-4 sm:p-5 ${isLight ? 'border-slate-200 bg-slate-50/70' : 'border-white/10 bg-white/5'}`}>
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="min-w-0">
+                                            <h3 className={`flex items-center gap-2 font-semibold ${textStrong}`}>
+                                                <LayoutGrid size={16} className="shrink-0 text-blue-500" />
+                                                Qaysi xona qaysi qavatda
+                                            </h3>
+                                            <p className={`mt-1 text-xs ${textMuted}`}>
+                                                Talaba o&apos;z qavatini shu taqsimotdan oladi. Xonalarni qavatlarga
+                                                &laquo;Xonalar xaritasi&raquo; bo&apos;limida qo&apos;shasiz.
+                                            </p>
+                                        </div>
+                                        <Link
+                                            href="/dekan/xonalar"
+                                            className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-wider text-white transition-all hover:from-blue-600 hover:to-indigo-700 active:scale-95"
+                                        >
+                                            Xonalar xaritasi
+                                            <ArrowRight size={14} />
+                                        </Link>
+                                    </div>
+
+                                    {!layoutLoaded ? (
+                                        <p className={`mt-4 text-xs font-bold ${textMuted}`}>Yuklanmoqda...</p>
+                                    ) : floorRoomCounts.length === 0 ? (
+                                        <p className={`mt-4 text-xs font-bold ${textMuted}`}>
+                                            Hali birorta qavat belgilanmagan.
+                                        </p>
+                                    ) : (
+                                        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                                            {floorRoomCounts.map(({ floor, rooms, beyondDeclared }) => (
+                                                <div
+                                                    key={floor}
+                                                    className={`rounded-xl border px-3 py-2.5 ${
+                                                        rooms === 0
+                                                            ? isLight
+                                                                ? 'border-amber-200 bg-amber-50'
+                                                                : 'border-amber-500/25 bg-amber-500/10'
+                                                            : isLight
+                                                                ? 'border-slate-200 bg-white'
+                                                                : 'border-white/10 bg-white/5'
+                                                    }`}
+                                                >
+                                                    <p className={`text-xs font-black ${rooms === 0 ? 'text-amber-500' : textStrong}`}>
+                                                        {floor}-qavat
+                                                    </p>
+                                                    <p className={`mt-0.5 text-[10px] font-bold ${rooms === 0 ? 'text-amber-500' : textMuted}`}>
+                                                        {rooms === 0 ? 'Xona kiritilmagan' : `${rooms} ta xona`}
+                                                        {beyondDeclared && rooms > 0 ? ' • qavatlar sonidan tashqarida' : ''}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </motion.div>
 

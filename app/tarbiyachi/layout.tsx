@@ -155,21 +155,30 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
       </header>
 
       <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 md:grid-cols-[220px_1fr]">
-        <aside className={`h-fit rounded-2xl border p-2 transition-all ${isLight ? 'border-slate-300 bg-white/50' : 'border-white/10 bg-white/5'}`}>
-          {NAV.map((item) => {
-            const active = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${active ? isLight ? 'bg-blue-100/60 text-blue-600' : 'bg-indigo-500/20 text-indigo-300' : isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-white/5'
+        <aside className={`h-fit rounded-2xl border p-2 select-none no-shelf transition-all ${isLight ? 'border-slate-200 bg-white/80 shadow-sm' : 'border-white/10 bg-white/[0.03]'}`} data-sidebar="true">
+          <div className="space-y-1">
+            {NAV.map((item) => {
+              const active = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold transition-all ${
+                    active
+                      ? isLight
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
+                        : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                      : isLight
+                        ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
                   }`}
-              >
-                <item.icon size={16} />
-                {item.label}
-              </Link>
-            )
-          })}
+                >
+                  <item.icon size={16} />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
         </aside>
         <section>{children}</section>
       </main>

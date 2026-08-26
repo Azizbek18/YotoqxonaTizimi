@@ -297,13 +297,13 @@ html.theme-light [class*="shadow-lg"] {
    selector outranks the attribute-only rule above via specificity), same
    icon/pill exclusions as the shelf rule itself. */
 html.theme-light :is(
-  button[class*="shadow-2xl"],
-  button[class*="shadow-xl"],
-  button[class*="shadow-lg"],
+  button[class*="rounded"][class*="shadow-2xl"],
+  button[class*="rounded"][class*="shadow-xl"],
+  button[class*="rounded"][class*="shadow-lg"],
   a[class*="border"][class*="shadow-2xl"],
   a[class*="border"][class*="shadow-xl"],
   a[class*="border"][class*="shadow-lg"]
-):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]) {
+):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
     0 5px 0 0 var(--shelf-shadow-button),
@@ -311,13 +311,13 @@ html.theme-light :is(
 }
 
 html.theme-light :is(
-  button[class*="shadow-2xl"],
-  button[class*="shadow-xl"],
-  button[class*="shadow-lg"],
+  button[class*="rounded"][class*="shadow-2xl"],
+  button[class*="rounded"][class*="shadow-xl"],
+  button[class*="rounded"][class*="shadow-lg"],
   a[class*="border"][class*="shadow-2xl"],
   a[class*="border"][class*="shadow-xl"],
   a[class*="border"][class*="shadow-lg"]
-):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active {
+):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 0 0 0 var(--shelf-shadow-button) !important;
 }
 
@@ -353,19 +353,19 @@ html.theme-light [class*="from-red-500"]:not([class*="bg-clip-text"]) {
    border-carrying a tags, are untouched) — box-shadow merges the shelf's
    flat offset with the glow instead of dropping it. */
 html.theme-light :is(
-  button[class*="bg-gradient-to-r"],
-  button[class*="bg-gradient-to-br"],
-  button[class*="bg-gradient-to-tr"],
-  button[class*="bg-linear-to-r"],
-  button[class*="bg-linear-to-br"],
-  button[class*="bg-linear-to-tr"],
+  button[class*="rounded"][class*="bg-gradient-to-r"],
+  button[class*="rounded"][class*="bg-gradient-to-br"],
+  button[class*="rounded"][class*="bg-gradient-to-tr"],
+  button[class*="rounded"][class*="bg-linear-to-r"],
+  button[class*="rounded"][class*="bg-linear-to-br"],
+  button[class*="rounded"][class*="bg-linear-to-tr"],
   a[class*="border"][class*="bg-gradient-to-r"],
   a[class*="border"][class*="bg-gradient-to-br"],
   a[class*="border"][class*="bg-gradient-to-tr"],
   a[class*="border"][class*="bg-linear-to-r"],
   a[class*="border"][class*="bg-linear-to-br"],
   a[class*="border"][class*="bg-linear-to-tr"]
-):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]) {
+):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
     0 5px 0 0 var(--shelf-shadow-button),
@@ -373,19 +373,19 @@ html.theme-light :is(
 }
 
 html.theme-light :is(
-  button[class*="bg-gradient-to-r"],
-  button[class*="bg-gradient-to-br"],
-  button[class*="bg-gradient-to-tr"],
-  button[class*="bg-linear-to-r"],
-  button[class*="bg-linear-to-br"],
-  button[class*="bg-linear-to-tr"],
+  button[class*="rounded"][class*="bg-gradient-to-r"],
+  button[class*="rounded"][class*="bg-gradient-to-br"],
+  button[class*="rounded"][class*="bg-gradient-to-tr"],
+  button[class*="rounded"][class*="bg-linear-to-r"],
+  button[class*="rounded"][class*="bg-linear-to-br"],
+  button[class*="rounded"][class*="bg-linear-to-tr"],
   a[class*="border"][class*="bg-gradient-to-r"],
   a[class*="border"][class*="bg-gradient-to-br"],
   a[class*="border"][class*="bg-gradient-to-tr"],
   a[class*="border"][class*="bg-linear-to-r"],
   a[class*="border"][class*="bg-linear-to-br"],
   a[class*="border"][class*="bg-linear-to-tr"]
-):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active {
+):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 0 0 var(--shelf-shadow-button) !important;
 }
 
@@ -460,6 +460,17 @@ html.theme-light [class*="border-[#0b1120]"] {
      AI-chat button) and round avatar links — a flat-bottomed
      rectangular "shelf" reads as a rendering glitch on a
      circular/pill shape, so those keep their own shadow instead.
+   - buttons with no `rounded-*` class at all: a flat 5px shelf bar
+     under a chunky rounded CTA reads as depth, but under a bare
+     text/link-style button (`text-rose-500 hover:text-rose-600`
+     with no background, border or radius — e.g. "Xonadan
+     chiqarish" in the dekan room map) it reads as a detached grey
+     smudge floating below the text, since there is no surface
+     above it for the shelf to be the edge OF. Same for invisible
+     `fixed inset-0` overlay/backdrop buttons and absolutely
+     positioned modal close icons. So the shelf now requires
+     [class*="rounded"]: every real CTA in this app is rounded, so
+     this costs nothing and drops exactly the bare ones.
    - [class*="no-shelf"]: manual escape hatch for buttons that are
      really rows in a flush list, not standalone CTAs — dropdown
      option buttons (CustomSelect menu items) and scrollable list
@@ -497,12 +508,12 @@ html.theme-light [class*="border-[#0b1120]"] {
    ============================================================ */
 
 @layer components {
-  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
-  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
-  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
-  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
-  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
-  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]) {
+  button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
+  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
+  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
+  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
+  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
+  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.22),
       0 5px 0 0 var(--shelf-shadow-button),
@@ -514,21 +525,21 @@ html.theme-light [class*="border-[#0b1120]"] {
       filter 0.15s ease !important;
   }
 
-  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):hover:not(:active):not(:disabled),
-  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):hover:not(:active),
-  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):hover:not(:active),
-  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):hover:not(:active),
-  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):hover:not(:active),
-  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):hover:not(:active) {
+  button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):hover:not(:active):not(:disabled),
+  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):hover:not(:active),
+  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):hover:not(:active),
+  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):hover:not(:active),
+  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):hover:not(:active),
+  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):hover:not(:active) {
     filter: brightness(1.06);
   }
 
-  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active:not(:disabled),
-  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
-  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
-  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
-  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
-  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active {
+  button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active:not(:disabled),
+  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
+  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
+  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
+  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
+  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active {
     transform: translateY(5px) !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 0 0 var(--shelf-shadow-button);
     transition:
@@ -536,51 +547,51 @@ html.theme-light [class*="border-[#0b1120]"] {
       box-shadow 0.05s ease !important;
   }
 
-  button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):disabled {
+  button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):disabled {
     box-shadow: 0 5px 0 0 var(--shelf-shadow-button-disabled);
   }
 
-  html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
-  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
-  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
-  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
-  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]),
-  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]) {
+  html.theme-light button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
+  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
+  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
+  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
+  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
+  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.5),
       0 5px 0 0 var(--shelf-shadow-button),
       0 9px 16px -6px rgba(15, 23, 42, 0.22);
   }
 
-  html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active:not(:disabled),
-  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
-  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
-  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
-  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active,
-  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):active {
+  html.theme-light button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active:not(:disabled),
+  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
+  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
+  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
+  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
+  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 0 0 var(--shelf-shadow-button);
   }
 
-  html.theme-light button:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):disabled {
+  html.theme-light button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):disabled {
     box-shadow: 0 5px 0 0 var(--shelf-shadow-button-disabled);
   }
 
-  div[class*="rounded-xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
-  div[class*="rounded-2xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
-  div[class*="rounded-3xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
-  div[class*="rounded-4xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
-  div[class*="rounded-["][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]) {
+  div[class*="rounded-xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  div[class*="rounded-2xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  div[class*="rounded-3xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  div[class*="rounded-4xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  div[class*="rounded-["][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
       0 6px 0 0 var(--shelf-shadow-card),
       0 12px 26px -6px rgba(0, 0, 0, 0.32);
   }
 
-  html.theme-light div[class*="rounded-xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
-  html.theme-light div[class*="rounded-2xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
-  html.theme-light div[class*="rounded-3xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
-  html.theme-light div[class*="rounded-4xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]),
-  html.theme-light div[class*="rounded-["][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]) {
+  html.theme-light div[class*="rounded-xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  html.theme-light div[class*="rounded-2xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  html.theme-light div[class*="rounded-3xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  html.theme-light div[class*="rounded-4xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  html.theme-light div[class*="rounded-["][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.6),
       0 6px 0 0 var(--shelf-shadow-card),

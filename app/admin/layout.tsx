@@ -14,7 +14,6 @@ import {
   LogOut,
   Megaphone,
   Menu,
-  Settings,
   ShieldCheck,
   Sparkles,
   Users,
@@ -102,65 +101,75 @@ export default function AdminLayout({
       caption: 'Umumiy ko‘rinish',
       href: '/admin/dashboard',
       icon: LayoutDashboard,
-      accent: 'from-sky-500 to-blue-600',
+      gradient: 'from-sky-500 to-blue-600',
+      lightBg: 'bg-sky-500/10 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300',
+      glow: 'shadow-sky-500/25',
     },
     {
       label: 'Arizalar',
       caption: 'Jarayon nazorati',
       href: '/admin/arizalar',
       icon: FileText,
-      accent: 'from-emerald-500 to-green-600',
+      gradient: 'from-emerald-500 to-green-600',
+      lightBg: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300',
+      glow: 'shadow-emerald-500/25',
     },
     {
       label: 'To‘lovlar',
       caption: 'Kvitansiyalar',
       href: '/admin/tolovlar',
       icon: CreditCard,
-      accent: 'from-cyan-500 to-blue-600',
+      gradient: 'from-cyan-500 to-blue-600',
+      lightBg: 'bg-cyan-500/10 text-cyan-600 dark:bg-cyan-500/20 dark:text-cyan-300',
+      glow: 'shadow-cyan-500/25',
+      badge: waitingCount > 0 ? waitingCount : undefined,
     },
     {
       label: 'Foydalanuvchilar',
       caption: 'Rollar va kirish',
       href: '/admin/foydalanuvchilar',
       icon: Users,
-      accent: 'from-amber-500 to-orange-600',
+      gradient: 'from-amber-500 to-orange-600',
+      lightBg: 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300',
+      glow: 'shadow-amber-500/25',
     },
     {
       label: 'Tarbiyachilar',
       caption: 'Yangi xodim qo‘shish',
       href: '/admin/xodimlar',
       icon: UserCog,
-      accent: 'from-purple-500 to-violet-600',
+      gradient: 'from-purple-500 to-violet-600',
+      lightBg: 'bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-300',
+      glow: 'shadow-purple-500/25',
     },
     {
       label: "E'lonlar",
       caption: 'Talabalarga xabar',
       href: '/admin/elonlar',
       icon: Megaphone,
-      accent: 'from-violet-500 to-purple-600',
+      gradient: 'from-violet-500 to-purple-600',
+      lightBg: 'bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300',
+      glow: 'shadow-violet-500/25',
     },
     {
       label: 'Hisobotlar',
       caption: 'Tahlil va eksport',
       href: '/admin/reports',
       icon: BarChart3,
-      accent: 'from-fuchsia-500 to-pink-600',
+      gradient: 'from-fuchsia-500 to-pink-600',
+      lightBg: 'bg-fuchsia-500/10 text-fuchsia-600 dark:bg-fuchsia-500/20 dark:text-fuchsia-300',
+      glow: 'shadow-fuchsia-500/25',
     },
     {
       label: '3D Xonalar',
       caption: 'Qavatlar va bandlik',
       href: '/admin/3d-xonalar',
       icon: Boxes,
-      accent: 'from-cyan-500 to-teal-600',
+      gradient: 'from-cyan-500 to-teal-600',
+      lightBg: 'bg-teal-500/10 text-teal-600 dark:bg-teal-500/20 dark:text-teal-300',
+      glow: 'shadow-teal-500/25',
     },
-    {
-      label: 'Sozlamalar',
-      caption: 'Tizim boshqaruvi',
-      href: '/admin/settings',
-      icon: Settings,
-      accent: 'from-slate-500 to-slate-700',
-    },
-  ]), [])
+  ]), [waitingCount])
 
   const handleLogout = async () => {
     try {
@@ -184,10 +193,10 @@ export default function AdminLayout({
 
   const shellBg = isLight ? 'bg-[#f3f6fb]' : 'bg-[#020617]'
   const sidebarSurface = isLight
-    ? 'border-slate-200 bg-white/90 text-slate-900'
-    : 'border-white/10 bg-[#06101f]/90 text-white'
+    ? 'border-slate-200/90 bg-gradient-to-b from-[#ffffff] via-[#f9fbfe] to-[#f2f6fc] text-slate-900 shadow-[4px_0_30px_rgba(14,165,233,0.06)]'
+    : 'border-white/[0.08] bg-gradient-to-b from-[#090e24] via-[#060a1a] to-[#040714] text-white shadow-[4px_0_40px_rgba(0,0,0,0.8)]'
   const panelSurface = isLight
-    ? 'border-slate-200 bg-white/80'
+    ? 'border-slate-200/80 bg-white/80 shadow-sm'
     : 'border-white/10 bg-white/[0.03]'
   const mutedText = isLight ? 'text-slate-500' : 'text-slate-400'
   const strongText = isLight ? 'text-slate-900' : 'text-white'
@@ -200,58 +209,85 @@ export default function AdminLayout({
   }
 
   const renderNavContent = (compact: boolean) => (
-    <div className="flex h-full flex-col">
-      {/* Modern Header */}
-      <div className={`relative overflow-hidden backdrop-blur-2xl px-4 py-5 transition-all ${isLight ? 'border-slate-200/50 bg-white/50' : 'border-white/5 bg-gradient-to-b from-white/[0.08] to-white/[0.02]'} border-b`}>
-        {/* Animated gradient background */}
-        <div className={`absolute inset-0 opacity-40 ${isLight ? 'bg-gradient-to-br from-sky-100 via-blue-50 to-transparent' : 'bg-gradient-to-br from-cyan-500/10 via-blue-500/5 to-transparent'}`} />
+    <div className="relative flex h-full flex-col select-none no-shelf overflow-hidden" data-sidebar="true">
+      {/* Ambient background glows */}
+      <div className="pointer-events-none absolute -top-12 -left-12 h-44 w-44 rounded-full bg-cyan-500/15 blur-3xl dark:bg-cyan-500/20" />
+      <div className="pointer-events-none absolute top-1/3 -right-12 h-44 w-44 rounded-full bg-blue-500/10 blur-3xl dark:bg-blue-500/15" />
+      <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-teal-500/10 blur-3xl dark:bg-teal-500/15" />
 
-        <div className="relative flex items-center justify-between gap-4">
-          {/* Logo Section */}
-          <div className={`flex items-center gap-3 min-w-0 ${compact ? 'justify-center w-full' : ''}`}>
-            {/* Icon Container */}
-            <div className={`shrink-0 flex items-center justify-center h-10 w-10 rounded-full backdrop-blur-md border transition-all ${isLight ? 'bg-white/80 border-sky-200 text-sky-600 shadow-lg shadow-sky-200/20' : 'bg-white/[0.08] border-cyan-400/30 text-cyan-300 shadow-lg shadow-cyan-500/10'}`}>
+      {/* Modern Header */}
+      <div className={`relative px-4 py-4 border-b transition-all ${
+        isLight
+          ? 'border-slate-200/80 bg-white/60 backdrop-blur-md'
+          : 'border-white/[0.08] bg-white/[0.02] backdrop-blur-md'
+      }`}>
+        <div className={`relative flex items-center gap-3 min-w-0 ${compact ? 'justify-center w-full' : ''}`}>
+          {/* Glowing Avatar */}
+          <div className="shrink-0 relative group">
+            <div className="flex items-center justify-center h-11 w-11 rounded-2xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-600 text-white font-black text-sm shadow-[0_4px_16px_rgba(14,165,233,0.4)] ring-2 ring-white/80 dark:ring-white/20 transition-transform duration-300 group-hover:scale-105">
               <ShieldCheck size={20} strokeWidth={2.5} />
             </div>
-
-            {/* Brand Text */}
-            {!compact && (
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-1">
-                  <p className={`text-[10px] font-black uppercase tracking-[0.32em] leading-none ${isLight ? 'text-sky-600' : 'text-cyan-400/80'}`}>
-                    ADMIN
-                  </p>
-                </div>
-                <h2 className={`text-sm font-black tracking-tight leading-tight mt-0.5 ${strongText}`}>Yotoqxona</h2>
-              </div>
-            )}
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#06101f]" />
+            </span>
           </div>
 
-          {/* Divider - compact mode */}
-          {compact && (
-            <div className={`hidden lg:block h-6 w-px ${isLight ? 'bg-slate-200/30' : 'bg-white/5'}`} />
+          {!compact && (
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded-full bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-[0_2px_8px_rgba(14,165,233,0.35)]">
+                  <Sparkles size={10} className="text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
+                  ADMIN
+                </span>
+              </div>
+              <h2 className={`text-xs font-black tracking-tight leading-snug mt-1 truncate ${strongText}`}>
+                Yotoqxona Boshqaruvi
+              </h2>
+              <p className={`text-[10px] font-semibold truncate ${mutedText}`}>
+                Tizim administratori
+              </p>
+            </div>
           )}
         </div>
       </div>
 
-      <div className="flex-1 px-3 py-4 overflow-y-auto">
-        {!compact && (
-          <div className={`mb-4 rounded-2xl backdrop-blur-xl border p-4 transition-all ${isLight ? 'bg-gradient-to-br from-sky-50/50 to-blue-50/30 border-sky-200/30 shadow-sm shadow-sky-100/20' : 'bg-gradient-to-br from-cyan-500/[0.06] to-blue-500/[0.03] border-cyan-400/20'}`}>
-            <div className="flex items-start gap-3">
-              <div className={`shrink-0 rounded-lg p-2.5 backdrop-blur-md ${isLight ? 'bg-sky-100/70 text-sky-600' : 'bg-cyan-500/15 text-cyan-300'}`}>
-                <Sparkles size={16} strokeWidth={2.5} />
+      <div className="flex-1 px-3 py-3 overflow-y-auto space-y-1.5">
+        {/* Rich Waiting Payments Widget */}
+        {!compact && waitingCount > 0 && (
+          <Link
+            href="/admin/tolovlar"
+            onClick={() => setMobileSidebarOpen(false)}
+            className="group relative block overflow-hidden rounded-2xl p-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white shadow-[0_10px_25px_rgba(245,158,11,0.3)] hover:shadow-[0_14px_32px_rgba(245,158,11,0.45)] hover:-translate-y-0.5 active:scale-[0.99] transition-all duration-200 mb-2.5"
+          >
+            <div className="absolute -right-8 -bottom-8 h-24 w-24 rounded-full bg-white/20 blur-xl pointer-events-none transition-transform duration-500 group-hover:scale-150" />
+            <div className="absolute -left-6 -top-6 h-20 w-20 rounded-full bg-yellow-300/30 blur-lg pointer-events-none" />
+
+            <div className="relative flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="shrink-0 flex items-center justify-center h-10 w-10 rounded-xl bg-white/25 backdrop-blur-md text-white shadow-sm ring-1 ring-white/40 group-hover:rotate-6 transition-transform duration-300">
+                  <CreditCard size={18} strokeWidth={2.5} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-100 leading-tight">
+                      To&apos;lovlar
+                    </span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                  </div>
+                  <p className="text-sm font-black leading-tight mt-0.5 text-white">
+                    {waitingCount} <span className="text-xs font-bold text-amber-100">ta kutilmoqda</span>
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className={`text-[10px] font-black uppercase tracking-[0.24em] leading-tight ${isLight ? 'text-sky-700' : 'text-cyan-300'}`}>
-                  Boshqaruv
-                </p>
-                <p className={`mt-2 text-sm font-semibold leading-snug ${strongText}`}>Barcha operatsiyalar bir joydan</p>
+              <div className="shrink-0 flex items-center justify-center h-7 w-7 rounded-lg bg-white/25 backdrop-blur-sm text-white group-hover:translate-x-1 transition-transform duration-200">
+                <ChevronRight size={16} strokeWidth={2.5} />
               </div>
             </div>
-          </div>
+          </Link>
         )}
 
-        <div className="space-y-1.5">
+        <nav className="space-y-1.5">
           {menuItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
@@ -261,69 +297,100 @@ export default function AdminLayout({
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileSidebarOpen(false)}
-                className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border px-3 py-2.5 transition-all duration-200 backdrop-blur-sm ${isActive
-                  ? isLight
-                    ? 'border-sky-300 bg-sky-100/80 text-sky-800 shadow-sm shadow-sky-300/30'
-                    : 'border-cyan-400/30 bg-gradient-to-r from-cyan-500/[0.12] to-blue-500/[0.08] text-white shadow-sm shadow-cyan-500/10'
-                  : isLight
-                    ? 'border-slate-200/30 text-slate-600 hover:border-slate-300/50 hover:bg-slate-100/30'
-                    : 'border-white/5 text-slate-400 hover:border-white/15 hover:bg-white/[0.06] hover:text-white'
-                  } ${compact ? 'justify-center px-2' : ''}`}
+                className={`group relative flex items-center gap-3 rounded-2xl p-2 transition-all duration-200 ${
+                  isActive
+                    ? 'bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 text-white shadow-[0_8px_25px_rgba(14,165,233,0.35)] ring-1 ring-white/30 scale-[1.01]'
+                    : isLight
+                      ? 'bg-white/80 border border-slate-200/80 hover:bg-white hover:border-sky-400/40 hover:shadow-[0_8px_20px_rgba(14,165,233,0.08)] hover:translate-x-1 text-slate-700'
+                      : 'bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.08] hover:border-cyan-400/30 hover:shadow-[0_8px_20px_rgba(0,0,0,0.5)] hover:translate-x-1 text-slate-300 hover:text-white'
+                } ${compact ? 'justify-center p-2' : ''}`}
               >
-                <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-all backdrop-blur ${isActive
-                  ? isLight
-                    ? 'border-sky-300 bg-white text-sky-700 shadow-sm shadow-sky-300/25'
-                    : 'border-cyan-400/30 bg-white/[0.06] text-cyan-300'
-                  : isLight
-                    ? 'border-slate-200/40 bg-slate-50/70 text-slate-500 group-hover:bg-slate-100/50 group-hover:text-slate-700'
-                    : 'border-white/10 bg-white/[0.02] text-slate-400 group-hover:bg-white/[0.05] group-hover:text-white'
-                  }`}>
-                  <Icon size={18} strokeWidth={2} />
-                  {item.href === '/admin/tolovlar' && waitingCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900 shadow-[0_0_6px_rgba(239,68,68,0.6)] animate-pulse" />
-                  )}
+                {/* 3D Themed Squircle Icon */}
+                <div
+                  className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-110 ${
+                    isActive
+                      ? 'bg-white/20 backdrop-blur-md text-white ring-1 ring-white/40 shadow-inner'
+                      : `bg-gradient-to-br ${item.gradient} text-white shadow-md ${item.glow} ring-1 ring-white/20`
+                  }`}
+                >
+                  <Icon size={17} strokeWidth={2.3} />
                 </div>
 
                 {!compact && (
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold leading-tight">{item.label}</p>
-                    <p className={`truncate text-[10px] leading-tight mt-0.5 ${isActive ? (isLight ? 'text-sky-700/90' : 'text-cyan-200/70') : mutedText}`}>
+                    <p className={`text-xs font-black leading-tight truncate ${isActive ? 'text-white' : (isLight ? 'text-slate-800' : 'text-slate-100')} group-hover:text-sky-600 dark:group-hover:text-white transition-colors`}>
+                      {item.label}
+                    </p>
+                    <p className={`text-[10px] font-medium leading-tight mt-0.5 truncate ${isActive ? 'text-sky-100' : mutedText}`}>
                       {item.caption}
                     </p>
                   </div>
                 )}
 
-                {!compact && item.href === '/admin/tolovlar' && waitingCount > 0 && (
-                  <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-black text-white shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse mr-1">
-                    {waitingCount}
+                {!compact && item.badge !== undefined && (
+                  <span className="shrink-0 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-[0_2px_10px_rgba(244,63,94,0.5)] animate-pulse">
+                    {item.badge}
                   </span>
                 )}
 
-                {!compact && (
-                  <ChevronRight
-                    size={16}
-                    strokeWidth={2}
-                    className={`shrink-0 transition-all ${isActive ? 'translate-x-0 opacity-100' : 'translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100'} ${isActive ? (isLight ? 'text-sky-600' : 'text-slate-500') : (isLight ? 'text-slate-400' : 'text-slate-600')}`}
-                  />
+                {!compact && !item.badge && (
+                  <div className={`shrink-0 transition-transform duration-200 ${isActive ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-1 group-hover:opacity-80 group-hover:translate-x-0'}`}>
+                    <ChevronRight size={14} strokeWidth={2.5} className={isActive ? 'text-white' : 'text-slate-400'} />
+                  </div>
                 )}
               </Link>
             )
           })}
-        </div>
+        </nav>
       </div>
 
-      <div className={`border-t backdrop-blur p-3 transition-all ${isLight ? 'border-slate-200/40 bg-white/30' : 'border-white/5 bg-white/[0.02]'}`}>
-        <div className={`rounded-xl backdrop-blur-lg border p-3 transition-all ${isLight ? 'bg-white/40 border-sky-200/20 shadow-sm shadow-sky-100/10' : 'bg-white/[0.04] border-cyan-400/15'}`}>
-          <div className="flex items-center justify-between gap-2 w-full">
-            {!compact && (
-              <div>
-                <p className={`text-[9px] font-black uppercase tracking-[0.26em] leading-tight ${mutedText}`}>Tema</p>
-                <p className={`mt-1 text-xs font-semibold ${strongText}`}>Ko&apos;rinish</p>
+      {/* Theme + Live Status + Logout */}
+      <div className={`p-3 border-t space-y-2 mt-auto ${
+        isLight
+          ? 'border-slate-200/80 bg-white/60 backdrop-blur-md'
+          : 'border-white/[0.08] bg-white/[0.02] backdrop-blur-md'
+      }`}>
+        {!compact ? (
+          <>
+            {/* Live System Beacon */}
+            <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                <span>Tizim holati</span>
               </div>
-            )}
+              <span className="font-extrabold uppercase tracking-wider text-[9px]">Onlayn</span>
+            </div>
+
+            <div className={`flex items-center justify-between gap-2 rounded-2xl px-3.5 py-2 border transition-all ${
+              isLight ? 'bg-white/80 border-slate-200/80 shadow-xs' : 'bg-white/[0.04] border-white/[0.08]'
+            }`}>
+              <div>
+                <p className={`text-[9px] font-black uppercase tracking-wider leading-none ${mutedText}`}>Tema</p>
+                <p className={`mt-0.5 text-xs font-bold ${strongText}`}>Ko&apos;rinish</p>
+              </div>
+              <ThemeToggle />
+            </div>
+          </>
+        ) : (
+          <div className="flex justify-center py-1">
             <ThemeToggle />
           </div>
-        </div>
+        )}
+
+        <button
+          onClick={() => setShowLogoutConfirm(true)}
+          className={`group flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-xs font-black tracking-wider uppercase transition-all duration-200 active:scale-95 ${
+            isLight
+              ? 'text-rose-600 bg-rose-50/80 hover:bg-gradient-to-r hover:from-rose-500 hover:to-red-600 hover:text-white border border-rose-200/70 hover:border-transparent shadow-sm hover:shadow-[0_8px_20px_rgba(244,63,94,0.35)]'
+              : 'text-rose-400 bg-rose-500/10 hover:bg-gradient-to-r hover:from-rose-500 hover:to-red-600 hover:text-white border border-rose-500/20 hover:border-transparent hover:shadow-[0_8px_25px_rgba(244,63,94,0.4)]'
+          } ${compact ? 'justify-center px-2 py-2.5' : ''}`}
+        >
+          <LogOut size={16} strokeWidth={2.5} className="shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-translate-x-0.5" />
+          {!compact && <span>Chiqish</span>}
+        </button>
       </div>
     </div>
   )
@@ -332,7 +399,7 @@ export default function AdminLayout({
     <FontScopeProvider value={baloo2.style.fontFamily}>
     <div className={`baloo-scope min-h-screen ${shellBg} transition-colors`} style={{ fontFamily: baloo2.style.fontFamily }}>
       {/* Every /admin/* page (dashboard, foydalanuvchilar, tolovlar, arizalar,
-          elonlar, settings, reports, 3d-xonalar) renders through this layout
+          elonlar, reports, 3d-xonalar) renders through this layout
           via {children}, and each uses `font-sans` wrappers / plain h1-h6
           headings that resolve through the global --app-font-sans /
           --app-font-display custom properties. Overriding those two
@@ -394,28 +461,15 @@ export default function AdminLayout({
               </div>
             </div>
 
-            {pathname === '/admin/settings' ? (
-              <button
-                onClick={() => setShowLogoutConfirm(true)}
-                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-all ${isLight
-                  ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
-                  : 'border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15'
-                  }`}
-              >
-                <LogOut size={16} />
-                <span className="hidden sm:inline">Chiqib ketish</span>
-              </button>
-            ) : (
-              <div className={`hidden items-center gap-3 rounded-2xl border px-4 py-2 sm:flex ${panelSurface}`}>
-                <div className={`rounded-xl p-2 ${isLight ? 'bg-sky-100 text-sky-600' : 'bg-cyan-400/10 text-cyan-300'}`}>
-                  <ShieldCheck size={16} />
-                </div>
-                <div>
-                  <p className={`text-[10px] font-black uppercase tracking-[0.22em] ${mutedText}`}>Holat</p>
-                  <p className={`text-sm font-semibold ${strongText}`}>Boshqaruv faol</p>
-                </div>
+            <div className={`hidden items-center gap-3 rounded-2xl border px-4 py-2 sm:flex ${panelSurface}`}>
+              <div className={`rounded-xl p-2 ${isLight ? 'bg-sky-100 text-sky-600' : 'bg-cyan-400/10 text-cyan-300'}`}>
+                <ShieldCheck size={16} />
               </div>
-            )}
+              <div>
+                <p className={`text-[10px] font-black uppercase tracking-[0.22em] ${mutedText}`}>Holat</p>
+                <p className={`text-sm font-semibold ${strongText}`}>Boshqaruv faol</p>
+              </div>
+            </div>
           </div>
         </header>
 

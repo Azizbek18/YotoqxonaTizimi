@@ -17,6 +17,8 @@ import {
   FileSpreadsheet,
   Bell,
   Building2,
+  Settings,
+  Sparkles,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -102,14 +104,18 @@ export default function DekanLayout({
       caption: 'Umumiy hisobot',
       href: '/dekan/dashboard',
       icon: LayoutDashboard,
-      iconTint: 'text-sky-500 bg-sky-500/10',
+      gradient: 'from-sky-500 to-blue-600',
+      lightBg: 'bg-sky-500/10 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300',
+      glow: 'shadow-sky-500/25',
     },
     {
       label: 'Yo‘llanmalar',
       caption: 'Yangi arizalar',
       href: '/dekan/arizalar',
       icon: FileText,
-      iconTint: 'text-emerald-500 bg-emerald-500/10',
+      gradient: 'from-emerald-500 to-teal-600',
+      lightBg: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300',
+      glow: 'shadow-emerald-500/25',
       badge: pendingCount > 0 ? pendingCount : undefined,
     },
     {
@@ -117,28 +123,45 @@ export default function DekanLayout({
       caption: 'Joylashtirish holati',
       href: '/dekan/xonalar',
       icon: Boxes,
-      iconTint: 'text-amber-500 bg-amber-500/10',
+      gradient: 'from-amber-500 to-orange-600',
+      lightBg: 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300',
+      glow: 'shadow-amber-500/25',
     },
     {
       label: 'Talabalar',
       caption: 'Joylashgan talabalar',
       href: '/dekan/talabalar',
       icon: Users,
-      iconTint: 'text-violet-500 bg-violet-500/10',
+      gradient: 'from-purple-500 to-violet-600',
+      lightBg: 'bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-300',
+      glow: 'shadow-purple-500/25',
     },
     {
       label: 'E‘lonlar',
       caption: 'Fakultet talabalariga',
       href: '/dekan/elonlar',
       icon: Megaphone,
-      iconTint: 'text-sky-500 bg-sky-500/10',
+      gradient: 'from-cyan-500 to-sky-600',
+      lightBg: 'bg-cyan-500/10 text-cyan-600 dark:bg-cyan-500/20 dark:text-cyan-300',
+      glow: 'shadow-cyan-500/25',
     },
     {
       label: 'Hisobotlar',
       caption: 'Excel eksport',
       href: '/dekan/hisobotlar',
       icon: FileSpreadsheet,
-      iconTint: 'text-emerald-500 bg-emerald-500/10',
+      gradient: 'from-emerald-500 to-green-600',
+      lightBg: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300',
+      glow: 'shadow-emerald-500/25',
+    },
+    {
+      label: 'Sozlamalar',
+      caption: 'Tizim boshqaruvi',
+      href: '/dekan/sozlamalar',
+      icon: Settings,
+      gradient: 'from-slate-600 to-slate-800',
+      lightBg: 'bg-slate-500/10 text-slate-600 dark:bg-slate-500/20 dark:text-slate-300',
+      glow: 'shadow-slate-500/25',
     },
   ]), [pendingCount])
 
@@ -164,10 +187,10 @@ export default function DekanLayout({
 
   const shellBg = isLight ? 'bg-[#f3f6fb]' : 'bg-[#020617]'
   const sidebarSurface = isLight
-    ? 'border-slate-200 bg-white/95 text-slate-900 shadow-xl'
-    : 'border-white/10 bg-[#070b1d]/95 text-white'
+    ? 'border-slate-200/90 bg-gradient-to-b from-[#ffffff] via-[#f9fbfe] to-[#f2f6fc] text-slate-900 shadow-[4px_0_30px_rgba(79,70,229,0.06)]'
+    : 'border-white/[0.08] bg-gradient-to-b from-[#090e24] via-[#060a1a] to-[#040714] text-white shadow-[4px_0_40px_rgba(0,0,0,0.8)]'
   const panelSurface = isLight
-    ? 'bg-white/70 border-slate-200/70'
+    ? 'bg-white/80 border-slate-200/80 shadow-sm'
     : 'bg-white/[0.02] border-white/10'
   const mutedText = isLight ? 'text-slate-500' : 'text-slate-400'
   const strongText = isLight ? 'text-slate-900' : 'text-white'
@@ -175,26 +198,42 @@ export default function DekanLayout({
   const activeItem = menuItems.find((item) => item.href === pathname)
 
   const renderNavContent = (compact: boolean) => (
-    <div className="flex h-full flex-col">
-      {/* Brand Header */}
-      <div className={`relative overflow-hidden px-4 py-5 border-b transition-all ${isLight ? 'border-slate-200/50 bg-gradient-to-br from-indigo-50 via-white to-white' : 'border-white/5 bg-gradient-to-br from-indigo-950/60 via-[#070b1d] to-[#070b1d]'}`}>
-        <div className="absolute -left-10 -top-16 h-40 w-40 rounded-full bg-indigo-500/30 blur-3xl" />
-        <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-violet-500/20 blur-3xl" />
+    <div className="relative flex h-full flex-col select-none no-shelf overflow-hidden" data-sidebar="true">
+      {/* Ambient background glows */}
+      <div className="pointer-events-none absolute -top-12 -left-12 h-44 w-44 rounded-full bg-indigo-500/15 blur-3xl dark:bg-indigo-500/20" />
+      <div className="pointer-events-none absolute top-1/3 -right-12 h-44 w-44 rounded-full bg-violet-500/10 blur-3xl dark:bg-violet-500/15" />
+      <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-sky-500/10 blur-3xl dark:bg-sky-500/15" />
 
+      {/* Brand Header */}
+      <div className={`relative px-4 py-4 border-b transition-all ${
+        isLight
+          ? 'border-slate-200/80 bg-white/60 backdrop-blur-md'
+          : 'border-white/[0.08] bg-white/[0.02] backdrop-blur-md'
+      }`}>
         <div className={`relative flex items-center gap-3 min-w-0 ${compact ? 'justify-center w-full' : ''}`}>
-          <div className="shrink-0 flex items-center justify-center h-11 w-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-black text-sm shadow-lg shadow-indigo-500/40 ring-2 ring-white/20">
-            {dekanName ? dekanName.trim().charAt(0).toUpperCase() : <UserCog size={20} strokeWidth={2.5} />}
+          {/* Glowing 3D Avatar */}
+          <div className="shrink-0 relative group">
+            <div className="flex items-center justify-center h-11 w-11 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white font-black text-sm shadow-[0_4px_16px_rgba(99,102,241,0.4)] ring-2 ring-white/80 dark:ring-white/20 transition-transform duration-300 group-hover:scale-105">
+              {dekanName ? dekanName.trim().charAt(0).toUpperCase() : <UserCog size={20} strokeWidth={2.5} />}
+            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#070b19]" />
+            </span>
           </div>
 
           {!compact && (
             <div className="min-w-0 flex-1">
-              <p className={`text-[10px] font-black uppercase tracking-[0.32em] leading-none bg-gradient-to-r bg-clip-text text-transparent ${isLight ? 'from-indigo-600 to-violet-600' : 'from-indigo-300 to-violet-300'}`}>
-                DEKAN
-              </p>
-              <h2 className={`text-sm font-black tracking-tight leading-tight mt-1 truncate ${strongText}`}>
-                {dekanName || 'Yotoqxona'}
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-[0_2px_8px_rgba(99,102,241,0.35)]">
+                  <Sparkles size={10} className="text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
+                  DEKAN
+                </span>
+              </div>
+              <h2 className={`text-xs font-black tracking-tight leading-snug mt-1 truncate ${strongText}`} title={dekanName || 'Dekan'}>
+                {dekanName || 'Dekan Boshqaruvi'}
               </h2>
-              <p className={`text-[9px] font-medium mt-0.5 truncate ${mutedText}`}>
+              <p className={`text-[10px] font-semibold truncate ${mutedText}`} title={dekanFaculty || 'Fakultet'}>
                 {dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet sozlanmagan'}
               </p>
             </div>
@@ -203,24 +242,40 @@ export default function DekanLayout({
       </div>
 
       {/* Nav List */}
-      <div className="flex-1 px-3 py-4 overflow-y-auto">
+      <div className="flex-1 px-3 py-3 overflow-y-auto space-y-1.5">
+        {/* Holographic "Kutilmoqda" Widget */}
         {!compact && (
-          <div className="relative overflow-hidden mb-4 rounded-2xl p-4 bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/25">
-            <div className="absolute -right-6 -bottom-6 h-20 w-20 rounded-full bg-white/10 blur-2xl" />
-            <div className="relative flex items-start gap-3">
-              <div className="shrink-0 rounded-lg p-2.5 bg-white/20 text-white">
-                <FileText size={16} strokeWidth={2.5} />
+          <Link
+            href="/dekan/arizalar"
+            onClick={() => setMobileSidebarOpen(false)}
+            className="group relative block overflow-hidden rounded-2xl p-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white shadow-[0_10px_25px_rgba(245,158,11,0.3)] hover:shadow-[0_14px_32px_rgba(245,158,11,0.45)] hover:-translate-y-0.5 active:scale-[0.99] transition-all duration-200 mb-2.5"
+          >
+            {/* Shimmer / light effect */}
+            <div className="absolute -right-8 -bottom-8 h-24 w-24 rounded-full bg-white/20 blur-xl pointer-events-none transition-transform duration-500 group-hover:scale-150" />
+            <div className="absolute -left-6 -top-6 h-20 w-20 rounded-full bg-yellow-300/30 blur-lg pointer-events-none" />
+
+            <div className="relative flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="shrink-0 flex items-center justify-center h-10 w-10 rounded-xl bg-white/25 backdrop-blur-md text-white shadow-sm ring-1 ring-white/40 group-hover:rotate-6 transition-transform duration-300">
+                  <FileText size={18} strokeWidth={2.5} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-100 leading-tight">
+                      Kutilmoqda
+                    </span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                  </div>
+                  <p className="text-sm font-black leading-tight mt-0.5 text-white">
+                    {pendingCount} <span className="text-xs font-bold text-amber-100">ta yangi ariza</span>
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] leading-tight text-amber-50">
-                  Kutilmoqda
-                </p>
-                <p className="mt-1.5 text-lg font-black leading-none text-white">
-                  {pendingCount} <span className="text-xs font-bold align-middle text-amber-50">ta ariza</span>
-                </p>
+              <div className="shrink-0 flex items-center justify-center h-7 w-7 rounded-lg bg-white/25 backdrop-blur-sm text-white group-hover:translate-x-1 transition-transform duration-200">
+                <ChevronRight size={16} strokeWidth={2.5} />
               </div>
             </div>
-          </div>
+          </Link>
         )}
 
         <nav className="space-y-1.5">
@@ -232,47 +287,46 @@ export default function DekanLayout({
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileSidebarOpen(false)}
-                className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border px-3 py-2.5 text-xs font-bold tracking-wide transition-all duration-200 ${
+                className={`group relative flex items-center gap-3 rounded-2xl p-2 transition-all duration-200 ${
                   active
-                    ? isLight
-                      ? 'border-indigo-300 bg-indigo-100/70 text-indigo-800 shadow-sm shadow-indigo-300/30'
-                      : 'border-indigo-400/30 bg-gradient-to-r from-indigo-500/[0.14] to-violet-500/[0.08] text-white shadow-sm shadow-indigo-500/10'
+                    ? 'bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 text-white shadow-[0_8px_25px_rgba(79,70,229,0.35)] ring-1 ring-white/30 scale-[1.01]'
                     : isLight
-                      ? 'border-slate-200/50 text-slate-600 hover:border-slate-300/60 hover:bg-slate-100/60'
-                      : 'border-white/5 text-slate-400 hover:border-white/15 hover:bg-white/[0.05] hover:text-white'
-                } ${compact ? 'justify-center px-2' : ''}`}
+                      ? 'bg-white/80 border border-slate-200/80 hover:bg-white hover:border-indigo-400/40 hover:shadow-[0_8px_20px_rgba(79,70,229,0.08)] hover:translate-x-1 text-slate-700'
+                      : 'bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.08] hover:border-indigo-400/30 hover:shadow-[0_8px_20px_rgba(0,0,0,0.5)] hover:translate-x-1 text-slate-300 hover:text-white'
+                } ${compact ? 'justify-center p-2' : ''}`}
               >
-                <div className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all ${item.iconTint} ${
-                  active ? (isLight ? 'border-indigo-300/60 shadow-sm' : 'border-indigo-400/30 shadow-sm shadow-indigo-500/10') : 'border-transparent'
-                }`}>
-                  <Icon size={16} strokeWidth={2.2} />
+                {/* 3D Themed Squircle Icon */}
+                <div
+                  className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-110 ${
+                    active
+                      ? 'bg-white/20 backdrop-blur-md text-white ring-1 ring-white/40 shadow-inner'
+                      : `bg-gradient-to-br ${item.gradient} text-white shadow-md ${item.glow} ring-1 ring-white/20`
+                  }`}
+                >
+                  <Icon size={17} strokeWidth={2.3} />
                 </div>
 
                 {!compact && (
                   <div className="min-w-0 flex-1">
-                    <p className={active ? (isLight ? 'text-indigo-900' : 'text-white') : ''}>{item.label}</p>
-                    <p className={`text-[9px] font-medium mt-0.5 truncate ${active ? (isLight ? 'text-indigo-700/80' : 'text-indigo-200/70') : mutedText}`}>
+                    <p className={`text-xs font-black leading-tight truncate ${active ? 'text-white' : (isLight ? 'text-slate-800' : 'text-slate-100')} group-hover:text-indigo-600 dark:group-hover:text-white transition-colors`}>
+                      {item.label}
+                    </p>
+                    <p className={`text-[10px] font-medium leading-tight mt-0.5 truncate ${active ? 'text-indigo-100' : mutedText}`}>
                       {item.caption}
                     </p>
                   </div>
                 )}
 
                 {!compact && item.badge !== undefined && (
-                  <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white shadow-[0_0_8px_rgba(244,63,94,0.5)]">
+                  <span className="shrink-0 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-[0_2px_10px_rgba(244,63,94,0.5)] animate-pulse">
                     {item.badge}
                   </span>
                 )}
 
-                {!compact && (
-                  <ChevronRight
-                    size={14}
-                    strokeWidth={2.5}
-                    className={`shrink-0 transition-all ${
-                      active
-                        ? `translate-x-0 opacity-100 ${isLight ? 'text-indigo-500' : 'text-indigo-300'}`
-                        : 'translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 text-slate-500'
-                    }`}
-                  />
+                {!compact && !item.badge && (
+                  <div className={`shrink-0 transition-transform duration-200 ${active ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-1 group-hover:opacity-80 group-hover:translate-x-0'}`}>
+                    <ChevronRight size={14} strokeWidth={2.5} className={active ? 'text-white' : 'text-slate-400'} />
+                  </div>
                 )}
               </Link>
             )
@@ -280,26 +334,51 @@ export default function DekanLayout({
         </nav>
       </div>
 
-      {/* Theme + Logout */}
-      <div className={`p-3 border-t space-y-2 ${isLight ? 'border-slate-200/50' : 'border-white/5'}`}>
-        {!compact && (
-          <div className={`flex items-center justify-between gap-2 rounded-xl border p-3 ${isLight ? 'bg-white/40 border-sky-200/20' : 'bg-white/[0.03] border-white/5'}`}>
-            <div>
-              <p className={`text-[9px] font-black uppercase tracking-[0.24em] leading-tight ${mutedText}`}>Tema</p>
-              <p className={`mt-1 text-xs font-semibold ${strongText}`}>Ko&apos;rinish</p>
+      {/* Theme + Live Status + Logout */}
+      <div className={`p-3 border-t space-y-2 mt-auto ${
+        isLight
+          ? 'border-slate-200/80 bg-white/60 backdrop-blur-md'
+          : 'border-white/[0.08] bg-white/[0.02] backdrop-blur-md'
+      }`}>
+        {!compact ? (
+          <>
+            {/* Live System Beacon */}
+            <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                <span>Tizim holati</span>
+              </div>
+              <span className="font-extrabold uppercase tracking-wider text-[9px]">Onlayn</span>
             </div>
+
+            <div className={`flex items-center justify-between gap-2 rounded-2xl px-3.5 py-2 border transition-all ${
+              isLight ? 'bg-white/80 border-slate-200/80 shadow-xs' : 'bg-white/[0.04] border-white/[0.08]'
+            }`}>
+              <div>
+                <p className={`text-[9px] font-black uppercase tracking-wider leading-none ${mutedText}`}>Tema</p>
+                <p className={`mt-0.5 text-xs font-bold ${strongText}`}>Ko&apos;rinish</p>
+              </div>
+              <ThemeToggle />
+            </div>
+          </>
+        ) : (
+          <div className="flex justify-center py-1">
             <ThemeToggle />
           </div>
         )}
+
         <button
           onClick={() => setShowLogoutConfirm(true)}
-          className={`flex w-full items-center gap-3 rounded-xl p-3 text-xs font-black uppercase tracking-wider transition-all active:scale-95 ${
+          className={`group flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-xs font-black tracking-wider uppercase transition-all duration-200 active:scale-95 ${
             isLight
-              ? 'text-rose-600 hover:bg-rose-50 bg-rose-500/5'
-              : 'text-rose-400 hover:bg-rose-500/10 bg-rose-500/5 border border-rose-500/10'
-          } ${compact ? 'justify-center' : ''}`}
+              ? 'text-rose-600 bg-rose-50/80 hover:bg-gradient-to-r hover:from-rose-500 hover:to-red-600 hover:text-white border border-rose-200/70 hover:border-transparent shadow-sm hover:shadow-[0_8px_20px_rgba(244,63,94,0.35)]'
+              : 'text-rose-400 bg-rose-500/10 hover:bg-gradient-to-r hover:from-rose-500 hover:to-red-600 hover:text-white border border-rose-500/20 hover:border-transparent hover:shadow-[0_8px_25px_rgba(244,63,94,0.4)]'
+          } ${compact ? 'justify-center px-2 py-2.5' : ''}`}
         >
-          <LogOut size={16} strokeWidth={2.5} />
+          <LogOut size={16} strokeWidth={2.5} className="shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-translate-x-0.5" />
           {!compact && <span>Chiqish</span>}
         </button>
       </div>

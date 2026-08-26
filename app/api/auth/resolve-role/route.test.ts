@@ -56,7 +56,7 @@ describe('resolve-role student activation', () => {
     const response = await POST(new Request('https://example.test/api/auth/resolve-role', { method: 'POST' }))
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ ok: true, role: null })
+    expect(await response.json()).toEqual({ ok: true, role: null, reason: 'no_role' })
     expect(mocks.rpc).not.toHaveBeenCalled()
   })
 })

@@ -79,7 +79,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, role: 'talaba' })
     }
 
-    return NextResponse.json({ ok: true, role: null })
+    // The caller is already authenticated, so naming their own account state
+    // is not enumeration — and "pending" is the one case a student can fix
+    // themselves (finish the emailed confirmation link).
+    const reason = studentUser?.role === 'talaba' && studentUser.status === 'pending'
+      ? 'email_not_verified'
+      : 'no_role'
+    return NextResponse.json({ ok: true, role: null, reason })
   } catch (error) {
     console.error('Role resolution failed:', error)
     return NextResponse.json({ ok: false, error: 'Server xatoligi' }, { status: 500 })

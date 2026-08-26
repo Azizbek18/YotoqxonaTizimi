@@ -54,8 +54,12 @@ function LoginContent() {
         throw new Error(authError.message)
       }
 
-      // 3. Tizimga kirish muvaffaqiyatli bo'lsa, rolini aniqlaymiz
+      // 3. Tizimga kirish muvaffaqiyatli bo'lsa, rolini aniqlaymiz.
+      // Server nosozligi (env yetishmasligi, rate limit, tarmoq uzilishi) bilan
+      // "roli yo'q" holatini bir xil xabarga yig'ib yubormaymiz — aks holda
+      // productionda haqiqiy sabab ko'rinmay qoladi.
       let userRole: string | null = null
+      let failure: string | null = null
       try {
         const roleResponse = await fetch('/api/auth/resolve-role', {
           method: 'POST',
@@ -64,17 +68,26 @@ function LoginContent() {
             ...(authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {}),
           },
         })
-        const roleResult = await roleResponse.json()
-        if (roleResponse.ok && roleResult.ok) {
+        const roleResult = await roleResponse.json().catch(() => null)
+        if (!roleResponse.ok || !roleResult?.ok) {
+          failure = roleResult?.error
+            ? `${roleResult.error} (${roleResponse.status})`
+            : `Rolni aniqlash so'rovi ${roleResponse.status} bilan tugadi.`
+        } else if (roleResult.role) {
           userRole = roleResult.role
+        } else if (roleResult.reason === 'email_not_verified') {
+          failure = "Emailingiz hali tasdiqlanmagan. Ro'yxatdan o'tishda yuborilgan havola orqali parol o'rnating."
+        } else {
+          failure = "Hisob faol emas yoki tizim roliga biriktirilmagan."
         }
       } catch (roleError) {
         console.error('Role resolution error:', roleError)
+        failure = "Server bilan bog'lanib bo'lmadi. Internet aloqasini tekshiring."
       }
 
       if (!userRole) {
         await supabase.auth.signOut()
-        throw new Error("Hisob faol emas yoki tizim roliga biriktirilmagan.")
+        throw new Error(failure ?? "Hisob faol emas yoki tizim roliga biriktirilmagan.")
       }
 
       show3DToast('success', 'Xush kelibsiz!')

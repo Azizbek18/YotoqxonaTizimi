@@ -6,7 +6,8 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, User, Mail, Phone, Volume2, VolumeX,
-  ChevronRight, ChevronLeft, ArrowLeft, CheckCircle2, CreditCard, GraduationCap
+  ChevronRight, ChevronLeft, ArrowLeft, CheckCircle2, CreditCard, GraduationCap,
+  ShieldAlert, ShieldCheck, Pencil, RotateCw, BookOpen, FileText
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -14,6 +15,7 @@ import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
+import { isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
 
 interface Particle {
   id: number
@@ -49,6 +51,15 @@ export default function RuxsatnomaYuborish() {
   
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+
+  // Shown before the student can touch the form — must be acknowledged
+  // every visit, since it's a warning about THIS submission's accuracy,
+  // not something that only needs saying once per browser.
+  const [showWarning, setShowWarning] = useState(true)
+
+  // Step 4's review card — front holds identity/course, back holds
+  // contact/document — flips in place instead of stacking a second card.
+  const [cardFlipped, setCardFlipped] = useState(false)
 
   // 3D Card Parallax Coordinates
   const [cardRotateX, setCardRotateX] = useState(0)
@@ -165,6 +176,11 @@ export default function RuxsatnomaYuborish() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('dorm_sound_muted', String(nextMuted))
     }
+  }
+
+  const acknowledgeWarning = () => {
+    setShowWarning(false)
+    playSound('tab')
   }
 
   // Trigger keyboard particles relative to the input element
@@ -284,6 +300,26 @@ export default function RuxsatnomaYuborish() {
     return true
   }
 
+  const validateStep3 = () => {
+    if (!passportSeries || !jshshir || !file) {
+      showToast('error', "Iltimos, pasport ma'lumotlarini to'ldiring va faylni yuklang!")
+      return false
+    }
+    // Same rules the server checks at submission — catching a malformed
+    // passport here (not just JShSHIR) means the student sees a clear
+    // error right away, instead of reaching the review card and only
+    // finding out when the final submit gets rejected.
+    if (!isValidPassport(normalizePassport(passportSeries))) {
+      showToast('error', "Pasport seriyasi noto'g'ri! Namuna: AB1234567 (2 harf + 7 raqam)")
+      return false
+    }
+    if (!isValidJshshir(normalizeJshshir(jshshir))) {
+      showToast('error', "JShSHIR 14 ta raqamdan iborat bo'lishi lozim!")
+      return false
+    }
+    return true
+  }
+
   const handleNextStep = () => {
     if (formStep === 1) {
       if (validateStep1()) {
@@ -293,6 +329,12 @@ export default function RuxsatnomaYuborish() {
     } else if (formStep === 2) {
       if (validateStep2()) {
         setFormStep(3)
+        playSound('tab')
+      }
+    } else if (formStep === 3) {
+      if (validateStep3()) {
+        setCardFlipped(false)
+        setFormStep(4)
         playSound('tab')
       }
     }
@@ -330,17 +372,8 @@ export default function RuxsatnomaYuborish() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (formStep !== 3) return
-
-    if (!passportSeries || !jshshir || !file) {
-      showToast('error', "Iltimos, pasport ma'lumotlarini to'ldiring va faylni yuklang!")
-      return
-    }
-
-    if (jshshir.length !== 14 || !/^\d+$/.test(jshshir)) {
-      showToast('error', "JShSHIR 14 ta raqamdan iborat bo'lishi lozim!")
-      return
-    }
+    if (formStep !== 4) return
+    if (!validateStep3() || !file) return
 
     setLoading(true)
 
@@ -436,6 +469,131 @@ export default function RuxsatnomaYuborish() {
       </div>
     )
   }
+
+  // The 3D student ID preview — lives permanently in the desktop side
+  // column, and gets reused (mobile-only) inside Step 4's review, since
+  // that's the one place a mobile visitor needs to see it too.
+  const renderIdCard = () => (
+    <div
+      onMouseMove={handleCardMouseMove}
+      onMouseLeave={handleCardMouseLeave}
+      style={{
+        transform: `rotateX(${cardRotateX}deg) rotateY(${cardRotateY}deg)`,
+        transformStyle: 'preserve-3d',
+      }}
+      className="pass-card-3d pass-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[140px] sm:min-h-[180px] relative overflow-hidden cursor-pointer transform-gpu transition-all duration-200"
+    >
+      {/* Holographic light reflect overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+        style={{
+          background: `radial-gradient(circle at ${cardShineX}% ${cardShineY}%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 65%)`,
+        }}
+      />
+
+      {/* Neon radial glow according to gender selection */}
+      {gender === 'male' && (
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+      )}
+      {gender === 'female' && (
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-pink-500/10 rounded-full blur-2xl pointer-events-none" />
+      )}
+
+      {/* Scanning laser line on passport focus */}
+      {focusedField === 'passport' && (
+        <motion.div
+          initial={{ y: 0 }}
+          animate={{ y: [0, 130, 0] }}
+          transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+          className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_8px_#22d3ee] z-20 pointer-events-none"
+        />
+      )}
+
+      {/* Top card section */}
+      <div className="flex justify-between items-start" style={{ transform: 'translateZ(30px)' }}>
+        <div>
+          <span className={`text-[7px] sm:text-[9px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded border ${
+            gender === 'male'
+              ? 'text-blue-400 bg-blue-500/10 border-blue-500/20'
+              : gender === 'female'
+                ? 'text-pink-400 bg-pink-500/10 border-pink-500/20'
+                : 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20'
+          }`}>
+            SMARTDORM • TALABA ID
+          </span>
+          <h3 className={`text-xs sm:text-base font-black uppercase tracking-wide mt-2 font-sans leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            {fullName.trim() || "F.I.Sh (Ism Familiya)"}
+          </h3>
+        </div>
+
+        {/* Glowing holographic chip */}
+        <div className="relative w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-amber-400/80 to-yellow-600/80 border border-amber-300/30 shadow-[0_0_12px_rgba(245,158,11,0.2)] overflow-hidden shrink-0">
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:4px_4px]" />
+        </div>
+      </div>
+
+      {/* Bottom section */}
+      <div className="flex justify-between items-end pt-3 border-t border-slate-700/10 dark:border-white/5 mt-3" style={{ transform: 'translateZ(20px)' }}>
+
+        <div className="space-y-1 sm:space-y-1.5">
+          <p className="text-[7px] sm:text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Hujjatlar</p>
+          <p className={`text-[9px] sm:text-xs font-mono leading-none font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+            {passportSeries.toUpperCase() || "AAXXXXXXX"} • {jshshir || "30102030405060"}
+          </p>
+
+          {/* Interactive Barcode */}
+          {renderBarcode()}
+        </div>
+
+        <div className="text-right flex flex-col items-end gap-1">
+          {/* Interactive gender hologram avatar box */}
+          <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-slate-950/20 dark:bg-white/5 border border-white/5 flex items-center justify-center text-slate-400 overflow-hidden relative shadow-inner">
+            {gender === 'male' ? (
+              <motion.div animate={{ y: [0, -2, 0] }} transition={{ repeat: Infinity, duration: 3 }} className="text-blue-400 filter drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="8" r="4"/>
+                  <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
+                </svg>
+              </motion.div>
+            ) : gender === 'female' ? (
+              <motion.div animate={{ y: [0, -2, 0] }} transition={{ repeat: Infinity, duration: 3 }} className="text-pink-400 filter drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 14a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/>
+                  <path d="M18 21a6 6 0 0 0-12 0"/>
+                </svg>
+              </motion.div>
+            ) : (
+              <User className="w-4 h-4 sm:w-5 sm:h-5 opacity-30" />
+            )}
+          </div>
+          <span className="text-[7px] sm:text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">KURS</span>
+          <p className="text-[9px] sm:text-xs font-black uppercase text-indigo-400 leading-none">
+            {course}-kurs • {faculty.toUpperCase()}
+          </p>
+        </div>
+
+      </div>
+    </div>
+  )
+
+  // A single icon+label+value line on the review card's back face — flags
+  // an empty value in rose instead of rendering a blank, so a skipped
+  // field is obvious before the student ever hits submit.
+  const cardFieldRow = (Icon: React.ComponentType<{ size?: number }>, label: string, value: string) => (
+    <div className="flex items-center gap-2.5">
+      <div className={`shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center ${isLight ? 'bg-slate-100 text-slate-500' : 'bg-white/5 text-slate-400'}`}>
+        <Icon size={12} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-slate-500 leading-none">{label}</p>
+        <p className={`text-[10px] sm:text-xs font-bold truncate mt-0.5 ${
+          value ? (isLight ? 'text-slate-800' : 'text-slate-200') : 'text-rose-400 italic'
+        }`}>
+          {value || 'Kiritilmagan'}
+        </p>
+      </div>
+    </div>
+  )
 
   // Animated sound waves
   const renderSoundwave = () => {
@@ -544,7 +702,93 @@ export default function RuxsatnomaYuborish() {
           background-color: #6366f1;
           animation: soundwave 1s ease-in-out infinite;
         }
+
+        /* Warning modal — sweeping amber/rose gradient border */
+        @keyframes warningSweep {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .warning-border {
+          background: linear-gradient(120deg, #f43f5e, #f59e0b, #f43f5e, #fb7185);
+          background-size: 300% 300%;
+          animation: warningSweep 4s ease infinite;
+          padding: 1.5px;
+          border-radius: 28px;
+        }
+        @keyframes warningRingPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.35); }
+          70% { box-shadow: 0 0 0 14px rgba(244, 63, 94, 0); }
+        }
+        .warning-ring {
+          animation: warningRingPulse 2.2s ease-out infinite;
+        }
       `}} />
+
+      {/* Ma'lumotlar aniqligi haqida ogohlantirish — forma bilan hech qachon
+          birga ko'rinmaydi, faqat tasdiqlangandan so'ng forma ochiladi. */}
+      <AnimatePresence>
+        {showWarning && (
+          <motion.div
+            key="warning-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+              className="warning-border shadow-2xl shadow-rose-950/40 max-w-md w-full"
+            >
+              <div className={`rounded-[27px] p-6 sm:p-8 text-center space-y-5 backdrop-blur-3xl ${
+                isLight ? 'bg-white' : 'bg-[#0b1120]'
+              }`}>
+                {/* Icon badge with pulsing danger ring */}
+                <div className="relative mx-auto w-16 h-16">
+                  <div className="warning-ring absolute inset-0 rounded-full" />
+                  <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-rose-500 to-amber-500 flex items-center justify-center shadow-lg shadow-rose-500/30">
+                    <ShieldAlert className="text-white" size={30} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-rose-500">
+                    Diqqat, muhim ogohlantirish!
+                  </h2>
+                  <p className={`text-xs sm:text-[13px] leading-relaxed font-sans ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+                    Hurmatli talaba, kiritilayotgan ma&apos;lumotlar <span className="font-black text-amber-500">100%</span>{' '}
+                    to&apos;g&apos;ri ekaniga ishonch hosil qiling.
+                  </p>
+                </div>
+
+                <div className={`rounded-2xl border p-4 text-left flex gap-3 items-start ${
+                  isLight ? 'bg-rose-50 border-rose-200' : 'bg-rose-500/10 border-rose-500/20'
+                }`}>
+                  <ShieldCheck className="text-rose-500 shrink-0 mt-0.5" size={18} />
+                  <p className={`text-[11px] sm:text-xs leading-relaxed font-sans font-medium ${isLight ? 'text-rose-700' : 'text-rose-300'}`}>
+                    Mas&apos;ullar tomonidan tekshirilganda kiritilgan ma&apos;lumotlar (F.I.Sh, pasport, JShSHIR) hujjatga mos kelmasa,
+                    yo&apos;llanmangiz <span className="font-black">bekor qilinadi</span>.
+                  </p>
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.015 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={acknowledgeWarning}
+                  className="w-full flex items-center justify-center gap-2 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 hover:brightness-110 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-rose-500/25"
+                >
+                  <ShieldCheck size={16} />
+                  <span>Tushundim, davom etaman</span>
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Floating 3D Orbs / Spheres */}
       <div className="absolute top-[-25%] left-[-25%] w-[65%] h-[65%] bg-blue-500/5 rounded-full blur-[140px] pointer-events-none" />
@@ -599,119 +843,26 @@ export default function RuxsatnomaYuborish() {
             >
               <div className="grid grid-cols-1 md:grid-cols-12 gap-5 md:gap-8 items-center">
                 
-                {/* COLUMN 1: Interactive Floating 3D Student ID Card Preview - HIDDEN ON MOBILE */}
-                <div className="hidden md:block md:col-span-5 [perspective:1200px] select-none w-full">
-                  <div 
-                    onMouseMove={handleCardMouseMove}
-                    onMouseLeave={handleCardMouseLeave}
-                    style={{ 
-                      transform: `rotateX(${cardRotateX}deg) rotateY(${cardRotateY}deg)`,
-                      transformStyle: 'preserve-3d',
-                    }}
-                    className="pass-card-3d pass-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[140px] sm:min-h-[180px] relative overflow-hidden cursor-pointer transform-gpu transition-all duration-200"
-                  >
-                    {/* Holographic light reflect overlay */}
-                    <div 
-                      className="absolute inset-0 pointer-events-none transition-opacity duration-300"
-                      style={{
-                        background: `radial-gradient(circle at ${cardShineX}% ${cardShineY}%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 65%)`,
-                      }}
-                    />
-                    
-                    {/* Neon radial glow according to gender selection */}
-                    {gender === 'male' && (
-                      <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
-                    )}
-                    {gender === 'female' && (
-                      <div className="absolute -top-10 -right-10 w-32 h-32 bg-pink-500/10 rounded-full blur-2xl pointer-events-none" />
-                    )}
-
-                    {/* Scanning laser line on passport focus */}
-                    {focusedField === 'passport' && (
-                      <motion.div 
-                        initial={{ y: 0 }}
-                        animate={{ y: [0, 130, 0] }}
-                        transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                        className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_8px_#22d3ee] z-20 pointer-events-none"
-                      />
-                    )}
-
-                    {/* Top card section */}
-                    <div className="flex justify-between items-start" style={{ transform: 'translateZ(30px)' }}>
-                      <div>
-                        <span className={`text-[7px] sm:text-[9px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded border ${
-                          gender === 'male' 
-                            ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' 
-                            : gender === 'female'
-                              ? 'text-pink-400 bg-pink-500/10 border-pink-500/20'
-                              : 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20'
-                        }`}>
-                          SMARTDORM • TALABA ID
-                        </span>
-                        <h3 className={`text-xs sm:text-base font-black uppercase tracking-wide mt-2 font-sans leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                          {fullName.trim() || "F.I.Sh (Ism Familiya)"}
-                        </h3>
-                      </div>
-
-                      {/* Glowing holographic chip */}
-                      <div className="relative w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-amber-400/80 to-yellow-600/80 border border-amber-300/30 shadow-[0_0_12px_rgba(245,158,11,0.2)] overflow-hidden shrink-0">
-                        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:4px_4px]" />
-                      </div>
-                    </div>
-
-                    {/* Bottom section */}
-                    <div className="flex justify-between items-end pt-3 border-t border-slate-700/10 dark:border-white/5 mt-3" style={{ transform: 'translateZ(20px)' }}>
-                      
-                      <div className="space-y-1 sm:space-y-1.5">
-                        <p className="text-[7px] sm:text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Hujjatlar</p>
-                        <p className={`text-[9px] sm:text-xs font-mono leading-none font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                          {passportSeries.toUpperCase() || "AAXXXXXXX"} • {jshshir || "30102030405060"}
-                        </p>
-                        
-                        {/* Interactive Barcode */}
-                        {renderBarcode()}
-                      </div>
-
-                      <div className="text-right flex flex-col items-end gap-1">
-                        {/* Interactive gender hologram avatar box */}
-                        <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-slate-950/20 dark:bg-white/5 border border-white/5 flex items-center justify-center text-slate-400 overflow-hidden relative shadow-inner">
-                          {gender === 'male' ? (
-                            <motion.div animate={{ y: [0, -2, 0] }} transition={{ repeat: Infinity, duration: 3 }} className="text-blue-400 filter drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]">
-                              <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="8" r="4"/>
-                                <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
-                              </svg>
-                            </motion.div>
-                          ) : gender === 'female' ? (
-                            <motion.div animate={{ y: [0, -2, 0] }} transition={{ repeat: Infinity, duration: 3 }} className="text-pink-400 filter drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]">
-                              <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M12 14a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/>
-                                <path d="M18 21a6 6 0 0 0-12 0"/>
-                              </svg>
-                            </motion.div>
-                          ) : (
-                            <User className="w-4 h-4 sm:w-5 sm:h-5 opacity-30" />
-                          )}
-                        </div>
-                        <span className="text-[7px] sm:text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">KURS</span>
-                        <p className="text-[9px] sm:text-xs font-black uppercase text-indigo-400 leading-none">
-                          {course}-kurs • {faculty.toUpperCase()}
-                        </p>
-                      </div>
-
-                    </div>
+                {/* COLUMN 1: Interactive Floating 3D Student ID Card Preview -
+                    HIDDEN ON MOBILE, and hidden on Step 4 too since the
+                    review step shows its own (bigger, flippable) card. */}
+                {formStep < 4 && (
+                  <div className="hidden md:block md:col-span-5 [perspective:1200px] select-none w-full">
+                    {renderIdCard()}
                   </div>
-                </div>
+                )}
 
-                {/* COLUMN 2: Form Wizard */}
-                <div className="md:col-span-7 md:col-start-6 space-y-3.5 w-full">
+                {/* COLUMN 2: Form Wizard — spans the full width on Step 4,
+                    since there's no side-column card to share space with. */}
+                <div className={`space-y-3.5 w-full ${formStep === 4 ? 'md:col-span-12' : 'md:col-span-7 md:col-start-6'}`}>
                   
                   {/* 3D Premium Wizard Tabs */}
                   <div className="relative p-1 rounded-xl bg-slate-950/20 dark:bg-slate-950/60 border border-slate-200/10 dark:border-white/5 shadow-[inset_0_2px_6px_rgba(0,0,0,0.5)] flex justify-between items-center gap-1 overflow-hidden">
                     {[
                       { step: 1, label: 'Shaxsiy' },
                       { step: 2, label: 'O‘qish' },
-                      { step: 3, label: 'Hujjat' }
+                      { step: 3, label: 'Hujjat' },
+                      { step: 4, label: 'Tasdiq' }
                     ].map((s) => {
                       const isActive = formStep === s.step
                       return (
@@ -723,6 +874,7 @@ export default function RuxsatnomaYuborish() {
                             if (s.step < formStep) setFormStep(s.step)
                             else if (s.step === 2 && formStep === 1 && validateStep1()) setFormStep(2)
                             else if (s.step === 3 && formStep === 2 && validateStep1() && validateStep2()) setFormStep(3)
+                            else if (s.step === 4 && formStep === 3 && validateStep1() && validateStep2() && validateStep3()) { setCardFlipped(false); setFormStep(4) }
                           }}
                           className={`flex-1 min-w-0 py-1.5 sm:py-2 px-1 text-center rounded-lg border text-[10px] sm:text-xs font-black uppercase tracking-wide sm:tracking-wider relative transition-all duration-300 z-10 ${
                             isActive
@@ -1105,7 +1257,7 @@ export default function RuxsatnomaYuborish() {
                           <div className="space-y-1">
                             <div className="flex justify-between items-center ml-2">
                               <label className={`text-[10px] sm:text-xs font-black uppercase tracking-widest block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Pasport Seriya & Raqam</label>
-                              {passportSeries.trim().length >= 7 && (
+                              {isValidPassport(normalizePassport(passportSeries)) && (
                                 <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
                               )}
                             </div>
@@ -1214,23 +1366,169 @@ export default function RuxsatnomaYuborish() {
                       </motion.div>
                     )}
 
+                    {/* STEP 4: Review & Confirm — the one card holds
+                        everything: front + back, flipped in place. */}
+                    {formStep === 4 && (
+                      <motion.div
+                        initial={{ opacity: 0, x: 15 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="space-y-4"
+                      >
+                        <div className="text-center space-y-1">
+                          <h3 className={`text-sm sm:text-base font-black uppercase tracking-wide ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                            Ma&apos;lumotlaringizni tekshiring
+                          </h3>
+                          <p className={`text-[10px] sm:text-[11px] font-medium leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                            Kartani aylantirib orqa tomonini ham ko&apos;ring. Xato bo&apos;lsa, kartaning burchagidagi tugmadan tahrirlang.
+                          </p>
+                        </div>
+
+                        <div className="relative mx-auto w-full max-w-[300px] sm:max-w-[360px] [perspective:1600px] select-none pt-3 pr-3">
+                          {/* Edit button — pinned at the card's corner, stays
+                              put while the card itself flips underneath it. */}
+                          <motion.button
+                            type="button"
+                            whileHover={{ scale: 1.06 }}
+                            whileTap={{ scale: 0.94 }}
+                            onClick={() => { playSound('tab'); setFormStep(1) }}
+                            className="absolute top-0 right-0 z-20 flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-lg shadow-amber-500/30 ring-2 ring-white dark:ring-[#0b1120]"
+                          >
+                            <Pencil size={11} />
+                            <span>Tahrirlash</span>
+                          </motion.button>
+
+                          <motion.div
+                            animate={{ rotateY: cardFlipped ? 180 : 0 }}
+                            transition={{ duration: 0.65, type: 'spring', stiffness: 210, damping: 26 }}
+                            style={{ transformStyle: 'preserve-3d' }}
+                            className="relative w-full min-h-[220px] sm:min-h-[250px]"
+                          >
+                            {/* FRONT — identity, hujjat, o'qish */}
+                            <div
+                              style={{ backfaceVisibility: 'hidden' }}
+                              className="pass-card absolute inset-0 rounded-2xl p-4 sm:p-5 flex flex-col overflow-hidden"
+                            >
+                              <div className="flex justify-between items-start">
+                                <span className={`text-[7px] sm:text-[9px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded border ${
+                                  gender === 'male'
+                                    ? 'text-blue-400 bg-blue-500/10 border-blue-500/20'
+                                    : gender === 'female'
+                                      ? 'text-pink-400 bg-pink-500/10 border-pink-500/20'
+                                      : 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20'
+                                }`}>
+                                  SMARTDORM • TALABA ID
+                                </span>
+                                <div className="relative w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-amber-400/80 to-yellow-600/80 border border-amber-300/30 shadow-[0_0_12px_rgba(245,158,11,0.2)] overflow-hidden shrink-0">
+                                  <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:4px_4px]" />
+                                </div>
+                              </div>
+
+                              <div className="mt-3">
+                                <p className="text-[7px] sm:text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">F.I.Sh</p>
+                                <h3 className={`text-sm sm:text-lg font-black uppercase tracking-wide mt-1 font-sans leading-tight truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                  {fullName.trim() || "Kiritilmagan"}
+                                </h3>
+                              </div>
+
+                              <div className="flex justify-between items-end pt-3 border-t border-slate-700/10 dark:border-white/5 mt-auto">
+                                <div className="space-y-1 sm:space-y-1.5 min-w-0">
+                                  <p className="text-[7px] sm:text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Hujjatlar</p>
+                                  <p className={`text-[9px] sm:text-xs font-mono leading-none font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                                    {passportSeries.toUpperCase() || "AAXXXXXXX"} • {jshshir || "30102030405060"}
+                                  </p>
+                                  {renderBarcode()}
+                                </div>
+
+                                <div className="text-right flex flex-col items-end gap-1 shrink-0 pl-2">
+                                  <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-slate-950/20 dark:bg-white/5 border border-white/5 flex items-center justify-center text-slate-400 overflow-hidden relative shadow-inner">
+                                    {gender === 'male' ? (
+                                      <div className="text-blue-400 filter drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]">
+                                        <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                          <circle cx="12" cy="8" r="4"/>
+                                          <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
+                                        </svg>
+                                      </div>
+                                    ) : gender === 'female' ? (
+                                      <div className="text-pink-400 filter drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]">
+                                        <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                          <path d="M12 14a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/>
+                                          <path d="M18 21a6 6 0 0 0-12 0"/>
+                                        </svg>
+                                      </div>
+                                    ) : (
+                                      <User className="w-4 h-4 sm:w-5 sm:h-5 opacity-30" />
+                                    )}
+                                  </div>
+                                  <span className="text-[7px] sm:text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">KURS</span>
+                                  <p className="text-[9px] sm:text-xs font-black uppercase text-indigo-400 leading-none truncate max-w-[110px]">
+                                    {course}-kurs • {(PERMIT_FACULTIES.find((f) => f.value === faculty)?.label ?? faculty).toUpperCase()}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* BACK — aloqa va yo'nalish */}
+                            <div
+                              style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                              className="pass-card absolute inset-0 rounded-2xl p-4 sm:p-5 flex flex-col overflow-hidden"
+                            >
+                              <div className="flex justify-between items-start">
+                                <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded border text-indigo-400 bg-indigo-500/10 border-indigo-500/20">
+                                  SMARTDORM • ALOQA
+                                </span>
+                                <FileText size={16} className="text-slate-500 shrink-0" />
+                              </div>
+
+                              <div className="mt-4 space-y-3 flex-1">
+                                {cardFieldRow(Mail, 'Email', email)}
+                                {cardFieldRow(Phone, 'Telefon', phone ? `+998 ${phone}` : '')}
+                                {cardFieldRow(BookOpen, "Yo'nalish", directionsForFaculty(faculty).find((d) => d.value === direction)?.label ?? direction)}
+                                {cardFieldRow(Upload, 'Fayl', file?.name ?? '')}
+                              </div>
+
+                              <p className="text-[7px] sm:text-[8px] font-black text-slate-600 uppercase tracking-widest text-center pt-2 border-t border-slate-700/10 dark:border-white/5">
+                                Old tomonga qaytish uchun pastdagi tugmani bosing
+                              </p>
+                            </div>
+                          </motion.div>
+                        </div>
+
+                        {/* Flip toggle */}
+                        <div className="flex justify-center">
+                          <motion.button
+                            type="button"
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => { setCardFlipped((f) => !f); playSound('tab') }}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
+                              isLight ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                            }`}
+                          >
+                            <RotateCw size={13} />
+                            <span>{cardFlipped ? 'Old tomonini ko‘rish' : 'Orqa tomonini ko‘rish'}</span>
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    )}
+
                     {/* Form Action Navigation */}
                     <div className="flex gap-4 pt-1">
                       {formStep > 1 && (
                         <button
                           type="button"
                           onClick={handlePrevStep}
-                          className={`flex-1 py-3 rounded-xl border font-black text-xs uppercase tracking-widest text-center flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-95 ${
-                            isLight 
-                              ? 'border-slate-300 text-slate-700 hover:bg-slate-100 shadow-xs' 
+                          title="Orqaga"
+                          aria-label="Orqaga"
+                          className={`shrink-0 w-12 py-3 rounded-xl border flex items-center justify-center transition-all duration-300 active:scale-95 ${
+                            isLight
+                              ? 'border-slate-300 text-slate-700 hover:bg-slate-100 shadow-xs'
                               : 'border-white/10 hover:bg-white/5 text-slate-300'
                           }`}
                         >
-                          <ChevronLeft size={14} /> <span>Orqaga</span>
+                          <ChevronLeft size={18} />
                         </button>
                       )}
-                      
-                      {formStep < 3 ? (
+
+                      {formStep < 4 ? (
                         <button
                           type="button"
                           onClick={handleNextStep}
@@ -1242,14 +1540,14 @@ export default function RuxsatnomaYuborish() {
                         <button
                           type="submit"
                           disabled={loading}
-                          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all duration-300 active:scale-95 disabled:opacity-50"
+                          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all duration-300 active:scale-95 disabled:opacity-50"
                         >
                           {loading ? (
                             <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           ) : (
                             <>
-                              <span>Yo&apos;llanmani Yuborish</span>
-                              <ChevronRight size={14} />
+                              <CheckCircle2 size={14} />
+                              <span>Tasdiqlayman, Yuborish</span>
                             </>
                           )}
                         </button>

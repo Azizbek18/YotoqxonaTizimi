@@ -18,6 +18,12 @@ interface PermitRequest {
   room_number?: string | number | null;
   passport_series?: string;
   jshshir?: string;
+  /** 'yollanma' (default) | 'imtiyozli' — which resubmission flow a
+   *  rejected applicant needs to be routed back into. */
+  application_type?: string;
+  /** Only set while status is 'pending'. */
+  queuePosition?: number;
+  queueTotal?: number;
 }
 
 export default function Home() {
@@ -97,6 +103,19 @@ export default function Home() {
       activeStep = 3;
     }
   }
+
+  // The nav's "Kirish" button is the one thing every talaba sees no matter
+  // where they are on the page — route it to whatever they actually need
+  // next instead of a static /login they usually can't use yet: nothing on
+  // record yet -> go submit one; pending/rejected -> the status page (now
+  // shows queue position); only once approved/registered is /login itself
+  // useful. Staff logins below (staffRoles) are unaffected — this is only
+  // the talaba-facing shortcut.
+  const studentEntryHref = !permitRequest
+    ? '/ariza-yuborish'
+    : permitRequest.status === 'approved' || permitRequest.status === 'registered'
+      ? '/login'
+      : '/ruxsatnoma-tekshirish';
 
   const staffRoles = [
     {
@@ -217,7 +236,7 @@ export default function Home() {
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <ThemeToggle />
           <Link
-            href="/login"
+            href={studentEntryHref}
             className={`px-3 sm:px-5 py-2 sm:py-2.5 rounded-2xl border text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 active:scale-95 shadow-md whitespace-nowrap ${
               isLight
                 ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800 shadow-slate-200'
@@ -246,7 +265,7 @@ export default function Home() {
           <span className="break-words">YOTOQXONADA JOY OLISH MULTI-BOSQICHLI TIZIMI</span>
         </motion.div>
 
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           className={`text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-[1.05] uppercase max-w-4xl mx-auto transition-colors duration-500 syne-font ${
@@ -258,6 +277,37 @@ export default function Home() {
             3 bosqichli smart
           </span> oqimda
         </motion.h1>
+
+        {/* First thing a never-applied talaba should see — no scrolling
+            past the (purely decorative) 3-step timeline required. Only
+            shown once we actually know there's no permit on record for
+            this session; someone with a pending/approved/etc. one instead
+            scrolls to their full status panel below, same as before. */}
+        {!checkingPermit && !permitRequest && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2"
+          >
+            <Link
+              href="/ariza-yuborish"
+              className="w-full sm:w-auto py-4 px-8 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/50 active:scale-[0.98] border border-white/10"
+            >
+              <UploadCloud size={16} /> Ariza Yuborish
+            </Link>
+            <Link
+              href="/ruxsatnoma-tekshirish"
+              className={`w-full sm:w-auto py-4 px-8 rounded-2xl border font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
+                isLight
+                  ? 'bg-white hover:bg-slate-50 border-slate-300 text-slate-800'
+                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
+              }`}
+            >
+              Statusni Tekshirish
+            </Link>
+          </motion.div>
+        )}
       </section>
 
       {/* 3D Flow Timeline Visual Guide */}
@@ -416,6 +466,18 @@ export default function Home() {
                     Hurmatli <b>{permitRequest.full_name}</b>, siz yuborgan yotoqxona yo&apos;llanmasi hozirda ko&apos;rib chiqilmoqda. Arizangiz tasdiqlanib, Dekan xona raqamini belgilaganidan so&apos;ng ro&apos;yxatdan o&apos;tish imkoni ochiladi.
                   </p>
                 </div>
+                {typeof permitRequest.queuePosition === 'number' && typeof permitRequest.queueTotal === 'number' && (
+                  <div className={`mx-auto flex max-w-[240px] items-center justify-between gap-3 rounded-2xl border px-5 py-3 relative z-10 ${
+                    isLight ? 'bg-white border-amber-200' : 'bg-slate-950/40 border-amber-500/20'
+                  }`}>
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Navbatdagi o&apos;rningiz
+                    </span>
+                    <span className="text-base font-black text-amber-500">
+                      {permitRequest.queuePosition} / {permitRequest.queueTotal}
+                    </span>
+                  </div>
+                )}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
                   <button
                     onClick={() => checkStatus(false)}
@@ -448,10 +510,10 @@ export default function Home() {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
                   <Link
-                    href="/ruxsatnoma-yuborish"
+                    href={permitRequest.application_type === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'}
                     className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-black text-xs uppercase tracking-wider text-center transition-all shadow-lg shadow-rose-500/20 active:scale-[0.98] border border-white/10"
                   >
-                    Qayta yuborish (my.gov.uz)
+                    {permitRequest.application_type === 'imtiyozli' ? 'Qayta yuborish' : 'Qayta yuborish (my.gov.uz)'}
                   </Link>
                   <button
                     onClick={handleClearStatus}
@@ -538,16 +600,16 @@ export default function Home() {
             <div className="space-y-3">
               <h3 className="text-xl font-black uppercase tracking-wider syne-font">Yotoqxona Ruxsatnomasi</h3>
               <p className={`text-xs leading-relaxed max-w-md mx-auto ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                Talabalar tizimda ro&apos;yxatdan o&apos;tishdan oldin my.gov.uz portalidan olingan yo&apos;llanma faylini yuborishlari shart.
+                Talabalar tizimda ro&apos;yxatdan o&apos;tishdan oldin my.gov.uz portalidan olingan yo&apos;llanma (yoki xorijlik/imtiyozli talabalar uchun Ariza+Tilxat) faylini yuborishlari shart.
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
               <Link
-                href="/ruxsatnoma-yuborish"
+                href="/ariza-yuborish"
                 className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/30 active:scale-[0.98] border border-white/10"
               >
-                <UploadCloud size={14} /> Yo&apos;llanma Yuborish
+                <UploadCloud size={14} /> Ariza Yuborish
               </Link>
               <Link
                 href="/ruxsatnoma-tekshirish"

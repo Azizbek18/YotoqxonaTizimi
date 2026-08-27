@@ -38,6 +38,48 @@ export default function RegisterPage() {
       if (passportSeries || jshshir || email) {
         setData((current) => ({ ...current, passportSeries, jshshir, email }))
       }
+
+      // Everything below was already typed once, in the yo'llanma form —
+      // pull the approved permit back via the same lookup the status-check
+      // page uses, and prefill the rest of the wizard from it so the
+      // student never retypes F.I.Sh, phone, fakultet, yo'nalish or kurs.
+      // Also matters functionally: /api/student/register rejects a
+      // faculty/name mismatch against the permit, so prefilling avoids a
+      // silent rejection from a student picking something different here.
+      if (passportSeries && jshshir && email) {
+        fetch('/api/permit-requests/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ passportSeries, jshshir, email }),
+        })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((payload) => {
+            const permit = payload?.data
+            if (!permit || permit.status !== 'approved') return
+
+            const nameParts = String(permit.full_name ?? '').trim().split(/\s+/).filter(Boolean)
+            const [lastName = '', firstName = '', ...rest] = nameParts
+            const middleName = rest.join(' ')
+            const phone = String(permit.phone ?? '').replace(/\D/g, '').slice(-9)
+
+            setData((current) => ({
+              ...current,
+              lastName: lastName || current.lastName,
+              firstName: firstName || current.firstName,
+              middleName: middleName || current.middleName,
+              phone: phone || current.phone,
+              gender: (permit.gender === 'male' || permit.gender === 'female') ? permit.gender : current.gender,
+              faculty: permit.faculty || current.faculty,
+              direction: permit.direction || current.direction,
+              course: permit.course ? String(permit.course) : current.course,
+              room_number: permit.room_number || current.room_number,
+            }))
+          })
+          .catch(() => {
+            // Prefill is a convenience, not a requirement — the student can
+            // still fill every step by hand if this lookup fails.
+          })
+      }
     }, 0)
     return () => window.clearTimeout(restoreId)
   }, [])

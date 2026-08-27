@@ -4,9 +4,9 @@ import React, { useCallback, useEffect, useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
+import {
   Search, CheckCircle2, XCircle,
-  HelpCircle, AlertTriangle, ChevronRight, House, LogIn 
+  HelpCircle, AlertTriangle, ChevronRight, ChevronLeft, House, LogIn
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -22,6 +22,10 @@ interface PermitRequest {
   status: 'pending' | 'approved' | 'rejected' | 'registered'
   room_number: string | null
   reject_reason: string | null
+  /** Only set while status is 'pending' — how many arizalar in the same
+   *  faculty were submitted before this one, and the total waiting. */
+  queuePosition?: number
+  queueTotal?: number
 }
 
 function StatusCheckContent() {
@@ -106,6 +110,17 @@ function StatusCheckContent() {
     handleSearch(passportSeries, jshshir, email)
   }
 
+  // Back to the form without re-fetching — lets someone fix a typo (wrong
+  // passport digit, etc.) without losing what they already typed.
+  const handleBackToForm = () => {
+    setSearched(false)
+    setResult(null)
+  }
+
+  // Form and result are two distinct steps, never shown together: the
+  // result only replaces the form once a check has actually finished.
+  const showResult = searched && !loading
+
   return (
     <div className={`min-h-screen flex items-center justify-center p-3 sm:p-6 relative overflow-x-hidden ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100 text-slate-900' : 'bg-[#020617] text-white'}`}>
       {/* Theme Toggle */}
@@ -128,11 +143,25 @@ function StatusCheckContent() {
             </div>
             <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight">Statusni Tekshirish</h1>
             <p className={`text-[10px] sm:text-xs font-medium mt-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-              Pasport, JShSHIR va arizada ko&apos;rsatilgan email orqali yo&apos;llanma holatini tekshiring.
+              {showResult
+                ? "Arizangizning joriy holati"
+                : "Pasport, JShSHIR va arizada koʻrsatilgan email orqali yoʻllanma holatini tekshiring."}
             </p>
           </div>
 
-          <form onSubmit={handleFormSubmit} className="space-y-4">
+          {/* Form and result are two separate steps — never both on screen
+              at once. The form (or its loading state) shows until a check
+              actually finishes; only then does the result replace it. */}
+          <AnimatePresence mode="wait">
+            {!showResult ? (
+              <motion.form
+                key="form"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                onSubmit={handleFormSubmit}
+                className="space-y-4"
+              >
             <div className="space-y-1">
               <label className={`text-[9px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Pasport Seriyasi & Raqami</label>
               <input
@@ -191,17 +220,24 @@ function StatusCheckContent() {
                 </>
               )}
             </button>
-          </form>
-
-          {/* Results section */}
-          <AnimatePresence mode="wait">
-            {searched && !loading && (
+              </motion.form>
+            ) : (
               <motion.div
+                key="result"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
-                className="mt-6 border-t border-slate-700/20 dark:border-white/5 pt-6 space-y-4"
+                className="space-y-4"
               >
+                <button
+                  type="button"
+                  onClick={handleBackToForm}
+                  className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-wider transition-colors ${isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-white'}`}
+                >
+                  <ChevronLeft size={14} />
+                  <span>Qayta tekshirish</span>
+                </button>
+
                 {result ? (
                   <div className="space-y-4">
                     {/* 1. Pending Status */}
@@ -214,6 +250,18 @@ function StatusCheckContent() {
                             Hurmatli {result.full_name}, siz yuborgan yo&apos;llanma arizasi hozirda kutilmoqda. Dekan arizani ko&apos;rib chiqib, xona raqamini belgilaganidan so&apos;ng bu yerda ro&apos;yxatdan o&apos;tish tugmasi ochiladi.
                           </p>
                         </div>
+                        {typeof result.queuePosition === 'number' && typeof result.queueTotal === 'number' && (
+                          <div className={`mx-auto flex max-w-[220px] items-center justify-between gap-3 rounded-xl border px-4 py-2.5 ${
+                            isLight ? 'bg-white border-amber-200' : 'bg-slate-950/40 border-amber-500/20'
+                          }`}>
+                            <span className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                              Navbatdagi o&apos;rningiz
+                            </span>
+                            <span className="text-sm font-black text-amber-400">
+                              {result.queuePosition} / {result.queueTotal}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
 

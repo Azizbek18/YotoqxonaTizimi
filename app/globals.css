@@ -861,3 +861,40 @@ body {
   backface-visibility: hidden;
 }
 
+/* ===================================================================
+   THEME SWITCH CROSS-FADE
+   `.theme-anim` is added to <html> by applyThemeToDocument() only for a
+   user toggle, then removed ~450ms later. During that window every
+   element eases its themeable paint properties instead of snapping, so
+   dark<->light is a smooth wipe rather than a hard cut. Only paint
+   properties are listed (never `transform`/`opacity`) so in-flight
+   hover-lifts and framer-motion animations are left alone. The
+   descendant selector out-specifies Tailwind's own `transition-*`
+   utilities without needing !important.
+   =================================================================== */
+html.theme-anim,
+html.theme-anim *,
+html.theme-anim *::before,
+html.theme-anim *::after {
+  transition-property: background-color, border-color, color, fill, stroke,
+    box-shadow, text-decoration-color, outline-color;
+  transition-duration: 0.4s;
+  transition-timing-function: ease;
+}
+
+/* Never fight the compositor for images/video/canvas or the toggle knob. */
+html.theme-anim img,
+html.theme-anim video,
+html.theme-anim canvas {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-anim,
+  html.theme-anim *,
+  html.theme-anim *::before,
+  html.theme-anim *::after {
+    transition: none;
+  }
+}
+

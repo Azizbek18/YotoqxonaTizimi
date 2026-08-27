@@ -12,10 +12,29 @@ type ThemeState = {
   toggleTheme: () => void
 }
 
-export function applyThemeToDocument(theme: ThemeMode) {
+let themeAnimTimer: ReturnType<typeof setTimeout> | undefined
+
+/**
+ * Flips the theme classes on <html>. `animate` briefly adds `.theme-anim`,
+ * which globals.css uses to cross-fade colours/borders/shadows across the
+ * whole tree instead of snapping — pass it only for a user-initiated
+ * toggle, never for the initial hydration paint. Skipped under
+ * prefers-reduced-motion.
+ */
+export function applyThemeToDocument(theme: ThemeMode, animate = false) {
   if (typeof document === 'undefined') return
 
   const root = document.documentElement
+
+  const prefersReduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  if (animate && !prefersReduced) {
+    root.classList.add('theme-anim')
+    clearTimeout(themeAnimTimer)
+    themeAnimTimer = setTimeout(() => root.classList.remove('theme-anim'), 450)
+  }
+
   root.dataset.theme = theme
   root.style.colorScheme = theme
   root.classList.remove('theme-dark', 'theme-light', 'dark', 'light')

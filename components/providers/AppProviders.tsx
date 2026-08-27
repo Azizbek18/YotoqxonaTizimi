@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster, resolveValue } from 'react-hot-toast'
 import { applyThemeToDocument, useThemeStore } from '@/lib/stores/theme-store'
@@ -9,6 +9,9 @@ import { isNativeApp } from '@/lib/platform'
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
   const theme = useThemeStore((state) => state.theme)
+  // The first [theme] effect run is the hydration paint (handled by the
+  // mount effect below with no animation); only later runs are real toggles.
+  const themeSettled = useRef(false)
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -59,7 +62,12 @@ export default function AppProviders({ children }: { children: React.ReactNode }
   }, [])
 
   useEffect(() => {
-    applyThemeToDocument(theme)
+    if (!themeSettled.current) {
+      themeSettled.current = true
+      applyThemeToDocument(theme)
+      return
+    }
+    applyThemeToDocument(theme, true)
   }, [theme])
 
   return (

@@ -26,6 +26,7 @@ vi.mock('@/features/app-settings/server/service', () => ({
       securityPhone: '',
       maxUploadSizeMb: 10,
       warningThreshold: 3,
+      ttjName: '',
     }),
   }),
 }))

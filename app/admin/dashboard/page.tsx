@@ -19,8 +19,9 @@ import {
   Cell,
 } from 'recharts'
 import Link from 'next/link'
-import { AlertTriangle, Loader, X, Activity, Cpu, RefreshCw, ServerCog, ArrowRight } from 'lucide-react'
+import { AlertTriangle, Loader, X, Activity, Cpu, RefreshCw, ServerCog, ArrowRight, GraduationCap, FileText, CheckCircle2, Clock, UserCog, Users } from 'lucide-react'
 import StatCard from '@/components/admin/StatCard'
+import { adminUI, adminChart } from '@/lib/admin-ui'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { StaggerList, StaggerItem } from '@/components/motion/StaggerList'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
@@ -94,9 +95,10 @@ export default function AdminDashboard() {
   const isLight = theme === 'light'
   const [waitingPaymentsCount, setWaitingPaymentsCount] = useState(0)
 
-  const surfaceBg = isLight ? 'bg-white/80 border-slate-200/80 shadow-lg shadow-slate-100/40' : 'bg-[#0f172a]/30 border-white/5 shadow-[0_0_50px_rgba(0,0,0,0.3)]'
-  const textMuted = isLight ? 'text-slate-500' : 'text-slate-400'
-  const textStrong = isLight ? 'text-slate-900' : 'text-white'
+  const ui = adminUI(isLight)
+  const surfaceBg = ui.card
+  const textMuted = ui.muted
+  const textStrong = ui.strong
 
   const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
@@ -584,48 +586,12 @@ export default function AdminDashboard() {
   }
 
   const statCards = [
-    {
-      title: 'Jami Talabalar',
-      value: stats.totalStudents,
-      imageSrc: '/3d-icons/student_3d_v4.png',
-      color: 'from-blue-500 to-indigo-600',
-      glowColor: 'rgba(59, 130, 246, 0.15)',
-    },
-    {
-      title: 'Jami Arizalar',
-      value: stats.totalRequests,
-      imageSrc: '/3d-icons/document_3d_v4.png',
-      color: 'from-purple-500 to-pink-600',
-      glowColor: 'rgba(168, 85, 247, 0.15)',
-    },
-    {
-      title: 'Tasdiqlangan',
-      value: stats.approvedRequests,
-      imageSrc: '/3d-icons/check_3d_v4.png',
-      color: 'from-emerald-500 to-green-600',
-      glowColor: 'rgba(16, 185, 129, 0.15)',
-    },
-    {
-      title: 'Kutish Holati',
-      value: stats.pendingRequests,
-      imageSrc: '/3d-icons/clock_3d_v4.png',
-      color: 'from-orange-500 to-amber-600',
-      glowColor: 'rgba(245, 158, 11, 0.15)',
-    },
-    {
-      title: 'Tarbiyachilar',
-      value: stats.totalEducators,
-      imageSrc: '/3d-icons/educator_3d_v4.png',
-      color: 'from-cyan-500 to-blue-600',
-      glowColor: 'rgba(6, 182, 212, 0.15)',
-    },
-    {
-      title: 'Jami Foydalanuvchilar',
-      value: stats.totalUsers,
-      imageSrc: '/3d-icons/user_3d_v4.png',
-      color: 'from-rose-500 to-red-600',
-      glowColor: 'rgba(244, 63, 94, 0.15)',
-    },
+    { title: 'Jami Talabalar', value: stats.totalStudents, icon: GraduationCap },
+    { title: 'Jami Arizalar', value: stats.totalRequests, icon: FileText },
+    { title: 'Tasdiqlangan', value: stats.approvedRequests, icon: CheckCircle2 },
+    { title: 'Kutish Holati', value: stats.pendingRequests, icon: Clock },
+    { title: 'Tarbiyachilar', value: stats.totalEducators, icon: UserCog },
+    { title: 'Jami Foydalanuvchilar', value: stats.totalUsers, icon: Users },
   ]
 
   return (
@@ -633,8 +599,8 @@ export default function AdminDashboard() {
       {/* Title Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className={`text-3xl sm:text-4xl font-black tracking-tight ${textStrong}`}>
-            Dashboard <span className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">Analitika</span>
+          <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${textStrong}`}>
+            Dashboard <span className={ui.accentText}>Analitika</span>
           </h1>
           <p className={`mt-2 text-sm sm:text-base ${textMuted}`}>
             Yotoqxona boshqaruv tizimining umumiy holati va tahlili
@@ -675,12 +641,8 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Pill Styled Glassmorphic Tabs */}
-      <div className={`inline-flex max-w-full overflow-x-auto no-scrollbar flex-nowrap p-1 rounded-full gap-1 border backdrop-blur-xl transition-all ${
-        isLight
-          ? 'bg-slate-100/80 border-slate-200/80'
-          : 'bg-[#0f172a]/60 border-white/5'
-      }`}>
+      {/* Segmented tabs */}
+      <div className={`inline-flex max-w-full overflow-x-auto no-scrollbar flex-nowrap p-1 rounded-2xl gap-1 border ${ui.inset}`}>
         {['overview', 'analytics', 'reports'].map((tab) => {
           const isActive = activeTab === tab
           return (
@@ -690,19 +652,19 @@ export default function AdminDashboard() {
                 setActiveTab(tab)
                 e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
               }}
-              className={`relative z-10 px-5 py-2.5 rounded-full text-xs sm:text-sm font-black transition-all duration-300 shrink-0 whitespace-nowrap ${
+              className={`no-shelf relative z-10 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-colors duration-200 shrink-0 whitespace-nowrap ${
                 isActive
-                  ? isLight ? 'text-purple-700' : 'text-white'
-                  : isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
+                  ? (isLight ? 'text-indigo-700' : 'text-indigo-300')
+                  : `${ui.muted} hover:${isLight ? 'text-slate-700' : 'text-slate-200'}`
               }`}
             >
               {isActive && (
                 <motion.div
                   layoutId="activeTabIndicator"
-                  className={`absolute inset-0 rounded-full -z-10 shadow-sm border ${
+                  className={`absolute inset-0 rounded-xl -z-10 border ${
                     isLight
-                      ? 'bg-white border-slate-200'
-                      : 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 border-purple-500/30 shadow-purple-500/10'
+                      ? 'bg-white border-indigo-200 shadow-[0_2px_0_0_#c7d2fe]'
+                      : 'bg-slate-800 border-indigo-500/25'
                   }`}
                   transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                 />
@@ -733,9 +695,7 @@ export default function AdminDashboard() {
                   key={index}
                   title={card.title}
                   value={card.value}
-                  imageSrc={card.imageSrc}
-                  color={card.color}
-                  glowColor={card.glowColor}
+                  icon={card.icon}
                   isLoading={stats.loading}
                 />
               ))}
@@ -756,17 +716,11 @@ export default function AdminDashboard() {
                 <button
                   onClick={handleRefreshStats}
                   disabled={isRefreshing}
-                  className={`group flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-300 ${
-                    isRefreshing ? 'opacity-70 cursor-not-allowed' : ''
-                  } ${
-                    isLight
-                      ? 'bg-slate-50/50 border-slate-200/80 hover:bg-white hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/5'
-                      : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-blue-500/30 hover:shadow-[0_0_35px_rgba(59,130,246,0.08)]'
-                  }`}
+                  className={`no-shelf group flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-150 ${
+                    isRefreshing ? 'opacity-70 cursor-not-allowed' : 'hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-500/40'
+                  } ${ui.inset}`}
                 >
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
-                    isLight ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/10 text-blue-400'
-                  }`}>
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${ui.accentTileSoft}`}>
                     {isRefreshing ? <Loader className="animate-spin" size={20} /> : <RefreshCw size={20} className="transition-transform duration-500 group-hover:rotate-180" />}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -782,17 +736,11 @@ export default function AdminDashboard() {
                 <button
                   onClick={handleCheckStatus}
                   disabled={isCheckingStatus}
-                  className={`group flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-300 ${
-                    isCheckingStatus ? 'opacity-70 cursor-not-allowed' : ''
-                  } ${
-                    isLight
-                      ? 'bg-slate-50/50 border-slate-200/80 hover:bg-white hover:border-purple-300 hover:shadow-lg hover:shadow-purple-500/5'
-                      : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-purple-500/30 hover:shadow-[0_0_35px_rgba(168,85,247,0.08)]'
-                  }`}
+                  className={`no-shelf group flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-150 ${
+                    isCheckingStatus ? 'opacity-70 cursor-not-allowed' : 'hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-500/40'
+                  } ${ui.inset}`}
                 >
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
-                    isLight ? 'bg-purple-100 text-purple-600' : 'bg-purple-500/10 text-purple-400'
-                  }`}>
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${ui.accentTileSoft}`}>
                     {isCheckingStatus ? <Loader className="animate-spin" size={20} /> : <ServerCog size={20} />}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -828,12 +776,12 @@ export default function AdminDashboard() {
                 <AreaChart data={monthlyData} margin={{ top: 10, right: 16, left: -16, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0}/>
+                      <stop offset="5%" stopColor={adminChart.primary} stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor={adminChart.primary} stopOpacity={0.0}/>
                     </linearGradient>
                     <linearGradient id="colorApplications" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0.0}/>
+                      <stop offset="5%" stopColor={adminChart.primarySoft} stopOpacity={0.35}/>
+                      <stop offset="95%" stopColor={adminChart.primarySoft} stopOpacity={0.0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)"} />
@@ -849,8 +797,8 @@ export default function AdminDashboard() {
                       boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
                     }}
                   />
-                  <Area type="monotone" dataKey="students" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorStudents)" name="Talabalar" />
-                  <Area type="monotone" dataKey="applications" stroke="#a855f7" strokeWidth={3} fillOpacity={1} fill="url(#colorApplications)" name="Arizalar" />
+                  <Area type="monotone" dataKey="students" stroke={adminChart.primary} strokeWidth={3} fillOpacity={1} fill="url(#colorStudents)" name="Talabalar" />
+                  <Area type="monotone" dataKey="applications" stroke={adminChart.primarySoft} strokeWidth={3} fillOpacity={1} fill="url(#colorApplications)" name="Arizalar" />
                 </AreaChart>
               </ResponsiveContainer>
             </motion.div>
@@ -1072,8 +1020,8 @@ export default function AdminDashboard() {
                           placeholder={selectedFloorRoomRange ? String(selectedFloorRoomRange.start) : ""}
                           className={`w-full px-4 py-3 rounded-xl border outline-none text-sm transition-all ${
                             isLight 
-                              ? 'bg-white border-slate-200 text-slate-800 focus:border-purple-500' 
-                              : 'bg-white/5 border-white/10 text-white focus:bg-[#0f172a] focus:border-purple-500'
+                              ? 'bg-white border-slate-200 text-slate-800 focus:border-indigo-500' 
+                              : 'bg-white/5 border-white/10 text-white focus:bg-[#0f172a] focus:border-indigo-500'
                           }`}
                         />
                       </div>
@@ -1088,8 +1036,8 @@ export default function AdminDashboard() {
                           placeholder={selectedFloorRoomRange ? String(selectedFloorRoomRange.end) : ""}
                           className={`w-full px-4 py-3 rounded-xl border outline-none text-sm transition-all ${
                             isLight 
-                              ? 'bg-white border-slate-200 text-slate-800 focus:border-purple-500' 
-                              : 'bg-white/5 border-white/10 text-white focus:bg-[#0f172a] focus:border-purple-500'
+                              ? 'bg-white border-slate-200 text-slate-800 focus:border-indigo-500' 
+                              : 'bg-white/5 border-white/10 text-white focus:bg-[#0f172a] focus:border-indigo-500'
                           }`}
                         />
                       </div>
@@ -1100,26 +1048,20 @@ export default function AdminDashboard() {
             </AnimatePresence>
 
             {/* Filtered Students Count Premium Card */}
-            <div className={`p-5 rounded-3xl border backdrop-blur-xl transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 mb-6 ${
+            <div className={`p-5 rounded-3xl border flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 mb-6 ${
               filteredStudents.length > 0
                 ? isLight
-                  ? 'bg-purple-50/50 border-purple-200/80 shadow-lg shadow-purple-100/40 text-purple-900'
-                  : 'bg-purple-500/5 border-purple-500/20 text-purple-200 shadow-[0_0_30px_rgba(168,85,247,0.05)]'
+                  ? 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                  : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-200'
                 : isLight
-                  ? 'bg-amber-50/50 border-amber-200 text-amber-900 shadow-lg shadow-amber-100/40'
-                  : 'bg-amber-500/5 border-amber-500/20 text-amber-200 shadow-[0_0_30px_rgba(245,158,11,0.05)]'
+                  ? 'bg-amber-50 border-amber-200 text-amber-900'
+                  : 'bg-amber-500/10 border-amber-500/20 text-amber-200'
             }`}>
-              <div className="relative w-16 h-16 shrink-0 transition-transform duration-500 hover:scale-110 hover:rotate-6">
-                <Image
-                  src="https://img.icons8.com/3d-fluency/94/conference-call.png"
-                  alt="Talabalar soni"
-                  fill
-                  unoptimized
-                  className="object-contain"
-                />
+              <div className={`shrink-0 flex h-14 w-14 items-center justify-center rounded-2xl ${filteredStudents.length > 0 ? ui.accentTile : 'bg-amber-500 text-white shadow-[0_3px_0_0_#b45309]'}`}>
+                <Users size={24} strokeWidth={2.4} />
               </div>
               <div className="min-w-0">
-                <p className="text-3xl font-black tracking-tight flex items-baseline gap-1.5">
+                <p className={`text-3xl font-extrabold tracking-tight flex items-baseline gap-1.5 ${textStrong}`}>
                   {filteredStudents.length}
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-400">ta talaba</span>
                 </p>
@@ -1147,7 +1089,7 @@ export default function AdminDashboard() {
               <button
                 onClick={handleExportExcel}
                 disabled={exporting}
-                className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 active:scale-95 flex items-center justify-center gap-2"
+                className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 active:scale-95 flex items-center justify-center gap-2"
               >
                 {exporting ? (
                   <>
@@ -1234,7 +1176,7 @@ export default function AdminDashboard() {
                   isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/5'
                 }`}>
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
+                    <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
                       <Cpu size={18} />
                     </div>
                     <div>
@@ -1249,7 +1191,7 @@ export default function AdminDashboard() {
                       {systemStatus.apiStatus === 'online' ? 'Faol' : 'Kutilmoqda'}
                     </span>
                     {systemStatus.apiStatus === 'online' && (
-                      <p className="text-xs font-bold text-purple-400/80 mt-1">{systemStatus.apiPing > 0 ? `${systemStatus.apiPing} ms` : '<1 ms'}</p>
+                      <p className="text-xs font-bold text-indigo-400/80 mt-1">{systemStatus.apiPing > 0 ? `${systemStatus.apiPing} ms` : '<1 ms'}</p>
                     )}
                   </div>
                 </div>
@@ -1257,7 +1199,7 @@ export default function AdminDashboard() {
 
               <button
                 onClick={() => setStatusModalOpen(false)}
-                className="w-full mt-6 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-black text-sm transition-all duration-300 active:scale-95"
+                className="w-full mt-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-black text-sm transition-all duration-300 active:scale-95"
               >
                 Yopish
               </button>

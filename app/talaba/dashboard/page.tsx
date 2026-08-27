@@ -1,27 +1,31 @@
 "use client";
 
 import { useCallback, useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
-import {
-  Search, X, Plus, CreditCard, Trash2, CheckCircle2,
-  Megaphone, MapPin, User, FileText, AlertTriangle,
-  Sparkles, ArrowRight, Phone, Heart, Calendar, Clock, ClipboardList, CheckCircle,
-  MessageSquare
-} from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { getSafeUser } from '@/lib/auth-session';
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors';
 import ProfileLoadError from '@/components/talaba/ProfileLoadError';
 import PageSkeleton from '@/components/ui/PageSkeleton';
-import { StaggerList, StaggerItem } from '@/components/motion/StaggerList';
-import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
 import AiAssistant from '@/components/talaba/dashboard/AiAssistant';
 import WarningsModal from '@/components/talaba/dashboard/WarningsModal';
 import WarningDetailModal from '@/components/talaba/dashboard/WarningDetailModal';
 import AnnouncementModal from '@/components/talaba/dashboard/AnnouncementModal';
 import CleaningScheduleModal from '@/components/talaba/dashboard/CleaningScheduleModal';
 import AdminChatModal from '@/components/talaba/dashboard/AdminChatModal';
+import DashboardHeader from '@/components/talaba/dashboard/DashboardHeader';
+import RoomAssignmentBanner from '@/components/talaba/dashboard/RoomAssignmentBanner';
+import RoomInfoCard from '@/components/talaba/dashboard/RoomInfoCard';
+import SardorPanelCard from '@/components/talaba/dashboard/SardorPanelCard';
+import FloorCaptainCard from '@/components/talaba/dashboard/FloorCaptainCard';
+import RoommatesCard from '@/components/talaba/dashboard/RoommatesCard';
+import SupportContactsCard from '@/components/talaba/dashboard/SupportContactsCard';
+import AnnouncementsBoard from '@/components/talaba/dashboard/AnnouncementsBoard';
+import MyApplicationsCard from '@/components/talaba/dashboard/MyApplicationsCard';
+import DisciplineRatingCard from '@/components/talaba/dashboard/DisciplineRatingCard';
+import PaymentStatusCard from '@/components/talaba/dashboard/PaymentStatusCard';
+import TasksCard from '@/components/talaba/dashboard/TasksCard';
 import { useCleaningSchedule } from '@/components/talaba/dashboard/useCleaningSchedule';
 import { fetchStudentPayments } from '@/features/payments/client/api';
 import { fetchStudentProfile } from '@/features/profile/client/api';
@@ -30,7 +34,6 @@ import { fetchStudentApplications } from '@/features/applications/client/api';
 import { fetchAppSettings } from '@/features/app-settings/client/api';
 import { getPaymentStats } from '@/features/app-settings/presentation';
 import type {
-  Task,
   SupportContacts,
   Ariza,
   Elon,
@@ -62,16 +65,9 @@ export default function TalabaDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [elonCategory, setElonCategory] = useState<string>("Barchasi");
 
-  // State - Cleaning Duty
-  const [cleaningDone, setCleaningDone] = useState(false);
-
   // State - Theme
   const theme = useThemeStore((state) => state.theme);
   const isLight = theme === 'light';
-
-  // State - Tasks (Persisted)
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [newTask, setNewTask] = useState("");
 
   // State - Dynamic Data
   const [elonlar, setElonlar] = useState<Elon[]>([]);
@@ -82,52 +78,6 @@ export default function TalabaDashboard() {
   const [contacts, setContacts] = useState<SupportContacts | null>(null);
   const [yearlyContractFee, setYearlyContractFee] = useState<number | null>(null);
   const [settingsStatus, setSettingsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-
-  const getAppStatusInfo = (status: string) => {
-    switch (status) {
-      case 'draft':
-        return {
-          label: 'Qoralama (Draft)',
-          badgeClass: isLight 
-            ? 'text-slate-600 bg-slate-100 border-slate-200' 
-            : 'text-slate-400 bg-slate-500/10 border-slate-500/20',
-          icon: FileText
-        };
-      case 'submitted':
-      case 'pending':
-        return {
-          label: 'Ko\'rib chiqilmoqda',
-          badgeClass: isLight 
-            ? 'text-amber-600 bg-amber-50 border-amber-200' 
-            : 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-          icon: Clock
-        };
-      case 'approved':
-        return {
-          label: 'Qabul qilindi',
-          badgeClass: isLight 
-            ? 'text-emerald-600 bg-emerald-50 border-emerald-200' 
-            : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-          icon: CheckCircle2
-        };
-      case 'rejected':
-        return {
-          label: 'Rad etildi',
-          badgeClass: isLight 
-            ? 'text-rose-600 bg-rose-50 border-rose-200' 
-            : 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-          icon: AlertTriangle
-        };
-      default:
-        return {
-          label: status,
-          badgeClass: isLight 
-            ? 'text-slate-600 bg-slate-100 border-slate-200' 
-            : 'text-slate-400 bg-slate-500/10 border-slate-500/20',
-          icon: FileText
-        };
-    }
-  };
 
   const allResidents = useMemo(() => {
     if (!profile) return [];
@@ -180,58 +130,6 @@ export default function TalabaDashboard() {
       document.body.style.overflow = '';
     };
   }, [cleaning.isModalOpen, selectedElon, selectedAriza, showArizalar, isChatModalOpen]);
-
-
-  // Load Tasks and Settings on Mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('talaba_tasks');
-      if (saved) {
-        try {
-          setTasks(JSON.parse(saved));
-        } catch (e) {
-          console.error("Failed to parse tasks:", e);
-        }
-      } else {
-        const defaultTasks = [
-          { id: 1, text: "Yotoqxona tozalik qoidalarini tekshirish", completed: true },
-          { id: 2, text: "Xona to'lov chekini yuklash", completed: false }
-        ];
-        setTasks(defaultTasks);
-        localStorage.setItem('talaba_tasks', JSON.stringify(defaultTasks));
-      }
-
-      // Load Cleaning Duty Status
-      const savedCleaning = localStorage.getItem('room_cleaning_done');
-      const savedCleaningDate = localStorage.getItem('room_cleaning_date');
-      const todayStr = new Date().toDateString();
-
-      if (savedCleaningDate === todayStr) {
-        setCleaningDone(savedCleaning === 'true');
-      } else {
-        setCleaningDone(false);
-        localStorage.setItem('room_cleaning_done', 'false');
-        localStorage.setItem('room_cleaning_date', todayStr);
-      }
-    }
-  }, []);
-
-  // Save Tasks Helper
-  const saveTasks = (newTasks: Task[]) => {
-    setTasks(newTasks);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('talaba_tasks', JSON.stringify(newTasks));
-    }
-  };
-
-  // Toggle Cleaning status
-  const handleCleaningToggle = () => {
-    const nextVal = !cleaningDone;
-    setCleaningDone(nextVal);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('room_cleaning_done', String(nextVal));
-    }
-  };
 
   // Fetch Profile, Roommates, Announcements, and Disciplinary Writeups
   useEffect(() => {
@@ -367,16 +265,9 @@ export default function TalabaDashboard() {
     fetchData();
   }, []);
 
+  // Active warnings: users.warning_count can lag the actual list, so take the larger.
   const arizaSoni = typeof profile?.warning_count === 'number' ? Math.max(profile.warning_count, arizalar.length) : arizalar.length;
-  // Calculate health metrics
-  const maxWarnings = 3;
-  const healthPercent = Math.max(0, Math.min(100, Math.round(((maxWarnings - arizaSoni) / maxWarnings) * 100)));
-  const healthColor = healthPercent >= 100 ? 'bg-emerald-500 shadow-emerald-500/30' :
-                        healthPercent >= 66 ? 'bg-yellow-500 shadow-yellow-500/30' :
-                        healthPercent >= 33 ? 'bg-orange-500 shadow-orange-500/30' :
-                        'bg-rose-500 shadow-rose-500/30 animate-pulse';
 
-  // Room parameters - Fully visible room number
   const roomNumberFull = profile?.room_number || '—';
   const floor = floorOf(profile?.room_number);
   const fullName = profile?.full_name || 'Talaba';
@@ -384,10 +275,10 @@ export default function TalabaDashboard() {
   const course = Number(profile?.course ?? 1);
   const group = profile?.group || '—';
 
-  // Search & tab filter announcements
+  // Search + category filter over announcements
   const filteredElonlar = useMemo(() => {
     return elonlar.filter(e => {
-      const matchesSearch = e.title.toLowerCase().includes(searchQuery.trim().toLowerCase()) || 
+      const matchesSearch = e.title.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
                             e.desc.toLowerCase().includes(searchQuery.trim().toLowerCase());
       const matchesTab = elonCategory === "Barchasi" || e.type === elonCategory;
       return matchesSearch && matchesTab;
@@ -405,22 +296,10 @@ export default function TalabaDashboard() {
     setSeenRoomAssignment(room);
   }, [profile?.room_number]);
 
-  const surfaceBg = isLight
-    ? 'bg-white/80 border-slate-200/80 shadow-xl shadow-slate-100/40'
-    : 'bg-[#0f172a]/30 border-white/5 shadow-[0_0_50px_rgba(0,0,0,0.3)]';
-  const textMuted = isLight ? 'text-slate-500' : 'text-slate-400';
-  const textStrong = isLight ? 'text-slate-900' : 'text-white';
-  const cardBorder = isLight ? 'border-slate-100' : 'border-white/5';
-  const cardInnerBg = isLight ? 'bg-slate-50/70 hover:bg-slate-100/50' : 'bg-white/5 hover:bg-white/10';
-
-  // Payment Calculations
   const paidAmount = payments
     .filter(p => p.status === 'paid' || p.status === 'approved')
     .reduce((sum, p) => sum + p.amount, 0);
   const paymentStats = getPaymentStats(yearlyContractFee, paidAmount);
-  const strokeDashoffset = paymentStats
-    ? Math.max(0, 213 - (213 * paymentStats.progressPercent) / 100)
-    : 213;
 
   if (loadingProfile) {
     return (
@@ -437,437 +316,59 @@ export default function TalabaDashboard() {
   return (
     <div className="relative w-full max-w-6xl mx-auto p-2 sm:p-4 md:p-6 space-y-6 sm:space-y-8 min-h-screen transition-colors duration-300">
       
-      {/* 1. HEADER */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-white/5">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className={`text-[9px] font-black uppercase tracking-[0.24em] px-2.5 py-1 rounded-full ${
-              isLight ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-blue-500/10 text-cyan-400 border border-blue-500/20'
-            }`}>
-              {faculty}
-            </span>
-            <span className={`text-[9px] font-black uppercase tracking-[0.24em] px-2.5 py-1 rounded-full ${
-              isLight ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-            }`}>
-              {group}
-            </span>
-          </div>
-          <Link href="/talaba/profil" className="group flex items-center gap-2">
-            <h1 className={`text-2xl sm:text-4xl font-black italic tracking-tight uppercase group-hover:text-blue-500 transition-colors ${textStrong}`}>
-              {fullName}
-            </h1>
-            <Sparkles className="size-5 text-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-          </Link>
-          <p className={`text-xs ${textMuted}`}>Yotoqxona boshqaruv tizimidagi shaxsiy boshqaruv panelingiz.</p>
-        </div>
+      <DashboardHeader
+        isLight={isLight}
+        faculty={faculty}
+        group={group}
+        fullName={fullName}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
 
-        <div className="relative w-full md:w-80">
-          <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 size-4.5 ${isLight ? 'text-slate-400' : 'text-gray-600'}`} />
-          <input
-            type="text"
-            placeholder="E'lonlarni qidirish..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full border rounded-2xl py-3.5 pl-11 pr-4 outline-none text-xs sm:text-sm transition-all ${
-              isLight 
-                ? 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm' 
-                : 'bg-white/5 border-white/5 text-white placeholder:text-gray-500 focus:border-blue-500/30'
-            }`}
-          />
-        </div>
-      </header>
+      <RoomAssignmentBanner
+        isLight={isLight}
+        roomNumber={profile.room_number}
+        floor={floor}
+        seenRoomAssignment={seenRoomAssignment}
+        onDismiss={dismissRoomBanner}
+      />
 
-      {/* Xona holati haqida xabar */}
-      <AnimatePresence initial={false}>
-        {profile.room_number ? (
-          seenRoomAssignment !== profile.room_number && (
-            <motion.div
-              key={`room-assigned-${profile.room_number}`}
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className={`relative flex items-start gap-3 p-4 pr-12 rounded-3xl border ${
-                isLight
-                  ? 'bg-emerald-50 border-emerald-200'
-                  : 'bg-emerald-500/10 border-emerald-500/20'
-              }`}
-            >
-              <div className="shrink-0 h-10 w-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center">
-                <CheckCircle2 size={20} />
-              </div>
-              <div className="min-w-0 space-y-0.5">
-                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-500">
-                  Sizga xona biriktirildi!
-                </h3>
-                <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                  Yotoqxonadan <b>{profile.room_number}-xona</b>
-                  {floor ? ` (${floor}-qavat)` : ''} ajratildi. Ko&apos;chib o&apos;tish tartibi va
-                  qoidalar bilan tanishib chiqing.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={dismissRoomBanner}
-                aria-label="Xabarni yopish"
-                className={`absolute right-3 top-3 p-1.5 rounded-lg transition-colors ${
-                  isLight ? 'text-slate-400 hover:bg-emerald-100' : 'text-slate-400 hover:bg-white/10'
-                }`}
-              >
-                <X size={14} />
-              </button>
-            </motion.div>
-          )
-        ) : (
-          <motion.div
-            key="room-pending"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className={`flex items-start gap-3 p-4 rounded-3xl border ${
-              isLight ? 'bg-amber-50 border-amber-200' : 'bg-amber-500/10 border-amber-500/20'
-            }`}
-          >
-            <div className="shrink-0 h-10 w-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center">
-              <Clock size={20} />
-            </div>
-            <div className="min-w-0 space-y-0.5">
-              <h3 className="text-xs font-black uppercase tracking-wider text-amber-500">
-                Xona biriktirilishi kutilmoqda
-              </h3>
-              <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                Fakultet dekani sizga xona biriktirgach, bu haqda shu yerda va
-                email orqali xabar beriladi.
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
-        
         {/* ================= LEFT COLUMN ================= */}
         <div className="lg:col-span-4 space-y-6 sm:space-y-8">
-          
-          {/* Room Card & Cleaning Schedule (Tozalik Navbatchiligi) */}
-          <div
-            className="relative overflow-hidden p-6 rounded-[32px] bg-blue-600 text-white border border-blue-500/40 transition-all duration-300"
-          >
-            {/* Background Glow */}
-            <div className="absolute right-[-10%] top-[-10%] w-[50%] h-[50%] rounded-full blur-[80px] bg-cyan-400/20" />
-            
-            <div className="relative z-10 space-y-5">
-              {/* Header Room Info (Room number is fully displayed inside custom container with padding to avoid clip) */}
-              <div className="flex justify-between items-center py-1">
-                <div className="flex flex-col">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Yotgan Joyi</span>
-                  <h2 className="text-3xl sm:text-4xl font-black italic tracking-tight text-white select-none">
-                    {roomNumberFull}
-                  </h2>
-                </div>
-                <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl text-xs font-black">
-                  <Calendar size={14} className="text-cyan-300" />
-                  <span>{floor ? `${floor}-qavat` : '—'}</span>
-                </div>
-              </div>
-              
-              {/* Replacing Room Controls with Cleaning Duty Schedule */}
-              <div className="space-y-3 pt-4 border-t border-white/10">
-                <div className="flex justify-between items-center">
-                  <p className="text-[9px] font-black tracking-widest text-white/55 uppercase">Tozalik Navbatchiligi</p>
-                  
-                  {/* Duty checklist status */}
-                  <button 
-                    onClick={handleCleaningToggle}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-black transition-all uppercase ${
-                      cleaningDone
-                        ? 'bg-green-500 text-white'
-                        : 'bg-white/15 text-white/70 hover:bg-white/20'
-                    }`}
-                  >
-                    {cleaningDone ? <CheckCircle size={10} /> : <div className="w-2.5 h-2.5 rounded-full border border-white/40" />}
-                    <span>{cleaningDone ? 'Tozalangan' : 'Bajarilmadi'}</span>
-                  </button>
-                </div>
-                
-                <div className="space-y-2 text-xs font-semibold text-white/90">
-                  <div className="flex flex-col gap-1.5 p-3 rounded-2xl bg-white/5 border border-white/5">
-                    <div className="flex justify-between items-center text-[10px] opacity-60 font-semibold uppercase tracking-wider">
-                      <span>Bugun ({cleaning.todayName})</span>
-                      <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                    </div>
-                    <div className="text-sm font-black tracking-tight text-white mt-1">
-                      {cleaning.todayDutyPerson ? (
-                        <span className={cleaning.todayDutyPerson.id === profile?.id ? "text-cyan-200" : ""}>
-                          {cleaning.todayDutyPerson.id === profile?.id ? `${profile?.full_name} (Siz)` : cleaning.todayDutyPerson.name}
-                        </span>
-                      ) : (
-                        <span className="text-white/50 italic">Bugun hech kim biriktirilmagan — pastdagi tugma orqali tayinlang</span>
-                      )}
-                    </div>
-                  </div>
+          <RoomInfoCard
+            roomNumberFull={roomNumberFull}
+            floor={floor}
+            course={course}
+            group={group}
+            todayName={cleaning.todayName}
+            todayDutyPerson={cleaning.todayDutyPerson}
+            selfId={profile.id}
+            selfName={profile.full_name}
+            onOpenSchedule={cleaning.openModal}
+          />
 
-                  <button
-                    onClick={cleaning.openModal}
-                    className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-1.5 mt-2"
-                  >
-                    <span>📋 Hamma navbatchilikni ko&apos;rish</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Floor/Course indicators */}
-              <div className="grid grid-cols-3 gap-2 text-center pt-4 border-t border-white/10">
-                <div>
-                  <p className="text-[9px] font-black text-white/40 mb-0.5 tracking-wider uppercase">Kurs</p>
-                  <p className="text-sm font-black">{course}-kurs</p>
-                </div>
-                <div>
-                  <p className="text-[9px] font-black text-white/40 mb-0.5 tracking-wider uppercase">Guruh</p>
-                  <p className="text-sm font-black truncate">{group}</p>
-                </div>
-                <div>
-                  <p className="text-[9px] font-black text-white/40 mb-0.5 tracking-wider uppercase">Xona statusi</p>
-                  <span className="text-[9px] font-black px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-md border border-emerald-500/20 inline-block">
-                    Namunali
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Sardorlik Paneli Card */}
-          {profile?.is_floor_captain && (
-            <div className="relative overflow-hidden p-6 rounded-[32px] border border-purple-500/20 bg-purple-500/5 shadow-2xl transition-all duration-300">
-              <div className="absolute right-[-10%] top-[-10%] w-[50%] h-[50%] rounded-full blur-[80px] bg-purple-500/20" />
-              <div className="relative z-10 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 font-bold">
-                    ⭐
-                  </div>
-                  <div>
-                    <h4 className={`text-base font-black tracking-tight ${textStrong}`}>Sardorlik Faoliyati</h4>
-                    <p className={`text-[10px] uppercase font-bold tracking-widest text-purple-400`}>
-                      {profile.assigned_floor}-qavat sardori
-                    </p>
-                  </div>
-                </div>
-                <p className={`text-xs leading-relaxed ${textMuted}`}>
-                  Siz ushbu qavatning sardori etib tayinlangansiz. Talabalarni ko&apos;rish va yangi e&apos;lon yuborish uchun boshqaruv paneliga o&apos;ting.
-                </p>
-                <Link
-                  href="/sardor/dashboard"
-                  className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-2xl border border-white/10 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-lg shadow-purple-500/20 active:scale-98"
-                >
-                  Sardor paneliga o&apos;tish
-                  <ArrowRight size={14} />
-                </Link>
-              </div>
-            </div>
+          {profile.is_floor_captain && (
+            <SardorPanelCard isLight={isLight} assignedFloor={profile.assigned_floor} />
           )}
 
-          {/* Floor Captain Card for normal students */}
           {floorCaptain && (
-            <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg} relative overflow-hidden`}>
-              <div className="absolute right-[-10%] top-[-10%] w-[40%] h-[40%] rounded-full blur-[60px] bg-cyan-500/10" />
-              <div className="relative z-10">
-                <h3 className={`text-[10px] font-black tracking-[0.2em] mb-4 uppercase ${
-                  isLight ? 'text-blue-600' : 'text-cyan-400'
-                }`}>
-                  Qavat Sardori
-                </h3>
-                <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${isLight ? 'bg-cyan-50 text-cyan-600' : 'bg-cyan-500/10 text-cyan-400'}`}>
-                    {floorCaptain.full_name?.split(' ').map((n: string) => n[0]).join('').substring(0, 2) || 'QS'}
-                  </div>
-                  <div>
-                    <p className={`text-sm font-black tracking-tight ${textStrong}`}>{floorCaptain.full_name}</p>
-                    <p className={`text-[10px] ${textMuted} font-semibold mt-0.5`}>
-                      Sizning qavatingiz ({floor ?? ''}-qavat) sardori
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/5">
-                  <div className={`p-3 rounded-2xl border ${cardBorder} ${cardInnerBg} text-center`}>
-                    <p className={`text-[8px] font-bold uppercase tracking-wider text-slate-500 mb-0.5`}>Telefon</p>
-                    <a href={`tel:${floorCaptain.phone_number || ''}`} className={`text-[10px] font-black ${textStrong} hover:text-cyan-400 transition-colors`}>
-                      {floorCaptain.phone_number || 'Kiritilmagan'}
-                    </a>
-                  </div>
-                  <div className={`p-3 rounded-2xl border ${cardBorder} ${cardInnerBg} text-center`}>
-                    <p className={`text-[8px] font-bold uppercase tracking-wider text-slate-500 mb-0.5`}>Email</p>
-                    <p className={`text-[10px] font-black ${textStrong} truncate`}>
-                      {floorCaptain.email}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <FloorCaptainCard isLight={isLight} captain={floorCaptain} floor={floor} />
           )}
 
-          {/* Xonadoshlar Ro'yxati */}
-          <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg}`}>
-            <h3 className={`text-[10px] font-black tracking-[0.2em] mb-4 uppercase ${
-              isLight ? 'text-blue-600' : 'text-cyan-400'
-            }`}>
-              Xonadoshlar ({roommates.length} kishi)
-            </h3>
-            
-            <StaggerList className="space-y-3">
-              {roommates.map((roommate) => {
-                const initials = roommate.full_name.split(' ').map(n => n[0]).join('').substring(0, 2);
-                return (
-                  <StaggerItem key={roommate.id}>
-                    <div
-                      className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
-                        isLight ? 'bg-white border-slate-200' : 'bg-white/5 border-transparent'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black border bg-blue-500/10 text-cyan-400 border-blue-500/20">
-                          {initials}
-                        </div>
-                        <div>
-                          <p className={`text-xs font-bold ${textStrong}`}>{roommate.full_name}</p>
-                          <p className={`text-[9px] ${textMuted}`}>{roommate.course || 1}-kurs | {roommate.faculty || 'Talaba'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {roommate.phone_number ? (
-                          <a href={`tel:${roommate.phone_number}`} aria-label={`${roommate.full_name}ga qo'ng'iroq qilish`} className={`p-1.5 rounded-lg border hover:bg-blue-500/10 ${isLight ? 'border-slate-200 text-slate-600' : 'border-white/5 text-gray-400'}`}>
-                            <Phone size={12} />
-                          </a>
-                        ) : (
-                          <span title="Telefon raqami kiritilmagan" className={`p-1.5 rounded-lg border opacity-40 ${isLight ? 'border-slate-200 text-slate-400' : 'border-white/5 text-gray-500'}`}>
-                            <Phone size={12} />
-                          </span>
-                        )}
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                      </div>
-                    </div>
-                  </StaggerItem>
-                );
-              })}
-              {roommates.length === 0 && (
-                <p className={`text-xs text-center py-4 ${textMuted}`}>Xonadoshlar ma&apos;lumoti topilmadi.</p>
-              )}
-            </StaggerList>
-          </div>
+          <RoommatesCard isLight={isLight} roommates={roommates} />
 
-          {/* Quick Support Contacts */}
-          {/* pr-20 (below lg): the floating AI-chat button is fixed at
-              bottom-24 right-6, which — once this card stacks full-width on
-              mobile — sits directly over its right-aligned "Call" links.
-              Reserve space so the tel: links stay reachable/visible instead
-              of getting hidden under the FAB while scrolling. */}
-          <div className={`backdrop-blur-xl border rounded-[32px] p-6 pr-20 lg:pr-6 ${surfaceBg}`}>
-            <h3 className={`text-[10px] font-black tracking-[0.2em] mb-4 uppercase ${
-              isLight ? 'text-blue-600' : 'text-cyan-400'
-            }`}>
-              Yordam & Aloqa (Qo&apos;llab-quvvatlash)
-            </h3>
-            
-            {contacts ? (
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className={`text-xs font-bold ${textStrong}`}>Tarbiyachi (Navbatchi)</p>
-                  <p className={`text-[9px] ${textMuted}`}>{contacts.tarbiyachiName}</p>
-                </div>
-                {contacts.tarbiyachiPhone ? (
-                  <a href={`tel:${contacts.tarbiyachiPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
-                    isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
-                  }`}>
-                    <Phone size={10} /> Call
-                  </a>
-                ) : <span className={`text-[10px] ${textMuted}`}>Raqam kiritilmagan</span>}
-              </div>
-
-              <div className="flex justify-between items-center pt-2.5 border-t border-white/5">
-                <div>
-                  <p className={`text-xs font-bold ${textStrong}`}>Komedant</p>
-                  <p className={`text-[9px] ${textMuted}`}>{contacts.komendantName}</p>
-                </div>
-                {contacts.komendantPhone ? (
-                  <a href={`tel:${contacts.komendantPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
-                    isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
-                  }`}>
-                    <Phone size={10} /> Call
-                  </a>
-                ) : <span className={`text-[10px] ${textMuted}`}>Raqam kiritilmagan</span>}
-              </div>
-
-              <div className="flex justify-between items-center pt-2.5 border-t border-white/5">
-                <div>
-                  <p className={`text-xs font-bold ${textStrong}`}>Tibbiy yordam xonasi</p>
-                  <p className={`text-[9px] ${textMuted}`}>{contacts.doctorName} (Shifokor)</p>
-                </div>
-                {contacts.doctorPhone ? (
-                  <a href={`tel:${contacts.doctorPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
-                    isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
-                  }`}>
-                    <Phone size={10} /> Call
-                  </a>
-                ) : <span className={`text-[10px] ${textMuted}`}>Raqam kiritilmagan</span>}
-              </div>
-
-              {contacts.talabaKengashiRaisiOgilPhone && (
-                <div className="flex justify-between items-center pt-2.5 border-t border-white/5">
-                  <div>
-                    <p className={`text-xs font-bold ${textStrong}`}>Talaba kengashi raisi (o&apos;g&apos;il)</p>
-                    <p className={`text-[9px] ${textMuted}`}>{contacts.talabaKengashiRaisiOgilName}</p>
-                  </div>
-                  <a href={`tel:${contacts.talabaKengashiRaisiOgilPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
-                    isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
-                  }`}>
-                    <Phone size={10} /> Call
-                  </a>
-                </div>
-              )}
-
-              {contacts.talabaKengashiRaisiQizPhone && (
-                <div className="flex justify-between items-center pt-2.5 border-t border-white/5">
-                  <div>
-                    <p className={`text-xs font-bold ${textStrong}`}>Talaba kengashi raisi (qiz)</p>
-                    <p className={`text-[9px] ${textMuted}`}>{contacts.talabaKengashiRaisiQizName}</p>
-                  </div>
-                  <a href={`tel:${contacts.talabaKengashiRaisiQizPhone}`} className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[10px] font-black ${
-                    isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
-                  }`}>
-                    <Phone size={10} /> Call
-                  </a>
-                </div>
-              )}
-            </div>
-            ) : (
-              <div className={`rounded-2xl border p-4 text-center text-xs ${
-                isLight ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-rose-500/20 bg-rose-500/5 text-rose-300'
-              }`}>
-                <p>{settingsStatus === 'loading' ? 'Aloqa ma’lumotlari yuklanmoqda...' : 'Aloqa ma’lumotlarini yuklab bo‘lmadi.'}</p>
-                {settingsStatus === 'error' && (
-                  <button
-                    type="button"
-                    onClick={() => void loadSettings()}
-                    className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 font-black uppercase tracking-wider hover:bg-rose-500/20"
-                  >
-                    Qayta urinish
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
+          <SupportContactsCard
+            isLight={isLight}
+            contacts={contacts}
+            settingsStatus={settingsStatus}
+            onRetry={() => void loadSettings()}
+          />
         </div>
 
         {/* ================= RIGHT COLUMN ================= */}
         <div className="lg:col-span-8 space-y-6 sm:space-y-8">
-          
-          {/* Admin bilan xabarlar — bu yerdagi 4 ta yo'naltiruvchi tugma pastdagi
-              doimiy navigatsiya paneli bilan takrorlangani uchun olib
-              tashlandi (Ariza/To'lov/Navbat/Qoidalar allaqachon bir bosishda
-              erishiladi); shu joyda faqat pastki navigatsiyada yo'q, alohida
-              amal bo'lgan "Xabarlar" qoldi, kattaroq va yorqinroq CTA sifatida. */}
+          {/* "Xabarlar" is the one action not already in the bottom nav bar. */}
           <button
             onClick={() => setIsChatModalOpen(true)}
             className="w-full flex items-center gap-4 rounded-[32px] p-6 bg-blue-600 text-white text-left transition-all"
@@ -881,440 +382,33 @@ export default function TalabaDashboard() {
             </div>
           </button>
 
-          {/* E'lonlar Bo'limi (RE-DESIGNED NOTICE BOARD - TIMELINE CARDS) */}
-          <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg}`}>
-            <div className="flex flex-col gap-3.5 mb-6">
-              <div>
-                <h3 className={`text-base font-black uppercase tracking-wider flex items-center gap-2 ${
-                  isLight ? 'text-blue-600' : 'text-indigo-400'
-                }`}>
-                  <Megaphone size={18} /> E&apos;lonlar va Xabarnomalar
-                </h3>
-                <p className={`text-[10px] mt-1 ${textMuted}`}>Yotoqxona ma&apos;muriyati tomonidan chop etilgan so&apos;nggi yangiliklar.</p>
-              </div>
-              
-              <div className="flex overflow-x-auto no-scrollbar gap-1.5 max-w-full pb-1 flex-nowrap shrink-0">
-                {['Barchasi', 'Muhim', 'Tadbir', 'Yangilik', 'Ogohlantirish'].map(cat => (
-                  <button 
-                    key={cat}
-                    onClick={() => setElonCategory(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all duration-200 shrink-0 ${
-                      elonCategory === cat
-                        ? 'bg-blue-600 text-white'
-                        : isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-white/5 hover:bg-white/10 text-gray-300'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              {filteredElonlar.map((elon) => {
-                // Determine category color parameters
-                const typeStyles = 
-                  elon.type === 'Muhim' 
-                    ? { border: 'border-l-rose-500', badge: 'bg-rose-500/10 text-rose-400 border-rose-500/20', glow: 'shadow-rose-950/20' } :
-                  elon.type === 'Tadbir' 
-                    ? { border: 'border-l-emerald-500', badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', glow: 'shadow-emerald-950/20' } :
-                  elon.type === 'Ogohlantirish' 
-                    ? { border: 'border-l-amber-500', badge: 'bg-amber-500/10 text-amber-400 border-amber-500/20', glow: 'shadow-amber-950/20' } :
-                    { border: 'border-l-cyan-500', badge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20', glow: 'shadow-cyan-950/20' };
+          <AnnouncementsBoard
+            isLight={isLight}
+            items={filteredElonlar}
+            category={elonCategory}
+            onCategoryChange={setElonCategory}
+            onSelect={setSelectedElon}
+          />
 
-                return (
-                  <div 
-                    key={elon.id} 
-                    onClick={() => setSelectedElon(elon)}
-                    className={`relative overflow-hidden rounded-2xl border-l-[6px] border border-y-transparent border-r-transparent p-5 cursor-pointer transition-all duration-200 hover:translate-x-1 group flex flex-col md:flex-row md:items-center justify-between gap-4 ${typeStyles.border} ${
-                      isLight ? 'bg-white hover:bg-slate-50/50 border-slate-200 shadow-sm' : 'bg-white/5 hover:bg-white/10 border-white/5'
-                    }`}
-                  >
-                    {/* Main content */}
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2.5">
-                        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${typeStyles.badge}`}>
-                          {elon.type}
-                        </span>
-                        {elon.is_from_captain && (
-                          <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border border-purple-500/30 bg-purple-500/10 text-purple-400">
-                            🌟 Qavat Sardori
-                          </span>
-                        )}
-                        <div className={`flex items-center gap-1 text-[10px] ${textMuted}`}>
-                          <Clock size={11} />
-                          <span>{elon.time}</span>
-                        </div>
-                      </div>
-                      
-                      <h4 className={`text-base font-extrabold tracking-tight group-hover:text-blue-500 transition-colors ${textStrong}`}>
-                        {elon.title}
-                      </h4>
-                      <p className={`text-xs leading-relaxed line-clamp-2 ${textMuted}`}>{elon.desc}</p>
-                    </div>
+          <MyApplicationsCard isLight={isLight} items={myApplications} />
 
-                    {/* Metadata right-side block */}
-                    <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center border-t md:border-t-0 border-white/5 pt-3 md:pt-0 gap-2 shrink-0">
-                      <div className="flex items-center gap-1.5">
-                        <User size={12} className={isLight ? 'text-slate-400' : 'text-gray-500'} />
-                        <span className={`text-[10px] font-bold ${textStrong}`}>{elon.teacher}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <MapPin size={12} className={isLight ? 'text-slate-400' : 'text-gray-500'} />
-                        <span className={`text-[10px] font-bold ${textMuted}`}>{elon.room}</span>
-                      </div>
-                      <div className={`hidden md:flex items-center gap-0.5 text-xs font-black uppercase tracking-wider ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>
-                        <span>Batafsil</span>
-                        <ArrowRight size={12} className="transition-transform duration-200 group-hover:translate-x-1" />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {filteredElonlar.length === 0 && (
-                <div className={`text-center py-12 border border-dashed rounded-2xl ${isLight ? 'border-slate-200' : 'border-white/5'}`}>
-                  <Megaphone className={`size-8 mx-auto mb-2 opacity-30 ${textMuted}`} />
-                  <p className={`text-xs ${textMuted} italic`}>Ushbu toifaga tegishli e&apos;lonlar topilmadi.</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <DisciplineRatingCard
+            isLight={isLight}
+            warningCount={arizaSoni}
+            onShowWarnings={() => setShowArizalar(true)}
+          />
 
-          {/* Replaced Cafe Menu with Mening Murojaatlarim Statusi (My Application Statuses) */}
-          <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg}`}>
-            <div className="flex justify-between items-center mb-5">
-              <div className="flex items-center gap-2">
-                <ClipboardList className={isLight ? 'text-blue-600' : 'text-indigo-400'} size={18} />
-                <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${textStrong}`}>
-                  Murojaat va Arizalarim Statusi
-                </h3>
-              </div>
-              <Link href="/talaba/arizalar" className={`text-xs font-black uppercase tracking-wider px-4 py-2 rounded-xl border transition-all ${
-                isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
-              }`}>
-                Yangi Ariza Yozish
-              </Link>
-            </div>
-
-            <StaggerList className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {myApplications.map((app) => {
-                const typeLabel = app.type === 'tushuntirish' ? 'Tushuntirish' : 'Ariza';
-                const formattedDate = formatElonDate(app.createdDate);
-                const statusInfo = getAppStatusInfo(app.status);
-                const StatusIcon = statusInfo.icon;
-
-                return (
-                  <StaggerItem key={app.id}>
-                    <div className={`p-4 rounded-2xl border ${cardBorder} ${cardInnerBg} flex flex-col justify-between gap-3`}>
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-[9px] font-black uppercase text-indigo-400">{typeLabel}</span>
-                          <span className="text-[9px] font-bold text-gray-500">{formattedDate}</span>
-                        </div>
-                        <h4 className={`text-xs font-bold line-clamp-2 ${textStrong}`}>
-                          {app.title}
-                        </h4>
-                      </div>
-                      <div className={`flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-lg self-start border ${statusInfo.badgeClass}`}>
-                        <StatusIcon size={10} />
-                        <span>{statusInfo.label}</span>
-                      </div>
-                    </div>
-                  </StaggerItem>
-                );
-              })}
-              {myApplications.length === 0 && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className={`col-span-1 sm:col-span-3 flex flex-col items-center justify-center py-10 px-6 border border-dashed rounded-3xl transition-all duration-300 relative overflow-hidden group ${
-                    isLight 
-                      ? 'border-slate-200 bg-white/50 hover:border-blue-400' 
-                      : 'border-white/10 bg-slate-950/20 hover:border-indigo-500/40'
-                  }`}
-                >
-                  {/* Decorative background glow */}
-                  <div className="absolute -inset-10 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                  
-                  {/* Floating Icon Wrapper */}
-                  <motion.div 
-                    animate={{ y: [0, -6, 0] }}
-                    transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                    className={`p-4 rounded-2xl mb-4 relative ${
-                      isLight ? 'bg-blue-50 text-blue-600' : 'bg-indigo-500/10 text-indigo-400'
-                    }`}
-                  >
-                    <ClipboardList className="size-8 relative z-10" />
-                    <span className="absolute inset-0 rounded-2xl bg-current opacity-10 blur-sm animate-pulse" />
-                  </motion.div>
-
-                  <h4 className={`text-sm font-black mb-1 text-center tracking-wide uppercase ${textStrong}`}>
-                    Murojaatlar mavjud emas
-                  </h4>
-                  <p className={`text-xs text-center max-w-[280px] mb-5 leading-relaxed ${textMuted}`}>
-                    Sizda hali hech qanday ariza yoki tushuntirish xati yo&apos;q. Hozir yangi ariza yuborishingiz mumkin!
-                  </p>
-
-                  <Link 
-                    href="/talaba/arizalar"
-                    className={`relative overflow-hidden px-5 py-2.5 rounded-xl border border-white/10 font-bold text-xs uppercase tracking-wider transition-all duration-300 transform active:scale-95 shadow-lg ${
-                      isLight
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/20 hover:shadow-blue-500/30'
-                        : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-indigo-500/20 hover:shadow-indigo-500/30'
-                    }`}
-                  >
-                    <span className="absolute inset-0 bg-white/10 translate-y-full hover:translate-y-0 transition-transform duration-300" />
-                    <span className="relative flex items-center gap-1.5">
-                      <Plus size={14} className="animate-spin-slow" />
-                      <span>Ariza Yozish</span>
-                    </span>
-                  </Link>
-                </motion.div>
-              )}
-            </StaggerList>
-          </div>
-
-          {/* Gamified Health Card & Disciplinary Status */}
-          <div className={`backdrop-blur-xl border rounded-[32px] p-6 transition-all duration-300 ${
-            arizaSoni >= 3
-              ? isLight ? 'bg-red-50 border-red-200 shadow-[0_0_30px_rgba(239,68,68,0.15)]' : 'bg-red-950/20 border-red-500/30'
-              : surfaceBg
-          }`}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className={`text-[10px] font-black tracking-[0.2em] uppercase ${
-                arizaSoni >= 3 ? 'text-red-500' : isLight ? 'text-blue-600' : 'text-indigo-400'
-              }`}>
-                Intizom Reytingi
-              </h3>
-
-              <div className="flex items-center gap-1.5">
-                <Heart size={14} className={arizaSoni >= 3 ? 'text-red-500 animate-pulse' : 'text-emerald-500'} />
-                <span className={`text-[10px] font-black uppercase ${arizaSoni >= 3 ? 'text-red-500' : 'text-emerald-500'}`}>
-                  Intizom darajasi: {healthPercent}%
-                </span>
-              </div>
-            </div>
-
-            {/* Health Bar */}
-            <div className="relative w-full h-3 rounded-full bg-white/5 overflow-hidden mb-6 border border-white/5">
-              <div 
-                className={`h-full rounded-full transition-all duration-1000 relative overflow-hidden ${healthColor}`}
-                style={{ width: `${healthPercent}%` }}
-              >
-                {healthPercent === 100 && (
-                  <motion.div 
-                    animate={{ x: ['-100%', '100%'] }}
-                    transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                  />
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className={`text-2xl font-black italic ${textStrong}`}>{arizaSoni} ta faol ogohlantirish</p>
-                  {arizaSoni === 0 && (
-                    <motion.span 
-                      animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
-                      transition={{ repeat: Infinity, duration: 4, repeatDelay: 2 }}
-                      className="text-emerald-500 font-bold"
-                    >
-                      ✓
-                    </motion.span>
-                  )}
-                </div>
-                <p className={`text-[10px] font-bold mt-1 ${
-                  arizaSoni >= 3 ? 'text-red-500 animate-pulse' : textMuted
-                }`}>
-                  {arizaSoni >= 3 ? "⚠️ DIQQAT: CHIQARILISH ARAFSIDA! 3 ta ogohlantirish berilgan." : "Siz intizom qoidalariga to'liq rioya etyapsiz."}
-                </p>
-              </div>
-
-              <button 
-                onClick={() => setShowArizalar(true)}
-                className={`w-full sm:w-auto px-6 py-3.5 rounded-2xl border text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
-                  arizaSoni >= 3
-                    ? 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20'
-                    : isLight ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-white hover:border-blue-500' : 'bg-white/5 border-white/5 text-gray-300 hover:bg-white/10'
-                }`}
-              >
-                <FileText size={14} />
-                <span>Barcha Ogohlantirishlar ({arizaSoni})</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Payment & Tasks (Grid inside column) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-            
-            {/* Payment Card */}
-            <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg} flex flex-col justify-between`}>
-              <div>
-                <h4 className={`text-sm font-black mb-6 italic flex items-center gap-2 ${textStrong}`}>
-                  <CreditCard className={isLight ? "text-blue-600" : "text-indigo-400"} /> To&apos;lov holati
-                </h4>
-                
-                {paymentStats ? (
-                  <>
-                    <div className="flex gap-4 items-center mb-6">
-                      <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
-                        <svg className="w-full h-full transform -rotate-90">
-                          <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" className={isLight ? "text-slate-100" : "text-white/5"} />
-                          <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="213" strokeDashoffset={strokeDashoffset} className={isLight ? "text-blue-600" : "text-indigo-500"} style={{ transition: 'all 1000ms' }} />
-                        </svg>
-                        <div className={`absolute flex flex-col items-center ${textStrong}`}>
-                          <span className="text-sm font-black italic">{paymentStats.progressPercent}%</span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <p className={`text-xs font-bold ${textStrong}`}>{paidAmount.toLocaleString('uz-UZ')} UZS to&apos;landi</p>
-                        <p className={`text-[10px] ${textMuted}`}>Shartnoma: {paymentStats.totalContractFee.toLocaleString('uz-UZ')} UZS</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      <div className={`flex justify-between items-center p-3 rounded-xl border ${cardBorder} ${cardInnerBg}`}>
-                        <span className={`text-[9px] font-black uppercase ${textMuted}`}>Qolgan to&apos;lov</span>
-                        <span className={`text-xs font-black ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>{paymentStats.remainingAmount.toLocaleString('uz-UZ')} UZS</span>
-                      </div>
-                      {paymentStats.remainingAmount > 0 ? (
-                        <div className={`flex justify-between items-center p-3 rounded-xl border animate-pulse ${
-                          isLight ? 'bg-red-50 border-red-200' : 'bg-red-500/10 border-red-500/20'
-                        }`}>
-                          <span className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-red-600' : 'text-red-400'}`}>Muddati</span>
-                          <span className={`text-xs font-black ${isLight ? 'text-red-600' : 'text-red-400'}`}>Kutilmoqda</span>
-                        </div>
-                      ) : (
-                        <div className={`flex justify-between items-center p-3 rounded-xl border ${
-                          isLight ? 'bg-green-50 border-green-200 text-green-700' : 'bg-green-500/10 border-green-500/20 text-green-400'
-                        }`}>
-                          <span className="text-[9px] font-black uppercase tracking-wider">Holat</span>
-                          <span className="text-xs font-black">To&apos;liq to&apos;langan ✅</span>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <div className={`rounded-2xl border p-4 text-center text-xs ${
-                    isLight ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-rose-500/20 bg-rose-500/5 text-rose-300'
-                  }`}>
-                    <p>{settingsStatus === 'loading' ? 'Shartnoma summasi yuklanmoqda...' : 'Shartnoma summasini yuklab bo‘lmadi.'}</p>
-                    {settingsStatus === 'error' && (
-                      <button
-                        type="button"
-                        onClick={() => void loadSettings()}
-                        className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 font-black uppercase tracking-wider hover:bg-rose-500/20"
-                      >
-                        Qayta urinish
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <Link 
-                href="/talaba/tolova" 
-                className="w-full mt-5 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl border border-white/10 text-center text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-500/25 transition-all"
-              >
-                Kvitansiya Boshqaruvi
-              </Link>
-            </div>
-
-            {/* To-Do List */}
-            <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${surfaceBg}`}>
-              <h3 className={`text-[10px] font-black mb-4 uppercase tracking-widest ${
-                isLight ? 'text-amber-600' : 'text-yellow-400'
-              }`}>
-                Shaxsiy Vazifalarim
-              </h3>
-              
-              <div className="flex gap-2 mb-4">
-                <input 
-                  value={newTask} 
-                  onChange={(e) => setNewTask(e.target.value)} 
-                  placeholder="Yangi vazifa..." 
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newTask.trim()) {
-                      saveTasks([...tasks, { id: Date.now(), text: newTask.trim(), completed: false }]);
-                      setNewTask("");
-                    }
-                  }}
-                  className={`flex-1 border rounded-xl px-4 py-3 text-xs outline-none transition-all ${
-                    isLight 
-                      ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:bg-white' 
-                      : 'bg-white/5 border-white/5 text-white placeholder:text-gray-500 focus:border-yellow-500/30'
-                  }`} 
-                />
-                <button 
-                  onClick={() => { 
-                    if (newTask.trim()) { 
-                      saveTasks([...tasks, { id: Date.now(), text: newTask.trim(), completed: false }]); 
-                      setNewTask("") 
-                    } 
-                  }} 
-                  className={`px-4 rounded-xl transition-all ${
-                    isLight ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
-                  }`}
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-              
-              <StaggerList className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                {tasks.map(t => (
-                  <StaggerItem key={t.id}>
-                  <div
-                    onClick={() => {
-                      saveTasks(tasks.map(task => task.id === t.id ? { ...task, completed: !task.completed } : task))
-                    }}
-                    className={`flex items-center gap-3 p-3 border rounded-2xl cursor-pointer group transition-all duration-200 ${
-                      isLight ? 'bg-white border-slate-200 hover:bg-slate-50 shadow-sm' : 'bg-white/5 border-white/5 hover:bg-white/10'
-                    }`}
-                  >
-                    <div className={`w-4 h-4 rounded-md flex items-center justify-center transition-all ${
-                      t.completed 
-                        ? 'bg-green-500 text-white shadow-[0_0_8px_rgba(34,197,94,0.4)]' 
-                        : isLight ? 'bg-slate-50 border border-slate-300' : 'bg-white/5 border border-white/10'
-                    }`}>
-                      {t.completed && <CheckCircle2 size={10} className="text-white" />}
-                    </div>
-                    
-                    <span className={`flex-1 text-xs font-semibold transition-all ${
-                      t.completed 
-                        ? 'line-through text-slate-400 italic' 
-                        : textStrong
-                    }`}>
-                      {t.text}
-                    </span>
-                    
-                    <button 
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        saveTasks(tasks.filter(task => task.id !== t.id)); 
-                      }} 
-                      className={`opacity-0 group-hover:opacity-100 p-1 transition-opacity ${
-                        isLight ? 'text-slate-400 hover:text-red-600' : 'text-gray-500 hover:text-red-400'
-                      }`}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                  </StaggerItem>
-                ))}
-                {tasks.length === 0 && (
-                  <p className={`text-xs text-center py-6 ${textMuted} italic`}>Hozircha vazifalar yo&apos;q.</p>
-                )}
-              </StaggerList>
-            </div>
-
+            <PaymentStatusCard
+              isLight={isLight}
+              paidAmount={paidAmount}
+              stats={paymentStats}
+              settingsStatus={settingsStatus}
+              onRetry={() => void loadSettings()}
+            />
+            <TasksCard isLight={isLight} />
           </div>
-
         </div>
-
       </div>
 
       <WarningsModal

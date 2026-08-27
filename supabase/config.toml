@@ -14,8 +14,13 @@ major_version = 15
 
 [auth]
 enabled = true
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://yotoqxona-tizimi.vercel.app/update-password"]
+site_url = "https://www.meningyotoqxonam.uz"
+additional_redirect_urls = [
+  "https://www.meningyotoqxonam.uz/**",
+  "https://meningyotoqxonam.uz/**",
+  "https://yotoqxona-tizimi.vercel.app/**",
+  "http://localhost:3000/**",
+]
 enable_signup = false
 enable_anonymous_sign_ins = false
 

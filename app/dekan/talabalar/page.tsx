@@ -81,7 +81,7 @@ const WARNING_DOT_CLASSES: Record<WarningTone, string> = {
 
 const HUJJAT_LABELS = ['Passport seriya', 'JSHSHIR', 'Passport sanasi', 'Hudud', 'Millati', 'Jinsi']
 
-type FolderKey = 'all' | 'debtor' | 'paid' | 'male' | 'female' | 'captain' | 'warned'
+type FolderKey = 'all' | 'roomless' | 'debtor' | 'paid' | 'male' | 'female' | 'captain' | 'warned'
 
 export default function DekanStudentsPage() {
   const theme = useThemeStore((state) => state.theme)
@@ -134,7 +134,10 @@ export default function DekanStudentsPage() {
   const loadStudents = useCallback(async () => {
     try {
       setLoading(true)
-      const rows = await fetchFacultyStudents('placed')
+      // 'all', not 'placed' — a student removed from their room (room_number
+      // cleared) stays an active student of this faculty and must still be
+      // visible here (in the "Xonasiz" folder) so the dekan can re-house them.
+      const rows = await fetchFacultyStudents('all')
       setStudents(rows)
       setSelectedStudent((prev) => (prev ? rows.find((row) => row.id === prev.id) ?? prev : prev))
     } catch (error) {
@@ -213,7 +216,9 @@ export default function DekanStudentsPage() {
       const matchesRoom = !room || (student.room_number ?? '').toLowerCase().includes(room)
 
       let matchesFolder = true
-      if (activeFolder === 'male' || activeFolder === 'female') {
+      if (activeFolder === 'roomless') {
+        matchesFolder = !student.room_number
+      } else if (activeFolder === 'male' || activeFolder === 'female') {
         matchesFolder = normalizeGender(student.gender) === activeFolder
       } else if (activeFolder === 'captain') {
         matchesFolder = Boolean(student.is_floor_captain)
@@ -334,6 +339,8 @@ export default function DekanStudentsPage() {
   }
 
   const totalCount = students.length || 1
+  const roomlessCount = students.filter((student) => !student.room_number).length
+  const placedCount = students.length - roomlessCount
   const maleCount = students.filter((student) => normalizeGender(student.gender) === 'male').length
   const femaleCount = students.filter((student) => normalizeGender(student.gender) === 'female').length
   const warnedCount = students.filter((student) => (student.warning_count ?? 0) > 0).length
@@ -352,11 +359,16 @@ export default function DekanStudentsPage() {
 
   const statCards = [
     {
-      title: 'Joylashgan talabalar',
+      title: 'Jami talabalar',
       count: students.length,
       percentage: 100,
       icon: Users,
-      description: captainCount > 0 ? `${captainCount} ta qavat sardori` : undefined,
+      description:
+        roomlessCount > 0
+          ? `${placedCount} joylashgan · ${roomlessCount} xonasiz`
+          : captainCount > 0
+            ? `${captainCount} ta qavat sardori`
+            : undefined,
     },
     {
       title: "O'g'il bolalar",
@@ -394,6 +406,7 @@ export default function DekanStudentsPage() {
 
   const folders: { key: FolderKey; label: string; count: number | null }[] = [
     { key: 'all', label: 'Barchasi', count: students.length },
+    { key: 'roomless', label: 'Xonasiz', count: roomlessCount },
     { key: 'debtor', label: 'Qarzdor', count: debtorCount },
     { key: 'paid', label: "To'lagan", count: paidCount },
     { key: 'male', label: "O'g'il", count: maleCount },
@@ -555,7 +568,7 @@ export default function DekanStudentsPage() {
               <div className={`p-8 text-center text-xs ${ui.faint}`}>Yuklanmoqda...</div>
             ) : filteredStudents.length === 0 ? (
               <div className={`p-8 text-center text-xs ${ui.faint}`}>
-                {students.length === 0 ? "Hozircha joylashgan talaba yo'q" : 'Talaba topilmadi'}
+                {students.length === 0 ? "Hozircha bu fakultetda talaba yo'q" : 'Talaba topilmadi'}
               </div>
             ) : (
               filteredStudents.map((student) => {
@@ -709,10 +722,17 @@ export default function DekanStudentsPage() {
                       {selectedStudent.full_name}
                     </h2>
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                      <span className={`flex items-center gap-1.5 text-[10px] font-semibold ${statusChip('success', isLight).text}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${statusChip('success', isLight).dot}`} />
-                        {selectedStudent.room_number}-xonada joylashgan
-                      </span>
+                      {selectedStudent.room_number ? (
+                        <span className={`flex items-center gap-1.5 text-[10px] font-semibold ${statusChip('success', isLight).text}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${statusChip('success', isLight).dot}`} />
+                          {selectedStudent.room_number}-xonada joylashgan
+                        </span>
+                      ) : (
+                        <span className={`flex items-center gap-1.5 text-[10px] font-semibold ${statusChip('warning', isLight).text}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${statusChip('warning', isLight).dot}`} />
+                          Xonasiz — joylashtirilmagan
+                        </span>
+                      )}
                       {selectedSummary && (
                         <span
                           className={`shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold ${

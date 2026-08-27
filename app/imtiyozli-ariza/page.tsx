@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -49,6 +49,19 @@ export default function ImtiyozliAriza() {
   const [originRegion, setOriginRegion] = useState('')
   const [idNumber, setIdNumber] = useState('')
   const [passportPhoto, setPassportPhoto] = useState<File | null>(null)
+
+  // Dekan-configured dormitory number/name (Sozlamalar) — fetched publicly
+  // since the applicant isn't logged in yet. Empty until the dekan sets
+  // it; the document then shows a literal blank rather than a guess.
+  const [ttjName, setTtjName] = useState('')
+  useEffect(() => {
+    let active = true
+    fetch('/api/public/ttj-name')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (active && data?.ttjName) setTtjName(data.ttjName) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [])
 
   const acknowledgeWarning = () => setShowWarning(false)
 
@@ -174,7 +187,7 @@ export default function ImtiyozliAriza() {
   // uses (app/dekan/hujjat), so both sides see the identical document.
   const renderDocuments = () => (
     <ArizaTilxatDocument
-      data={{ fullName, facultyLabel, course, studyType, originCountry, originRegion, phone, relativePhone }}
+      data={{ fullName, facultyLabel, course, studyType, originCountry, originRegion, phone, relativePhone, ttjName }}
     />
   )
 

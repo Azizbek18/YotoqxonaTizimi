@@ -16,4 +16,7 @@ export type AppSettings = {
   securityPhone: string
   maxUploadSizeMb: number
   warningThreshold: number
+  /** Official dormitory (TTJ) number/name — fills the "___-sonli talabalar
+   *  turar joyi" blank in the imtiyozli Ariza/Tilxat documents. */
+  ttjName: string
 }

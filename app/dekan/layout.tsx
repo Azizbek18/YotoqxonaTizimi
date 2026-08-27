@@ -19,6 +19,7 @@ import {
   Bell,
   Building2,
   Settings,
+  ShieldAlert,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -27,6 +28,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { useDekanScope } from '@/lib/hooks/useDekanScope'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
 import { fetchDekanOverview } from '@/features/permits/client/admin-api'
+import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { getSafeSession } from '@/lib/auth-session'
 import { directionLabel } from '@/lib/directions'
 import { supabase } from '@/lib/supabase'
@@ -48,6 +50,9 @@ export default function DekanLayout({
   const [recentPending, setRecentPending] = useState<{ id: string; full_name: string; direction: string; created_at: string | null }[]>([])
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
+  // null while unchecked — only render the reminder once we actually know
+  // it's missing, never as a false-positive flash before settings load.
+  const [ttjNameMissing, setTtjNameMissing] = useState<boolean | null>(null)
 
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
@@ -97,6 +102,26 @@ export default function DekanLayout({
       clearInterval(interval)
     }
   }, [facultyResolved, dekanFaculty])
+
+  // Re-checked on every navigation (not polled — this rarely changes) so
+  // the reminder banner below both shows up promptly and clears itself
+  // right after the dekan saves it in Sozlamalar and navigates away,
+  // rather than staying stale until a hard refresh.
+  useEffect(() => {
+    let active = true
+    async function checkTtjName() {
+      const session = await getSafeSession()
+      if (!session || !active) return
+      try {
+        const settings = await fetchAppSettings()
+        if (active) setTtjNameMissing(!settings.ttjName.trim())
+      } catch {
+        // Silently swallow — this is a convenience nag, not critical.
+      }
+    }
+    void checkTtjName()
+    return () => { active = false }
+  }, [pathname])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -507,6 +532,20 @@ export default function DekanLayout({
         </header>
 
         <div className="min-h-screen p-3 sm:p-6 lg:p-8">
+          {ttjNameMissing && pathname !== '/dekan/sozlamalar' && (
+            <Link
+              href="/dekan/sozlamalar"
+              className={`mb-4 flex items-center gap-3 rounded-2xl border p-3.5 sm:p-4 transition-all hover:-translate-y-0.5 ${
+                isLight ? 'border-amber-200 bg-amber-50 hover:bg-amber-100' : 'border-amber-500/25 bg-amber-500/10 hover:bg-amber-500/15'
+              }`}
+            >
+              <ShieldAlert size={18} className="shrink-0 text-amber-500" />
+              <p className={`min-w-0 flex-1 text-xs font-bold ${isLight ? 'text-amber-700' : 'text-amber-300'}`}>
+                TTJ nomi hali kiritilmagan — xorijlik/imtiyozli talabalar arizasida &laquo;___-sonli talabalar turar joyi&raquo; bo&apos;sh chiqadi.
+                <span className="underline"> Sozlamalardan kiriting</span>.
+              </p>
+            </Link>
+          )}
           <div className={`min-h-[calc(100vh-7rem)] rounded-2xl sm:rounded-[28px] border p-3 sm:p-6 lg:p-8 shadow-[0_20px_60px_rgba(15,23,42,0.08)] ${panelSurface}`}>
             {children}
           </div>

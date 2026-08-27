@@ -49,6 +49,10 @@ const UPDATABLE_FIELDS: Record<keyof AppSettings, { column: string; parse: (valu
   securityPhone: { column: 'security_phone', parse: (v) => parseText(v, 'Xavfsizlik telefoni', 30) },
   maxUploadSizeMb: { column: 'max_upload_size_mb', parse: (v) => parseCount(v, 'Fayl yuklash hajmi', 4) },
   warningThreshold: { column: 'warning_threshold', parse: (v) => parseCount(v, 'Ogohlantirish chegarasi', 20) },
+  // Allowed to be empty on purpose — the dekan gets reminded elsewhere
+  // (dekan/layout.tsx banner) rather than being blocked from saving other
+  // settings just because this one isn't filled in yet.
+  ttjName: { column: 'ttj_name', parse: (v) => parseText(v, 'TTJ nomi', 60) },
 }
 
 function parseUpdate(input: unknown): AppSettingsUpdate {

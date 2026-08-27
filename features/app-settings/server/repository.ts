@@ -5,7 +5,7 @@ import type { AppSettings } from '../types'
 
 type AppSettingsUpdate = Database['public']['Tables']['app_settings']['Update']
 
-const COLUMNS = 'monthly_fee, yearly_contract_fee, default_room_capacity, floor_count, tarbiyachi_name, tarbiyachi_phone, komendant_name, komendant_phone, doctor_name, doctor_phone, talaba_kengashi_raisi_ogil_name, talaba_kengashi_raisi_ogil_phone, talaba_kengashi_raisi_qiz_name, talaba_kengashi_raisi_qiz_phone, security_phone, max_upload_size_mb, warning_threshold'
+const COLUMNS = 'monthly_fee, yearly_contract_fee, default_room_capacity, floor_count, tarbiyachi_name, tarbiyachi_phone, komendant_name, komendant_phone, doctor_name, doctor_phone, talaba_kengashi_raisi_ogil_name, talaba_kengashi_raisi_ogil_phone, talaba_kengashi_raisi_qiz_name, talaba_kengashi_raisi_qiz_phone, security_phone, max_upload_size_mb, warning_threshold, ttj_name'
 
 function toAppSettings(row: Record<string, unknown>): AppSettings {
   return {
@@ -26,6 +26,7 @@ function toAppSettings(row: Record<string, unknown>): AppSettings {
     securityPhone: String(row.security_phone ?? ''),
     maxUploadSizeMb: Number(row.max_upload_size_mb),
     warningThreshold: Number(row.warning_threshold),
+    ttjName: String(row.ttj_name ?? ''),
   }
 }
 

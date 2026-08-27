@@ -218,6 +218,7 @@ export interface Database {
         security_phone: string
         max_upload_size_mb: number
         warning_threshold: number
+        ttj_name: string
         updated_at: string
       }>
     }

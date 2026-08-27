@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Settings as SettingsIcon, Wallet, Boxes, Phone, ShieldAlert, LayoutGrid, ArrowRight } from 'lucide-react'
+import { Settings as SettingsIcon, Wallet, Boxes, Phone, ShieldAlert, LayoutGrid, ArrowRight, Globe2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -290,6 +290,49 @@ export default function DekanSozlamalarPage() {
                                             ))}
                                         </div>
                                     )}
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Imtiyozli/xorijiy talabalar arizasi — TTJ nomi */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.06 }}
+                            className={`backdrop-blur-xl border rounded-2xl overflow-hidden ${surfaceBg}`}
+                        >
+                            <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-4 sm:p-6 flex items-center gap-3 shadow-md">
+                                <Globe2 size={24} className="text-white shrink-0" />
+                                <h2 className="text-lg font-black text-white">Xorijlik/Imtiyozli Talabalar Arizasi</h2>
+                            </div>
+                            <div className="p-4 sm:p-6 space-y-4">
+                                {!settings.ttjName.trim() && (
+                                    <div className={`flex items-start gap-3 rounded-2xl border p-4 ${isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'}`}>
+                                        <ShieldAlert size={18} className="mt-0.5 shrink-0 text-amber-500" />
+                                        <p className={`text-xs font-bold ${isLight ? 'text-amber-700' : 'text-amber-300'}`}>
+                                            TTJ nomi hali kiritilmagan — xorijlik/imtiyozli talabalarning Ariza va Tilxat hujjatlarida
+                                            &laquo;___-sonli talabalar turar joyi&raquo; o&apos;rni bo&apos;sh chiqadi. Pastdan kiritib saqlang.
+                                        </p>
+                                    </div>
+                                )}
+                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className={`font-semibold ${textStrong}`}>TTJ nomi</h3>
+                                        <p className={`text-xs mt-1 ${textMuted}`}>
+                                            Talabalar turar joyining rasmiy raqami — Ariza va Tilxat hujjatlarida
+                                            &laquo;___-sonli talabalar turar joyi&raquo; o&apos;rniga qo&apos;yiladi
+                                        </p>
+                                    </div>
+                                    <div className="sm:ml-4 shrink-0 w-full sm:w-auto">
+                                        <input
+                                            type="text"
+                                            value={settings.ttjName}
+                                            onChange={(e) => handleChange('ttjName', e.target.value)}
+                                            placeholder="Masalan: 14"
+                                            maxLength={60}
+                                            className={`w-full sm:w-48 px-3 py-2 rounded-xl border text-sm outline-none transition-all ${inputBg}`}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>

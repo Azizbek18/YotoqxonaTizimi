@@ -33,10 +33,15 @@ export interface ArizaTilxatData {
   originRegion: string
   phone: string
   relativePhone: string
+  /** Dekan-configured official dormitory number/name (Sozlamalar). Empty
+   *  until set, in which case the blank stays a literal blank line rather
+   *  than silently guessing a number. */
+  ttjName?: string
 }
 
 export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData }) {
-  const { fullName, facultyLabel, course, studyType, originCountry, originRegion, phone, relativePhone } = data
+  const { fullName, facultyLabel, course, studyType, originCountry, originRegion, phone, relativePhone, ttjName } = data
+  const ttjBlank = ttjName?.trim() || '_____'
 
   return (
     <div className="space-y-6">
@@ -55,7 +60,7 @@ export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData })
         </p>
         <p className="text-[11px] sm:text-sm leading-relaxed indent-8 text-justify mt-3">
           {new Date().getFullYear()}/{new Date().getFullYear() + 1} o&apos;quv yilida an&apos;anaviy dars-mashg&apos;ulotlariga qatnashish uchun men {originCountry || '_______________'} davlati {originRegion || '_______________'}{' '}
-          viloyatidan kelganligim, Toshkent shahrida turar joyim yo&apos;qligi sababli, universitetga qarashli _____-sonli talabalar turar joyidan yashash uchun joy berishingizni va u yerga ro&apos;yhatga olishingizni so&apos;rayman.
+          viloyatidan kelganligim, Toshkent shahrida turar joyim yo&apos;qligi sababli, universitetga qarashli {ttjBlank}-sonli talabalar turar joyidan yashash uchun joy berishingizni va u yerga ro&apos;yhatga olishingizni so&apos;rayman.
         </p>
         <p className="text-[11px] sm:text-sm leading-relaxed indent-8 text-justify mt-3">
           Universitet &quot;Talabalar turar joyi to&apos;g&apos;risida&quot;gi Nizom, &quot;Ichki tartib qoidalari&quot;, &quot;Odob-ahloq qoidalari&quot; va &quot;Talabalar turar joyi Ichki tartib qoidalari&quot;ga to&apos;liq rioya qilib,
@@ -113,7 +118,7 @@ export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData })
         <h2 className="text-center font-bold tracking-[0.3em] text-sm sm:text-lg mt-6 mb-6">T I L X A T</h2>
 
         <p className="text-[11px] sm:text-sm leading-relaxed indent-8 text-justify">
-          Men {fullName || '_______________________'} {facultyLabel} fakulteti bakalavriat ta&apos;lim yo&apos;nalishi {course}-kurs talabasi _____-sonli Talabalar turar joyida yashash davrimda quyidagilarga:
+          Men {fullName || '_______________________'} {facultyLabel} fakulteti bakalavriat ta&apos;lim yo&apos;nalishi {course}-kurs talabasi {ttjBlank}-sonli Talabalar turar joyida yashash davrimda quyidagilarga:
         </p>
 
         <ol className="list-disc pl-5 text-[10px] sm:text-[13px] leading-relaxed text-justify mt-3 space-y-1.5">

@@ -17,6 +17,7 @@ import { fetchFloorLayout, saveFloorLayout } from '@/features/room-layout/client
 import type { RoomBlockSide, RoomBlockSize, RoomLayoutBlock } from '@/features/room-layout/types'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { getFreePlaces, getRoomOccupancyTone, type RoomOccupancyTone } from '@/features/app-settings/presentation'
+import { dekanUI } from '@/lib/dekan-ui'
 
 interface StudentInfo {
   id: string
@@ -139,11 +140,12 @@ export default function Dekan3DXonalarPage() {
   const isLight = theme === 'light'
   const scopedFontFamily = useScopedFontFamily()
 
-  const surfaceBg = isLight ? 'bg-white/80 border-slate-200 shadow-lg' : 'bg-[#0b1120]/50 border-white/10 shadow-[0_0_20px_rgba(6,182,212,0.05)]'
-  const cardBg = isLight ? 'bg-slate-100/70 border-slate-200' : 'bg-white/[0.04] border-white/10'
-  const textMuted = isLight ? 'text-slate-600' : 'text-slate-400'
-  const textStrong = isLight ? 'text-slate-900' : 'text-white'
-  const inputBg = isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-white/5 border-white/10 text-white'
+  const ui = dekanUI(isLight)
+  const surfaceBg = ui.card
+  const cardBg = ui.inset
+  const textMuted = ui.muted
+  const textStrong = ui.strong
+  const inputBg = ui.input
 
   const loadRoomOccupancy = useCallback(async () => {
     try {
@@ -347,7 +349,7 @@ export default function Dekan3DXonalarPage() {
     const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8)
     dirLight1.position.set(5, 10, 7)
     scene.add(dirLight1)
-    const dirLight2 = new THREE.DirectionalLight(0x06b6d4, 0.5)
+    const dirLight2 = new THREE.DirectionalLight(0x6366f1, 0.4)
     dirLight2.position.set(-5, 5, -5)
     scene.add(dirLight2)
 
@@ -366,7 +368,7 @@ export default function Dekan3DXonalarPage() {
     roomGroup.add(slabMesh)
 
     const slabEdges = new THREE.EdgesGeometry(slabGeo)
-    const slabLineMat = new THREE.LineBasicMaterial({ color: isLight ? 0x94a3b8 : 0x06b6d4 })
+    const slabLineMat = new THREE.LineBasicMaterial({ color: isLight ? 0x94a3b8 : 0x475569 })
     slabMesh.add(new THREE.LineSegments(slabEdges, slabLineMat))
 
     // Corridor strip down the middle, visually marking the "zal".
@@ -516,7 +518,7 @@ export default function Dekan3DXonalarPage() {
   const renderBlockColumn = (side: RoomBlockSide, blocks: EditableBlock[]) => (
     <div className={`rounded-2xl border p-4 ${cardBg}`}>
       <div className="flex items-center justify-between mb-3">
-        <h3 className={`text-xs font-black uppercase tracking-wider ${textStrong}`}>
+        <h3 className={`text-xs font-bold uppercase tracking-wider ${textStrong}`}>
           {side === 'left' ? 'Chap tomon' : "O'ng tomon"}
         </h3>
         <span className={`text-[10px] font-bold ${textMuted}`}>{blocks.length} ta xona</span>
@@ -539,7 +541,7 @@ export default function Dekan3DXonalarPage() {
               <button onClick={() => moveBlock(side, index, 1)} disabled={index === blocks.length - 1} className={`p-1.5 rounded-lg disabled:opacity-30 ${isLight ? 'hover:bg-slate-100' : 'hover:bg-white/5'} ${textMuted}`}>
                 <ChevronDown size={14} />
               </button>
-              <button onClick={() => removeBlock(side, index)} className="p-1.5 rounded-lg hover:bg-rose-500/10 text-rose-500">
+              <button onClick={() => removeBlock(side, index)} className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 dark:text-rose-400">
                 <Trash2 size={14} />
               </button>
             </div>
@@ -548,9 +550,9 @@ export default function Dekan3DXonalarPage() {
                 <button
                   key={size}
                   onClick={() => updateBlock(side, index, { size })}
-                  className={`flex-1 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                  className={`flex-1 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${
                     block.size === size
-                      ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
+                      ? 'bg-indigo-600 text-white'
                       : isLight ? 'bg-slate-100 text-slate-500' : 'bg-white/5 text-slate-400'
                   }`}
                 >
@@ -564,7 +566,7 @@ export default function Dekan3DXonalarPage() {
 
       <button
         onClick={() => addBlock(side)}
-        className={`mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed text-[10px] font-black uppercase tracking-wider transition-all ${
+        className={`mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed text-[10px] font-bold uppercase tracking-wider transition-all ${
           isLight ? 'border-slate-300 text-slate-500 hover:bg-slate-100' : 'border-white/15 text-slate-400 hover:bg-white/5'
         }`}
       >
@@ -578,45 +580,33 @@ export default function Dekan3DXonalarPage() {
       {/* Title Header */}
       <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-sm font-bold text-cyan-400">
-            <Layers3 className="h-4 w-4" />
-            Qavat Tarxi Quruvchisi
-          </div>
-          <h1 className={`mt-4 text-3xl font-black tracking-tight sm:text-4xl ${textStrong}`}>
-            Dynamic 3D Bino Modeli
+          <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${textStrong}`}>
+            Qavat tarxi quruvchisi
           </h1>
-          <p className={`mt-3 max-w-3xl text-sm leading-6 ${textMuted}`}>
+          <p className={`mt-1 max-w-3xl text-xs sm:text-sm leading-6 ${textMuted}`}>
             Har bir qavat uchun xonalarni chap va o&apos;ng tomonga, xohlagan tartibda va o&apos;lchamda qo&apos;shing — natija pastda jonli 3D maketda ko&apos;rinadi.
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:min-w-[520px]">
-          <div className={`rounded-xl border p-4 ${cardBg}`}>
-            <div className={`flex items-center gap-2 ${textMuted}`}>
-              <Users className="h-4 w-4 text-cyan-400" />
-              <span className="text-xs font-bold uppercase tracking-[0.18em]">Band joy</span>
+          {[
+            { icon: Users, label: 'Band joy', value: summary.occupiedPlaces },
+            { icon: DoorOpen, label: "Bo'sh joy", value: summary.freePlaces ?? '—' },
+            { icon: Layers3, label: 'Jami xona', value: `${summary.totalRooms} ta` },
+          ].map(({ icon: Icon, label, value }) => (
+            <div key={label} className={`rounded-xl border p-4 ${cardBg}`}>
+              <div className={`flex items-center gap-2 ${textMuted}`}>
+                <Icon className={`h-4 w-4 ${ui.accentText}`} />
+                <span className="text-xs font-semibold uppercase tracking-[0.16em]">{label}</span>
+              </div>
+              <p className={`mt-2 truncate text-2xl font-bold ${textStrong}`}>{value}</p>
             </div>
-            <p className={`mt-2 text-2xl font-black ${textStrong}`}>{summary.occupiedPlaces}</p>
-          </div>
-          <div className={`rounded-xl border p-4 ${cardBg}`}>
-            <div className={`flex items-center gap-2 ${textMuted}`}>
-              <DoorOpen className="h-4 w-4 text-emerald-400" />
-              <span className="text-xs font-bold uppercase tracking-[0.18em]">Bo&apos;sh joy</span>
-            </div>
-            <p className={`mt-2 text-2xl font-black ${textStrong}`}>{summary.freePlaces ?? '—'}</p>
-          </div>
-          <div className={`rounded-xl border p-4 ${cardBg}`}>
-            <div className={`flex items-center gap-2 ${textMuted}`}>
-              <Layers3 className="h-4 w-4 text-amber-400" />
-              <span className="text-xs font-bold uppercase tracking-[0.18em]">Jami xona</span>
-            </div>
-            <p className={`mt-2 truncate text-2xl font-black ${textStrong}`}>{summary.totalRooms} ta</p>
-          </div>
+          ))}
         </div>
       </div>
 
       {/* Floor Selection Tabs */}
-      <div className="flex gap-2 p-1.5 rounded-2xl bg-slate-100/50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 w-full overflow-x-auto no-scrollbar sm:w-fit">
+      <div className={`flex gap-1 p-1 rounded-xl ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'} w-full overflow-x-auto no-scrollbar sm:w-fit`}>
         {floors.map((fl) => {
           const active = fl === activeFloor
           return (
@@ -631,13 +621,13 @@ export default function Dekan3DXonalarPage() {
                 }
                 setActiveFloor(fl)
               }}
-              className={`shrink-0 whitespace-nowrap px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 ${
+              className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2 ${
                 active
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-white/5'
+                  ? 'bg-indigo-600 text-white'
+                  : `${ui.muted} ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-200'}`
               }`}
             >
-              <Layers3 size={14} className={active ? 'text-white' : 'text-cyan-500'} />
+              <Layers3 size={14} className={active ? 'text-white' : 'text-indigo-500'} />
               {fl}-qavat
             </button>
           )
@@ -652,7 +642,7 @@ export default function Dekan3DXonalarPage() {
           <button
             type="button"
             onClick={() => void loadSettings()}
-            className="shrink-0 rounded-lg bg-rose-500/10 px-3 py-2 font-black uppercase tracking-wider hover:bg-rose-500/20"
+            className={`shrink-0 rounded-lg px-3 py-2 font-bold uppercase tracking-wider ${ui.dangerSoft}`}
           >
             Qayta urinish
           </button>
@@ -660,16 +650,16 @@ export default function Dekan3DXonalarPage() {
       )}
 
       {loading ? (
-        <div className={`backdrop-blur-xl border rounded-[2rem] p-16 ${surfaceBg} flex items-center justify-center`}>
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-cyan-500" />
+        <div className={`backdrop-blur-xl border rounded-2xl p-16 ${surfaceBg} flex items-center justify-center`}>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 border-t-indigo-500 dark:border-slate-700" />
         </div>
       ) : (
         <>
           {/* Editor */}
-          <div className={`backdrop-blur-xl border rounded-[2rem] p-6 ${surfaceBg}`}>
+          <div className={`backdrop-blur-xl border rounded-2xl p-6 ${surfaceBg}`}>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <div className="min-w-0">
-                <h2 className={`text-lg font-black ${textStrong}`}>{activeFloor}-qavat tarxi</h2>
+                <h2 className={`text-lg font-bold ${textStrong}`}>{activeFloor}-qavat tarxi</h2>
                 <p className={`text-xs mt-1 ${textMuted}`}>Zal ikki tomoni bo&apos;yicha xonalarni joylashtiring — lego kabi yig&apos;ing.</p>
               </div>
               <div className="flex gap-2 shrink-0">
@@ -683,7 +673,7 @@ export default function Dekan3DXonalarPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
                 >
                   <Save size={14} /> {saving ? 'Saqlanmoqda...' : 'Saqlash'}
                 </button>
@@ -700,26 +690,26 @@ export default function Dekan3DXonalarPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`relative min-h-[420px] rounded-[2rem] border backdrop-blur-xl overflow-hidden ${surfaceBg}`}
+            className={`relative min-h-[420px] rounded-2xl border backdrop-blur-xl overflow-hidden ${surfaceBg}`}
           >
             <div className="absolute top-6 left-6 z-10 flex flex-wrap gap-3">
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
-                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
                 <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>Bo&apos;sh</span>
               </div>
               {defaultRoomCapacity === null ? (
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
-                  <div className="w-2 h-2 rounded-full bg-slate-500 shadow-[0_0_8px_rgba(100,116,139,0.5)]" />
+                  <div className="w-2 h-2 rounded-full bg-slate-500" />
                   <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>Sig&apos;im noma&apos;lum</span>
                 </div>
               ) : (
                 <>
                   <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
-                    <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                    <div className="w-2 h-2 rounded-full bg-amber-500" />
                     <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>Qisman</span>
                   </div>
                   <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
-                    <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
+                    <div className="w-2 h-2 rounded-full bg-rose-500" />
                     <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>To&apos;la</span>
                   </div>
                 </>
@@ -740,10 +730,10 @@ export default function Dekan3DXonalarPage() {
                 const snap = roomSnapshots.find((s) => s.roomNumber === hoveredRoom.roomNumber)
                 return (
                   <div
-                    className={`pointer-events-none fixed z-[9999] rounded-xl border px-3 py-2 shadow-2xl backdrop-blur-xl ${isLight ? 'bg-white/95 border-slate-200' : 'bg-[#0b101d]/95 border-white/10'}`}
+                    className={`pointer-events-none fixed z-[9999] rounded-xl border px-3 py-2 shadow-2xl backdrop-blur-xl ${isLight ? 'bg-white/95 border-slate-200' : 'bg-slate-900/95 border-slate-800'}`}
                     style={{ left: hoveredRoom.clientX + 14, top: hoveredRoom.clientY + 14, fontFamily: scopedFontFamily }}
                   >
-                    <p className={`text-xs font-black ${textStrong}`}>Xona #{hoveredRoom.roomNumber}</p>
+                    <p className={`text-xs font-bold ${textStrong}`}>Xona #{hoveredRoom.roomNumber}</p>
                     {snap && snap.students.length > 0 ? (
                       <p className={`mt-0.5 max-w-[220px] text-[10px] ${textMuted}`}>
                         {snap.students.map((s) => s.name).join(', ')}
@@ -773,21 +763,21 @@ export default function Dekan3DXonalarPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className={`rounded-[2rem] border p-6 sm:p-8 backdrop-blur-2xl shadow-2xl ${surfaceBg}`}
+                className={`rounded-2xl border p-6 sm:p-8 backdrop-blur-2xl shadow-2xl ${surfaceBg}`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
                   <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-12 h-12 shrink-0 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                    <div className="w-12 h-12 shrink-0 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500">
                       <Building2 size={24} />
                     </div>
                     <div className="min-w-0">
-                      <h2 className={`text-2xl font-black tracking-tight truncate ${textStrong}`}>Xona #{selectedRoomData.number}</h2>
+                      <h2 className={`text-2xl font-bold tracking-tight truncate ${textStrong}`}>Xona #{selectedRoomData.number}</h2>
                       <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{activeFloor}-qavat</p>
                     </div>
                   </div>
                   <div className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl border ${cardBg}`}>
-                    <Info size={16} className="text-cyan-400" />
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${textStrong}`}>Tafsilotlar</span>
+                    <Info size={16} className="text-indigo-500" />
+                    <span className={`text-[10px] font-bold uppercase tracking-widest ${textStrong}`}>Tafsilotlar</span>
                   </div>
                 </div>
 
@@ -817,7 +807,7 @@ export default function Dekan3DXonalarPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {selectedRoomData.students.map((student, i) => (
                           <div key={student.id || `${selectedRoomData.number}-${i}`} className={`p-4 rounded-2xl border flex items-center gap-3 ${cardBg}`}>
-                            <div className="w-8 h-8 shrink-0 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 font-bold text-xs uppercase">
+                            <div className="w-8 h-8 shrink-0 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500 font-bold text-xs uppercase">
                               {student.name.slice(0, 2)}
                             </div>
                             <p className={`text-sm font-bold truncate ${textStrong}`}>{student.name}</p>
@@ -838,19 +828,19 @@ export default function Dekan3DXonalarPage() {
 
 function Detail({ label, value, icon, status, textStrong, cardBg }: { label: string; value: string; icon?: React.ReactNode; status?: RoomOccupancyTone; textStrong: string; cardBg: string }) {
   const statusColors: Record<RoomOccupancyTone, string> = {
-    empty: 'text-emerald-400',
-    partial: 'text-amber-400',
-    full: 'text-rose-400',
-    unknown: 'text-slate-400',
+    empty: 'text-emerald-600 dark:text-emerald-400',
+    partial: 'text-amber-600 dark:text-amber-400',
+    full: 'text-rose-600 dark:text-rose-400',
+    unknown: 'text-slate-500 dark:text-slate-400',
   }
 
   return (
-    <div className={`rounded-2xl border p-5 transition-colors ${cardBg} hover:bg-white/[0.08]`}>
+    <div className={`rounded-xl border p-5 ${cardBg}`}>
       <div className="flex items-center gap-2 mb-3">
-        <div className="text-slate-500">{icon}</div>
-        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
+        <div className="text-slate-400">{icon}</div>
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</p>
       </div>
-      <p className={`text-2xl font-black ${status ? statusColors[status] : textStrong}`}>{value}</p>
+      <p className={`text-2xl font-bold ${status ? statusColors[status] : textStrong}`}>{value}</p>
     </div>
   )
 }

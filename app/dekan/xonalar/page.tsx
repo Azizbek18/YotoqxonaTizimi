@@ -31,6 +31,7 @@ import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { directionLabel } from '@/lib/directions'
 import { normalizeGender, genderLabel, genderAccent } from '@/lib/gender'
+import { dekanUI, statusChip } from '@/lib/dekan-ui'
 
 interface Occupant {
   id: string
@@ -62,14 +63,12 @@ interface RoomData {
 export default function DekanXonalarMap() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+  const ui = dekanUI(isLight)
 
   // Styling tokens
-  const surfaceBg = isLight
-    ? 'bg-white/80 border-slate-200 shadow-md'
-    : 'bg-[#0f172a]/30 border-white/5 shadow-2xl'
-  const textMuted = isLight ? 'text-slate-500' : 'text-slate-400'
-  const textStrong = isLight ? 'text-slate-900' : 'text-white'
-  const inputBg = isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-white/5 border-white/10 text-white'
+  const surfaceBg = ui.card
+  const textMuted = ui.muted
+  const textStrong = ui.strong
 
   // Which room sits on which floor is the admin's data (Qavat tarxi
   // quruvchisi), not something to infer from the room number — this page used
@@ -342,25 +341,26 @@ export default function DekanXonalarMap() {
       {/* 1. Header Overview Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Jami band joylar', value: `${totalOccupiedBeds} / ${totalBeds}`, icon: BedDouble, color: 'from-indigo-500 to-purple-600' },
-          { label: 'Bo‘sh xonalar', value: `${totalEmptyRooms} ta`, icon: DoorOpen, color: 'from-emerald-500 to-teal-600' },
-          { label: `To‘la xonalar (${roomCapacity}/${roomCapacity})`, value: `${totalFullRooms} ta`, icon: DoorClosed, color: 'from-sky-500 to-blue-600' },
-          { label: 'Gender xatoliklar', value: `${totalRoomsWithMixedGenders} ta xona`, icon: Users2, color: 'from-rose-500 to-red-600', warn: totalRoomsWithMixedGenders > 0 },
+          { label: 'Jami band joylar', value: `${totalOccupiedBeds} / ${totalBeds}`, icon: BedDouble },
+          { label: 'Bo‘sh xonalar', value: `${totalEmptyRooms} ta`, icon: DoorOpen },
+          { label: `To‘la xonalar (${roomCapacity}/${roomCapacity})`, value: `${totalFullRooms} ta`, icon: DoorClosed },
+          { label: 'Gender xatoliklar', value: `${totalRoomsWithMixedGenders} ta xona`, icon: Users2, warn: totalRoomsWithMixedGenders > 0 },
         ].map((stat, idx) => (
           <motion.div
             key={stat.label}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05 }}
-            className={`relative overflow-hidden p-4 pt-5 rounded-2xl border ${surfaceBg} flex items-center gap-3`}
+            transition={{ delay: idx * 0.04, duration: 0.2 }}
+            className={`p-4 rounded-xl border ${surfaceBg} flex items-center gap-3`}
           >
-            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${stat.color}`} />
-            <div className={`h-11 w-11 shrink-0 rounded-xl bg-gradient-to-tr ${stat.color} flex items-center justify-center text-white shadow-lg`}>
-              <stat.icon size={19} strokeWidth={2.2} />
+            <div className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center ${
+              stat.warn ? statusChip('danger', isLight).chip : ui.accentSoft
+            }`}>
+              <stat.icon size={18} strokeWidth={2.1} />
             </div>
             <div className="min-w-0">
-              <span className={`block text-[9px] font-black uppercase tracking-wider truncate ${textMuted}`}>{stat.label}</span>
-              <h3 className={`text-lg sm:text-xl font-black mt-0.5 ${stat.warn ? 'text-rose-500 animate-pulse' : textStrong}`}>
+              <span className={`block text-[9px] font-semibold uppercase tracking-wider truncate ${textMuted}`}>{stat.label}</span>
+              <h3 className={`text-lg sm:text-xl font-bold mt-0.5 ${stat.warn ? statusChip('danger', isLight).text : textStrong}`}>
                 {stat.value}
               </h3>
             </div>
@@ -369,23 +369,22 @@ export default function DekanXonalarMap() {
       </div>
 
       {/* 2. Map Controls */}
-      <div className={`p-4 rounded-3xl border ${surfaceBg} flex flex-col gap-3`}>
-        {/* Search — o'z qatorida, to'liq kenglikda */}
+      <div className={`p-4 rounded-2xl border ${surfaceBg} flex flex-col gap-3`}>
         <div className="relative">
-          <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${textMuted}`} />
+          <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${ui.faint}`} />
           <input
             type="text"
             placeholder="Xona raqami yoki talaba ismi bo'yicha qidirish..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full text-sm font-medium py-3.5 pl-12 pr-11 rounded-2xl outline-none border transition-all placeholder:font-normal focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 ${inputBg}`}
+            className={`w-full text-sm py-3 pl-12 pr-11 rounded-xl border transition-colors ${ui.input} ${ui.ring}`}
           />
           {searchTerm && (
             <button
               type="button"
               onClick={() => setSearchTerm('')}
               aria-label="Qidiruvni tozalash"
-              className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors hover:bg-slate-200/70 dark:hover:bg-white/10 ${textMuted}`}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${ui.muted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`}
             >
               <X size={14} />
             </button>
@@ -394,70 +393,53 @@ export default function DekanXonalarMap() {
 
         {/* Floor Selection */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-2xl">
-            <button
-              onClick={() => setFloorFilter('all')}
-              className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
-                floorFilter === 'all'
-                  ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-white'
-              }`}
-            >
-              Barchasi
-            </button>
-            {floors.map((fl) => (
+          <div className={`flex flex-wrap gap-1 rounded-xl p-1 ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'}`}>
+            {(['all', ...floors] as const).map((fl) => (
               <button
                 key={fl}
-                onClick={() => setFloorFilter(fl)}
-                className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
+                onClick={() => setFloorFilter(fl as number | 'all')}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${
                   floorFilter === fl
-                    ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white'
-                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-white'
+                    ? 'bg-indigo-600 text-white'
+                    : `${ui.muted} ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-200'}`
                 }`}
               >
-                {fl}-qavat
+                {fl === 'all' ? 'Barchasi' : `${fl}-qavat`}
               </button>
             ))}
           </div>
 
-          {/* Always available, not just on an empty layout — a floor can
-              always be missing a few rooms nobody's drawn yet. */}
           <button
             onClick={() => setGeneratorOpen(true)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${
-              isLight
-                ? 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
-                : 'border-white/10 bg-white/5 text-slate-300 hover:border-indigo-500/30 hover:text-white'
-            }`}
+            className={`flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
           >
             <Plus size={13} /> Xona qo&apos;shish
           </button>
         </div>
-
       </div>
 
       {/* 3. Main Occupancy Grid and Side Detail panel */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Rooms Grid (Left) */}
-        <div className={`lg:col-span-8 p-5 rounded-3xl border ${surfaceBg}`}>
-          <div className={`flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4 pb-4 border-b text-[10px] font-bold ${isLight ? 'border-slate-100' : 'border-white/5'} ${textMuted}`}>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-500" /> O&apos;g&apos;il bolalar</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500" /> Qiz bolalar</span>
-            <span className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${isLight ? 'bg-slate-300' : 'bg-slate-700'}`} /> Bo&apos;sh joy</span>
-            <span className="flex items-center gap-1.5"><AlertTriangle size={11} className="text-rose-500" /> Gender aralashuvi</span>
-            <span className="flex items-center gap-1.5"><Snowflake size={11} className="text-sky-500" /> Muzlatilgan (ta&apos;mirlash)</span>
+        <div className={`lg:col-span-8 p-5 rounded-2xl border ${surfaceBg}`}>
+          <div className={`flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4 pb-4 border-b text-[10px] font-medium ${ui.border} ${textMuted}`}>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-indigo-500" /> O&apos;g&apos;il bolalar</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-400" /> Qiz bolalar</span>
+            <span className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`} /> Bo&apos;sh joy</span>
+            <span className="flex items-center gap-1.5"><AlertTriangle size={11} className={isLight ? 'text-rose-500' : 'text-rose-400'} /> Gender aralashuvi</span>
+            <span className="flex items-center gap-1.5"><Snowflake size={11} className={ui.faint} /> Muzlatilgan (ta&apos;mirlash)</span>
           </div>
           {loading || !floorsLoaded ? (
             <div className="flex h-64 items-center justify-center">
-              <div className={`animate-spin rounded-full h-8 w-8 border-t-2 ${isLight ? 'border-indigo-600' : 'border-cyan-500'}`} />
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-700" />
             </div>
           ) : rooms.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-              <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${isLight ? 'bg-amber-50 text-amber-500' : 'bg-amber-500/10 text-amber-400'}`}>
+              <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-slate-800 text-slate-500'}`}>
                 <LayoutGrid size={24} />
               </div>
-              <h3 className={`text-sm font-black ${textStrong}`}>Xonalar hali kiritilmagan</h3>
-              <p className={`mx-auto mt-2 max-w-md text-[11px] font-bold leading-relaxed ${textMuted}`}>
+              <h3 className={`text-sm font-semibold ${textStrong}`}>Xonalar hali kiritilmagan</h3>
+              <p className={`mx-auto mt-2 max-w-md text-[11px] leading-relaxed ${textMuted}`}>
                 Qaysi xona qaysi qavatda ekanini admin &laquo;Qavat tarxi quruvchisi&raquo;da belgilaydi. Admin
                 kiritishini kutishingiz yoki xonalarni hozirning o&apos;zida o&apos;zingiz yaratishingiz mumkin —
                 yaratganingiz adminda ham ko&apos;rinadi.
@@ -465,22 +447,17 @@ export default function DekanXonalarMap() {
               <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
                 <button
                   onClick={() => setGeneratorOpen(true)}
-                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:from-indigo-600 hover:to-violet-700 active:scale-95"
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.accentSolid}`}
                 >
                   <Plus size={14} /> O&apos;zingiz kiriting
                 </button>
                 <button
                   onClick={() => { void reloadRoomFloors(); void fetchRoomsData() }}
-                  className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-colors ${
-                    isLight
-                      ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                      : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
-                  }`}
+                  className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.btnGhost}`}
                 >
                   <RotateCcw size={14} /> Qayta tekshirish
                 </button>
               </div>
-
             </div>
           ) : (
             <>
@@ -488,21 +465,21 @@ export default function DekanXonalarMap() {
                   itself was never entered, so most rooms are missing and the
                   dekan can't place anyone into them. */}
               {layoutRooms.length === 0 && (
-                <div className={`mb-4 flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between ${
+                <div className={`mb-4 flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${
                   isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'
                 }`}>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-black uppercase tracking-wider text-amber-500">
+                    <p className={`text-[11px] font-bold uppercase tracking-wider ${isLight ? 'text-amber-700' : 'text-amber-300'}`}>
                       Xonalar tarxi kiritilmagan
                     </p>
-                    <p className={`mt-1 text-[10px] font-bold leading-relaxed ${textMuted}`}>
+                    <p className={`mt-1 text-[10px] leading-relaxed ${isLight ? 'text-amber-800' : 'text-amber-200'}`}>
                       Quyida faqat talabasi bor {rooms.length} ta xona ko&apos;rsatilmoqda. Barcha xonalar
                       ko&apos;rinishi va yangi talaba joylashtira olishingiz uchun tarx kiritilishi kerak.
                     </p>
                   </div>
                   <button
                     onClick={() => setGeneratorOpen(true)}
-                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:from-amber-600 hover:to-orange-700 active:scale-95"
+                    className={`flex shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.accentSolid}`}
                   >
                     <Plus size={14} /> O&apos;zingiz kiriting
                   </button>
@@ -514,16 +491,19 @@ export default function DekanXonalarMap() {
                 const count = room.occupants.length
                 const isSelected = selectedRoom?.roomNumber === room.roomNumber
 
-                // Color coding based on occupants
-                let roomBorderColor = 'border-slate-200 dark:border-white/5'
-                let roomBgColor = 'bg-white/[0.01]'
+                // Structural cue first (mixed / frozen / selected), then a
+                // faint gender wash on a normal room. All within the panel's
+                // slate + indigo palette; rose stays reserved for the genuine
+                // mixed-gender error.
+                let roomBorderColor = ui.border
+                let roomBgColor = ''
 
                 if (room.gender === 'mixed') {
-                  roomBorderColor = 'border-rose-500 bg-rose-500/5 ring-2 ring-rose-500/20'
+                  roomBorderColor = isLight ? 'border-rose-300 bg-rose-50' : 'border-rose-500/40 bg-rose-500/10'
                 } else if (room.frozen) {
-                  roomBorderColor = 'border-sky-400 bg-sky-500/5 ring-2 ring-sky-400/20'
+                  roomBorderColor = isLight ? 'border-slate-300 bg-slate-100' : 'border-slate-600 bg-slate-800/60'
                 } else if (isSelected) {
-                  roomBorderColor = 'border-indigo-500 bg-indigo-500/[0.05] ring-2 ring-indigo-500/20'
+                  roomBorderColor = isLight ? 'border-indigo-400 bg-indigo-50' : 'border-indigo-500/60 bg-indigo-500/10'
                 } else if (room.gender === 'male' || room.gender === 'female') {
                   const accent = genderAccent(room.gender)
                   roomBgColor = isLight ? accent.badgeBgLight : accent.badgeBg
@@ -534,22 +514,22 @@ export default function DekanXonalarMap() {
                   <div
                     key={room.roomNumber}
                     onClick={() => selectRoom(room)}
-                    className={`p-3 rounded-2xl border cursor-pointer hover:scale-105 hover:shadow-lg active:scale-95 transition-all text-center flex flex-col justify-between h-24 ${roomBorderColor} ${roomBgColor} ${room.frozen ? 'opacity-80' : ''}`}
+                    className={`p-3 rounded-xl border cursor-pointer transition-colors text-center flex flex-col justify-between h-24 hover:border-indigo-400/60 ${roomBorderColor} ${roomBgColor} ${room.frozen ? 'opacity-75' : ''}`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={`text-[10px] font-black uppercase tracking-wider ${textMuted}`}>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${textMuted}`}>
                         {room.floor > 0 ? `Q-${room.floor}` : 'Q-?'}
                       </span>
                       {room.gender === 'mixed' ? (
-                        <AlertTriangle size={12} className="text-rose-500 animate-pulse" />
+                        <AlertTriangle size={12} className={isLight ? 'text-rose-500' : 'text-rose-400'} />
                       ) : room.frozen ? (
-                        <Snowflake size={12} className="text-sky-500" />
+                        <Snowflake size={12} className={ui.faint} />
                       ) : null}
                     </div>
 
                     <div>
-                      <h4 className={`text-sm font-black ${textStrong}`}>{room.roomNumber}-xona</h4>
-                      <p className={`text-[9px] font-bold ${room.frozen ? 'text-sky-500' : textMuted}`}>
+                      <h4 className={`text-sm font-bold ${textStrong}`}>{room.roomNumber}-xona</h4>
+                      <p className={`text-[9px] font-medium ${textMuted}`}>
                         {room.frozen ? "Muzlatilgan" : `${count} / ${roomCapacity} o'rin`}
                       </p>
                     </div>
@@ -560,7 +540,7 @@ export default function DekanXonalarMap() {
                         const isOccupied = idx < count
                         const occ = room.occupants[idx]
 
-                        let dotColor = isLight ? 'bg-slate-200' : 'bg-slate-800'
+                        let dotColor = isLight ? 'bg-slate-200' : 'bg-slate-700'
                         if (isOccupied) {
                           const occGender = normalizeGender(occ.gender)
                           dotColor = occGender ? genderAccent(occGender).dot : 'bg-indigo-500'
@@ -569,7 +549,7 @@ export default function DekanXonalarMap() {
                         return (
                           <div
                             key={idx}
-                            className={`h-2 w-2 rounded-full transition-all ${dotColor}`}
+                            className={`h-2 w-2 rounded-full ${dotColor}`}
                             title={occ ? `${occ.full_name} (${occ.status === 'registered' ? 'Faol' : 'Ruxsatnomali'})` : "Bo'sh joy"}
                           />
                         )
@@ -592,14 +572,14 @@ export default function DekanXonalarMap() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className={`flex flex-col max-h-[calc(100vh-7.5rem)] p-5 rounded-3xl border ${surfaceBg}`}
+                className={`flex flex-col max-h-[calc(100vh-7.5rem)] p-5 rounded-2xl border ${surfaceBg}`}
               >
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3 shrink-0">
+                <div className={`flex items-center justify-between border-b pb-3 shrink-0 ${ui.border}`}>
                   <div>
-                    <h3 className={`text-sm font-black uppercase tracking-wider ${textStrong}`}>
+                    <h3 className={`text-sm font-bold uppercase tracking-wider ${textStrong}`}>
                       {selectedRoom.roomNumber}-xona tafsiloti
                     </h3>
-                    <p className={`text-[9px] font-bold ${textMuted}`}>
+                    <p className={`text-[9px] font-medium ${textMuted}`}>
                       {selectedRoom.floor > 0
                         ? `${selectedRoom.floor}-qavatda joylashgan`
                         : 'Qavat tarxida belgilanmagan xona'}
@@ -607,7 +587,7 @@ export default function DekanXonalarMap() {
                   </div>
                   <button
                     onClick={() => setSelectedRoom(null)}
-                    className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 shrink-0 ${textMuted}`}
+                    className={`p-1.5 rounded-lg shrink-0 ${textMuted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`}
                   >
                     <X size={14} />
                   </button>
@@ -615,34 +595,32 @@ export default function DekanXonalarMap() {
 
                 <div className="flex-1 min-h-0 space-y-4 overflow-y-auto custom-scrollbar pt-4 -mr-1 pr-1">
                 {selectedRoom.gender === 'mixed' || selectedRoom.frozen ? null : selectedRoom.occupants.length >= roomCapacity ? (
-                  <div className={`p-2.5 rounded-xl text-center text-[10px] font-bold ${isLight ? 'bg-slate-100 text-slate-500' : 'bg-white/5 text-slate-400'}`}>
+                  <div className={`p-2.5 rounded-lg text-center text-[10px] font-medium ${ui.inset} ${textMuted}`}>
                     Xona to&apos;la — yangi talaba joylashtirib bo&apos;lmaydi
                   </div>
                 ) : (
                   <button
                     onClick={() => setAssignModalOpen(true)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-95"
+                    className={`flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.accentSolid}`}
                   >
                     <UserPlus size={14} /> Talaba joylashtirish
                   </button>
                 )}
 
-                {/* Frozen (ta'mirlash) notice — the room's only unfreeze control, made
-                    at least as prominent as the freeze button below so a dekan who
-                    lands here from a frozen tile isn't left hunting for it. */}
+                {/* Frozen (ta'mirlash) notice — the room's only unfreeze control. */}
                 {selectedRoom.frozen && (
-                  <div className="p-3 rounded-2xl bg-sky-500/15 border border-sky-500/20 text-sky-500 text-[10px] font-bold flex items-start gap-2">
+                  <div className={`p-3 rounded-lg border text-[10px] flex items-start gap-2 ${ui.inset} ${textMuted}`}>
                     <Snowflake size={14} className="shrink-0 mt-0.5" />
                     <div className="min-w-0 flex-1">
-                      <p className="font-black">XONA MUZLATILGAN</p>
-                      <p className="mt-0.5 text-[9px] leading-tight">
+                      <p className={`font-bold ${textStrong}`}>Xona muzlatilgan</p>
+                      <p className="mt-0.5 leading-tight">
                         {selectedRoom.frozenReason || "Ta'mirlash tufayli vaqtincha yopilgan."} Yangi talaba
                         joylashtirib bo&apos;lmaydi — mavjud talabalar o&apos;z joyida qoladi.
                       </p>
                       <button
                         onClick={handleUnfreezeRoom}
                         disabled={freezingRoom}
-                        className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-sky-500 hover:bg-sky-600 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-white transition-all disabled:opacity-50"
+                        className={`mt-2.5 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.accentSolid}`}
                       >
                         <Unlock size={12} /> {freezingRoom ? 'Bajarilmoqda...' : 'Muzlatishni bekor qilish'}
                       </button>
@@ -658,11 +636,7 @@ export default function DekanXonalarMap() {
                 {selectedRoom.inLayout && !selectedRoom.frozen && (
                   <button
                     onClick={() => setFreezeModalOpen(true)}
-                    className={`flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
-                      isLight
-                        ? 'border-sky-200 bg-sky-50 text-sky-600 hover:border-sky-300 hover:bg-sky-100'
-                        : 'border-sky-500/25 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 hover:text-sky-300'
-                    }`}
+                    className={`flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.btnGhost}`}
                   >
                     <Snowflake size={14} /> Xonani muzlatish (ta&apos;mirlash)
                   </button>
@@ -670,12 +644,12 @@ export default function DekanXonalarMap() {
 
                 {/* Mixed Gender Error message */}
                 {selectedRoom.gender === 'mixed' && (
-                  <div className="p-3 rounded-2xl bg-rose-500/15 border border-rose-500/20 text-rose-500 text-[10px] font-bold flex items-start gap-2">
+                  <div className={`p-3 rounded-lg border text-[10px] flex items-start gap-2 ${ui.dangerSoft}`}>
                     <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-black">GENDER ARALASHUVI XATOSI!</p>
-                      <p className="mt-0.5 text-[9px] leading-tight">
-                        Xonada ham o‘g‘il bolalar, ham qiz bolalar joylashtirilgan. Iltimos, xona taqsimotini o‘zgartiring!
+                      <p className="font-bold uppercase">Gender aralashuvi xatosi</p>
+                      <p className="mt-0.5 leading-tight">
+                        Xonada ham o‘g‘il bolalar, ham qiz bolalar joylashtirilgan. Iltimos, xona taqsimotini o‘zgartiring.
                       </p>
                     </div>
                   </div>
@@ -684,32 +658,26 @@ export default function DekanXonalarMap() {
                 {/* Occupants list */}
                 <div className="space-y-3">
                   {selectedRoom.occupants.length === 0 ? (
-                    <div className="text-center py-8 text-xs font-bold text-slate-500">Xona bo‘sh</div>
+                    <div className={`text-center py-8 text-xs font-medium ${ui.faint}`}>Xona bo‘sh</div>
                   ) : (
-                    selectedRoom.occupants.map((occ, occIndex) => (
+                    selectedRoom.occupants.map((occ, occIndex) => {
+                      const st = statusChip(occ.status === 'registered' ? 'success' : 'warning', isLight)
+                      return (
                       <div
                         key={occ.id || `${selectedRoom.roomNumber}-anon-${occIndex}`}
-                        className={`p-3 rounded-2xl border ${
-                          isLight ? 'bg-slate-50/50 border-slate-200' : 'bg-white/[0.02] border-white/5'
-                        } space-y-2`}
+                        className={`p-3 rounded-lg border space-y-2 ${ui.inset}`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className={`h-2 w-2 rounded-full shrink-0 ${genderAccent(occ.gender).dot}`} />
-                            <h4 className={`text-xs font-bold truncate ${textStrong}`}>{occ.full_name}</h4>
+                            <h4 className={`text-xs font-semibold truncate ${textStrong}`}>{occ.full_name}</h4>
                           </div>
-                          <span
-                            className={`shrink-0 px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
-                              occ.status === 'registered'
-                                ? 'bg-emerald-500/10 text-emerald-500'
-                                : 'bg-amber-500/10 text-amber-500'
-                            }`}
-                          >
+                          <span className={`shrink-0 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${st.chip}`}>
                             {occ.status === 'registered' ? 'Faol' : 'Kutmoqda'}
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2.5 text-[10px] font-bold">
+                        <div className="grid grid-cols-2 gap-2.5 text-[10px] font-medium">
                           <div>
                             <span className={textMuted}>Fakultet:</span>
                             <p className={`truncate ${textStrong}`} title={permitFacultyLabel(occ.faculty)}>
@@ -728,37 +696,29 @@ export default function DekanXonalarMap() {
                           </div>
                           {occ.warning_count && occ.warning_count > 0 ? (
                             <div>
-                              <span className="text-amber-500">Ogohlantirishlar:</span>
-                              <p className="text-amber-500 font-black">{occ.warning_count} ta</p>
+                              <span className={statusChip('warning', isLight).text}>Ogohlantirishlar:</span>
+                              <p className={`font-semibold ${statusChip('warning', isLight).text}`}>{occ.warning_count} ta</p>
                             </div>
                           ) : null}
                         </div>
 
                         {occ.id && (
                           confirmRemoveId === occ.id ? (
-                            <div
-                              className={`mt-1 flex items-center gap-2 rounded-xl border px-2.5 py-2 ${
-                                isLight ? 'border-rose-200 bg-rose-50' : 'border-rose-500/25 bg-rose-500/10'
-                              }`}
-                            >
-                              <AlertTriangle size={12} className="shrink-0 text-rose-500" />
-                              <span className="flex-1 text-[9px] font-black uppercase tracking-wider text-rose-500">
+                            <div className={`mt-1 flex items-center gap-2 rounded-lg border px-2.5 py-2 ${ui.dangerSoft}`}>
+                              <AlertTriangle size={12} className="shrink-0" />
+                              <span className="flex-1 text-[9px] font-bold uppercase tracking-wider">
                                 Rostdan chiqarilsinmi?
                               </span>
                               <button
                                 onClick={() => handleRemoveStudent(occ)}
                                 disabled={removingId === occ.id}
-                                className="rounded-lg bg-rose-500 hover:bg-rose-600 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white disabled:opacity-50"
+                                className={`rounded-md px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider disabled:opacity-50 ${ui.btnDanger}`}
                               >
                                 {removingId === occ.id ? '...' : 'Ha'}
                               </button>
                               <button
                                 onClick={() => setConfirmRemoveId(null)}
-                                className={`rounded-lg border px-2.5 py-1 text-[9px] font-black uppercase tracking-wider ${
-                                  isLight
-                                    ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                                    : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
-                                }`}
+                                className={`rounded-md border px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider ${ui.btnGhost}`}
                               >
                                 Yo&apos;q
                               </button>
@@ -766,11 +726,7 @@ export default function DekanXonalarMap() {
                           ) : (
                             <button
                               onClick={() => setConfirmRemoveId(occ.id)}
-                              className={`mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl border py-1.5 text-[9px] font-black uppercase tracking-wider transition-colors ${
-                                isLight
-                                  ? 'border-rose-200 bg-rose-50 text-rose-600 hover:border-rose-300 hover:bg-rose-100'
-                                  : 'border-rose-500/25 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300'
-                              }`}
+                              className={`mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${ui.dangerSoft}`}
                             >
                               <UserMinus size={11} />
                               {occ.status === 'approved' ? "Xona biriktirishni bekor qilish" : 'Xonadan chiqarish'}
@@ -778,22 +734,23 @@ export default function DekanXonalarMap() {
                           )
                         )}
                       </div>
-                    ))
+                      )
+                    })
                   )}
                 </div>
                 </div>
 
-                <div className={`shrink-0 pt-3 mt-1 border-t text-[9px] font-bold flex justify-between ${isLight ? 'border-slate-100 text-slate-500' : 'border-white/5 text-slate-500'}`}>
+                <div className={`shrink-0 pt-3 mt-1 border-t text-[9px] font-medium flex justify-between ${ui.border} ${textMuted}`}>
                   <span>Jami o‘rindagi joylar:</span>
                   <span>{selectedRoom.occupants.length} / {roomCapacity} band</span>
                 </div>
               </motion.div>
             ) : (
-              <div className={`p-10 rounded-3xl border ${surfaceBg} flex flex-col items-center justify-center text-center`}>
-                <div className="mx-auto w-12 h-12 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 mb-3">
+              <div className={`p-10 rounded-2xl border ${surfaceBg} flex flex-col items-center justify-center text-center`}>
+                <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-3 ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-slate-800 text-slate-500'}`}>
                   <BedDouble size={20} />
                 </div>
-                <p className={`text-xs font-bold ${textMuted}`}>Xona tafsilotlarini ko‘rish uchun xarita bo‘limidan xonani bosing</p>
+                <p className={`text-xs font-medium ${textMuted}`}>Xona tafsilotlarini ko‘rish uchun xarita bo‘limidan xonani bosing</p>
               </div>
             )}
           </AnimatePresence>
@@ -812,21 +769,21 @@ export default function DekanXonalarMap() {
       >
         <div className="space-y-3">
           <div className="relative">
-            <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${textMuted}`} />
+            <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${ui.faint}`} />
             <input
               type="text"
               autoFocus
               placeholder="Talaba ismi bo'yicha qidirish..."
               value={assignSearch}
               onChange={(e) => setAssignSearch(e.target.value)}
-              className={`w-full text-sm font-medium py-3.5 pl-12 pr-11 rounded-2xl outline-none border transition-all placeholder:font-normal focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 ${inputBg}`}
+              className={`w-full text-sm py-3 pl-12 pr-11 rounded-lg border transition-colors ${ui.input} ${ui.ring}`}
             />
             {assignSearch && (
               <button
                 type="button"
                 onClick={() => setAssignSearch('')}
                 aria-label="Qidiruvni tozalash"
-                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors hover:bg-slate-200/70 dark:hover:bg-white/10 ${textMuted}`}
+                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${ui.muted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`}
               >
                 <X size={14} />
               </button>
@@ -840,19 +797,15 @@ export default function DekanXonalarMap() {
                 type="button"
                 disabled={assigningId === s.id}
                 onClick={() => handleAssignStudent(s.id, s.source)}
-                className={`w-full flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all ${
-                  isLight
-                    ? 'border-slate-200 bg-white hover:border-indigo-300'
-                    : 'border-white/5 bg-white/[0.02] hover:border-indigo-500/30'
-                }`}
+                className={`w-full flex items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors ${ui.card} hover:border-indigo-400/50`}
               >
                 <div className="min-w-0 flex items-start gap-2">
                   <span className={`h-2 w-2 rounded-full shrink-0 mt-1 ${genderAccent(s.gender).dot}`} />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <p className={`text-xs font-bold truncate ${textStrong}`}>{s.full_name}</p>
+                      <p className={`text-xs font-semibold truncate ${textStrong}`}>{s.full_name}</p>
                       {s.source === 'permit' && (
-                        <span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-500">
+                        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ${statusChip('warning', isLight).chip}`}>
                           Ro&apos;yxatdan o&apos;tmagan
                         </span>
                       )}
@@ -864,15 +817,15 @@ export default function DekanXonalarMap() {
                   </div>
                 </div>
                 {assigningId === s.id ? (
-                  <span className="shrink-0 text-[9px] font-black uppercase text-indigo-500">...</span>
+                  <span className={`shrink-0 text-[9px] font-bold uppercase ${ui.accentText}`}>...</span>
                 ) : (
-                  <UserPlus size={16} className="shrink-0 text-indigo-500" />
+                  <UserPlus size={16} className={`shrink-0 ${ui.accentText}`} />
                 )}
               </button>
             ))}
 
             {assignableStudents.length === 0 && (
-              <p className={`py-6 text-center text-xs font-bold ${textMuted}`}>Talaba topilmadi</p>
+              <p className={`py-6 text-center text-xs font-medium ${ui.faint}`}>Talaba topilmadi</p>
             )}
           </div>
         </div>
@@ -893,7 +846,7 @@ export default function DekanXonalarMap() {
         isLoading={freezingRoom}
       >
         <div className="space-y-1.5">
-          <label className={`block text-[10px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+          <label className={`block text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>
             Sabab (ixtiyoriy)
           </label>
           <textarea
@@ -901,7 +854,7 @@ export default function DekanXonalarMap() {
             onChange={(e) => setFreezeReason(e.target.value)}
             rows={3}
             placeholder="Masalan: Santexnika ta'mirlanmoqda"
-            className={`w-full rounded-xl border px-3 py-2 text-sm outline-none transition-all focus:border-indigo-500 ${inputBg}`}
+            className={`w-full rounded-lg border px-3 py-2 text-sm transition-colors ${ui.input} ${ui.ring}`}
           />
         </div>
       </ConfirmModal>

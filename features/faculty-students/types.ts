@@ -30,6 +30,7 @@ export type StudentProfileRow = {
   assigned_floor: number | null
   is_floor_captain: boolean | null
   warning_count: number | null
+  blacklisted: boolean | null
   birth_date: string | null
   nationality: string | null
   study_type: string | null
@@ -88,4 +89,22 @@ export type SendWarningResult = {
   ok: true
   level: StudentWarningLevel
   warningCount: number
+}
+
+/**
+ * Bar a student from the dormitory (`users.blacklisted`), or lift that bar.
+ * Blacklisting also frees the student's room/floor/captaincy — the bed
+ * shouldn't stay counted as occupied by someone who's been removed.
+ * Reversible: un-blacklisting does NOT restore the room, the dekan
+ * re-assigns one from the Xonalar page.
+ */
+export type SetBlacklistInput = {
+  studentId: string
+  blacklisted: boolean
+  reason?: string
+}
+
+export type SetBlacklistResult = {
+  ok: true
+  blacklisted: boolean
 }

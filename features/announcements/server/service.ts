@@ -101,8 +101,10 @@ export function createAnnouncementService(repository: AnnouncementRepository = c
       return { elonlar, currentFaculty }
     },
 
-    async listAuthored(creatorId: string): Promise<AuthoredAnnouncement[]> {
-      return (await repository.listByCreator(creatorId)) as AuthoredAnnouncement[]
+    async listAuthored(facultyValue: string | null): Promise<AuthoredAnnouncement[]> {
+      const faculty = facultyValue?.trim()
+      if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
+      return (await repository.listByFaculty(faculty)) as AuthoredAnnouncement[]
     },
 
     /**
@@ -130,7 +132,9 @@ export function createAnnouncementService(repository: AnnouncementRepository = c
       })) as AuthoredAnnouncement
     },
 
-    async updateAuthored(creatorId: string, value: unknown) {
+    async updateAuthored(facultyValue: string | null, value: unknown) {
+      const faculty = facultyValue?.trim()
+      if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, "So'rov noto'g'ri")
       const body = value as Record<string, unknown>
       const id = typeof body.id === 'string' ? body.id.trim() : ''
@@ -149,15 +153,17 @@ export function createAnnouncementService(repository: AnnouncementRepository = c
       }
       if (Object.keys(updates).length === 0) throw new ApiError(400, "Yangilash uchun ma'lumot yo'q")
 
-      const updated = await repository.updateAuthored(id, creatorId, updates)
+      const updated = await repository.updateByFaculty(id, faculty, updates)
       if (!updated) throw new ApiError(404, "E'lon topilmadi")
       return updated as AuthoredAnnouncement
     },
 
-    async removeAuthored(creatorId: string, idValue: string | null) {
+    async removeAuthored(facultyValue: string | null, idValue: string | null) {
+      const faculty = facultyValue?.trim()
+      if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
       const id = (idValue ?? '').trim()
       if (!id) throw new ApiError(400, "E'lon tanlanmagan")
-      const deleted = await repository.deleteAuthored(id, creatorId)
+      const deleted = await repository.deleteByFaculty(id, faculty)
       if (!deleted) throw new ApiError(404, "E'lon topilmadi")
       return { ok: true as const }
     },

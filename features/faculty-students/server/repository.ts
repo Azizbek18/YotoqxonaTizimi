@@ -3,7 +3,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import type { StudentScope, StudentWarningLevel } from '../types'
 
 const STUDENT_PROFILE_COLUMNS =
-  'id, full_name, middle_name, email, phone_number, avatar_url, gender, faculty, direction, course, status, room_number, assigned_floor, is_floor_captain, warning_count, birth_date, nationality, study_type, entry_date, region, district, mahalla, passport_series, jshshir, passport_date, father_full_name, father_workplace, father_phone, mother_full_name, mother_workplace, mother_phone, created_at'
+  'id, full_name, middle_name, email, phone_number, avatar_url, gender, faculty, direction, course, status, room_number, assigned_floor, is_floor_captain, warning_count, blacklisted, birth_date, nationality, study_type, entry_date, region, district, mahalla, passport_series, jshshir, passport_date, father_full_name, father_workplace, father_phone, mother_full_name, mother_workplace, mother_phone, created_at'
 
 export function createFacultyStudentsRepository() {
   const supabase = getServiceSupabase()
@@ -51,8 +51,26 @@ export function createFacultyStudentsRepository() {
     async findStudent(id: string) {
       const { data, error } = await supabase
         .from('users')
-        .select('id, full_name, email, faculty, role, status, warning_count')
+        .select('id, full_name, email, faculty, role, status, warning_count, blacklisted')
         .eq('id', id)
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+
+    // Bar / un-bar a student. Blacklisting frees their bed too — room,
+    // floor and captaincy are cleared in the same write so the room map
+    // and the "Sardorlar" list don't keep showing a removed resident.
+    async setBlacklist(id: string, blacklisted: boolean) {
+      const updates = blacklisted
+        ? { blacklisted, room_number: null, assigned_floor: null, is_floor_captain: false }
+        : { blacklisted }
+      const { data, error } = await supabase
+        .from('users')
+        .update(updates)
+        .eq('id', id)
+        .eq('role', 'talaba')
+        .select('id, blacklisted')
         .maybeSingle()
       if (error) throw error
       return data

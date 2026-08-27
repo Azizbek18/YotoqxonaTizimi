@@ -171,6 +171,42 @@ export async function sendStudentWarningEmail(
   })
 }
 
+/**
+ * Dekan talabani yotoqxonadan chetlatganda yoki chetlatishni bekor
+ * qilganda. Chetlatishda xona ham bo'shatiladi — matn shuni aytadi.
+ */
+export async function sendStudentBlacklistEmail(
+  to: string,
+  fullName: string,
+  blacklisted: boolean,
+  reason?: string,
+) {
+  if (blacklisted) {
+    await sendMail({
+      to,
+      subject: 'Yotoqxona: yotoqxonadan chetlatildingiz',
+      heading: `${fullName}, siz yotoqxonadan chetlatildingiz`,
+      paragraphs: [
+        'Fakultet dekani qaroriga ko\'ra siz yotoqxonadan chetlatildingiz. Sizga biriktirilgan xona bekor qilindi.',
+        reason ? `Sabab: ${reason}` : 'Sabab dekanat tomonidan alohida ma\'lum qilinadi.',
+        'Qaror bo\'yicha e\'tirozingiz bo\'lsa yoki masalani hal qilmoqchi bo\'lsangiz, zudlik bilan fakultet dekanatiga murojaat qiling.',
+      ],
+      cta: { label: 'Shaxsiy kabinet', url: appUrl('/talaba/qoidalar') },
+    })
+    return
+  }
+  await sendMail({
+    to,
+    subject: 'Yotoqxona: chetlatish bekor qilindi',
+    heading: `${fullName}, chetlatish qarori bekor qilindi`,
+    paragraphs: [
+      'Fakultet dekani sizni yotoqxonadan chetlatish qarorini bekor qildi.',
+      'Xona avtomatik qaytarilmaydi — joylashish uchun fakultet dekanatiga murojaat qiling.',
+    ],
+    cta: { label: 'Shaxsiy kabinet', url: appUrl('/talaba/dashboard') },
+  })
+}
+
 /** Dekan xona biriktirgach — talabaga xona raqami xabar qilinadi. */
 export async function sendRoomAssignedEmail(to: string, fullName: string, roomNumber: string) {
   await sendMail({

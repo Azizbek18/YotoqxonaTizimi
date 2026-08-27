@@ -28,14 +28,17 @@ export function createAnnouncementRepository() {
       if (error) throw error
       return data ?? []
     },
-    // Dekan o'zi yaratgan e'lonlarni ko'radi/tahrirlaydi — created_by
-    // filtri hamma yerda saqlanadi, shunda boshqa xodimning e'loniga
-    // tegib bo'lmaydi.
-    async listByCreator(creatorId: string) {
+    // A dekan manages every faculty announcement of THEIR faculty, not just
+    // the ones they personally created — so a replacement dekan inherits the
+    // outgoing one's announcements instead of being locked out of them.
+    // Scoped to audience='faculty' so a tarbiyachi's floor notice or an
+    // admin's dorm-wide one never lands in a dekan's editable list.
+    async listByFaculty(faculty: string) {
       const { data, error } = await supabase
         .from('elonlar')
         .select(AUTHORED_COLUMNS)
-        .eq('created_by', creatorId)
+        .eq('audience', 'faculty')
+        .ilike('faculty', faculty)
         .neq('title', 'HAFTALIK_NAVBATCHILIK_JADVALI')
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -55,23 +58,25 @@ export function createAnnouncementRepository() {
       if (error) throw error
       return data
     },
-    async updateAuthored(id: string, creatorId: string, updates: Partial<AnnouncementRow>) {
+    async updateByFaculty(id: string, faculty: string, updates: Partial<AnnouncementRow>) {
       const { data, error } = await supabase
         .from('elonlar')
         .update(updates)
         .eq('id', id)
-        .eq('created_by', creatorId)
+        .eq('audience', 'faculty')
+        .ilike('faculty', faculty)
         .select(AUTHORED_COLUMNS)
         .maybeSingle()
       if (error) throw error
       return data
     },
-    async deleteAuthored(id: string, creatorId: string) {
+    async deleteByFaculty(id: string, faculty: string) {
       const { data, error } = await supabase
         .from('elonlar')
         .delete()
         .eq('id', id)
-        .eq('created_by', creatorId)
+        .eq('audience', 'faculty')
+        .ilike('faculty', faculty)
         .select('id')
         .maybeSingle()
       if (error) throw error

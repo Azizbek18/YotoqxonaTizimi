@@ -1,9 +1,11 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
-import { sendStudentWarningEmail } from '@/lib/email'
+import { sendStudentBlacklistEmail, sendStudentWarningEmail } from '@/lib/email'
+import { writeAuditLog } from '@/lib/audit-log'
 import type {
   FacultyPaymentRecord,
   SendWarningResult,
+  SetBlacklistResult,
   StudentProfileRow,
   StudentScope,
   StudentWarningLevel,
@@ -102,6 +104,55 @@ export function createFacultyStudentsService(
       await sendStudentWarningEmail(student.email ?? '', student.full_name ?? 'Talaba', level, message)
 
       return { ok: true as const, level, warningCount: Number(result.new_warning_count) }
+    },
+
+    async setBlacklist(
+      facultyValue: string | null,
+      value: unknown,
+      actorId: string | null = null,
+    ): Promise<SetBlacklistResult> {
+      const faculty = requireFaculty(facultyValue)
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, "So'rov noto'g'ri")
+      const input = value as Record<string, unknown>
+
+      const studentId = typeof input.studentId === 'string' ? input.studentId.trim() : ''
+      if (!studentId) throw new ApiError(400, 'Talaba tanlanmagan')
+      if (typeof input.blacklisted !== 'boolean') throw new ApiError(400, "So'rov noto'g'ri")
+      const blacklisted = input.blacklisted
+      const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, MESSAGE_MAX) : ''
+      if (blacklisted && reason.length < MESSAGE_MIN) throw new ApiError(400, 'Chetlatish sababini yozing')
+
+      const student = await repository.findStudent(studentId)
+      if (!student) throw new ApiError(404, 'Talaba topilmadi')
+      if (student.role !== 'talaba') throw new ApiError(403, 'Faqat talabalarni chetlatish mumkin')
+      if (!sameFaculty(student.faculty, faculty)) {
+        throw new ApiError(403, "Boshqa fakultet talabasini chetlatib bo'lmaydi")
+      }
+      if (Boolean(student.blacklisted) === blacklisted) {
+        // Idempotent — the button just reflects stale UI state.
+        return { ok: true as const, blacklisted }
+      }
+
+      const updated = await repository.setBlacklist(studentId, blacklisted)
+      if (!updated) throw new ApiError(409, "Talaba holati o'zgardi — sahifani yangilang")
+
+      await writeAuditLog({
+        eventType: blacklisted ? 'student.blacklist' : 'student.unblacklist',
+        status: 'success',
+        actorUserId: actorId,
+        targetRole: 'talaba',
+        details: { studentId, faculty, reason: reason || null },
+      })
+
+      // Best-effort — the bar is already in the database.
+      await sendStudentBlacklistEmail(
+        student.email ?? '',
+        student.full_name ?? 'Talaba',
+        blacklisted,
+        reason || undefined,
+      )
+
+      return { ok: true as const, blacklisted }
     },
   }
 }

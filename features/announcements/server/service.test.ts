@@ -30,10 +30,10 @@ function fakeRepository(overrides: Partial<AnnouncementRepository> = {}) {
       assigned_floor: 1,
     })),
     listPublished: vi.fn(async () => [] as PublishedRow[]),
-    listByCreator: vi.fn(async () => []),
+    listByFaculty: vi.fn(async () => []),
     insertAuthored: vi.fn(async (value: unknown) => value),
-    updateAuthored: vi.fn(async () => null),
-    deleteAuthored: vi.fn(async () => null),
+    updateByFaculty: vi.fn(async () => null),
+    deleteByFaculty: vi.fn(async () => null),
     listStudentCreators: vi.fn(async () => []),
     listStaffCreators: vi.fn(async () => [{ id: 'dekan-1', full_name: 'Dekan Ismi' }]),
     ...overrides,
@@ -140,13 +140,29 @@ describe('createForFaculty', () => {
 })
 
 describe('updateAuthored / removeAuthored', () => {
-  it('refuses to touch an announcement the caller did not write', async () => {
+  it('refuses to touch an announcement outside the dekan’s faculty', async () => {
     const service = createAnnouncementService(fakeRepository())
 
-    await expect(service.updateAuthored('dekan-1', { id: 'other', title: 'Yangi sarlavha' })).rejects.toThrow(
+    await expect(service.updateAuthored('amit', { id: 'other', title: 'Yangi sarlavha' })).rejects.toThrow(
       /topilmadi/,
     )
-    await expect(service.removeAuthored('dekan-1', 'other')).rejects.toThrow(/topilmadi/)
+    await expect(service.removeAuthored('amit', 'other')).rejects.toThrow(/topilmadi/)
+  })
+
+  it('scopes the update to the dekan’s faculty, not the creator', async () => {
+    const updateByFaculty = vi.fn(async () => ({ id: 'e1', title: 'Yangi' }))
+    const service = createAnnouncementService(
+      fakeRepository({ updateByFaculty } as unknown as Partial<AnnouncementRepository>),
+    )
+
+    await service.updateAuthored('  AMIT  ', { id: 'e1', title: 'Yangi sarlavha' })
+    expect(updateByFaculty).toHaveBeenCalledWith('e1', 'AMIT', expect.objectContaining({ title: 'Yangi sarlavha' }))
+  })
+
+  it('rejects a dekan with no faculty assigned', async () => {
+    const service = createAnnouncementService(fakeRepository())
+    await expect(service.listAuthored(null)).rejects.toThrow(/fakulteti/i)
+    await expect(service.removeAuthored(null, 'e1')).rejects.toThrow(/fakulteti/i)
   })
 })
 

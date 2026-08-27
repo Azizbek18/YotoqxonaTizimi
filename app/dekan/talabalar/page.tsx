@@ -24,6 +24,7 @@ import {
   Users,
   UserRound,
   UsersRound,
+  UserX,
   X,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -33,6 +34,7 @@ import {
   fetchFacultyPayments,
   fetchFacultyStudents,
   sendStudentWarning,
+  setStudentBlacklist,
 } from '@/features/faculty-students/client/api'
 import type {
   FacultyPaymentRecord,
@@ -81,7 +83,7 @@ const WARNING_DOT_CLASSES: Record<WarningTone, string> = {
 
 const HUJJAT_LABELS = ['Passport seriya', 'JSHSHIR', 'Passport sanasi', 'Hudud', 'Millati', 'Jinsi']
 
-type FolderKey = 'all' | 'roomless' | 'debtor' | 'paid' | 'male' | 'female' | 'captain' | 'warned'
+type FolderKey = 'all' | 'roomless' | 'debtor' | 'paid' | 'male' | 'female' | 'captain' | 'warned' | 'blacklisted'
 
 export default function DekanStudentsPage() {
   const theme = useThemeStore((state) => state.theme)
@@ -114,6 +116,10 @@ export default function DekanStudentsPage() {
   const [warningLevel, setWarningLevel] = useState<StudentWarningLevel>('info')
   const [warningText, setWarningText] = useState('')
   const [sendingWarning, setSendingWarning] = useState(false)
+
+  const [blacklistModalOpen, setBlacklistModalOpen] = useState(false)
+  const [blacklistReason, setBlacklistReason] = useState('')
+  const [blacklistBusy, setBlacklistBusy] = useState(false)
 
   const getInitials = (name: string) =>
     name
@@ -218,6 +224,8 @@ export default function DekanStudentsPage() {
       let matchesFolder = true
       if (activeFolder === 'roomless') {
         matchesFolder = !student.room_number
+      } else if (activeFolder === 'blacklisted') {
+        matchesFolder = Boolean(student.blacklisted)
       } else if (activeFolder === 'male' || activeFolder === 'female') {
         matchesFolder = normalizeGender(student.gender) === activeFolder
       } else if (activeFolder === 'captain') {
@@ -338,9 +346,42 @@ export default function DekanStudentsPage() {
     }
   }
 
+  const handleToggleBlacklist = async () => {
+    if (!selectedStudent || blacklistBusy) return
+    const next = !selectedStudent.blacklisted
+    if (next && blacklistReason.trim().length < 5) {
+      toast.error('Chetlatish sababini yozing')
+      return
+    }
+    setBlacklistBusy(true)
+    try {
+      const result = await setStudentBlacklist({
+        studentId: selectedStudent.id,
+        blacklisted: next,
+        reason: next ? blacklistReason.trim() : undefined,
+      })
+      // Blacklisting also frees the room server-side — mirror that locally.
+      const patch: Partial<StudentProfileRow> = result.blacklisted
+        ? { blacklisted: true, room_number: null, assigned_floor: null, is_floor_captain: false }
+        : { blacklisted: false }
+      setStudents((prev) =>
+        prev.map((student) => (student.id === selectedStudent.id ? { ...student, ...patch } : student)),
+      )
+      setSelectedStudent((prev) => (prev ? { ...prev, ...patch } : prev))
+      toast.success(result.blacklisted ? 'Talaba yotoqxonadan chetlatildi' : 'Chetlatish bekor qilindi')
+      setBlacklistModalOpen(false)
+      setBlacklistReason('')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Amalni bajarib bo'lmadi")
+    } finally {
+      setBlacklistBusy(false)
+    }
+  }
+
   const totalCount = students.length || 1
   const roomlessCount = students.filter((student) => !student.room_number).length
   const placedCount = students.length - roomlessCount
+  const blacklistedCount = students.filter((student) => student.blacklisted).length
   const maleCount = students.filter((student) => normalizeGender(student.gender) === 'male').length
   const femaleCount = students.filter((student) => normalizeGender(student.gender) === 'female').length
   const warnedCount = students.filter((student) => (student.warning_count ?? 0) > 0).length
@@ -413,6 +454,7 @@ export default function DekanStudentsPage() {
     { key: 'female', label: 'Qiz', count: femaleCount },
     { key: 'captain', label: 'Sardorlar', count: captainCount },
     { key: 'warned', label: 'Ogohlantirilgan', count: warnedCount },
+    { key: 'blacklisted', label: 'Chetlatilgan', count: blacklistedCount },
   ]
 
   const cardSurface = ui.card
@@ -624,6 +666,15 @@ export default function DekanStudentsPage() {
                       <div className="flex items-center justify-between gap-1.5">
                         <p className="truncate text-xs font-semibold leading-none">{student.full_name}</p>
                         <span className="flex shrink-0 items-center gap-1">
+                          {student.blacklisted && (
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ${
+                                isActive ? 'bg-white/20 text-white' : statusChip('danger', isLight).chip
+                              }`}
+                            >
+                              Chetlatilgan
+                            </span>
+                          )}
                           {student.is_floor_captain && (
                             <span
                               className={`rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ${
@@ -771,17 +822,32 @@ export default function DekanStudentsPage() {
                           Qavat sardori
                         </span>
                       )}
+                      {selectedStudent.blacklisted && (
+                        <span className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold ${statusChip('danger', isLight).chip}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${statusChip('danger', isLight).dot}`} />
+                          Yotoqxonadan chetlatilgan
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex w-full shrink-0 items-center justify-start gap-2 sm:w-auto sm:justify-end">
+                <div className="flex w-full shrink-0 flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
                   <button
                     onClick={openWarningModal}
                     className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
                   >
                     <AlertTriangle size={14} />
                     Ogohlantirish
+                  </button>
+                  <button
+                    onClick={() => { setBlacklistReason(''); setBlacklistModalOpen(true) }}
+                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                      selectedStudent.blacklisted ? ui.btnGhost : ui.dangerSoft
+                    }`}
+                  >
+                    <UserX size={14} />
+                    {selectedStudent.blacklisted ? 'Chetlatishni bekor qilish' : 'Chetlatish'}
                   </button>
                 </div>
               </div>
@@ -1155,6 +1221,45 @@ export default function DekanStudentsPage() {
               </>
             )}
           </div>
+        </div>
+      </ConfirmModal>
+
+      {/* Blacklist / reinstate modal */}
+      <ConfirmModal
+        isOpen={blacklistModalOpen}
+        title={selectedStudent?.blacklisted ? 'Chetlatishni bekor qilish' : 'Yotoqxonadan chetlatish'}
+        description={selectedStudent ? selectedStudent.full_name : undefined}
+        onClose={() => setBlacklistModalOpen(false)}
+        onConfirm={handleToggleBlacklist}
+        confirmText={selectedStudent?.blacklisted ? 'Bekor qilish' : 'Chetlatish'}
+        confirmVariant={selectedStudent?.blacklisted ? 'primary' : 'danger'}
+        isLoading={blacklistBusy}
+        maxWidthClass="max-w-lg"
+      >
+        <div className="space-y-4">
+          {selectedStudent?.blacklisted ? (
+            <div className={`rounded-lg border p-3 text-[11px] leading-relaxed ${isLight ? 'border-indigo-200 bg-indigo-50 text-indigo-800' : 'border-indigo-500/25 bg-indigo-500/10 text-indigo-200'}`}>
+              Talaba yana yotoqxona tizimidan to&apos;liq foydalana oladi. <span className="font-black">Xona avtomatik qaytarilmaydi</span> — «Xonalar» bo&apos;limidan qayta biriktiring.
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className={`mb-2 block text-xs font-bold uppercase tracking-wider ${ui.muted}`}>Chetlatish sababi</label>
+                <textarea
+                  value={blacklistReason}
+                  onChange={(event) => setBlacklistReason(event.target.value)}
+                  rows={4}
+                  maxLength={1000}
+                  placeholder="Nima sababdan chetlatilmoqda? (talabaga emailda yuboriladi)"
+                  className={`w-full resize-none rounded-lg border px-4 py-3 text-sm transition-colors ${ui.input} ${ui.ring}`}
+                />
+                <p className={`mt-1 text-right text-[10px] font-medium ${ui.faint}`}>{blacklistReason.length}/1000</p>
+              </div>
+              <div className={`rounded-lg border p-3 text-[11px] leading-relaxed ${isLight ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-rose-500/25 bg-rose-500/10 text-rose-200'}`}>
+                Talaba <span className="font-black">qora ro&apos;yxatga</span> olinadi, unga biriktirilgan <span className="font-black">xona bo&apos;shatiladi</span> (sardorlik ham olib tashlanadi) va talabaga email yuboriladi. Bu amalni keyin bekor qilish mumkin, lekin xona qo&apos;lda qayta biriktiriladi.
+              </div>
+            </>
+          )}
         </div>
       </ConfirmModal>
 

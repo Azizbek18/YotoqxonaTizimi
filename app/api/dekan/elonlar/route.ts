@@ -13,7 +13,7 @@ function errorResponse(error: unknown, fallback: string) {
 export async function GET(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan'])
-    const elonlar = await createAnnouncementService().listAuthored(staff.id)
+    const elonlar = await createAnnouncementService().listAuthored(staff.faculty)
     return NextResponse.json({ elonlar })
   } catch (error) {
     return errorResponse(error, "E'lonlarni yuklab bo'lmadi")
@@ -39,7 +39,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan'])
     const body = await request.json().catch(() => null)
-    const elon = await createAnnouncementService().updateAuthored(staff.id, body)
+    const elon = await createAnnouncementService().updateAuthored(staff.faculty, body)
     return NextResponse.json({ elon })
   } catch (error) {
     return errorResponse(error, "E'lonni yangilab bo'lmadi")
@@ -50,7 +50,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan'])
     const result = await createAnnouncementService().removeAuthored(
-      staff.id,
+      staff.faculty,
       request.nextUrl.searchParams.get('id'),
     )
     return NextResponse.json(result)

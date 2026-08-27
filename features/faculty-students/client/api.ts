@@ -5,6 +5,8 @@ import type {
   FacultyPaymentRecord,
   SendWarningInput,
   SendWarningResult,
+  SetBlacklistInput,
+  SetBlacklistResult,
   StudentProfileRow,
   StudentScope,
 } from '../types'
@@ -23,6 +25,14 @@ export async function fetchFacultyPayments() {
 
 export function sendStudentWarning(input: SendWarningInput) {
   return requestJson<SendWarningResult>('/api/dekan/students/warnings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+export function setStudentBlacklist(input: SetBlacklistInput) {
+  return requestJson<SetBlacklistResult>('/api/dekan/students/blacklist', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),

@@ -36,7 +36,7 @@ interface Occupant {
   id: string
   full_name: string
   passport_series: string
-  jshshir: string
+  jshshir: string | null
   phone: string
   gender: string
   faculty: string

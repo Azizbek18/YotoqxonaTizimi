@@ -129,7 +129,7 @@ export type PaymentRow = {
 export type PermitRequestRow = {
   id: string
   passport_series: string
-  jshshir: string
+  jshshir: string | null
   full_name: string
   email: string
   phone: string
@@ -143,6 +143,12 @@ export type PermitRequestRow = {
   reject_reason: string | null
   created_at: string
   updated_at: string
+  /** 'yollanma' (government referral, default) | 'imtiyozli' (foreign/privileged student — Ariza+Tilxat+passport photo). */
+  application_type: string
+  relative_phone: string | null
+  origin_country: string | null
+  origin_region: string | null
+  study_type: string | null
 }
 
 export interface Database {

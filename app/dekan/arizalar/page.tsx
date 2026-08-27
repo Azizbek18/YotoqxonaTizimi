@@ -32,7 +32,7 @@ import { genderAccent, genderLabel } from '@/lib/gender'
 interface PermitRequest {
   id: string
   passport_series: string
-  jshshir: string
+  jshshir: string | null
   full_name: string
   email: string
   phone: string
@@ -47,6 +47,13 @@ interface PermitRequest {
   created_at: string
   warning_count?: number
   blacklisted?: boolean
+  /** 'yollanma' (government referral) | 'imtiyozli' (foreign/privileged —
+   *  Ariza+Tilxat+passport photo instead). */
+  application_type?: string
+  relative_phone?: string | null
+  origin_country?: string | null
+  origin_region?: string | null
+  study_type?: string | null
 }
 
 function ArizalarContent() {
@@ -131,7 +138,7 @@ function ArizalarContent() {
     const matchesSearch =
       req.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.passport_series.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.jshshir.includes(searchTerm) ||
+      (req.jshshir?.includes(searchTerm) ?? false) ||
       req.faculty.toLowerCase().includes(searchTerm.toLowerCase())
 
     return matchesStatus && matchesSearch
@@ -143,6 +150,7 @@ function ArizalarContent() {
     const headers = [
       '№',
       'F.I.Sh.',
+      'Turi',
       'Pasport Seriyasi',
       'JShSHIR',
       'Telefon',
@@ -159,8 +167,9 @@ function ArizalarContent() {
     const rawRows = dataToExport.map((req, idx) => [
       String(idx + 1),
       req.full_name,
+      req.application_type === 'imtiyozli' ? 'Ariza/Tilxat' : "Yo'llanma",
       req.passport_series,
-      req.jshshir,
+      req.jshshir ?? '-',
       req.phone,
       req.email,
       genderLabel(req.gender),
@@ -369,6 +378,11 @@ function ArizalarContent() {
                       <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className={`text-xs font-bold ${textStrong}`}>{req.full_name}</h3>
+                        {req.application_type === 'imtiyozli' && (
+                          <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-amber-500/15 text-amber-500 border border-amber-500/20">
+                            Ariza/Tilxat
+                          </span>
+                        )}
                         {req.blacklisted && (
                           <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-red-500 text-white animate-pulse">
                             Qora ro‘yxat
@@ -433,7 +447,14 @@ function ArizalarContent() {
                   {selectedReq.full_name.trim().charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <h4 className={`text-xs font-bold leading-tight truncate ${textStrong}`}>{selectedReq.full_name}</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className={`text-xs font-bold leading-tight truncate ${textStrong}`}>{selectedReq.full_name}</h4>
+                    {selectedReq.application_type === 'imtiyozli' && (
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-amber-500/15 text-amber-500 border border-amber-500/20">
+                        Ariza/Tilxat
+                      </span>
+                    )}
+                  </div>
                   <p className={`text-[10px] mt-0.5 truncate ${textMuted}`}>{selectedReq.email}</p>
                 </div>
               </div>
@@ -462,17 +483,37 @@ function ArizalarContent() {
               {/* Data Table */}
               <div className="space-y-2.5 text-xs">
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-white/5">
-                  <span className={textMuted}>Pasport Seriya</span>
+                  <span className={textMuted}>{selectedReq.application_type === 'imtiyozli' ? 'Pasport/ID raqami' : 'Pasport Seriya'}</span>
                   <span className={`font-mono font-bold ${textStrong}`}>{selectedReq.passport_series}</span>
                 </div>
-                <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-white/5">
-                  <span className={textMuted}>JShSHIR</span>
-                  <span className={`font-mono font-bold ${textStrong}`}>{selectedReq.jshshir}</span>
-                </div>
+                {selectedReq.application_type !== 'imtiyozli' && (
+                  <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-white/5">
+                    <span className={textMuted}>JShSHIR</span>
+                    <span className={`font-mono font-bold ${textStrong}`}>{selectedReq.jshshir ?? '—'}</span>
+                  </div>
+                )}
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-white/5">
                   <span className={textMuted}>Telefon</span>
                   <span className={`font-bold ${textStrong}`}>{selectedReq.phone}</span>
                 </div>
+                {selectedReq.application_type === 'imtiyozli' && (
+                  <>
+                    <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-white/5">
+                      <span className={textMuted}>Yaqin qarindoshi tel</span>
+                      <span className={`font-bold ${textStrong}`}>{selectedReq.relative_phone || '—'}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-white/5">
+                      <span className={textMuted}>Kelib chiqqan joyi</span>
+                      <span className={`font-bold text-right max-w-[60%] truncate ${textStrong}`}>
+                        {[selectedReq.origin_country, selectedReq.origin_region].filter(Boolean).join(', ') || '—'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-white/5">
+                      <span className={textMuted}>Ta&apos;lim shakli</span>
+                      <span className={`font-bold ${textStrong}`}>{selectedReq.study_type === 'grant' ? 'Davlat granti' : selectedReq.study_type === 'kontrakt' ? "To'lov-shartnoma" : '—'}</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-white/5">
                   <span className={textMuted}>Fakultet</span>
                   <span className={`font-bold text-right max-w-[60%] truncate ${textStrong}`} title={permitFacultyLabel(selectedReq.faculty)}>
@@ -501,18 +542,44 @@ function ArizalarContent() {
                 )}
               </div>
 
-              {/* Document Link */}
-              <button
-                type="button"
-                onClick={handleViewDocument}
-                className={`flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider border transition-all ${
-                  isLight
-                    ? 'border-slate-200 hover:bg-slate-50 text-slate-700'
-                    : 'border-white/10 hover:bg-white/5 text-slate-300'
-                }`}
-              >
-                Ruxsatnoma faylini ko‘rish <ExternalLink size={12} />
-              </button>
+              {/* Document Link(s) — imtiyozli applications have no
+                  uploaded referral to show, so the primary action is the
+                  generated Tilxat+Ariza itself; the passport photo (the
+                  only actual upload) stays available as a secondary link. */}
+              {selectedReq.application_type === 'imtiyozli' ? (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => window.open(`/dekan/hujjat?id=${selectedReq.id}`, '_blank', 'noopener,noreferrer')}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white transition-all"
+                  >
+                    Tilxat va Arizani ko‘rish <ExternalLink size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleViewDocument}
+                    className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-wider border transition-all ${
+                      isLight
+                        ? 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                        : 'border-white/10 hover:bg-white/5 text-slate-300'
+                    }`}
+                  >
+                    Pasport rasmini ko‘rish <ExternalLink size={12} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleViewDocument}
+                  className={`flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider border transition-all ${
+                    isLight
+                      ? 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                      : 'border-white/10 hover:bg-white/5 text-slate-300'
+                  }`}
+                >
+                  Ruxsatnoma faylini ko‘rish <ExternalLink size={12} />
+                </button>
+              )}
 
               {/* Action Buttons */}
               {selectedReq.status === 'pending' && (

@@ -45,7 +45,7 @@ interface RecentRequest {
   id: string
   full_name: string
   passport_series: string
-  jshshir: string
+  jshshir: string | null
   faculty: string
   direction: string
   course: number

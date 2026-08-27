@@ -78,6 +78,11 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
             reject_reason: null,
             created_at: '',
             updated_at: '',
+            application_type: permit.application_type,
+            relative_phone: '',
+            origin_country: '',
+            origin_region: '',
+            study_type: null,
           }
         })
       const courses: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }

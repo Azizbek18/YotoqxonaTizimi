@@ -101,7 +101,7 @@ export default function AdminLoginPage() {
                     transition: all 0.35s ease;
                 }
                 .cyber-border.focused {
-                    background: linear-gradient(90deg, #6366f1, #3b82f6, #ec4899, #6366f1);
+                    background: linear-gradient(90deg, #6366f1, #818cf8, #4f46e5, #6366f1);
                     background-size: 200% 200%;
                     animation: sweep 2s linear infinite;
                     box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
@@ -114,14 +114,14 @@ export default function AdminLoginPage() {
                 }
             `}} />
             <div className="pointer-events-none absolute left-0 top-0 h-full w-full">
-                <div className="absolute left-[-10%] top-[-10%] h-[50%] w-[50%] rounded-full bg-blue-500/10 blur-[100px]" />
+                <div className="absolute left-[-10%] top-[-10%] h-[50%] w-[50%] rounded-full bg-indigo-500/10 blur-[100px]" />
                 <div className="absolute bottom-[-10%] right-[-10%] h-[50%] w-[50%] rounded-full bg-indigo-500/10 blur-[100px]" />
             </div>
 
             <div className="relative z-10 w-full max-w-[320px] sm:max-w-110">
                 <div className="mb-6 text-center sm:mb-10">
-                    <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 p-px shadow-xl sm:h-20 sm:w-20">
-                        <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-[#020617] text-blue-500">
+                    <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-indigo-500 to-indigo-600 p-px shadow-xl sm:h-20 sm:w-20">
+                        <div className="flex h-full w-full items-center justify-center rounded-[15px] bg-[#020617] text-indigo-400">
                             <Shield className="h-7 w-7 sm:h-10 sm:w-10" />
                         </div>
                     </div>
@@ -138,7 +138,7 @@ export default function AdminLoginPage() {
 
                 <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b1120]/80 p-3 shadow-2xl backdrop-blur-3xl sm:rounded-4xl sm:p-10">
                     <div className="mb-6 flex gap-1 rounded-xl border border-white/5 bg-white/5 p-1 sm:mb-8">
-                        <div className="flex-1 rounded-lg bg-blue-600 py-2 text-center text-[8px] font-black uppercase tracking-widest text-white shadow-lg sm:py-3 sm:text-[10px]">
+                        <div className="flex-1 rounded-lg bg-indigo-600 py-2 text-center text-[8px] font-black uppercase tracking-widest text-white shadow-lg sm:py-3 sm:text-[10px]">
                             Kirish
                         </div>
                     </div>
@@ -150,11 +150,11 @@ export default function AdminLoginPage() {
                             </label>
                             <div className={`cyber-border ${focusedField === 'email' ? 'focused' : ''}`}>
                                 <div className="cyber-input-inner relative">
-                                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'email' ? 'text-blue-500 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : 'text-slate-600'}`}>
+                                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'email' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-600'}`}>
                                         <Mail size={18} />
                                     </div>
                                     {focusedField === 'email' && (
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-500/10 blur-[6px] pointer-events-none" />
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-indigo-500/10 blur-[6px] pointer-events-none" />
                                     )}
                                     <input
                                         type="email"
@@ -180,11 +180,11 @@ export default function AdminLoginPage() {
                             </label>
                             <div className={`cyber-border ${focusedField === 'password' ? 'focused' : ''}`}>
                                 <div className="cyber-input-inner relative">
-                                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'password' ? 'text-blue-500 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : 'text-slate-600'}`}>
+                                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'password' ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_#6366f1]' : 'text-slate-600'}`}>
                                         <Lock size={18} />
                                     </div>
                                     {focusedField === 'password' && (
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-500/10 blur-[6px] pointer-events-none" />
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-indigo-500/10 blur-[6px] pointer-events-none" />
                                     )}
                                     <input
                                         type={showPassword ? 'text' : 'password'}
@@ -215,7 +215,7 @@ export default function AdminLoginPage() {
                             disabled={loading}
                             className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl font-black uppercase tracking-widest transition-all sm:h-14 sm:rounded-[22px] sm:text-[12px] ${loading
                                 ? 'bg-white/5 text-slate-600'
-                                : 'bg-linear-to-r from-blue-600 to-indigo-700 text-white active:scale-[0.98]'
+                                : 'bg-linear-to-r from-indigo-600 to-indigo-700 text-white active:scale-[0.98]'
                                 } text-[10px]`}
                         >
                             {loading ? (
@@ -232,7 +232,7 @@ export default function AdminLoginPage() {
                     <div className="mt-6 grid grid-cols-1 gap-2 text-center sm:grid-cols-2">
                         <Link
                             href="/forgot-password"
-                            className="rounded-xl border border-white/5 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 transition-all hover:border-blue-500/30 hover:bg-white/5 hover:text-white"
+                            className="rounded-xl border border-white/5 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 transition-all hover:border-indigo-500/30 hover:bg-white/5 hover:text-white"
                         >
                             <span className="inline-flex items-center gap-2">
                                 <KeyRound size={14} />

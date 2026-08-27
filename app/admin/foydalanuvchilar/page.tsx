@@ -40,6 +40,7 @@ import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { GENDER_OPTIONS } from '@/lib/gender'
 import { directionLabel, directionsForFaculty, normalizeDirection } from '@/lib/directions'
 import { fetchAdminChat, sendAdminChat } from '@/features/applications/client/admin-chat-api'
+import { adminUI, adminStatusChip, type AdminStatusTone } from '@/lib/admin-ui'
 
 type UserRow = {
   id: string
@@ -109,10 +110,10 @@ const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
 }
 
-const ROLE_COLORS: Record<string, string> = {
-  talaba: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  tarbiyachi: 'bg-green-500/20 text-green-400 border-green-500/30',
-  admin: 'bg-red-500/20 text-red-400 border-red-500/30',
+const ROLE_TONE: Record<string, AdminStatusTone> = {
+  talaba: 'info',
+  tarbiyachi: 'neutral',
+  admin: 'danger',
 }
 
 const ASOSIY_FIELDS = [
@@ -178,6 +179,7 @@ const WARNING_DOT_CLASSES: Record<WarningTone, string> = {
 export default function AdminUsersPage() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+  const ui = adminUI(isLight)
 
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -769,43 +771,12 @@ export default function AdminUsersPage() {
       title: 'Talabalar',
       count: talabaCount,
       percentage: Math.round((talabaCount / totalCount) * 100),
-      color: 'from-blue-500 to-indigo-600',
-      glow: 'rgba(59,130,246,0.15)',
-      textColor: 'text-blue-400',
-      barColor: 'bg-blue-500',
       icon: GraduationCap,
       description: pendingCount > 0 ? `${pendingCount} ta tasdiqlash kutilmoqda` : undefined,
     },
-    {
-      title: 'Tarbiyachilar',
-      count: tarbiyachiCount,
-      percentage: Math.round((tarbiyachiCount / totalCount) * 100),
-      color: 'from-emerald-500 to-teal-600',
-      glow: 'rgba(16,185,129,0.15)',
-      textColor: 'text-emerald-400',
-      barColor: 'bg-emerald-500',
-      icon: ShieldCheck,
-    },
-    {
-      title: 'Adminlar',
-      count: adminCount,
-      percentage: Math.round((adminCount / totalCount) * 100),
-      color: 'from-rose-500 to-red-600',
-      glow: 'rgba(244,63,94,0.15)',
-      textColor: 'text-rose-400',
-      barColor: 'bg-rose-500',
-      icon: Users,
-    },
-    {
-      title: 'Jami Foydalanuvchilar',
-      count: users.length,
-      percentage: 100,
-      color: 'from-purple-500 to-fuchsia-600',
-      glow: 'rgba(168,85,247,0.15)',
-      textColor: 'text-purple-400',
-      barColor: 'bg-purple-500',
-      icon: Users,
-    },
+    { title: 'Tarbiyachilar', count: tarbiyachiCount, percentage: Math.round((tarbiyachiCount / totalCount) * 100), icon: ShieldCheck },
+    { title: 'Adminlar', count: adminCount, percentage: Math.round((adminCount / totalCount) * 100), icon: Users },
+    { title: 'Jami Foydalanuvchilar', count: users.length, percentage: 100, icon: Users },
   ]
 
   return (
@@ -813,20 +784,20 @@ export default function AdminUsersPage() {
       {/* Title Header */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="flex items-center gap-3 text-3xl font-black tracking-tighter text-slate-900 dark:text-white sm:text-4xl">
-            <div className="rounded-2xl bg-purple-500/10 p-2 text-purple-400 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
-              <Users size={30} />
-            </div>
+          <h1 className={`flex items-center gap-3 text-2xl font-extrabold tracking-tight sm:text-3xl ${ui.strong}`}>
+            <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${ui.accentTile}`}>
+              <Users size={24} strokeWidth={2.4} />
+            </span>
             Foydalanuvchilar boshqaruvi
           </h1>
-          <p className="mt-2 text-slate-600 dark:text-slate-400">Tizimdagi barcha foydalanuvchilar va xodimlar ro&apos;yxati</p>
+          <p className={`mt-2 ${ui.muted}`}>Tizimdagi barcha foydalanuvchilar va xodimlar ro&apos;yxati</p>
         </div>
 
         <div className="flex gap-2">
           <button
             onClick={loadUsers}
             disabled={loading}
-            className="inline-flex items-center justify-center p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all disabled:opacity-50"
+            className={`no-shelf inline-flex items-center justify-center p-3 rounded-xl border transition-all disabled:opacity-50 ${ui.btnGhost}`}
             title="Yangilash"
           >
             <motion.div
@@ -846,47 +817,41 @@ export default function AdminUsersPage() {
           return (
             <motion.div
               key={card.title}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.08 }}
-              whileHover={{ y: -5, scale: 1.01 }}
-              className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0b1120]/60 p-5 backdrop-blur-xl shadow-xl transition-all group"
-              style={{
-                boxShadow: `0 10px 30px -10px ${card.glow}`,
-              }}
+              transition={{ delay: index * 0.06 }}
+              className={`rounded-2xl border p-5 ${ui.card} ${ui.hoverLift}`}
             >
-              <div className="absolute -right-4 -top-4 w-20 h-20 bg-linear-to-br from-white/10 to-transparent rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{card.title}</p>
-                  <p className="mt-2 text-3xl font-black text-white leading-none">
-                    {loading ? '...' : card.count}
+                  <p className={`text-[11px] font-bold uppercase tracking-wider ${ui.muted}`}>{card.title}</p>
+                  <p className={`mt-2 text-3xl font-extrabold leading-none ${ui.strong}`}>
+                    {loading ? '—' : card.count}
                   </p>
                 </div>
-                <div className={`rounded-xl p-3 bg-linear-to-br ${card.color} text-white shadow-lg`}>
-                  <Icon size={20} />
+                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${ui.accentTileSoft}`}>
+                  <Icon size={20} strokeWidth={2.4} />
                 </div>
               </div>
 
               <div className="mt-4">
-                <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold mb-1">
+                <div className="mb-1 flex items-center justify-between text-[10px] font-bold text-slate-400">
                   <span>ULUSH</span>
-                  <span>{loading ? '...' : `${card.percentage}%`}</span>
+                  <span>{loading ? '—' : `${card.percentage}%`}</span>
                 </div>
-                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                  <motion.div 
+                <div className={`h-1.5 w-full overflow-hidden rounded-full ${isLight ? 'bg-slate-100' : 'bg-slate-800'}`}>
+                  <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: loading ? 0 : `${card.percentage}%` }}
                     transition={{ duration: 1, ease: 'easeOut' }}
-                    className={`h-full ${card.barColor} rounded-full`}
+                    className="h-full rounded-full bg-indigo-500"
                   />
                 </div>
               </div>
 
               {'description' in card && card.description && !loading && (
-                <div className="mt-2 text-[10px] text-amber-400 font-bold flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                <div className="mt-2 text-[10px] font-bold text-amber-500 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                   {card.description}
                 </div>
               )}
@@ -916,8 +881,8 @@ export default function AdminUsersPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className={`w-full rounded-2xl py-3 pl-10 pr-4 text-xs outline-none transition-all ${
                   isLight
-                    ? 'bg-slate-100 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500'
-                    : 'bg-[#24303f] border border-transparent text-white focus:bg-[#1f2936] focus:border-purple-500/50'
+                    ? 'bg-slate-100 border border-slate-200 text-slate-900 focus:bg-white focus:border-indigo-500'
+                    : 'bg-[#24303f] border border-transparent text-white focus:bg-[#1f2936] focus:border-indigo-500'
                 }`}
               />
             </div>
@@ -930,8 +895,8 @@ export default function AdminUsersPage() {
                 onChange={(e) => setFilterRoom(e.target.value)}
                 className={`w-full rounded-2xl py-3 pl-10 pr-4 text-xs outline-none transition-all ${
                   isLight
-                    ? 'bg-slate-100 border border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500'
-                    : 'bg-[#24303f] border border-transparent text-white focus:bg-[#1f2936] focus:border-purple-500/50'
+                    ? 'bg-slate-100 border border-slate-200 text-slate-900 focus:bg-white focus:border-indigo-500'
+                    : 'bg-[#24303f] border border-transparent text-white focus:bg-[#1f2936] focus:border-indigo-500'
                 }`}
               />
             </div>
@@ -961,7 +926,7 @@ export default function AdminUsersPage() {
                   className={`relative shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                     isActive
                       ? isLight
-                        ? 'bg-blue-50 text-blue-600'
+                        ? 'bg-indigo-50 text-indigo-600'
                         : 'bg-[#2b5278] text-white'
                       : isLight
                         ? 'text-slate-500 hover:bg-slate-100'
@@ -973,7 +938,7 @@ export default function AdminUsersPage() {
                     {count > 0 && (
                       <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black ${
                         isActive
-                          ? isLight ? 'bg-blue-600 text-white' : 'bg-[#182533] text-[#4f9ed9]'
+                          ? isLight ? 'bg-indigo-600 text-white' : 'bg-[#182533] text-[#4f9ed9]'
                           : isLight ? 'bg-slate-200 text-slate-600' : 'bg-[#24303f] text-slate-400'
                       }`}>
                         {count}
@@ -1030,7 +995,7 @@ export default function AdminUsersPage() {
                             isActive
                               ? 'bg-white/10 text-white'
                               : isLight
-                                ? 'bg-blue-100 text-blue-600'
+                                ? 'bg-indigo-100 text-indigo-600'
                                 : 'bg-[#24303f] text-[#4f9ed9]'
                           }`}>
                             {initials}
@@ -1053,10 +1018,10 @@ export default function AdminUsersPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <p className="font-bold text-xs truncate leading-none">{user.full_name}</p>
-                        <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                        <span className={`text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded ${
                           isActive
-                            ? 'bg-white/20 text-white border-transparent'
-                            : ROLE_COLORS[user.role]
+                            ? 'bg-white/20 text-white'
+                            : adminStatusChip(ROLE_TONE[user.role] ?? 'neutral', isLight).chip
                         }`}>
                           {ROLE_LABELS[user.role]}
                         </span>
@@ -1064,7 +1029,7 @@ export default function AdminUsersPage() {
                       <div className="flex items-center justify-between mt-1 gap-2">
                         <p className={`text-[10px] truncate ${
                           isActive
-                            ? 'text-sky-100'
+                            ? 'text-indigo-100'
                             : isLight ? 'text-slate-500' : 'text-slate-400'
                         }`}>
                           {user.room_number ? `Xona: ${user.room_number}` : user.email}
@@ -1143,7 +1108,7 @@ export default function AdminUsersPage() {
                         className="object-cover"
                       />
                     ) : (
-                      <div className={`flex h-full w-full items-center justify-center text-xs font-black bg-purple-500/20 text-purple-300`}>
+                      <div className={`flex h-full w-full items-center justify-center text-xs font-black bg-indigo-500/15 text-indigo-500`}>
                         {getInitials(selectedUser.full_name)}
                       </div>
                     )}
@@ -1298,7 +1263,7 @@ export default function AdminUsersPage() {
                       onClick={() => setDetailTab(tab.key as 'profil' | 'hujjatlar' | 'oila' | 'tolovlar' | 'chat')}
                       className={`flex-1 shrink-0 whitespace-nowrap py-2 px-3 sm:px-4 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
                         detailTab === tab.key
-                          ? 'bg-purple-600 text-white shadow-lg'
+                          ? 'bg-indigo-600 text-white shadow-[0_3px_0_0_#3730a3]'
                           : `${isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-white'}`
                       }`}
                     >
@@ -1312,7 +1277,7 @@ export default function AdminUsersPage() {
                   <div className={`rounded-2xl border p-4 shadow-md space-y-3.5 ${
                     isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
                   }`}>
-                    <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-2">Asosiy ma&apos;lumotlar</h3>
+                    <h3 className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-[0.2em] mb-2">Asosiy ma&apos;lumotlar</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {studentInfoItems(selectedUser)
                         .filter(item => !['Passport seriya', 'JSHSHIR', 'Passport sanasi', 'Hudud', 'Millati', 'Jinsi'].includes(item.label))
@@ -1339,7 +1304,7 @@ export default function AdminUsersPage() {
                   <div className={`rounded-2xl border p-4 shadow-md space-y-3.5 ${
                     isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
                   }`}>
-                    <h3 className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-2">Hujjat va manzillar</h3>
+                    <h3 className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-[0.2em] mb-2">Hujjat va manzillar</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {studentInfoItems(selectedUser)
                         .filter(item => ['Passport seriya', 'JSHSHIR', 'Passport sanasi', 'Hudud', 'Millati', 'Jinsi'].includes(item.label))
@@ -1445,7 +1410,7 @@ export default function AdminUsersPage() {
                           <div className={`rounded-2xl border p-4 shadow-md flex items-center gap-3 ${
                             isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
                           }`}>
-                            <div className="rounded-lg p-2.5 bg-purple-500/10 text-purple-400 shrink-0">
+                            <div className="rounded-lg p-2.5 bg-indigo-500/10 text-indigo-500 shrink-0">
                               <FileText size={20} />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -1494,7 +1459,7 @@ export default function AdminUsersPage() {
                     <div className={`rounded-2xl border p-4 shadow-md ${
                       isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
                     }`}>
-                      <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-4">To&apos;lov kvitansiyalari tarixi</h3>
+                      <h3 className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-[0.2em] mb-4">To&apos;lov kvitansiyalari tarixi</h3>
                       
                       {paymentsLoading ? (
                         <p className="text-center text-xs text-slate-500 py-4">Yuklanmoqda...</p>
@@ -1526,7 +1491,7 @@ export default function AdminUsersPage() {
                                     isApproved
                                       ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                                       : isWaiting
-                                        ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                        ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
                                         : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
                                   }`}>
                                     {isApproved ? 'Tasdiqlangan' : isWaiting ? 'Kutilmoqda' : 'Rad etilgan'}
@@ -1566,7 +1531,7 @@ export default function AdminUsersPage() {
                   <div className={`rounded-2xl border p-4 shadow-md flex flex-col h-[420px] ${
                     isLight ? 'bg-white border-slate-200/50' : 'bg-[#182533] border-white/5'
                   }`}>
-                    <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-3 shrink-0">Talaba bilan suhbat</h3>
+                    <h3 className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-[0.2em] mb-3 shrink-0">Talaba bilan suhbat</h3>
                     
                     {/* Chat bubbles container */}
                     <div ref={chatContainerRef} className="flex-1 overflow-y-auto space-y-3 pr-1 mb-3 custom-scrollbar flex flex-col min-h-0">
@@ -1582,7 +1547,7 @@ export default function AdminUsersPage() {
                               key={msg.id}
                               className={`flex flex-col max-w-[80%] rounded-2xl p-3 text-xs ${
                                 isAdminSender
-                                  ? 'self-end bg-purple-600 text-white rounded-br-none'
+                                  ? 'self-end bg-indigo-600 text-white rounded-br-none'
                                   : isLight
                                     ? 'self-start bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200'
                                     : 'self-start bg-slate-800 text-slate-100 rounded-bl-none border border-white/5'
@@ -1590,7 +1555,7 @@ export default function AdminUsersPage() {
                             >
                               <p className="whitespace-pre-wrap break-words font-medium">{msg.reason}</p>
                               <span className={`text-[8px] self-end mt-1 font-bold ${
-                                isAdminSender ? 'text-purple-200' : 'text-slate-400'
+                                isAdminSender ? 'text-indigo-200' : 'text-slate-400'
                               }`}>
                                 {formatDate(msg.created_at) !== '-' ? new Date(msg.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}
                               </span>
@@ -1610,15 +1575,15 @@ export default function AdminUsersPage() {
                         onChange={(e) => setChatInput(e.target.value)}
                         className={`flex-1 rounded-xl px-4 py-2.5 text-xs outline-none transition-all ${
                           isLight
-                            ? 'bg-slate-100 border border-slate-200 text-slate-900 focus:bg-white focus:border-purple-500'
-                            : 'bg-white/5 border border-white/10 text-white focus:bg-[#1f2936] focus:border-purple-500/50'
+                            ? 'bg-slate-100 border border-slate-200 text-slate-900 focus:bg-white focus:border-indigo-500'
+                            : 'bg-white/5 border border-white/10 text-white focus:bg-[#1f2936] focus:border-indigo-500'
                         }`}
                         disabled={sendingChat}
                       />
                       <button
                         type="submit"
                         disabled={sendingChat || !chatInput.trim()}
-                        className="px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50"
+                        className="px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50"
                       >
                         {sendingChat ? '...' : 'Yuborish'}
                       </button>
@@ -1724,33 +1689,33 @@ export default function AdminUsersPage() {
               className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5"
             />
           </div>
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
-            <p className="text-sm text-blue-300 font-semibold">
+          <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3">
+            <p className="text-sm text-indigo-600 font-semibold">
               Hozirgi rol: <span className="font-bold">{ROLE_LABELS[editModal.user?.role || 'talaba']}</span>
             </p>
-            <p className="mt-1 text-xs text-blue-200/60">
+            <p className="mt-1 text-xs text-indigo-500/70">
               {editModal.user?.source === 'staff'
                 ? 'Staff yozuvi uchun faqat admin yoki tarbiyachi roli tanlanadi.'
                 : 'Talaba yozuvi faqat talaba roli bilan qoladi.'}
             </p>
           </div>
           {editModal.user?.source === 'users' && (
-            <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 space-y-3">
+            <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-bold text-purple-300">Qavat Sardori sifatida tayinlash</p>
-                  <p className="text-xs text-purple-300/60 mt-0.5">Ushbu talabani qavat sardori qilib belgilash va qo&apos;shimcha huquqlar berish</p>
+                  <p className="text-sm font-bold text-indigo-500">Qavat Sardori sifatida tayinlash</p>
+                  <p className="text-xs text-indigo-500/60 mt-0.5">Ushbu talabani qavat sardori qilib belgilash va qo&apos;shimcha huquqlar berish</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={Boolean(editForm.is_floor_captain)}
                   onChange={(e) => setEditForm(prev => ({ ...prev, is_floor_captain: e.target.checked }))}
-                  className="w-5 h-5 accent-purple-500 cursor-pointer rounded"
+                  className="w-5 h-5 accent-indigo-500 cursor-pointer rounded"
                 />
               </div>
               {editForm.is_floor_captain && (
-                <div className="space-y-1.5 pt-2 border-t border-purple-500/10">
-                  <label className="block text-xs font-bold text-purple-300 uppercase tracking-wider">Biriktirilgan qavat:</label>
+                <div className="space-y-1.5 pt-2 border-t border-indigo-500/15">
+                  <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wider">Biriktirilgan qavat:</label>
                   <CustomSelect
                     value={editForm.assigned_floor || ''}
                     onChange={(val) => setEditForm(prev => ({ ...prev, assigned_floor: val }))}
@@ -1782,7 +1747,7 @@ export default function AdminUsersPage() {
                     }}
                     className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2.5 text-center text-xs font-black uppercase tracking-widest transition-all ${
                       activeEditTab === tab.key
-                        ? 'bg-purple-600 text-white shadow-lg'
+                        ? 'bg-indigo-600 text-white shadow-[0_3px_0_0_#3730a3]'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1828,7 +1793,7 @@ export default function AdminUsersPage() {
                             [field.key]: event.target.value,
                           }))
                         }
-                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition-all focus:border-purple-500/50 outline-none"
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition-all focus:border-indigo-500 outline-none"
                       />
                     )}
                   </div>
@@ -1850,7 +1815,7 @@ export default function AdminUsersPage() {
                     type={field.type}
                     value={(editForm[field.key as keyof typeof editForm] as string | number) || ''}
                     onChange={(event) => setEditForm((c) => ({ ...c, [field.key]: event.target.value }))}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition-all focus:border-cyan-500/50 outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition-all focus:border-indigo-500 outline-none"
                   />
                 </div>
               ))}

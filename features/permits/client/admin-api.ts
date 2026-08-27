@@ -18,3 +18,7 @@ export function approvePermitRequest(id: string) {
 export function rejectPermitRequest(id: string, reason: string) {
   return request({ method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action: 'reject', reason }) })
 }
+
+export function cancelPermitApproval(id: string) {
+  return request({ method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action: 'cancel' }) })
+}

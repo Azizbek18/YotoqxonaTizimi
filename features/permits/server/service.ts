@@ -124,10 +124,34 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
       const input = value as Record<string, unknown>
       const id = typeof input.id === 'string' ? input.id.trim() : ''
       const action = input.action
-      if (!id || (action !== 'approve' && action !== 'reject')) throw new ApiError(400, 'So\'rov noto\'g\'ri')
+      if (!id || (action !== 'approve' && action !== 'reject' && action !== 'cancel')) {
+        throw new ApiError(400, 'So\'rov noto\'g\'ri')
+      }
       const existing = await repository.find(id)
       if (!existing) throw new ApiError(404, 'Yo\'llanma topilmadi')
       if (!sameFaculty(existing.faculty, faculty)) throw new ApiError(403, 'Boshqa fakultet yo\'llanmasini boshqarib bo\'lmaydi')
+
+      if (action === 'cancel') {
+        // Undo an approval, back to the pending queue. Only reachable while
+        // nobody has acted on it yet: once the applicant self-registers a
+        // users row exists (pending or active), and pulling the approval
+        // out from under an account is an expulsion, not an undo — that
+        // goes through student management, not here.
+        if (existing.status !== 'approved') {
+          throw new ApiError(409, 'Faqat tasdiqlangan arizani bekor qilish mumkin')
+        }
+        const linked = await repository.findLinkedUser(existing.passport_series, existing.jshshir)
+        if (linked) {
+          throw new ApiError(409, 'Bu talaba allaqachon ro\'yxatdan o\'tgan — tasdiqni bekor qilib bo\'lmaydi. Uni chetlashtirish uchun Talabalar bo\'limidan foydalaning.')
+        }
+        // Also frees any room the dekan pre-reserved on this permit — that
+        // bed counts as occupied for as long as status stays 'approved'
+        // with a room_number set.
+        const request = await repository.cancelApproval(id)
+        if (!request) throw new ApiError(409, 'Ariza holati o\'zgardi — sahifani yangilang')
+        return { success: true as const, request }
+      }
+
       if (existing.status !== 'pending') {
         throw new ApiError(409, 'Bu yo\'llanma allaqachon ko\'rib chiqilgan')
       }

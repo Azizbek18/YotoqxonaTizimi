@@ -29,6 +29,39 @@ export function createPermitAdminRepository() {
       if (error) throw error
       return data
     },
+    // Any talaba account keyed to this permit's identity. Imtiyozli
+    // applications have no JShSHIR, so passport_series alone must still
+    // match; a government yo'llanma has both.
+    async findLinkedUser(passportSeries: string | null, jshshir: string | null) {
+      const passport = (passportSeries ?? '').trim()
+      const jshshirValue = (jshshir ?? '').trim()
+      if (!passport && !jshshirValue) return null
+      let query = supabase.from('users').select('id, role, status').eq('role', 'talaba')
+      if (passport && jshshirValue) {
+        query = query.or(`passport_series.eq.${passport},jshshir.eq.${jshshirValue}`)
+      } else if (passport) {
+        query = query.eq('passport_series', passport)
+      } else {
+        query = query.eq('jshshir', jshshirValue)
+      }
+      const { data, error } = await query.limit(1)
+      if (error) throw error
+      return data?.[0] ?? null
+    },
+    // Reverts an approved permit to the pending queue and drops any
+    // pre-reserved room. The status guard makes a double-submit or a race
+    // with a concurrent registration a no-op rather than a silent stomp.
+    async cancelApproval(id: string) {
+      const { data, error } = await supabase
+        .from('permit_requests')
+        .update({ status: 'pending', room_number: null, reject_reason: null })
+        .eq('id', id)
+        .eq('status', 'approved')
+        .select()
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
   }
 }
 

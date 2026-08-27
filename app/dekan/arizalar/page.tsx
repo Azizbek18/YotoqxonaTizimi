@@ -13,7 +13,8 @@ import {
   Download,
   X,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Undo2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -22,6 +23,7 @@ import { getAuthHeaders } from '@/lib/auth-session'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import {
   approvePermitRequest,
+  cancelPermitApproval,
   fetchDekanOverview,
   rejectPermitRequest,
 } from '@/features/permits/client/admin-api'
@@ -80,6 +82,7 @@ function ArizalarContent() {
   // Approve confirmation
   const [approveModalOpen, setApproveModalOpen] = useState(false)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [processing, setProcessing] = useState(false)
 
@@ -208,6 +211,29 @@ function ArizalarContent() {
     } catch (err) {
       console.error(err)
       toast.error("Tasdiqlashda xatolik yuz berdi")
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  // Undo an approval — sends it back to the pending queue and frees any
+  // pre-reserved room. Blocked server-side once the applicant has an
+  // account; the message from there is surfaced verbatim.
+  const handleCancel = async () => {
+    if (!selectedReq) return
+
+    setProcessing(true)
+    try {
+      await cancelPermitApproval(selectedReq.id)
+
+      toast.success(`${selectedReq.full_name}ning tasdig'i bekor qilindi — ariza "Kutilmoqda"ga qaytdi`)
+      setCancelModalOpen(false)
+
+      await fetchRequests(dekanFaculty)
+      setSelectedReq(null)
+    } catch (err) {
+      console.error(err)
+      toast.error(err instanceof Error ? err.message : "Bekor qilishda xatolik yuz berdi")
     } finally {
       setProcessing(false)
     }
@@ -598,6 +624,23 @@ function ArizalarContent() {
                   </button>
                 </div>
               )}
+
+              {/* Approved but nobody has registered yet — the approval can
+                  still be pulled back. Once the applicant has an account the
+                  server rejects this and the toast says to use Talabalar. */}
+              {selectedReq.status === 'approved' && (
+                <div className="pt-2 space-y-2">
+                  <button
+                    onClick={() => setCancelModalOpen(true)}
+                    className="flex w-full items-center justify-center gap-1.5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-all"
+                  >
+                    <Undo2 size={14} /> Tasdiqni bekor qilish
+                  </button>
+                  <p className={`text-center text-[9px] leading-tight ${textMuted}`}>
+                    Ariza &laquo;Kutilmoqda&raquo;ga qaytadi. Talaba allaqachon ro&apos;yxatdan o&apos;tgan bo&apos;lsa bekor qilib bo&apos;lmaydi.
+                  </p>
+                </div>
+              )}
             </motion.div>
           ) : (
             <div className={`p-10 rounded-3xl border ${surfaceBg} flex flex-col items-center justify-center text-center`}>
@@ -623,6 +666,25 @@ function ArizalarContent() {
         <p>
           Ariza tasdiqlanadi va talaba ro&apos;yxatdan o&apos;ta oladi. Xona keyinroq, ro&apos;yxatdan o&apos;tgach,
           <strong> Xonalar</strong> sahifasidagi xonasiz talabalar navbatida biriktiriladi.
+        </p>
+      </ConfirmModal>
+
+      {/* 4b. Cancel Approval Modal */}
+      <ConfirmModal
+        isOpen={cancelModalOpen && !!selectedReq}
+        title="Tasdiqni bekor qilish"
+        description={selectedReq ? `${selectedReq.full_name} (${genderLabel(selectedReq.gender)})` : undefined}
+        onClose={() => setCancelModalOpen(false)}
+        onConfirm={handleCancel}
+        confirmText="Bekor qilish"
+        confirmVariant="danger"
+        isLoading={processing}
+      >
+        <p>
+          Ariza qayta <strong>&laquo;Kutilmoqda&raquo;</strong> holatiga qaytadi va talaba ro&apos;yxatdan
+          o&apos;ta olmaydi. Bu arizaga biriktirilgan xona (agar bo&apos;lsa) bo&apos;shatiladi. Talaba
+          allaqachon ro&apos;yxatdan o&apos;tgan bo&apos;lsa, bekor qilish ishlamaydi — uni chetlashtirish
+          uchun <strong>Talabalar</strong> bo&apos;limidan foydalaning.
         </p>
       </ConfirmModal>
 

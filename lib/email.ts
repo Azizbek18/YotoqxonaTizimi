@@ -8,10 +8,10 @@ import 'server-only'
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
 
-// Resend'da domen tasdiqlanmaguncha onboarding@resend.dev ishlaydi (xatlar
-// faqat Resend akkaunti egasining pochtasiga yetib boradi). Domen
-// tasdiqlangach MAIL_FROM ni o'zgartirish kifoya.
-const DEFAULT_FROM = 'Yotoqxona tizimi <onboarding@resend.dev>'
+// meningyotoqxonam.uz Resend'da tasdiqlangan — production'da MAIL_FROM env
+// shu manzilga sozlangan. Bu fallback env yo'q joyda (masalan lokal ishga
+// tushirishda RESEND_API_KEY ham bo'lmaydi, ya'ni sendMail jimgina to'xtaydi).
+const DEFAULT_FROM = 'Yotoqxona tizimi <noreply@meningyotoqxonam.uz>'
 
 interface MailInput {
   to: string

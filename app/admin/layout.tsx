@@ -6,7 +6,6 @@ import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
   BarChart3,
-  Boxes,
   ChevronLeft,
   ChevronRight,
   FileText,
@@ -159,15 +158,6 @@ export default function AdminLayout({
       gradient: 'from-fuchsia-500 to-pink-600',
       lightBg: 'bg-fuchsia-500/10 text-fuchsia-600 dark:bg-fuchsia-500/20 dark:text-fuchsia-300',
       glow: 'shadow-fuchsia-500/25',
-    },
-    {
-      label: '3D Xonalar',
-      caption: 'Qavatlar va bandlik',
-      href: '/admin/3d-xonalar',
-      icon: Boxes,
-      gradient: 'from-cyan-500 to-teal-600',
-      lightBg: 'bg-teal-500/10 text-teal-600 dark:bg-teal-500/20 dark:text-teal-300',
-      glow: 'shadow-teal-500/25',
     },
   ]), [waitingCount])
 
@@ -399,7 +389,7 @@ export default function AdminLayout({
     <FontScopeProvider value={baloo2.style.fontFamily}>
     <div className={`baloo-scope min-h-screen ${shellBg} transition-colors`} style={{ fontFamily: baloo2.style.fontFamily }}>
       {/* Every /admin/* page (dashboard, foydalanuvchilar, tolovlar, arizalar,
-          elonlar, reports, 3d-xonalar) renders through this layout
+          elonlar, reports) renders through this layout
           via {children}, and each uses `font-sans` wrappers / plain h1-h6
           headings that resolve through the global --app-font-sans /
           --app-font-display custom properties. Overriding those two

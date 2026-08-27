@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   FileText,
   Boxes,
+  Layers3,
   LogOut,
   Menu,
   ChevronLeft,
@@ -139,6 +140,15 @@ export default function DekanLayout({
       gradient: 'from-amber-500 to-orange-600',
       lightBg: 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300',
       glow: 'shadow-amber-500/25',
+    },
+    {
+      label: '3D Xonalar',
+      caption: 'Qavat tarxi quruvchisi',
+      href: '/dekan/3d-xonalar',
+      icon: Layers3,
+      gradient: 'from-cyan-500 to-teal-600',
+      lightBg: 'bg-teal-500/10 text-teal-600 dark:bg-teal-500/20 dark:text-teal-300',
+      glow: 'shadow-teal-500/25',
     },
     {
       label: 'Talabalar',

@@ -5,7 +5,8 @@ import { getApiError } from '@/server/http/api-error'
 
 // Same role pair as /api/room-floors/generate: the dekan is the one who
 // needs this day to day (ta'mirlash — renovation), and admin keeps parity
-// since it owns the room layout itself in the 3D builder.
+// as the account of last resort for room-layout upkeep — it no longer owns
+// the 3D builder itself (that moved to dekan, see /api/dekan/room-layout).
 export async function PATCH(request: NextRequest) {
   try {
     await requireActiveStaff(request, ['admin', 'dekan'])

@@ -4,16 +4,15 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Building2, DoorOpen, Layers3, Users,
-  Info, MousePointer2, ExternalLink,
+  Info, MousePointer2,
   Plus, Trash2, ChevronUp, ChevronDown, Save, RotateCcw
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import Link from 'next/link'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useScopedFontFamily } from '@/lib/font-scope-context'
 import toast from 'react-hot-toast'
 import * as THREE from 'three'
-import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
+import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { fetchFloorLayout, saveFloorLayout } from '@/features/room-layout/client/api'
 import type { RoomBlockSide, RoomBlockSize, RoomLayoutBlock } from '@/features/room-layout/types'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
@@ -93,7 +92,13 @@ function layoutSide(blocks: EditableBlock[], side: RoomBlockSide): { rooms: Posi
   return { rooms, totalDepth, maxWidth }
 }
 
-export default function Admin3DXonalarPage() {
+// Moved here from app/admin/3d-xonalar — dekan now owns the floor-plan
+// builder exclusively, admin and tarbiyachi no longer have it. Room
+// occupancy comes from fetchDekanOverview() (already faculty-redacted —
+// a cross-faculty occupant's name/id come back blank) rather than the
+// admin-only, building-wide student list the old page used, since physical
+// room capacity is building-wide even though student identity isn't.
+export default function Dekan3DXonalarPage() {
   const [roomSnapshots, setRoomSnapshots] = useState<RoomOccupancySnapshot[]>([])
   const [selectedRoomNumber, setSelectedRoomNumber] = useState<string | null>(null)
   const [hoveredRoom, setHoveredRoom] = useState<{ roomNumber: string; clientX: number; clientY: number } | null>(null)
@@ -142,16 +147,24 @@ export default function Admin3DXonalarPage() {
 
   const loadRoomOccupancy = useCallback(async () => {
     try {
-      const { students: data } = await fetchAdminDashboard()
+      const { usersWithRooms, approvedPermitsWithRooms } = await fetchDekanOverview()
       const occupancyMap = new Map<string, { count: number, students: StudentInfo[] }>()
-      data?.forEach((user) => {
-        if (!user.room_number) return
-        const existing = occupancyMap.get(user.room_number) || { count: 0, students: [] }
-        occupancyMap.set(user.room_number, {
+
+      const addOccupant = (roomNumber: string | null, id: string | null, name: string | null) => {
+        if (!roomNumber) return
+        const existing = occupancyMap.get(roomNumber) || { count: 0, students: [] }
+        occupancyMap.set(roomNumber, {
           count: existing.count + 1,
-          students: [...existing.students, { id: user.id, name: user.full_name ?? 'Noma\'lum' }]
+          students: [...existing.students, { id: id ?? '', name: name || 'Noma\'lum' }],
         })
-      })
+      }
+
+      usersWithRooms?.forEach((u) => addOccupant(u.room_number, u.id, u.full_name))
+      // Approved-but-not-yet-registered permits occupy a bed too — counted
+      // the same way dekan/xonalar counts them, so capacity/occupancy here
+      // matches what that page shows.
+      approvedPermitsWithRooms?.forEach((p) => addOccupant(p.room_number, p.id, p.full_name))
+
       setRoomSnapshots(
         Array.from(occupancyMap.entries()).map(([roomNumber, info]) => ({
           roomNumber,
@@ -802,20 +815,12 @@ export default function Admin3DXonalarPage() {
                     <div className="md:col-span-3">
                       <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 ${textMuted}`}>Xonadagi Talabalar Ro&apos;yxati</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {selectedRoomData.students.map((student) => (
-                          <div key={student.id} className={`p-4 rounded-2xl border flex items-center justify-between gap-4 ${cardBg}`}>
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-8 h-8 shrink-0 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 font-bold text-xs uppercase">
-                                {student.name.slice(0, 2)}
-                              </div>
-                              <p className={`text-sm font-bold truncate ${textStrong}`}>{student.name}</p>
+                        {selectedRoomData.students.map((student, i) => (
+                          <div key={student.id || `${selectedRoomData.number}-${i}`} className={`p-4 rounded-2xl border flex items-center gap-3 ${cardBg}`}>
+                            <div className="w-8 h-8 shrink-0 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 font-bold text-xs uppercase">
+                              {student.name.slice(0, 2)}
                             </div>
-                            <Link
-                              href={`/admin/foydalanuvchilar?id=${student.id}`}
-                              className="shrink-0 p-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-all border border-cyan-500/20"
-                            >
-                              <ExternalLink size={14} />
-                            </Link>
+                            <p className={`text-sm font-bold truncate ${textStrong}`}>{student.name}</p>
                           </div>
                         ))}
                       </div>

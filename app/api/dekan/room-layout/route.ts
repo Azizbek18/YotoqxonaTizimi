@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminSession } from '@/lib/server-admin'
+import { requireActiveStaff } from '@/server/auth/guards'
 import { createRoomLayoutService } from '@/features/room-layout/server/service'
 import { getApiError } from '@/server/http/api-error'
 
-function jsonError(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status })
-}
-
+// The 3D floor-plan builder (block-by-block room editor + Three.js
+// preview) moved here from /api/admin/room-layout — dekan now owns it
+// exclusively, admin and tarbiyachi no longer have this capability.
 function errorResponse(error: unknown) {
   console.error('Room layout API error:', error)
   const response = getApiError(error, "So'rovni bajarib bo'lmadi")
@@ -15,9 +14,7 @@ function errorResponse(error: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { session, isAdmin } = await getAdminSession()
-    if (!session?.user?.id) return jsonError('Autentifikatsiya talab qilinadi', 401)
-    if (!isAdmin) return jsonError('Admin huquqi talab qilinadi', 403)
+    await requireActiveStaff(request, ['dekan'])
 
     const floor = request.nextUrl.searchParams.get('floor')
     const blocks = await createRoomLayoutService().getFloor(floor)
@@ -29,9 +26,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { session, isAdmin } = await getAdminSession()
-    if (!session?.user?.id) return jsonError('Autentifikatsiya talab qilinadi', 401)
-    if (!isAdmin) return jsonError('Admin huquqi talab qilinadi', 403)
+    await requireActiveStaff(request, ['dekan'])
 
     const body = await request.json()
     const result = await createRoomLayoutService().saveFloor(body?.floorNumber, body?.blocks)

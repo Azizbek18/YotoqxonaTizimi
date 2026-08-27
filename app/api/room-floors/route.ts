@@ -3,7 +3,7 @@ import { requireUser } from '@/server/auth/guards'
 import { createRoomLayoutService } from '@/features/room-layout/server/service'
 import { getApiError } from '@/server/http/api-error'
 
-// Deliberately open to any signed-in user, unlike /api/admin/room-layout:
+// Deliberately open to any signed-in user, unlike /api/dekan/room-layout:
 // this returns only "which room is on which floor", which every role's UI
 // has to render (a student's own floor, a dekan's floor filter). It carries
 // no occupancy, no names and no layout geometry, so it needs no role gate

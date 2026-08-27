@@ -120,7 +120,7 @@ export default function Home() {
   const staffRoles = [
     {
       title: "Dekan (Dekan)",
-      desc: "Yo'llanmalarni tasdiqlash, xonalarga joylashtirish va Excel jadvallarini yuklab olish.",
+      desc: "Yo'llanmalarni tasdiqlash, xonalarga joylashtirish, 3D qavat tarxini boshqarish va Excel jadvallarini yuklab olish.",
       color: "from-amber-500/20 to-orange-600/25 border-amber-500/30 text-amber-300",
       btnColor: "from-amber-500 to-orange-600 shadow-amber-500/20 hover:shadow-amber-500/35",
       icon: "https://img.icons8.com/3d-fluency/188/businessman.png"
@@ -141,7 +141,7 @@ export default function Home() {
     },
     {
       title: "Tizim Admini",
-      desc: "Foydalanuvchilar bazasi, sozlamalar va 3D xonalar xaritasini to'liq boshqarish.",
+      desc: "Foydalanuvchilar bazasi va tizim sozlamalarini to'liq boshqarish.",
       color: "from-rose-500/20 to-red-600/25 border-rose-500/30 text-rose-300",
       btnColor: "from-rose-500 to-red-600 shadow-rose-500/20 hover:shadow-rose-500/35",
       icon: "https://img.icons8.com/3d-fluency/188/laptop.png"

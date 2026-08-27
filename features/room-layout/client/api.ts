@@ -25,12 +25,12 @@ export function generateRoomFloors(floors: FloorRoomPlan[], numbering: RoomNumbe
 }
 
 export async function fetchFloorLayout(floorNumber: number) {
-  const result = await requestJson<{ blocks: RoomLayoutBlock[] }>(`/api/admin/room-layout?floor=${floorNumber}`)
+  const result = await requestJson<{ blocks: RoomLayoutBlock[] }>(`/api/dekan/room-layout?floor=${floorNumber}`)
   return result.blocks
 }
 
 export function saveFloorLayout(floorNumber: number, blocks: RoomLayoutBlock[]) {
-  return requestJson<{ success: true }>('/api/admin/room-layout', {
+  return requestJson<{ success: true }>('/api/dekan/room-layout', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ floorNumber, blocks }),

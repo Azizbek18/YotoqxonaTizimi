@@ -9,6 +9,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
+import { adminUI, adminStatusChip, type AdminStatusTone } from '@/lib/admin-ui'
 
 interface ApplicationRequest {
   id: string
@@ -26,10 +27,10 @@ const STATUS_LABELS: Record<string, string> = {
   critical: 'Muhim',
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  info: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  warning: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  critical: 'bg-red-500/20 text-red-400 border-red-500/30',
+const STATUS_TONE: Record<string, AdminStatusTone> = {
+  info: 'info',
+  warning: 'warning',
+  critical: 'danger',
 }
 
 const REAL_STATUS_LABELS: Record<string, string> = {
@@ -38,21 +39,32 @@ const REAL_STATUS_LABELS: Record<string, string> = {
   rejected: 'Rad etilgan',
 }
 
-const REAL_STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  approved: 'bg-green-500/20 text-green-400 border-green-500/30',
-  rejected: 'bg-red-500/20 text-red-400 border-red-500/30',
+const REAL_STATUS_TONE: Record<string, AdminStatusTone> = {
+  pending: 'warning',
+  approved: 'success',
+  rejected: 'danger',
+}
+
+function StatusPill({ tone, label, isLight }: { tone: AdminStatusTone; label: string; isLight: boolean }) {
+  const s = adminStatusChip(tone, isLight)
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${s.chip}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+      {label}
+    </span>
+  )
 }
 
 export default function AdminArizalar() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
-  const cardBg = isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'
-  const textMuted = isLight ? 'text-slate-500' : 'text-slate-400'
-  const textStrong = isLight ? 'text-slate-900' : 'text-white'
-  const textBody = isLight ? 'text-slate-700' : 'text-slate-300'
-  const inputBg = isLight ? 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-500/50' : 'bg-white/5 border-white/10 text-white placeholder-slate-500 focus:border-purple-500/50'
+  const ui = adminUI(isLight)
+  const cardBg = ui.inset
+  const textMuted = ui.muted
+  const textStrong = ui.strong
+  const textBody = ui.body
+  const inputBg = `${ui.input} ${ui.ring}`
 
   const [requests, setRequests] = useState<ApplicationRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -188,7 +200,7 @@ export default function AdminArizalar() {
       label: 'Talaba',
       sortable: true,
       render: (value: unknown, row: ApplicationRequest) => (
-        <div className="cursor-pointer hover:text-purple-400 transition-colors" onClick={() => setDetailModal({ isOpen: true, request: row })}>
+        <div className="cursor-pointer transition-colors hover:text-indigo-500" onClick={() => setDetailModal({ isOpen: true, request: row })}>
           <p className={`font-semibold ${textStrong}`}>{String(value ?? '')}</p>
           <p className={`text-xs ${textMuted} line-clamp-1`}>{row.text}</p>
         </div>
@@ -207,9 +219,7 @@ export default function AdminArizalar() {
       label: 'Daraja',
       sortable: true,
       render: (value: unknown) => (
-        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[String(value)]}`}>
-          {STATUS_LABELS[String(value)]}
-        </span>
+        <StatusPill tone={STATUS_TONE[String(value)] ?? 'neutral'} label={STATUS_LABELS[String(value)] ?? String(value)} isLight={isLight} />
       ),
     },
     {
@@ -217,9 +227,11 @@ export default function AdminArizalar() {
       label: 'Holat',
       sortable: true,
       render: (value: unknown) => (
-        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${REAL_STATUS_COLORS[String(value ?? 'pending')]}`}>
-          {REAL_STATUS_LABELS[String(value ?? 'pending')]}
-        </span>
+        <StatusPill
+          tone={REAL_STATUS_TONE[String(value ?? 'pending')] ?? 'neutral'}
+          label={REAL_STATUS_LABELS[String(value ?? 'pending')] ?? String(value)}
+          isLight={isLight}
+        />
       ),
     },
     {
@@ -236,7 +248,7 @@ export default function AdminArizalar() {
         <div className="flex gap-2">
           <button
             onClick={() => setDetailModal({ isOpen: true, request: row })}
-            className={`rounded-xl border p-2.5 text-blue-400 transition-all hover:bg-blue-400/10 hover:border-blue-400/20 active:scale-95 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-white/5'}`}
+            className={`no-shelf rounded-xl border p-2.5 transition-all active:scale-95 ${isLight ? 'border-slate-200 bg-slate-50 text-slate-500 hover:text-indigo-600 hover:border-indigo-300' : 'border-white/5 bg-white/5 text-slate-400 hover:text-indigo-300'}`}
             title="Ko'rish"
           >
             <Eye size={15} />
@@ -247,14 +259,14 @@ export default function AdminArizalar() {
               setNewStatus(row.level)
               setNewRealStatus(row.status || 'pending')
             }}
-            className={`rounded-xl border p-2.5 text-amber-400 transition-all hover:bg-amber-400/10 hover:border-amber-400/20 active:scale-95 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-white/5'}`}
+            className={`no-shelf rounded-xl border p-2.5 transition-all active:scale-95 ${isLight ? 'border-slate-200 bg-slate-50 text-slate-500 hover:text-indigo-600 hover:border-indigo-300' : 'border-white/5 bg-white/5 text-slate-400 hover:text-indigo-300'}`}
             title="Holat o'zgartirish"
           >
             <Edit2 size={15} />
           </button>
           <button
             onClick={() => handleDelete(row.id)}
-            className={`rounded-xl border p-2.5 text-red-400 transition-all hover:bg-red-400/10 hover:border-red-400/20 active:scale-95 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-white/5'}`}
+            className={`no-shelf rounded-xl border p-2.5 transition-all active:scale-95 ${isLight ? 'border-slate-200 bg-slate-50 text-rose-500 hover:bg-rose-50 hover:border-rose-300' : 'border-white/5 bg-white/5 text-rose-400 hover:bg-rose-400/10'}`}
             title="O'chirish"
           >
             <Trash2 size={15} />
@@ -264,11 +276,11 @@ export default function AdminArizalar() {
     },
   ]
 
-  const statCards = [
-    { title: 'Jami Arizalar', count: stats.total, color: 'from-slate-500 to-slate-600', glow: 'rgba(148,163,184,0.15)', textColor: 'text-slate-400', barColor: 'bg-slate-500', percentage: 100, icon: FileText },
-    { title: 'Ma\'lumot (Info)', count: stats.info, color: 'from-blue-500 to-indigo-600', glow: 'rgba(59,130,246,0.15)', textColor: 'text-blue-400', barColor: 'bg-blue-500', percentage: stats.total > 0 ? Math.round((stats.info / stats.total) * 100) : 0, icon: FileText },
-    { title: 'Ogohlantirish', count: stats.warning, color: 'from-amber-500 to-orange-600', glow: 'rgba(245,158,11,0.15)', textColor: 'text-amber-400', barColor: 'bg-amber-500', percentage: stats.total > 0 ? Math.round((stats.warning / stats.total) * 100) : 0, icon: Filter },
-    { title: 'Muhim (Critical)', count: stats.critical, color: 'from-rose-500 to-red-600', glow: 'rgba(244,63,94,0.15)', textColor: 'text-rose-400', barColor: 'bg-rose-500', percentage: stats.total > 0 ? Math.round((stats.critical / stats.total) * 100) : 0, icon: FileText },
+  const statCards: { title: string; count: number; percentage: number; icon: typeof FileText; tone: AdminStatusTone }[] = [
+    { title: 'Jami Arizalar', count: stats.total, percentage: 100, icon: FileText, tone: 'neutral' },
+    { title: "Ma'lumot (Info)", count: stats.info, percentage: stats.total > 0 ? Math.round((stats.info / stats.total) * 100) : 0, icon: FileText, tone: 'info' },
+    { title: 'Ogohlantirish', count: stats.warning, percentage: stats.total > 0 ? Math.round((stats.warning / stats.total) * 100) : 0, icon: Filter, tone: 'warning' },
+    { title: 'Muhim (Critical)', count: stats.critical, percentage: stats.total > 0 ? Math.round((stats.critical / stats.total) * 100) : 0, icon: FileText, tone: 'danger' },
   ]
 
   return (
@@ -276,19 +288,19 @@ export default function AdminArizalar() {
       {/* Header */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className={`flex items-center gap-3 text-3xl font-black tracking-tighter sm:text-4xl ${textStrong}`}>
-            <div className="rounded-2xl bg-purple-500/10 p-2 text-purple-400 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
-              <FileText size={30} />
-            </div>
+          <h1 className={`flex items-center gap-3 text-2xl font-extrabold tracking-tight sm:text-3xl ${textStrong}`}>
+            <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${ui.accentTile}`}>
+              <FileText size={24} strokeWidth={2.4} />
+            </span>
             Arizalar boshqaruvi
           </h1>
           <p className={`mt-2 text-sm ${textMuted}`}>Talabalar tomonidan yuborilgan murojaat va arizalar ro&apos;yxati</p>
         </div>
-        
+
         <button
           onClick={loadRequests}
           disabled={loading}
-          className="inline-flex items-center justify-center p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all disabled:opacity-50 self-start sm:self-auto"
+          className={`no-shelf inline-flex items-center justify-center p-3 rounded-xl border transition-all disabled:opacity-50 self-start sm:self-auto ${ui.btnGhost}`}
           title="Yangilash"
         >
           <motion.div
@@ -303,56 +315,49 @@ export default function AdminArizalar() {
       {/* Stats */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card, index) => {
-          const Icon = card.icon;
+          const Icon = card.icon
+          const s = adminStatusChip(card.tone, isLight)
           return (
             <motion.div
               key={card.title}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.08 }}
-              whileHover={{ y: -5, scale: 1.01 }}
-              className={`relative overflow-hidden rounded-2xl border p-5 shadow-xl transition-all group ${
-                isLight ? 'bg-white/80 border-slate-200 shadow-slate-100/50' : 'bg-[#0b1120]/60 border-white/10'
-              }`}
-              style={{
-                boxShadow: isLight ? undefined : `0 10px 30px -10px ${card.glow}`,
-              }}
+              transition={{ delay: index * 0.06 }}
+              className={`rounded-2xl border p-5 ${ui.card} ${ui.hoverLift}`}
             >
-              <div className="absolute -right-4 -top-4 w-20 h-20 bg-linear-to-br from-white/10 to-transparent rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              
               <div className="flex items-start justify-between">
                 <div>
-                  <p className={`text-xs font-bold uppercase tracking-wider ${textMuted}`}>{card.title}</p>
-                  <p className={`mt-2 text-3xl font-black leading-none ${textStrong}`}>
-                    {loading ? '...' : card.count}
+                  <p className={`text-[11px] font-bold uppercase tracking-wider ${textMuted}`}>{card.title}</p>
+                  <p className={`mt-2 text-3xl font-extrabold leading-none ${textStrong}`}>
+                    {loading ? '—' : card.count}
                   </p>
                 </div>
-                <div className={`rounded-xl p-3 bg-linear-to-br ${card.color} text-white shadow-lg`}>
-                  <Icon size={20} />
+                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${ui.accentTileSoft}`}>
+                  <Icon size={20} strokeWidth={2.4} />
                 </div>
               </div>
 
               <div className="mt-4">
-                <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold mb-1">
+                <div className="mb-1 flex items-center justify-between text-[10px] font-bold text-slate-400">
                   <span>ULUSH</span>
-                  <span>{loading ? '...' : `${card.percentage}%`}</span>
+                  <span>{loading ? '—' : `${card.percentage}%`}</span>
                 </div>
-                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                  <motion.div 
+                <div className={`h-1.5 w-full overflow-hidden rounded-full ${isLight ? 'bg-slate-100' : 'bg-slate-800'}`}>
+                  <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: loading ? 0 : `${card.percentage}%` }}
                     transition={{ duration: 1, ease: 'easeOut' }}
-                    className={`h-full ${card.barColor} rounded-full`}
+                    className={`h-full rounded-full ${card.tone === 'neutral' ? 'bg-indigo-500' : s.dot}`}
                   />
                 </div>
               </div>
             </motion.div>
-          );
+          )
         })}
       </div>
 
       {/* Filters */}
-      <div className={`mb-6 rounded-2xl border p-4 backdrop-blur-md ${isLight ? 'bg-white/60 border-slate-200 shadow-sm' : 'bg-[#0b1120]/40 border-white/5'}`}>
+      <div className={`mb-6 rounded-2xl border p-4 ${ui.card}`}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="relative">
             <Search className="absolute left-3 top-3.5 text-slate-400" size={18} />
@@ -423,9 +428,9 @@ export default function AdminArizalar() {
       >
         {detailModal.request && (
           <div className="space-y-6">
-            <div className="flex items-center gap-3 pb-4 border-b border-white/5">
-              <div className="rounded-xl bg-purple-500/10 p-2.5 text-purple-400">
-                <FileText size={22} />
+            <div className={`flex items-center gap-3 pb-4 border-b ${ui.border}`}>
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${ui.accentTileSoft}`}>
+                <FileText size={20} strokeWidth={2.4} />
               </div>
               <div>
                 <h2 className={`text-xl font-black tracking-tight ${textStrong}`}>{detailModal.request.student_name}</h2>
@@ -442,15 +447,15 @@ export default function AdminArizalar() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className={`p-4 rounded-xl border ${cardBg}`}>
                   <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted} mb-2`}>Daraja</h3>
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[detailModal.request.level]}`}>
-                    {STATUS_LABELS[detailModal.request.level]}
-                  </span>
+                  <StatusPill tone={STATUS_TONE[detailModal.request.level] ?? 'neutral'} label={STATUS_LABELS[detailModal.request.level]} isLight={isLight} />
                 </div>
                 <div className={`p-4 rounded-xl border ${cardBg}`}>
                   <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted} mb-2`}>Holat</h3>
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${REAL_STATUS_COLORS[detailModal.request.status || 'pending']}`}>
-                    {REAL_STATUS_LABELS[detailModal.request.status || 'pending']}
-                  </span>
+                  <StatusPill
+                    tone={REAL_STATUS_TONE[detailModal.request.status || 'pending'] ?? 'neutral'}
+                    label={REAL_STATUS_LABELS[detailModal.request.status || 'pending']}
+                    isLight={isLight}
+                  />
                 </div>
                 <div className={`p-4 rounded-xl border ${cardBg}`}>
                   <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted} mb-2`}>Yuborilgan sana</h3>
@@ -501,12 +506,12 @@ export default function AdminArizalar() {
               className={`rounded-xl border px-4 py-2.5 text-sm ${inputBg}`}
             />
           </div>
-          <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl space-y-1">
-            <p className="text-xs text-purple-300 font-semibold">
-              Hozirgi daraja: <span className="font-bold text-white">{STATUS_LABELS[statusModal.request?.level || 'info']}</span>
+          <div className={`p-3 rounded-xl border space-y-1 ${ui.accentSoft} ${ui.accentBorder}`}>
+            <p className="text-xs font-semibold">
+              Hozirgi daraja: <span className={`font-bold ${textStrong}`}>{STATUS_LABELS[statusModal.request?.level || 'info']}</span>
             </p>
-            <p className="text-xs text-purple-300 font-semibold">
-              Hozirgi holat: <span className="font-bold text-white">{REAL_STATUS_LABELS[statusModal.request?.status || 'pending']}</span>
+            <p className="text-xs font-semibold">
+              Hozirgi holat: <span className={`font-bold ${textStrong}`}>{REAL_STATUS_LABELS[statusModal.request?.status || 'pending']}</span>
             </p>
           </div>
         </div>

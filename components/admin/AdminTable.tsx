@@ -4,6 +4,7 @@ import React, { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronUp, ChevronDown } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { adminUI } from '@/lib/admin-ui'
 
 export interface TableColumn<T> {
     key: string
@@ -41,6 +42,7 @@ export default function AdminTable<T extends object>({
 }: AdminTableProps<T>) {
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
+    const ui = adminUI(isLight)
 
     const sortedData = useMemo(() => {
         if (!sortBy || !onSort) return data
@@ -58,9 +60,7 @@ export default function AdminTable<T extends object>({
     }, [data, sortBy, sortOrder, onSort])
 
     return (
-        <div className={`backdrop-blur-xl border rounded-2xl overflow-hidden ${
-            isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0b1120]/50 border-white/10'
-        }`}>
+        <div className={`border rounded-2xl overflow-hidden ${ui.card}`}>
             {/* Table */}
             <div className="overflow-x-auto">
                 <table className="w-full">
@@ -72,7 +72,7 @@ export default function AdminTable<T extends object>({
                                     className={`px-6 py-4 text-left text-sm font-bold ${
                                         isLight ? 'text-slate-700' : 'text-slate-300'
                                     } ${col.width || ''} ${
-                                        col.sortable ? 'cursor-pointer hover:text-purple-600 transition-colors' : ''
+                                        col.sortable ? 'cursor-pointer hover:text-indigo-600 transition-colors' : ''
                                     }`}
                                     onClick={() => col.sortable && onSort?.(col.key)}
                                 >

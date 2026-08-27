@@ -637,7 +637,7 @@ function ArizalarContent() {
                     <Undo2 size={14} /> Tasdiqni bekor qilish
                   </button>
                   <p className={`text-center text-[9px] leading-tight ${textMuted}`}>
-                    Ariza &laquo;Kutilmoqda&raquo;ga qaytadi. Talaba allaqachon ro&apos;yxatdan o&apos;tgan bo&apos;lsa bekor qilib bo&apos;lmaydi.
+                    Ariza &laquo;Kutilmoqda&raquo;ga qaytadi, biriktirilgan xona bo&apos;shatiladi. Talaba hisobini tasdiqlab ulgurgan bo&apos;lsa bekor qilib bo&apos;lmaydi.
                   </p>
                 </div>
               )}
@@ -682,9 +682,10 @@ function ArizalarContent() {
       >
         <p>
           Ariza qayta <strong>&laquo;Kutilmoqda&raquo;</strong> holatiga qaytadi va talaba ro&apos;yxatdan
-          o&apos;ta olmaydi. Bu arizaga biriktirilgan xona (agar bo&apos;lsa) bo&apos;shatiladi. Talaba
-          allaqachon ro&apos;yxatdan o&apos;tgan bo&apos;lsa, bekor qilish ishlamaydi — uni chetlashtirish
-          uchun <strong>Talabalar</strong> bo&apos;limidan foydalaning.
+          o&apos;ta olmaydi. Bu arizaga biriktirilgan xona (agar bo&apos;lsa) bo&apos;shatiladi. Talabaga
+          xabar yuboriladi. Agar talaba ro&apos;yxatdan o&apos;tib, hisobini email orqali
+          tasdiqlagan bo&apos;lsa, bekor qilish ishlamaydi — uni chetlashtirish uchun{' '}
+          <strong>Talabalar</strong> bo&apos;limidan foydalaning.
         </p>
       </ConfirmModal>
 

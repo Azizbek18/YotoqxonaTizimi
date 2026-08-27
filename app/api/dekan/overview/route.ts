@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan'])
-    return NextResponse.json(await createPermitAdminService().update(staff.faculty, await request.json()))
+    return NextResponse.json(await createPermitAdminService().update(staff.faculty, await request.json(), staff.id))
   } catch (error) {
     return errorResponse(error)
   }

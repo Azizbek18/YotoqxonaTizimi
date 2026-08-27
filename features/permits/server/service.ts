@@ -1,6 +1,7 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
-import { sendPermitApprovedEmail } from '@/lib/email'
+import { sendPermitApprovalCancelledEmail, sendPermitApprovedEmail } from '@/lib/email'
+import { writeAuditLog } from '@/lib/audit-log'
 import type { DekanOverview } from '../types'
 import { createPermitAdminRepository, type PermitAdminRepository } from './repository'
 
@@ -117,7 +118,7 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
       }
     },
 
-    async update(facultyValue: string | null, value: unknown) {
+    async update(facultyValue: string | null, value: unknown, actorId: string | null = null) {
       const faculty = facultyValue?.trim()
       if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, 'So\'rov noto\'g\'ri')
@@ -131,24 +132,31 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
       if (!existing) throw new ApiError(404, 'Yo\'llanma topilmadi')
       if (!sameFaculty(existing.faculty, faculty)) throw new ApiError(403, 'Boshqa fakultet yo\'llanmasini boshqarib bo\'lmaydi')
 
+      const audit = (details: Record<string, unknown> = {}) =>
+        writeAuditLog({ eventType: `permit.${action}`, status: 'success', actorUserId: actorId, targetRole: 'talaba', details: { permitId: id, faculty, ...details } })
+
       if (action === 'cancel') {
-        // Undo an approval, back to the pending queue. Only reachable while
-        // nobody has acted on it yet: once the applicant self-registers a
-        // users row exists (pending or active), and pulling the approval
-        // out from under an account is an expulsion, not an undo — that
-        // goes through student management, not here.
+        // Undo an approval, back to the pending queue. An account that has
+        // already verified its email ('active') belongs to a real resident —
+        // pulling the approval then is an expulsion, not an undo, and goes
+        // through student management. But a still-'pending' account is just
+        // a premature self-registration; we delete it here so the dekan
+        // isn't left stuck.
         if (existing.status !== 'approved') {
           throw new ApiError(409, 'Faqat tasdiqlangan arizani bekor qilish mumkin')
         }
         const linked = await repository.findLinkedUser(existing.passport_series, existing.jshshir)
-        if (linked) {
-          throw new ApiError(409, 'Bu talaba allaqachon ro\'yxatdan o\'tgan — tasdiqni bekor qilib bo\'lmaydi. Uni chetlashtirish uchun Talabalar bo\'limidan foydalaning.')
+        if (linked && (linked.status !== 'pending' || !sameFaculty(linked.faculty, faculty))) {
+          throw new ApiError(409, 'Bu talaba allaqachon ro\'yxatdan o\'tib, hisobini tasdiqlagan — tasdiqni bekor qilib bo\'lmaydi. Uni chetlashtirish uchun Talabalar bo\'limidan foydalaning.')
         }
+        if (linked) await repository.deletePendingStudent(linked.id)
         // Also frees any room the dekan pre-reserved on this permit — that
         // bed counts as occupied for as long as status stays 'approved'
         // with a room_number set.
         const request = await repository.cancelApproval(id)
         if (!request) throw new ApiError(409, 'Ariza holati o\'zgardi — sahifani yangilang')
+        await sendPermitApprovalCancelledEmail(existing.email, existing.full_name)
+        await audit({ deletedPendingUserId: linked?.id ?? null })
         return { success: true as const, request }
       }
 
@@ -166,12 +174,14 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
         if (!request) throw new ApiError(409, 'Bu yo\'llanma allaqachon ko\'rib chiqilgan')
         // Xat yuborilmasa ham tasdiqlash kuchda qoladi — sendMail o'zi
         // xatolarni yutadi, shuning uchun bu yerda try/catch shart emas.
-        await sendPermitApprovedEmail(request.email, request.full_name)
+        await sendPermitApprovedEmail(request.email, request.full_name, request.application_type)
+        await audit()
         return { success: true as const, request }
       }
       const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 2000) : ''
       if (!reason) throw new ApiError(400, 'Rad etish sababi talab qilinadi')
       const request = await repository.update(id, { status: 'rejected', room_number: null, reject_reason: reason })
+      await audit()
       return { success: true as const, request }
     },
   }

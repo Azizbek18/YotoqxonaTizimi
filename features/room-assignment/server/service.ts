@@ -20,6 +20,11 @@ function throwForRoomError(error: unknown): never {
   if (code === 'P0004') {
     throw new ApiError(409, "Bu xona ta'mirlash tufayli muzlatilgan — talaba joylashtirib bo'lmaydi")
   }
+  if (code === 'P0005') {
+    // The permit stopped being 'approved' between our check and the RPC —
+    // almost always a concurrent "tasdiqni bekor qilish".
+    throw new ApiError(409, "Ariza holati o'zgardi — sahifani yangilang")
+  }
   throw error as Error
 }
 

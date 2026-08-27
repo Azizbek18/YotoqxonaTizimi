@@ -98,7 +98,23 @@ function appUrl(path: string) {
 }
 
 /** Dekan yo'llanmani tasdiqlagach — talaba endi ro'yxatdan o'ta oladi. */
-export async function sendPermitApprovedEmail(to: string, fullName: string) {
+export async function sendPermitApprovedEmail(to: string, fullName: string, applicationType?: string) {
+  // Imtiyozli/xorijiy arizachilar JShSHIR'siz — ular /register orqali
+  // ro'yxatdan o'ta olmaydi (o'sha oqim JShSHIR talab qiladi). Ularga
+  // "ro'yxatdan o'ting" havolasi noto'g'ri bo'lardi, shuning uchun matn ham
+  // boshqacha: keyingi qadamlarni dekanat yuritadi.
+  if (applicationType === 'imtiyozli') {
+    await sendMail({
+      to,
+      subject: 'Yotoqxona arizangiz tasdiqlandi',
+      heading: `${fullName}, arizangiz tasdiqlandi!`,
+      paragraphs: [
+        'Fakultet dekani yotoqxonaga joylashish arizangizni tasdiqladi.',
+        "Xona biriktirilgach, bu haqda alohida xat yuboriladi. Qo'shimcha hujjat yoki ma'lumot kerak bo'lsa, fakultet dekanati siz bilan bog'lanadi.",
+      ],
+    })
+    return
+  }
   await sendMail({
     to,
     subject: "Yo'llanmangiz tasdiqlandi — ro'yxatdan o'tishingiz mumkin",
@@ -109,6 +125,22 @@ export async function sendPermitApprovedEmail(to: string, fullName: string) {
       "Xona ro'yxatdan o'tganingizdan so'ng biriktiriladi — bu haqda alohida xat yuboriladi.",
     ],
     cta: { label: "Ro'yxatdan o'tish", url: appUrl('/register') },
+  })
+}
+
+// Dekan tasdiqni bekor qilib, arizani qayta ko'rib chiqishga qaytarganda.
+// Arizachi allaqachon "tasdiqlandi" xatini olган bo'lishi mumkin, shuning
+// uchun holat o'zgargani aniq aytiladi.
+export async function sendPermitApprovalCancelledEmail(to: string, fullName: string) {
+  await sendMail({
+    to,
+    subject: "Yotoqxona yo'llanmangiz qayta ko'rib chiqilmoqda",
+    heading: `${fullName}, yo'llanmangiz holati o'zgardi`,
+    paragraphs: [
+      "Fakultet dekani yotoqxona yo'llanmangizni tasdiqdan qaytardi — ariza hozir «ko'rib chiqilmoqda» holatida.",
+      "Agar siz ro'yxatdan o'tib ulgurган, ammo emailni hali tasdiqlamagan bo'lsangiz, o'sha yarim tayyor hisob bekor qilindi. Yo'llanma qayta tasdiqlangач, qaytadan ro'yxatdan o'tishingiz kerak bo'ladi.",
+      "Sabablarini bilish uchun fakultet dekanatiga murojaat qiling.",
+    ],
   })
 }
 

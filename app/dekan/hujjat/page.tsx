@@ -42,7 +42,7 @@ function HujjatContent() {
   }, [id])
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-[#020617] p-3 sm:p-6 print:p-0 print:bg-white">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 p-3 sm:p-6 print:p-0 print:bg-white">
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           body * { visibility: hidden; }
@@ -54,13 +54,13 @@ function HujjatContent() {
 
       <div className="max-w-2xl mx-auto print:max-w-none">
         <div className="flex items-center justify-between mb-4 print:hidden">
-          <Link href="/dekan/arizalar" className="flex items-center gap-2 text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
+          <Link href="/dekan/arizalar" className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
             <ArrowLeft size={14} /> <span>Arizalar</span>
           </Link>
           {data && (
             <button
               onClick={() => window.print()}
-              className="flex items-center gap-2 text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-all"
+              className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
             >
               <Download size={14} /> <span>Yuklab olish (PDF)</span>
             </button>
@@ -69,12 +69,12 @@ function HujjatContent() {
 
         {loading && (
           <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-indigo-600" />
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-700" />
           </div>
         )}
 
         {error && !loading && (
-          <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm font-bold flex items-start gap-3">
+          <div className="p-6 rounded-xl border text-sm font-medium flex items-start gap-3 border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300">
             <AlertTriangle size={18} className="shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>

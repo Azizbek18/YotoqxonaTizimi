@@ -35,6 +35,7 @@ import {
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { genderLabel, normalizeGender } from '@/lib/gender'
 import { directionLabel, normalizeDirection } from '@/lib/directions'
+import { dekanUI } from '@/lib/dekan-ui'
 
 type PayFilter = '' | 'paid' | 'debtor' | 'unpaid' | 'waiting'
 type PlacementFilter = '' | 'placed' | 'roomless'
@@ -81,9 +82,6 @@ const PLACEMENT_FILTER_LABELS: Record<Exclude<PlacementFilter, ''>, string> = {
   roomless: 'Xonasiz talabalar',
 }
 
-// Distinct, alphabetically ordered values of a text column — the filter
-// options are built from the actual data rather than a hardcoded list, so a
-// nationality or direction nobody anticipated still becomes selectable.
 function distinctValues(students: readonly StudentProfileRow[], pick: (row: StudentProfileRow) => string | null) {
   const seen = new Set<string>()
   for (const student of students) {
@@ -96,6 +94,7 @@ function distinctValues(students: readonly StudentProfileRow[], pick: (row: Stud
 export default function DekanReportsPage() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
+  const ui = dekanUI(isLight)
 
   const { floors: layoutFloors, floorOf } = useRoomFloors()
 
@@ -109,8 +108,6 @@ export default function DekanReportsPage() {
     setLoading(true)
     try {
       const [studentRows, paymentRows, settings] = await Promise.all([
-        // 'all' — xonasiz talabalar ham eksportga kirishi uchun; kesim
-        // sahifadagi "Joylashuv" filtri orqali tanlanadi.
         fetchFacultyStudents('all'),
         fetchFacultyPayments(),
         fetchAppSettings(),
@@ -130,17 +127,12 @@ export default function DekanReportsPage() {
     void load()
   }, [load])
 
-  // null while the contract fee is unknown — the payment filters depend
-  // entirely on it, so they stay disabled rather than silently returning
-  // everyone as a debtor.
   const paySummaries = useMemo(
     () => (yearlyContractFee === null ? null : buildPaySummaries(students, payments, yearlyContractFee)),
     [students, payments, yearlyContractFee]
   )
 
   const nationalities = useMemo(() => distinctValues(students, (s) => s.nationality), [students])
-  // Kanonik qiymat bo'yicha guruhlanadi — aks holda "amaliy-matematika" va
-  // "Amaliy matematika" ro'yxatda ikkita alohida yo'nalish bo'lib chiqardi.
   const directions = useMemo(() => distinctValues(students, (s) => normalizeDirection(s.direction) ?? s.direction), [students])
   const studyTypes = useMemo(() => distinctValues(students, (s) => s.study_type), [students])
   const regions = useMemo(() => distinctValues(students, (s) => s.region), [students])
@@ -151,9 +143,6 @@ export default function DekanReportsPage() {
       ),
     [students]
   )
-  // Floors come from the admin's qavat tarxi, not from whichever floors the
-  // current students happen to occupy — an empty floor still has to be
-  // selectable, and "1-qavat" has to mean the rooms the admin put there.
   const floors = useMemo(
     () => (layoutFloors.length > 0
       ? layoutFloors
@@ -227,8 +216,6 @@ export default function DekanReportsPage() {
 
   const clearFilter = (key: keyof Filters) => setFilters((prev) => ({ ...prev, [key]: EMPTY_FILTERS[key] }))
 
-  // Filename says what's inside — a folder full of "talabalar.xlsx" is
-  // useless once three different cuts have been exported.
   const fileSlug = () => {
     const parts: string[] = []
     if (filters.placement) parts.push(filters.placement === 'placed' ? 'joylashgan' : 'xonasiz')
@@ -272,78 +259,48 @@ export default function DekanReportsPage() {
     }
   }
 
-  const surface = isLight ? 'bg-white border-slate-200 shadow-md' : 'bg-[#0b1120]/50 border-white/10'
-  const textStrong = isLight ? 'text-slate-900' : 'text-white'
-  const textMuted = isLight ? 'text-slate-500' : 'text-slate-400'
-  const selectClass = isLight
-    ? 'rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs'
-    : 'rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs'
+  const inputCls = `rounded-lg border text-sm px-3 py-2.5 transition-colors ${ui.input} ${ui.ring}`
+  const sectionLabel = `text-[10px] font-bold uppercase tracking-[0.18em] ${ui.muted}`
 
-  const presets: { label: string; apply: () => void; tone: string }[] = [
-    {
-      label: "To'lov qilmaganlar",
-      tone: 'border-rose-500/30 bg-rose-500/10 text-rose-500',
-      apply: () => setFilters({ ...EMPTY_FILTERS, pay: 'unpaid' }),
-    },
-    {
-      label: 'Xonasiz talabalar',
-      tone: 'border-slate-400/30 bg-slate-400/10 text-slate-500 dark:text-slate-300',
-      apply: () => setFilters({ ...EMPTY_FILTERS, placement: 'roomless' }),
-    },
-    {
-      label: 'Qarzdorlar',
-      tone: 'border-amber-500/30 bg-amber-500/10 text-amber-500',
-      apply: () => setFilters({ ...EMPTY_FILTERS, pay: 'debtor' }),
-    },
-    {
-      label: "O'g'il bolalar",
-      tone: 'border-sky-500/30 bg-sky-500/10 text-sky-500',
-      apply: () => setFilters({ ...EMPTY_FILTERS, gender: 'male' }),
-    },
-    {
-      label: 'Qiz bolalar',
-      tone: 'border-pink-500/30 bg-pink-500/10 text-pink-500',
-      apply: () => setFilters({ ...EMPTY_FILTERS, gender: 'female' }),
-    },
-    {
-      label: 'Qavat sardorlari',
-      tone: 'border-violet-500/30 bg-violet-500/10 text-violet-500',
-      apply: () => setFilters({ ...EMPTY_FILTERS, onlyCaptains: true }),
-    },
-    {
-      label: 'Ogohlantirilganlar',
-      tone: 'border-orange-500/30 bg-orange-500/10 text-orange-500',
-      apply: () => setFilters({ ...EMPTY_FILTERS, onlyWarned: true }),
-    },
+  const presets: { label: string; apply: () => void }[] = [
+    { label: "To'lov qilmaganlar", apply: () => setFilters({ ...EMPTY_FILTERS, pay: 'unpaid' }) },
+    { label: 'Xonasiz talabalar', apply: () => setFilters({ ...EMPTY_FILTERS, placement: 'roomless' }) },
+    { label: 'Qarzdorlar', apply: () => setFilters({ ...EMPTY_FILTERS, pay: 'debtor' }) },
+    { label: "O'g'il bolalar", apply: () => setFilters({ ...EMPTY_FILTERS, gender: 'male' }) },
+    { label: 'Qiz bolalar', apply: () => setFilters({ ...EMPTY_FILTERS, gender: 'female' }) },
+    { label: 'Qavat sardorlari', apply: () => setFilters({ ...EMPTY_FILTERS, onlyCaptains: true }) },
+    { label: 'Ogohlantirilganlar', apply: () => setFilters({ ...EMPTY_FILTERS, onlyWarned: true }) },
   ]
 
   const previewRows = filteredStudents.slice(0, 8)
 
+  const ClearBtn = ({ compact }: { compact?: boolean }) => (
+    <button
+      onClick={() => setFilters(EMPTY_FILTERS)}
+      disabled={activeFilterChips.length === 0}
+      title="Barcha filtrlarni tozalash"
+      className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${ui.dangerSoft} ${compact ? '' : ''}`}
+    >
+      <FilterX size={13} />
+      Filtrlarni tozalash
+    </button>
+  )
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className={`flex items-center gap-3 text-2xl font-black tracking-tighter sm:text-3xl ${textStrong}`}>
-            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-2 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.12)]">
-              <FileSpreadsheet size={28} />
-            </div>
-            Hisobot va eksport
-          </h1>
-          <p className={`mt-2 text-sm ${textMuted}`}>
-            Fakultet talabalarini kerakli kesimda tanlab, admin paneldagi jadval bilan bir xil ko&apos;rinishda yuklab
-            oling
+          <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${ui.strong}`}>Hisobot va eksport</h1>
+          <p className={`mt-1 text-xs sm:text-sm ${ui.muted}`}>
+            Fakultet talabalarini kerakli kesimda tanlab, admin paneldagi jadval bilan bir xil ko&apos;rinishda yuklab oling
           </p>
         </div>
 
         <button
           onClick={() => void load()}
           disabled={loading}
-          className={`inline-flex items-center justify-center rounded-xl border p-3 transition-all disabled:opacity-50 ${
-            isLight
-              ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-              : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
-          }`}
+          className={`inline-flex items-center justify-center rounded-lg border p-3 transition-colors disabled:opacity-50 ${ui.btnGhost}`}
           title="Yangilash"
         >
           <motion.div
@@ -356,87 +313,52 @@ export default function DekanReportsPage() {
       </div>
 
       {/* Quick presets */}
-      <div className={`rounded-3xl border p-5 ${surface}`}>
-        <h3 className={`mb-3 text-[10px] font-black uppercase tracking-[0.2em] ${textMuted}`}>Tez tanlov</h3>
+      <div className={`rounded-2xl border p-5 ${ui.card}`}>
+        <h3 className={`mb-3 ${sectionLabel}`}>Tez tanlov</h3>
         <div className="flex flex-wrap gap-2">
           {presets.map((preset) => (
             <button
               key={preset.label}
               onClick={preset.apply}
-              className={`rounded-xl border px-3 py-2 text-[11px] font-bold transition-all hover:scale-[1.03] active:scale-95 ${preset.tone}`}
+              className={`rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${ui.btnGhost}`}
             >
               {preset.label}
             </button>
           ))}
-          {/* Same rose "clear" signal as the one in the Batafsil filtrlar
-              header, so the action looks like one thing wherever it appears. */}
-          <button
-            onClick={() => setFilters(EMPTY_FILTERS)}
-            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-bold transition-all hover:scale-[1.03] active:scale-95 ${
-              isLight
-                ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
-                : 'border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
-            }`}
-          >
-            <FilterX size={13} />
-            Filtrlarni tozalash
-          </button>
+          <ClearBtn />
         </div>
       </div>
 
       {/* Filters */}
-      <div className={`rounded-3xl border p-5 ${surface}`}>
+      <div className={`rounded-2xl border p-5 ${ui.card}`}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h3 className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] ${textMuted}`}>
+          <h3 className={`flex items-center gap-2 ${sectionLabel}`}>
             <Filter size={13} />
             Batafsil filtrlar
             {activeFilterChips.length > 0 && (
-              <span className="rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-[9px] leading-none text-indigo-500 dark:text-indigo-300">
+              <span className={`rounded-full px-1.5 py-0.5 text-[9px] leading-none ${ui.accentSoft}`}>
                 {activeFilterChips.length}
               </span>
             )}
           </h3>
-
-          {/* Always rendered in the same spot (disabled when there is nothing
-              to clear) rather than appearing only once filters are set — a
-              button that pops in and out is exactly the one users can't find
-              when they need it. */}
-          <button
-            onClick={() => setFilters(EMPTY_FILTERS)}
-            disabled={activeFilterChips.length === 0}
-            title="Barcha filtrlarni tozalash"
-            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 ${
-              activeFilterChips.length === 0
-                ? isLight
-                  ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
-                  : 'cursor-not-allowed border-white/10 bg-white/5 text-slate-500'
-                : isLight
-                  ? 'border-rose-200 bg-rose-50 text-rose-600 hover:border-rose-300 hover:bg-rose-100'
-                  : 'border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300'
-            }`}
-          >
-            <FilterX size={13} />
-            Filtrlarni tozalash
-          </button>
+          <ClearBtn />
         </div>
 
         <div className="relative mb-4">
-          <Search size={16} className={`pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 ${textMuted}`} />
+          <Search size={16} className={`pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 ${ui.faint}`} />
           <input
             type="text"
             placeholder="Ism, xona yoki email bo'yicha qidirish..."
             value={filters.search}
             onChange={(event) => setFilter('search', event.target.value)}
-            className={`w-full rounded-2xl border py-3 pl-11 pr-10 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 ${
-              isLight ? 'border-slate-200 bg-slate-50 text-slate-900' : 'border-white/10 bg-white/5 text-white'
-            }`}
+            className={`w-full rounded-lg border py-3 pl-11 pr-10 text-sm transition-colors ${ui.input} ${ui.ring}`}
           />
           {filters.search && (
             <button
               type="button"
               onClick={() => clearFilter('search')}
               aria-label="Qidiruvni tozalash"
-              className={`absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors hover:bg-slate-200/70 dark:hover:bg-white/10 ${textMuted}`}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors ${ui.muted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`}
             >
               <X size={14} />
             </button>
@@ -444,124 +366,54 @@ export default function DekanReportsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-1.5">
-            <label className={`block text-[10px] font-black uppercase tracking-wider ${textMuted}`}>Joylashuv</label>
-            <CustomSelect
-              value={filters.placement}
-              onChange={(value) => setFilter('placement', value as PlacementFilter)}
-              className={selectClass}
-              options={[
-                { value: '', label: `Barchasi (${students.length})` },
-                { value: 'placed', label: `${PLACEMENT_FILTER_LABELS.placed} (${placedCount})` },
-                { value: 'roomless', label: `${PLACEMENT_FILTER_LABELS.roomless} (${roomlessCount})` },
-              ]}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className={`block text-[10px] font-black uppercase tracking-wider ${textMuted}`}>Jinsi</label>
-            <CustomSelect
-              value={filters.gender}
-              onChange={(value) => setFilter('gender', value)}
-              className={selectClass}
-              options={[
-                { value: '', label: 'Barchasi' },
-                { value: 'male', label: "O'g'il bolalar" },
-                { value: 'female', label: 'Qiz bolalar' },
-              ]}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className={`block text-[10px] font-black uppercase tracking-wider ${textMuted}`}>
-              To&apos;lov holati
-            </label>
-            <CustomSelect
-              value={filters.pay}
-              onChange={(value) => setFilter('pay', value as PayFilter)}
-              className={selectClass}
-              disabled={!paySummaries}
-              placeholder={paySummaries ? 'Barchasi' : 'Shartnoma summasi yuklanmadi'}
-              options={[
-                { value: '', label: 'Barchasi' },
-                ...(Object.keys(PAY_FILTER_LABELS) as Exclude<PayFilter, ''>[]).map((key) => ({
-                  value: key,
-                  label: PAY_FILTER_LABELS[key],
-                })),
-              ]}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className={`block text-[10px] font-black uppercase tracking-wider ${textMuted}`}>Millati</label>
-            <CustomSelect
-              value={filters.nationality}
-              onChange={(value) => setFilter('nationality', value)}
-              className={selectClass}
-              options={[
-                { value: '', label: 'Barchasi' },
-                ...nationalities.map((value) => ({ value, label: value })),
-              ]}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className={`block text-[10px] font-black uppercase tracking-wider ${textMuted}`}>Kursi</label>
-            <CustomSelect
-              value={filters.course}
-              onChange={(value) => setFilter('course', value)}
-              className={selectClass}
-              options={[
-                { value: '', label: 'Barchasi' },
-                ...courses.map((course) => ({ value: String(course), label: `${course}-kurs` })),
-              ]}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className={`block text-[10px] font-black uppercase tracking-wider ${textMuted}`}>Qavati</label>
-            <CustomSelect
-              value={filters.floor}
-              onChange={(value) => setFilter('floor', value)}
-              className={selectClass}
-              options={[
-                { value: '', label: 'Barchasi' },
-                ...floors.map((floor) => ({ value: String(floor), label: `${floor}-qavat` })),
-              ]}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className={`block text-[10px] font-black uppercase tracking-wider ${textMuted}`}>
-              Yo&apos;nalish
-            </label>
-            <CustomSelect
-              value={filters.direction}
-              onChange={(value) => setFilter('direction', value)}
-              className={selectClass}
-              options={[{ value: '', label: 'Barchasi' }, ...directions.map((value) => ({ value, label: directionLabel(value) }))]}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className={`block text-[10px] font-black uppercase tracking-wider ${textMuted}`}>Moliya turi</label>
-            <CustomSelect
-              value={filters.studyType}
-              onChange={(value) => setFilter('studyType', value)}
-              className={selectClass}
-              options={[{ value: '', label: 'Barchasi' }, ...studyTypes.map((value) => ({ value, label: value }))]}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className={`block text-[10px] font-black uppercase tracking-wider ${textMuted}`}>Viloyati</label>
-            <CustomSelect
-              value={filters.region}
-              onChange={(value) => setFilter('region', value)}
-              className={selectClass}
-              options={[{ value: '', label: 'Barchasi' }, ...regions.map((value) => ({ value, label: value }))]}
-            />
-          </div>
+          {([
+            { label: 'Joylashuv', node: (
+              <CustomSelect value={filters.placement} onChange={(v) => setFilter('placement', v as PlacementFilter)} className={inputCls}
+                options={[
+                  { value: '', label: `Barchasi (${students.length})` },
+                  { value: 'placed', label: `${PLACEMENT_FILTER_LABELS.placed} (${placedCount})` },
+                  { value: 'roomless', label: `${PLACEMENT_FILTER_LABELS.roomless} (${roomlessCount})` },
+                ]} />
+            ) },
+            { label: 'Jinsi', node: (
+              <CustomSelect value={filters.gender} onChange={(v) => setFilter('gender', v)} className={inputCls}
+                options={[{ value: '', label: 'Barchasi' }, { value: 'male', label: "O'g'il bolalar" }, { value: 'female', label: 'Qiz bolalar' }]} />
+            ) },
+            { label: "To'lov holati", node: (
+              <CustomSelect value={filters.pay} onChange={(v) => setFilter('pay', v as PayFilter)} className={inputCls}
+                disabled={!paySummaries} placeholder={paySummaries ? 'Barchasi' : 'Shartnoma summasi yuklanmadi'}
+                options={[{ value: '', label: 'Barchasi' }, ...(Object.keys(PAY_FILTER_LABELS) as Exclude<PayFilter, ''>[]).map((key) => ({ value: key, label: PAY_FILTER_LABELS[key] }))]} />
+            ) },
+            { label: 'Millati', node: (
+              <CustomSelect value={filters.nationality} onChange={(v) => setFilter('nationality', v)} className={inputCls}
+                options={[{ value: '', label: 'Barchasi' }, ...nationalities.map((value) => ({ value, label: value }))]} />
+            ) },
+            { label: 'Kursi', node: (
+              <CustomSelect value={filters.course} onChange={(v) => setFilter('course', v)} className={inputCls}
+                options={[{ value: '', label: 'Barchasi' }, ...courses.map((course) => ({ value: String(course), label: `${course}-kurs` }))]} />
+            ) },
+            { label: 'Qavati', node: (
+              <CustomSelect value={filters.floor} onChange={(v) => setFilter('floor', v)} className={inputCls}
+                options={[{ value: '', label: 'Barchasi' }, ...floors.map((floor) => ({ value: String(floor), label: `${floor}-qavat` }))]} />
+            ) },
+            { label: "Yo'nalish", node: (
+              <CustomSelect value={filters.direction} onChange={(v) => setFilter('direction', v)} className={inputCls}
+                options={[{ value: '', label: 'Barchasi' }, ...directions.map((value) => ({ value, label: directionLabel(value) }))]} />
+            ) },
+            { label: 'Moliya turi', node: (
+              <CustomSelect value={filters.studyType} onChange={(v) => setFilter('studyType', v)} className={inputCls}
+                options={[{ value: '', label: 'Barchasi' }, ...studyTypes.map((value) => ({ value, label: value }))]} />
+            ) },
+            { label: 'Viloyati', node: (
+              <CustomSelect value={filters.region} onChange={(v) => setFilter('region', v)} className={inputCls}
+                options={[{ value: '', label: 'Barchasi' }, ...regions.map((value) => ({ value, label: value }))]} />
+            ) },
+          ]).map(({ label, node }) => (
+            <div key={label} className="space-y-1.5">
+              <label className={`block text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>{label}</label>
+              {node}
+            </div>
+          ))}
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -572,12 +424,10 @@ export default function DekanReportsPage() {
             <button
               key={toggle.key}
               onClick={() => setFilter(toggle.key, !filters[toggle.key])}
-              className={`rounded-xl border px-3 py-2 text-[11px] font-bold transition-all ${
+              className={`rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${
                 filters[toggle.key]
-                  ? 'border-indigo-500/40 bg-indigo-500/15 text-indigo-500 dark:text-indigo-300'
-                  : isLight
-                    ? 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
-                    : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10'
+                  ? (isLight ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-indigo-500/40 bg-indigo-500/10 text-indigo-300')
+                  : ui.btnGhost
               }`}
             >
               {toggle.label}
@@ -586,54 +436,34 @@ export default function DekanReportsPage() {
         </div>
 
         {activeFilterChips.length > 0 && (
-          <div className={`mt-4 flex flex-wrap items-center gap-2 border-t pt-4 ${isLight ? 'border-slate-100' : 'border-white/5'}`}>
-            <span className={`text-[10px] font-black uppercase tracking-wider ${textMuted}`}>Faol filtrlar:</span>
+          <div className={`mt-4 flex flex-wrap items-center gap-2 border-t pt-4 ${ui.border}`}>
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>Faol filtrlar:</span>
             {activeFilterChips.map((chip) => (
               <button
                 key={chip.key}
                 onClick={() => clearFilter(chip.key)}
-                className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold transition-colors ${
-                  isLight
-                    ? 'border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
-                    : 'border-indigo-500/25 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20'
-                }`}
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${ui.accentSoft}`}
               >
                 {chip.label}
                 <X size={11} />
               </button>
             ))}
-
-            {/* Second, contextual clear: on mobile the filter grid is one
-                column tall, so the header button is far off-screen by the
-                time the chips are read. */}
-            <button
-              onClick={() => setFilters(EMPTY_FILTERS)}
-              className={`ml-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition-colors ${
-                isLight
-                  ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
-                  : 'border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
-              }`}
-            >
-              <FilterX size={11} />
-              Barchasini tozalash
-            </button>
+            <div className="ml-auto"><ClearBtn compact /></div>
           </div>
         )}
       </div>
 
       {/* Selection summary + download */}
-      <div className={`rounded-3xl border p-5 ${surface}`}>
+      <div className={`rounded-2xl border p-5 ${ui.card}`}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-5">
+          <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-linear-to-tr from-indigo-500 to-violet-600 text-white shadow-lg">
-                <Users size={19} />
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${ui.accentSoft}`}>
+                <Users size={18} />
               </div>
               <div>
-                <p className={`text-2xl font-black leading-none ${textStrong}`}>
-                  {loading ? '...' : filteredStudents.length}
-                </p>
-                <p className={`mt-1 text-[10px] font-bold uppercase tracking-wider ${textMuted}`}>
+                <p className={`text-2xl font-bold leading-none ${ui.strong}`}>{loading ? '...' : filteredStudents.length}</p>
+                <p className={`mt-1 text-[10px] font-semibold uppercase tracking-wider ${ui.muted}`}>
                   Tanlangan talaba (jami {students.length})
                   {selectedRoomlessCount > 0 && ` • ${selectedRoomlessCount} tasi xonasiz`}
                 </p>
@@ -642,16 +472,12 @@ export default function DekanReportsPage() {
 
             {selectionDebt !== null && (
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-linear-to-tr from-amber-500 to-orange-600 text-white shadow-lg">
-                  <AlertTriangle size={19} />
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${statusChipInline(isLight)}`}>
+                  <AlertTriangle size={18} />
                 </div>
                 <div>
-                  <p className={`text-2xl font-black leading-none ${textStrong}`}>
-                    {loading ? '...' : formatSum(selectionDebt)}
-                  </p>
-                  <p className={`mt-1 text-[10px] font-bold uppercase tracking-wider ${textMuted}`}>
-                    Tanlanganlarning jami qarzi
-                  </p>
+                  <p className={`text-2xl font-bold leading-none ${ui.strong}`}>{loading ? '...' : formatSum(selectionDebt)}</p>
+                  <p className={`mt-1 text-[10px] font-semibold uppercase tracking-wider ${ui.muted}`}>Tanlanganlarning jami qarzi</p>
                 </div>
               </div>
             )}
@@ -661,7 +487,7 @@ export default function DekanReportsPage() {
             <button
               onClick={() => exportTable('excel')}
               disabled={loading || filteredStudents.length === 0}
-              className="flex items-center gap-2 rounded-xl bg-linear-to-r from-emerald-500 to-teal-600 px-4 py-3 text-[11px] font-black uppercase tracking-wider text-white shadow-lg transition-all hover:from-emerald-600 hover:to-teal-700 active:scale-95 disabled:opacity-50"
+              className={`flex items-center gap-2 rounded-lg px-4 py-3 text-[11px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.accentSolid}`}
             >
               <FileSpreadsheet size={16} />
               Excel yuklab olish
@@ -669,11 +495,7 @@ export default function DekanReportsPage() {
             <button
               onClick={() => exportTable('csv')}
               disabled={loading || filteredStudents.length === 0}
-              className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50 ${
-                isLight
-                  ? 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
-                  : 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'
-              }`}
+              className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-[11px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.btnGhost}`}
             >
               <Download size={16} />
               CSV
@@ -681,7 +503,7 @@ export default function DekanReportsPage() {
           </div>
         </div>
 
-        <p className={`mt-4 text-[11px] leading-relaxed ${textMuted}`}>
+        <p className={`mt-4 text-[11px] leading-relaxed ${ui.muted}`}>
           Jadval admin paneldagi hisobot bilan bir xil: 32 ta ustun, xona bo&apos;yicha guruhlangan va bo&apos;sh
           o&apos;rinlar 4 tagacha to&apos;ldirilgan holda. Xonasiz talabalar Qavat/Xona ustunlarida
           &laquo;-&raquo; bilan, jadval oxirida alohida ro&apos;yxat bo&apos;lib chiqadi.
@@ -689,18 +511,18 @@ export default function DekanReportsPage() {
       </div>
 
       {/* Preview */}
-      <div className={`rounded-3xl border p-5 ${surface}`}>
-        <h3 className={`mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] ${textMuted}`}>
+      <div className={`rounded-2xl border p-5 ${ui.card}`}>
+        <h3 className={`mb-4 flex items-center gap-2 ${sectionLabel}`}>
           <FileText size={13} />
           Ko&apos;rib chiqish
         </h3>
 
         {loading ? (
           <div className="flex h-32 items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-indigo-500" />
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-700" />
           </div>
         ) : filteredStudents.length === 0 ? (
-          <p className={`py-10 text-center text-xs font-bold ${textMuted}`}>
+          <p className={`py-10 text-center text-xs font-medium ${ui.muted}`}>
             Tanlangan filtrlar bo&apos;yicha talaba topilmadi
           </p>
         ) : (
@@ -708,12 +530,9 @@ export default function DekanReportsPage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] text-left text-xs">
                 <thead>
-                  <tr className={`border-b ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+                  <tr className={`border-b ${ui.border}`}>
                     {['Xona', 'F.I.Sh.', 'Kursi', 'Jinsi', 'Millati', "To'lov holati"].map((header) => (
-                      <th
-                        key={header}
-                        className={`whitespace-nowrap px-3 py-2.5 text-[10px] font-black uppercase tracking-wider ${textMuted}`}
-                      >
+                      <th key={header} className={`whitespace-nowrap px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>
                         {header}
                       </th>
                     ))}
@@ -723,31 +542,22 @@ export default function DekanReportsPage() {
                   {previewRows.map((student) => {
                     const summary = paySummaries?.get(student.id)
                     return (
-                      <tr
-                        key={student.id}
-                        className={`border-b last:border-0 ${isLight ? 'border-slate-100' : 'border-white/5'}`}
-                      >
-                        <td className={`whitespace-nowrap px-3 py-2.5 font-bold ${textStrong}`}>
+                      <tr key={student.id} className={`border-b last:border-0 ${ui.border}`}>
+                        <td className={`whitespace-nowrap px-3 py-2.5 font-semibold ${ui.strong}`}>
                           {student.room_number ? `№-${student.room_number}` : '-'}
                         </td>
-                        <td className={`px-3 py-2.5 font-semibold ${textStrong}`}>{student.full_name}</td>
-                        <td className={`whitespace-nowrap px-3 py-2.5 ${textMuted}`}>
-                          {student.course ? `${student.course}-kurs` : '-'}
-                        </td>
-                        <td className={`whitespace-nowrap px-3 py-2.5 ${textMuted}`}>{genderLabel(student.gender)}</td>
-                        <td className={`whitespace-nowrap px-3 py-2.5 ${textMuted}`}>{student.nationality || '-'}</td>
+                        <td className={`px-3 py-2.5 font-semibold ${ui.strong}`}>{student.full_name}</td>
+                        <td className={`whitespace-nowrap px-3 py-2.5 ${ui.muted}`}>{student.course ? `${student.course}-kurs` : '-'}</td>
+                        <td className={`whitespace-nowrap px-3 py-2.5 ${ui.muted}`}>{genderLabel(student.gender)}</td>
+                        <td className={`whitespace-nowrap px-3 py-2.5 ${ui.muted}`}>{student.nationality || '-'}</td>
                         <td className="whitespace-nowrap px-3 py-2.5">
                           {summary ? (
-                            <span
-                              className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${
-                                PAY_STATE_BADGE_CLASSES[summary.state]
-                              }`}
-                            >
+                            <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${PAY_STATE_BADGE_CLASSES[summary.state]}`}>
                               {PAY_STATE_LABELS[summary.state]}
                               {summary.state !== 'paid' && ` — ${formatSum(summary.remaining)}`}
                             </span>
                           ) : (
-                            <span className={textMuted}>—</span>
+                            <span className={ui.muted}>—</span>
                           )}
                         </td>
                       </tr>
@@ -758,7 +568,7 @@ export default function DekanReportsPage() {
             </div>
 
             {filteredStudents.length > previewRows.length && (
-              <p className={`mt-3 text-center text-[11px] font-bold ${textMuted}`}>
+              <p className={`mt-3 text-center text-[11px] font-medium ${ui.muted}`}>
                 … va yana {filteredStudents.length - previewRows.length} ta talaba faylga kiradi
               </p>
             )}
@@ -767,4 +577,10 @@ export default function DekanReportsPage() {
       </div>
     </div>
   )
+}
+
+// The debt tile carries a genuine "attention" meaning — the one place a
+// warning tone is warranted here, kept muted.
+function statusChipInline(isLight: boolean) {
+  return isLight ? 'bg-amber-50 text-amber-600' : 'bg-amber-500/10 text-amber-400'
 }

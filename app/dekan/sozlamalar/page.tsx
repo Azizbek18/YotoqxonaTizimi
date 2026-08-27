@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Settings as SettingsIcon, Wallet, Boxes, Phone, ShieldAlert, LayoutGrid, ArrowRight, Globe2 } from 'lucide-react'
+import { Wallet, Boxes, Phone, ShieldAlert, LayoutGrid, ArrowRight, Globe2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchAppSettings, updateAppSettings } from '@/features/app-settings/client/api'
 import type { AppSettings } from '@/features/app-settings/types'
+import { dekanUI } from '@/lib/dekan-ui'
 
 type NumberField = {
     key: 'monthlyFee' | 'yearlyContractFee' | 'defaultRoomCapacity' | 'floorCount' | 'maxUploadSizeMb' | 'warningThreshold'
@@ -20,12 +21,7 @@ type NumberField = {
 export default function DekanSozlamalarPage() {
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
-
-    const surfaceBg = isLight ? 'bg-white/80 border-slate-200 shadow-md' : 'bg-[#0b1120]/50 border-white/10 shadow-[0_0_20px_rgba(168,85,247,0.05)]'
-    const textMuted = isLight ? 'text-slate-500' : 'text-slate-400'
-    const textStrong = isLight ? 'text-slate-900' : 'text-white'
-    const inputBg = isLight ? 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-500/50' : 'bg-white/5 border-white/10 text-white placeholder-slate-500 focus:border-purple-500/50'
-    const borderCol = isLight ? 'border-slate-200' : 'border-white/10'
+    const ui = dekanUI(isLight)
 
     const { rooms: layoutRooms, loaded: layoutLoaded } = useRoomFloors()
 
@@ -93,7 +89,7 @@ export default function DekanSozlamalarPage() {
 
     const limitFields: NumberField[] = [
         { key: 'maxUploadSizeMb', label: 'Fayl yuklash hajmi chegarasi', description: 'Talaba profil rasmini yuklashda ruxsat etilgan maksimal fayl hajmi', suffix: 'MB' },
-        { key: 'warningThreshold', label: 'Ogohlantirish chegarasi', description: 'Talabalar ro\'yxatida shu sondan ko\'p ogohlantirilgan talaba xavfli (qizil) deb belgilanadi', suffix: 'ta' },
+        { key: 'warningThreshold', label: 'Ogohlantirish chegarasi', description: 'Talabalar ro\'yxatida shu sondan ko\'p ogohlantirilgan talaba xavfli deb belgilanadi', suffix: 'ta' },
     ]
 
     const contacts: Array<{ title: string; nameKey: keyof AppSettings; phoneKey: keyof AppSettings; hasName: boolean }> = [
@@ -117,8 +113,6 @@ export default function DekanSozlamalarPage() {
         return allFloors.map((floor) => ({
             floor,
             rooms: counts.get(floor) ?? 0,
-            // A floor with rooms but beyond floorCount means the two settings
-            // disagree — worth showing rather than hiding.
             beyondDeclared: floor > (settings?.floorCount ?? 0),
         }))
     }, [layoutRooms, settings?.floorCount])
@@ -126,323 +120,219 @@ export default function DekanSozlamalarPage() {
     const isDirty = settings !== null && savedSettings !== null
         && JSON.stringify(settings) !== JSON.stringify(savedSettings)
 
+    const inputCls = `rounded-lg border text-sm px-3 py-2 transition-colors ${ui.input} ${ui.ring}`
+
+    const Section = ({ icon: Icon, title, delay, children }: { icon: typeof Wallet; title: string; delay: number; children: React.ReactNode }) => (
+        <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay }}
+            className={`rounded-2xl border overflow-hidden ${ui.card}`}
+        >
+            <div className={`flex items-center gap-3 border-b p-4 sm:px-6 ${ui.border}`}>
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${ui.accentSoft}`}>
+                    <Icon size={18} />
+                </div>
+                <h2 className={`text-sm font-bold ${ui.strong}`}>{title}</h2>
+            </div>
+            <div className="p-4 sm:p-6 space-y-5">{children}</div>
+        </motion.section>
+    )
+
+    const NumberRow = ({ field, width }: { field: NumberField; width: string }) => (
+        <div className={`flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-5 border-b last:pb-0 last:border-b-0 ${ui.border}`}>
+            <div className="flex-1 min-w-0">
+                <h3 className={`text-sm font-semibold ${ui.strong}`}>{field.label}</h3>
+                <p className={`text-xs mt-1 ${ui.muted}`}>{field.description}</p>
+            </div>
+            <div className="sm:ml-4 shrink-0 flex items-center gap-2 w-full sm:w-auto">
+                <input
+                    type="number"
+                    min={1}
+                    value={settings![field.key]}
+                    onChange={(e) => handleChange(field.key, Math.max(1, Number(e.target.value)) as AppSettings[typeof field.key])}
+                    className={`${inputCls} w-full ${width}`}
+                />
+                <span className={`text-xs font-semibold shrink-0 ${ui.muted}`}>{field.suffix}</span>
+            </div>
+        </div>
+    )
+
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className={`flex items-center gap-3 text-3xl font-black tracking-tighter sm:text-4xl ${textStrong}`}>
-                        <div className="rounded-2xl bg-purple-500/10 p-2 text-purple-400 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
-                            <SettingsIcon size={30} />
-                        </div>
-                        Tizim sozlamalari
-                    </h1>
-                    <p className={`mt-2 text-sm ${textMuted}`}>To&apos;lov, xona va aloqa ma&apos;lumotlarini shu yerdan boshqaring</p>
-                </div>
+            <div>
+                <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${ui.strong}`}>Tizim sozlamalari</h1>
+                <p className={`mt-1 text-xs sm:text-sm ${ui.muted}`}>To&apos;lov, xona va aloqa ma&apos;lumotlarini shu yerdan boshqaring</p>
             </div>
 
             {loading ? (
-                <div className={`flex items-center justify-center rounded-2xl border p-16 ${surfaceBg}`}>
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
+                <div className={`flex items-center justify-center rounded-2xl border p-16 ${ui.card}`}>
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-700" />
                 </div>
             ) : loadError || !settings ? (
-                <div className={`rounded-2xl border p-8 text-center ${surfaceBg}`}>
-                    <ShieldAlert className="mx-auto h-10 w-10 text-rose-500" />
-                    <h2 className={`mt-4 text-lg font-black ${textStrong}`}>Sozlamalar ochilmadi</h2>
-                    <p className={`mx-auto mt-2 max-w-xl text-sm ${textMuted}`}>
+                <div className={`rounded-2xl border p-8 text-center ${ui.card}`}>
+                    <ShieldAlert className={`mx-auto h-10 w-10 ${isLight ? 'text-rose-500' : 'text-rose-400'}`} />
+                    <h2 className={`mt-4 text-lg font-bold ${ui.strong}`}>Sozlamalar ochilmadi</h2>
+                    <p className={`mx-auto mt-2 max-w-xl text-sm ${ui.muted}`}>
                         {loadError ?? "Sozlamalarni yuklab bo'lmadi"}. Xavfsizlik uchun standart qiymatlar bilan tahrirlash bloklandi.
                     </p>
                     <button
                         type="button"
                         onClick={() => void loadSettings()}
-                        className="mt-5 rounded-xl bg-purple-600 px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white transition-colors hover:bg-purple-700"
+                        className={`mt-5 rounded-lg px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors ${ui.accentSolid}`}
                     >
                         Qayta urinish
                     </button>
                 </div>
             ) : (
                 <>
-                    {/* Settings Sections */}
                     <div className="space-y-6">
-                        {/* Payment settings */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={`backdrop-blur-xl border rounded-2xl overflow-hidden ${surfaceBg}`}
-                        >
-                            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-4 sm:p-6 flex items-center gap-3 shadow-md">
-                                <Wallet size={24} className="text-white shrink-0" />
-                                <h2 className="text-lg font-black text-white">To&apos;lov Sozlamalari</h2>
-                            </div>
-                            <div className="p-4 sm:p-6 space-y-6">
-                                {paymentFields.map((field) => (
-                                    <div
-                                        key={field.key}
-                                        className={`flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-6 border-b border-white/5 last:pb-0 last:border-b-0 ${borderCol}`}
-                                    >
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className={`font-semibold ${textStrong}`}>{field.label}</h3>
-                                            <p className={`text-xs mt-1 ${textMuted}`}>{field.description}</p>
-                                        </div>
-                                        <div className="sm:ml-4 shrink-0 flex items-center gap-2 w-full sm:w-auto">
-                                            <input
-                                                type="number"
-                                                min={1}
-                                                value={settings[field.key]}
-                                                onChange={(e) => handleChange(field.key, Math.max(1, Number(e.target.value)) as AppSettings[typeof field.key])}
-                                                className={`w-full sm:w-36 px-3 py-2 rounded-xl border text-sm outline-none transition-all ${inputBg}`}
-                                            />
-                                            <span className={`text-xs font-bold shrink-0 ${textMuted}`}>{field.suffix}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </motion.div>
+                        <Section icon={Wallet} title="To'lov sozlamalari" delay={0}>
+                            {paymentFields.map((field) => <NumberRow key={field.key} field={field} width="sm:w-36" />)}
+                        </Section>
 
-                        {/* Room / floor settings */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.05 }}
-                            className={`backdrop-blur-xl border rounded-2xl overflow-hidden ${surfaceBg}`}
-                        >
-                            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-4 sm:p-6 flex items-center gap-3 shadow-md">
-                                <Boxes size={24} className="text-white shrink-0" />
-                                <h2 className="text-lg font-black text-white">Xona va Qavat Sozlamalari</h2>
-                            </div>
-                            <div className="p-4 sm:p-6 space-y-6">
-                                {roomFields.map((field) => (
-                                    <div
-                                        key={field.key}
-                                        className={`flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-6 border-b border-white/5 last:pb-0 last:border-b-0 ${borderCol}`}
-                                    >
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className={`font-semibold ${textStrong}`}>{field.label}</h3>
-                                            <p className={`text-xs mt-1 ${textMuted}`}>{field.description}</p>
-                                        </div>
-                                        <div className="sm:ml-4 shrink-0 flex items-center gap-2 w-full sm:w-auto">
-                                            <input
-                                                type="number"
-                                                min={1}
-                                                value={settings[field.key]}
-                                                onChange={(e) => handleChange(field.key, Math.max(1, Number(e.target.value)) as AppSettings[typeof field.key])}
-                                                className={`w-full sm:w-24 px-3 py-2 rounded-xl border text-sm outline-none transition-all ${inputBg}`}
-                                            />
-                                            <span className={`text-xs font-bold shrink-0 ${textMuted}`}>{field.suffix}</span>
-                                        </div>
-                                    </div>
-                                ))}
+                        <Section icon={Boxes} title="Xona va qavat sozlamalari" delay={0.04}>
+                            {roomFields.map((field) => <NumberRow key={field.key} field={field} width="sm:w-24" />)}
 
-                                {/* Room -> floor map. Not editable here on purpose: it lives in
-                                    floor_room_layout, which the Xonalar xaritasi bo'limi (va uning
-                                    "O'zingiz kiriting" quruvchisi) yozadi. A second input for the
-                                    same data would let the two disagree. */}
-                                <div className={`rounded-2xl border p-4 sm:p-5 ${isLight ? 'border-slate-200 bg-slate-50/70' : 'border-white/10 bg-white/5'}`}>
-                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                        <div className="min-w-0">
-                                            <h3 className={`flex items-center gap-2 font-semibold ${textStrong}`}>
-                                                <LayoutGrid size={16} className="shrink-0 text-blue-500" />
-                                                Qaysi xona qaysi qavatda
-                                            </h3>
-                                            <p className={`mt-1 text-xs ${textMuted}`}>
-                                                Talaba o&apos;z qavatini shu taqsimotdan oladi. Xonalarni qavatlarga
-                                                &laquo;Xonalar xaritasi&raquo; bo&apos;limida qo&apos;shasiz.
-                                            </p>
-                                        </div>
-                                        <Link
-                                            href="/dekan/xonalar"
-                                            className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-wider text-white transition-all hover:from-blue-600 hover:to-indigo-700 active:scale-95"
-                                        >
-                                            Xonalar xaritasi
-                                            <ArrowRight size={14} />
-                                        </Link>
-                                    </div>
-
-                                    {!layoutLoaded ? (
-                                        <p className={`mt-4 text-xs font-bold ${textMuted}`}>Yuklanmoqda...</p>
-                                    ) : floorRoomCounts.length === 0 ? (
-                                        <p className={`mt-4 text-xs font-bold ${textMuted}`}>
-                                            Hali birorta qavat belgilanmagan.
+                            {/* Room -> floor map. Not editable here on purpose: it lives in
+                                floor_room_layout, which the Xonalar xaritasi bo'limi writes. */}
+                            <div className={`rounded-xl border p-4 sm:p-5 ${ui.inset}`}>
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="min-w-0">
+                                        <h3 className={`flex items-center gap-2 text-sm font-semibold ${ui.strong}`}>
+                                            <LayoutGrid size={16} className={`shrink-0 ${ui.accentText}`} />
+                                            Qaysi xona qaysi qavatda
+                                        </h3>
+                                        <p className={`mt-1 text-xs ${ui.muted}`}>
+                                            Talaba o&apos;z qavatini shu taqsimotdan oladi. Xonalarni qavatlarga
+                                            &laquo;Xonalar xaritasi&raquo; bo&apos;limida qo&apos;shasiz.
                                         </p>
-                                    ) : (
-                                        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                                            {floorRoomCounts.map(({ floor, rooms, beyondDeclared }) => (
+                                    </div>
+                                    <Link
+                                        href="/dekan/xonalar"
+                                        className={`flex shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${ui.accentSolid}`}
+                                    >
+                                        Xonalar xaritasi
+                                        <ArrowRight size={14} />
+                                    </Link>
+                                </div>
+
+                                {!layoutLoaded ? (
+                                    <p className={`mt-4 text-xs font-medium ${ui.muted}`}>Yuklanmoqda...</p>
+                                ) : floorRoomCounts.length === 0 ? (
+                                    <p className={`mt-4 text-xs font-medium ${ui.muted}`}>Hali birorta qavat belgilanmagan.</p>
+                                ) : (
+                                    <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                                        {floorRoomCounts.map(({ floor, rooms, beyondDeclared }) => {
+                                            const warn = rooms === 0
+                                            return (
                                                 <div
                                                     key={floor}
-                                                    className={`rounded-xl border px-3 py-2.5 ${
-                                                        rooms === 0
-                                                            ? isLight
-                                                                ? 'border-amber-200 bg-amber-50'
-                                                                : 'border-amber-500/25 bg-amber-500/10'
-                                                            : isLight
-                                                                ? 'border-slate-200 bg-white'
-                                                                : 'border-white/10 bg-white/5'
+                                                    className={`rounded-lg border px-3 py-2.5 ${
+                                                        warn
+                                                            ? isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'
+                                                            : isLight ? 'border-slate-200 bg-white' : 'border-slate-700 bg-slate-800/40'
                                                     }`}
                                                 >
-                                                    <p className={`text-xs font-black ${rooms === 0 ? 'text-amber-500' : textStrong}`}>
+                                                    <p className={`text-xs font-bold ${warn ? (isLight ? 'text-amber-700' : 'text-amber-300') : ui.strong}`}>
                                                         {floor}-qavat
                                                     </p>
-                                                    <p className={`mt-0.5 text-[10px] font-bold ${rooms === 0 ? 'text-amber-500' : textMuted}`}>
-                                                        {rooms === 0 ? 'Xona kiritilmagan' : `${rooms} ta xona`}
+                                                    <p className={`mt-0.5 text-[10px] font-medium ${warn ? (isLight ? 'text-amber-600' : 'text-amber-400') : ui.muted}`}>
+                                                        {warn ? 'Xona kiritilmagan' : `${rooms} ta xona`}
                                                         {beyondDeclared && rooms > 0 ? ' • qavatlar sonidan tashqarida' : ''}
                                                     </p>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </motion.div>
-
-                        {/* Imtiyozli/xorijiy talabalar arizasi — TTJ nomi */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.06 }}
-                            className={`backdrop-blur-xl border rounded-2xl overflow-hidden ${surfaceBg}`}
-                        >
-                            <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-4 sm:p-6 flex items-center gap-3 shadow-md">
-                                <Globe2 size={24} className="text-white shrink-0" />
-                                <h2 className="text-lg font-black text-white">Xorijlik/Imtiyozli Talabalar Arizasi</h2>
-                            </div>
-                            <div className="p-4 sm:p-6 space-y-4">
-                                {!settings.ttjName.trim() && (
-                                    <div className={`flex items-start gap-3 rounded-2xl border p-4 ${isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'}`}>
-                                        <ShieldAlert size={18} className="mt-0.5 shrink-0 text-amber-500" />
-                                        <p className={`text-xs font-bold ${isLight ? 'text-amber-700' : 'text-amber-300'}`}>
-                                            TTJ nomi hali kiritilmagan — xorijlik/imtiyozli talabalarning Ariza va Tilxat hujjatlarida
-                                            &laquo;___-sonli talabalar turar joyi&raquo; o&apos;rni bo&apos;sh chiqadi. Pastdan kiritib saqlang.
-                                        </p>
+                                            )
+                                        })}
                                     </div>
                                 )}
-                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className={`font-semibold ${textStrong}`}>TTJ nomi</h3>
-                                        <p className={`text-xs mt-1 ${textMuted}`}>
-                                            Talabalar turar joyining rasmiy raqami — Ariza va Tilxat hujjatlarida
-                                            &laquo;___-sonli talabalar turar joyi&raquo; o&apos;rniga qo&apos;yiladi
-                                        </p>
-                                    </div>
-                                    <div className="sm:ml-4 shrink-0 w-full sm:w-auto">
-                                        <input
-                                            type="text"
-                                            value={settings.ttjName}
-                                            onChange={(e) => handleChange('ttjName', e.target.value)}
-                                            placeholder="Masalan: 14"
-                                            maxLength={60}
-                                            className={`w-full sm:w-48 px-3 py-2 rounded-xl border text-sm outline-none transition-all ${inputBg}`}
-                                        />
-                                    </div>
+                            </div>
+                        </Section>
+
+                        <Section icon={Globe2} title="Xorijlik/imtiyozli talabalar arizasi" delay={0.06}>
+                            {!settings.ttjName.trim() && (
+                                <div className={`flex items-start gap-3 rounded-xl border p-4 ${isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'}`}>
+                                    <ShieldAlert size={18} className={`mt-0.5 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
+                                    <p className={`text-xs font-medium ${isLight ? 'text-amber-800' : 'text-amber-200'}`}>
+                                        TTJ nomi hali kiritilmagan — xorijlik/imtiyozli talabalarning Ariza va Tilxat hujjatlarida
+                                        &laquo;___-sonli talabalar turar joyi&raquo; o&apos;rni bo&apos;sh chiqadi. Pastdan kiritib saqlang.
+                                    </p>
+                                </div>
+                            )}
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                    <h3 className={`text-sm font-semibold ${ui.strong}`}>TTJ nomi</h3>
+                                    <p className={`text-xs mt-1 ${ui.muted}`}>
+                                        Talabalar turar joyining rasmiy raqami — Ariza va Tilxat hujjatlarida
+                                        &laquo;___-sonli talabalar turar joyi&raquo; o&apos;rniga qo&apos;yiladi
+                                    </p>
+                                </div>
+                                <div className="sm:ml-4 shrink-0 w-full sm:w-auto">
+                                    <input
+                                        type="text"
+                                        value={settings.ttjName}
+                                        onChange={(e) => handleChange('ttjName', e.target.value)}
+                                        placeholder="Masalan: 14"
+                                        maxLength={60}
+                                        className={`${inputCls} w-full sm:w-48`}
+                                    />
                                 </div>
                             </div>
-                        </motion.div>
+                        </Section>
 
-                        {/* Limits */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.08 }}
-                            className={`backdrop-blur-xl border rounded-2xl overflow-hidden ${surfaceBg}`}
-                        >
-                            <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-4 sm:p-6 flex items-center gap-3 shadow-md">
-                                <ShieldAlert size={24} className="text-white shrink-0" />
-                                <h2 className="text-lg font-black text-white">Fayl va Ogohlantirish Chegaralari</h2>
-                            </div>
-                            <div className="p-4 sm:p-6 space-y-6">
-                                {limitFields.map((field) => (
-                                    <div
-                                        key={field.key}
-                                        className={`flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-6 border-b border-white/5 last:pb-0 last:border-b-0 ${borderCol}`}
-                                    >
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className={`font-semibold ${textStrong}`}>{field.label}</h3>
-                                            <p className={`text-xs mt-1 ${textMuted}`}>{field.description}</p>
-                                        </div>
-                                        <div className="sm:ml-4 shrink-0 flex items-center gap-2 w-full sm:w-auto">
-                                            <input
-                                                type="number"
-                                                min={1}
-                                                value={settings[field.key]}
-                                                onChange={(e) => handleChange(field.key, Math.max(1, Number(e.target.value)) as AppSettings[typeof field.key])}
-                                                className={`w-full sm:w-24 px-3 py-2 rounded-xl border text-sm outline-none transition-all ${inputBg}`}
-                                            />
-                                            <span className={`text-xs font-bold shrink-0 ${textMuted}`}>{field.suffix}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </motion.div>
+                        <Section icon={ShieldAlert} title="Fayl va ogohlantirish chegaralari" delay={0.08}>
+                            {limitFields.map((field) => <NumberRow key={field.key} field={field} width="sm:w-24" />)}
+                        </Section>
 
-                        {/* Contacts */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className={`backdrop-blur-xl border rounded-2xl overflow-hidden ${surfaceBg}`}
-                        >
-                            <div className="bg-gradient-to-r from-rose-500 to-pink-600 p-4 sm:p-6 flex items-center gap-3 shadow-md">
-                                <Phone size={24} className="text-white shrink-0" />
-                                <h2 className="text-lg font-black text-white">Aloqa va Favqulodda Xizmatlar</h2>
-                            </div>
-                            <div className="p-4 sm:p-6 space-y-6">
-                                {contacts.map((contact) => (
-                                    <div
-                                        key={contact.title}
-                                        className={`pb-6 border-b border-white/5 last:pb-0 last:border-b-0 ${borderCol}`}
-                                    >
-                                        <h3 className={`font-semibold mb-3 ${textStrong}`}>{contact.title}</h3>
-                                        <div className={`grid gap-3 ${contact.hasName ? 'sm:grid-cols-2' : ''}`}>
-                                            {contact.hasName && (
-                                                <div>
-                                                    <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${textMuted}`}>Ism</label>
-                                                    <input
-                                                        type="text"
-                                                        value={String(settings[contact.nameKey])}
-                                                        onChange={(e) => handleChange(contact.nameKey, e.target.value as AppSettings[typeof contact.nameKey])}
-                                                        placeholder="Ism familiya"
-                                                        className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-all ${inputBg}`}
-                                                    />
-                                                </div>
-                                            )}
+                        <Section icon={Phone} title="Aloqa va favqulodda xizmatlar" delay={0.1}>
+                            {contacts.map((contact) => (
+                                <div key={contact.title} className={`pb-5 border-b last:pb-0 last:border-b-0 ${ui.border}`}>
+                                    <h3 className={`text-sm font-semibold mb-3 ${ui.strong}`}>{contact.title}</h3>
+                                    <div className={`grid gap-3 ${contact.hasName ? 'sm:grid-cols-2' : ''}`}>
+                                        {contact.hasName && (
                                             <div>
-                                                <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${textMuted}`}>Telefon</label>
+                                                <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${ui.muted}`}>Ism</label>
                                                 <input
-                                                    type="tel"
-                                                    value={String(settings[contact.phoneKey])}
-                                                    onChange={(e) => handleChange(contact.phoneKey, e.target.value as AppSettings[typeof contact.phoneKey])}
-                                                    placeholder="+998 __ ___-__-__"
-                                                    className={`w-full px-3 py-2 rounded-xl border text-sm outline-none transition-all ${inputBg}`}
+                                                    type="text"
+                                                    value={String(settings[contact.nameKey])}
+                                                    onChange={(e) => handleChange(contact.nameKey, e.target.value as AppSettings[typeof contact.nameKey])}
+                                                    placeholder="Ism familiya"
+                                                    className={`${inputCls} w-full`}
                                                 />
                                             </div>
+                                        )}
+                                        <div>
+                                            <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${ui.muted}`}>Telefon</label>
+                                            <input
+                                                type="tel"
+                                                value={String(settings[contact.phoneKey])}
+                                                onChange={(e) => handleChange(contact.phoneKey, e.target.value as AppSettings[typeof contact.phoneKey])}
+                                                placeholder="+998 __ ___-__-__"
+                                                className={`${inputCls} w-full`}
+                                            />
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </motion.div>
+                                </div>
+                            ))}
+                        </Section>
                     </div>
 
-                    {/* Save Button */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.15 }}
-                        className="mt-8 flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 sm:justify-end"
-                    >
+                    <div className="mt-8 flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3 sm:justify-end">
                         <button
                             onClick={handleCancel}
                             disabled={!isDirty || saving}
-                            className={`w-full sm:w-auto px-6 py-3 rounded-xl border font-bold text-xs uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}
+                            className={`w-full sm:w-auto rounded-lg border px-6 py-3 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${ui.btnGhost}`}
                         >
                             Bekor qilish
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={!isDirty || saving}
-                            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-linear-to-r from-purple-500 to-fuchsia-600 hover:from-purple-600 hover:to-fuchsia-700 text-white font-black uppercase tracking-widest text-xs transition-all disabled:opacity-50 active:scale-95 disabled:cursor-not-allowed"
+                            className={`w-full sm:w-auto rounded-lg px-6 py-3 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${ui.accentSolid}`}
                         >
-                            {saving ? 'Saqlanmoqda...' : 'Sozlamalarni Saqlash'}
+                            {saving ? 'Saqlanmoqda...' : 'Sozlamalarni saqlash'}
                         </button>
-                    </motion.div>
+                    </div>
                 </>
             )}
         </div>

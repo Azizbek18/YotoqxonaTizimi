@@ -20,6 +20,9 @@ import { StaggerList, StaggerItem } from '@/components/motion/StaggerList';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import AiAssistant from '@/components/talaba/dashboard/AiAssistant';
+import WarningsModal from '@/components/talaba/dashboard/WarningsModal';
+import WarningDetailModal from '@/components/talaba/dashboard/WarningDetailModal';
+import AnnouncementModal from '@/components/talaba/dashboard/AnnouncementModal';
 import { fetchStudentPayments } from '@/features/payments/client/api';
 import { fetchStudentProfile } from '@/features/profile/client/api';
 import { fetchStudentAnnouncements } from '@/features/announcements/client/api';
@@ -29,139 +32,19 @@ import {
   fetchStudentApplications,
 } from '@/features/applications/client/api';
 import { fetchAppSettings } from '@/features/app-settings/client/api';
-import type { AppSettings } from '@/features/app-settings/types';
 import { getPaymentStats } from '@/features/app-settings/presentation';
-
-
-interface Task {
-  id: number;
-  text: string;
-  completed: boolean;
-}
-
-type SupportContacts = Pick<
-  AppSettings,
-  | 'tarbiyachiName'
-  | 'tarbiyachiPhone'
-  | 'komendantName'
-  | 'komendantPhone'
-  | 'doctorName'
-  | 'doctorPhone'
-  | 'talabaKengashiRaisiOgilName'
-  | 'talabaKengashiRaisiOgilPhone'
-  | 'talabaKengashiRaisiQizName'
-  | 'talabaKengashiRaisiQizPhone'
->;
-
-interface Ariza {
-  id: string | number;
-  ism: string;
-  kurs: string;
-  yonalish: string;
-  sana: string;
-  matn: string;
-  daraja: 'warning' | 'danger' | 'info';
-}
-
-interface Elon {
-  id: string | number;
-  title: string;
-  type: 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish';
-  teacher: string;
-  room: string;
-  time: string;
-  desc: string;
-}
-
-interface Elon {
-  id: string | number;
-  title: string;
-  type: 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish';
-  teacher: string;
-  room: string;
-  time: string;
-  desc: string;
-  is_from_captain?: boolean;
-}
-
-interface Profile {
-  id: string;
-  full_name: string;
-  email: string;
-  phone?: string;
-  phone_number?: string;
-  faculty?: string;
-  role?: string;
-  room_number?: string;
-  course?: string | number;
-  group?: string | number;
-  avatar_url?: string;
-  is_floor_captain?: boolean;
-  assigned_floor?: number;
-  gender?: string;
-  warning_count?: number;
-}
-
-interface PaymentRecord {
-  id?: string | number;
-  month?: string;
-  year?: number;
-  amount: number;
-  status: string;
-  created_at?: string;
-}
-
-interface MyApplication {
-  id: string | number;
-  type: 'ariza' | 'tushuntirish';
-  title: string;
-  createdDate: string;
-  status: 'draft' | 'submitted' | 'pending' | 'approved' | 'rejected';
-}
-
-type AdminChatMessage = {
-  id?: string | number;
-  title?: string;
-  text?: string;
-  reason?: string;
-  status?: string;
-  created_at?: string;
-  date?: string;
-  sender_role?: string;
-}
-
-function toAdminChatMessage(application: {
-  id: string;
-  title: string | null;
-  text: string;
-  reason: string | null;
-  status: string | null;
-  created_at: string;
-  date: string | null;
-}) : AdminChatMessage {
-  return {
-    id: application.id,
-    title: application.title ?? undefined,
-    text: application.text,
-    reason: application.reason ?? application.text ?? undefined,
-    status: application.status ?? undefined,
-    created_at: application.created_at,
-    date: application.date ?? undefined,
-    sender_role: application.title ?? undefined,
-  };
-}
-
-function formatElonDate(value: string | null | undefined) {
-  if (!value) return 'Bugun';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Bugun';
-  const diffMs = Date.now() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays <= 0) return 'Bugun';
-  if (diffDays === 1) return 'Kecha';
-  if (diffDays < 7) return `${diffDays} kun avval`;
-  return date.toLocaleDateString('uz-UZ');
-}
+import type {
+  Task,
+  SupportContacts,
+  Ariza,
+  Elon,
+  Profile,
+  CaptainInfo,
+  DashboardPayment,
+  MyApplication,
+  AdminChatMessage,
+} from '@/components/talaba/dashboard/types';
+import { formatElonDate, toAdminChatMessage } from '@/components/talaba/dashboard/helpers';
 
 export default function TalabaDashboard() {
   const { floorOf } = useRoomFloors();
@@ -169,12 +52,6 @@ export default function TalabaDashboard() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  interface CaptainInfo {
-    full_name: string;
-    phone_number?: string;
-    email?: string;
-  }
 
   // State - Profile va Roommates
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -208,7 +85,7 @@ export default function TalabaDashboard() {
   // State - Dynamic Data
   const [elonlar, setElonlar] = useState<Elon[]>([]);
   const [arizalar, setArizalar] = useState<Ariza[]>([]);
-  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [payments, setPayments] = useState<DashboardPayment[]>([]);
   const [myApplications, setMyApplications] = useState<MyApplication[]>([]);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [adminChatMessages, setAdminChatMessages] = useState<AdminChatMessage[]>([]);
@@ -1659,146 +1536,14 @@ export default function TalabaDashboard() {
 
       </div>
 
-      {/* 2. ARIZALAR RO'YXATI MODALI */}
-      {mounted && typeof document !== 'undefined' && showArizalar && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={() => setShowArizalar(false)}>
-          <div className="bg-[#0b0f19] border border-white/5 p-4 sm:p-7 rounded-2xl sm:rounded-[40px] shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4 sm:mb-6">
-              <h4 className="text-xl font-black italic flex items-center gap-2 uppercase tracking-tighter text-indigo-400">
-                <FileText /> Arizalar & Ogohlantirishlar
-              </h4>
-              <button onClick={() => setShowArizalar(false)} className="p-2 hover:bg-white/5 rounded-full transition-all text-gray-400 cursor-pointer"><X /></button>
-            </div>
-            
-            <div className="space-y-3 mb-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-              {arizalar.map((ariza) => {
-                const borderGlow = ariza.daraja === 'danger' ? 'border-red-500/30 hover:border-red-500' :
-                                   ariza.daraja === 'warning' ? 'border-amber-500/30 hover:border-amber-500' :
-                                   'border-blue-500/20 hover:border-blue-500';
-                return (
-                  <div
-                    key={ariza.id}
-                    onClick={() => setSelectedAriza(ariza)}
-                    className={`p-4 rounded-2xl border bg-white/5 cursor-pointer transition-all duration-200 hover:translate-x-1 ${borderGlow}`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">{ariza.sana}</span>
-                      <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase ${
-                        ariza.daraja === 'danger' ? 'bg-red-500/10 text-red-400' :
-                        ariza.daraja === 'warning' ? 'bg-amber-500/10 text-amber-400' :
-                        'bg-blue-500/10 text-blue-400'
-                      }`}>
-                        {ariza.daraja}
-                      </span>
-                    </div>
-                    <p className="text-xs sm:text-sm font-bold text-white line-clamp-2">{ariza.matn}</p>
-                  </div>
-                );
-              })}
-              {arizalar.length === 0 && (
-                <div className="text-center py-10 flex flex-col items-center justify-center">
-                  <motion.div
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ repeat: Infinity, duration: 2.5 }}
-                    className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 mb-4"
-                  >
-                    <CheckCircle2 size={32} />
-                  </motion.div>
-                  <p className="text-sm font-black text-white uppercase tracking-wider mb-1">
-                    Ogohlantirishlar mavjud emas
-                  </p>
-                  <p className="text-xs text-gray-400 max-w-[280px] leading-relaxed">
-                    Siz intizom qoidalariga to&apos;liq rioya etyapsiz. Rahmat! 🌟
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* 3. ARIZA TO'LIQ MATNI MODALI */}
-      {mounted && typeof document !== 'undefined' && selectedAriza && createPortal(
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 backdrop-blur-lg p-4" onClick={() => setSelectedAriza(null)}>
-          <div className="bg-[#0b0f19] border border-red-500/20 p-5 sm:p-8 rounded-2xl sm:rounded-[40px] shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-center mb-4 sm:mb-5">
-              <div className="w-14 h-14 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500"><AlertTriangle size={28} /></div>
-            </div>
-            
-            <h3 className="text-center text-xl font-black italic mb-2 uppercase tracking-tight text-white">Intizomiy Ogohlantirish</h3>
-            
-            <div className="space-y-4 my-6 text-center">
-              <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                <p className="text-[9px] font-black text-gray-500 uppercase mb-0.5">Sana</p>
-                <p className="text-xs font-bold text-white">{selectedAriza.sana}</p>
-              </div>
-              <div className="bg-white/5 p-5 rounded-xl border border-white/5 italic text-xs sm:text-sm text-gray-300 leading-relaxed text-left">
-                &quot;{selectedAriza.matn}&quot;
-              </div>
-            </div>
-            
-            <button 
-              onClick={() => setSelectedAriza(null)} 
-              className="w-full py-3.5 bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-500/30 transition-all cursor-pointer"
-            >
-              Yopish
-            </button>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* 4. E'LONLAR MODALI */}
-      {mounted && typeof document !== 'undefined' && selectedElon && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-md p-4" onClick={() => setSelectedElon(null)}>
-          <div className="bg-[#0b0f19] border border-white/5 p-0 rounded-2xl sm:rounded-[40px] shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 sm:p-8 text-white relative">
-              <div className="absolute top-4 sm:top-6 right-4 sm:right-6">
-                <button onClick={() => setSelectedElon(null)} className="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white cursor-pointer"><X size={14} /></button>
-              </div>
-              <span className="text-[9px] font-black bg-white/20 px-3 py-1 rounded-full uppercase tracking-widest mb-2 sm:mb-3 inline-block">
-                {selectedElon.type}
-              </span>
-              <h3 className="text-xl sm:text-3xl font-black italic tracking-tight leading-tight">{selectedElon.title}</h3>
-            </div>
-            
-            <div className="p-5 sm:p-7 space-y-4 sm:space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                  <div className="flex items-center gap-2 text-indigo-400 mb-1">
-                    <User size={14} />
-                    <span className="text-[8px] font-black uppercase">Mas&apos;ul</span>
-                  </div>
-                  <p className="text-xs font-bold text-white">{selectedElon.teacher}</p>
-                </div>
-                <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                  <div className="flex items-center gap-2 text-indigo-400 mb-1">
-                    <MapPin size={14} />
-                    <span className="text-[8px] font-black uppercase">Joy</span>
-                  </div>
-                  <p className="text-xs font-bold text-white">{selectedElon.room}</p>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Batafsil ma&apos;lumot</p>
-                <p className="text-xs sm:text-sm text-gray-300 leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5 italic">
-                  &quot;{selectedElon.desc}&quot;
-                </p>
-              </div>
-              
-              <button 
-                onClick={() => setSelectedElon(null)} 
-                className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all text-white cursor-pointer"
-              >
-                Tushunarli
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <WarningsModal
+        open={showArizalar}
+        onClose={() => setShowArizalar(false)}
+        items={arizalar}
+        onSelect={setSelectedAriza}
+      />
+      <WarningDetailModal ariza={selectedAriza} onClose={() => setSelectedAriza(null)} />
+      <AnnouncementModal elon={selectedElon} onClose={() => setSelectedElon(null)} />
 
       {/* Floating AI assistant (self-contained: own state + /api/ai/chat) */}
       <AiAssistant isLight={isLight} />

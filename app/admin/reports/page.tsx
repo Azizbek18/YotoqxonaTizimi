@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { downloadXlsx } from '@/lib/spreadsheet-export'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { adminUI, adminChart } from '@/lib/admin-ui'
 import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import {
@@ -45,9 +46,9 @@ export default function AdminReportsPage() {
         approvedApps: 0,
     })
     const [roleData, setRoleData] = useState([
-        { name: 'Talabalar', value: 0, color: '#3b82f6' },
-        { name: 'Tarbiyachilar', value: 0, color: '#10b981' },
-        { name: 'Adminlar', value: 0, color: '#ef4444' },
+        { name: 'Talabalar', value: 0, color: adminChart.series[0] },
+        { name: 'Tarbiyachilar', value: 0, color: adminChart.series[1] },
+        { name: 'Adminlar', value: 0, color: adminChart.series[3] },
     ])
     const [monthlyData, setMonthlyData] = useState<MonthlyChartRow[]>([])
     const [loading, setLoading] = useState(true)
@@ -72,9 +73,9 @@ export default function AdminReportsPage() {
                 })
 
                 setRoleData([
-                    { name: 'Talabalar', value: dashboard.roleCounts.students, color: '#3b82f6' },
-                    { name: 'Tarbiyachilar', value: dashboard.roleCounts.educators, color: '#10b981' },
-                    { name: 'Adminlar', value: dashboard.roleCounts.admins, color: '#ef4444' },
+                    { name: 'Talabalar', value: dashboard.roleCounts.students, color: adminChart.series[0] },
+                    { name: 'Tarbiyachilar', value: dashboard.roleCounts.educators, color: adminChart.series[1] },
+                    { name: 'Adminlar', value: dashboard.roleCounts.admins, color: adminChart.series[3] },
                 ])
 
                 // Fetch real monthly statistics
@@ -328,74 +329,52 @@ export default function AdminReportsPage() {
     if (!mounted) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
-                <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
             </div>
         )
     }
+
+    const ui = adminUI(isLight)
 
     return (
         <div>
             {/* Header */}
             <div className="flex items-start justify-between mb-8">
                 <div>
-                    <h1 className={`text-3xl sm:text-4xl font-black tracking-tighter flex items-center gap-2 ${
-                        isLight ? 'text-slate-800' : 'text-white'
-                    }`}>
-                        <BarChart3 size={32} />
+                    <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-3 ${ui.strong}`}>
+                        <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${ui.accentTile}`}>
+                            <BarChart3 size={24} strokeWidth={2.4} />
+                        </span>
                         Hisobotlar va Tahlil
                     </h1>
-                    <p className={`${isLight ? 'text-slate-500' : 'text-slate-400'} mt-2`}>Tizim statistikasi va analitikasi</p>
+                    <p className={`${ui.muted} mt-2`}>Tizim statistikasi va analitikasi</p>
                 </div>
             </div>
 
             {/* Key Metrics */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 {[
-                    {
-                        label: 'Jami Foydalanuvchilar',
-                        value: stats.totalUsers,
-                        icon: Users,
-                        color: 'from-blue-500 to-indigo-600',
-                    },
-                    {
-                        label: 'Jami Arizalar',
-                        value: stats.totalApplications,
-                        icon: FileText,
-                        color: 'from-purple-500 to-pink-600',
-                    },
-                    {
-                        label: 'Talabalar',
-                        value: stats.totalStudents,
-                        icon: TrendingUp,
-                        color: 'from-green-500 to-emerald-600',
-                    },
-                    {
-                        label: 'Tasdiqlangan',
-                        value: stats.approvedApps,
-                        icon: FileText,
-                        color: 'from-orange-500 to-amber-600',
-                    },
+                    { label: 'Jami Foydalanuvchilar', value: stats.totalUsers, icon: Users },
+                    { label: 'Jami Arizalar', value: stats.totalApplications, icon: FileText },
+                    { label: 'Talabalar', value: stats.totalStudents, icon: TrendingUp },
+                    { label: 'Tasdiqlangan', value: stats.approvedApps, icon: FileText },
                 ].map((item, idx) => {
                     const Icon = item.icon
                     return (
                         <motion.div
                             key={idx}
-                            initial={{ opacity: 0, y: 20 }}
+                            initial={{ opacity: 0, y: 16 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.1 }}
-                            className={`backdrop-blur-xl border rounded-2xl p-6 ${
-                                isLight 
-                                    ? 'bg-white border-slate-200/80 shadow-md shadow-slate-100' 
-                                    : 'bg-[#0b1120]/50 border-white/10'
-                            }`}
+                            transition={{ delay: idx * 0.08 }}
+                            className={`rounded-2xl border p-6 ${ui.card} ${ui.hoverLift}`}
                         >
                             <div className="flex items-start justify-between">
                                 <div>
-                                    <p className={`text-sm font-medium mb-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{item.label}</p>
-                                    <p className={`text-4xl font-black ${isLight ? 'text-slate-800' : 'text-white'}`}>{loading ? '...' : item.value}</p>
+                                    <p className={`text-[11px] font-bold uppercase tracking-wider mb-2 ${ui.muted}`}>{item.label}</p>
+                                    <p className={`text-3xl sm:text-4xl font-extrabold ${ui.strong}`}>{loading ? '—' : item.value}</p>
                                 </div>
-                                <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center text-white`}>
-                                    <Icon size={24} />
+                                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${ui.accentTile}`}>
+                                    <Icon size={24} strokeWidth={2.4} />
                                 </div>
                             </div>
                         </motion.div>
@@ -409,13 +388,9 @@ export default function AdminReportsPage() {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`backdrop-blur-xl border rounded-2xl p-6 ${
-                        isLight 
-                            ? 'bg-white border-slate-200/80 shadow-md shadow-slate-100' 
-                            : 'bg-[#0b1120]/50 border-white/10'
-                    }`}
+                    className={`border rounded-2xl p-6 ${ui.card}`}
                 >
-                    <h3 className={`text-lg font-black mb-4 ${isLight ? 'text-slate-800' : 'text-white'}`}>Oylik Dinamika</h3>
+                    <h3 className={`text-lg font-bold mb-4 ${ui.strong}`}>Oylik Dinamika</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <LineChart data={monthlyData}>
                             <CartesianGrid strokeDasharray="3 3" stroke={isLight ? '#f1f5f9' : 'rgba(255,255,255,0.1)'} />
@@ -429,8 +404,8 @@ export default function AdminReportsPage() {
                                     color: isLight ? '#0f172a' : '#ffffff'
                                 }}
                             />
-                            <Line type="monotone" dataKey="students" stroke="#3b82f6" strokeWidth={2} name="Talabalar" />
-                            <Line type="monotone" dataKey="applications" stroke="#a855f7" strokeWidth={2} name="Arizalar" />
+                            <Line type="monotone" dataKey="students" stroke={adminChart.primary} strokeWidth={2} name="Talabalar" />
+                            <Line type="monotone" dataKey="applications" stroke={adminChart.primarySoft} strokeWidth={2} name="Arizalar" />
                             <Line type="monotone" dataKey="approved" stroke="#10b981" strokeWidth={2} name="Tasdiqlangan" />
                         </LineChart>
                     </ResponsiveContainer>
@@ -441,13 +416,9 @@ export default function AdminReportsPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className={`backdrop-blur-xl border rounded-2xl p-6 ${
-                        isLight 
-                            ? 'bg-white border-slate-200/80 shadow-md shadow-slate-100' 
-                            : 'bg-[#0b1120]/50 border-white/10'
-                    }`}
+                    className={`border rounded-2xl p-6 ${ui.card}`}
                 >
-                    <h3 className={`text-lg font-black mb-4 ${isLight ? 'text-slate-800' : 'text-white'}`}>Rol bo&apos;yicha Taqsimot</h3>
+                    <h3 className={`text-lg font-bold mb-4 ${ui.strong}`}>Rol bo&apos;yicha Taqsimot</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                             <Pie
@@ -495,13 +466,9 @@ export default function AdminReportsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className={`backdrop-blur-xl border rounded-2xl p-6 mb-8 ${
-                    isLight 
-                        ? 'bg-white border-slate-200/80 shadow-md shadow-slate-100' 
-                        : 'bg-[#0b1120]/50 border-white/10'
-                }`}
+                className={`border rounded-2xl p-6 mb-8 ${ui.card}`}
             >
-                <h3 className={`text-lg font-black mb-4 ${isLight ? 'text-slate-800' : 'text-white'}`}>Qabul va Rad etishlar</h3>
+                <h3 className={`text-lg font-bold mb-4 ${ui.strong}`}>Qabul va Rad etishlar</h3>
                 <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={monthlyData}>
                         <CartesianGrid strokeDasharray="3 3" stroke={isLight ? '#f1f5f9' : 'rgba(255,255,255,0.1)'} />
@@ -515,7 +482,7 @@ export default function AdminReportsPage() {
                                 color: isLight ? '#0f172a' : '#ffffff'
                             }}
                         />
-                        <Bar dataKey="applications" fill="#a855f7" name="Arizalar" />
+                        <Bar dataKey="applications" fill={adminChart.primary} name="Arizalar" />
                         <Bar dataKey="approved" fill="#10b981" name="Tasdiqlangan" />
                     </BarChart>
                 </ResponsiveContainer>
@@ -526,13 +493,9 @@ export default function AdminReportsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className={`backdrop-blur-xl border rounded-2xl p-6 ${
-                    isLight 
-                        ? 'bg-white border-slate-200/80 shadow-md shadow-slate-100' 
-                        : 'bg-[#0b1120]/50 border-white/10'
-                }`}
+                className={`border rounded-2xl p-6 ${ui.card}`}
             >
-                <h3 className={`text-lg font-black mb-4 ${isLight ? 'text-slate-800' : 'text-white'}`}>Eksport Qilish</h3>
+                <h3 className={`text-lg font-bold mb-4 ${ui.strong}`}>Eksport Qilish</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <button
                         onClick={exportToPDF}
@@ -542,7 +505,7 @@ export default function AdminReportsPage() {
                                 : 'bg-white/5 hover:bg-white/10 border-white/10'
                         }`}
                     >
-                        <Download size={20} className="text-blue-400" />
+                        <Download size={20} className="text-indigo-500" />
                         <div className="text-left">
                             <p className={`text-sm font-semibold ${isLight ? 'text-slate-800' : 'text-white'}`}>PDF Eksport</p>
                             <p className="text-xs text-slate-400">Chop etish yoki ko&apos;rsatish uchun jadval</p>
@@ -556,7 +519,7 @@ export default function AdminReportsPage() {
                                 : 'bg-white/5 hover:bg-white/10 border-white/10'
                         }`}
                     >
-                        <Download size={20} className="text-green-400" />
+                        <Download size={20} className="text-indigo-500" />
                         <div className="text-left">
                             <p className={`text-sm font-semibold ${isLight ? 'text-slate-800' : 'text-white'}`}>Excel Eksport</p>
                             <p className="text-xs text-slate-400">Xona bo&apos;yicha guruhlangan, batafsil jadval</p>
@@ -570,7 +533,7 @@ export default function AdminReportsPage() {
                                 : 'bg-white/5 hover:bg-white/10 border-white/10'
                         }`}
                     >
-                        <Download size={20} className="text-purple-400" />
+                        <Download size={20} className="text-indigo-500" />
                         <div className="text-left">
                             <p className={`text-sm font-semibold ${isLight ? 'text-slate-800' : 'text-white'}`}>CSV Eksport</p>
                             <p className="text-xs text-slate-400">Boshqa dastur/tizimga import qilish uchun xom ma&apos;lumot</p>

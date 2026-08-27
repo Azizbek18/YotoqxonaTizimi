@@ -7,6 +7,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchStaffAccounts, createStaffAccount } from '@/features/staff-accounts/client/api'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
+import { adminUI, adminStatusChip, type AdminStatusTone } from '@/lib/admin-ui'
 import type { ManagedStaffRole, StaffAccountRow } from '@/features/staff-accounts/types'
 
 const ROLE_LABELS: Record<ManagedStaffRole, string> = {
@@ -14,9 +15,9 @@ const ROLE_LABELS: Record<ManagedStaffRole, string> = {
   tarbiyachi: 'Tarbiyachi',
 }
 
-const ROLE_COLORS: Record<ManagedStaffRole, string> = {
-  admin: 'bg-red-500/20 text-red-400 border-red-500/30',
-  tarbiyachi: 'bg-green-500/20 text-green-400 border-green-500/30',
+const ROLE_TONE: Record<ManagedStaffRole, AdminStatusTone> = {
+  admin: 'danger',
+  tarbiyachi: 'info',
 }
 
 const initialForm = {
@@ -55,12 +56,11 @@ export default function AdminXodimlarPage() {
     })()
   }, [])
 
-  const cardSurface = isLight ? 'bg-white/80 border-slate-200 shadow-sm' : 'bg-white/[0.03] border-white/10'
-  const textMuted = isLight ? 'text-slate-500' : 'text-slate-400'
-  const textStrong = isLight ? 'text-slate-900' : 'text-white'
-  const inputCls = isLight
-    ? 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-purple-500/50'
-    : 'bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-purple-500/50'
+  const ui = adminUI(isLight)
+  const cardSurface = ui.card
+  const textMuted = ui.muted
+  const textStrong = ui.strong
+  const inputCls = `${ui.input} ${ui.ring}`
 
   const loadStaff = async () => {
     setLoading(true)
@@ -115,10 +115,10 @@ export default function AdminXodimlarPage() {
     <div>
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className={`flex items-center gap-3 text-2xl font-black tracking-tighter sm:text-3xl ${textStrong}`}>
-            <div className="rounded-2xl bg-purple-500/10 p-2 text-purple-400 border border-purple-500/20">
-              <UserCog size={26} />
-            </div>
+          <h1 className={`flex items-center gap-3 text-2xl font-extrabold tracking-tight sm:text-3xl ${textStrong}`}>
+            <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${ui.accentTile}`}>
+              <UserCog size={22} strokeWidth={2.4} />
+            </span>
             Tarbiyachilar
           </h1>
           <p className={`mt-2 text-sm ${textMuted}`}>Tarbiyachi akkauntlarini shu yerdan qo&apos;shing</p>
@@ -127,7 +127,7 @@ export default function AdminXodimlarPage() {
         <div className="flex gap-2">
           <button
             onClick={() => setAddModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-linear-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 px-5 py-3 text-xs font-black uppercase tracking-widest text-white active:scale-[0.98] transition-all"
+            className={`inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold uppercase tracking-widest ${ui.accentSolid}`}
           >
             <UserPlus size={16} />
             Xodim qo&apos;shish
@@ -135,7 +135,7 @@ export default function AdminXodimlarPage() {
           <button
             onClick={loadStaff}
             disabled={loading}
-            className={`inline-flex items-center justify-center p-3 rounded-xl border transition-all disabled:opacity-50 ${isLight ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
+            className={`no-shelf inline-flex items-center justify-center p-3 rounded-xl border transition-all disabled:opacity-50 ${ui.btnGhost}`}
             title="Yangilash"
           >
             <RotateCcw size={16} className={loading ? 'animate-spin' : ''} />
@@ -145,16 +145,15 @@ export default function AdminXodimlarPage() {
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:max-w-xs">
         {[
-          { label: 'Tarbiyachilar', count: staff.filter((s) => s.role === 'tarbiyachi').length, color: 'from-green-500 to-emerald-600', icon: UserCog },
+          { label: 'Tarbiyachilar', count: staff.filter((s) => s.role === 'tarbiyachi').length, icon: UserCog },
         ].map((stat) => (
-          <div key={stat.label} className={`relative overflow-hidden flex items-center gap-3 rounded-2xl border p-4 pt-5 ${cardSurface}`}>
-            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${stat.color}`} />
-            <div className={`h-11 w-11 shrink-0 rounded-xl bg-gradient-to-tr ${stat.color} flex items-center justify-center text-white shadow-lg`}>
-              <stat.icon size={19} strokeWidth={2.2} />
+          <div key={stat.label} className={`flex items-center gap-3 rounded-2xl border p-4 ${cardSurface}`}>
+            <div className={`h-11 w-11 shrink-0 rounded-xl flex items-center justify-center ${ui.accentTile}`}>
+              <stat.icon size={19} strokeWidth={2.3} />
             </div>
             <div>
-              <p className={`text-[9px] font-black uppercase tracking-wider ${textMuted}`}>{stat.label}</p>
-              <p className={`text-lg font-black leading-none mt-0.5 ${textStrong}`}>{stat.count}</p>
+              <p className={`text-[9px] font-extrabold uppercase tracking-wider ${textMuted}`}>{stat.label}</p>
+              <p className={`text-lg font-extrabold leading-none mt-0.5 ${textStrong}`}>{stat.count}</p>
             </div>
           </div>
         ))}
@@ -163,7 +162,7 @@ export default function AdminXodimlarPage() {
       <div className={`rounded-2xl border p-2 sm:p-4 ${cardSurface}`}>
         {loading ? (
           <div className="flex items-center justify-center p-10">
-            <div className={`animate-spin rounded-full h-7 w-7 border-t-2 ${isLight ? 'border-purple-600' : 'border-purple-400'}`} />
+            <div className="animate-spin rounded-full h-7 w-7 border-2 border-indigo-500 border-t-transparent" />
           </div>
         ) : staff.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-10 text-center">
@@ -177,18 +176,16 @@ export default function AdminXodimlarPage() {
             {staff.map((row) => (
               <div
                 key={row.id}
-                className={`flex flex-col gap-3 rounded-xl border p-4 transition-all sm:flex-row sm:items-center sm:justify-between ${isLight ? 'border-slate-200 bg-slate-50/60 hover:border-slate-300' : 'border-white/5 bg-white/[0.02] hover:border-white/10'}`}
+                className={`flex flex-col gap-3 rounded-xl border p-4 transition-colors sm:flex-row sm:items-center sm:justify-between ${ui.inset}`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={`hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black ${
-                    row.role === 'admin' ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'
-                  }`}>
+                  <div className={`hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold ${adminStatusChip(ROLE_TONE[row.role], isLight).chip}`}>
                     {row.full_name.trim().charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className={`truncate text-sm font-bold ${textStrong}`}>{row.full_name}</p>
-                      <span className={`rounded-full border px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${ROLE_COLORS[row.role]}`}>
+                      <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest ${adminStatusChip(ROLE_TONE[row.role], isLight).chip}`}>
                         {ROLE_LABELS[row.role]}
                       </span>
                     </div>
@@ -222,7 +219,7 @@ export default function AdminXodimlarPage() {
           {/* Only tarbiyachi accounts can be created here — see
               features/staff-accounts/server/service.ts for why this
               creation flow is admin-only. */}
-          <div className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-green-500 to-emerald-600 text-white`}>
+          <div className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-extrabold uppercase tracking-wider ${ui.accentSoft} ${ui.accentBorder} border`}>
             <UserCog size={14} /> Tarbiyachi
           </div>
 
@@ -292,7 +289,7 @@ export default function AdminXodimlarPage() {
           <button
             type="submit"
             disabled={creating}
-            className="w-full h-11 rounded-xl bg-linear-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white font-black uppercase tracking-widest text-[10px] transition-all disabled:opacity-50 active:scale-95"
+            className={`w-full h-11 rounded-xl uppercase tracking-widest text-[10px] ${ui.accentSolid}`}
           >
             {creating ? 'Yaratilmoqda...' : "Xodim yaratish"}
           </button>

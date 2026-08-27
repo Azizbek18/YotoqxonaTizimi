@@ -25,6 +25,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
+import { adminUI, adminStatusChip, type AdminStatusTone } from '@/lib/admin-ui'
 
 type ElonType = 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish'
 
@@ -43,11 +44,11 @@ interface Elon {
 const TYPE_OPTIONS: ElonType[] = ['Yangilik', 'Muhim', 'Tadbir', 'Ogohlantirish']
 const FACULTY_OPTIONS = ['Matematika', 'Fizika', 'Iqtisodiyot', 'Dasturiy Injiniring', 'Amaliy Matematika']
 
-const typeClass: Record<ElonType, string> = {
-  Yangilik: 'border-blue-400/30 bg-blue-500/10 text-blue-400',
-  Muhim: 'border-red-400/30 bg-red-500/10 text-red-400',
-  Tadbir: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-400',
-  Ogohlantirish: 'border-amber-400/30 bg-amber-500/10 text-amber-400',
+const typeTone: Record<ElonType, AdminStatusTone> = {
+  Yangilik: 'neutral',
+  Muhim: 'danger',
+  Tadbir: 'info',
+  Ogohlantirish: 'warning',
 }
 
 const typeIcons: Record<ElonType, React.ReactNode> = {
@@ -291,24 +292,25 @@ export default function AdminElonlarPage() {
   }
 
   // Theme styles
-  const surfaceBg = isLight ? 'bg-white/80 border-slate-200/80 shadow-sm' : 'bg-[#0f172a]/40 border-white/5 shadow-2xl backdrop-blur-xl'
-  const cardBg = isLight ? 'bg-white border-slate-200/60 shadow-xs hover:border-purple-300' : 'bg-[#1e293b]/40 border-white/5 hover:border-purple-500/20 hover:bg-[#1e293b]/60'
-  const textMuted = isLight ? 'text-slate-500' : 'text-slate-400'
-  const textStrong = isLight ? 'text-slate-900' : 'text-white'
-  const textBody = isLight ? 'text-slate-600' : 'text-slate-300'
-  const inputBg = isLight ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-purple-500/50' : 'bg-slate-950/40 border-white/10 text-white placeholder-slate-500 focus:bg-slate-950/60 focus:border-purple-500/50'
-  const modalBg = isLight ? 'bg-white border-slate-200 shadow-2xl' : 'bg-[#0f172a] border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)]'
-  const borderCol = isLight ? 'border-slate-200' : 'border-white/10'
+  const ui = adminUI(isLight)
+  const surfaceBg = ui.card
+  const cardBg = `${ui.card} ${ui.hoverLift}`
+  const textMuted = ui.muted
+  const textStrong = ui.strong
+  const textBody = ui.body
+  const inputBg = `${ui.input} ${ui.ring}`
+  const modalBg = isLight ? 'bg-white border-slate-200 shadow-2xl' : 'bg-slate-900 border-slate-800 shadow-[0_0_50px_rgba(0,0,0,0.8)]'
+  const borderCol = ui.border
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto px-1">
       {/* Header section with Stats */}
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className={`flex items-center gap-3 text-3xl font-black tracking-tight sm:text-4xl ${textStrong}`}>
-            <div className="rounded-2xl bg-purple-500/10 p-2.5 text-purple-400 border border-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.15)]">
-              <Megaphone size={28} />
-            </div>
+          <h1 className={`flex items-center gap-3 text-2xl font-extrabold tracking-tight sm:text-3xl ${textStrong}`}>
+            <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${ui.accentTile}`}>
+              <Megaphone size={24} strokeWidth={2.4} />
+            </span>
             E&apos;lonlar boshqaruvi
           </h1>
           <p className={`mt-2 text-sm ${textMuted}`}>Tizimdagi barcha yangiliklar, tadbirlar va muhim bildirishnomalarni boshqarish</p>
@@ -318,9 +320,7 @@ export default function AdminElonlarPage() {
           <button
             onClick={loadElonlar}
             disabled={loading}
-            className={`inline-flex items-center justify-center p-3 rounded-xl border transition-all ${
-              isLight ? 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600' : 'border-white/10 bg-white/5 hover:bg-white/10 text-slate-300'
-            } disabled:opacity-50`}
+            className={`no-shelf inline-flex items-center justify-center p-3 rounded-xl border transition-all disabled:opacity-50 ${ui.btnGhost}`}
             title="Yangilash"
           >
             <motion.div
@@ -336,7 +336,7 @@ export default function AdminElonlarPage() {
               setEditingElon(null)
               setIsModalOpen(true)
             }}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 px-4 py-3 text-sm font-bold text-white transition-all active:scale-95 cursor-pointer"
+            className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm ${ui.accentSolid}`}
           >
             <Plus size={18} />
             Yangi e&apos;lon
@@ -347,44 +347,24 @@ export default function AdminElonlarPage() {
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          {
-            title: "Jami e'lonlar",
-            value: stats.total,
-            icon: <Megaphone className="text-purple-400" size={20} />,
-            color: 'from-purple-500/10 to-indigo-500/10 border-purple-500/20 text-purple-400',
-          },
-          {
-            title: 'Chop etilganlar',
-            value: stats.published,
-            icon: <CheckCircle className="text-emerald-400" size={20} />,
-            color: 'from-emerald-500/10 to-teal-500/10 border-emerald-500/20 text-emerald-400',
-          },
-          {
-            title: 'Qoralamalar',
-            value: stats.drafts,
-            icon: <FileText className="text-slate-400" size={20} />,
-            color: 'from-slate-500/10 to-zinc-500/10 border-slate-500/20 text-slate-400',
-          },
-          {
-            title: 'Muhimlar',
-            value: stats.urgent,
-            icon: <AlertTriangle className="text-amber-400" size={20} />,
-            color: 'from-amber-500/10 to-rose-500/10 border-amber-500/20 text-amber-400',
-          },
-        ].map((item, index) => (
-          <div
-            key={index}
-            className={`rounded-2xl border p-3 sm:p-5 bg-gradient-to-br ${item.color} backdrop-blur-md flex items-center justify-between gap-2 shadow-xs`}
-          >
-            <div className="min-w-0">
-              <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider break-words ${textMuted}`}>{item.title}</p>
-              <h3 className={`mt-1 sm:mt-2 text-xl sm:text-2xl font-black ${textStrong}`}>{item.value}</h3>
+          { title: "Jami e'lonlar", value: stats.total, icon: Megaphone },
+          { title: 'Chop etilganlar', value: stats.published, icon: CheckCircle },
+          { title: 'Qoralamalar', value: stats.drafts, icon: FileText },
+          { title: 'Muhimlar', value: stats.urgent, icon: AlertTriangle },
+        ].map((item, index) => {
+          const Icon = item.icon
+          return (
+            <div key={index} className={`rounded-2xl border p-3 sm:p-5 flex items-center justify-between gap-2 ${ui.card} ${ui.hoverLift}`}>
+              <div className="min-w-0">
+                <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider break-words ${textMuted}`}>{item.title}</p>
+                <h3 className={`mt-1 sm:mt-2 text-xl sm:text-2xl font-extrabold ${textStrong}`}>{item.value}</h3>
+              </div>
+              <div className={`shrink-0 flex h-10 w-10 items-center justify-center rounded-xl ${ui.accentTileSoft}`}>
+                <Icon size={20} strokeWidth={2.4} />
+              </div>
             </div>
-            <div className={`shrink-0 p-2 sm:p-3 rounded-xl bg-white/5 border border-white/10`}>
-              {item.icon}
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Toolbar & Filters */}
@@ -410,7 +390,7 @@ export default function AdminElonlarPage() {
           {/* Filtering controls */}
           <div className="flex flex-wrap items-center gap-3">
             {/* Status Pills */}
-            <div className={`flex w-full sm:w-auto rounded-full p-1 border ${borderCol} bg-slate-950/20`}>
+            <div className={`flex w-full sm:w-auto rounded-full p-1 border ${ui.inset}`}>
               {([
                 { id: 'all', label: 'Barchasi' },
                 { id: 'published', label: 'Faol' },
@@ -421,7 +401,7 @@ export default function AdminElonlarPage() {
                   onClick={() => setStatusFilter(tab.id)}
                   className={`flex-1 sm:flex-none rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
                     statusFilter === tab.id
-                      ? 'bg-purple-600 text-white shadow-xs'
+                      ? 'bg-indigo-600 text-white shadow-[0_2px_0_0_#3730a3]'
                       : `text-slate-400 hover:${textStrong}`
                   }`}
                 >
@@ -463,11 +443,11 @@ export default function AdminElonlarPage() {
 
       {/* Announcements List */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-20 border border-dashed rounded-3xl border-purple-500/10">
+        <div className="flex flex-col items-center justify-center p-20 border border-dashed rounded-3xl border-indigo-500/15">
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-            className="text-purple-500 mb-4"
+            className="text-indigo-500 mb-4"
           >
             <RefreshCw size={36} />
           </motion.div>
@@ -495,17 +475,13 @@ export default function AdminElonlarPage() {
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Category tag */}
-                    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${typeClass[elon.type]}`}>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${adminStatusChip(typeTone[elon.type], isLight).chip}`}>
                       {typeIcons[elon.type]}
                       {elon.type}
                     </span>
 
                     {/* Target tag */}
-                    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
-                      elon.audience === 'faculty'
-                        ? 'border-purple-500/30 bg-purple-500/10 text-purple-400'
-                        : 'border-sky-500/30 bg-sky-500/10 text-sky-400'
-                    }`}>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${isLight ? 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200' : 'bg-slate-800 text-slate-300 ring-1 ring-inset ring-slate-700'}`}>
                       {elon.audience === 'faculty' ? <School size={10} /> : <Globe size={10} />}
                       {elon.audience === 'faculty' ? elon.faculty : 'Barchaga'}
                     </span>
@@ -513,15 +489,15 @@ export default function AdminElonlarPage() {
 
                   {/* Status indicator */}
                   <div className="flex items-center gap-1.5">
-                    <span className={`h-2 w-2 rounded-full ${elon.is_published ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`} />
-                    <span className={`text-[10px] font-bold uppercase tracking-wider ${elon.is_published ? 'text-emerald-400' : textMuted}`}>
+                    <span className={`h-2 w-2 rounded-full ${elon.is_published ? adminStatusChip('success', isLight).dot : 'bg-slate-400'}`} />
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${elon.is_published ? adminStatusChip('success', isLight).text : textMuted}`}>
                       {elon.is_published ? 'Faol' : 'Qoralama'}
                     </span>
                   </div>
                 </div>
 
                 {/* Title and body */}
-                <h3 className={`text-lg font-bold group-hover:text-purple-400 transition-colors line-clamp-2 ${textStrong}`}>
+                <h3 className={`text-lg font-bold group-hover:text-indigo-500 transition-colors line-clamp-2 ${textStrong}`}>
                   {elon.title}
                 </h3>
                 <p className={`mt-3 text-sm leading-relaxed whitespace-pre-line line-clamp-5 ${textBody}`}>
@@ -619,9 +595,9 @@ export default function AdminElonlarPage() {
               className={`relative z-10 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl border overflow-hidden ${modalBg}`}
             >
               {/* Header */}
-              <div className="flex items-center justify-between border-b p-6 pb-4 shrink-0 border-white/5">
+              <div className="flex items-center justify-between border-b p-6 pb-4 shrink-0 border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-xl bg-purple-500/10 p-2 text-purple-400 border border-purple-500/20">
+                  <div className="rounded-xl bg-indigo-500/10 p-2 text-indigo-400 border border-indigo-500/20">
                     {editingElon ? <Edit3 size={20} /> : <Plus size={20} />}
                   </div>
                   <div>
@@ -683,7 +659,7 @@ export default function AdminElonlarPage() {
                         onClick={() => setForm((current) => ({ ...current, audience: 'all', faculty: '' }))}
                         className={`rounded-xl border py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${
                           form.audience === 'all'
-                            ? 'border-purple-600 bg-purple-600 text-white'
+                            ? 'border-indigo-600 bg-indigo-600 text-white'
                             : isLight
                               ? 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                               : 'border-white/5 bg-white/5 text-slate-400 hover:bg-white/10'
@@ -696,7 +672,7 @@ export default function AdminElonlarPage() {
                         onClick={() => setForm((current) => ({ ...current, audience: 'faculty', faculty: current.faculty || FACULTY_OPTIONS[0] }))}
                         className={`rounded-xl border py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${
                           form.audience === 'faculty'
-                            ? 'border-purple-600 bg-purple-600 text-white'
+                            ? 'border-indigo-600 bg-indigo-600 text-white'
                             : isLight
                               ? 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                               : 'border-white/5 bg-white/5 text-slate-400 hover:bg-white/10'
@@ -750,12 +726,12 @@ export default function AdminElonlarPage() {
                     type="checkbox"
                     checked={form.is_published}
                     onChange={(event) => setForm((current) => ({ ...current, is_published: event.target.checked }))}
-                    className="h-5 w-5 rounded-lg accent-purple-600 cursor-pointer"
+                    className="h-5 w-5 rounded-lg accent-indigo-600 cursor-pointer"
                   />
                 </label>
 
                 {/* Submit / Cancel Buttons */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-4 border-t border-white/5">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                   <button
                     type="button"
                     onClick={() => {
@@ -772,7 +748,7 @@ export default function AdminElonlarPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition disabled:cursor-not-allowed disabled:opacity-60 active:scale-95 cursor-pointer"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition disabled:cursor-not-allowed disabled:opacity-60 active:scale-95 cursor-pointer"
                   >
                     <Send size={14} />
                     {submitting ? 'Saqlanmoqda...' : editingElon ? 'Saqlash' : 'Nashr qilish'}

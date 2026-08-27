@@ -18,7 +18,6 @@ import {
   Bell,
   Building2,
   Settings,
-  Sparkles,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -27,6 +26,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { useDekanScope } from '@/lib/hooks/useDekanScope'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
 import { fetchDekanOverview } from '@/features/permits/client/admin-api'
+import { getSafeSession } from '@/lib/auth-session'
 import { directionLabel } from '@/lib/directions'
 import { supabase } from '@/lib/supabase'
 
@@ -58,6 +58,7 @@ export default function DekanLayout({
 
   useEffect(() => {
     if (!facultyResolved) return
+    let active = true
 
     async function fetchPendingPermits() {
       if (!dekanFaculty) {
@@ -66,8 +67,17 @@ export default function DekanLayout({
         return
       }
 
+      // The layout can sit open in a tab long after the session expires —
+      // the 15s poll would otherwise hit /api/dekan/overview unauthenticated
+      // forever, spamming the console with "Autentifikatsiya talab
+      // qilinadi". Check for a live session first and quietly skip the tick
+      // if there isn't one, same as admin/layout.tsx's payment poll.
+      const session = await getSafeSession()
+      if (!session || !active) return
+
       try {
         const { dashboard } = await fetchDekanOverview()
+        if (!active) return
         setPendingCount(dashboard.pendingCount)
         setRecentPending(dashboard.recentRequests.map((request) => ({
           id: request.id,
@@ -75,13 +85,16 @@ export default function DekanLayout({
           direction: request.direction,
           created_at: request.created_at,
         })))
-      } catch (err) {
-        console.error('Error fetching pending permits count:', err)
+      } catch {
+        // Silently swallow unauthenticated background polling errors
       }
     }
     fetchPendingPermits()
     const interval = setInterval(fetchPendingPermits, 15000)
-    return () => clearInterval(interval)
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
   }, [facultyResolved, dekanFaculty])
 
   useEffect(() => {
@@ -224,13 +237,7 @@ export default function DekanLayout({
 
           {!compact && (
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-[0_2px_8px_rgba(99,102,241,0.35)]">
-                  <Sparkles size={10} className="text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
-                  DEKAN
-                </span>
-              </div>
-              <h2 className={`text-xs font-black tracking-tight leading-snug mt-1 truncate ${strongText}`} title={dekanName || 'Dekan'}>
+              <h2 className={`text-xs font-black tracking-tight leading-snug truncate ${strongText}`} title={dekanName || 'Dekan'}>
                 {dekanName || 'Dekan Boshqaruvi'}
               </h2>
               <p className={`text-[10px] font-semibold truncate ${mutedText}`} title={dekanFaculty || 'Fakultet'}>
@@ -342,18 +349,6 @@ export default function DekanLayout({
       }`}>
         {!compact ? (
           <>
-            {/* Live System Beacon */}
-            <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                </span>
-                <span>Tizim holati</span>
-              </div>
-              <span className="font-extrabold uppercase tracking-wider text-[9px]">Onlayn</span>
-            </div>
-
             <div className={`flex items-center justify-between gap-2 rounded-2xl px-3.5 py-2 border transition-all ${
               isLight ? 'bg-white/80 border-slate-200/80 shadow-xs' : 'bg-white/[0.04] border-white/[0.08]'
             }`}>

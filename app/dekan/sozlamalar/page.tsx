@@ -131,8 +131,8 @@ export default function DekanSozlamalarPage() {
             className={`rounded-2xl border overflow-hidden ${ui.card}`}
         >
             <div className={`flex items-center gap-3 border-b p-4 sm:px-6 ${ui.border}`}>
-                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${ui.accentSoft}`}>
-                    <Icon size={18} />
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${ui.accentTile}`}>
+                    <Icon size={18} strokeWidth={2.2} />
                 </div>
                 <h2 className={`text-sm font-bold ${ui.strong}`}>{title}</h2>
             </div>

@@ -459,11 +459,11 @@ export default function DekanReportsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${ui.accentSoft}`}>
-                <Users size={18} />
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${ui.accentTile}`}>
+                <Users size={18} strokeWidth={2.2} />
               </div>
               <div>
-                <p className={`text-2xl font-bold leading-none ${ui.strong}`}>{loading ? '...' : filteredStudents.length}</p>
+                <p className={`text-2xl font-bold leading-none tracking-tight ${ui.strong}`}>{loading ? '...' : filteredStudents.length}</p>
                 <p className={`mt-1 text-[10px] font-semibold uppercase tracking-wider ${ui.muted}`}>
                   Tanlangan talaba (jami {students.length})
                   {selectedRoomlessCount > 0 && ` • ${selectedRoomlessCount} tasi xonasiz`}

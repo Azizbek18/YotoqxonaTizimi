@@ -102,7 +102,6 @@ export default function DekanDashboard() {
     return () => clearInterval(interval)
   }, [facultyResolved, dekanFaculty])
 
-  // Capacity calculations
   const totalBedsCapacity = 600 // 150 rooms * 4 beds
   const freeBeds = Math.max(0, totalBedsCapacity - stats.totalOccupiedBeds)
   const occupancyRate = totalBedsCapacity > 0 ? Math.round((stats.totalOccupiedBeds / totalBedsCapacity) * 100) : 0
@@ -155,28 +154,37 @@ export default function DekanDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-        <div>
-          <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${ui.strong}`}>
-            Umumiy hisobot
-          </h1>
-          <p className={`text-xs sm:text-sm mt-1 ${ui.muted}`}>
-            {dekanFaculty
-              ? `${dekanFaculty.toUpperCase()} fakulteti bo'yicha yo'llanmalar va joylashtirish holati`
-              : "Talabalar oqimi, yo'llanmalar va xonalar taqsimoti"}
-          </p>
+      {/* Hero */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 p-6 sm:p-8"
+      >
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_100%_0%,rgba(255,255,255,0.12),transparent_45%)]" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white backdrop-blur-sm">
+              Umumiy hisobot
+            </span>
+            <h1 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight text-white">
+              {dekanFaculty ? `${dekanFaculty.toUpperCase()} fakulteti` : 'Yotoqxona boshqaruvi'}
+            </h1>
+            <p className="mt-1.5 max-w-xl text-xs sm:text-sm leading-relaxed text-indigo-100">
+              Yo&apos;llanmalar ko&apos;rib chiqilishi, talabalar oqimi va xonalar taqsimotini shu yerdan boshqaring.
+            </p>
+          </div>
+          <button
+            onClick={() => loadData(dekanFaculty)}
+            className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-white/95 px-4 py-2.5 text-xs font-bold text-indigo-700 shadow-lg shadow-black/10 transition-transform hover:bg-white active:scale-95"
+          >
+            <RefreshCw size={14} /> Yangilash
+          </button>
         </div>
-        <button
-          onClick={() => loadData(dekanFaculty)}
-          className={`shrink-0 inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition-colors ${ui.btnGhost}`}
-        >
-          <RefreshCw size={14} /> Yangilash
-        </button>
-      </div>
+      </motion.div>
 
       {facultyResolved && !dekanFaculty && (
-        <div className={`flex items-start gap-2 rounded-xl border p-4 text-xs font-medium ${
+        <div className={`flex items-start gap-2 rounded-2xl border p-4 text-xs font-medium ${
           isLight ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-amber-500/25 bg-amber-500/10 text-amber-200'
         }`}>
           <AlertTriangle size={16} className="shrink-0 mt-0.5" />
@@ -191,26 +199,28 @@ export default function DekanDashboard() {
         {statCards.map((card, idx) => (
           <motion.div
             key={idx}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.04, duration: 0.2 }}
-            className={`group rounded-xl border p-5 transition-colors ${ui.card} hover:border-indigo-400/50`}
+            transition={{ delay: idx * 0.05, duration: 0.25 }}
           >
-            <div className="flex items-start justify-between">
-              <div className="min-w-0">
-                <p className={`text-[10px] font-semibold uppercase tracking-wider ${ui.muted}`}>{card.title}</p>
-                <h3 className={`text-2xl sm:text-3xl font-bold mt-2 leading-none ${ui.strong}`}>{card.value}</h3>
-              </div>
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${ui.accentSoft}`}>
-                <card.icon size={20} strokeWidth={2.1} />
-              </div>
-            </div>
-            <p className={`text-[10px] font-medium mt-4 ${ui.faint}`}>{card.description}</p>
             <Link
               href={card.link}
-              className={`mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${ui.accentText} opacity-0 group-hover:opacity-100 transition-opacity`}
+              className={`group relative block overflow-hidden rounded-2xl border p-5 ${ui.card} ${ui.hoverLift}`}
             >
-              Ko&apos;rish <ArrowRight size={10} />
+              <span className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 to-violet-500 opacity-0 transition-opacity group-hover:opacity-100" />
+              <div className="flex items-start justify-between">
+                <div className="min-w-0">
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${ui.muted}`}>{card.title}</p>
+                  <h3 className={`mt-2 text-3xl font-bold leading-none tracking-tight ${ui.strong}`}>{card.value}</h3>
+                </div>
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${ui.accentTile}`}>
+                  <card.icon size={20} strokeWidth={2.2} />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <p className={`text-[10px] font-medium ${ui.faint}`}>{card.description}</p>
+                <ArrowRight size={13} className={`shrink-0 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100 ${ui.accentText}`} />
+              </div>
             </Link>
           </motion.div>
         ))}
@@ -219,7 +229,7 @@ export default function DekanDashboard() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Occupancy pie */}
-        <div className={`rounded-xl border p-5 lg:col-span-1 flex flex-col justify-between ${ui.card}`}>
+        <div className={`rounded-2xl border p-5 lg:col-span-1 flex flex-col justify-between ${ui.card}`}>
           <div>
             <h3 className={`text-sm font-bold ${ui.strong}`}>Yotoqxona bandligi</h3>
             <p className={`text-[10px] font-medium mt-0.5 ${ui.muted}`}>Jami o‘rinlar sig‘imi: {totalBedsCapacity} ta</p>
@@ -227,32 +237,38 @@ export default function DekanDashboard() {
           <div className="h-56 relative flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
+                <defs>
+                  <linearGradient id="dekanPieFill" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor={dekanChart.gradientFrom} />
+                    <stop offset="100%" stopColor={dekanChart.gradientTo} />
+                  </linearGradient>
+                </defs>
                 <Pie
                   data={occupancyPieData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
-                  outerRadius={80}
+                  outerRadius={82}
                   paddingAngle={3}
                   dataKey="value"
                   strokeWidth={0}
                 >
                   {occupancyPieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <Cell key={`cell-${index}`} fill={index === 0 ? 'url(#dekanPieFill)' : entry.color} />
                   ))}
                 </Pie>
                 <Tooltip contentStyle={dekanChart.tooltip(isLight)} />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute flex flex-col items-center justify-center">
-              <span className={`text-2xl font-bold ${ui.strong}`}>{occupancyRate}%</span>
+              <span className={`text-2xl font-bold tracking-tight ${ui.strong}`}>{occupancyRate}%</span>
               <span className={`text-[8px] font-semibold uppercase tracking-wider ${ui.muted}`}>Band</span>
             </div>
           </div>
           <div className="space-y-2 mt-2">
             <div className="flex items-center justify-between text-xs font-semibold">
               <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-sm bg-indigo-600" />
+                <span className="h-2.5 w-2.5 rounded-sm bg-gradient-to-br from-indigo-500 to-violet-600" />
                 <span className={ui.muted}>Joylashtirilgan talabalar</span>
               </div>
               <span className={ui.strong}>{stats.totalOccupiedBeds} ta</span>
@@ -268,7 +284,7 @@ export default function DekanDashboard() {
         </div>
 
         {/* Course bar chart */}
-        <div className={`rounded-xl border p-5 lg:col-span-2 flex flex-col justify-between ${ui.card}`}>
+        <div className={`rounded-2xl border p-5 lg:col-span-2 flex flex-col justify-between ${ui.card}`}>
           <div>
             <h3 className={`text-sm font-bold ${ui.strong}`}>Kurslar kesimida</h3>
             <p className={`text-[10px] font-medium mt-0.5 ${ui.muted}`}>Talabalar kurslar bo‘yicha taqsimoti</p>
@@ -276,11 +292,17 @@ export default function DekanDashboard() {
           <div className="h-60 mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={courseDistribution}>
+                <defs>
+                  <linearGradient id="dekanBarFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={dekanChart.gradientFrom} />
+                    <stop offset="100%" stopColor={dekanChart.gradientTo} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={dekanChart.grid(isLight)} />
                 <XAxis dataKey="course" stroke={dekanChart.axis(isLight)} fontSize={11} tickLine={false} />
                 <YAxis stroke={dekanChart.axis(isLight)} fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip cursor={{ fill: isLight ? 'rgba(79,70,229,0.05)' : 'rgba(79,70,229,0.12)' }} contentStyle={dekanChart.tooltip(isLight)} />
-                <Bar dataKey="talabalar" fill={dekanChart.primary} radius={[6, 6, 0, 0]} maxBarSize={40} />
+                <Tooltip cursor={{ fill: isLight ? 'rgba(79,70,229,0.06)' : 'rgba(79,70,229,0.12)' }} contentStyle={dekanChart.tooltip(isLight)} />
+                <Bar dataKey="talabalar" fill="url(#dekanBarFill)" radius={[8, 8, 0, 0]} maxBarSize={44} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -294,7 +316,7 @@ export default function DekanDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent pending */}
-        <div className={`rounded-xl border p-5 lg:col-span-2 flex flex-col justify-between ${ui.card}`}>
+        <div className={`rounded-2xl border p-5 lg:col-span-2 flex flex-col justify-between ${ui.card}`}>
           <div>
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -310,7 +332,7 @@ export default function DekanDashboard() {
             <div className={`mt-4 divide-y ${ui.divide}`}>
               {recentRequests.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <div className={`p-3 rounded-full mb-2 ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-slate-800 text-slate-500'}`}>
+                  <div className={`p-3 rounded-full mb-2 ${ui.accentTileSoft}`}>
                     <CheckCircle size={22} />
                   </div>
                   <p className={`text-xs font-medium ${ui.muted}`}>Kutilayotgan yangi yo‘llanma arizalari mavjud emas</p>
@@ -343,7 +365,7 @@ export default function DekanDashboard() {
           <div className="mt-4 flex justify-end">
             <Link
               href="/dekan/arizalar"
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-[10px] font-bold uppercase tracking-wider ${ui.btnGhost}`}
             >
               Arizalar ro&apos;yxatiga o&apos;tish <ArrowRight size={12} />
             </Link>
@@ -351,7 +373,7 @@ export default function DekanDashboard() {
         </div>
 
         {/* Faculty distribution */}
-        <div className={`rounded-xl border p-5 lg:col-span-1 flex flex-col justify-between ${ui.card}`}>
+        <div className={`rounded-2xl border p-5 lg:col-span-1 flex flex-col justify-between ${ui.card}`}>
           <div>
             <h3 className={`text-sm font-bold ${ui.strong}`}>Fakultetlar bo‘yicha</h3>
             <p className={`text-[10px] font-medium mt-0.5 ${ui.muted}`}>Joylashtirilgan talabalar soni</p>
@@ -359,7 +381,7 @@ export default function DekanDashboard() {
             <div className="mt-4 space-y-3">
               {facultyDistribution.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <div className={`p-3 rounded-full mb-2 ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-slate-800 text-slate-500'}`}>
+                  <div className={`p-3 rounded-full mb-2 ${ui.accentTileSoft}`}>
                     <Layers size={20} />
                   </div>
                   <p className={`text-xs font-medium ${ui.muted}`}>Ma&apos;lumotlar mavjud emas</p>
@@ -376,7 +398,7 @@ export default function DekanDashboard() {
                         <span className={ui.muted}>{fac.talabalar} ta ({percent}%)</span>
                       </div>
                       <div className={`h-1.5 w-full rounded-full overflow-hidden ${isLight ? 'bg-slate-100' : 'bg-slate-800'}`}>
-                        <div className="h-full rounded-full bg-indigo-600" style={{ width: `${percent}%` }} />
+                        <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-600" style={{ width: `${percent}%` }} />
                       </div>
                     </div>
                   )

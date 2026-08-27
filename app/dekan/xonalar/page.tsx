@@ -351,16 +351,16 @@ export default function DekanXonalarMap() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.04, duration: 0.2 }}
-            className={`p-4 rounded-xl border ${surfaceBg} flex items-center gap-3`}
+            className={`p-4 rounded-2xl border ${surfaceBg} ${ui.hoverLift} flex items-center gap-3`}
           >
-            <div className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center ${
-              stat.warn ? statusChip('danger', isLight).chip : ui.accentSoft
+            <div className={`h-11 w-11 shrink-0 rounded-xl flex items-center justify-center ${
+              stat.warn ? statusChip('danger', isLight).chip : ui.accentTile
             }`}>
-              <stat.icon size={18} strokeWidth={2.1} />
+              <stat.icon size={18} strokeWidth={2.2} />
             </div>
             <div className="min-w-0">
               <span className={`block text-[9px] font-semibold uppercase tracking-wider truncate ${textMuted}`}>{stat.label}</span>
-              <h3 className={`text-lg sm:text-xl font-bold mt-0.5 ${stat.warn ? statusChip('danger', isLight).text : textStrong}`}>
+              <h3 className={`text-lg sm:text-xl font-bold mt-0.5 tracking-tight ${stat.warn ? statusChip('danger', isLight).text : textStrong}`}>
                 {stat.value}
               </h3>
             </div>

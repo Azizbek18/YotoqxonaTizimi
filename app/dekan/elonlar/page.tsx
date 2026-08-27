@@ -245,11 +245,11 @@ export default function DekanAnnouncementsPage() {
             { icon: Users, value: publishedCount, label: "Talabalarga ko'rinmoqda" },
           ].map(({ icon: Icon, value, label }) => (
             <div key={label} className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${ui.accentSoft}`}>
-                <Icon size={18} />
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${ui.accentTile}`}>
+                <Icon size={18} strokeWidth={2.2} />
               </div>
               <div>
-                <p className={`text-2xl font-bold leading-none ${ui.strong}`}>{loading ? '...' : value}</p>
+                <p className={`text-2xl font-bold leading-none tracking-tight ${ui.strong}`}>{loading ? '...' : value}</p>
                 <p className={`mt-1 text-[10px] font-semibold uppercase tracking-wider ${ui.muted}`}>{label}</p>
               </div>
             </div>

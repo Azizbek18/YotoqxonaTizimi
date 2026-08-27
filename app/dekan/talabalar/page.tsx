@@ -443,17 +443,17 @@ export default function DekanStudentsPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.04, duration: 0.2 }}
-              className={`rounded-xl border p-5 transition-colors ${ui.card} hover:border-indigo-400/50`}
+              className={`rounded-2xl border p-5 ${ui.card} ${ui.hoverLift}`}
             >
               <div className="flex items-start justify-between">
                 <div>
                   <p className={`text-[10px] font-semibold uppercase tracking-wider ${ui.muted}`}>{card.title}</p>
-                  <p className={`mt-2 text-3xl font-bold leading-none ${ui.strong}`}>
+                  <p className={`mt-2 text-3xl font-bold leading-none tracking-tight ${ui.strong}`}>
                     {busy ? '...' : card.count ?? '—'}
                   </p>
                 </div>
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${ui.accentSoft}`}>
-                  <Icon size={20} />
+                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${ui.accentTile}`}>
+                  <Icon size={20} strokeWidth={2.2} />
                 </div>
               </div>
 

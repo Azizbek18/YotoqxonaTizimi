@@ -174,10 +174,10 @@ export default function DekanLayout({
       <div className={`px-4 py-4 border-b ${ui.border}`}>
         <div className={`flex items-center gap-3 min-w-0 ${compact ? 'justify-center w-full' : ''}`}>
           <div className="shrink-0 relative">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-white font-black text-sm">
+            <div className={`flex h-11 w-11 items-center justify-center rounded-xl font-bold text-sm ${ui.accentTile}`}>
               {dekanName ? dekanName.trim().charAt(0).toUpperCase() : <UserCog size={20} strokeWidth={2.4} />}
             </div>
-            <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ${isLight ? 'ring-white' : 'ring-slate-950'}`} />
+            <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ${isLight ? 'ring-white' : 'ring-slate-900'}`} />
           </div>
 
           {!compact && (
@@ -199,18 +199,24 @@ export default function DekanLayout({
           <Link
             href="/dekan/arizalar"
             onClick={() => setMobileSidebarOpen(false)}
-            className={`mb-3 flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors ${ui.inset} hover:border-indigo-400/50`}
+            className={`group mb-3 flex items-center justify-between gap-3 rounded-xl border p-3 transition-all hover:-translate-y-0.5 ${
+              isLight
+                ? 'border-indigo-200/70 bg-gradient-to-br from-indigo-50 to-violet-50 hover:border-indigo-300'
+                : 'border-indigo-500/25 bg-indigo-500/10 hover:border-indigo-500/40'
+            }`}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${ui.accentTile}`}>
+                <FileText size={16} strokeWidth={2.3} />
+              </span>
               <div className="min-w-0">
-                <p className={`text-[10px] font-semibold uppercase tracking-wider ${ui.muted}`}>Kutilmoqda</p>
+                <p className={`text-[10px] font-semibold uppercase tracking-wider ${ui.accentText}`}>Kutilmoqda</p>
                 <p className={`text-sm font-bold leading-tight ${ui.strong}`}>
                   {pendingCount} <span className={`text-xs font-medium ${ui.muted}`}>ta yangi ariza</span>
                 </p>
               </div>
             </div>
-            <ChevronRight size={16} className={ui.faint} />
+            <ChevronRight size={16} className={`${ui.accentText} transition-transform group-hover:translate-x-0.5`} />
           </Link>
         )}
 
@@ -223,17 +229,19 @@ export default function DekanLayout({
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileSidebarOpen(false)}
-                className={`group relative flex items-center gap-3 rounded-xl p-2 transition-colors ${
+                className={`group relative flex items-center gap-3 rounded-xl p-2 transition-all ${
                   active
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_6px_18px_-6px_rgba(79,70,229,0.5)]'
                     : `${ui.body} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800/70'}`
                 } ${compact ? 'justify-center p-2' : ''}`}
               >
                 <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
                     active
                       ? 'bg-white/15 text-white'
-                      : isLight ? 'bg-slate-100 text-slate-500 group-hover:text-slate-700' : 'bg-slate-800 text-slate-400 group-hover:text-slate-200'
+                      : isLight
+                        ? 'bg-slate-100 text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-600'
+                        : 'bg-slate-800 text-slate-400 group-hover:bg-indigo-500/15 group-hover:text-indigo-300'
                   }`}
                 >
                   <Icon size={17} strokeWidth={2.1} />
@@ -252,7 +260,7 @@ export default function DekanLayout({
 
                 {!compact && item.badge !== undefined && (
                   <span className={`shrink-0 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold ${
-                    active ? 'bg-white/20 text-white' : isLight ? 'bg-slate-200 text-slate-700' : 'bg-slate-700 text-slate-200'
+                    active ? 'bg-white/20 text-white' : isLight ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-500/15 text-indigo-300'
                   }`}>
                     {item.badge}
                   </span>
@@ -313,6 +321,7 @@ export default function DekanLayout({
 
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-[280px]' : 'lg:ml-[88px]'}`}>
         <header className={`sticky top-0 z-30 border-b ${isLight ? 'border-slate-200 bg-white/85' : 'border-slate-800 bg-slate-950/80'} backdrop-blur`}>
+          <span className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
           <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <button
@@ -412,7 +421,7 @@ export default function DekanLayout({
               </p>
             </Link>
           )}
-          <div className={`min-h-[calc(100vh-7rem)] rounded-2xl border p-3 sm:p-6 lg:p-8 ${ui.card}`}>
+          <div className={`min-h-[calc(100vh-7rem)] rounded-3xl border p-3 sm:p-6 lg:p-8 ${ui.cardElevated}`}>
             {children}
           </div>
         </div>

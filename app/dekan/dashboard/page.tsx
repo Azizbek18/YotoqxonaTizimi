@@ -21,15 +21,16 @@ import {
   CheckCircle,
   Home,
   ArrowRight,
-  TrendingUp,
   Layers,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useDekanScope } from '@/lib/hooks/useDekanScope'
 import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { directionLabel } from '@/lib/directions'
+import { dekanUI, dekanChart, statusChip } from '@/lib/dekan-ui'
 
 interface DashboardStats {
   pendingCount: number
@@ -55,12 +56,7 @@ interface RecentRequest {
 export default function DekanDashboard() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
-
-  const surfaceBg = isLight
-    ? 'bg-white/80 border-slate-200 shadow-lg shadow-slate-100/40'
-    : 'bg-[#0f172a]/30 border-white/5 shadow-2xl'
-  const textMuted = isLight ? 'text-slate-500' : 'text-slate-400'
-  const textStrong = isLight ? 'text-slate-900' : 'text-white'
+  const ui = dekanUI(isLight)
 
   const [stats, setStats] = useState<DashboardStats>({
     pendingCount: 0,
@@ -112,8 +108,8 @@ export default function DekanDashboard() {
   const occupancyRate = totalBedsCapacity > 0 ? Math.round((stats.totalOccupiedBeds / totalBedsCapacity) * 100) : 0
 
   const occupancyPieData = [
-    { name: "Band joylar", value: stats.totalOccupiedBeds, color: '#7c3aed' },
-    { name: "Bo'sh joylar", value: freeBeds, color: isLight ? '#e2e8f0' : '#1e293b' },
+    { name: 'Band joylar', value: stats.totalOccupiedBeds, color: dekanChart.primary },
+    { name: "Bo'sh joylar", value: freeBeds, color: dekanChart.track(isLight) },
   ]
 
   const statCards = [
@@ -121,8 +117,6 @@ export default function DekanDashboard() {
       title: 'Kutilayotgan arizalar',
       value: stats.pendingCount,
       icon: FileText,
-      color: 'from-amber-500 to-orange-500',
-      glow: 'rgba(245, 158, 11, 0.35)',
       description: "Ko'rib chiqilishi kerak bo'lgan yo'llanmalar",
       link: '/dekan/arizalar',
     },
@@ -130,8 +124,6 @@ export default function DekanDashboard() {
       title: 'Faol talabalar',
       value: stats.activeStudentsCount,
       icon: Users,
-      color: 'from-sky-500 to-blue-600',
-      glow: 'rgba(14, 165, 233, 0.35)',
       description: "Tizimda ro'yxatdan o'tganlar",
       link: '/dekan/xonalar',
     },
@@ -139,8 +131,6 @@ export default function DekanDashboard() {
       title: 'Joylashtirilganlar',
       value: stats.totalOccupiedBeds,
       icon: Home,
-      color: 'from-indigo-500 to-purple-600',
-      glow: 'rgba(99, 102, 241, 0.35)',
       description: `${occupancyRate}% bandlik darajasi`,
       link: '/dekan/xonalar',
     },
@@ -148,59 +138,47 @@ export default function DekanDashboard() {
       title: 'Tasdiqlangan yo‘llanmalar',
       value: stats.approvedCount + stats.registeredCount,
       icon: CheckCircle,
-      color: 'from-emerald-500 to-teal-600',
-      glow: 'rgba(16, 185, 129, 0.35)',
       description: 'Tasdiqlangan jami arizalar',
       link: '/dekan/arizalar',
-    }
+    },
   ]
 
   if (stats.loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className={`animate-spin rounded-full h-8 w-8 border-t-2 ${isLight ? 'border-sky-600' : 'border-cyan-500'}`} />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-700" />
       </div>
     )
   }
 
+  const pending = statusChip('warning', isLight)
+
   return (
     <div className="space-y-6">
-      {/* Welcome Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-blue-600 to-violet-700 p-6 sm:p-8 shadow-xl shadow-indigo-500/25"
-      >
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -left-10 -bottom-16 h-48 w-48 rounded-full bg-fuchsia-400/20 blur-3xl" />
-        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-white/15 text-white backdrop-blur-sm">
-                <TrendingUp size={12} />
-                Live Statlar
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black mt-3 tracking-tight text-white">
-              Xush kelibsiz, Dekan!
-            </h1>
-            <p className="text-xs sm:text-sm mt-1.5 max-w-xl leading-relaxed text-indigo-100">
-              {dekanFaculty
-                ? `${dekanFaculty.toUpperCase()} fakulteti bo'yicha yo'llanmalar (arizalar) ko'rib chiqilishini boshqaring.`
-                : "Yotoqxona tizimidagi talabalar oqimi, yo'llanmalar (arizalar) ko'rib chiqilishi va xonalar taqsimotini real vaqt rejimida boshqaring."}
-            </p>
-          </div>
-          <button
-            onClick={() => loadData(dekanFaculty)}
-            className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all bg-white text-indigo-700 hover:bg-indigo-50 shadow-lg shadow-black/10 active:scale-95"
-          >
-            Ma&apos;lumotlarni yangilash
-          </button>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${ui.strong}`}>
+            Umumiy hisobot
+          </h1>
+          <p className={`text-xs sm:text-sm mt-1 ${ui.muted}`}>
+            {dekanFaculty
+              ? `${dekanFaculty.toUpperCase()} fakulteti bo'yicha yo'llanmalar va joylashtirish holati`
+              : "Talabalar oqimi, yo'llanmalar va xonalar taqsimoti"}
+          </p>
         </div>
-      </motion.div>
+        <button
+          onClick={() => loadData(dekanFaculty)}
+          className={`shrink-0 inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition-colors ${ui.btnGhost}`}
+        >
+          <RefreshCw size={14} /> Yangilash
+        </button>
+      </div>
 
       {facultyResolved && !dekanFaculty && (
-        <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs font-bold flex items-start gap-2">
+        <div className={`flex items-start gap-2 rounded-xl border p-4 text-xs font-medium ${
+          isLight ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-amber-500/25 bg-amber-500/10 text-amber-200'
+        }`}>
           <AlertTriangle size={16} className="shrink-0 mt-0.5" />
           <span>
             Hisobingizga fakultet biriktirilmagan, shuning uchun sizga tegishli yo&apos;llanmalar soni ko&apos;rsatilmayapti. Administratorga murojaat qiling.
@@ -208,40 +186,29 @@ export default function DekanDashboard() {
         </div>
       )}
 
-      {/* Stats Cards */}
+      {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card, idx) => (
           <motion.div
             key={idx}
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -4 }}
-            transition={{ delay: idx * 0.05, duration: 0.25, ease: 'easeOut' }}
-            style={{
-              boxShadow: isLight
-                ? `0 12px 32px -14px ${card.glow}`
-                : `0 20px 44px -16px rgba(0,0,0,0.65), 0 0 32px -10px ${card.glow}`,
-            }}
-            className={`rounded-3xl border ${surfaceBg} p-5 pt-4 relative overflow-hidden group transition-colors`}
+            transition={{ delay: idx * 0.04, duration: 0.2 }}
+            className={`group rounded-xl border p-5 transition-colors ${ui.card} hover:border-indigo-400/50`}
           >
-            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${card.color}`} />
-            <div
-              className="absolute -right-6 -bottom-6 w-32 h-32 rounded-full blur-3xl opacity-40 group-hover:opacity-60 transition-opacity duration-500"
-              style={{ backgroundColor: card.glow }}
-            />
-            <div className="relative flex items-center justify-between mt-1">
-              <div>
-                <p className={`text-[10px] font-black uppercase tracking-wider ${textMuted}`}>{card.title}</p>
-                <h3 className={`text-2xl sm:text-3xl font-black mt-1.5 leading-none ${textStrong}`}>{card.value}</h3>
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <p className={`text-[10px] font-semibold uppercase tracking-wider ${ui.muted}`}>{card.title}</p>
+                <h3 className={`text-2xl sm:text-3xl font-bold mt-2 leading-none ${ui.strong}`}>{card.value}</h3>
               </div>
-              <div className={`h-12 w-12 rounded-2xl bg-gradient-to-tr ${card.color} flex items-center justify-center text-white shadow-lg`} style={{ boxShadow: `0 8px 20px -6px ${card.glow}` }}>
-                <card.icon size={22} strokeWidth={2.2} />
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${ui.accentSoft}`}>
+                <card.icon size={20} strokeWidth={2.1} />
               </div>
             </div>
-            <p className={`relative text-[10px] font-medium mt-4 ${textMuted}`}>{card.description}</p>
+            <p className={`text-[10px] font-medium mt-4 ${ui.faint}`}>{card.description}</p>
             <Link
               href={card.link}
-              className="relative mt-2 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-indigo-500 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
+              className={`mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${ui.accentText} opacity-0 group-hover:opacity-100 transition-opacity`}
             >
               Ko&apos;rish <ArrowRight size={10} />
             </Link>
@@ -249,17 +216,13 @@ export default function DekanDashboard() {
         ))}
       </div>
 
-      {/* Analytics Charts Grid */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Occupied Capacity Pie Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`rounded-3xl border ${surfaceBg} p-5 lg:col-span-1 flex flex-col justify-between`}
-        >
+        {/* Occupancy pie */}
+        <div className={`rounded-xl border p-5 lg:col-span-1 flex flex-col justify-between ${ui.card}`}>
           <div>
-            <h3 className={`text-sm font-black uppercase tracking-wider ${textStrong}`}>Yotoqxona Bandligi</h3>
-            <p className={`text-[10px] font-medium ${textMuted}`}>Jami o‘rinlar sig‘imi: {totalBedsCapacity} ta</p>
+            <h3 className={`text-sm font-bold ${ui.strong}`}>Yotoqxona bandligi</h3>
+            <p className={`text-[10px] font-medium mt-0.5 ${ui.muted}`}>Jami o‘rinlar sig‘imi: {totalBedsCapacity} ta</p>
           </div>
           <div className="h-56 relative flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
@@ -270,137 +233,104 @@ export default function DekanDashboard() {
                   cy="50%"
                   innerRadius={60}
                   outerRadius={80}
-                  paddingAngle={5}
+                  paddingAngle={3}
                   dataKey="value"
+                  strokeWidth={0}
                 >
                   {occupancyPieData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip
-                  contentStyle={{
-                    background: isLight ? '#ffffff' : '#0f172a',
-                    borderColor: isLight ? '#e2e8f0' : '#334155',
-                    color: isLight ? '#0f172a' : '#ffffff',
-                    fontSize: '11px',
-                    borderRadius: '12px'
-                  }}
-                />
+                <Tooltip contentStyle={dekanChart.tooltip(isLight)} />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute flex flex-col items-center justify-center">
-              <span className={`text-2xl font-black ${textStrong}`}>{occupancyRate}%</span>
-              <span className={`text-[8px] font-black uppercase tracking-wider ${textMuted}`}>Band</span>
+              <span className={`text-2xl font-bold ${ui.strong}`}>{occupancyRate}%</span>
+              <span className={`text-[8px] font-semibold uppercase tracking-wider ${ui.muted}`}>Band</span>
             </div>
           </div>
           <div className="space-y-2 mt-2">
-            <div className="flex items-center justify-between text-xs font-bold">
+            <div className="flex items-center justify-between text-xs font-semibold">
               <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-violet-600" />
-                <span className={textMuted}>Joylashtirilgan talabalar</span>
+                <span className="h-2.5 w-2.5 rounded-sm bg-indigo-600" />
+                <span className={ui.muted}>Joylashtirilgan talabalar</span>
               </div>
-              <span className={textStrong}>{stats.totalOccupiedBeds} ta</span>
+              <span className={ui.strong}>{stats.totalOccupiedBeds} ta</span>
             </div>
-            <div className="flex items-center justify-between text-xs font-bold">
+            <div className="flex items-center justify-between text-xs font-semibold">
               <div className="flex items-center gap-2">
-                <div className={`h-3 w-3 rounded-full ${isLight ? 'bg-slate-200' : 'bg-slate-800'}`} />
-                <span className={textMuted}>Bo&apos;sh o&apos;rinlar</span>
+                <span className={`h-2.5 w-2.5 rounded-sm ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`} />
+                <span className={ui.muted}>Bo&apos;sh o&apos;rinlar</span>
               </div>
-              <span className={textStrong}>{freeBeds} ta</span>
+              <span className={ui.strong}>{freeBeds} ta</span>
             </div>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Courses Bar Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`rounded-3xl border ${surfaceBg} p-5 lg:col-span-2 flex flex-col justify-between`}
-        >
+        {/* Course bar chart */}
+        <div className={`rounded-xl border p-5 lg:col-span-2 flex flex-col justify-between ${ui.card}`}>
           <div>
-            <h3 className={`text-sm font-black uppercase tracking-wider ${textStrong}`}>Kurslar kesimida</h3>
-            <p className={`text-[10px] font-medium ${textMuted}`}>Talabalar kurslar bo‘yicha taqsimoti</p>
+            <h3 className={`text-sm font-bold ${ui.strong}`}>Kurslar kesimida</h3>
+            <p className={`text-[10px] font-medium mt-0.5 ${ui.muted}`}>Talabalar kurslar bo‘yicha taqsimoti</p>
           </div>
           <div className="h-60 mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={courseDistribution}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isLight ? '#f1f5f9' : '#1e293b'} />
-                <XAxis
-                  dataKey="course"
-                  stroke={isLight ? '#64748b' : '#94a3b8'}
-                  fontSize={11}
-                  tickLine={false}
-                />
-                <YAxis
-                  stroke={isLight ? '#64748b' : '#94a3b8'}
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
-                  contentStyle={{
-                    background: isLight ? '#ffffff' : '#0f172a',
-                    borderColor: isLight ? '#e2e8f0' : '#334155',
-                    color: isLight ? '#0f172a' : '#ffffff',
-                    fontSize: '11px',
-                    borderRadius: '12px'
-                  }}
-                />
-                <Bar dataKey="talabalar" fill="#7c3aed" radius={[8, 8, 0, 0]} maxBarSize={40} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={dekanChart.grid(isLight)} />
+                <XAxis dataKey="course" stroke={dekanChart.axis(isLight)} fontSize={11} tickLine={false} />
+                <YAxis stroke={dekanChart.axis(isLight)} fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip cursor={{ fill: isLight ? 'rgba(79,70,229,0.05)' : 'rgba(79,70,229,0.12)' }} contentStyle={dekanChart.tooltip(isLight)} />
+                <Bar dataKey="talabalar" fill={dekanChart.primary} radius={[6, 6, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex justify-end mt-2 text-[10px] font-black uppercase tracking-widest text-indigo-500">
-            <Link href="/dekan/xonalar" className="flex items-center gap-1">
+          <div className="flex justify-end mt-2">
+            <Link href="/dekan/xonalar" className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${ui.accentText}`}>
               Barcha talabalarni ko&apos;rish <ArrowRight size={10} />
             </Link>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Pending Permit Requests */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`rounded-3xl border ${surfaceBg} p-5 lg:col-span-2 flex flex-col justify-between`}
-        >
+        {/* Recent pending */}
+        <div className={`rounded-xl border p-5 lg:col-span-2 flex flex-col justify-between ${ui.card}`}>
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className={`text-sm font-black uppercase tracking-wider ${textStrong}`}>Oxirgi arizalar</h3>
-                <p className={`text-[10px] font-medium ${textMuted}`}>Kutish holatidagi yangi yo‘llanmalar</p>
+                <h3 className={`text-sm font-bold ${ui.strong}`}>Oxirgi arizalar</h3>
+                <p className={`text-[10px] font-medium mt-0.5 ${ui.muted}`}>Kutish holatidagi yangi yo‘llanmalar</p>
               </div>
-              <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-black uppercase">
-                {stats.pendingCount} ta ariza kutilmoqda
+              <span className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold ${pending.chip}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${pending.dot}`} />
+                {stats.pendingCount} ta kutilmoqda
               </span>
             </div>
 
-            <div className="mt-4 divide-y divide-slate-100 dark:divide-white/5 space-y-1">
+            <div className={`mt-4 divide-y ${ui.divide}`}>
               {recentRequests.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <div className="p-3 rounded-full bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-600 mb-2">
-                    <CheckCircle size={24} />
+                  <div className={`p-3 rounded-full mb-2 ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-slate-800 text-slate-500'}`}>
+                    <CheckCircle size={22} />
                   </div>
-                  <p className="text-xs font-bold text-slate-500">Kutilayotgan yangi yo‘llanma arizalari mavjud emas</p>
+                  <p className={`text-xs font-medium ${ui.muted}`}>Kutilayotgan yangi yo‘llanma arizalari mavjud emas</p>
                 </div>
               ) : (
                 recentRequests.map((req) => (
                   <div key={req.id} className="flex items-center justify-between py-3">
                     <div className="min-w-0">
-                      <h4 className={`text-xs font-bold truncate ${textStrong}`}>{req.full_name}</h4>
-                      <p className={`text-[10px] mt-0.5 truncate ${textMuted}`}>
+                      <h4 className={`text-xs font-semibold truncate ${ui.strong}`}>{req.full_name}</h4>
+                      <p className={`text-[10px] mt-0.5 truncate ${ui.muted}`}>
                         {permitFacultyLabel(req.faculty)} • {directionLabel(req.direction)} • {req.course}-kurs
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`hidden sm:inline text-[9px] font-bold px-2 py-0.5 rounded-md ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/5 text-slate-400'}`}>
+                      <span className={`hidden sm:inline text-[9px] font-medium px-2 py-0.5 rounded ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-slate-800 text-slate-400'}`}>
                         {new Date(req.created_at).toLocaleDateString('uz-UZ')}
                       </span>
                       <Link
                         href={`/dekan/arizalar?id=${req.id}`}
-                        className="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500 text-indigo-500 hover:text-white transition-all"
+                        className={`rounded-lg p-1.5 transition-colors ${ui.accentSoft}`}
                       >
                         <ArrowRight size={14} />
                       </Link>
@@ -413,30 +343,26 @@ export default function DekanDashboard() {
           <div className="mt-4 flex justify-end">
             <Link
               href="/dekan/arizalar"
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 transition-all"
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
             >
               Arizalar ro&apos;yxatiga o&apos;tish <ArrowRight size={12} />
             </Link>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Faculties occupancy distribution list */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`rounded-3xl border ${surfaceBg} p-5 lg:col-span-1 flex flex-col justify-between`}
-        >
+        {/* Faculty distribution */}
+        <div className={`rounded-xl border p-5 lg:col-span-1 flex flex-col justify-between ${ui.card}`}>
           <div>
-            <h3 className={`text-sm font-black uppercase tracking-wider ${textStrong}`}>Fakultetlar bo‘yicha</h3>
-            <p className={`text-[10px] font-medium ${textMuted}`}>Joylashtirilgan talabalar soni</p>
+            <h3 className={`text-sm font-bold ${ui.strong}`}>Fakultetlar bo‘yicha</h3>
+            <p className={`text-[10px] font-medium mt-0.5 ${ui.muted}`}>Joylashtirilgan talabalar soni</p>
 
             <div className="mt-4 space-y-3">
               {facultyDistribution.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <div className="p-3 rounded-full bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-600 mb-2">
-                    <Layers size={22} />
+                  <div className={`p-3 rounded-full mb-2 ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-slate-800 text-slate-500'}`}>
+                    <Layers size={20} />
                   </div>
-                  <p className="text-xs font-bold text-slate-500">Ma&apos;lumotlar mavjud emas</p>
+                  <p className={`text-xs font-medium ${ui.muted}`}>Ma&apos;lumotlar mavjud emas</p>
                 </div>
               ) : (
                 facultyDistribution.map((fac, idx) => {
@@ -445,15 +371,12 @@ export default function DekanDashboard() {
                     : 0
                   return (
                     <div key={idx} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs font-bold">
-                        <span className={`truncate max-w-[70%] ${textStrong}`}>{permitFacultyLabel(fac.name)}</span>
-                        <span className={textMuted}>{fac.talabalar} ta ({percent}%)</span>
+                      <div className="flex items-center justify-between text-xs font-semibold">
+                        <span className={`truncate max-w-[70%] ${ui.strong}`}>{permitFacultyLabel(fac.name)}</span>
+                        <span className={ui.muted}>{fac.talabalar} ta ({percent}%)</span>
                       </div>
-                      <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-white/5 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-indigo-500"
-                          style={{ width: `${percent}%` }}
-                        />
+                      <div className={`h-1.5 w-full rounded-full overflow-hidden ${isLight ? 'bg-slate-100' : 'bg-slate-800'}`}>
+                        <div className="h-full rounded-full bg-indigo-600" style={{ width: `${percent}%` }} />
                       </div>
                     </div>
                   )
@@ -461,11 +384,11 @@ export default function DekanDashboard() {
               )}
             </div>
           </div>
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[10px] font-bold text-slate-500">
-            <span className="flex items-center gap-1"><Layers size={12} /> Jami Fakultetlar:</span>
+          <div className={`mt-4 pt-4 border-t flex items-center justify-between text-[10px] font-semibold ${ui.border} ${ui.muted}`}>
+            <span className="flex items-center gap-1"><Layers size={12} /> Jami fakultetlar:</span>
             <span>{facultyDistribution.length} ta</span>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   )

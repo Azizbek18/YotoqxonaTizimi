@@ -35,38 +35,44 @@ export function genderLabel(value: string | null | undefined): string {
 }
 
 /**
- * Shared color identity for gender across the dekan panel (room map,
- * arizalar avatars/badges) — sky for male, rose for female everywhere, so
- * the same entity never gets recolored between pages.
+ * Shared gender identity for the dekan panel (room map, arizalar avatars).
+ * The panel runs on a single indigo-on-slate palette, so gender is carried
+ * by weight/shade rather than hue: male = indigo (the panel accent),
+ * female = slate. Consistent everywhere so the same person never gets
+ * recoloured between pages. `letter` is the fallback cue where a colour
+ * alone would be too subtle (dense room-map beds).
  */
 export function genderAccent(value: string | null | undefined) {
   const normalized = normalizeGender(value)
   if (normalized === 'male') {
     return {
-      dot: 'bg-sky-500',
-      text: 'text-sky-500',
-      badgeBg: 'bg-sky-500/10',
-      badgeBgLight: 'bg-sky-100/70',
-      border: 'border-sky-500/25',
-      borderLight: 'border-sky-300',
+      letter: 'E',
+      dot: 'bg-indigo-500',
+      text: 'text-indigo-500',
+      badgeBg: 'bg-indigo-500/10',
+      badgeBgLight: 'bg-indigo-100/70',
+      border: 'border-indigo-500/25',
+      borderLight: 'border-indigo-200',
     }
   }
   if (normalized === 'female') {
     return {
-      dot: 'bg-rose-500',
-      text: 'text-rose-500',
-      badgeBg: 'bg-rose-500/10',
-      badgeBgLight: 'bg-rose-100/70',
-      border: 'border-rose-500/25',
-      borderLight: 'border-rose-300',
+      letter: 'A',
+      dot: 'bg-slate-400',
+      text: 'text-slate-500',
+      badgeBg: 'bg-slate-500/10',
+      badgeBgLight: 'bg-slate-200/70',
+      border: 'border-slate-400/30',
+      borderLight: 'border-slate-300',
     }
   }
   return {
-    dot: 'bg-slate-400',
+    letter: '?',
+    dot: 'bg-slate-300',
     text: 'text-slate-400',
     badgeBg: 'bg-slate-500/10',
     badgeBgLight: 'bg-slate-100',
-    border: 'border-slate-500/20',
-    borderLight: 'border-slate-300',
+    border: 'border-slate-400/20',
+    borderLight: 'border-slate-200',
   }
 }

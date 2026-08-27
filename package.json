@@ -27,7 +27,7 @@
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.0",
     "@tanstack/react-query": "^5.100.8",
-    "dompurify": "^3.4.11",
+    "dompurify": "^3.4.14",
     "framer-motion": "^12.38.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.8.0",
@@ -45,7 +45,8 @@
   "overrides": {
     "postcss": "^8.5.10",
     "ws": "^8.21.0",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "nanoid": "^3.3.18"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.4.0",

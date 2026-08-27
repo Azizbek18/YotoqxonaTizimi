@@ -1,7 +1,7 @@
 {
-  "name": "MTalaba Yotoqxona Tizimi",
+  "name": "Meningyotoqxonam.uz — Aqlli yotoqxona boshqaruv tizimi",
   "short_name": "MTalaba",
-  "description": "Aqlli talabalar yotoqxonasi boshqaruv tizimi",
+  "description": "Talabalar yotoqxonasi boshqaruvi: arizalar, to'lovlar va navbatchilik bir joyda.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020617",

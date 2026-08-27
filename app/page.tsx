@@ -226,10 +226,10 @@ export default function Home() {
           <div className="w-7 h-7 sm:w-10 sm:h-10 shrink-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/30 border border-white/10 scale-105">
             🏠
           </div>
-          <span className={`text-sm sm:text-xl font-black uppercase tracking-[0.05em] sm:tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r transition-colors duration-300 syne-font truncate ${
+          <span className={`text-sm sm:text-lg font-black uppercase tracking-[0.02em] sm:tracking-[0.08em] bg-clip-text text-transparent bg-gradient-to-r transition-colors duration-300 syne-font truncate ${
             isLight ? 'from-slate-900 to-slate-600' : 'from-white via-gray-100 to-gray-300'
           }`}>
-            Yotoqxona
+            Meningyotoqxonam<span className="text-indigo-500">.uz</span>
           </span>
         </div>
 

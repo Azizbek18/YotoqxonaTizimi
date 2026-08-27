@@ -12,12 +12,16 @@ const getBaseUrl = () => {
   return 'http://localhost:3000';
 };
 
+const SITE_NAME = 'Meningyotoqxonam.uz'
+const SITE_TITLE = `${SITE_NAME} — Aqlli talabalar yotoqxonasi boshqaruv tizimi`
+
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
-  title: "Yotoqxona.uz — Aqlli talabalar yotoqxonasi boshqaruv tizimi",
+  title: SITE_TITLE,
   description: "Talabalar yotoqxonasi boshqaruvini avtomatlashtirish, arizalar yuborish, to'lovlarni amalga oshirish va navbatchilik jadvallarini real vaqt rejimida boshqarish platformasi.",
-  keywords: ["yotoqxona", "talaba", "tizim", "aqlli boshqaruv", "arizalar", "navbatchilik", "yotoqxona boshqaruvi", "supabase", "nextjs", "AI yordamchi"],
+  keywords: ["meningyotoqxonam", "yotoqxona", "talaba", "tizim", "aqlli boshqaruv", "arizalar", "navbatchilik", "yotoqxona boshqaruvi", "supabase", "nextjs", "AI yordamchi"],
   manifest: '/manifest.json',
+  applicationName: SITE_NAME,
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -29,26 +33,19 @@ export const metadata: Metadata = {
     apple: '/apple-touch-icon.png',
   },
   openGraph: {
-    title: "Yotoqxona.uz — Aqlli talabalar yotoqxonasi boshqaruv tizimi",
+    title: SITE_TITLE,
     description: "Yotoqxonadagi barcha jarayonlar: arizalar, to'lovlar va navbatchilikni elektron boshqarish. AI yordamchi bilan tezkor muloqot.",
     url: getBaseUrl(),
-    siteName: 'Yotoqxona.uz',
+    siteName: SITE_NAME,
     locale: 'uz_UZ',
     type: 'website',
-    images: [
-      {
-        url: '/rasm.png',
-        width: 1200,
-        height: 630,
-        alt: "Yotoqxona.uz — Aqlli yotoqxona boshqaruv tizimi namoyishi",
-      }
-    ],
+    // og:image is supplied by app/opengraph-image.tsx (correct 1200×630).
   },
   twitter: {
     card: 'summary_large_image',
-    title: "Yotoqxona.uz — Aqlli yotoqxona boshqaruv tizimi",
+    title: SITE_TITLE,
     description: "Yotoqxonadagi barcha jarayonlarni (arizalar, to'lovlar, navbatchilik) elektron va AI orqali boshqarish platformasi.",
-    images: ['/rasm.png'],
+    // twitter:image is supplied by app/twitter-image.tsx.
   }
 };
 

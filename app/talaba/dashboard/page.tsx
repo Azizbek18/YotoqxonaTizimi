@@ -336,37 +336,26 @@ export default function TalabaDashboard() {
     return defaultSched;
   };
 
-  // Load cleaning schedule
+  // Load cleaning schedule. The server (keyed by room_number) is the single
+  // source of truth — the schedule is shared by every roommate, so a
+  // per-device localStorage copy would just drift between phones. When
+  // nothing is saved yet, or the request fails, fall back to a sequential
+  // default built from the current residents.
   useEffect(() => {
     if (!profile || !profile.room_number || allResidents.length === 0) return;
 
     async function loadSchedule() {
-      const roomNum = profile!.room_number!;
       try {
         const { schedule } = await fetchCleaningSchedule();
-
         if (schedule) {
           setCleaningSchedule(schedule);
           return;
         }
-      } catch {
-        // Table may not exist yet — fall back to localStorage below.
+      } catch (error) {
+        console.error("Navbatchilik jadvalini yuklashda xato:", error);
       }
 
-      // Check localStorage
-      const localSaved = localStorage.getItem(`cleaning_schedule_${roomNum}`);
-      if (localSaved) {
-        try {
-          setCleaningSchedule(JSON.parse(localSaved));
-          return;
-        } catch (e) {
-          console.error("Local storage schedule parse error:", e);
-        }
-      }
-
-      // Default schedule fallback
-      const defaultSched = getDefaultSchedule(allResidents);
-      setCleaningSchedule(defaultSched);
+      setCleaningSchedule(getDefaultSchedule(allResidents));
     }
 
     loadSchedule();
@@ -532,25 +521,21 @@ export default function TalabaDashboard() {
     toast.success("Jadval standart holatga qaytarildi");
   };
 
-  // Save the schedule to DB/localStorage
+  // Persist the schedule server-side (shared by the whole room). On failure
+  // the modal stays open so the edit isn't silently lost — no local-only
+  // "saved" state that other roommates would never see.
   const handleSaveSchedule = async () => {
     if (!profile || !profile.room_number) return;
     setIsSavingSchedule(true);
-    const roomNum = profile.room_number;
     try {
-      await saveCleaningSchedule(draftSchedule);
-
-      setCleaningSchedule(draftSchedule);
-      localStorage.setItem(`cleaning_schedule_${roomNum}`, JSON.stringify(draftSchedule));
+      const { schedule } = await saveCleaningSchedule(draftSchedule);
+      setCleaningSchedule(schedule);
       toast.success("Navbatchilik jadvali muvaffaqiyatli saqlandi!");
       setIsScheduleModalOpen(false);
     } catch (err) {
-      console.warn("Supabase upsert failed, saving to localStorage as fallback:", err);
-      // Fallback
-      setCleaningSchedule(draftSchedule);
-      localStorage.setItem(`cleaning_schedule_${roomNum}`, JSON.stringify(draftSchedule));
-      toast.success("Navbatchilik jadvali qurilmada saqlandi (mahalliy rejim)!");
-      setIsScheduleModalOpen(false);
+      console.error("Navbatchilik jadvalini saqlashda xato:", err);
+      const message = err instanceof Error ? err.message : "Jadvalni saqlab bo'lmadi. Qayta urinib ko'ring.";
+      toast.error(message);
     } finally {
       setIsSavingSchedule(false);
     }

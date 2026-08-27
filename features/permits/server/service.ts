@@ -109,7 +109,12 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
           approvedCount: scoped.filter((permit) => permit.status === 'approved').length,
           rejectedCount: scoped.filter((permit) => permit.status === 'rejected').length,
           registeredCount: scoped.filter((permit) => permit.status === 'registered').length,
-          activeStudentsCount: students.filter((user) => user.status === 'active').length,
+          // Faculty-scoped, like every other count on this card row — a
+          // building-wide total here read as "my faculty's students" and
+          // dwarfed the permit numbers next to it.
+          activeStudentsCount: students.filter(
+            (user) => user.status === 'active' && sameFaculty(user.faculty, faculty),
+          ).length,
           totalOccupiedBeds: usersWithRooms.length + approvedPermitsWithRooms.length,
           courseDistribution: Object.entries(courses).map(([course, talabalar]) => ({ course: `${course}-kurs`, talabalar })),
           facultyDistribution: Object.entries(faculties).map(([name, talabalar]) => ({ name, talabalar })),
@@ -147,7 +152,7 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
         }
         const linked = await repository.findLinkedUser(existing.passport_series, existing.jshshir)
         if (linked && (linked.status !== 'pending' || !sameFaculty(linked.faculty, faculty))) {
-          throw new ApiError(409, 'Bu talaba allaqachon ro\'yxatdan o\'tib, hisobini tasdiqlagan — tasdiqni bekor qilib bo\'lmaydi. Uni chetlashtirish uchun Talabalar bo\'limidan foydalaning.')
+          throw new ApiError(409, "Bu talaba allaqachon ro'yxatdan o'tib, hisobini tasdiqlagan — endi yo'llanma tasdig'ini bekor qilib bo'lmaydi. Talabani xonadan chiqarish kerak bo'lsa, «Xonalar» bo'limidan foydalaning; hisobni butunlay o'chirish esa administrator orqali amalga oshiriladi.")
         }
         if (linked) await repository.deletePendingStudent(linked.id)
         // Also frees any room the dekan pre-reserved on this permit — that

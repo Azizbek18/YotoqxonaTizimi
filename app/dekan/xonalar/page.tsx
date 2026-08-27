@@ -339,12 +339,17 @@ export default function DekanXonalarMap() {
   return (
     <div className="space-y-6">
       {/* 1. Header Overview Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: 'Jami band joylar', value: `${totalOccupiedBeds} / ${totalBeds}`, icon: BedDouble },
+          // Roomless active students + approved-but-unregistered permits of
+          // this faculty — the same list the "Talaba joylashtirish" modal
+          // draws from. Surfaced here so a student left without a room (e.g.
+          // just removed from one) is visible without opening every room.
+          { label: 'Xonasiz talabalar', value: `${students.length} ta`, icon: UserMinus, tone: students.length > 0 ? 'warning' as const : undefined },
           { label: 'Bo‘sh xonalar', value: `${totalEmptyRooms} ta`, icon: DoorOpen },
           { label: `To‘la xonalar (${roomCapacity}/${roomCapacity})`, value: `${totalFullRooms} ta`, icon: DoorClosed },
-          { label: 'Gender xatoliklar', value: `${totalRoomsWithMixedGenders} ta xona`, icon: Users2, warn: totalRoomsWithMixedGenders > 0 },
+          { label: 'Gender xatoliklar', value: `${totalRoomsWithMixedGenders} ta xona`, icon: Users2, tone: totalRoomsWithMixedGenders > 0 ? 'danger' as const : undefined },
         ].map((stat, idx) => (
           <motion.div
             key={stat.label}
@@ -354,13 +359,13 @@ export default function DekanXonalarMap() {
             className={`p-4 rounded-2xl border ${surfaceBg} ${ui.hoverLift} flex items-center gap-3`}
           >
             <div className={`h-11 w-11 shrink-0 rounded-xl flex items-center justify-center ${
-              stat.warn ? statusChip('danger', isLight).chip : ui.accentTile
+              stat.tone ? statusChip(stat.tone, isLight).chip : ui.accentTile
             }`}>
               <stat.icon size={18} strokeWidth={2.2} />
             </div>
             <div className="min-w-0">
               <span className={`block text-[9px] font-semibold uppercase tracking-wider truncate ${textMuted}`}>{stat.label}</span>
-              <h3 className={`text-lg sm:text-xl font-bold mt-0.5 tracking-tight ${stat.warn ? statusChip('danger', isLight).text : textStrong}`}>
+              <h3 className={`text-lg sm:text-xl font-bold mt-0.5 tracking-tight ${stat.tone ? statusChip(stat.tone, isLight).text : textStrong}`}>
                 {stat.value}
               </h3>
             </div>

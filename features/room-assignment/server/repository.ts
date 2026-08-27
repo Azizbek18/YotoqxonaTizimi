@@ -31,7 +31,13 @@ export function createRoomAssignmentRepository() {
       return data
     },
     async clearStudentRoom(id: string) {
-      const { error } = await supabase.from('users').update({ room_number: null, assigned_floor: null }).eq('id', id)
+      // is_floor_captain is meaningless without a floor — a captaincy has to
+      // be dropped along with the room, otherwise the student lingers in the
+      // "Sardorlar" list (and the sardor dashboard) with no floor to lead.
+      const { error } = await supabase
+        .from('users')
+        .update({ room_number: null, assigned_floor: null, is_floor_captain: false })
+        .eq('id', id)
       if (error) throw error
     },
 

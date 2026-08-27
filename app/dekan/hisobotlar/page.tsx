@@ -274,12 +274,13 @@ export default function DekanReportsPage() {
 
   const previewRows = filteredStudents.slice(0, 8)
 
-  const ClearBtn = ({ compact }: { compact?: boolean }) => (
+  const renderClearBtn = (key: string) => (
     <button
+      key={key}
       onClick={() => setFilters(EMPTY_FILTERS)}
       disabled={activeFilterChips.length === 0}
       title="Barcha filtrlarni tozalash"
-      className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${ui.dangerSoft} ${compact ? '' : ''}`}
+      className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${ui.dangerSoft}`}
     >
       <FilterX size={13} />
       Filtrlarni tozalash
@@ -325,7 +326,7 @@ export default function DekanReportsPage() {
               {preset.label}
             </button>
           ))}
-          <ClearBtn />
+          {renderClearBtn('presets')}
         </div>
       </div>
 
@@ -341,7 +342,7 @@ export default function DekanReportsPage() {
               </span>
             )}
           </h3>
-          <ClearBtn />
+          {renderClearBtn('header')}
         </div>
 
         <div className="relative mb-4">
@@ -448,7 +449,7 @@ export default function DekanReportsPage() {
                 <X size={11} />
               </button>
             ))}
-            <div className="ml-auto"><ClearBtn compact /></div>
+            <div className="ml-auto">{renderClearBtn('chips')}</div>
           </div>
         )}
       </div>

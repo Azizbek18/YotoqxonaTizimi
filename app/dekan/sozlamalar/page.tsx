@@ -122,8 +122,9 @@ export default function DekanSozlamalarPage() {
 
     const inputCls = `rounded-lg border text-sm px-3 py-2 transition-colors ${ui.input} ${ui.ring}`
 
-    const Section = ({ icon: Icon, title, delay, children }: { icon: typeof Wallet; title: string; delay: number; children: React.ReactNode }) => (
+    const renderSection = (Icon: typeof Wallet, title: string, delay: number, children: React.ReactNode) => (
         <motion.section
+            key={title}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay }}
@@ -139,8 +140,8 @@ export default function DekanSozlamalarPage() {
         </motion.section>
     )
 
-    const NumberRow = ({ field, width }: { field: NumberField; width: string }) => (
-        <div className={`flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-5 border-b last:pb-0 last:border-b-0 ${ui.border}`}>
+    const renderNumberRow = (field: NumberField, width: string) => (
+        <div key={field.key} className={`flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-5 border-b last:pb-0 last:border-b-0 ${ui.border}`}>
             <div className="flex-1 min-w-0">
                 <h3 className={`text-sm font-semibold ${ui.strong}`}>{field.label}</h3>
                 <p className={`text-xs mt-1 ${ui.muted}`}>{field.description}</p>
@@ -187,12 +188,13 @@ export default function DekanSozlamalarPage() {
             ) : (
                 <>
                     <div className="space-y-6">
-                        <Section icon={Wallet} title="To'lov sozlamalari" delay={0}>
-                            {paymentFields.map((field) => <NumberRow key={field.key} field={field} width="sm:w-36" />)}
-                        </Section>
+                        {renderSection(Wallet, "To'lov sozlamalari", 0, (
+                            <>{paymentFields.map((field) => renderNumberRow(field, 'sm:w-36'))}</>
+                        ))}
 
-                        <Section icon={Boxes} title="Xona va qavat sozlamalari" delay={0.04}>
-                            {roomFields.map((field) => <NumberRow key={field.key} field={field} width="sm:w-24" />)}
+                        {renderSection(Boxes, 'Xona va qavat sozlamalari', 0.04, (
+                          <>
+                            {roomFields.map((field) => renderNumberRow(field, 'sm:w-24'))}
 
                             {/* Room -> floor map. Not editable here on purpose: it lives in
                                 floor_room_layout, which the Xonalar xaritasi bo'limi writes. */}
@@ -247,9 +249,11 @@ export default function DekanSozlamalarPage() {
                                     </div>
                                 )}
                             </div>
-                        </Section>
+                          </>
+                        ))}
 
-                        <Section icon={Globe2} title="Xorijlik/imtiyozli talabalar arizasi" delay={0.06}>
+                        {renderSection(Globe2, 'Xorijlik/imtiyozli talabalar arizasi', 0.06, (
+                          <>
                             {!settings.ttjName.trim() && (
                                 <div className={`flex items-start gap-3 rounded-xl border p-4 ${isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'}`}>
                                     <ShieldAlert size={18} className={`mt-0.5 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
@@ -278,13 +282,15 @@ export default function DekanSozlamalarPage() {
                                     />
                                 </div>
                             </div>
-                        </Section>
+                          </>
+                        ))}
 
-                        <Section icon={ShieldAlert} title="Fayl va ogohlantirish chegaralari" delay={0.08}>
-                            {limitFields.map((field) => <NumberRow key={field.key} field={field} width="sm:w-24" />)}
-                        </Section>
+                        {renderSection(ShieldAlert, 'Fayl va ogohlantirish chegaralari', 0.08, (
+                            <>{limitFields.map((field) => renderNumberRow(field, 'sm:w-24'))}</>
+                        ))}
 
-                        <Section icon={Phone} title="Aloqa va favqulodda xizmatlar" delay={0.1}>
+                        {renderSection(Phone, 'Aloqa va favqulodda xizmatlar', 0.1, (
+                          <>
                             {contacts.map((contact) => (
                                 <div key={contact.title} className={`pb-5 border-b last:pb-0 last:border-b-0 ${ui.border}`}>
                                     <h3 className={`text-sm font-semibold mb-3 ${ui.strong}`}>{contact.title}</h3>
@@ -314,7 +320,8 @@ export default function DekanSozlamalarPage() {
                                     </div>
                                 </div>
                             ))}
-                        </Section>
+                          </>
+                        ))}
                     </div>
 
                     <div className="mt-8 flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3 sm:justify-end">

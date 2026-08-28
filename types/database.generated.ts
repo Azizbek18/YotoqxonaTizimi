@@ -110,6 +110,7 @@ export type PaymentRow = {
   id: string
   student_id: string
   student_name: string
+  faculty: string
   month: string
   year: number
   amount: number

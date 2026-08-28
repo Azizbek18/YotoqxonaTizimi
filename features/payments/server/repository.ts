@@ -37,10 +37,11 @@ export function createPaymentRepository() {
       return (data ?? []).map((row) => toPaymentRecord(row as Record<string, unknown>))
     },
 
-    async listAll(studentId?: string) {
+    async listAll(faculty: string, studentId?: string) {
       let query = supabase
         .from('tolovlar')
         .select(PAYMENT_COLUMNS)
+        .eq('faculty', faculty)
         .order('created_at', { ascending: false })
       if (studentId) query = query.eq('student_id', studentId)
       const { data, error } = await query
@@ -48,10 +49,11 @@ export function createPaymentRepository() {
       return (data ?? []).map((row) => toPaymentRecord(row as Record<string, unknown>))
     },
 
-    async countWaiting() {
+    async countWaiting(faculty: string) {
       const { count, error } = await supabase
         .from('tolovlar')
         .select('id', { count: 'exact', head: true })
+        .eq('faculty', faculty)
         .eq('status', 'waiting')
       if (error) throw error
       return count ?? 0
@@ -120,14 +122,18 @@ export function createPaymentRepository() {
       })
     },
 
-    async review(ids: string[], status: Extract<PaymentStatus, 'approved' | 'rejected'>, adminMessage: string) {
+    async review(faculty: string, ids: string[], status: Extract<PaymentStatus, 'approved' | 'rejected'>, adminMessage: string) {
       // Only 'waiting' payments can be decided — prevents re-flipping a
       // payment that's already been approved/rejected out from under a
       // previous decision (no audit trail of what it changed from/to).
+      // Scoped to the reviewer's faculty: a payment id from another
+      // faculty's student simply doesn't match, so the service's
+      // "not all rows updated" check rejects the whole batch.
       const { data, error } = await supabase
         .from('tolovlar')
         .update({ status, admin_message: adminMessage })
         .in('id', ids)
+        .eq('faculty', faculty)
         .eq('status', 'waiting')
         .select('id')
       if (error) throw error

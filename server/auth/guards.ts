@@ -11,6 +11,7 @@ type StudentIdentity = {
   email: string | null
   role: string | null
   status: string | null
+  faculty: string | null
 }
 
 type StaffIdentity = {
@@ -32,7 +33,7 @@ export async function requireActiveStudent(request?: Request) {
   const user = await requireUser(request)
   const { data: student, error } = await getServiceSupabase()
     .from('users')
-    .select('id, full_name, email, role, status')
+    .select('id, full_name, email, role, status, faculty')
     .eq('id', user.id)
     .maybeSingle()
 

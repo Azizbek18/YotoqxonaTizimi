@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireFloorCaptain } from '@/server/auth/sardor'
+import { normalizeFaculty, PRIMARY_FACULTY } from '@/lib/faculties'
 
 const ALLOWED_TYPES = new Set(['Muhim', 'Tadbir', 'Yangilik', 'Ogohlantirish'])
 
@@ -73,6 +74,9 @@ export async function POST(request: NextRequest) {
         text,
         type: type || 'Yangilik',
         audience: 'floor',
+        // Stamp the sardor's own faculty so the student-facing floor feed
+        // (features/announcements) only shows it inside that building.
+        faculty: normalizeFaculty(caller.faculty) ?? PRIMARY_FACULTY,
         target_floor: captainFloor,
         target_gender: captainGender,
         created_by: caller.id,
@@ -115,11 +119,12 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Navbatchilik jadvali juda katta' }, { status: 413 })
     }
 
+    // The RPC derives the building from the captain's own users.faculty —
+    // it is never passed in, so it can't be spoofed.
     const { data: id, error } = await serviceSupabase.rpc('upsert_floor_duty_schedule', {
       p_creator_id: caller.id,
       p_floor: caller.assigned_floor,
       p_gender: caller.gender,
-      p_faculty: caller.faculty || 'Barchasi',
       p_text: text,
     })
     if (error || !id) {

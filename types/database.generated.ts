@@ -281,7 +281,6 @@ export interface Database {
           p_creator_id: string
           p_floor: number
           p_gender: string
-          p_faculty: string
           p_text: string
         }
         Returns: string

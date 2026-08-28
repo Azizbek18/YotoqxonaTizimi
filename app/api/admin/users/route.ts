@@ -506,10 +506,13 @@ export async function PATCH(request: Request) {
     if (source === 'users' && updates.is_floor_captain === true) {
       // is_floor_captain=true is only meaningful together with a floor and
       // a gender — the uniqueness guarantee (users_floor_captain_unique_idx
-      // on (assigned_floor, gender) WHERE is_floor_captain) doesn't catch
-      // NULLs (SQL never treats NULL = NULL), so without this check an
+      // on (faculty, assigned_floor, gender) WHERE is_floor_captain) doesn't
+      // catch NULLs (SQL never treats NULL = NULL), so without this check an
       // admin could create multiple "captain" rows with no floor/gender at
       // all, none of which would ever conflict with each other.
+      // promote_floor_captain derives the faculty (building) from the target
+      // student's own users.faculty and demotes only that building's
+      // current captain for the floor/gender.
       const { data: currentUser } = await supabase
         .from('users')
         .select('assigned_floor, gender')

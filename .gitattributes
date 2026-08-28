@@ -1,0 +1,15 @@
+# Normalise line endings — LF in the repo and in every checkout, so the
+# migration SQL tests (exact multi-line substring matches) behave the same
+# on Windows and CI. Prevents the recurring CRLF drift.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

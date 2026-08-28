@@ -140,12 +140,11 @@ export default function DekanLayout({
     { label: 'Yo‘llanmalar', caption: 'Yangi arizalar', href: '/dekan/arizalar', icon: FileText, badge: pendingCount > 0 ? pendingCount : undefined },
     { label: 'Xonalar xaritasi', caption: 'Joylashtirish holati', href: '/dekan/xonalar', icon: Boxes },
     { label: '3D Xonalar', caption: 'Qavat tarxi quruvchisi', href: '/dekan/3d-xonalar', icon: Layers3 },
-    { label: 'Talabalar', caption: 'Joylashgan talabalar', href: '/dekan/talabalar', icon: Users },
+    { label: 'Talabalar', caption: 'Fakultet talabalari', href: '/dekan/talabalar', icon: Users },
     // Faculty-admin tools. The page bodies are the /admin/* implementations
     // (re-exported under /dekan/*), so they render inside THIS panel's chrome;
     // their /api/admin/* routes are already scoped to the dekan's own faculty.
     { label: 'Arizalar', caption: 'Talaba murojaatlari', href: '/dekan/murojaatlar', icon: ShieldAlert },
-    { label: 'Foydalanuvchilar', caption: 'Talaba yozuvlari', href: '/dekan/foydalanuvchilar', icon: UserCog },
     { label: 'Tarbiyachilar', caption: 'Xodim hisoblari', href: '/dekan/xodimlar', icon: Building2 },
     { label: 'E‘lonlar', caption: 'Fakultet talabalariga', href: '/dekan/elonlar', icon: Megaphone },
     { label: 'Hisobotlar', caption: 'Excel eksport', href: '/dekan/hisobotlar', icon: FileSpreadsheet },

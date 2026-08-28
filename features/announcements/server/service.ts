@@ -72,7 +72,12 @@ export function createAnnouncementService(repository: AnnouncementRepository = c
 
       const elonlar = rows
         .filter((row) => {
-          if (row.audience === 'all') return true
+          // 'all' is a building-wide notice, but every building now belongs to
+          // one faculty — so it is scoped exactly like 'faculty', not shown
+          // dorm-wide across tenants. A reader with no resolvable faculty
+          // (transition student, signed-out fallback) is treated as the
+          // primary building's, same as the 'floor' branch below.
+          if (row.audience === 'all') return sameFacultyCode(row.faculty, currentFaculty ?? PRIMARY_FACULTY)
           if (row.audience === 'faculty') return sameFacultyCode(row.faculty, currentFaculty)
           if (row.audience === 'floor') {
             // A floor notice is a sardor's, and a sardor belongs to one

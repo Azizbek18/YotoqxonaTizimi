@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const insert = vi.fn()
+const upsert = vi.fn()
 const emailMaybeSingle = vi.fn()
 const rpc = vi.fn()
 const deleteAuthUserSafely = vi.fn()
@@ -11,6 +12,7 @@ vi.mock('@/lib/server-supabase', () => ({
   getServiceSupabase: () => ({
     from: () => ({
       insert,
+      upsert,
       select: () => ({ eq: () => ({ maybeSingle: emailMaybeSingle }) }),
     }),
     rpc: (...args: unknown[]) => rpc(...args),
@@ -67,6 +69,7 @@ describe('POST /api/staff/register', () => {
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 4 })
     createAuthUserSafely.mockResolvedValue({ data: { user: { id: 'new-id' } }, error: null })
     insert.mockResolvedValue({ error: null })
+    upsert.mockResolvedValue({ error: null })
     emailMaybeSingle.mockResolvedValue({ data: null })
     rpc.mockResolvedValue({ data: [{ faculty: 'kimyo', role: 'tarbiyachi' }], error: null })
   })
@@ -115,6 +118,18 @@ describe('POST /api/staff/register', () => {
       const inserted = insert.mock.calls[0][0]
       expect(inserted.role).toBe('tarbiyachi')
       expect(inserted.faculty).toBe('kimyo')
+    })
+
+    it('seeds an app_settings row for a newly-registered dekan\'s faculty', async () => {
+      rpc.mockResolvedValue({ data: [{ faculty: 'fizika', role: 'dekan' }], error: null })
+      const response = await POST(request(INVITE_REG))
+      expect(response.status).toBe(200)
+      expect(upsert).toHaveBeenCalledWith({ faculty: 'fizika' }, { onConflict: 'faculty', ignoreDuplicates: true })
+    })
+
+    it('does not seed app_settings when the invite is for a tarbiyachi', async () => {
+      await POST(request(INVITE_REG))
+      expect(upsert).not.toHaveBeenCalled()
     })
   })
 })

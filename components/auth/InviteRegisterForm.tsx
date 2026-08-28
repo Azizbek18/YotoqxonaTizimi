@@ -7,9 +7,29 @@ import { KeyRound } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/password-policy'
 
-// Staff registration via a dekan-issued invite code. The code alone decides
-// the faculty and role — there is no faculty picker here.
-export default function InviteRegisterForm({ initialCode = '' }: { initialCode?: string }) {
+const COPY = {
+  xodim: {
+    title: "Taklif kodi bilan ro'yxatdan o'tish",
+    subtitle: 'Fakultet va rol taklif kodidan olinadi',
+  },
+  dekan: {
+    title: 'Fakultet dekani sifatida ro‘yxatdan o‘tish',
+    subtitle: "Kod fakultetingizni belgilaydi — ro'yxatdan o'tgach fakultetingiz boshqaruv paneli ochiladi",
+  },
+} as const
+
+// Staff registration via an invite code. The code alone decides the faculty
+// and role — there is no faculty picker here. `audience` only swaps the copy:
+// 'dekan' for the per-faculty dean codes minted by the system owner,
+// 'xodim' for the tarbiyachi/co-dekan codes a dekan issues in their panel.
+export default function InviteRegisterForm({
+  initialCode = '',
+  audience = 'xodim',
+}: {
+  initialCode?: string
+  audience?: 'xodim' | 'dekan'
+}) {
+  const copy = COPY[audience]
   const router = useRouter()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -22,7 +42,7 @@ export default function InviteRegisterForm({ initialCode = '' }: { initialCode?:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!fullName || !email || !inviteCode || !password || !confirmPassword) {
+    if (!fullName || !email || !inviteCode || !password || !confirmPassword || (audience === 'dekan' && !phone)) {
       toast.error("Majburiy maydonlarni to'ldiring")
       return
     }
@@ -48,8 +68,12 @@ export default function InviteRegisterForm({ initialCode = '' }: { initialCode?:
         throw new Error(result.error ?? "Ro'yxatdan o'tishda xatolik")
       }
 
-      toast.success("Muvaffaqiyatli ro'yxatdan o'tdingiz")
-      setTimeout(() => router.push('/login'), 1000)
+      toast.success(
+        audience === 'dekan'
+          ? "Ro'yxatdan o'tdingiz — endi tizimga kiring, fakultet paneli ochiladi"
+          : "Muvaffaqiyatli ro'yxatdan o'tdingiz",
+      )
+      setTimeout(() => router.push('/login'), 1200)
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Nomaʼlum xatolik')
     } finally {
@@ -66,8 +90,8 @@ export default function InviteRegisterForm({ initialCode = '' }: { initialCode?:
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
             <KeyRound size={22} />
           </div>
-          <h1 className="text-xl font-black">Taklif kodi bilan ro&apos;yxatdan o&apos;tish</h1>
-          <p className="mt-1 text-xs text-slate-400">Fakultet va rol taklif kodidan olinadi</p>
+          <h1 className="text-xl font-black">{copy.title}</h1>
+          <p className="mt-1 text-xs text-slate-400">{copy.subtitle}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -83,7 +107,13 @@ export default function InviteRegisterForm({ initialCode = '' }: { initialCode?:
             placeholder="Email"
             required
           />
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} className={fieldCls} placeholder="Telefon (ixtiyoriy)" />
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className={fieldCls}
+            placeholder={audience === 'dekan' ? 'Telefon' : 'Telefon (ixtiyoriy)'}
+            required={audience === 'dekan'}
+          />
           <input
             value={inviteCode}
             onChange={(e) => setInviteCode(e.target.value)}

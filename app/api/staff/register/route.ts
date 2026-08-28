@@ -113,6 +113,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Xodim profilini yaratib bo'lmadi" }, { status: 400 })
     }
 
+    // A new faculty's dekan gets an app_settings row seeded on the spot, so
+    // their dashboard shows THEIR faculty's (blank, default-fee) settings
+    // instead of silently falling back to the primary building's numbers.
+    // The dekan then fills TTJ name / fees / contacts in /dekan/sozlamalar.
+    // ignoreDuplicates: a row already exists if this faculty was set up before.
+    if (role === 'dekan') {
+      const { error: settingsError } = await supabase
+        .from('app_settings')
+        .upsert({ faculty }, { onConflict: 'faculty', ignoreDuplicates: true })
+      if (settingsError) console.error('app_settings seed for new dekan faculty failed:', settingsError)
+    }
+
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ ok: false, error: 'Server xatoligi' }, { status: 500 })

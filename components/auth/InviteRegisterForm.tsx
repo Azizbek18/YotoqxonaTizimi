@@ -160,6 +160,14 @@ export default function InviteRegisterForm({
   const inputCls = `w-full bg-transparent text-sm outline-none ${inputText}`
   const trackCls = isLight ? 'bg-slate-200' : 'bg-white/10'
 
+  // Both wizard buttons share the exact same box so "Orqaga" and "Keyingi"
+  // read as one pair — only the fill differs (ghost vs gradient).
+  const btnBase = 'flex h-[52px] items-center justify-center gap-2 rounded-xl px-5 text-xs font-black uppercase tracking-[0.15em] transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60'
+  const btnGhost = isLight
+    ? 'border border-indigo-300 bg-indigo-100/70 text-indigo-700 hover:bg-indigo-100'
+    : 'border border-indigo-400/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20'
+  const btnPrimary = 'bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 bg-[length:200%_auto] text-white shadow-lg shadow-indigo-600/25 hover:bg-right'
+
   const wrapCls = (id: string) => `cyber-border ${focused === id ? 'focused' : ''}`
   const innerCls = 'cyber-input-inner flex items-center gap-3 px-3.5 py-3'
   const iconCls = (id: string) => `shrink-0 ${focused === id ? 'icon-pulse text-indigo-400' : idleIcon}`
@@ -387,11 +395,11 @@ export default function InviteRegisterForm({
                 type="button"
                 onClick={() => goTo(step - 1)}
                 disabled={loading}
-                whileHover={{ scale: loading ? 1 : 1.02 }}
-                whileTap={{ scale: loading ? 1 : 0.97 }}
-                className={`flex items-center justify-center gap-1.5 rounded-xl border px-4 py-3.5 text-xs font-black uppercase tracking-[0.15em] transition-all disabled:opacity-50 ${chip}`}
+                whileHover={{ scale: loading ? 1 : 1.015 }}
+                whileTap={{ scale: loading ? 1 : 0.985 }}
+                className={`${btnBase} ${btnGhost} shrink-0`}
               >
-                <ArrowLeft size={14} /> Orqaga
+                <ArrowLeft size={15} /> Orqaga
               </motion.button>
             )}
             <motion.button
@@ -399,7 +407,7 @@ export default function InviteRegisterForm({
               disabled={loading}
               whileHover={{ scale: loading ? 1 : 1.015 }}
               whileTap={{ scale: loading ? 1 : 0.985 }}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 bg-[length:200%_auto] px-4 py-3.5 text-xs font-black uppercase tracking-[0.15em] text-white shadow-lg shadow-indigo-600/25 transition-[background-position,transform] duration-500 hover:bg-right disabled:cursor-not-allowed disabled:opacity-60"
+              className={`${btnBase} ${btnPrimary} flex-1`}
             >
               {loading
                 ? <><Loader2 size={15} className="animate-spin" /> Yuborilmoqda…</>

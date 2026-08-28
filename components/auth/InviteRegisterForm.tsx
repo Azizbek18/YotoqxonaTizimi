@@ -162,11 +162,11 @@ export default function InviteRegisterForm({
 
   // Both wizard buttons share the exact same box so "Orqaga" and "Keyingi"
   // read as one pair — only the fill differs (ghost vs gradient).
-  const btnBase = 'flex h-[52px] items-center justify-center gap-2 rounded-xl px-5 text-xs font-black uppercase tracking-[0.15em] transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60'
+  const btnBase = 'flex h-[52px] items-center justify-center gap-2 rounded-xl px-5 text-xs font-black uppercase tracking-[0.15em] shadow-lg shadow-indigo-600/20 transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60'
   const btnGhost = isLight
     ? 'border border-indigo-300 bg-indigo-100/70 text-indigo-700 hover:bg-indigo-100'
     : 'border border-indigo-400/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20'
-  const btnPrimary = 'bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 bg-[length:200%_auto] text-white shadow-lg shadow-indigo-600/25 hover:bg-right'
+  const btnPrimary = 'bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 bg-[length:200%_auto] text-white hover:bg-right'
 
   const wrapCls = (id: string) => `cyber-border ${focused === id ? 'focused' : ''}`
   const innerCls = 'cyber-input-inner flex items-center gap-3 px-3.5 py-3'

@@ -161,6 +161,7 @@ export interface Database {
       tolovlar: Table<PaymentRow>
       permit_requests: Table<PermitRequestRow>
       cleaning_schedule: Table<{
+        faculty: string
         room_number: string
         schedule: Json
         updated_at: string | null

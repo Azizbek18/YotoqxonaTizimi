@@ -6,18 +6,18 @@ import { createCleaningScheduleRepository, type CleaningScheduleRepository } fro
 
 export function createCleaningScheduleService(repository: CleaningScheduleRepository = createCleaningScheduleRepository()) {
   async function room(studentId: string) {
-    const roomNumber = await repository.getRoomNumber(studentId)
+    const { roomNumber, faculty } = await repository.getRoomAndFaculty(studentId)
     if (!roomNumber) throw new ApiError(409, 'Talabaga xona biriktirilmagan')
-    return roomNumber
+    return { roomNumber, faculty }
   }
   return {
     async get(studentId: string) {
-      const roomNumber = await room(studentId)
-      const data = await repository.get(roomNumber)
+      const { roomNumber, faculty } = await room(studentId)
+      const data = await repository.get(faculty, roomNumber)
       return { success: true as const, roomNumber, schedule: data?.schedule ?? null, updatedAt: data?.updated_at ?? null }
     },
     async save(studentId: string, value: unknown) {
-      const roomNumber = await room(studentId)
+      const { roomNumber, faculty } = await room(studentId)
       const schedule = normalizeCleaningSchedule(value)
 
       // An assignee's id must be a real student actually assigned to this
@@ -26,7 +26,7 @@ export function createCleaningScheduleService(repository: CleaningScheduleReposi
       // as the "on duty" roommate. The stored name always comes from the
       // roommate lookup, never the client's copy, so a real roommate's
       // display name can't be spoofed either.
-      const roommates = await repository.getRoommates(roomNumber)
+      const roommates = await repository.getRoommates(faculty, roomNumber)
       const roommateNames = new Map(roommates.map((r) => [r.id, r.full_name]))
       for (const assignee of Object.values(schedule)) {
         if (!assignee) continue
@@ -36,7 +36,7 @@ export function createCleaningScheduleService(repository: CleaningScheduleReposi
         assignee.name = roommateNames.get(assignee.id) || assignee.name
       }
 
-      const data = await repository.save(roomNumber, schedule as Json)
+      const data = await repository.save(faculty, roomNumber, schedule as Json)
       return { success: true as const, roomNumber, schedule: data.schedule, updatedAt: data.updated_at }
     },
   }

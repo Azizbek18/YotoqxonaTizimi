@@ -1,74 +1,139 @@
 import { PERMIT_FACULTIES, type PermitFacultyValue } from '@/lib/faculties'
 
 /**
- * Canonical study directions (yo'nalish).
+ * Canonical study directions (yo'nalish), keyed by the faculty codes in
+ * lib/faculties.ts. Every entry point picks from this list and stores the
+ * `value`; `directionLabel` turns it back into readable text, and
+ * `normalizeDirection` maps legacy free-typed spellings onto the same value.
  *
- * `direction` used to be a free-text field on the permit form while the
- * registration form offered a slug-valued select, so the same direction ended
- * up stored two ways — "amaliy-matematika" from one screen and "Amaliy
- * matematika" from the other — and every grouping, filter and export treated
- * them as two different directions. Every entry point now picks from this one
- * list and stores the `value`; `directionLabel` turns it back into readable
- * text for display, and `normalizeDirection` maps the legacy free-typed
- * spellings onto the same canonical value.
+ * Bakalavr yo'nalishlari only. Source: each faculty's nuu.uz page
+ * (Bakalavriat section), captured 2026-08-28. Programmes a faculty no longer
+ * offers move to LEGACY_DIRECTIONS below — never selectable, still resolved
+ * so an older student record keeps displaying as readable text.
  *
- * Keyed by the canonical faculty codes in lib/faculties.ts — the ones the
- * permit flow and dekan scoping already use — so a faculty has exactly one
- * vocabulary of directions everywhere.
+ * TODO(faculty-data): nuu.uz did not surface the o'zbek-filologiya
+ * programmes for `ozbek-filologiyasi`, nor the "Xorijiy til va adabiyoti"
+ * programmes for `xorijiy-filologiya` — add them once confirmed.
  */
 
 export type DirectionOption = { value: string; label: string }
 
 export const FACULTY_DIRECTIONS: Record<PermitFacultyValue, readonly DirectionOption[]> = {
+  matematika: [
+    { value: 'mexanika-modellashtirish', label: 'Mexanika va matematik modellashtirish' },
+    { value: 'matematika', label: 'Matematika' },
+  ],
   amit: [
-    { value: 'amaliy-matematika', label: 'Amaliy matematika' },
-    { value: 'matematik-tahlil', label: 'Matematik tahlil' },
-    { value: 'funksional-tahlil', label: 'Funksional tahlil' },
-    { value: 'differensial-tenglamalar', label: 'Differensial tenglamalar' },
-    { value: 'dasturiy-injiniring', label: 'Dasturiy injiniring' },
-    { value: 'kompyuter-ilmlari', label: 'Kompyuter ilmlari' },
-    { value: 'kompyuter-tarmoqlari', label: 'Kompyuter tarmoqlari' },
     { value: 'suniy-intellekt', label: 'Sun’iy intellekt' },
     { value: 'axborot-xavfsizligi', label: 'Axborot xavfsizligi' },
-    { value: 'kiberxavfsizlik', label: 'Kiberxavfsizlik' },
-    { value: 'raqamli-forensika', label: 'Raqamli forensika' },
-  ],
-  tarix: [
-    { value: 'uzbekiston-tarixi', label: 'O‘zbekiston tarixi' },
-    { value: 'jahon-tarixi', label: 'Jahon tarixi' },
-    { value: 'arxeologiya', label: 'Arxeologiya' },
+    { value: 'axborot-tizimlari', label: 'Axborot tizimlari va texnologiyalari' },
+    { value: 'kompyuter-ilmlari', label: 'Kompyuter ilmlari va dasturlash texnologiyalari' },
+    { value: 'amaliy-matematika', label: 'Amaliy matematika' },
   ],
   fizika: [
-    { value: 'nazariy-fizika', label: 'Nazariy fizika' },
-    { value: 'atom-fizikasi', label: 'Atom va molekulyar fizika' },
-    { value: 'energetika', label: 'Energetika' },
+    { value: 'tibbiyot-fizikasi', label: 'Tibbiyot fizikasi' },
+    { value: 'astronomiya', label: 'Astronomiya' },
+    { value: 'fizika', label: 'Fizika' },
+    { value: 'fizika-matematik', label: 'Fizika (matematik fizika)' },
   ],
   kimyo: [
-    { value: 'organik-kimyo', label: 'Organik kimyo' },
-    { value: 'analitik-kimyo', label: 'Analitik kimyo' },
-    { value: 'noorganik-kimyo', label: 'Noorganik kimyo' },
+    { value: 'mahsulot-kimyoviy-analizi', label: 'Mahsulotlarning kimyoviy analizi (oziq-ovqat mahsulotlari)' },
+    { value: 'tabiiy-birikmalar-kimyosi', label: 'Tabiiy birikmalar kimyosi' },
+    { value: 'polimerlar-kimyosi', label: 'Polimerlar kimyosi (tarmoqlar bo’yicha)' },
+    { value: 'neft-gaz-kimyosi', label: 'Umumiy va neft-gaz kimyosi' },
+    { value: 'kimyo', label: 'Kimyo (turlari bo’yicha)' },
   ],
   biologiya: [
-    { value: 'genetika', label: 'Genetika' },
-    { value: 'mikrobiologiya', label: 'Mikrobiologiya' },
-    { value: 'biotexnologiya', label: 'Biotexnologiya' },
+    { value: 'biotexnologiya', label: 'Biotexnologiya (tarmoqlar bo’yicha)' },
+    { value: 'biologiya', label: 'Biologiya (turlari bo’yicha)' },
+  ],
+  geologiya: [
+    { value: 'konlarni-geomodellashtirish', label: 'Foydali qazilma konlarini baholash va geomodellashtirish' },
+    { value: 'geokimyo', label: 'Geokimyo' },
+    { value: 'geofizika', label: 'Geofizika' },
+    { value: 'geologiya', label: 'Geologiya (faoliyat sohalari bo’yicha)' },
+  ],
+  geografiya: [
+    { value: 'geodeziya-kartografiya', label: 'Geodeziya, kartografiya va kadastr' },
+    { value: 'geografiya', label: 'Geografiya' },
+  ],
+  iqtisodiyot: [
+    { value: 'ijtimoiy-ish', label: 'Ijtimoiy ish' },
+    { value: 'jahon-iqtisodiyoti', label: 'Jahon iqtisodiyoti va xalqaro iqtisodiy munosabatlar' },
+    { value: 'inson-resurslari', label: 'Inson resurslarini boshqarish' },
+    { value: 'menejment', label: 'Menejment (tarmoqlar va sohalar bo’yicha)' },
+    { value: 'byudjet-gaznachilik', label: 'Byudjet nazorati va g’aznachiligi' },
+  ],
+  tarix: [
+    { value: 'antropologiya-etnologiya', label: 'Antropologiya va etnologiya' },
+    { value: 'arxivshunoslik', label: 'Arxivshunoslik' },
+    { value: 'arxeologiya', label: 'Arxeologiya' },
+    { value: 'tarix', label: 'Tarix' },
+  ],
+  'ijtimoiy-fanlar': [
+    { value: 'milliy-goya', label: 'Milliy g’oya, ma’naviyat asoslari va huquq ta’limi' },
+    { value: 'ijtimoiy-ish', label: 'Ijtimoiy ish' },
+    { value: 'siyosatshunoslik', label: 'Siyosatshunoslik' },
+    { value: 'sotsiologiya', label: 'Sotsiologiya' },
+    { value: 'yurisprudensiya', label: 'Yurisprudensiya' },
+  ],
+  'xorijiy-filologiya': [
+    { value: 'ona-tili-adabiyoti', label: 'Ona tili va adabiyoti' },
+    { value: 'tarjima-ingliz', label: 'Tarjima nazariyasi va amaliyoti (ingliz tili)' },
+    { value: 'tarjima-nemis', label: 'Tarjima nazariyasi va amaliyoti (nemis tili)' },
+    { value: 'tarjima-fransuz', label: 'Tarjima nazariyasi va amaliyoti (fransuz tili)' },
+    { value: 'rus-tili-ozga-guruh', label: 'O’zga tilli guruhlarda rus tili' },
+  ],
+  'ozbek-filologiyasi': [
+    { value: 'jurnalistika', label: 'Jurnalistika' },
+    { value: 'jurnalistika-oav', label: 'Jurnalistika (OAV faoliyati)' },
+    { value: 'jurnalistika-bosma', label: 'Jurnalistika (bosma OAV jurnalistikasi)' },
+    { value: 'jurnalistika-internet', label: 'Jurnalistika (internet jurnalistika)' },
+    { value: 'axborot-xizmati-pr', label: 'Axborot xizmati va jamoatchilik bilan aloqalar' },
+  ],
+  sport: [
+    { value: 'sport-erkin-kurash', label: 'Sport faoliyati (erkin kurash)' },
+    { value: 'sport-kurash', label: 'Sport faoliyati (kurash)' },
+    { value: 'sport-dzyudo', label: 'Sport faoliyati (dzyudo)' },
+    { value: 'sport-menejment', label: 'Menejment (sport tadbirlarini tashkil etish va boshqarish)' },
+    { value: 'sport-tadbirlari', label: 'Sport tadbirlarini tashkil etish va boshqarish' },
   ],
 }
 
 /**
- * Directions that older registration screens offered for faculties which are
- * not part of the permit flow. They are never offered for selection, but they
- * stay recognised so a record created back then still normalises and displays
- * as readable text instead of a bare slug.
+ * Directions that were selectable before the faculty list matched the real
+ * university structure (older AMIT sub-topics, and programmes from faculty
+ * screens that predate this list). Never offered for selection — kept only
+ * so an existing record still normalises and displays as readable text
+ * instead of a bare slug.
  */
 const LEGACY_DIRECTIONS: readonly DirectionOption[] = [
+  // Retired AMIT sub-topics
+  { value: 'matematik-tahlil', label: 'Matematik tahlil' },
+  { value: 'funksional-tahlil', label: 'Funksional tahlil' },
+  { value: 'differensial-tenglamalar', label: 'Differensial tenglamalar' },
+  { value: 'dasturiy-injiniring', label: 'Dasturiy injiniring' },
+  { value: 'kompyuter-tarmoqlari', label: 'Kompyuter tarmoqlari' },
+  { value: 'kiberxavfsizlik', label: 'Kiberxavfsizlik' },
+  { value: 'raqamli-forensika', label: 'Raqamli forensika' },
+  // Retired physics / chemistry / biology / history programmes
+  { value: 'nazariy-fizika', label: 'Nazariy fizika' },
+  { value: 'atom-fizikasi', label: 'Atom va molekulyar fizika' },
+  { value: 'energetika', label: 'Energetika' },
+  { value: 'organik-kimyo', label: 'Organik kimyo' },
+  { value: 'analitik-kimyo', label: 'Analitik kimyo' },
+  { value: 'noorganik-kimyo', label: 'Noorganik kimyo' },
+  { value: 'genetika', label: 'Genetika' },
+  { value: 'mikrobiologiya', label: 'Mikrobiologiya' },
+  { value: 'uzbekiston-tarixi', label: 'O‘zbekiston tarixi' },
+  { value: 'jahon-tarixi', label: 'Jahon tarixi' },
+  // Programmes from faculty screens that predate the unified list
   { value: 'geologiya-umumiy', label: 'Umumiy geologiya' },
   { value: 'kon-geologiyasi', label: 'Kon geologiyasi' },
   { value: 'gidrogeologiya', label: 'Gidrogeologiya' },
   { value: 'geoekologiya', label: 'Geoekologiya' },
   { value: 'geoinformatika', label: 'Geoinformatika' },
   { value: 'turizm', label: 'Turizm' },
-  { value: 'sotsiologiya', label: 'Sotsiologiya' },
   { value: 'psixologiya', label: 'Psixologiya' },
   { value: 'falsafa', label: 'Falsafa' },
   { value: 'fuqarolik-huquqi', label: 'Fuqarolik huquqi' },
@@ -76,7 +141,6 @@ const LEGACY_DIRECTIONS: readonly DirectionOption[] = [
   { value: 'xalqaro-huquq', label: 'Xalqaro huquq' },
   { value: 'iqtisodiyot', label: 'Iqtisodiyot' },
   { value: 'moliya', label: 'Moliya' },
-  { value: 'menejment', label: 'Menejment' },
   { value: 'marketing', label: 'Marketing' },
   { value: 'ozbek-filologiyasi', label: 'O‘zbek filologiyasi' },
   { value: 'ozbek-tilshunosligi', label: 'O‘zbek tilshunosligi' },

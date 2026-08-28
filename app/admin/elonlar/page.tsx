@@ -26,6 +26,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { adminUI, adminStatusChip, type AdminStatusTone } from '@/lib/admin-ui'
+import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 
 type ElonType = 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish'
 
@@ -42,7 +43,10 @@ interface Elon {
 }
 
 const TYPE_OPTIONS: ElonType[] = ['Yangilik', 'Muhim', 'Tadbir', 'Ogohlantirish']
-const FACULTY_OPTIONS = ['Matematika', 'Fizika', 'Iqtisodiyot', 'Dasturiy Injiniring', 'Amaliy Matematika']
+// Store the canonical faculty code so the student-facing announcement filter
+// (features/announcements/server/service.ts -> sameFacultyCode) actually
+// matches users.faculty. A free-typed name here silently reaches nobody.
+const FACULTY_OPTIONS = PERMIT_FACULTIES
 
 const typeTone: Record<ElonType, AdminStatusTone> = {
   Yangilik: 'neutral',
@@ -483,7 +487,7 @@ export default function AdminElonlarPage() {
                     {/* Target tag */}
                     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${isLight ? 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200' : 'bg-slate-800 text-slate-300 ring-1 ring-inset ring-slate-700'}`}>
                       {elon.audience === 'faculty' ? <School size={10} /> : <Globe size={10} />}
-                      {elon.audience === 'faculty' ? elon.faculty : 'Barchaga'}
+                      {elon.audience === 'faculty' ? permitFacultyLabel(elon.faculty) : 'Barchaga'}
                     </span>
                   </div>
 
@@ -669,7 +673,7 @@ export default function AdminElonlarPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setForm((current) => ({ ...current, audience: 'faculty', faculty: current.faculty || FACULTY_OPTIONS[0] }))}
+                        onClick={() => setForm((current) => ({ ...current, audience: 'faculty', faculty: current.faculty || FACULTY_OPTIONS[0].value }))}
                         className={`rounded-xl border py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${
                           form.audience === 'faculty'
                             ? 'border-indigo-600 bg-indigo-600 text-white'
@@ -695,7 +699,7 @@ export default function AdminElonlarPage() {
                     <CustomSelect
                       value={form.faculty || ''}
                       onChange={(val) => setForm((current) => ({ ...current, faculty: val }))}
-                      options={FACULTY_OPTIONS.map((faculty) => ({ value: faculty, label: faculty }))}
+                      options={FACULTY_OPTIONS.map((faculty) => ({ value: faculty.value, label: faculty.label }))}
                       className={`rounded-xl border px-4 py-3 text-sm ${inputBg}`}
                     />
                   </motion.div>

@@ -67,6 +67,14 @@ export default function CustomSelect({
   useEffect(() => {
     if (!open) return
     const close = () => setOpen(false)
+    // The menu is position:fixed at a snapshot of the trigger's rect, so a
+    // page scroll detaches it — close then. But scrolling INSIDE the menu's
+    // own option list also fires a (capturing) scroll event; ignore those,
+    // otherwise the list snaps shut the moment the user drags it.
+    const onScroll = (e: Event) => {
+      if (menuRef.current?.contains(e.target as Node)) return
+      setOpen(false)
+    }
     const onClickOutside = (e: MouseEvent) => {
       if (triggerRef.current?.contains(e.target as Node)) return
       if (menuRef.current?.contains(e.target as Node)) return
@@ -75,12 +83,12 @@ export default function CustomSelect({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
     }
-    window.addEventListener('scroll', close, true)
+    window.addEventListener('scroll', onScroll, true)
     window.addEventListener('resize', close)
     document.addEventListener('mousedown', onClickOutside)
     document.addEventListener('keydown', onKey)
     return () => {
-      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('scroll', onScroll, true)
       window.removeEventListener('resize', close)
       document.removeEventListener('mousedown', onClickOutside)
       document.removeEventListener('keydown', onKey)

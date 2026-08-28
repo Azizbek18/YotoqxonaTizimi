@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServiceSupabase } from '@/lib/server-supabase'
-import { requireScopedTarbiyachi, isWithinTarbiyachiFloor, type ScopedTarbiyachi } from '@/server/auth/tarbiyachi'
+import { requireScopedTarbiyachi } from '@/server/auth/tarbiyachi'
+import { normalizeFaculty } from '@/lib/faculties'
 
 type ApplicationLevel = 'info' | 'warning' | 'critical'
 
@@ -8,51 +8,17 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ ok: false, error: message }, { status })
 }
 
-async function getScopedStudentIds(
-  serviceSupabase: ReturnType<typeof getServiceSupabase>,
-  staffUser: ScopedTarbiyachi
-) {
-  let query = serviceSupabase
-    .from('users')
-    .select('id, room_number, assigned_floor, gender, faculty')
-    .eq('role', 'talaba')
-
-  // Gender is an exact-match field, so it can be pushed down into SQL to cut
-  // down the number of rows fetched. Floor is derived from room_number via
-  // regex and stays as a JS filter below.
-  if (staffUser.assigned_gender) {
-    query = query.ilike('gender', staffUser.assigned_gender)
-  }
-
-  const { data: students, error } = await query
-
-  if (error) throw error
-
-  return (students ?? [])
-    .filter((student) => isWithinTarbiyachiFloor(staffUser, student))
-    .map((student) => student.id as string)
-}
-
 export async function GET(req: NextRequest) {
   try {
     const scoped = await requireScopedTarbiyachi(req)
     if (scoped.error) return scoped.error
-    const { staffUser, serviceSupabase } = scoped
+    const { serviceSupabase, faculty } = scoped
 
-    const studentIds = await getScopedStudentIds(serviceSupabase, staffUser)
-
-    if (studentIds.length === 0) {
-      return NextResponse.json({
-        ok: true,
-        requests: [],
-        scope: { assigned_floor: staffUser.assigned_floor ?? null, assigned_gender: staffUser.assigned_gender ?? null },
-      })
-    }
-
+    // arizalar carries a faculty column (Bosqich 2a) — scope straight to it.
     const { data: requests, error } = await serviceSupabase
       .from('arizalar')
       .select('id, student_id, student_name, text, type, level, status, created_at, response_date')
-      .in('student_id', studentIds)
+      .ilike('faculty', faculty)
       .in('type', ['ariza', 'tushuntirish'])
       .neq('status', 'draft')
       .order('created_at', { ascending: false })
@@ -73,11 +39,7 @@ export async function GET(req: NextRequest) {
       response_date: request.response_date ?? null,
     }))
 
-    return NextResponse.json({
-      ok: true,
-      requests: formatted,
-      scope: { assigned_floor: staffUser.assigned_floor ?? null, assigned_gender: staffUser.assigned_gender ?? null },
-    })
+    return NextResponse.json({ ok: true, requests: formatted, scope: { faculty } })
   } catch (error) {
     console.error('Staff arizalar GET xato:', error)
     return jsonError('Arizalarni yuklashda server xatosi yuz berdi', 500)
@@ -88,7 +50,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const scoped = await requireScopedTarbiyachi(req)
     if (scoped.error) return scoped.error
-    const { staffUser, serviceSupabase } = scoped
+    const { serviceSupabase, faculty } = scoped
 
     const body = await req.json()
     const id = typeof body.id === 'string' ? body.id : ''
@@ -105,23 +67,21 @@ export async function PATCH(req: NextRequest) {
       return jsonError("Status faqat 'approved' yoki 'rejected' bo'lishi mumkin", 400)
     }
 
-    // Security: only allow updating an ariza that belongs to a student within this staff member's scope
+    // Only an ariza from this tarbiyachi's faculty may be decided.
     const { data: existing, error: fetchError } = await serviceSupabase
       .from('arizalar')
-      .select('student_id')
+      .select('faculty')
       .eq('id', id)
-      .maybeSingle<{ student_id: string | null }>()
+      .maybeSingle<{ faculty: string | null }>()
 
     if (fetchError) {
       console.error('Scoped staff application lookup failed:', fetchError)
       return jsonError('Arizani tekshirib bo‘lmadi', 500)
     }
-    if (!existing?.student_id) {
+    if (!existing) {
       return jsonError('Ariza topilmadi', 404)
     }
-
-    const studentIds = await getScopedStudentIds(serviceSupabase, staffUser)
-    if (!studentIds.includes(existing.student_id)) {
+    if ((normalizeFaculty(existing.faculty) ?? '') !== faculty) {
       return jsonError('Ushbu arizani boshqarish huquqingiz yo\'q', 403)
     }
 
@@ -130,6 +90,7 @@ export async function PATCH(req: NextRequest) {
       .update({ status, response_date: new Date().toISOString() })
       .eq('id', id)
       .eq('status', 'pending')
+      .ilike('faculty', faculty)
       .select('id')
       .maybeSingle()
 

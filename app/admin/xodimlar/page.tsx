@@ -8,7 +8,6 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchStaffAccounts, createStaffAccount } from '@/features/staff-accounts/client/api'
 import { fetchStaffInvites, createStaffInvite, revokeStaffInvite } from '@/features/staff-invites/client/api'
 import type { StaffInviteRole, StaffInviteRow } from '@/features/staff-invites/types'
-import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { adminUI, adminStatusChip, type AdminStatusTone } from '@/lib/admin-ui'
 import type { ManagedStaffRole, StaffAccountRow } from '@/features/staff-accounts/types'
 
@@ -29,8 +28,6 @@ const initialForm = {
   role: 'tarbiyachi' as ManagedStaffRole,
   password: '',
   confirmPassword: '',
-  assignedFloor: '',
-  assignedGender: '' as '' | 'male' | 'female',
 }
 
 export default function AdminXodimlarPage() {
@@ -48,21 +45,6 @@ export default function AdminXodimlarPage() {
   const [creatingInvite, setCreatingInvite] = useState(false)
   const [inviteForm, setInviteForm] = useState({ role: 'tarbiyachi' as StaffInviteRole, label: '', expiryDays: '14', maxUses: '' })
   const [newCode, setNewCode] = useState<string | null>(null)
-  // null (not a guessed default) while settings are loading or unavailable —
-  // a wrong guess here would set the input's native `max`, which the browser
-  // enforces on submit and would block legitimate floors above the guess.
-  const [floorCount, setFloorCount] = useState<number | null>(null)
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const settings = await fetchAppSettings()
-        setFloorCount(settings.floorCount)
-      } catch {
-        toast.error("Qavatlar sozlamasini yuklab bo'lmadi — qavat cheklovi tekshirilmayapti")
-      }
-    })()
-  }, [])
 
   const ui = adminUI(isLight)
   const cardSurface = ui.card
@@ -144,18 +126,9 @@ export default function AdminXodimlarPage() {
       toast.error('Parollar bir xil emas')
       return
     }
-    if (!form.assignedFloor || !form.assignedGender) {
-      toast.error("Tarbiyachi uchun qavat va jins tanlanishi shart")
-      return
-    }
-
     setCreating(true)
     try {
-      await createStaffAccount({
-        ...form,
-        assignedFloor: Number(form.assignedFloor),
-        assignedGender: form.assignedGender,
-      })
+      await createStaffAccount(form)
       toast.success("Xodim akkaunti yaratildi")
       setAddModalOpen(false)
       setForm(initialForm)
@@ -407,30 +380,8 @@ export default function AdminXodimlarPage() {
             placeholder="Telefon (ixtiyoriy)"
             className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputCls}`}
           />
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="number"
-              min={1}
-              max={floorCount ?? undefined}
-              value={form.assignedFloor}
-              onChange={(e) => setForm((f) => ({ ...f, assignedFloor: e.target.value }))}
-              placeholder={floorCount ? `Qavat (1-${floorCount})` : 'Qavat'}
-              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputCls}`}
-              required
-            />
-            <select
-              value={form.assignedGender}
-              onChange={(e) => setForm((f) => ({ ...f, assignedGender: e.target.value as 'male' | 'female' }))}
-              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputCls}`}
-              required
-            >
-              <option value="">Jinsi</option>
-              <option value="male">Erkak</option>
-              <option value="female">Ayol</option>
-            </select>
-          </div>
           <p className={`text-[10px] ${textMuted}`}>
-            Tarbiyachi faqat shu qavat va jinsdagi talabalarni ko&apos;radi.
+            Tarbiyachi butun yotoqxona (fakultet binosi) bo&apos;yicha barcha talabalarni ko&apos;radi — barcha qavatlar, ikkala jins.
           </p>
           <input
             type="password"

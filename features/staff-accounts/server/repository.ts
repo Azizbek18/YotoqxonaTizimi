@@ -35,8 +35,8 @@ export function createStaffAccountRepository() {
       role: ManagedStaffRole
       status: 'active'
       faculty: string
-      assigned_floor?: number
-      assigned_gender?: 'male' | 'female'
+      assigned_floor: number | null
+      assigned_gender: 'male' | 'female' | null
       created_by: string
     }) {
       return supabase.from('staff').insert(row)

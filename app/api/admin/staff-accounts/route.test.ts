@@ -87,7 +87,7 @@ describe('POST /api/admin/staff-accounts', () => {
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 })
     create.mockResolvedValue({ success: true })
 
-    const payload = { role: 'tarbiyachi', assignedFloor: 2 }
+    const payload = { role: 'tarbiyachi', fullName: 'Test Tarbiyachi', email: 't@example.com' }
     const response = await POST(postRequest(payload))
     const body = await response.json()
 

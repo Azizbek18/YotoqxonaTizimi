@@ -1,35 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/server/http/api-error'
-import type { AppSettings } from '@/features/app-settings/types'
 import { createStaffAccountService } from './service'
 import type { StaffAccountRepository } from './repository'
-
-const FLOOR_COUNT = 5
-
-vi.mock('@/features/app-settings/server/service', () => ({
-  createAppSettingsService: () => ({
-    get: async (): Promise<AppSettings> => ({
-      monthlyFee: 100000,
-      yearlyContractFee: 1200000,
-      defaultRoomCapacity: 4,
-      floorCount: FLOOR_COUNT,
-      tarbiyachiName: '',
-      tarbiyachiPhone: '',
-      komendantName: '',
-      komendantPhone: '',
-      doctorName: '',
-      doctorPhone: '',
-      talabaKengashiRaisiOgilName: '',
-      talabaKengashiRaisiOgilPhone: '',
-      talabaKengashiRaisiQizName: '',
-      talabaKengashiRaisiQizPhone: '',
-      securityPhone: '',
-      maxUploadSizeMb: 10,
-      warningThreshold: 3,
-      ttjName: '',
-    }),
-  }),
-}))
 
 function validInput(overrides: Record<string, unknown> = {}) {
   return {
@@ -39,8 +11,6 @@ function validInput(overrides: Record<string, unknown> = {}) {
     role: 'tarbiyachi',
     password: 'SecurePass123!',
     confirmPassword: 'SecurePass123!',
-    assignedFloor: 3,
-    assignedGender: 'male',
     ...overrides,
   }
 }
@@ -69,30 +39,14 @@ describe('staff account service: create', () => {
     expect(repository.createAuthUser).not.toHaveBeenCalled()
   })
 
-  it.each([0, -1, 1.5, FLOOR_COUNT + 1, 50])('rejects assignedFloor=%s outside the real floorCount', async (floor) => {
+  it('rejects a weak password before creating any auth user', async () => {
     const repository = createFakeRepository()
     const service = createStaffAccountService(repository)
 
-    await expect(service.create(creatorId, 'amit', validInput({ assignedFloor: floor }))).rejects.toMatchObject({
+    await expect(service.create(creatorId, 'amit', validInput({ password: 'weak', confirmPassword: 'weak' }))).rejects.toMatchObject({
       status: 400,
     })
     expect(repository.createAuthUser).not.toHaveBeenCalled()
-  })
-
-  it.each([1, FLOOR_COUNT])('accepts assignedFloor=%s at the boundary of the real floorCount', async (floor) => {
-    const repository = createFakeRepository()
-    const service = createStaffAccountService(repository)
-
-    await expect(service.create(creatorId, 'amit', validInput({ assignedFloor: floor }))).resolves.toEqual({ success: true })
-  })
-
-  it('rejects when assignedGender is missing', async () => {
-    const repository = createFakeRepository()
-    const service = createStaffAccountService(repository)
-
-    await expect(service.create(creatorId, 'amit', validInput({ assignedGender: undefined }))).rejects.toMatchObject({
-      status: 400,
-    })
   })
 
   it('rejects a duplicate email before creating any auth user', async () => {
@@ -129,11 +83,11 @@ describe('staff account service: create', () => {
     expect(repository.deleteAuthUser).toHaveBeenCalledWith('orphan-id')
   })
 
-  it('creates the staff row with the creator id and submitted fields on success', async () => {
+  it('creates the staff row scoped to the caller faculty, unscoped by floor/gender', async () => {
     const repository = createFakeRepository()
     const service = createStaffAccountService(repository)
 
-    const result = await service.create(creatorId, 'amit', validInput({ assignedFloor: 4 }))
+    const result = await service.create(creatorId, 'kimyo', validInput())
 
     expect(result).toEqual({ success: true })
     expect(repository.insertStaffRow).toHaveBeenCalledWith(
@@ -142,9 +96,9 @@ describe('staff account service: create', () => {
         email: 'tarbiyachi@example.com',
         role: 'tarbiyachi',
         status: 'active',
-        faculty: 'amit',
-        assigned_floor: 4,
-        assigned_gender: 'male',
+        faculty: 'kimyo',
+        assigned_floor: null,
+        assigned_gender: null,
         created_by: creatorId,
       }),
     )

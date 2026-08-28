@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Bell, ClipboardList, LayoutDashboard, LogOut, Users } from 'lucide-react'
+import { Bell, ClipboardList, LayoutDashboard, LogOut, Users, Wallet } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -15,6 +15,7 @@ import { useToastOffset } from '@/lib/hooks/useToastOffset'
 const NAV = [
   { href: '/tarbiyachi/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/tarbiyachi/talabalar', label: 'Talabalar', icon: Users },
+  { href: '/tarbiyachi/tolovlar', label: "To'lovlar", icon: Wallet },
   { href: '/tarbiyachi/arizalar', label: 'Arizalar', icon: ClipboardList },
 ]
 

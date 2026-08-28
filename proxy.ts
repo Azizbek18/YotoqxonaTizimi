@@ -18,7 +18,6 @@ const ROLE_HOME: Record<Exclude<AppRole, null>, string> = {
 // falls back to the dekan dashboard.
 const ADMIN_ROUTE_REDIRECTS: Record<string, string> = {
   '/admin/login': '/login',
-  '/admin/tolovlar': '/dekan/tolovlar',
   '/admin/foydalanuvchilar': '/dekan/talabalar',
   '/admin/xodimlar': '/dekan/xodimlar',
   '/admin/arizalar': '/dekan/murojaatlar',

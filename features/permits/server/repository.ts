@@ -5,10 +5,23 @@ import { deleteAuthUserSafely } from '@/lib/supabase-admin-auth'
 export function createPermitAdminRepository() {
   const supabase = getServiceSupabase()
   return {
-    async load() {
+    // Everything the dekan overview needs, scoped to ONE faculty at the
+    // source. Since the multi-faculty migration each faculty owns its own
+    // building (floor_room_layout.faculty) and room assignment locks per
+    // (faculty, room_number) — so occupancy really is per-faculty now, and
+    // a dekan never sees another building's rows (not even redacted).
+    async load(faculty: string) {
       const [permitsResult, usersResult] = await Promise.all([
-        supabase.from('permit_requests').select('*').order('created_at', { ascending: false }),
-        supabase.from('users').select('id, full_name, passport_series, jshshir, phone_number, gender, faculty, direction, course, room_number, warning_count, blacklisted, role, status'),
+        supabase
+          .from('permit_requests')
+          .select('*')
+          .ilike('faculty', faculty)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('users')
+          .select('id, full_name, passport_series, jshshir, phone_number, gender, faculty, direction, course, room_number, warning_count, blacklisted, role, status')
+          .eq('role', 'talaba')
+          .ilike('faculty', faculty),
       ])
       if (permitsResult.error) throw permitsResult.error
       if (usersResult.error) throw usersResult.error

@@ -131,9 +131,8 @@ export default function DekanXonalarMap() {
       users?.forEach((u) => {
         if (!u.room_number) return
         const occupant: Occupant = {
-          // Other-faculty occupants have their auth id redacted server-side
-          // (a dekan has no jurisdiction to act on them) — falls back to
-          // '' rather than undefined so it never collides with a real id.
+          // Every occupant here is the dekan's own faculty — the overview API
+          // is faculty-scoped at the source. `|| ''` is just a null guard.
           id: u.id || '',
           full_name: u.full_name || 'Noma‘lum',
           passport_series: u.passport_series || '',

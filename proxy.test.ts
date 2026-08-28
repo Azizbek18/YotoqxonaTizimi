@@ -13,6 +13,7 @@ describe('public entry auth redirects', () => {
 
   it('redirects active roles to their own dashboard', () => {
     expect(publicEntryRedirectTarget(true, 'admin', '/login')).toBe('/admin/dashboard')
+    expect(publicEntryRedirectTarget(true, 'dekan', '/login')).toBe('/dekan/dashboard')
     expect(publicEntryRedirectTarget(true, 'talaba', '/')).toBe('/talaba/dashboard')
   })
 

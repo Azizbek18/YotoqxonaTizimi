@@ -4,7 +4,10 @@ import { generateInviteCode, hashInviteCode } from '@/lib/staff-invite'
 import type { CreatedStaffInvite, StaffInviteRole, StaffInviteRow } from '../types'
 import { createStaffInviteRepository, type StaffInviteRepository } from './repository'
 
-const ROLES: StaffInviteRole[] = ['tarbiyachi', 'dekan']
+// A dekan (this panel) may only issue tarbiyachi codes. The single 'dekan'
+// code — one shared registration link for every faculty's dean — is minted
+// by the system owner (scripts/mint-dekan-invite.mjs), never here.
+const ROLES: StaffInviteRole[] = ['tarbiyachi']
 const MAX_EXPIRY_DAYS = 60
 const DEFAULT_EXPIRY_DAYS = 14
 
@@ -15,7 +18,7 @@ function toRow(raw: Record<string, unknown>): StaffInviteRow {
   const useCount = Number(raw.use_count ?? 0)
   return {
     id: String(raw.id),
-    faculty: String(raw.faculty),
+    faculty: raw.faculty ? String(raw.faculty) : null,
     role: raw.role as StaffInviteRole,
     label: raw.label ? String(raw.label) : null,
     createdAt: String(raw.created_at),

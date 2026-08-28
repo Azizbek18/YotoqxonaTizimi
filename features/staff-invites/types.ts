@@ -2,7 +2,8 @@ export type StaffInviteRole = 'tarbiyachi' | 'dekan'
 
 export type StaffInviteRow = {
   id: string
-  faculty: string
+  /** null on the one shared dekan code — the dean picks their faculty at registration. */
+  faculty: string | null
   role: StaffInviteRole
   label: string | null
   createdAt: string

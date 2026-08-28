@@ -20,7 +20,6 @@ import {
   Building2,
   Settings,
   ShieldAlert,
-  CreditCard,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -145,7 +144,6 @@ export default function DekanLayout({
     // Faculty-admin tools. The page bodies are the /admin/* implementations
     // (re-exported under /dekan/*), so they render inside THIS panel's chrome;
     // their /api/admin/* routes are already scoped to the dekan's own faculty.
-    { label: 'To‘lovlar', caption: 'Kvitansiyalarni tekshirish', href: '/dekan/tolovlar', icon: CreditCard },
     { label: 'Arizalar', caption: 'Talaba murojaatlari', href: '/dekan/murojaatlar', icon: ShieldAlert },
     { label: 'Foydalanuvchilar', caption: 'Talaba yozuvlari', href: '/dekan/foydalanuvchilar', icon: UserCog },
     { label: 'Tarbiyachilar', caption: 'Xodim hisoblari', href: '/dekan/xodimlar', icon: Building2 },

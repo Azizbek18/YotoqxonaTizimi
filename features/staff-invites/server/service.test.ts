@@ -45,6 +45,12 @@ describe('staff invite service', () => {
     ).rejects.toMatchObject({ status: 400 })
   })
 
+  it('rejects a dekan (co-dekan) code — only the system owner mints dekan codes', async () => {
+    await expect(
+      createStaffInviteService(fakeRepository()).create('dekan-1', 'kimyo', { role: 'dekan' }),
+    ).rejects.toMatchObject({ status: 400 })
+  })
+
   it('rejects an out-of-range use limit', async () => {
     await expect(
       createStaffInviteService(fakeRepository()).create('dekan-1', 'kimyo', { role: 'tarbiyachi', maxUses: 9999 }),

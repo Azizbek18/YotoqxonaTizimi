@@ -2,18 +2,29 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const insert = vi.fn()
 const upsert = vi.fn()
-const emailMaybeSingle = vi.fn()
+const emailMaybeSingle = vi.fn()      // .from('staff').select('id').eq('email', …)
+const dekanMaybeSingle = vi.fn()      // .from('staff').select('id').eq('role','dekan')…
 const rpc = vi.fn()
 const deleteAuthUserSafely = vi.fn()
 const createAuthUserSafely = vi.fn()
 const checkRateLimit = vi.fn()
+
+function selectBuilder() {
+  const filters: Record<string, unknown> = {}
+  const b = {
+    eq: (col: string, val: unknown) => { filters[col] = val; return b },
+    ilike: (col: string, val: unknown) => { filters[col] = val; return b },
+    maybeSingle: () => (filters.role === 'dekan' ? dekanMaybeSingle() : emailMaybeSingle()),
+  }
+  return b
+}
 
 vi.mock('@/lib/server-supabase', () => ({
   getServiceSupabase: () => ({
     from: () => ({
       insert,
       upsert,
-      select: () => ({ eq: () => ({ maybeSingle: emailMaybeSingle }) }),
+      select: () => selectBuilder(),
     }),
     rpc: (...args: unknown[]) => rpc(...args),
   }),
@@ -71,6 +82,7 @@ describe('POST /api/staff/register', () => {
     insert.mockResolvedValue({ error: null })
     upsert.mockResolvedValue({ error: null })
     emailMaybeSingle.mockResolvedValue({ data: null })
+    dekanMaybeSingle.mockResolvedValue({ data: null })
     rpc.mockResolvedValue({ data: [{ faculty: 'kimyo', role: 'tarbiyachi' }], error: null })
   })
 
@@ -130,6 +142,45 @@ describe('POST /api/staff/register', () => {
     it('does not seed app_settings when the invite is for a tarbiyachi', async () => {
       await POST(request(INVITE_REG))
       expect(upsert).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('shared dekan link (faculty-less code, dean picks their faculty)', () => {
+    beforeEach(() => {
+      rpc.mockResolvedValue({ data: [{ faculty: null, role: 'dekan' }], error: null })
+    })
+
+    it('binds the account to the faculty the dean picked on the form', async () => {
+      const response = await POST(request({ ...INVITE_REG, faculty: 'fizika' }))
+      expect(response.status).toBe(200)
+      const inserted = insert.mock.calls[0][0]
+      expect(inserted).toMatchObject({ role: 'dekan', faculty: 'fizika', status: 'active' })
+      expect(upsert).toHaveBeenCalledWith({ faculty: 'fizika' }, { onConflict: 'faculty', ignoreDuplicates: true })
+    })
+
+    it('400s when no faculty was picked', async () => {
+      const response = await POST(request(INVITE_REG))
+      expect(response.status).toBe(400)
+      expect(createAuthUserSafely).not.toHaveBeenCalled()
+    })
+
+    it('400s an unknown faculty code', async () => {
+      const response = await POST(request({ ...INVITE_REG, faculty: 'notreal' }))
+      expect(response.status).toBe(400)
+    })
+
+    it('409s when that faculty already has an active dekan', async () => {
+      dekanMaybeSingle.mockResolvedValue({ data: { id: 'existing-dekan' } })
+      const response = await POST(request({ ...INVITE_REG, faculty: 'fizika' }))
+      expect(response.status).toBe(409)
+      expect(createAuthUserSafely).not.toHaveBeenCalled()
+    })
+
+    it('409s on the unique-index race at insert time', async () => {
+      insert.mockResolvedValue({ error: { code: '23505', message: 'staff_one_active_dekan_per_faculty' } })
+      const response = await POST(request({ ...INVITE_REG, faculty: 'fizika' }))
+      expect(response.status).toBe(409)
+      expect(deleteAuthUserSafely).toHaveBeenCalledWith('new-id')
     })
   })
 })

@@ -48,6 +48,7 @@ const args = process.argv.slice(2)
 const confirm = args.includes('--confirm')
 const force = args.includes('--force')
 const all = args.includes('--all')
+const shared = args.includes('--shared')
 const named = args.filter((a) => !a.startsWith('--'))
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')
@@ -56,13 +57,39 @@ if (!supabaseUrl || !serviceKey) {
   console.error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.')
   process.exit(1)
 }
-if (!all && named.length === 0) {
-  console.error('Pass one or more faculty codes, or --all. See the header of this file.')
+if (!shared && !all && named.length === 0) {
+  console.error('Pass --shared (one link for every dean), or faculty codes / --all. See the header of this file.')
   process.exit(1)
 }
 
 const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://meningyotoqxonam.uz').replace(/\/$/, '')
 const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+
+// --shared: ONE faculty-less dekan code. Every dean uses the same link and
+// picks their own faculty on /register/dekan; the DB enforces one active
+// dekan per faculty. This is the blessed onboarding path.
+if (shared) {
+  const invite = generateInviteCode()
+  const row = {
+    code_hash: hashInviteCode(invite),
+    faculty: null,
+    role: 'dekan',
+    label: 'Dekan (umumiy link)',
+    max_uses: 50,
+    expires_at: new Date(Date.now() + 180 * 86_400_000).toISOString(),
+  }
+  if (confirm) {
+    const { error } = await supabase.from('staff_invites').insert(row)
+    if (error) throw error
+    console.log('Umumiy dekan kodi yaratildi. 180 kun, 50 martagacha.\n')
+  } else {
+    console.log('DRY RUN — --confirm bilan qayta ishga tushiring.\n')
+  }
+  console.log(`CODE: ${invite}`)
+  console.log(`LINK: ${appUrl}/register/dekan?code=${invite}`)
+  console.log('\nShu bitta havolani BARCHA dekanlarga yuboring. Har biri o‘z fakultetini formada tanlaydi.')
+  process.exit(0)
+}
 
 // Which faculties are we minting for?
 let targets = all ? FACULTIES.map(([code]) => code) : named

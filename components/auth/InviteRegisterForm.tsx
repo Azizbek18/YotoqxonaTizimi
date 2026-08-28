@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { KeyRound } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/password-policy'
+import { PERMIT_FACULTIES } from '@/lib/faculties'
 
 const COPY = {
   xodim: {
@@ -14,14 +15,14 @@ const COPY = {
   },
   dekan: {
     title: 'Fakultet dekani sifatida ro‘yxatdan o‘tish',
-    subtitle: "Kod fakultetingizni belgilaydi — ro'yxatdan o'tgach fakultetingiz boshqaruv paneli ochiladi",
+    subtitle: "Fakultetingizni tanlang — ro'yxatdan o'tgach fakultetingiz boshqaruv paneli ochiladi",
   },
 } as const
 
-// Staff registration via an invite code. The code alone decides the faculty
-// and role — there is no faculty picker here. `audience` only swaps the copy:
-// 'dekan' for the per-faculty dean codes minted by the system owner,
-// 'xodim' for the tarbiyachi/co-dekan codes a dekan issues in their panel.
+// Staff registration via an invite code.
+//  - 'xodim': tarbiyachi codes a dekan issues; the code carries the faculty.
+//  - 'dekan': one shared code for every faculty's dean; the dean picks their
+//    own faculty here, and the server enforces one active dekan per faculty.
 export default function InviteRegisterForm({
   initialCode = '',
   audience = 'xodim',
@@ -34,6 +35,7 @@ export default function InviteRegisterForm({
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [faculty, setFaculty] = useState('')
   const [inviteCode, setInviteCode] = useState(initialCode)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -42,7 +44,7 @@ export default function InviteRegisterForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!fullName || !email || !inviteCode || !password || !confirmPassword || (audience === 'dekan' && !phone)) {
+    if (!fullName || !email || !inviteCode || !password || !confirmPassword || (audience === 'dekan' && (!phone || !faculty))) {
       toast.error("Majburiy maydonlarni to'ldiring")
       return
     }
@@ -61,7 +63,7 @@ export default function InviteRegisterForm({
       const response = await fetch('/api/staff/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, email, phone, password, confirmPassword, inviteCode }),
+        body: JSON.stringify({ fullName, email, phone, faculty, password, confirmPassword, inviteCode }),
       })
       const result: { ok: boolean; error?: string } = await response.json()
       if (!response.ok || !result.ok) {
@@ -114,6 +116,19 @@ export default function InviteRegisterForm({
             placeholder={audience === 'dekan' ? 'Telefon' : 'Telefon (ixtiyoriy)'}
             required={audience === 'dekan'}
           />
+          {audience === 'dekan' && (
+            <select
+              value={faculty}
+              onChange={(e) => setFaculty(e.target.value)}
+              className={`${fieldCls} appearance-none`}
+              required
+            >
+              <option value="" disabled>Fakultetingizni tanlang</option>
+              {PERMIT_FACULTIES.map((f) => (
+                <option key={f.value} value={f.value} className="bg-[#0b1120]">{f.label}</option>
+              ))}
+            </select>
+          )}
           <input
             value={inviteCode}
             onChange={(e) => setInviteCode(e.target.value)}

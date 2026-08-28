@@ -61,7 +61,10 @@ export async function POST(request: Request) {
     let staffInsert: StaffInsert
 
     if (inviteCode) {
-      // ── Dekan taklif kodi orqali (tarbiyachi yoki co-dekan) ──────────────
+      // ── Taklif kodi orqali ──────────────────────────────────────────────
+      // Tarbiyachi kodi bir fakultetga bog'langan (claimed.faculty). Umumiy
+      // dekan kodida claimed.faculty = null — dekan fakultetni formada
+      // tanlaydi, va shu fakultetda hali faol dekan bo'lmasligi shart.
       const { data: claim, error: claimError } = await supabase.rpc('claim_staff_invite', {
         p_code_hash: hashInviteCode(inviteCode),
       })
@@ -70,7 +73,29 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: 'Taklif kodi yaroqsiz yoki muddati tugagan' }, { status: 403 })
       }
       role = String(claimed.role)
-      faculty = String(claimed.faculty)
+      const claimedFaculty = claimed.faculty ? String(claimed.faculty).trim() : ''
+
+      if (claimedFaculty) {
+        faculty = claimedFaculty
+      } else {
+        const picked = typeof body.faculty === 'string' ? body.faculty.trim() : ''
+        if (!isPermitFacultyValue(picked)) {
+          return NextResponse.json({ ok: false, error: "Fakultet tanlanmagan" }, { status: 400 })
+        }
+        faculty = picked
+        if (role === 'dekan') {
+          const { data: existingDekan } = await supabase
+            .from('staff')
+            .select('id')
+            .eq('role', 'dekan')
+            .eq('status', 'active')
+            .ilike('faculty', faculty)
+            .maybeSingle()
+          if (existingDekan) {
+            return NextResponse.json({ ok: false, error: "Bu fakultet uchun dekan allaqachon ro'yxatdan o'tgan" }, { status: 409 })
+          }
+        }
+      }
       staffInsert = { id: '', email, full_name: fullName, phone_number: phone || null, role, status: 'active', faculty }
     } else {
       // ── Dekan o'zi ro'yxatdan o'tishi (tizim egasi bergan env kalitlar) ──
@@ -107,7 +132,15 @@ export async function POST(request: Request) {
     if (userError) {
       await deleteAuthUserSafely(authData.user.id)
       if (userError.code === '23505') {
-        return NextResponse.json({ ok: false, error: 'Bu email yoki maxsus ID avval ishlatilgan' }, { status: 409 })
+        // Partial unique index staff_one_active_dekan_per_faculty — someone
+        // else registered as this faculty's dekan in the meantime.
+        const dekanRace = /one_active_dekan_per_faculty/.test(userError.message ?? '')
+        return NextResponse.json({
+          ok: false,
+          error: dekanRace
+            ? "Bu fakultet uchun dekan allaqachon ro'yxatdan o'tgan"
+            : 'Bu email yoki maxsus ID avval ishlatilgan',
+        }, { status: 409 })
       }
       console.error('Staff profile insert failed:', userError)
       return NextResponse.json({ ok: false, error: "Xodim profilini yaratib bo'lmadi" }, { status: 400 })

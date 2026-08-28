@@ -206,6 +206,23 @@ export function isDirectionValue(value: string | null | undefined) {
 }
 
 /**
+ * True when `direction` is one of `faculty`'s own bachelor programmes. Entry
+ * forms send faculty + direction together, so a mismatch means a hand-crafted
+ * request — reject it rather than store a student under a faculty whose
+ * dekan's direction filters will never surface them. Unknown faculty codes
+ * fall through to ALL_DIRECTIONS (directionsForFaculty), i.e. any valid
+ * direction, so this never blocks a faculty that predates the list.
+ */
+export function directionBelongsToFaculty(
+  faculty: string | null | undefined,
+  direction: string | null | undefined,
+) {
+  const canonical = normalizeDirection(direction)
+  if (!canonical) return false
+  return directionsForFaculty(faculty).some((option) => option.value === canonical)
+}
+
+/**
  * Display text. Unrecognised values fall through unchanged rather than
  * disappearing — old data stays visible even if it predates this list.
  */

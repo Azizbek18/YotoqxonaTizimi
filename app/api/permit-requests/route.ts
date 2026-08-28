@@ -11,7 +11,7 @@ import {
   normalizeJshshir,
   normalizePassport,
 } from '@/lib/permit-validation'
-import { normalizeDirection } from '@/lib/directions'
+import { directionBelongsToFaculty, normalizeDirection } from '@/lib/directions'
 import { isPermitFacultyValue } from '@/lib/faculties'
 import { writeAuditLog } from '@/lib/audit-log'
 import { verifyFileClaim } from '@/lib/receipt-claim'
@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
       !['male', 'female'].includes(gender)
       || !isPermitFacultyValue(faculty)
       || !direction
+      || !directionBelongsToFaculty(faculty, direction)
       || !Number.isInteger(course)
       || course < 1
       || course > 6

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
-import { normalizeDirection } from '@/lib/directions'
+import { directionBelongsToFaculty, normalizeDirection } from '@/lib/directions'
 import { isPermitFacultyValue } from '@/lib/faculties'
 import { writeAuditLog } from '@/lib/audit-log'
 import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
       !['male', 'female'].includes(gender)
       || !isPermitFacultyValue(faculty)
       || !direction
+      || !directionBelongsToFaculty(faculty, direction)
       || !Number.isInteger(course)
       || course < 1
       || course > 6

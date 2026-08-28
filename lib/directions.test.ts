@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ALL_DIRECTIONS,
   FACULTY_DIRECTIONS,
+  directionBelongsToFaculty,
   directionLabel,
   directionsForFaculty,
   isDirectionValue,
@@ -68,5 +69,26 @@ describe('directionsForFaculty', () => {
       expect(normalizeDirection(option.value)).toBe(option.value)
       expect(normalizeDirection(option.label)).toBe(option.value)
     }
+  })
+})
+
+describe('directionBelongsToFaculty', () => {
+  it('accepts a faculty’s own direction (by value or label, any case)', () => {
+    expect(directionBelongsToFaculty('amit', 'suniy-intellekt')).toBe(true)
+    expect(directionBelongsToFaculty('AMIT', 'Sun’iy intellekt')).toBe(true)
+  })
+
+  it('rejects a direction from another faculty', () => {
+    expect(directionBelongsToFaculty('fizika', 'suniy-intellekt')).toBe(false)
+    expect(directionBelongsToFaculty('kimyo', 'astronomiya')).toBe(false)
+  })
+
+  it('rejects blank or unknown directions', () => {
+    expect(directionBelongsToFaculty('amit', '')).toBe(false)
+    expect(directionBelongsToFaculty('amit', '301-guruh')).toBe(false)
+  })
+
+  it('allows any valid direction for an unknown/legacy faculty code', () => {
+    expect(directionBelongsToFaculty('nomavjud', 'suniy-intellekt')).toBe(true)
   })
 })

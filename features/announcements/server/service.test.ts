@@ -71,13 +71,57 @@ describe('listForUser audience filtering', () => {
     expect(elonlar).toHaveLength(0)
   })
 
-  it('hides faculty announcements from a signed-out reader', async () => {
+  it('delivers a dorm-wide (audience=all) announcement to the same faculty', async () => {
     const repository = fakeRepository({
-      listPublished: vi.fn(async () => [row({ faculty: 'amit' }), row({ id: 'e2', audience: 'all', faculty: null })]),
+      listPublished: vi.fn(async () => [row({ id: 'x', audience: 'all', faculty: 'amit' })]),
+    })
+    const { elonlar } = await createAnnouncementService(repository).listForUser('student-1')
+
+    expect(elonlar).toHaveLength(1)
+  })
+
+  it('does not leak a dorm-wide (audience=all) announcement across faculties', async () => {
+    const repository = fakeRepository({
+      listPublished: vi.fn(async () => [row({ id: 'x', audience: 'all', faculty: 'kimyo' })]),
+    })
+    const { elonlar } = await createAnnouncementService(repository).listForUser('student-1')
+
+    expect(elonlar).toHaveLength(0)
+  })
+
+  it('shows a signed-out reader only the primary building’s dorm-wide notices', async () => {
+    const repository = fakeRepository({
+      listPublished: vi.fn(async () => [
+        row({ id: 'fac', audience: 'faculty', faculty: 'amit' }),
+        row({ id: 'dorm-amit', audience: 'all', faculty: 'amit' }),
+        row({ id: 'dorm-kimyo', audience: 'all', faculty: 'kimyo' }),
+      ]),
     })
     const { elonlar } = await createAnnouncementService(repository).listForUser(null)
 
-    expect(elonlar.map((item) => item.id)).toEqual(['e2'])
+    expect(elonlar.map((item) => item.id)).toEqual(['dorm-amit'])
+  })
+
+  // The fake profile is faculty 'amit', floor 1, gender 'male'.
+  const floorRow = (overrides: Partial<PublishedRow>) =>
+    row({ audience: 'floor', faculty: 'amit', target_floor: 1, target_gender: 'male', ...overrides })
+
+  it('delivers a floor notice to a student on that floor of that building', async () => {
+    const repository = fakeRepository({ listPublished: vi.fn(async () => [floorRow({})]) })
+    const { elonlar } = await createAnnouncementService(repository).listForUser('student-1')
+    expect(elonlar).toHaveLength(1)
+  })
+
+  it('does not leak a floor notice to the same floor number in another faculty', async () => {
+    const repository = fakeRepository({ listPublished: vi.fn(async () => [floorRow({ faculty: 'fizika' })]) })
+    const { elonlar } = await createAnnouncementService(repository).listForUser('student-1')
+    expect(elonlar).toHaveLength(0)
+  })
+
+  it('does not deliver a floor notice for a different floor', async () => {
+    const repository = fakeRepository({ listPublished: vi.fn(async () => [floorRow({ target_floor: 2 })]) })
+    const { elonlar } = await createAnnouncementService(repository).listForUser('student-1')
+    expect(elonlar).toHaveLength(0)
   })
 })
 

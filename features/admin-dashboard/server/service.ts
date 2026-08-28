@@ -4,8 +4,8 @@ import { createAdminDashboardRepository, type AdminDashboardRepository } from '.
 
 export function createAdminDashboardService(repository: AdminDashboardRepository = createAdminDashboardRepository()) {
   return {
-    async get(): Promise<AdminDashboardPayload> {
-      const { users, staff, applications } = await repository.load()
+    async get(faculty: string): Promise<AdminDashboardPayload> {
+      const { users, staff, applications } = await repository.load(faculty)
       const students = users.filter((user) => user.role === 'talaba')
       const educators = staff.filter((employee) => employee.role === 'tarbiyachi').length
         + users.filter((user) => user.role === 'tarbiyachi').length

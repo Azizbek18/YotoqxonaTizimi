@@ -1,8 +1,10 @@
-import { NextResponse } from 'next/server'
-import { getAdminSession } from '@/lib/server-admin'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { ApiError } from '@/server/http/api-error'
+import { requireActiveStaff } from '@/server/auth/guards'
+import { staffFacultyOrPrimary } from '@/server/auth/faculty'
 import { normalizeDirection } from '@/lib/directions'
+import { normalizeFaculty } from '@/lib/faculties'
 import type { StaffRow, UserRow } from '@/types/database.generated'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 
@@ -341,17 +343,15 @@ function buildStaffUpdates(body: Record<string, unknown>) {
   return updates
 }
 
-export async function GET() {
+// User management. Open to dekan (their own faculty) and, during the
+// admin -> dekan transition, admin (the primary building). Student rows
+// are strictly faculty-scoped; staff rows also, but rows with no faculty
+// yet (legacy tarbiyachi accounts) stay visible until Bosqich 3 assigns
+// them.
+export async function GET(request: NextRequest) {
   try {
-    const { session, isAdmin } = await getAdminSession()
-
-    if (!session?.user?.id) {
-      return jsonError('Autentifikatsiya talab qilinadi', 401)
-    }
-
-    if (!isAdmin) {
-      return jsonError('Admin huquqi talab qilinadi', 403)
-    }
+    const { staff: caller } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const faculty = staffFacultyOrPrimary(caller.faculty)
 
     const supabase = getServiceSupabase()
 
@@ -359,10 +359,12 @@ export async function GET() {
       supabase
         .from('users')
         .select('*')
+        .eq('faculty', faculty)
         .order('created_at', { ascending: false }),
       supabase
         .from('staff')
-        .select('id, full_name, email, role, created_at, phone_number, status, assigned_floor, assigned_gender')
+        .select('id, full_name, email, role, created_at, phone_number, status, assigned_floor, assigned_gender, faculty')
+        .or(`faculty.eq.${faculty},faculty.is.null`)
         .order('created_at', { ascending: false }),
     ])
 
@@ -398,17 +400,10 @@ export async function GET() {
   }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   try {
-    const { session, isAdmin } = await getAdminSession()
-
-    if (!session?.user?.id) {
-      return jsonError('Autentifikatsiya talab qilinadi', 401)
-    }
-
-    if (!isAdmin) {
-      return jsonError('Admin huquqi talab qilinadi', 403)
-    }
+    const { staff: caller } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const faculty = staffFacultyOrPrimary(caller.faculty)
 
     const body = await request.json()
     const id = typeof body.id === 'string' ? body.id : ''
@@ -417,6 +412,32 @@ export async function PATCH(request: Request) {
 
     if (!id || (source !== 'users' && source !== 'staff')) {
       return jsonError("So'rov ma'lumotlari noto'g'ri", 400)
+    }
+
+    const supabase = getServiceSupabase()
+    if (source === 'users') {
+      const { data: target, error: targetError } = await supabase
+        .from('users')
+        .select('faculty')
+        .eq('id', id)
+        .maybeSingle()
+      if (targetError) {
+        console.error('Admin user scope lookup failed:', targetError)
+        return jsonError('Foydalanuvchi profilini tekshirib bo‘lmadi', 500)
+      }
+      if (!target) return jsonError('Foydalanuvchi topilmadi', 404)
+      if ((normalizeFaculty(target.faculty) ?? 'amit') !== faculty) {
+        return jsonError('Boshqa fakultet talabasini boshqarib bo‘lmaydi', 403)
+      }
+      // Faculty is a tenancy boundary — it can't be moved through the edit
+      // form (that would hand a student to, or take one from, another
+      // faculty's staff). A no-op value in the payload is ignored.
+      if ('faculty' in body) {
+        const requested = normalizeFaculty(typeof body.faculty === 'string' ? body.faculty : null)
+        if (requested && requested !== faculty) {
+          return jsonError('Talabaning fakultetini bu yerdan o‘zgartirib bo‘lmaydi', 403)
+        }
+      }
     }
 
     if (source === 'users' && role && role !== 'talaba') {
@@ -438,18 +459,17 @@ export async function PATCH(request: Request) {
       return jsonError("Noto'g'ri rol", 400)
     }
 
-    const supabase = getServiceSupabase()
-
     let existingStaff: {
       role: string
       status: string | null
       assigned_floor: number | null
       assigned_gender: string | null
+      faculty: string | null
     } | null = null
     if (source === 'staff') {
       const { data, error: existingError } = await supabase
         .from('staff')
-        .select('role, status, assigned_floor, assigned_gender')
+        .select('role, status, assigned_floor, assigned_gender, faculty')
         .eq('id', id)
         .maybeSingle()
       existingStaff = data
@@ -459,8 +479,15 @@ export async function PATCH(request: Request) {
         return jsonError('Xodim profilini tekshirib bo‘lmadi', 500)
       }
 
-      if (existingStaff?.role === 'dekan') {
+      if (!existingStaff) return jsonError('Xodim topilmadi', 404)
+      if (existingStaff.role === 'dekan') {
         return jsonError("Dekan profilini admin panelidan o'zgartirib bo'lmaydi", 403)
+      }
+      // A staff row already bound to another faculty is out of scope.
+      // Legacy rows with no faculty yet stay editable during the transition.
+      const staffFaculty = normalizeFaculty(existingStaff.faculty)
+      if (staffFaculty && staffFaculty !== faculty) {
+        return jsonError('Boshqa fakultet xodimini boshqarib bo‘lmaydi', 403)
       }
     }
 
@@ -484,7 +511,7 @@ export async function PATCH(request: Request) {
         : existingStaff.assigned_gender
 
       if (effectiveRole === 'tarbiyachi' && effectiveStatus === 'active') {
-        const { floorCount } = await createAppSettingsService().get()
+        const { floorCount } = await createAppSettingsService().get(faculty)
         if (
           typeof effectiveFloor !== 'number'
           || !Number.isInteger(effectiveFloor)
@@ -506,10 +533,13 @@ export async function PATCH(request: Request) {
     if (source === 'users' && updates.is_floor_captain === true) {
       // is_floor_captain=true is only meaningful together with a floor and
       // a gender — the uniqueness guarantee (users_floor_captain_unique_idx
-      // on (assigned_floor, gender) WHERE is_floor_captain) doesn't catch
-      // NULLs (SQL never treats NULL = NULL), so without this check an
+      // on (faculty, assigned_floor, gender) WHERE is_floor_captain) doesn't
+      // catch NULLs (SQL never treats NULL = NULL), so without this check an
       // admin could create multiple "captain" rows with no floor/gender at
       // all, none of which would ever conflict with each other.
+      // promote_floor_captain derives the faculty (building) from the target
+      // student's own users.faculty and demotes only that building's
+      // current captain for the floor/gender.
       const { data: currentUser } = await supabase
         .from('users')
         .select('assigned_floor, gender')
@@ -579,17 +609,10 @@ export async function PATCH(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
-    const { session, isAdmin } = await getAdminSession()
-
-    if (!session?.user?.id) {
-      return jsonError('Autentifikatsiya talab qilinadi', 401)
-    }
-
-    if (!isAdmin) {
-      return jsonError('Admin huquqi talab qilinadi', 403)
-    }
+    const { user, staff: caller } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const faculty = staffFacultyOrPrimary(caller.faculty)
 
     const body = await request.json()
     const id = typeof body.id === 'string' ? body.id : ''
@@ -599,7 +622,7 @@ export async function DELETE(request: Request) {
       return jsonError("So'rov ma'lumotlari noto'g'ri", 400)
     }
 
-    if (id === session.user.id) {
+    if (id === user.id) {
       return jsonError("O'zingizni o'chirib bo'lmaydi", 400)
     }
 
@@ -610,12 +633,12 @@ export async function DELETE(request: Request) {
     const [studentResult, staffResult] = await Promise.all([
       supabase
         .from('users')
-        .select('id')
+        .select('id, faculty')
         .eq('id', id)
         .maybeSingle(),
       supabase
         .from('staff')
-        .select('id, role')
+        .select('id, role, faculty')
         .eq('id', id)
         .maybeSingle(),
     ])
@@ -625,6 +648,20 @@ export async function DELETE(request: Request) {
       return jsonError('Foydalanuvchini tekshirib bo‘lmadi', 500)
     }
     const table = resolveDeleteTarget(source, studentResult.data, staffResult.data)
+
+    // Deletion is scoped to the caller's faculty. A student always has one;
+    // a legacy staff row with no faculty yet stays deletable during the
+    // transition.
+    if (table === 'users') {
+      if ((normalizeFaculty(studentResult.data?.faculty ?? null) ?? 'amit') !== faculty) {
+        return jsonError('Boshqa fakultet talabasini o‘chirib bo‘lmaydi', 403)
+      }
+    } else {
+      const staffFaculty = normalizeFaculty(staffResult.data?.faculty ?? null)
+      if (staffFaculty && staffFaculty !== faculty) {
+        return jsonError('Boshqa fakultet xodimini o‘chirib bo‘lmaydi', 403)
+      }
+    }
 
     // Auth account first, profile row second: these are two separate
     // systems with no shared transaction, so whichever step runs first is

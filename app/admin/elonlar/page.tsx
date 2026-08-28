@@ -26,6 +26,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { adminUI, adminStatusChip, type AdminStatusTone } from '@/lib/admin-ui'
+import { permitFacultyLabel } from '@/lib/faculties'
 
 type ElonType = 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish'
 
@@ -42,7 +43,6 @@ interface Elon {
 }
 
 const TYPE_OPTIONS: ElonType[] = ['Yangilik', 'Muhim', 'Tadbir', 'Ogohlantirish']
-const FACULTY_OPTIONS = ['Matematika', 'Fizika', 'Iqtisodiyot', 'Dasturiy Injiniring', 'Amaliy Matematika']
 
 const typeTone: Record<ElonType, AdminStatusTone> = {
   Yangilik: 'neutral',
@@ -75,12 +75,14 @@ export default function AdminElonlarPage() {
   const [editingElon, setEditingElon] = useState<Elon | null>(null)
 
   // Form State
+  // Faculty is never chosen here — the server pins every announcement to the
+  // signed-in staff member's own faculty. `audience` only picks the label the
+  // student sees: 'all' = whole building, 'faculty' = faculty notice.
   const [form, setForm] = useState({
     title: '',
     text: '',
     type: 'Yangilik' as ElonType,
     audience: 'all' as 'all' | 'faculty',
-    faculty: '',
     is_published: true,
   })
 
@@ -118,7 +120,6 @@ export default function AdminElonlarPage() {
         text: editingElon.text,
         type: editingElon.type,
         audience: editingElon.audience,
-        faculty: editingElon.faculty || '',
         is_published: editingElon.is_published,
       })
     } else {
@@ -127,7 +128,6 @@ export default function AdminElonlarPage() {
         text: '',
         type: 'Yangilik',
         audience: 'all',
-        faculty: '',
         is_published: true,
       })
     }
@@ -192,7 +192,6 @@ export default function AdminElonlarPage() {
         text: form.text,
         type: form.type,
         audience: form.audience,
-        faculty: form.audience === 'faculty' ? form.faculty : null,
         is_published: form.is_published,
       }
 
@@ -483,7 +482,7 @@ export default function AdminElonlarPage() {
                     {/* Target tag */}
                     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${isLight ? 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200' : 'bg-slate-800 text-slate-300 ring-1 ring-inset ring-slate-700'}`}>
                       {elon.audience === 'faculty' ? <School size={10} /> : <Globe size={10} />}
-                      {elon.audience === 'faculty' ? elon.faculty : 'Barchaga'}
+                      {elon.audience === 'faculty' ? permitFacultyLabel(elon.faculty) : 'Barchaga'}
                     </span>
                   </div>
 
@@ -656,7 +655,7 @@ export default function AdminElonlarPage() {
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
-                        onClick={() => setForm((current) => ({ ...current, audience: 'all', faculty: '' }))}
+                        onClick={() => setForm((current) => ({ ...current, audience: 'all' }))}
                         className={`rounded-xl border py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${
                           form.audience === 'all'
                             ? 'border-indigo-600 bg-indigo-600 text-white'
@@ -669,7 +668,7 @@ export default function AdminElonlarPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setForm((current) => ({ ...current, audience: 'faculty', faculty: current.faculty || FACULTY_OPTIONS[0] }))}
+                        onClick={() => setForm((current) => ({ ...current, audience: 'faculty' }))}
                         className={`rounded-xl border py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${
                           form.audience === 'faculty'
                             ? 'border-indigo-600 bg-indigo-600 text-white'
@@ -683,23 +682,6 @@ export default function AdminElonlarPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Faculty selection (conditionally rendered) */}
-                {form.audience === 'faculty' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                  >
-                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>Fakultetni tanlang</label>
-                    <CustomSelect
-                      value={form.faculty || ''}
-                      onChange={(val) => setForm((current) => ({ ...current, faculty: val }))}
-                      options={FACULTY_OPTIONS.map((faculty) => ({ value: faculty, label: faculty }))}
-                      className={`rounded-xl border px-4 py-3 text-sm ${inputBg}`}
-                    />
-                  </motion.div>
-                )}
 
                 {/* Text Content */}
                 <div>

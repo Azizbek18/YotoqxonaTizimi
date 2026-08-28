@@ -72,11 +72,12 @@ function parseUpdate(input: unknown): AppSettingsUpdate {
 
 export function createAppSettingsService(repository: AppSettingsRepository = createAppSettingsRepository()) {
   return {
-    get(): Promise<AppSettings> {
-      return repository.get()
+    // faculty omitted -> the primary building's settings (transition default).
+    get(faculty?: string): Promise<AppSettings> {
+      return repository.get(faculty)
     },
 
-    async update(input: unknown): Promise<AppSettings> {
+    async update(input: unknown, faculty?: string): Promise<AppSettings> {
       const row = parseUpdate(input)
 
       // yearlyContractFee must stay a whole multiple of monthlyFee — the
@@ -87,7 +88,7 @@ export function createAppSettingsService(repository: AppSettingsRepository = cre
       // update (changing only one of the two fields) is still checked
       // against the other's actual current value, not a stale default.
       if ('monthly_fee' in row || 'yearly_contract_fee' in row) {
-        const current = await repository.get()
+        const current = await repository.get(faculty)
         const monthlyFee = 'monthly_fee' in row ? Number(row.monthly_fee) : current.monthlyFee
         const yearlyContractFee = 'yearly_contract_fee' in row ? Number(row.yearly_contract_fee) : current.yearlyContractFee
         if (yearlyContractFee % monthlyFee !== 0) {
@@ -95,7 +96,7 @@ export function createAppSettingsService(repository: AppSettingsRepository = cre
         }
       }
 
-      return repository.update(row)
+      return repository.update(row, faculty)
     },
   }
 }

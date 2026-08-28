@@ -86,4 +86,42 @@ describe('payment submission service', () => {
     expect(repo.claimReceipt).not.toHaveBeenCalled()
     expect(repo.submitBatchAtomic).not.toHaveBeenCalled()
   })
+
+  it('validates the fee against the student\'s own faculty', async () => {
+    const repo = repository()
+    await createPaymentService(repo as never).submit(
+      { id: '00000000-0000-4000-8000-000000000001', full_name: 'S', faculty: 'fizika' },
+      paymentForm(),
+    )
+    expect(getSettings).toHaveBeenCalledWith('fizika')
+  })
+})
+
+describe('payment review / listing faculty scoping', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('threads the faculty through listAll, getSummary and review', async () => {
+    const repo = repository()
+    repo.listAll.mockResolvedValue([])
+    repo.countWaiting.mockResolvedValue(3)
+    repo.review.mockResolvedValue([{ id: 'p1' }])
+
+    const service = createPaymentService(repo as never)
+    await service.listAll('kimyo')
+    await service.getSummary('kimyo')
+    await service.review('kimyo', { ids: ['00000000-0000-4000-8000-000000000001'], status: 'approved', message: 'ok' })
+
+    expect(repo.listAll).toHaveBeenCalledWith('kimyo', undefined)
+    expect(repo.countWaiting).toHaveBeenCalledWith('kimyo')
+    expect(repo.review).toHaveBeenCalledWith('kimyo', ['00000000-0000-4000-8000-000000000001'], 'approved', 'ok')
+  })
+
+  it('rejects the batch when a payment id is outside the faculty (fewer rows updated)', async () => {
+    const repo = repository()
+    repo.review.mockResolvedValue([]) // the other-faculty id matched nothing
+
+    await expect(
+      createPaymentService(repo as never).review('kimyo', { ids: ['00000000-0000-4000-8000-000000000001'], status: 'approved', message: 'ok' }),
+    ).rejects.toMatchObject({ status: 409 })
+  })
 })

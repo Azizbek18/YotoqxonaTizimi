@@ -53,7 +53,8 @@ async function assignPermitRoom(
     return { success: true as const }
   }
 
-  const { defaultRoomCapacity } = await createAppSettingsService().get()
+  // Room capacity is the permit faculty's own dorm setting.
+  const { defaultRoomCapacity } = await createAppSettingsService().get(faculty)
   try {
     const assigned = await repository.assignPermitRoomAtomic(permitId, roomNumber, defaultRoomCapacity)
     if (!assigned) {
@@ -116,7 +117,7 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
         return { success: true as const }
       }
 
-      const { defaultRoomCapacity } = await createAppSettingsService().get()
+      const { defaultRoomCapacity } = await createAppSettingsService().get(faculty)
       // Room existence is checked inside the RPC itself (same advisory
       // lock/transaction as the capacity check) — a separate SELECT here
       // first would leave a window where the room could be deleted from

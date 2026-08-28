@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireActiveStaff } from '@/server/auth/guards'
+import { staffFacultyOrPrimary } from '@/server/auth/faculty'
 import { createRoomLayoutService } from '@/features/room-layout/server/service'
 import { getApiError } from '@/server/http/api-error'
 
@@ -9,9 +10,10 @@ import { getApiError } from '@/server/http/api-error'
 // only ever fill a blank building — never overwrite the admin's own layout.
 export async function POST(request: NextRequest) {
   try {
-    await requireActiveStaff(request, ['admin', 'dekan'])
+    const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const faculty = staffFacultyOrPrimary(staff.faculty)
     const body = await request.json()
-    const result = await createRoomLayoutService().generateFloors(body?.floors, body?.numbering)
+    const result = await createRoomLayoutService().generateFloors(faculty, body?.floors, body?.numbering)
     return NextResponse.json(result)
   } catch (error) {
     console.error('Room floors generate error:', error)

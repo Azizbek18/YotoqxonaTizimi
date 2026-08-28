@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
-import { requireAdmin } from '@/server/auth/guards'
+import { requireActiveStaff } from '@/server/auth/guards'
+import { staffFacultyOrPrimary } from '@/server/auth/faculty'
+import { normalizeFaculty } from '@/lib/faculties'
 import { ApiError, getApiError } from '@/server/http/api-error'
 
 function errorResponse(error: unknown) {
@@ -11,13 +13,17 @@ function errorResponse(error: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request)
+    const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const faculty = staffFacultyOrPrimary(staff.faculty)
     const studentId = request.nextUrl.searchParams.get('studentId')?.trim()
     if (!studentId) throw new ApiError(400, 'Talaba identifikatori talab qilinadi')
+    // Scoped by faculty: a chat thread with another faculty's student
+    // returns nothing rather than leaking the conversation.
     const { data, error } = await getServiceSupabase()
       .from('arizalar')
       .select('*')
       .eq('student_id', studentId)
+      .eq('faculty', faculty)
       .eq('type', 'chat')
       .order('created_at', { ascending: true })
     if (error) throw error
@@ -29,7 +35,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin(request)
+    const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const faculty = staffFacultyOrPrimary(staff.faculty)
     const body = await request.json().catch(() => ({}))
     const studentId = typeof body.student_id === 'string' ? body.student_id.trim() : ''
     const message = typeof body.message === 'string' ? body.message.trim().slice(0, 4000) : ''
@@ -44,13 +51,16 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
     if (studentError) throw studentError
     if (!student) throw new ApiError(404, 'Talaba topilmadi')
+    if ((normalizeFaculty(student.faculty) ?? 'amit') !== faculty) {
+      throw new ApiError(403, 'Boshqa fakultet talabasi bilan yozishib bo\'lmaydi')
+    }
 
     const { data, error } = await supabase
       .from('arizalar')
       .insert({
         student_id: studentId,
         student_name: student.full_name,
-        faculty: student.faculty,
+        faculty,
         direction: student.direction,
         course: student.course ?? 1,
         type: 'chat',

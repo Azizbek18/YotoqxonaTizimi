@@ -110,6 +110,7 @@ export type PaymentRow = {
   id: string
   student_id: string
   student_name: string
+  faculty: string
   month: string
   year: number
   amount: number
@@ -161,9 +162,23 @@ export interface Database {
       tolovlar: Table<PaymentRow>
       permit_requests: Table<PermitRequestRow>
       cleaning_schedule: Table<{
+        faculty: string
         room_number: string
         schedule: Json
         updated_at: string | null
+      }>
+      staff_invites: Table<{
+        id: string
+        code_hash: string
+        faculty: string
+        role: string
+        label: string | null
+        created_by: string | null
+        created_at: string
+        expires_at: string
+        revoked_at: string | null
+        max_uses: number | null
+        use_count: number
       }>
       payment_receipt_uploads: Table<{
         receipt_hash: string
@@ -190,6 +205,7 @@ export interface Database {
       }>
       floor_room_layout: Table<{
         id: string
+        faculty: string
         floor_number: number
         room_number: string
         side: string
@@ -200,7 +216,7 @@ export interface Database {
         created_at: string
       }>
       app_settings: Table<{
-        id: number
+        faculty: string
         monthly_fee: number
         yearly_contract_fee: number
         default_room_capacity: number
@@ -241,7 +257,7 @@ export interface Database {
         Returns: PermitRequestRow[]
       }
       replace_floor_room_layout: {
-        Args: { p_floor_number: number; p_rows: Json }
+        Args: { p_faculty: string; p_floor_number: number; p_rows: Json }
         Returns: void
       }
       claim_receipt_transaction: {
@@ -279,7 +295,6 @@ export interface Database {
           p_creator_id: string
           p_floor: number
           p_gender: string
-          p_faculty: string
           p_text: string
         }
         Returns: string
@@ -310,6 +325,10 @@ export interface Database {
           p_email: string
         }
         Returns: boolean
+      }
+      claim_staff_invite: {
+        Args: { p_code_hash: string }
+        Returns: { faculty: string; role: string }[]
       }
     }
     Enums: Record<string, never>

@@ -56,12 +56,15 @@ export default function ImtiyozliAriza() {
   const [ttjName, setTtjName] = useState('')
   useEffect(() => {
     let active = true
-    fetch('/api/public/ttj-name')
+    // The dorm building number is per-faculty — ask for the one the
+    // applicant picked, so the Ariza/Tilxat preview matches what that
+    // faculty's dekan will see.
+    fetch(`/api/public/ttj-name?faculty=${encodeURIComponent(faculty)}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => { if (active && data?.ttjName) setTtjName(data.ttjName) })
       .catch(() => {})
     return () => { active = false }
-  }, [])
+  }, [faculty])
 
   const acknowledgeWarning = () => setShowWarning(false)
 

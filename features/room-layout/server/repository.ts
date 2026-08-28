@@ -5,29 +5,36 @@ import type { RoomLayoutBlock } from '../types'
 export function createRoomLayoutRepository() {
   const supabase = getServiceSupabase()
   return {
-    // Whole-building room -> floor map. Small by nature (one row per room,
-    // a few hundred at most) so it's fetched unpaginated and cached by the
+    // One faculty's whole-building room -> floor map. Small by nature (a few
+    // hundred rows at most) so it's fetched unpaginated and cached by the
     // caller rather than queried per room.
-    async listAllRooms() {
+    async listAllRooms(faculty: string) {
       const { data, error } = await supabase
         .from('floor_room_layout')
         .select('room_number, floor_number, side, frozen, frozen_reason')
+        .eq('faculty', faculty)
         .order('floor_number', { ascending: true })
         .order('room_number', { ascending: true })
       if (error) throw error
       return data ?? []
     },
 
-    async insertRooms(rows: { floor_number: number; room_number: string; side: string; position: number; size: string }[]) {
+    async insertRooms(
+      faculty: string,
+      rows: { floor_number: number; room_number: string; side: string; position: number; size: string }[],
+    ) {
       if (rows.length === 0) return
-      const { error } = await supabase.from('floor_room_layout').insert(rows)
+      const { error } = await supabase
+        .from('floor_room_layout')
+        .insert(rows.map((row) => ({ ...row, faculty })))
       if (error) throw error
     },
 
-    async listFloor(floorNumber: number) {
+    async listFloor(faculty: string, floorNumber: number) {
       const { data, error } = await supabase
         .from('floor_room_layout')
         .select('room_number, side, position, size')
+        .eq('faculty', faculty)
         .eq('floor_number', floorNumber)
         .order('side', { ascending: true })
         .order('position', { ascending: true })
@@ -38,7 +45,7 @@ export function createRoomLayoutRepository() {
     // replace_floor_room_layout in the DB migration) so a failed insert
     // (e.g. duplicate room number) can't leave the floor's layout wiped
     // with nothing re-inserted.
-    async replaceFloor(floorNumber: number, blocks: RoomLayoutBlock[]) {
+    async replaceFloor(faculty: string, floorNumber: number, blocks: RoomLayoutBlock[]) {
       const rows = blocks.map((block) => ({
         roomNumber: block.roomNumber,
         side: block.side,
@@ -46,6 +53,7 @@ export function createRoomLayoutRepository() {
         size: block.size,
       }))
       const { error } = await supabase.rpc('replace_floor_room_layout', {
+        p_faculty: faculty,
         p_floor_number: floorNumber,
         p_rows: rows,
       })
@@ -56,10 +64,11 @@ export function createRoomLayoutRepository() {
     // single room's frozen flag has no other row that could disagree with
     // it. Returns whether a row actually matched, so the service can tell
     // "room doesn't exist" apart from "already in that state".
-    async setFrozen(roomNumber: string, frozen: boolean, reason: string | null) {
+    async setFrozen(faculty: string, roomNumber: string, frozen: boolean, reason: string | null) {
       const { data, error } = await supabase
         .from('floor_room_layout')
         .update({ frozen, frozen_reason: reason })
+        .eq('faculty', faculty)
         .eq('room_number', roomNumber)
         .select('room_number')
         .maybeSingle()
@@ -74,10 +83,10 @@ export function createRoomLayoutRepository() {
     // move its residents with it — otherwise they keep receiving the old
     // floor's announcements forever.
     //
-    // Only the floor being saved is re-synced. That is enough: a room can
-    // only live on one floor (unique room_number), and the RPC refuses to
-    // drop an occupied room from the layout, so the sole way a resident's
-    // floor changes is the room re-appearing on the floor that is saved next.
+    // Matched by room_number alone, not by the students' academic faculty:
+    // during the multi-faculty transition mixed-faculty students still live
+    // in the one AMIT building, and their assigned_floor has to track the
+    // physical floor regardless of which faculty they study at.
     async syncAssignedFloors(floorNumber: number, roomNumbers: string[]) {
       if (roomNumbers.length === 0) return
       const { error } = await supabase

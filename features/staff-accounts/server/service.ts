@@ -17,11 +17,11 @@ import { getPasswordPolicyError } from '@/lib/password-policy'
 // entirely without touching that model.
 export function createStaffAccountService(repository: StaffAccountRepository = createStaffAccountRepository()) {
   return {
-    async list(): Promise<StaffAccountRow[]> {
-      return (await repository.listAll()) as StaffAccountRow[]
+    async list(faculty: string): Promise<StaffAccountRow[]> {
+      return (await repository.listAll(faculty)) as StaffAccountRow[]
     },
 
-    async create(creatorId: string, value: unknown) {
+    async create(creatorId: string, faculty: string, value: unknown) {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, "So'rov noto'g'ri")
       const input = value as Record<string, unknown>
 
@@ -47,7 +47,7 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
       // fixed upper bound (e.g. 50) would let an admin pick a floor number
       // that doesn't actually exist in this dorm, creating an account with
       // no real students to ever supervise.
-      const { floorCount } = await createAppSettingsService().get()
+      const { floorCount } = await createAppSettingsService().get(faculty)
       if (!Number.isInteger(assignedFloor) || assignedFloor < 1 || assignedFloor > floorCount) {
         throw new ApiError(400, `Tarbiyachi uchun qavat 1 dan ${floorCount} gacha bo'lishi kerak`)
       }
@@ -71,6 +71,7 @@ export function createStaffAccountService(repository: StaffAccountRepository = c
         phone_number: phone || null,
         role,
         status: 'active',
+        faculty,
         assigned_floor: assignedFloor,
         assigned_gender: assignedGender,
         created_by: creatorId,

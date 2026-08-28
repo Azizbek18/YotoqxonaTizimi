@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '@/server/auth/guards'
+import { resolveCallerFaculty } from '@/server/auth/faculty'
 import { createRoomLayoutService } from '@/features/room-layout/server/service'
 import { getApiError } from '@/server/http/api-error'
 
@@ -10,8 +11,9 @@ import { getApiError } from '@/server/http/api-error'
 // beyond being authenticated.
 export async function GET(request: NextRequest) {
   try {
-    await requireUser(request)
-    const rooms = await createRoomLayoutService().listRoomFloors()
+    const user = await requireUser(request)
+    const faculty = await resolveCallerFaculty(user.id)
+    const rooms = await createRoomLayoutService().listRoomFloors(faculty)
     return NextResponse.json({ rooms })
   } catch (error) {
     console.error('Room floors GET error:', error)

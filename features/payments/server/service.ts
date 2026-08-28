@@ -16,7 +16,7 @@ import {
 } from '../domain/validation'
 import { createPaymentRepository, type PaymentRepository } from './repository'
 
-type StudentForPayment = { id: string; full_name: string | null }
+type StudentForPayment = { id: string; full_name: string | null; faculty?: string | null }
 
 function parseMonths(value: FormDataEntryValue | null) {
   try {
@@ -36,15 +36,15 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       return repository.listForStudent(studentId)
     },
 
-    listAll(studentId?: string) {
-      return repository.listAll(studentId)
+    listAll(faculty: string, studentId?: string) {
+      return repository.listAll(faculty, studentId)
     },
 
-    async getSummary() {
-      return { waitingCount: await repository.countWaiting() }
+    async getSummary(faculty: string) {
+      return { waitingCount: await repository.countWaiting(faculty) }
     },
 
-    async review(input: { ids: unknown; status: unknown; message: unknown }) {
+    async review(faculty: string, input: { ids: unknown; status: unknown; message: unknown }) {
       let review
       try {
         review = validatePaymentReview(input)
@@ -52,7 +52,7 @@ export function createPaymentService(repository: PaymentRepository = createPayme
         if (error instanceof PaymentValidationError) throw new ApiError(400, error.message, error.code)
         throw error
       }
-      const rows = await repository.review(review.ids, review.status, review.message)
+      const rows = await repository.review(faculty, review.ids, review.status, review.message)
       if (rows.length !== review.ids.length) throw new ApiError(409, 'Ba’zi to‘lovlar yangilanmadi')
       return { ok: true as const }
     },
@@ -75,7 +75,8 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       if (transactionId.length > 256 || isSuspiciousPaymentTransactionId(normalizedTransactionId)) {
         throw new ApiError(400, 'Chek tranzaksiya raqami noto‘g‘ri')
       }
-      const { monthlyFee } = await createAppSettingsService().get()
+      // The monthly fee is the student's own faculty's dorm setting.
+      const { monthlyFee } = await createAppSettingsService().get(student.faculty ?? undefined)
       if (amount !== monthlyFee * months.length) {
         throw new ApiError(400, `To‘lov summasi tanlangan oylar uchun kutilgan summaga (${(monthlyFee * months.length).toLocaleString('uz-UZ')} so'm) mos kelmayapti`)
       }

@@ -119,26 +119,29 @@ export async function proxy(request: NextRequest) {
   // the caller falls through to the next check.
   const guardRole = (
     prefix: string,
-    requiredRole: Exclude<AppRole, null>,
+    requiredRole: Exclude<AppRole, null> | Exclude<AppRole, null>[],
     loginTarget: string,
     unknownRoleFallback = '/talaba/dashboard',
   ) => {
     if (!path.startsWith(prefix)) return null
     if (!session) return redirect(loginTarget)
-    if (userRole !== requiredRole) return redirect(homeFor(userRole, unknownRoleFallback))
+    const allowed = Array.isArray(requiredRole) ? requiredRole : [requiredRole]
+    if (!userRole || !allowed.includes(userRole)) return redirect(homeFor(userRole, unknownRoleFallback))
     return null
   }
 
   // ========================
   // ADMIN ROUTES HIMOYASI
   // ========================
-  // Admin loginiga kirish alohida holat: faqat tizimga admin sifatida
-  // kirgan foydalanuvchi undan uzoqlashtiriladi, boshqa hamma uni ko'ra oladi.
+  // The /admin/* panel is the faculty-admin toolset (payments, user CRUD,
+  // tarbiyachi accounts). "admin" is the transitional system-owner role;
+  // "dekan" is the faculty admin — both reach it, each scoped to their own
+  // faculty by the /api/admin/* routes.
   if (path === '/admin/login') {
-    if (session && userRole === 'admin') return redirect('/admin/dashboard')
+    if (session && (userRole === 'admin' || userRole === 'dekan')) return redirect('/admin/dashboard')
     return allow()
   }
-  const adminGuard = guardRole('/admin', 'admin', '/admin/login')
+  const adminGuard = guardRole('/admin', ['admin', 'dekan'], '/admin/login')
   if (adminGuard) return adminGuard
 
   // ========================

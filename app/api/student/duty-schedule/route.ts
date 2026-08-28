@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractFloor } from '@/lib/floor'
+import { normalizeFaculty, PRIMARY_FACULTY } from '@/lib/faculties'
 import { getRequestUser } from '@/lib/server-auth'
 import { getServiceSupabase } from '@/lib/server-supabase'
 
@@ -26,6 +27,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ profile, floorCaptains: [], schedule: {}, admins: [] })
     }
 
+    // Scope to the student's own building. Without the faculty filter a
+    // student would see another faculty's floor captain and duty roster for
+    // the same physical floor number.
+    const faculty = normalizeFaculty(profile.faculty) ?? PRIMARY_FACULTY
+
     const [captainsResult, scheduleResult] = await Promise.all([
       supabase
         .from('users')
@@ -33,12 +39,14 @@ export async function GET(request: NextRequest) {
         .eq('role', 'talaba')
         .eq('status', 'active')
         .eq('is_floor_captain', true)
+        .eq('faculty', faculty)
         .eq('assigned_floor', floor)
         .eq('gender', profile.gender),
       supabase
         .from('elonlar')
         .select('text')
         .eq('title', 'HAFTALIK_NAVBATCHILIK_JADVALI')
+        .eq('faculty', faculty)
         .eq('target_floor', floor)
         .eq('target_gender', profile.gender)
         .maybeSingle(),

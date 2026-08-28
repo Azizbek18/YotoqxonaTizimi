@@ -96,6 +96,9 @@ export default function AdminLayout({
   }, [pathname])
 
   const menuItems = useMemo(() => ([
+    // First item is the way back to the faculty (dekan) panel. Harmless for
+    // a system admin — /dekan/* just redirects them straight back here.
+    { label: 'Fakultet paneli', caption: 'Xonalar, yo‘llanmalar, sozlamalar', href: '/dekan/dashboard', icon: LayoutDashboard },
     { label: 'Dashboard', caption: 'Umumiy ko‘rinish', href: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Arizalar', caption: 'Jarayon nazorati', href: '/admin/arizalar', icon: FileText },
     {

@@ -1,20 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPaymentService } from '@/features/payments/server/service'
-import { requireAdmin } from '@/server/auth/guards'
+import { requireActiveStaff } from '@/server/auth/guards'
+import { staffFacultyOrPrimary } from '@/server/auth/faculty'
 import { getApiError } from '@/server/http/api-error'
 
+// Payment review. Open to dekan (their own faculty) and, during the
+// admin -> dekan transition, admin (the primary building). Every read and
+// write is scoped to that faculty so one faculty's staff can never see or
+// decide another faculty's students' receipts.
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request)
+    const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const faculty = staffFacultyOrPrimary(staff.faculty)
     const service = createPaymentService()
     if (request.nextUrl.searchParams.get('summary') === '1') {
-      return NextResponse.json(await service.getSummary())
+      return NextResponse.json(await service.getSummary(faculty))
     }
     const studentId = request.nextUrl.searchParams.get('studentId')?.trim() || undefined
     if (studentId && !/^[0-9a-f-]{36}$/i.test(studentId)) {
       return NextResponse.json({ error: 'Talaba identifikatori noto‘g‘ri' }, { status: 400 })
     }
-    return NextResponse.json({ payments: await service.listAll(studentId) })
+    return NextResponse.json({ payments: await service.listAll(faculty, studentId) })
   } catch (error) {
     console.error('Admin payments GET error:', error)
     const response = getApiError(error, 'To‘lovlarni yuklab bo‘lmadi')
@@ -24,10 +30,11 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    await requireAdmin(request)
+    const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const faculty = staffFacultyOrPrimary(staff.faculty)
     const body = await request.json().catch(() => null)
     if (!body) return NextResponse.json({ error: 'Noto‘g‘ri so‘rov' }, { status: 400 })
-    return NextResponse.json(await createPaymentService().review(body))
+    return NextResponse.json(await createPaymentService().review(faculty, body))
   } catch (error) {
     console.error('Admin payments PATCH error:', error)
     const response = getApiError(error, 'To‘lov holatini yangilab bo‘lmadi')

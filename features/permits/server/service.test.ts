@@ -141,3 +141,30 @@ describe('permit admin service — approve / reject audit + email', () => {
     expect(writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'permit.reject' }))
   })
 })
+
+describe('permit admin service — overview', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('loads only the dekan\'s own faculty and never redacts (data is already scoped)', async () => {
+    const load = vi.fn(async () => ({
+      permits: [permit({ id: 'p1', faculty: 'fizika', status: 'approved', room_number: '12' })],
+      users: [{
+        id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Aziz',
+        passport_series: 'AB1', jshshir: 'J1', phone_number: '+998', gender: 'male',
+        direction: 'astronomiya', course: 2, room_number: '12', warning_count: 0, blacklisted: false,
+      }],
+    }))
+    const overview = await createPermitAdminService(repository({ load })).overview('fizika')
+
+    expect(load).toHaveBeenCalledWith('fizika')
+    expect(overview.faculty).toBe('fizika')
+    // full identity is present — no blank/redacted fields
+    expect(overview.usersWithRooms[0]).toMatchObject({ id: 'u1', full_name: 'Aziz', faculty: 'fizika', course: 2 })
+    expect(overview.approvedPermitsWithRooms).toHaveLength(1)
+    expect(overview.dashboard.totalOccupiedBeds).toBe(2)
+  })
+
+  it('rejects a dekan with no faculty', async () => {
+    await expect(createPermitAdminService(repository()).overview(null)).rejects.toMatchObject({ status: 403 })
+  })
+})

@@ -167,6 +167,19 @@ export interface Database {
         schedule: Json
         updated_at: string | null
       }>
+      staff_invites: Table<{
+        id: string
+        code_hash: string
+        faculty: string
+        role: string
+        label: string | null
+        created_by: string | null
+        created_at: string
+        expires_at: string
+        revoked_at: string | null
+        max_uses: number | null
+        use_count: number
+      }>
       payment_receipt_uploads: Table<{
         receipt_hash: string
         batch_id: string
@@ -312,6 +325,10 @@ export interface Database {
           p_email: string
         }
         Returns: boolean
+      }
+      claim_staff_invite: {
+        Args: { p_code_hash: string }
+        Returns: { faculty: string; role: string }[]
       }
     }
     Enums: Record<string, never>

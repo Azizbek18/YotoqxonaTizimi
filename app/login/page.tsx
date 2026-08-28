@@ -15,7 +15,6 @@ function LoginContent() {
   const searchParams = useSearchParams()
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
-  const isStudentFlow = searchParams.get('student') === '1'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -106,13 +105,12 @@ function LoginContent() {
       show3DToast('success', 'Xush kelibsiz!')
 
       setTimeout(() => {
-        // Rol asosida yo'naltirish
-        if (userRole === 'admin') {
-          router.push('/admin/dashboard')
+        // Rol asosida yo'naltirish. `admin` — nafaqaga chiqqan rol: alohida
+        // panel yo'q, dekan paneliga tushadi.
+        if (userRole === 'admin' || userRole === 'dekan') {
+          router.push('/dekan/dashboard')
         } else if (userRole === 'tarbiyachi') {
           router.push('/tarbiyachi/dashboard')
-        } else if (userRole === 'dekan') {
-          router.push('/dekan/dashboard')
         } else {
           router.push('/talaba/dashboard')
         }
@@ -279,17 +277,6 @@ function LoginContent() {
             </p>
           </div>
 
-          {!isStudentFlow && (
-            <div className="mt-4 text-center opacity-5 hover:opacity-40 transition-opacity">
-              <Link href="/admin/login" className="text-[8px] text-slate-600 uppercase tracking-widest">Admin panelga kirish</Link>
-            </div>
-          )}
-          {/* Hidden Admin Access Point */}
-          <div
-            className="absolute bottom-2 right-2 w-2 h-2 rounded-full bg-white/5 cursor-pointer opacity-0 hover:opacity-20 transition-opacity duration-300"
-            onClick={() => router.push('/admin/login')}
-            title="Admin Panel"
-          />
         </div>
       </div>
     </main>

@@ -88,7 +88,7 @@ export default function UpdatePassword() {
                 if (roleResponse.ok) {
                     const roleResult = await roleResponse.json() as { role?: string | null }
                     destination =
-                        roleResult.role === 'admin' ? '/admin/dashboard'
+                        roleResult.role === 'admin' ? '/dekan/dashboard'
                         : roleResult.role === 'tarbiyachi' ? '/tarbiyachi/dashboard'
                         : roleResult.role === 'dekan' ? '/dekan/dashboard'
                         : roleResult.role === 'talaba' ? '/talaba/dashboard'

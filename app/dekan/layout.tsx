@@ -20,6 +20,7 @@ import {
   Building2,
   Settings,
   ShieldAlert,
+  Wallet,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -141,6 +142,7 @@ export default function DekanLayout({
     { label: 'Xonalar xaritasi', caption: 'Joylashtirish holati', href: '/dekan/xonalar', icon: Boxes },
     { label: '3D Xonalar', caption: 'Qavat tarxi quruvchisi', href: '/dekan/3d-xonalar', icon: Layers3 },
     { label: 'Talabalar', caption: 'Fakultet talabalari', href: '/dekan/talabalar', icon: Users },
+    { label: 'To‘lovlar', caption: 'Kvitansiya tekshiruvi', href: '/dekan/tolovlar', icon: Wallet },
     // Faculty-admin tools. The page bodies are the /admin/* implementations
     // (re-exported under /dekan/*), so they render inside THIS panel's chrome;
     // their /api/admin/* routes are already scoped to the dekan's own faculty.

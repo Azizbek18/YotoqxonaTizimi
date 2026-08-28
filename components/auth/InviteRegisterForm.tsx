@@ -78,7 +78,11 @@ export default function InviteRegisterForm({
       const response = await fetch('/api/staff/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, email, phone, faculty, password, confirmPassword, inviteCode }),
+        body: JSON.stringify({
+          fullName, email,
+          phone: phone ? `+998${phone}` : '',
+          faculty, password, confirmPassword, inviteCode,
+        }),
       })
       const result: { ok: boolean; error?: string } = await response.json()
       if (!response.ok || !result.ok) {
@@ -206,7 +210,16 @@ export default function InviteRegisterForm({
             <div className={wrapCls('phone')}>
               <div className={innerCls}>
                 <Phone size={16} className={iconCls('phone')} />
-                <input value={phone} onChange={(e) => setPhone(e.target.value)} {...on('phone')} className={inputCls} placeholder={isDekan ? 'Telefon' : 'Telefon (ixtiyoriy)'} required={isDekan} />
+                <span className={`shrink-0 text-sm font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>+998</span>
+                <input
+                  inputMode="numeric"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                  {...on('phone')}
+                  className={`${inputCls} tracking-wide`}
+                  placeholder={isDekan ? '90 123 45 67' : 'ixtiyoriy'}
+                  required={isDekan}
+                />
               </div>
             </div>
           </motion.div>

@@ -34,6 +34,14 @@ export const PERMIT_FACULTIES = [
 
 export type PermitFacultyValue = (typeof PERMIT_FACULTIES)[number]['value']
 
+/**
+ * The faculty the original single-building deployment belongs to. Used as
+ * the fallback wherever a caller's own faculty can't be resolved (e.g. an
+ * admin with no faculty) or a faculty has no per-faculty row yet — until
+ * every faculty's dorm data is populated (multi-faculty migration, Bosqich 3).
+ */
+export const PRIMARY_FACULTY: PermitFacultyValue = 'amit'
+
 export function isPermitFacultyValue(value: string): value is PermitFacultyValue {
   return PERMIT_FACULTIES.some((f) => f.value === value)
 }

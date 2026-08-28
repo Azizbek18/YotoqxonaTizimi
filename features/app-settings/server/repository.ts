@@ -1,5 +1,6 @@
 import 'server-only'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import { PRIMARY_FACULTY } from '@/lib/faculties'
 import type { Database } from '@/types/database.generated'
 import type { AppSettings } from '../types'
 
@@ -34,15 +35,39 @@ export function createAppSettingsRepository() {
   const supabase = getServiceSupabase()
 
   return {
-    async get() {
-      const { data, error } = await supabase.from('app_settings').select(COLUMNS).eq('id', 1).single()
+    // A faculty with no per-faculty row yet reads the primary building's
+    // settings — the transition state until every faculty's dorm data is
+    // populated (multi-faculty migration, Bosqich 3).
+    async get(faculty: string = PRIMARY_FACULTY) {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select(COLUMNS)
+        .eq('faculty', faculty)
+        .maybeSingle()
       if (error) throw error
-      return toAppSettings(data as Record<string, unknown>)
+      if (data) return toAppSettings(data as Record<string, unknown>)
+
+      if (faculty !== PRIMARY_FACULTY) {
+        const { data: fallback, error: fallbackError } = await supabase
+          .from('app_settings')
+          .select(COLUMNS)
+          .eq('faculty', PRIMARY_FACULTY)
+          .maybeSingle()
+        if (fallbackError) throw fallbackError
+        if (fallback) return toAppSettings(fallback as Record<string, unknown>)
+      }
+      throw new Error(`app_settings qatori topilmadi: ${faculty}`)
     },
 
-    async update(row: AppSettingsUpdate) {
-      const { data, error } = await supabase.from('app_settings').update(row).eq('id', 1).select(COLUMNS).single()
+    async update(row: AppSettingsUpdate, faculty: string = PRIMARY_FACULTY) {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .update(row)
+        .eq('faculty', faculty)
+        .select(COLUMNS)
+        .maybeSingle()
       if (error) throw error
+      if (!data) throw new Error(`app_settings qatori topilmadi: ${faculty}`)
       return toAppSettings(data as Record<string, unknown>)
     },
   }

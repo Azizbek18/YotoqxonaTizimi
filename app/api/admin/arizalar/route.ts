@@ -1,6 +1,8 @@
-import { NextResponse } from 'next/server'
-import { getAdminSession } from '@/lib/server-admin'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import { requireActiveStaff } from '@/server/auth/guards'
+import { staffFacultyOrPrimary } from '@/server/auth/faculty'
+import { getApiError } from '@/server/http/api-error'
 
 type ApplicationLevel = 'info' | 'warning' | 'critical'
 
@@ -8,30 +10,29 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ ok: false, error: message }, { status })
 }
 
-export async function GET() {
+function errorResponse(error: unknown, fallback: string) {
+  console.error('Admin arizalar API error:', error)
+  const response = getApiError(error, fallback)
+  return NextResponse.json({ ok: false, ...response.body }, { status: response.status })
+}
+
+// Student applications (night-permit requests, explanation notes). Open to
+// dekan (their own faculty) and, during the admin -> dekan transition,
+// admin (the primary building). Everything is scoped to that faculty.
+export async function GET(request: NextRequest) {
   try {
-    const { session, isAdmin } = await getAdminSession()
+    const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const faculty = staffFacultyOrPrimary(staff.faculty)
 
-    if (!session?.user?.id) {
-      return jsonError('Autentifikatsiya talab qilinadi', 401)
-    }
-
-    if (!isAdmin) {
-      return jsonError('Admin huquqi talab qilinadi', 403)
-    }
-
-    const supabase = getServiceSupabase()
-    const { data: requests, error } = await supabase
+    const { data: requests, error } = await getServiceSupabase()
       .from('arizalar')
       .select('id, student_name, text, level, status, created_at')
+      .eq('faculty', faculty)
       .in('type', ['ariza', 'tushuntirish'])
       .neq('status', 'draft')
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error('Admin applications lookup failed:', error)
-      return jsonError('Arizalarni yuklab bo‘lmadi', 500)
-    }
+    if (error) throw error
 
     const formatted = (requests ?? []).map((request) => ({
       id: String(request.id),
@@ -45,33 +46,23 @@ export async function GET() {
 
     return NextResponse.json({ ok: true, requests: formatted })
   } catch (error) {
-    console.error('Admin arizalar GET xato:', error)
-    return jsonError('Arizalarni yuklashda server xatosi yuz berdi', 500)
+    return errorResponse(error, 'Arizalarni yuklashda server xatosi yuz berdi')
   }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   try {
-    const { session, isAdmin } = await getAdminSession()
-
-    if (!session?.user?.id) {
-      return jsonError('Autentifikatsiya talab qilinadi', 401)
-    }
-
-    if (!isAdmin) {
-      return jsonError('Admin huquqi talab qilinadi', 403)
-    }
+    const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const faculty = staffFacultyOrPrimary(staff.faculty)
 
     const body = await request.json()
     const id = typeof body.id === 'string' ? body.id : ''
     const level = body.level as ApplicationLevel | undefined
     const status = body.status as string | undefined
 
-    if (!id) {
-      return jsonError("So'rov ma'lumotlari noto'g'ri", 400)
-    }
+    if (!id) return jsonError("So'rov ma'lumotlari noto'g'ri", 400)
 
-    // 'draft'/'submitted' are student-only pre-submission states — admin
+    // 'draft'/'submitted' are student-only pre-submission states — staff
     // may only ever set a decided/pending outcome, never those two.
     if (status !== undefined && status !== 'pending' && status !== 'approved' && status !== 'rejected') {
       return jsonError("Status faqat 'pending', 'approved' yoki 'rejected' bo'lishi mumkin", 400)
@@ -81,67 +72,51 @@ export async function PATCH(request: Request) {
     if (level !== undefined) updateFields.level = level
     if (status !== undefined) {
       updateFields.status = status
-      // Reverting to 'pending' must clear any prior decision's response_date
-      // too — otherwise a still-pending application keeps showing a
-      // decision date from a previous approve/reject that was undone.
+      // Reverting to 'pending' clears any prior decision's response_date too.
       updateFields.response_date = status === 'pending' ? null : new Date().toISOString()
     }
 
-    if (Object.keys(updateFields).length === 0) {
-      return jsonError("Yangilash uchun ma'lumot yo'q", 400)
-    }
+    if (Object.keys(updateFields).length === 0) return jsonError("Yangilash uchun ma'lumot yo'q", 400)
 
-    const supabase = getServiceSupabase()
-    const { error } = await supabase
+    const { data, error } = await getServiceSupabase()
       .from('arizalar')
       .update(updateFields)
       .eq('id', id)
+      .eq('faculty', faculty)
+      .select('id')
+      .maybeSingle()
 
-    if (error) {
-      console.error('Admin application update failed:', error)
-      return jsonError('Ariza holatini yangilab bo‘lmadi', 500)
-    }
+    if (error) throw error
+    if (!data) return jsonError('Ariza topilmadi', 404)
 
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('Admin arizalar PATCH xato:', error)
-    return jsonError('Ariza holatini yangilashda server xatosi yuz berdi', 500)
+    return errorResponse(error, 'Ariza holatini yangilashda server xatosi yuz berdi')
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
-    const { session, isAdmin } = await getAdminSession()
-
-    if (!session?.user?.id) {
-      return jsonError('Autentifikatsiya talab qilinadi', 401)
-    }
-
-    if (!isAdmin) {
-      return jsonError('Admin huquqi talab qilinadi', 403)
-    }
+    const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const faculty = staffFacultyOrPrimary(staff.faculty)
 
     const body = await request.json()
     const id = typeof body.id === 'string' ? body.id : ''
+    if (!id) return jsonError("So'rov ma'lumotlari noto'g'ri", 400)
 
-    if (!id) {
-      return jsonError("So'rov ma'lumotlari noto'g'ri", 400)
-    }
-
-    const supabase = getServiceSupabase()
-    const { error } = await supabase
+    const { data, error } = await getServiceSupabase()
       .from('arizalar')
       .delete()
       .eq('id', id)
+      .eq('faculty', faculty)
+      .select('id')
+      .maybeSingle()
 
-    if (error) {
-      console.error('Admin application delete failed:', error)
-      return jsonError('Arizani o‘chirib bo‘lmadi', 500)
-    }
+    if (error) throw error
+    if (!data) return jsonError('Ariza topilmadi', 404)
 
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('Admin arizalar DELETE xato:', error)
-    return jsonError('Arizani o‘chirishda server xatosi yuz berdi', 500)
+    return errorResponse(error, 'Arizani o‘chirishda server xatosi yuz berdi')
   }
 }

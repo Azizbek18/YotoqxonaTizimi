@@ -44,8 +44,19 @@ DROP POLICY IF EXISTS "Admins can view all arizalar" ON public.arizalar;
 DROP POLICY IF EXISTS "Zamdekan can update all applications" ON public.arizalar;
 DROP POLICY IF EXISTS "Users can view their own arizalar" ON public.arizalar;
 
--- --- staff: faqat "Staff can view own staff profile" qoladi (ikkinchisi takror)
-DROP POLICY IF EXISTS "Xodimlar faqat o'z profilini ko'ra oladi" ON public.staff;
+-- --- staff: faqat "Staff can view own staff profile" qoladi. Ikkinchi
+-- (takror) policy nomida apostrof bor — ba'zi SQL muharrirlari uni buzadi,
+-- shuning uchun nomni yozmasdan pg_policies dan topib o'chiramiz.
+DO $$
+DECLARE p text;
+BEGIN
+  FOR p IN
+    SELECT policyname FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'staff' AND policyname LIKE 'Xodimlar%'
+  LOOP
+    EXECUTE format('DROP POLICY %I ON public.staff', p);
+  END LOOP;
+END $$;
 
 -- --- profiles: legacy, ilovada ishlatilmaydi — takror own-row policy olib tashlanadi
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;

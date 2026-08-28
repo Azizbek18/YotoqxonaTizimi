@@ -19,6 +19,11 @@ describe('RLS drift cleanup (202609100000)', () => {
     expect(sql).toContain('DROP TABLE IF EXISTS public.bemorlar')
   })
 
+  it('drops the apostrophe-named duplicate staff policy without typing the name', () => {
+    expect(sql).toMatch(/pg_policies[\s\S]*tablename = 'staff'[\s\S]*LIKE 'Xodimlar%'/)
+    expect(sql).toContain("EXECUTE format('DROP POLICY %I ON public.staff', p)")
+  })
+
   it('never re-creates a client-facing write policy', () => {
     expect(sql).not.toMatch(/CREATE POLICY/i)
   })

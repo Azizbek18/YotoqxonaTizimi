@@ -223,7 +223,7 @@ export default function AdminXodimlarPage() {
               <KeyRound size={16} /> Taklif kodlari
             </h2>
             <p className={`mt-1 text-xs ${textMuted}`}>
-              Kodni tarbiyachi/co-dekanga bering — ular <span className="font-mono">/register/xodim</span> orqali ro&apos;yxatdan o&apos;tadi. Fakultet va rol koddan olinadi.
+              Kodni tarbiyachiga bering — u <span className="font-mono">/register/xodim</span> orqali ro&apos;yxatdan o&apos;tadi. Fakultet koddan olinadi, rol — tarbiyachi.
             </p>
           </div>
           <button
@@ -336,14 +336,6 @@ export default function AdminXodimlarPage() {
           </div>
         ) : (
           <form onSubmit={handleCreateInvite} className="space-y-4">
-            <select
-              value={inviteForm.role}
-              onChange={(e) => setInviteForm((f) => ({ ...f, role: e.target.value as StaffInviteRole }))}
-              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none ${inputCls}`}
-            >
-              <option value="tarbiyachi">Tarbiyachi</option>
-              <option value="dekan">Co-dekan</option>
-            </select>
             <input
               value={inviteForm.label}
               onChange={(e) => setInviteForm((f) => ({ ...f, label: e.target.value }))}

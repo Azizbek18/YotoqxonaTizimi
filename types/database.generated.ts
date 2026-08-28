@@ -170,7 +170,7 @@ export interface Database {
       staff_invites: Table<{
         id: string
         code_hash: string
-        faculty: string
+        faculty: string | null
         role: string
         label: string | null
         created_by: string | null
@@ -328,7 +328,7 @@ export interface Database {
       }
       claim_staff_invite: {
         Args: { p_code_hash: string }
-        Returns: { faculty: string; role: string }[]
+        Returns: { faculty: string | null; role: string }[]
       }
     }
     Enums: Record<string, never>

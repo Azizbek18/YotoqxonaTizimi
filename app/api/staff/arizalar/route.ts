@@ -14,7 +14,7 @@ async function getScopedStudentIds(
 ) {
   let query = serviceSupabase
     .from('users')
-    .select('id, room_number, assigned_floor, gender')
+    .select('id, room_number, assigned_floor, gender, faculty')
     .eq('role', 'talaba')
 
   // Gender is an exact-match field, so it can be pushed down into SQL to cut

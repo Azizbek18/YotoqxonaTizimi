@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { UserPlus, Mail, Phone, RotateCcw, UserCog, KeyRound, Copy, Trash2, Plus } from 'lucide-react'
+import { Mail, Phone, RotateCcw, UserCog, KeyRound, Copy, Trash2, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { fetchStaffAccounts, createStaffAccount } from '@/features/staff-accounts/client/api'
+import { fetchStaffAccounts } from '@/features/staff-accounts/client/api'
 import { fetchStaffInvites, createStaffInvite, revokeStaffInvite } from '@/features/staff-invites/client/api'
-import type { StaffInviteRole, StaffInviteRow } from '@/features/staff-invites/types'
+import type { StaffInviteRow } from '@/features/staff-invites/types'
 import { adminUI, adminStatusChip, type AdminStatusTone } from '@/lib/admin-ui'
 import type { ManagedStaffRole, StaffAccountRow } from '@/features/staff-accounts/types'
 
@@ -21,14 +21,7 @@ const ROLE_TONE: Record<ManagedStaffRole, AdminStatusTone> = {
   tarbiyachi: 'info',
 }
 
-const initialForm = {
-  fullName: '',
-  email: '',
-  phone: '',
-  role: 'tarbiyachi' as ManagedStaffRole,
-  password: '',
-  confirmPassword: '',
-}
+const initialInviteForm = { email: '', label: '', expiryDays: '14' }
 
 export default function AdminXodimlarPage() {
   const theme = useThemeStore((state) => state.theme)
@@ -36,14 +29,11 @@ export default function AdminXodimlarPage() {
 
   const [staff, setStaff] = useState<StaffAccountRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [addModalOpen, setAddModalOpen] = useState(false)
-  const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState(initialForm)
 
   const [invites, setInvites] = useState<StaffInviteRow[]>([])
   const [inviteModalOpen, setInviteModalOpen] = useState(false)
   const [creatingInvite, setCreatingInvite] = useState(false)
-  const [inviteForm, setInviteForm] = useState({ role: 'tarbiyachi' as StaffInviteRole, label: '', expiryDays: '14', maxUses: '' })
+  const [inviteForm, setInviteForm] = useState(initialInviteForm)
   const [newCode, setNewCode] = useState<string | null>(null)
 
   const ui = adminUI(isLight)
@@ -79,16 +69,20 @@ export default function AdminXodimlarPage() {
 
   const handleCreateInvite = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!/^\S+@\S+\.\S+$/.test(inviteForm.email.trim())) {
+      toast.error("Email noto'g'ri")
+      return
+    }
     setCreatingInvite(true)
     try {
       const created = await createStaffInvite({
-        role: inviteForm.role,
+        role: 'tarbiyachi',
+        email: inviteForm.email.trim(),
         label: inviteForm.label.trim() || undefined,
         expiryDays: Number(inviteForm.expiryDays) || 14,
-        maxUses: inviteForm.maxUses.trim() ? Number(inviteForm.maxUses) : null,
       })
       setNewCode(created.code)
-      setInviteForm({ role: 'tarbiyachi', label: '', expiryDays: '14', maxUses: '' })
+      setInviteForm(initialInviteForm)
       void loadInvites()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Taklif kodini yaratib bo'lmadi")
@@ -116,30 +110,6 @@ export default function AdminXodimlarPage() {
     }
   }
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.fullName || !form.email || !form.password) {
-      toast.error("Majburiy maydonlarni to'ldiring")
-      return
-    }
-    if (form.password !== form.confirmPassword) {
-      toast.error('Parollar bir xil emas')
-      return
-    }
-    setCreating(true)
-    try {
-      await createStaffAccount(form)
-      toast.success("Xodim akkaunti yaratildi")
-      setAddModalOpen(false)
-      setForm(initialForm)
-      void loadStaff()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Xodim yaratib bo'lmadi")
-    } finally {
-      setCreating(false)
-    }
-  }
-
   return (
     <div>
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -150,16 +120,18 @@ export default function AdminXodimlarPage() {
             </span>
             Tarbiyachilar
           </h1>
-          <p className={`mt-2 text-sm ${textMuted}`}>Tarbiyachi akkauntlarini shu yerdan qo&apos;shing</p>
+          <p className={`mt-2 text-sm ${textMuted}`}>
+            Tarbiyachi emailini kiriting — u uchun bir martalik taklif kodi yaratiladi
+          </p>
         </div>
 
         <div className="flex gap-2">
           <button
-            onClick={() => setAddModalOpen(true)}
+            onClick={() => { setNewCode(null); setInviteForm(initialInviteForm); setInviteModalOpen(true) }}
             className={`inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold uppercase tracking-widest ${ui.accentSolid}`}
           >
-            <UserPlus size={16} />
-            Xodim qo&apos;shish
+            <Plus size={16} />
+            Kod yaratish
           </button>
           <button
             onClick={loadStaff}
@@ -196,11 +168,13 @@ export default function AdminXodimlarPage() {
               <KeyRound size={16} /> Taklif kodlari
             </h2>
             <p className={`mt-1 text-xs ${textMuted}`}>
-              Kodni tarbiyachiga bering — u <span className="font-mono">/register/xodim</span> orqali ro&apos;yxatdan o&apos;tadi. Fakultet koddan olinadi, rol — tarbiyachi.
+              Kod aynan siz kiritgan emailga bog&apos;lanadi va bir martalik. Tarbiyachi
+              <span className="font-mono"> /register/xodim</span> orqali F.I.Sh., telefon, jins va parolini
+              o&apos;zi kiritadi — email va fakultet koddan olinadi.
             </p>
           </div>
           <button
-            onClick={() => { setNewCode(null); setInviteModalOpen(true) }}
+            onClick={() => { setNewCode(null); setInviteForm(initialInviteForm); setInviteModalOpen(true) }}
             className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-widest ${ui.accentSolid}`}
           >
             <Plus size={14} /> Kod yaratish
@@ -219,12 +193,13 @@ export default function AdminXodimlarPage() {
                       {inv.role}
                     </span>
                     <span className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider ${inv.active ? 'bg-emerald-500/15 text-emerald-500' : 'bg-slate-500/15 text-slate-400'}`}>
-                      {inv.active ? 'Faol' : inv.revokedAt ? 'Bekor qilingan' : 'Muddati tugagan'}
+                      {inv.active ? 'Faol' : inv.revokedAt ? 'Bekor qilingan' : inv.useCount > 0 ? 'Ishlatilgan' : 'Muddati tugagan'}
                     </span>
-                    {inv.label && <span className={textStrong}>{inv.label}</span>}
+                    {inv.email && <span className={`truncate font-semibold ${textStrong}`}>{inv.email}</span>}
+                    {inv.label && <span className={textMuted}>· {inv.label}</span>}
                   </div>
                   <p className={`mt-1 ${textMuted}`}>
-                    Muddat: {new Date(inv.expiresAt).toLocaleDateString('uz-UZ')} · Ishlatilgan: {inv.useCount}{inv.maxUses !== null ? ` / ${inv.maxUses}` : ''}
+                    Muddat: {new Date(inv.expiresAt).toLocaleDateString('uz-UZ')}
                   </p>
                 </div>
                 {inv.active && (
@@ -291,8 +266,8 @@ export default function AdminXodimlarPage() {
       <ConfirmModal
         isOpen={inviteModalOpen}
         title="Taklif kodi"
-        description="Kod bir marta ko'rsatiladi — nusxa oling va xodimga bering"
-        onClose={() => { setInviteModalOpen(false); setNewCode(null) }}
+        description="Kod bir marta ko'rsatiladi — nusxa oling va tarbiyachiga bering"
+        onClose={() => { setInviteModalOpen(false); setNewCode(null); setInviteForm(initialInviteForm) }}
       >
         {newCode ? (
           <div className="space-y-4 text-center">
@@ -310,27 +285,26 @@ export default function AdminXodimlarPage() {
         ) : (
           <form onSubmit={handleCreateInvite} className="space-y-4">
             <input
+              type="email"
+              value={inviteForm.email}
+              onChange={(e) => setInviteForm((f) => ({ ...f, email: e.target.value }))}
+              placeholder="Tarbiyachi emaili"
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none ${inputCls}`}
+              required
+            />
+            <input
               value={inviteForm.label}
               onChange={(e) => setInviteForm((f) => ({ ...f, label: e.target.value }))}
-              placeholder="Izoh (ixtiyoriy, masalan: 3-qavat tarbiyachisi)"
+              placeholder="Izoh (ixtiyoriy, masalan: ismi)"
               className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none ${inputCls}`}
             />
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="number" min={1} max={60}
-                value={inviteForm.expiryDays}
-                onChange={(e) => setInviteForm((f) => ({ ...f, expiryDays: e.target.value }))}
-                placeholder="Kun (muddat)"
-                className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none ${inputCls}`}
-              />
-              <input
-                type="number" min={1} max={500}
-                value={inviteForm.maxUses}
-                onChange={(e) => setInviteForm((f) => ({ ...f, maxUses: e.target.value }))}
-                placeholder="Limit (ixtiyoriy)"
-                className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none ${inputCls}`}
-              />
-            </div>
+            <input
+              type="number" min={1} max={60}
+              value={inviteForm.expiryDays}
+              onChange={(e) => setInviteForm((f) => ({ ...f, expiryDays: e.target.value }))}
+              placeholder="Kun (muddat)"
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none ${inputCls}`}
+            />
             <button
               type="submit"
               disabled={creatingInvite}
@@ -340,74 +314,6 @@ export default function AdminXodimlarPage() {
             </button>
           </form>
         )}
-      </ConfirmModal>
-
-      <ConfirmModal
-        isOpen={addModalOpen}
-        title="Yangi xodim qo'shish"
-        description="Tarbiyachi akkountini to'g'ridan-to'g'ri parol bilan yarating"
-        onClose={() => {
-          setAddModalOpen(false)
-          setForm(initialForm)
-        }}
-      >
-        <form onSubmit={handleCreate} className="space-y-4">
-          {/* Only tarbiyachi accounts can be created here — see
-              features/staff-accounts/server/service.ts for why this
-              creation flow is admin-only. */}
-          <div className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-extrabold uppercase tracking-wider ${ui.accentSoft} ${ui.accentBorder} border`}>
-            <UserCog size={14} /> Tarbiyachi
-          </div>
-
-          <input
-            value={form.fullName}
-            onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-            placeholder="F.I.Sh"
-            className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputCls}`}
-            required
-          />
-          <input
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-            placeholder="Email"
-            className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputCls}`}
-            required
-          />
-          <input
-            value={form.phone}
-            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-            placeholder="Telefon (ixtiyoriy)"
-            className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputCls}`}
-          />
-          <p className={`text-[10px] ${textMuted}`}>
-            Tarbiyachi butun yotoqxona (fakultet binosi) bo&apos;yicha barcha talabalarni ko&apos;radi — barcha qavatlar, ikkala jins.
-          </p>
-          <input
-            type="password"
-            value={form.password}
-            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-            placeholder="Parol"
-            className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputCls}`}
-            required
-          />
-          <input
-            type="password"
-            value={form.confirmPassword}
-            onChange={(e) => setForm((f) => ({ ...f, confirmPassword: e.target.value }))}
-            placeholder="Parolni tasdiqlang"
-            className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all ${inputCls}`}
-            required
-          />
-
-          <button
-            type="submit"
-            disabled={creating}
-            className={`w-full h-11 rounded-xl uppercase tracking-widest text-[10px] ${ui.accentSolid}`}
-          >
-            {creating ? 'Yaratilmoqda...' : "Xodim yaratish"}
-          </button>
-        </form>
       </ConfirmModal>
     </div>
   )

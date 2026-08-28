@@ -5,6 +5,12 @@ export type StaffInviteRow = {
   /** null on the one shared dekan code — the dean picks their faculty at registration. */
   faculty: string | null
   role: StaffInviteRole
+  /**
+   * The email the code is bound to. A tarbiyachi code always has one (the
+   * dekan types it; only that address can register with the code). null on
+   * the shared dekan code, where the dean enters their own email.
+   */
+  email: string | null
   label: string | null
   createdAt: string
   expiresAt: string

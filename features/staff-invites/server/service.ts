@@ -20,6 +20,7 @@ function toRow(raw: Record<string, unknown>): StaffInviteRow {
     id: String(raw.id),
     faculty: raw.faculty ? String(raw.faculty) : null,
     role: raw.role as StaffInviteRole,
+    email: raw.email ? String(raw.email) : null,
     label: raw.label ? String(raw.label) : null,
     createdAt: String(raw.created_at),
     expiresAt,
@@ -43,6 +44,18 @@ export function createStaffInviteService(repository: StaffInviteRepository = cre
       const role = input.role as StaffInviteRole
       if (!ROLES.includes(role)) throw new ApiError(400, "Rol noto'g'ri")
 
+      // The dekan types exactly one email; the code is bound to it and is
+      // single-use. The tarbiyachi fills in everything else at registration.
+      const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : ''
+      if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) throw new ApiError(400, "Email noto'g'ri")
+
+      if (await repository.staffEmailExists(email)) {
+        throw new ApiError(409, "Bu email allaqachon xodim sifatida ro'yxatdan o'tgan")
+      }
+      if (await repository.pendingInviteForEmail(faculty, email)) {
+        throw new ApiError(409, "Bu email uchun faol taklif kodi allaqachon bor — avval uni bekor qiling")
+      }
+
       const label = typeof input.label === 'string' ? input.label.trim().slice(0, 80) || null : null
 
       const expiryDays = Number(input.expiryDays)
@@ -51,22 +64,16 @@ export function createStaffInviteService(repository: StaffInviteRepository = cre
         : DEFAULT_EXPIRY_DAYS
       const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
 
-      let maxUses: number | null = null
-      if (input.maxUses !== null && input.maxUses !== undefined && input.maxUses !== '') {
-        const parsed = Number(input.maxUses)
-        if (!Number.isInteger(parsed) || parsed < 1 || parsed > 500) throw new ApiError(400, "Foydalanish limiti noto'g'ri")
-        maxUses = parsed
-      }
-
       const code = generateInviteCode()
       const created = await repository.insert({
         code_hash: hashInviteCode(code),
         faculty,
         role,
+        email,
         label,
         created_by: creatorId,
         expires_at: expiresAt,
-        max_uses: maxUses,
+        max_uses: 1,
       })
 
       return { ...toRow(created as Record<string, unknown>), code }

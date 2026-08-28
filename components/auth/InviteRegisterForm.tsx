@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { KeyRound, User, Mail, Phone, GraduationCap, Lock, ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react'
+import { KeyRound, User, Mail, Phone, GraduationCap, Users, Lock, ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
@@ -16,7 +16,7 @@ const COPY = {
   xodim: {
     eyebrow: 'Xodim ro‘yxati',
     title: "Taklif kodi bilan ro'yxatdan o'tish",
-    subtitle: 'Fakultet va rol taklif kodidan olinadi',
+    subtitle: 'F.I.Sh., telefon va jinsingizni kiriting — email va fakultet taklif kodidan olinadi',
   },
   dekan: {
     eyebrow: 'Fakultet dekani',
@@ -26,13 +26,19 @@ const COPY = {
 } as const
 
 const FACULTY_OPTIONS = PERMIT_FACULTIES.map((f) => ({ value: f.value, label: f.label }))
+const GENDER_OPTIONS = [
+  { value: 'male', label: 'Erkak' },
+  { value: 'female', label: 'Ayol' },
+]
 
 // Staff registration via an invite code. Shares the visual language of
 // app/ruxsatnoma-yuborish — the animated "cyber-border" fields and glass
-// "pass-card". `audience` swaps copy and toggles the faculty picker:
-//  - 'xodim': tarbiyachi codes a dekan issues; the code carries the faculty.
-//  - 'dekan': one shared code for every faculty's dean; the dean picks their
-//    own faculty here, and the server enforces one active dekan per faculty.
+// "pass-card". `audience` swaps copy and which fields show:
+//  - 'xodim': a tarbiyachi code a dekan issued. The code carries the faculty
+//    AND the email, so the form only asks for name / phone / gender / password.
+//  - 'dekan': one shared code for every faculty's dean; the dean enters their
+//    own email and picks their faculty, and the server enforces one active
+//    dekan per faculty.
 export default function InviteRegisterForm({
   initialCode = '',
   audience = 'xodim',
@@ -47,6 +53,7 @@ export default function InviteRegisterForm({
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [gender, setGender] = useState('')
   const [faculty, setFaculty] = useState('')
   const [inviteCode, setInviteCode] = useState(initialCode)
   const [password, setPassword] = useState('')
@@ -59,7 +66,11 @@ export default function InviteRegisterForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!fullName || !email || !inviteCode || !password || !confirmPassword || (isDekan && (!phone || !faculty))) {
+    if (
+      !fullName || !inviteCode || !password || !confirmPassword || !phone
+      || (isDekan && (!email || !faculty))
+      || (!isDekan && !gender)
+    ) {
       toast.error("Majburiy maydonlarni to'ldiring")
       return
     }
@@ -79,8 +90,10 @@ export default function InviteRegisterForm({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fullName, email,
-          phone: phone ? `+998${phone}` : '',
+          fullName,
+          email: isDekan ? email : '',
+          phone: `+998${phone}`,
+          gender: isDekan ? '' : gender,
           faculty, password, confirmPassword, inviteCode,
         }),
       })
@@ -110,11 +123,16 @@ export default function InviteRegisterForm({
   const idleIcon = isLight ? 'text-slate-400' : 'text-slate-500'
   const inputCls = `w-full bg-transparent text-sm outline-none ${inputText}`
 
-  const stagger = (i: number) => ({
-    initial: { opacity: 0, y: 14 },
-    animate: { opacity: 1, y: 0 },
-    transition: { delay: 0.15 + i * 0.055, duration: 0.45, ease: 'easeOut' as const },
-  })
+  // Fields render in a fixed order; the stagger delay follows their position.
+  let step = 0
+  const stagger = () => {
+    const i = step++
+    return {
+      initial: { opacity: 0, y: 14 },
+      animate: { opacity: 1, y: 0 },
+      transition: { delay: 0.15 + i * 0.055, duration: 0.45, ease: 'easeOut' as const },
+    }
+  }
   const wrapCls = (id: string) => `cyber-border ${focused === id ? 'focused' : ''}`
   const innerCls = 'cyber-input-inner flex items-center gap-3 px-3.5 py-3'
   const iconCls = (id: string) => `shrink-0 ${focused === id ? 'icon-pulse text-indigo-400' : idleIcon}`
@@ -173,7 +191,7 @@ export default function InviteRegisterForm({
         transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
         className="pass-card relative z-10 w-full max-w-md rounded-3xl p-6 sm:p-8"
       >
-        <motion.div {...stagger(0)} className="mb-7 text-center">
+        <motion.div {...stagger()} className="mb-7 text-center">
           <motion.div
             initial={{ scale: 0.5, rotate: -12 }}
             animate={{ scale: 1, rotate: 0 }}
@@ -188,7 +206,7 @@ export default function InviteRegisterForm({
         </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          <motion.div {...stagger(1)}>
+          <motion.div {...stagger()}>
             <div className={wrapCls('fullName')}>
               <div className={innerCls}>
                 <User size={16} className={iconCls('fullName')} />
@@ -197,16 +215,18 @@ export default function InviteRegisterForm({
             </div>
           </motion.div>
 
-          <motion.div {...stagger(2)}>
-            <div className={wrapCls('email')}>
-              <div className={innerCls}>
-                <Mail size={16} className={iconCls('email')} />
-                <input type="email" name="email" autoComplete="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} {...on('email')} className={inputCls} placeholder="Email" required />
+          {isDekan && (
+            <motion.div {...stagger()}>
+              <div className={wrapCls('email')}>
+                <div className={innerCls}>
+                  <Mail size={16} className={iconCls('email')} />
+                  <input type="email" name="email" autoComplete="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} {...on('email')} className={inputCls} placeholder="Email" required />
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          )}
 
-          <motion.div {...stagger(3)}>
+          <motion.div {...stagger()}>
             <div className={wrapCls('phone')}>
               <div className={innerCls}>
                 <Phone size={16} className={iconCls('phone')} />
@@ -217,15 +237,33 @@ export default function InviteRegisterForm({
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
                   {...on('phone')}
                   className={`${inputCls} tracking-wide`}
-                  placeholder={isDekan ? '90 123 45 67' : 'ixtiyoriy'}
-                  required={isDekan}
+                  placeholder="90 123 45 67"
+                  required
                 />
               </div>
             </div>
           </motion.div>
 
+          {!isDekan && (
+            <motion.div {...stagger()} className="space-y-1.5">
+              <span className={`flex items-center gap-1.5 pl-1 text-[10px] font-bold uppercase tracking-wider ${labelCls}`}>
+                <Users size={12} /> Jins
+              </span>
+              <div className={wrapCls('gender')}>
+                <div className="cyber-input-inner px-3.5 py-3">
+                  <CustomSelect
+                    value={gender} onChange={setGender} options={GENDER_OPTIONS}
+                    placeholder="Jinsingizni tanlang"
+                    onFocus={() => setFocused('gender')} onBlur={() => setFocused(null)}
+                    className="w-full bg-transparent px-0 text-sm"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {isDekan && (
-            <motion.div {...stagger(4)} className="space-y-1.5">
+            <motion.div {...stagger()} className="space-y-1.5">
               <span className={`flex items-center gap-1.5 pl-1 text-[10px] font-bold uppercase tracking-wider ${labelCls}`}>
                 <GraduationCap size={12} /> Fakultet
               </span>
@@ -242,7 +280,7 @@ export default function InviteRegisterForm({
             </motion.div>
           )}
 
-          <motion.div {...stagger(isDekan ? 5 : 4)}>
+          <motion.div {...stagger()}>
             <div className={wrapCls('code')}>
               <div className={innerCls}>
                 <KeyRound size={16} className={iconCls('code')} />
@@ -251,7 +289,7 @@ export default function InviteRegisterForm({
             </div>
           </motion.div>
 
-          <motion.div {...stagger(isDekan ? 6 : 5)}>
+          <motion.div {...stagger()}>
             <div className={wrapCls('pw1')}>
               <div className={innerCls}>
                 <Lock size={16} className={iconCls('pw1')} />
@@ -260,7 +298,7 @@ export default function InviteRegisterForm({
             </div>
           </motion.div>
 
-          <motion.div {...stagger(isDekan ? 7 : 6)}>
+          <motion.div {...stagger()}>
             <div className={wrapCls('pw2')}>
               <div className={innerCls}>
                 <Lock size={16} className={iconCls('pw2')} />
@@ -270,7 +308,7 @@ export default function InviteRegisterForm({
           </motion.div>
 
           <motion.button
-            {...stagger(isDekan ? 8 : 7)}
+            {...stagger()}
             disabled={loading}
             whileHover={{ scale: loading ? 1 : 1.015 }}
             whileTap={{ scale: loading ? 1 : 0.985 }}
@@ -281,7 +319,7 @@ export default function InviteRegisterForm({
           </motion.button>
         </form>
 
-        <motion.p {...stagger(isDekan ? 9 : 8)} className={`mt-6 text-center text-xs ${labelCls}`}>
+        <motion.p {...stagger()} className={`mt-6 text-center text-xs ${labelCls}`}>
           Akkauntingiz bormi?{' '}
           <Link href="/login" className="font-bold text-indigo-400 hover:underline">Kirish sahifasi</Link>
         </motion.p>

@@ -61,6 +61,7 @@ export type StaffRow = {
   role: string
   status: string | null
   phone_number: string | null
+  gender: string | null
   faculty: string | null
   assigned_floor: number | null
   assigned_gender: string | null
@@ -172,6 +173,7 @@ export interface Database {
         code_hash: string
         faculty: string | null
         role: string
+        email: string | null
         label: string | null
         created_by: string | null
         created_at: string
@@ -328,7 +330,7 @@ export interface Database {
       }
       claim_staff_invite: {
         Args: { p_code_hash: string }
-        Returns: { faculty: string | null; role: string }[]
+        Returns: { faculty: string | null; role: string; email: string | null }[]
       }
     }
     Enums: Record<string, never>

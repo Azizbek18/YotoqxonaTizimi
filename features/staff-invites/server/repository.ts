@@ -2,7 +2,7 @@ import 'server-only'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import type { StaffInviteRole } from '../types'
 
-const COLUMNS = 'id, faculty, role, label, created_at, expires_at, revoked_at, max_uses, use_count'
+const COLUMNS = 'id, faculty, role, email, label, created_at, expires_at, revoked_at, max_uses, use_count'
 
 export function createStaffInviteRepository() {
   const supabase = getServiceSupabase()
@@ -17,10 +17,37 @@ export function createStaffInviteRepository() {
       return data ?? []
     },
 
+    // Whether some staff account already uses this email — a code for it
+    // would be dead on arrival (claim_staff_invite rejects it too).
+    async staffEmailExists(email: string) {
+      const { data, error } = await supabase
+        .from('staff')
+        .select('id')
+        .ilike('email', email)
+        .maybeSingle()
+      if (error) throw error
+      return Boolean(data)
+    },
+
+    // A still-usable code already issued for this email in this faculty.
+    async pendingInviteForEmail(faculty: string, email: string) {
+      const { data, error } = await supabase
+        .from('staff_invites')
+        .select('id')
+        .eq('faculty', faculty)
+        .ilike('email', email)
+        .is('revoked_at', null)
+        .eq('use_count', 0)
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+
     async insert(row: {
       code_hash: string
       faculty: string
       role: StaffInviteRole
+      email: string
       label: string | null
       created_by: string
       expires_at: string

@@ -74,14 +74,14 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
      * because students live in them. Existing rooms keep whatever side/
      * position/size/frozen state they already have.
      */
-    async generateFloors(plansValue: unknown, numberingValue: unknown) {
+    async generateFloors(faculty: string, plansValue: unknown, numberingValue: unknown) {
       const plans = parseFloorPlans(plansValue)
       const numbering: RoomNumbering = numberingValue === 'per-floor' ? 'per-floor' : 'sequential'
 
       const planned = planRoomNumbers(plans, numbering)
       if (planned.length === 0) throw new ApiError(400, "Kamida bitta xona kiritilishi kerak")
 
-      const existingRooms = await repository.listAllRooms()
+      const existingRooms = await repository.listAllRooms(faculty)
       const existingNumbers = new Set(existingRooms.map((row) => row.room_number))
       const rooms = planned.filter((room) => !existingNumbers.has(room.roomNumber))
 
@@ -129,7 +129,7 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
       })
 
       try {
-        await repository.insertRooms(rows)
+        await repository.insertRooms(faculty, rows)
       } catch (error) {
         if ((error as { code?: string })?.code === '23505') {
           throw new ApiError(409, 'Xona raqami takrorlandi — raqamlash usulini o‘zgartiring')
@@ -151,8 +151,8 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
       return { success: true as const, created: rows.length }
     },
 
-    async listRoomFloors(): Promise<RoomFloorStatus[]> {
-      const rows = await repository.listAllRooms()
+    async listRoomFloors(faculty: string): Promise<RoomFloorStatus[]> {
+      const rows = await repository.listAllRooms(faculty)
       return rows.map((row) => ({
         roomNumber: row.room_number,
         floor: row.floor_number,
@@ -168,7 +168,7 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
      * students from being moved in while it's frozen (enforced again inside
      * assign_student_room_atomic itself, not just here).
      */
-    async setFrozen(roomNumberValue: unknown, frozenValue: unknown, reasonValue: unknown) {
+    async setFrozen(faculty: string, roomNumberValue: unknown, frozenValue: unknown, reasonValue: unknown) {
       const roomNumber = typeof roomNumberValue === 'string' ? roomNumberValue.trim().slice(0, 20) : ''
       if (!roomNumber) throw new ApiError(400, "Xona raqami kiritilmagan")
       if (typeof frozenValue !== 'boolean') throw new ApiError(400, "So'rov noto'g'ri")
@@ -178,15 +178,15 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
       // this room would silently inherit whatever was typed last time.
       const storedReason = frozenValue ? (reason || null) : null
 
-      const updated = await repository.setFrozen(roomNumber, frozenValue, storedReason)
+      const updated = await repository.setFrozen(faculty, roomNumber, frozenValue, storedReason)
       if (!updated) throw new ApiError(404, "Bunday xona xonalar sxemasida topilmadi")
 
       return { success: true as const, roomNumber, frozen: frozenValue }
     },
 
-    async getFloor(floorValue: unknown) {
+    async getFloor(faculty: string, floorValue: unknown) {
       const floorNumber = parseFloorNumber(floorValue)
-      const rows = await repository.listFloor(floorNumber)
+      const rows = await repository.listFloor(faculty, floorNumber)
       return rows.map((row) => ({
         roomNumber: row.room_number,
         side: row.side as RoomBlockSide,
@@ -195,12 +195,12 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
       }))
     },
 
-    async saveFloor(floorValue: unknown, blocksValue: unknown) {
+    async saveFloor(faculty: string, floorValue: unknown, blocksValue: unknown) {
       const floorNumber = parseFloorNumber(floorValue)
       const blocks = parseBlocks(blocksValue)
 
       try {
-        await repository.replaceFloor(floorNumber, blocks)
+        await repository.replaceFloor(faculty, floorNumber, blocks)
       } catch (error) {
         const code = (error as { code?: string })?.code
         if (code === '23505') {

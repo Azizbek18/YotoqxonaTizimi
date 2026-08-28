@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireActiveStaff } from '@/server/auth/guards'
+import { staffFacultyOrPrimary } from '@/server/auth/faculty'
 import { createRoomLayoutService } from '@/features/room-layout/server/service'
 import { getApiError } from '@/server/http/api-error'
 
@@ -9,9 +10,10 @@ import { getApiError } from '@/server/http/api-error'
 // the 3D builder itself (that moved to dekan, see /api/dekan/room-layout).
 export async function PATCH(request: NextRequest) {
   try {
-    await requireActiveStaff(request, ['admin', 'dekan'])
+    const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const faculty = staffFacultyOrPrimary(staff.faculty)
     const body = await request.json()
-    const result = await createRoomLayoutService().setFrozen(body?.roomNumber, body?.frozen, body?.reason)
+    const result = await createRoomLayoutService().setFrozen(faculty, body?.roomNumber, body?.frozen, body?.reason)
     return NextResponse.json(result)
   } catch (error) {
     console.error('Room freeze PATCH error:', error)

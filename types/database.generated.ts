@@ -242,7 +242,7 @@ export interface Database {
         Returns: PermitRequestRow[]
       }
       replace_floor_room_layout: {
-        Args: { p_floor_number: number; p_rows: Json }
+        Args: { p_faculty: string; p_floor_number: number; p_rows: Json }
         Returns: void
       }
       claim_receipt_transaction: {

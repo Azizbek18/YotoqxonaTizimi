@@ -63,7 +63,7 @@ describe('staff account service: create', () => {
     const repository = createFakeRepository()
     const service = createStaffAccountService(repository)
 
-    await expect(service.create(creatorId, validInput({ role: 'admin' }))).rejects.toMatchObject({
+    await expect(service.create(creatorId, 'amit', validInput({ role: 'admin' }))).rejects.toMatchObject({
       status: 400,
     })
     expect(repository.createAuthUser).not.toHaveBeenCalled()
@@ -73,7 +73,7 @@ describe('staff account service: create', () => {
     const repository = createFakeRepository()
     const service = createStaffAccountService(repository)
 
-    await expect(service.create(creatorId, validInput({ assignedFloor: floor }))).rejects.toMatchObject({
+    await expect(service.create(creatorId, 'amit', validInput({ assignedFloor: floor }))).rejects.toMatchObject({
       status: 400,
     })
     expect(repository.createAuthUser).not.toHaveBeenCalled()
@@ -83,14 +83,14 @@ describe('staff account service: create', () => {
     const repository = createFakeRepository()
     const service = createStaffAccountService(repository)
 
-    await expect(service.create(creatorId, validInput({ assignedFloor: floor }))).resolves.toEqual({ success: true })
+    await expect(service.create(creatorId, 'amit', validInput({ assignedFloor: floor }))).resolves.toEqual({ success: true })
   })
 
   it('rejects when assignedGender is missing', async () => {
     const repository = createFakeRepository()
     const service = createStaffAccountService(repository)
 
-    await expect(service.create(creatorId, validInput({ assignedGender: undefined }))).rejects.toMatchObject({
+    await expect(service.create(creatorId, 'amit', validInput({ assignedGender: undefined }))).rejects.toMatchObject({
       status: 400,
     })
   })
@@ -101,7 +101,7 @@ describe('staff account service: create', () => {
     })
     const service = createStaffAccountService(repository)
 
-    await expect(service.create(creatorId, validInput())).rejects.toMatchObject({ status: 409 })
+    await expect(service.create(creatorId, 'amit', validInput())).rejects.toMatchObject({ status: 409 })
     expect(repository.createAuthUser).not.toHaveBeenCalled()
   })
 
@@ -111,7 +111,7 @@ describe('staff account service: create', () => {
     })
     const service = createStaffAccountService(repository)
 
-    await expect(service.create(creatorId, validInput())).rejects.toMatchObject({ status: 400 })
+    await expect(service.create(creatorId, 'amit', validInput())).rejects.toMatchObject({ status: 400 })
     expect(repository.insertStaffRow).not.toHaveBeenCalled()
   })
 
@@ -122,7 +122,7 @@ describe('staff account service: create', () => {
     })
     const service = createStaffAccountService(repository)
 
-    await expect(service.create(creatorId, validInput())).rejects.toMatchObject({
+    await expect(service.create(creatorId, 'amit', validInput())).rejects.toMatchObject({
       status: 500,
       message: "Xodim profilini yaratib bo'lmadi",
     })
@@ -133,7 +133,7 @@ describe('staff account service: create', () => {
     const repository = createFakeRepository()
     const service = createStaffAccountService(repository)
 
-    const result = await service.create(creatorId, validInput({ assignedFloor: 4 }))
+    const result = await service.create(creatorId, 'amit', validInput({ assignedFloor: 4 }))
 
     expect(result).toEqual({ success: true })
     expect(repository.insertStaffRow).toHaveBeenCalledWith(
@@ -142,6 +142,7 @@ describe('staff account service: create', () => {
         email: 'tarbiyachi@example.com',
         role: 'tarbiyachi',
         status: 'active',
+        faculty: 'amit',
         assigned_floor: 4,
         assigned_gender: 'male',
         created_by: creatorId,
@@ -154,20 +155,22 @@ describe('staff account service: create', () => {
     const repository = createFakeRepository()
     const service = createStaffAccountService(repository)
 
-    await expect(service.create(creatorId, null)).rejects.toBeInstanceOf(ApiError)
-    await expect(service.create(creatorId, 'not-an-object')).rejects.toBeInstanceOf(ApiError)
-    await expect(service.create(creatorId, [])).rejects.toBeInstanceOf(ApiError)
+    await expect(service.create(creatorId, 'amit', null)).rejects.toBeInstanceOf(ApiError)
+    await expect(service.create(creatorId, 'amit', 'not-an-object')).rejects.toBeInstanceOf(ApiError)
+    await expect(service.create(creatorId, 'amit', [])).rejects.toBeInstanceOf(ApiError)
   })
 })
 
 describe('staff account service: list', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('delegates to the repository and returns every tarbiyachi row unscoped', async () => {
+  it('delegates to the repository, passing the faculty scope', async () => {
     const rows = [{ id: '1' }]
-    const repository = createFakeRepository({ listAll: vi.fn(async () => rows) })
+    const listAll = vi.fn(async () => rows)
+    const repository = createFakeRepository({ listAll })
     const service = createStaffAccountService(repository)
 
-    await expect(service.list()).resolves.toBe(rows)
+    await expect(service.list('kimyo')).resolves.toBe(rows)
+    expect(listAll).toHaveBeenCalledWith('kimyo')
   })
 })

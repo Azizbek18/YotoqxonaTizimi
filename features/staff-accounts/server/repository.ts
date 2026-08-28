@@ -6,13 +6,15 @@ import type { ManagedStaffRole } from '../types'
 export function createStaffAccountRepository() {
   const supabase = getServiceSupabase()
   return {
-    // Admin isn't scoped to a faculty or floor, so it sees every tarbiyachi
-    // account regardless of who created it.
-    async listAll() {
+    // Scoped to one faculty's tarbiyachi accounts. Legacy rows created
+    // before faculty scoping have no faculty yet and stay visible to
+    // whoever manages this list until Bosqich 3 assigns them.
+    async listAll(faculty: string) {
       const { data, error } = await supabase
         .from('staff')
-        .select('id, full_name, email, role, status, phone_number, assigned_floor, assigned_gender, created_at')
+        .select('id, full_name, email, role, status, phone_number, assigned_floor, assigned_gender, created_at, faculty')
         .eq('role', 'tarbiyachi')
+        .or(`faculty.eq.${faculty},faculty.is.null`)
         .order('created_at', { ascending: false })
       if (error) throw error
       return data ?? []
@@ -32,6 +34,7 @@ export function createStaffAccountRepository() {
       phone_number: string | null
       role: ManagedStaffRole
       status: 'active'
+      faculty: string
       assigned_floor?: number
       assigned_gender?: 'male' | 'female'
       created_by: string

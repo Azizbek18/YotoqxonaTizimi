@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Clock,
   DollarSign,
+  Edit2,
   FileText,
   GraduationCap,
   Home,
@@ -21,6 +22,7 @@ import {
   RotateCcw,
   Search,
   ShieldCheck,
+  Trash2,
   Users,
   UserRound,
   UsersRound,
@@ -29,12 +31,15 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import {
+  deleteFacultyStudent,
   fetchFacultyPayments,
   fetchFacultyStudents,
   sendStudentWarning,
   setStudentBlacklist,
+  updateFacultyStudent,
 } from '@/features/faculty-students/client/api'
 import type {
   FacultyPaymentRecord,
@@ -52,8 +57,8 @@ import {
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { permitFacultyLabel } from '@/lib/faculties'
-import { directionLabel } from '@/lib/directions'
-import { genderAccent, genderLabel, normalizeGender } from '@/lib/gender'
+import { directionLabel, directionsForFaculty, normalizeDirection } from '@/lib/directions'
+import { GENDER_OPTIONS, genderAccent, genderLabel, normalizeGender } from '@/lib/gender'
 import { dekanUI, statusChip } from '@/lib/dekan-ui'
 
 type WarningTone = 'ok' | 'warn' | 'danger' | 'unknown'
@@ -84,6 +89,77 @@ const WARNING_DOT_CLASSES: Record<WarningTone, string> = {
 const HUJJAT_LABELS = ['Passport seriya', 'JSHSHIR', 'Passport sanasi', 'Hudud', 'Millati', 'Jinsi']
 
 type FolderKey = 'all' | 'roomless' | 'debtor' | 'paid' | 'male' | 'female' | 'captain' | 'warned' | 'blacklisted'
+
+// Editable fields, grouped to match the read-only detail tabs. Room / floor /
+// captaincy / warnings / status are intentionally not here — see
+// FacultyStudentPatch in features/faculty-students/client/api.ts.
+type EditTabKey = 'asosiy' | 'hujjatlar' | 'oila'
+
+const EMPTY_EDIT_FORM = {
+  full_name: '',
+  middle_name: '',
+  phone: '',
+  course: '',
+  direction: '',
+  gender: '',
+  birth_date: '',
+  nationality: '',
+  study_type: '',
+  entry_date: '',
+  passport_series: '',
+  jshshir: '',
+  passport_date: '',
+  region: '',
+  district: '',
+  mahalla: '',
+  father_full_name: '',
+  father_workplace: '',
+  father_phone: '',
+  mother_full_name: '',
+  mother_workplace: '',
+  mother_phone: '',
+}
+
+type EditFieldKey = keyof typeof EMPTY_EDIT_FORM
+
+const EDIT_TABS: { key: EditTabKey; label: string }[] = [
+  { key: 'asosiy', label: 'Asosiy' },
+  { key: 'hujjatlar', label: 'Hujjat & Manzil' },
+  { key: 'oila', label: 'Oila' },
+]
+
+const EDIT_FIELDS: Record<EditTabKey, { key: EditFieldKey; label: string; type: 'text' | 'number' | 'date' }[]> = {
+  asosiy: [
+    { key: 'full_name', label: "To'liq ism", type: 'text' },
+    { key: 'middle_name', label: 'Sharifi', type: 'text' },
+    { key: 'phone', label: 'Telefon', type: 'text' },
+    { key: 'course', label: 'Kurs', type: 'number' },
+    { key: 'direction', label: "Yo'nalish", type: 'text' },
+    { key: 'gender', label: 'Jinsi', type: 'text' },
+    { key: 'birth_date', label: "Tug'ilgan sana", type: 'date' },
+    { key: 'nationality', label: 'Millati', type: 'text' },
+    { key: 'study_type', label: "Ta'lim turi", type: 'text' },
+    { key: 'entry_date', label: 'Yotoqxonaga kirgan sana', type: 'date' },
+  ],
+  hujjatlar: [
+    { key: 'passport_series', label: 'Passport seriya', type: 'text' },
+    { key: 'jshshir', label: 'JSHSHIR', type: 'text' },
+    { key: 'passport_date', label: 'Passport sanasi', type: 'date' },
+    { key: 'region', label: 'Viloyat', type: 'text' },
+    { key: 'district', label: 'Tuman', type: 'text' },
+    { key: 'mahalla', label: 'Mahalla', type: 'text' },
+  ],
+  oila: [
+    { key: 'father_full_name', label: 'Ota F.I.Sh.', type: 'text' },
+    { key: 'father_workplace', label: 'Ota ish joyi', type: 'text' },
+    { key: 'father_phone', label: 'Ota telefoni', type: 'text' },
+    { key: 'mother_full_name', label: 'Ona F.I.Sh.', type: 'text' },
+    { key: 'mother_workplace', label: 'Ona ish joyi', type: 'text' },
+    { key: 'mother_phone', label: 'Ona telefoni', type: 'text' },
+  ],
+}
+
+const sliceDate = (value: string | null | undefined) => (value ? String(value).slice(0, 10) : '')
 
 export default function DekanStudentsPage() {
   const theme = useThemeStore((state) => state.theme)
@@ -120,6 +196,14 @@ export default function DekanStudentsPage() {
   const [blacklistModalOpen, setBlacklistModalOpen] = useState(false)
   const [blacklistReason, setBlacklistReason] = useState('')
   const [blacklistBusy, setBlacklistBusy] = useState(false)
+
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editTab, setEditTab] = useState<EditTabKey>('asosiy')
+  const [editForm, setEditForm] = useState<typeof EMPTY_EDIT_FORM>(EMPTY_EDIT_FORM)
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deletingStudent, setDeletingStudent] = useState(false)
 
   const getInitials = (name: string) =>
     name
@@ -375,6 +459,75 @@ export default function DekanStudentsPage() {
       toast.error(error instanceof Error ? error.message : "Amalni bajarib bo'lmadi")
     } finally {
       setBlacklistBusy(false)
+    }
+  }
+
+  const openEditModal = () => {
+    if (!selectedStudent) return
+    setEditForm({
+      full_name: selectedStudent.full_name ?? '',
+      middle_name: selectedStudent.middle_name ?? '',
+      phone: selectedStudent.phone_number ?? '',
+      course: selectedStudent.course != null ? String(selectedStudent.course) : '',
+      direction: normalizeDirection(selectedStudent.direction) ?? '',
+      gender: selectedStudent.gender ?? '',
+      birth_date: sliceDate(selectedStudent.birth_date),
+      nationality: selectedStudent.nationality ?? '',
+      study_type: selectedStudent.study_type ?? '',
+      entry_date: sliceDate(selectedStudent.entry_date),
+      passport_series: selectedStudent.passport_series ?? '',
+      jshshir: selectedStudent.jshshir ?? '',
+      passport_date: sliceDate(selectedStudent.passport_date),
+      region: selectedStudent.region ?? '',
+      district: selectedStudent.district ?? '',
+      mahalla: selectedStudent.mahalla ?? '',
+      father_full_name: selectedStudent.father_full_name ?? '',
+      father_workplace: selectedStudent.father_workplace ?? '',
+      father_phone: selectedStudent.father_phone ?? '',
+      mother_full_name: selectedStudent.mother_full_name ?? '',
+      mother_workplace: selectedStudent.mother_workplace ?? '',
+      mother_phone: selectedStudent.mother_phone ?? '',
+    })
+    setEditTab('asosiy')
+    setEditModalOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!selectedStudent || savingEdit) return
+    if (editForm.full_name.trim().length < 3) {
+      toast.error("To'liq ismni to'g'ri kiriting")
+      return
+    }
+    setSavingEdit(true)
+    try {
+      await updateFacultyStudent(selectedStudent.id, { ...editForm })
+      // The endpoint returns only { ok }, and its normalisation rules
+      // (empty string clears a field, blank number is ignored) don't map 1:1
+      // to a local merge — re-fetch so the row and its detail panel reflect
+      // exactly what the database now holds.
+      await loadStudents()
+      toast.success("Talaba ma'lumotlari yangilandi")
+      setEditModalOpen(false)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Ma'lumotlarni yangilab bo'lmadi")
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  const handleDeleteStudent = async () => {
+    if (!selectedStudent || deletingStudent) return
+    setDeletingStudent(true)
+    try {
+      await deleteFacultyStudent(selectedStudent.id)
+      setStudents((prev) => prev.filter((student) => student.id !== selectedStudent.id))
+      setSelectedStudent(null)
+      setDeleteModalOpen(false)
+      toast.success('Talaba tizimdan o‘chirildi')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Talabani o'chirib bo'lmadi")
+    } finally {
+      setDeletingStudent(false)
     }
   }
 
@@ -834,6 +987,13 @@ export default function DekanStudentsPage() {
 
                 <div className="flex w-full shrink-0 flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
                   <button
+                    onClick={openEditModal}
+                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+                  >
+                    <Edit2 size={14} />
+                    Tahrirlash
+                  </button>
+                  <button
                     onClick={openWarningModal}
                     className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
                   >
@@ -848,6 +1008,14 @@ export default function DekanStudentsPage() {
                   >
                     <UserX size={14} />
                     {selectedStudent.blacklisted ? 'Chetlatishni bekor qilish' : 'Chetlatish'}
+                  </button>
+                  <button
+                    onClick={() => setDeleteModalOpen(true)}
+                    aria-label="Talabani o‘chirish"
+                    title="Talabani o‘chirish"
+                    className={`flex items-center justify-center rounded-lg border p-2 transition-colors ${ui.dangerSoft}`}
+                  >
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
@@ -1260,6 +1428,102 @@ export default function DekanStudentsPage() {
               </div>
             </>
           )}
+        </div>
+      </ConfirmModal>
+
+      {/* Edit student record modal */}
+      <ConfirmModal
+        isOpen={editModalOpen}
+        title="Talaba ma'lumotlarini tahrirlash"
+        description={selectedStudent ? selectedStudent.full_name : undefined}
+        onClose={() => setEditModalOpen(false)}
+        onConfirm={handleSaveEdit}
+        confirmText="Saqlash"
+        isLoading={savingEdit}
+        maxWidthClass="max-w-3xl"
+      >
+        <div className="space-y-4">
+          <div className={`rounded-lg border p-3 text-[11px] leading-relaxed ${isLight ? 'border-indigo-200 bg-indigo-50 text-indigo-800' : 'border-indigo-500/25 bg-indigo-500/10 text-indigo-200'}`}>
+            Xona, qavat, sardorlik, ogohlantirishlar soni va akkaunt holati bu yerdan o&apos;zgartirilmaydi —
+            ular «Xonalar», ogohlantirish oqimi va email tasdig&apos;i orqali boshqariladi. Fakultetni ham
+            o&apos;zgartirib bo&apos;lmaydi.
+          </div>
+
+          <div className={`no-scrollbar flex flex-nowrap gap-1 overflow-x-auto rounded-lg border p-1 ${ui.inset}`}>
+            {EDIT_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setEditTab(tab.key)}
+                className={`flex-1 shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors sm:px-4 ${
+                  editTab === tab.key
+                    ? 'bg-indigo-600 text-white'
+                    : `${ui.muted} ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-200'}`
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {EDIT_FIELDS[editTab].map((field) => (
+              <div key={field.key} className="space-y-1.5">
+                <label className={`block text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>
+                  {field.label}
+                </label>
+                {field.key === 'gender' ? (
+                  <CustomSelect
+                    value={editForm.gender}
+                    onChange={(value) => setEditForm((current) => ({ ...current, gender: value }))}
+                    placeholder="Tanlanmagan"
+                    options={GENDER_OPTIONS}
+                    className={`rounded-lg border px-4 py-2.5 text-sm ${ui.input}`}
+                  />
+                ) : field.key === 'direction' ? (
+                  <CustomSelect
+                    value={editForm.direction}
+                    onChange={(value) => setEditForm((current) => ({ ...current, direction: value }))}
+                    placeholder="Yo'nalishni tanlang"
+                    options={directionsForFaculty(selectedStudent?.faculty).map((option) => ({
+                      value: option.value,
+                      label: option.label,
+                    }))}
+                    className={`rounded-lg border px-4 py-2.5 text-sm ${ui.input}`}
+                  />
+                ) : (
+                  <input
+                    type={field.type}
+                    value={editForm[field.key]}
+                    onChange={(event) =>
+                      setEditForm((current) => ({ ...current, [field.key]: event.target.value }))
+                    }
+                    className={`w-full rounded-lg border px-4 py-2.5 text-sm transition-colors ${ui.input} ${ui.ring}`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </ConfirmModal>
+
+      {/* Delete student modal */}
+      <ConfirmModal
+        isOpen={deleteModalOpen}
+        title="Talabani o‘chirish"
+        description={selectedStudent ? selectedStudent.full_name : undefined}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDeleteStudent}
+        confirmText="O‘chirish"
+        confirmVariant="danger"
+        isLoading={deletingStudent}
+        maxWidthClass="max-w-lg"
+      >
+        <div className={`rounded-lg border p-3 text-[11px] leading-relaxed ${isLight ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-rose-500/25 bg-rose-500/10 text-rose-200'}`}>
+          Talabaning hisobi va profili <span className="font-black">butunlay o&apos;chiriladi</span> — bu amalni
+          orqaga qaytarib bo&apos;lmaydi. Biriktirilgan xona bo&apos;shaydi. Talaba faqat yotoqxonani tark
+          etgan bo&apos;lsa yoki xato ro&apos;yxatdan o&apos;tgan bo&apos;lsa o&apos;chiring; qoida buzgan talaba
+          uchun «Chetlatish»dan foydalaning.
         </div>
       </ConfirmModal>
 

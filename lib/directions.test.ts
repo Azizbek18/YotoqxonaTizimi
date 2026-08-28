@@ -91,4 +91,13 @@ describe('directionBelongsToFaculty', () => {
   it('allows any valid direction for an unknown/legacy faculty code', () => {
     expect(directionBelongsToFaculty('nomavjud', 'suniy-intellekt')).toBe(true)
   })
+
+  it('accepts the teaching directions added for the two philology faculties', () => {
+    expect(directionBelongsToFaculty('ozbek-filologiyasi', 'filologiya-ozbek')).toBe(true)
+    expect(directionBelongsToFaculty('ozbek-filologiyasi', 'jurnalistika-internet')).toBe(true)
+    expect(directionBelongsToFaculty('xorijiy-filologiya', 'filologiya-ingliz')).toBe(true)
+    expect(directionBelongsToFaculty('xorijiy-filologiya', 'tarjima-nemis')).toBe(true)
+    // still strict: another faculty's programme is rejected
+    expect(directionBelongsToFaculty('xorijiy-filologiya', 'suniy-intellekt')).toBe(false)
+  })
 })

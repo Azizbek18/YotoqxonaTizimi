@@ -11,9 +11,12 @@ import { PERMIT_FACULTIES, type PermitFacultyValue } from '@/lib/faculties'
  * offers move to LEGACY_DIRECTIONS below — never selectable, still resolved
  * so an older student record keeps displaying as readable text.
  *
- * TODO(faculty-data): nuu.uz did not surface the o'zbek-filologiya
- * programmes for `ozbek-filologiyasi`, nor the "Xorijiy til va adabiyoti"
- * programmes for `xorijiy-filologiya` — add them once confirmed.
+ * nuu.uz only surfaced the journalism side of `ozbek-filologiyasi` and the
+ * translation side of `xorijiy-filologiya` (re-checked 2026-08-28). The
+ * teaching directions below ("Filologiya va tillarni o'qitish (X tili)",
+ * OO'YMTV kodi 60111400) are added from the national bachelor classifier so
+ * a real applicant there isn't rejected at submission; refine the exact
+ * labels if the faculty confirms otherwise.
  */
 
 export type DirectionOption = { value: string; label: string }
@@ -78,13 +81,18 @@ export const FACULTY_DIRECTIONS: Record<PermitFacultyValue, readonly DirectionOp
     { value: 'yurisprudensiya', label: 'Yurisprudensiya' },
   ],
   'xorijiy-filologiya': [
-    { value: 'ona-tili-adabiyoti', label: 'Ona tili va adabiyoti' },
+    { value: 'filologiya-ingliz', label: 'Filologiya va tillarni o’qitish (ingliz tili)' },
+    { value: 'filologiya-nemis', label: 'Filologiya va tillarni o’qitish (nemis tili)' },
+    { value: 'filologiya-fransuz', label: 'Filologiya va tillarni o’qitish (fransuz tili)' },
+    { value: 'filologiya-rus', label: 'Filologiya va tillarni o’qitish (rus tili)' },
     { value: 'tarjima-ingliz', label: 'Tarjima nazariyasi va amaliyoti (ingliz tili)' },
     { value: 'tarjima-nemis', label: 'Tarjima nazariyasi va amaliyoti (nemis tili)' },
     { value: 'tarjima-fransuz', label: 'Tarjima nazariyasi va amaliyoti (fransuz tili)' },
     { value: 'rus-tili-ozga-guruh', label: 'O’zga tilli guruhlarda rus tili' },
+    { value: 'ona-tili-adabiyoti', label: 'Ona tili va adabiyoti' },
   ],
   'ozbek-filologiyasi': [
+    { value: 'filologiya-ozbek', label: 'Filologiya va tillarni o’qitish (o’zbek tili)' },
     { value: 'jurnalistika', label: 'Jurnalistika' },
     { value: 'jurnalistika-oav', label: 'Jurnalistika (OAV faoliyati)' },
     { value: 'jurnalistika-bosma', label: 'Jurnalistika (bosma OAV jurnalistikasi)' },

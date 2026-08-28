@@ -11,12 +11,3 @@ export type StaffAccountRow = {
   assigned_gender: string | null
   created_at: string
 }
-
-export type CreateStaffAccountInput = {
-  fullName: string
-  email: string
-  phone: string
-  role: ManagedStaffRole
-  password: string
-  confirmPassword: string
-}

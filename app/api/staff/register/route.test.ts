@@ -68,7 +68,8 @@ const DEKAN_SELF = {
 
 const INVITE_REG = {
   fullName: 'Yangi Tarbiyachi',
-  email: 'tarbiyachi@example.com',
+  phone: '+998901234567',
+  gender: 'male',
   password: 'SecurePass123!',
   confirmPassword: 'SecurePass123!',
   inviteCode: 'ab7c-d2e9-xq4p',
@@ -83,7 +84,7 @@ describe('POST /api/staff/register', () => {
     upsert.mockResolvedValue({ error: null })
     emailMaybeSingle.mockResolvedValue({ data: null })
     dekanMaybeSingle.mockResolvedValue({ data: null })
-    rpc.mockResolvedValue({ data: [{ faculty: 'kimyo', role: 'tarbiyachi' }], error: null })
+    rpc.mockResolvedValue({ data: [{ faculty: 'kimyo', role: 'tarbiyachi', email: 'tarbiyachi@example.com' }], error: null })
   })
 
   describe('dekan self-registration (env keys)', () => {
@@ -109,19 +110,42 @@ describe('POST /api/staff/register', () => {
   })
 
   describe('invite-code registration', () => {
-    it('binds the account to the faculty and role from the claimed invite, no staff_id', async () => {
+    it('takes email + faculty + role from the claimed invite, name/phone/gender from the form, no staff_id', async () => {
       const response = await POST(request(INVITE_REG))
       expect(response.status).toBe(200)
       expect(rpc).toHaveBeenCalledWith('claim_staff_invite', { p_code_hash: expect.stringMatching(/^[0-9a-f]{64}$/) })
       const inserted = insert.mock.calls[0][0]
-      expect(inserted).toMatchObject({ role: 'tarbiyachi', faculty: 'kimyo', status: 'active' })
+      expect(inserted).toMatchObject({
+        role: 'tarbiyachi', faculty: 'kimyo', status: 'active',
+        email: 'tarbiyachi@example.com', full_name: 'Yangi Tarbiyachi', gender: 'male',
+      })
       expect(inserted).not.toHaveProperty('staff_id')
+    })
+
+    it('ignores any email the client sends — the invite decides it', async () => {
+      await POST(request({ ...INVITE_REG, email: 'attacker@evil.com' }))
+      expect(insert.mock.calls[0][0].email).toBe('tarbiyachi@example.com')
+    })
+
+    it('400s an email-bound invite when no gender was picked', async () => {
+      const { gender, ...noGender } = INVITE_REG
+      void gender
+      const response = await POST(request(noGender))
+      expect(response.status).toBe(400)
+      expect(createAuthUserSafely).not.toHaveBeenCalled()
     })
 
     it('403s an invalid or expired invite before creating any account', async () => {
       rpc.mockResolvedValue({ data: null, error: { code: 'P0001', message: 'Invalid or expired staff invite' } })
       const response = await POST(request(INVITE_REG))
       expect(response.status).toBe(403)
+      expect(createAuthUserSafely).not.toHaveBeenCalled()
+    })
+
+    it('409s when the bound email is already registered (claim refuses without spending a use)', async () => {
+      rpc.mockResolvedValue({ data: null, error: { code: 'P0001', message: 'Email already registered' } })
+      const response = await POST(request(INVITE_REG))
+      expect(response.status).toBe(409)
       expect(createAuthUserSafely).not.toHaveBeenCalled()
     })
 
@@ -133,8 +157,9 @@ describe('POST /api/staff/register', () => {
     })
 
     it('seeds an app_settings row for a newly-registered dekan\'s faculty', async () => {
-      rpc.mockResolvedValue({ data: [{ faculty: 'fizika', role: 'dekan' }], error: null })
-      const response = await POST(request(INVITE_REG))
+      // A faculty-bound dekan code (email typed on the form, faculty from the code).
+      rpc.mockResolvedValue({ data: [{ faculty: 'fizika', role: 'dekan', email: null }], error: null })
+      const response = await POST(request({ ...INVITE_REG, email: 'dekan@example.com' }))
       expect(response.status).toBe(200)
       expect(upsert).toHaveBeenCalledWith({ faculty: 'fizika' }, { onConflict: 'faculty', ignoreDuplicates: true })
     })
@@ -146,39 +171,42 @@ describe('POST /api/staff/register', () => {
   })
 
   describe('shared dekan link (faculty-less code, dean picks their faculty)', () => {
+    // The dean types their own email on the /register/dekan form.
+    const DEAN = { ...INVITE_REG, email: 'dekan@example.com' }
+
     beforeEach(() => {
-      rpc.mockResolvedValue({ data: [{ faculty: null, role: 'dekan' }], error: null })
+      rpc.mockResolvedValue({ data: [{ faculty: null, role: 'dekan', email: null }], error: null })
     })
 
     it('binds the account to the faculty the dean picked on the form', async () => {
-      const response = await POST(request({ ...INVITE_REG, faculty: 'fizika' }))
+      const response = await POST(request({ ...DEAN, faculty: 'fizika' }))
       expect(response.status).toBe(200)
       const inserted = insert.mock.calls[0][0]
-      expect(inserted).toMatchObject({ role: 'dekan', faculty: 'fizika', status: 'active' })
+      expect(inserted).toMatchObject({ role: 'dekan', faculty: 'fizika', status: 'active', email: 'dekan@example.com' })
       expect(upsert).toHaveBeenCalledWith({ faculty: 'fizika' }, { onConflict: 'faculty', ignoreDuplicates: true })
     })
 
     it('400s when no faculty was picked', async () => {
-      const response = await POST(request(INVITE_REG))
+      const response = await POST(request(DEAN))
       expect(response.status).toBe(400)
       expect(createAuthUserSafely).not.toHaveBeenCalled()
     })
 
     it('400s an unknown faculty code', async () => {
-      const response = await POST(request({ ...INVITE_REG, faculty: 'notreal' }))
+      const response = await POST(request({ ...DEAN, faculty: 'notreal' }))
       expect(response.status).toBe(400)
     })
 
     it('409s when that faculty already has an active dekan', async () => {
       dekanMaybeSingle.mockResolvedValue({ data: { id: 'existing-dekan' } })
-      const response = await POST(request({ ...INVITE_REG, faculty: 'fizika' }))
+      const response = await POST(request({ ...DEAN, faculty: 'fizika' }))
       expect(response.status).toBe(409)
       expect(createAuthUserSafely).not.toHaveBeenCalled()
     })
 
     it('409s on the unique-index race at insert time', async () => {
       insert.mockResolvedValue({ error: { code: '23505', message: 'staff_one_active_dekan_per_faculty' } })
-      const response = await POST(request({ ...INVITE_REG, faculty: 'fizika' }))
+      const response = await POST(request({ ...DEAN, faculty: 'fizika' }))
       expect(response.status).toBe(409)
       expect(deleteAuthUserSafely).toHaveBeenCalledWith('new-id')
     })

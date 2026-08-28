@@ -10,9 +10,9 @@ export async function fetchStaffInvites(): Promise<StaffInviteRow[]> {
 
 export function createStaffInvite(input: {
   role: StaffInviteRole
+  email: string
   label?: string
   expiryDays?: number
-  maxUses?: number | null
 }): Promise<CreatedStaffInvite> {
   return apiRequest<CreatedStaffInvite>('/api/dekan/staff-invites', {
     method: 'POST',

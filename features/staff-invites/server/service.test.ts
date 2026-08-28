@@ -6,12 +6,15 @@ import { hashInviteCode, normalizeInviteCode } from '@/lib/staff-invite'
 function fakeRepository(overrides: Partial<StaffInviteRepository> = {}) {
   return {
     listByFaculty: vi.fn(async () => []),
+    staffEmailExists: vi.fn(async () => false),
+    pendingInviteForEmail: vi.fn(async () => null),
     insert: vi.fn(async (row: Record<string, unknown>) => ({
       id: 'inv-1',
       faculty: row.faculty,
       role: row.role,
+      email: row.email,
       label: row.label,
-      created_at: '2026-09-07T00:00:00Z',
+      created_at: '2026-09-12T00:00:00Z',
       expires_at: row.expires_at,
       revoked_at: null,
       max_uses: row.max_uses,
@@ -22,47 +25,68 @@ function fakeRepository(overrides: Partial<StaffInviteRepository> = {}) {
   } as unknown as StaffInviteRepository
 }
 
+const VALID = { role: 'tarbiyachi' as const, email: 'Yangi.Tarbiyachi@Example.com' }
+
 describe('staff invite service', () => {
-  it('returns a plaintext code once and stores only its hash, bound to the caller faculty', async () => {
+  it('binds the code to a normalized email, single-use, and stores only its hash', async () => {
     const repo = fakeRepository()
-    const invite = await createStaffInviteService(repo).create('dekan-1', 'kimyo', { role: 'tarbiyachi' })
+    const invite = await createStaffInviteService(repo).create('dekan-1', 'kimyo', VALID)
 
     expect(invite.code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/)
     expect(invite.faculty).toBe('kimyo')
+    expect(invite.email).toBe('yangi.tarbiyachi@example.com')
     expect(invite.role).toBe('tarbiyachi')
     expect(invite.active).toBe(true)
 
     const insertArg = (repo.insert as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(insertArg.email).toBe('yangi.tarbiyachi@example.com')
+    expect(insertArg.max_uses).toBe(1)
     expect(insertArg.faculty).toBe('kimyo')
     expect(insertArg.created_by).toBe('dekan-1')
     expect(insertArg).not.toHaveProperty('code')
     expect(insertArg.code_hash).toBe(hashInviteCode(invite.code))
   })
 
+  it('requires a valid email', async () => {
+    await expect(
+      createStaffInviteService(fakeRepository()).create('dekan-1', 'kimyo', { role: 'tarbiyachi', email: 'nope' }),
+    ).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('rejects an email that already has a staff account', async () => {
+    const repo = fakeRepository({ staffEmailExists: vi.fn(async () => true) })
+    await expect(
+      createStaffInviteService(repo).create('dekan-1', 'kimyo', VALID),
+    ).rejects.toMatchObject({ status: 409 })
+    expect(repo.insert).not.toHaveBeenCalled()
+  })
+
+  it('rejects a second pending code for the same email', async () => {
+    const repo = fakeRepository({ pendingInviteForEmail: vi.fn(async () => ({ id: 'inv-old' })) })
+    await expect(
+      createStaffInviteService(repo).create('dekan-1', 'kimyo', VALID),
+    ).rejects.toMatchObject({ status: 409 })
+    expect(repo.insert).not.toHaveBeenCalled()
+  })
+
   it('rejects an unknown role', async () => {
     await expect(
-      createStaffInviteService(fakeRepository()).create('dekan-1', 'kimyo', { role: 'admin' }),
+      createStaffInviteService(fakeRepository()).create('dekan-1', 'kimyo', { role: 'admin', email: 'a@b.com' }),
     ).rejects.toMatchObject({ status: 400 })
   })
 
-  it('rejects a dekan (co-dekan) code — only the system owner mints dekan codes', async () => {
+  it('rejects a dekan code — only the system owner mints dekan codes', async () => {
     await expect(
-      createStaffInviteService(fakeRepository()).create('dekan-1', 'kimyo', { role: 'dekan' }),
-    ).rejects.toMatchObject({ status: 400 })
-  })
-
-  it('rejects an out-of-range use limit', async () => {
-    await expect(
-      createStaffInviteService(fakeRepository()).create('dekan-1', 'kimyo', { role: 'tarbiyachi', maxUses: 9999 }),
+      createStaffInviteService(fakeRepository()).create('dekan-1', 'kimyo', { role: 'dekan', email: 'a@b.com' }),
     ).rejects.toMatchObject({ status: 400 })
   })
 
   it('derives active=false for a used-up or expired invite', async () => {
     const repo = fakeRepository({
       listByFaculty: vi.fn(async () => [
-        { id: '1', faculty: 'kimyo', role: 'tarbiyachi', label: null, created_at: 'x', expires_at: '2000-01-01T00:00:00Z', revoked_at: null, max_uses: null, use_count: 0 },
-        { id: '2', faculty: 'kimyo', role: 'tarbiyachi', label: null, created_at: 'x', expires_at: '2999-01-01T00:00:00Z', revoked_at: null, max_uses: 2, use_count: 2 },
-        { id: '3', faculty: 'kimyo', role: 'tarbiyachi', label: null, created_at: 'x', expires_at: '2999-01-01T00:00:00Z', revoked_at: '2026-01-01T00:00:00Z', max_uses: null, use_count: 0 },
+        { id: '1', faculty: 'kimyo', role: 'tarbiyachi', email: 'a@b.com', label: null, created_at: 'x', expires_at: '2000-01-01T00:00:00Z', revoked_at: null, max_uses: 1, use_count: 0 },
+        { id: '2', faculty: 'kimyo', role: 'tarbiyachi', email: 'c@d.com', label: null, created_at: 'x', expires_at: '2999-01-01T00:00:00Z', revoked_at: null, max_uses: 1, use_count: 1 },
+        { id: '3', faculty: 'kimyo', role: 'tarbiyachi', email: 'e@f.com', label: null, created_at: 'x', expires_at: '2999-01-01T00:00:00Z', revoked_at: '2026-01-01T00:00:00Z', max_uses: 1, use_count: 0 },
       ]),
     })
     const rows = await createStaffInviteService(repo).list('kimyo')

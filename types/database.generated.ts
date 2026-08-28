@@ -190,6 +190,7 @@ export interface Database {
       }>
       floor_room_layout: Table<{
         id: string
+        faculty: string
         floor_number: number
         room_number: string
         side: string
@@ -200,7 +201,7 @@ export interface Database {
         created_at: string
       }>
       app_settings: Table<{
-        id: number
+        faculty: string
         monthly_fee: number
         yearly_contract_fee: number
         default_room_capacity: number

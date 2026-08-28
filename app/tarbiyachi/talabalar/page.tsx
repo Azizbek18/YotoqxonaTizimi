@@ -5,13 +5,14 @@ import { Search } from 'lucide-react'
 import type { Student } from '@/lib/types'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { getAuthHeaders } from '@/lib/auth-session'
+import { permitFacultyLabel } from '@/lib/faculties'
 
 export default function TarbiyachiTalabalarPage() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
   const [students, setStudents] = useState<Student[]>([])
   const [query, setQuery] = useState('')
-  const [scope, setScope] = useState<{ assigned_floor?: number | null; assigned_gender?: string | null }>({})
+  const [scope, setScope] = useState<{ faculty?: string | null }>({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
 
@@ -26,7 +27,7 @@ export default function TarbiyachiTalabalarPage() {
         const result = (await response.json()) as {
           ok: boolean
           students?: Student[]
-          scope?: { assigned_floor?: number | null; assigned_gender?: string | null }
+          scope?: { faculty?: string | null }
         }
 
         if (!response.ok || !result.ok) {
@@ -68,7 +69,7 @@ export default function TarbiyachiTalabalarPage() {
         <div>
           <h2 className={`text-2xl font-black ${textStrong}`}>Talabalar ro&apos;yxati</h2>
           <p className={`mt-1 text-sm ${textMuted}`}>
-            {scope.assigned_floor ? `${scope.assigned_floor}-qavat` : 'Barcha qavatlar'} | {scope.assigned_gender || 'barcha jinslar'}
+            {scope.faculty ? `${permitFacultyLabel(scope.faculty)} yotoqxonasi` : 'Yotoqxona'} · barcha qavatlar va xonalar
           </p>
         </div>
         <div className="relative w-full max-w-sm">
@@ -120,9 +121,9 @@ export default function TarbiyachiTalabalarPage() {
                 <tr>
                   <td colSpan={4} className={`px-4 py-8 text-center ${textMuted}`}>
                     {students.length === 0
-                      ? scope.assigned_floor || scope.assigned_gender
-                        ? `${scope.assigned_floor ? scope.assigned_floor + '-qavat' : 'Barcha qavatlar'} / ${scope.assigned_gender || 'barcha jinslar'} bo'yicha biriktirilgan talaba topilmadi. Agar bu noto'g'ri bo'lsa, adminga profilingizdagi qavat/jins sozlamasini tekshirishni so'rang.`
-                        : "Sizga hali qavat yoki jins biriktirilmagan, shuning uchun barcha talabalar ko'rsatilmoqda — lekin ro'yxat bo'sh."
+                      ? scope.faculty
+                        ? `${permitFacultyLabel(scope.faculty)} yotoqxonasida hali talaba yo'q. Agar bu noto'g'ri bo'lsa, adminga profilingizdagi fakultet sozlamasini tekshirishni so'rang.`
+                        : "Sizning profilingiz fakultetga biriktirilmagan. Adminga murojaat qiling."
                       : "Qidiruvga mos talaba topilmadi."}
                   </td>
                 </tr>

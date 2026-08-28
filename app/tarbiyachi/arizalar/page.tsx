@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { getAuthHeaders } from '@/lib/auth-session'
+import { permitFacultyLabel } from '@/lib/faculties'
 
 interface StaffAriza {
   id: string
@@ -46,7 +47,7 @@ export default function TarbiyachiArizalarPage() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
   const [items, setItems] = useState<StaffAriza[]>([])
-  const [scope, setScope] = useState<{ assigned_floor?: number | null; assigned_gender?: string | null }>({})
+  const [scope, setScope] = useState<{ faculty?: string | null }>({})
   const [level, setLevel] = useState<'all' | StaffAriza['level']>('all')
   const [status, setStatus] = useState<'all' | string>('all')
   const [query, setQuery] = useState('')
@@ -62,7 +63,7 @@ export default function TarbiyachiArizalarPage() {
       const result = (await response.json()) as {
         ok: boolean
         requests?: StaffAriza[]
-        scope?: { assigned_floor?: number | null; assigned_gender?: string | null }
+        scope?: { faculty?: string | null }
         error?: string
       }
 
@@ -132,7 +133,7 @@ export default function TarbiyachiArizalarPage() {
         <div>
           <h2 className={`text-2xl font-black ${textStrong}`}>Arizalar nazorati</h2>
           <p className={`mt-1 text-sm ${textMuted}`}>
-            {scope.assigned_floor ? `${scope.assigned_floor}-qavat` : 'Barcha qavatlar'} · {scope.assigned_gender || 'barcha jinslar'}
+            {scope.faculty ? `${permitFacultyLabel(scope.faculty)} yotoqxonasi` : 'Yotoqxona'} · barcha qavatlar
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

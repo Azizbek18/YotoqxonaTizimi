@@ -11,6 +11,7 @@ function block(roomNumber: string) {
 
 function repository(overrides: Partial<RoomLayoutRepository> = {}) {
   return {
+    scopeFor: vi.fn(async () => ({ dormId: 'd1', floors: null })),
     listAllRooms: vi.fn(async () => []),
     insertRooms: vi.fn(async () => {}),
     listFloor: vi.fn(async () => []),
@@ -27,7 +28,7 @@ describe('room layout service', () => {
     await createRoomLayoutService(repo).saveFloor(FACULTY, 3, [block('101'), block('102')])
 
     // syncAssignedFloors stays room-number scoped (physical floor), not faculty scoped
-    expect(repo.syncAssignedFloors).toHaveBeenCalledWith(3, ['101', '102'])
+    expect(repo.syncAssignedFloors).toHaveBeenCalledWith('d1', 3, ['101', '102'])
     expect(repo.replaceFloor).toHaveBeenCalledWith(FACULTY, 3, expect.any(Array))
   })
 
@@ -138,8 +139,8 @@ describe('room layout service', () => {
         'sequential',
       )
 
-      expect(repo.syncAssignedFloors).toHaveBeenCalledWith(1, ['1'])
-      expect(repo.syncAssignedFloors).toHaveBeenCalledWith(2, ['2'])
+      expect(repo.syncAssignedFloors).toHaveBeenCalledWith('d1', 1, ['1'])
+      expect(repo.syncAssignedFloors).toHaveBeenCalledWith('d1', 2, ['2'])
     })
 
     it('rejects a plan with no rooms at all', async () => {

@@ -16,39 +16,23 @@ export default function ThemeToggle() {
       aria-label={isLight ? "Tungi rejimga o'tish" : "Kunduzgi rejimga o'tish"}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-      className={`relative inline-flex h-8 w-14 items-center rounded-full border transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isLight
+      className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border px-1 transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isLight
         ? 'border-amber-300 bg-amber-100 focus-visible:ring-amber-400 focus-visible:ring-offset-white'
-        : 'border-blue-500 bg-slate-800 focus-visible:ring-blue-400 focus-visible:ring-offset-slate-900'
+        : 'border-blue-500/60 bg-slate-800 focus-visible:ring-blue-400 focus-visible:ring-offset-slate-900'
         }`}
     >
-      {/* Background glow */}
-      <motion.div
-        animate={{
-          left: isLight ? '4px' : '28px',
-        }}
+      {/* The knob carries the active icon, so it is never covered. */}
+      <motion.span
+        animate={{ x: isLight ? 0 : 22 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        className="absolute h-6 w-6 rounded-full bg-white shadow-md"
-      />
-
-      {/* Icons */}
-      <motion.div
-        animate={{ opacity: isLight ? 1 : 0.3, x: isLight ? 0 : -4 }}
-        transition={{ duration: 0.3 }}
-        className="absolute left-1.5 flex items-center justify-center"
+        className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md"
       >
-        <Sun size={14} className="text-amber-500" />
-      </motion.div>
-
-      <motion.div
-        animate={{ opacity: isLight ? 0.3 : 1, x: isLight ? 4 : 0 }}
-        transition={{ duration: 0.3 }}
-        className="absolute right-1.5 flex items-center justify-center"
-      >
-        <Moon size={14} className="text-blue-400" />
-      </motion.div>
+        {isLight
+          ? <Sun size={14} className="text-amber-500" />
+          : <Moon size={14} className="text-blue-500" />}
+      </motion.span>
     </motion.button>
   )
 }

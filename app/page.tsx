@@ -162,8 +162,8 @@ export default function Home() {
         }
         .glow-sphere {
           border-radius: 50%;
-          filter: blur(140px);
-          opacity: 0.15;
+          filter: blur(90px);
+          opacity: 0.14;
           pointer-events: none;
           position: absolute;
           transform: translate3d(0,0,0);
@@ -171,7 +171,17 @@ export default function Home() {
         }
         .light .glow-sphere {
           opacity: 0.06;
-          filter: blur(100px);
+          filter: blur(70px);
+        }
+        /* The blurred spheres and backdrop-filter are the most expensive
+           thing to paint on a phone GPU — drop them on small screens where
+           they buy the least. */
+        @media (max-width: 768px) {
+          .glow-sphere { display: none; }
+          .glass-panel { backdrop-filter: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .glow-sphere { display: none; }
         }
       `}} />
 

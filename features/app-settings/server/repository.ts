@@ -41,10 +41,15 @@ function toFees(row: Record<string, unknown>) {
   }
 }
 
+function num(value: unknown, fallback: number) {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
 function toDormSettings(row: Record<string, unknown>) {
   return {
-    defaultRoomCapacity: Number(row.default_room_capacity),
-    floorCount: Number(row.floor_count),
+    defaultRoomCapacity: num(row.default_room_capacity, DORM_DEFAULTS.defaultRoomCapacity),
+    floorCount: num(row.floor_count, DORM_DEFAULTS.floorCount),
     tarbiyachiName: String(row.tarbiyachi_name ?? ''),
     tarbiyachiPhone: String(row.tarbiyachi_phone ?? ''),
     komendantName: String(row.komendant_name ?? ''),
@@ -56,8 +61,8 @@ function toDormSettings(row: Record<string, unknown>) {
     talabaKengashiRaisiQizName: String(row.talaba_kengashi_raisi_qiz_name ?? ''),
     talabaKengashiRaisiQizPhone: String(row.talaba_kengashi_raisi_qiz_phone ?? ''),
     securityPhone: String(row.security_phone ?? ''),
-    maxUploadSizeMb: Number(row.max_upload_size_mb),
-    warningThreshold: Number(row.warning_threshold),
+    maxUploadSizeMb: num(row.max_upload_size_mb, DORM_DEFAULTS.maxUploadSizeMb),
+    warningThreshold: num(row.warning_threshold, DORM_DEFAULTS.warningThreshold),
     ttjName: String(row.ttj_name ?? ''),
   }
 }
@@ -107,17 +112,44 @@ export function createAppSettingsRepository() {
   }
 
   async function getDormSettings(faculty: string) {
-    const dormId = await resolveDormIdForRead(faculty)
-    if (dormId) {
-      const { data, error } = await supabase
-        .from('dorms')
-        .select(DORM_COLUMNS)
-        .eq('id', dormId)
-        .maybeSingle()
-      if (error) throw error
-      if (data) return toDormSettings(data as Record<string, unknown>)
+    try {
+      const dormId = await resolveDormIdForRead(faculty)
+      if (dormId) {
+        const { data, error } = await supabase
+          .from('dorms')
+          .select(DORM_COLUMNS)
+          .eq('id', dormId)
+          .maybeSingle()
+        if (error) throw error
+        if (data) return toDormSettings(data as Record<string, unknown>)
+      }
+    } catch (error) {
+      // Deploy window: this code can go live a few minutes before
+      // `supabase db push` creates `dorms` / `faculty_dorm`. While those
+      // tables are missing, read the non-fee settings from the old
+      // `app_settings` columns (still present until 202609150000 drops
+      // them). Once the migrations land this branch is never taken.
+      const fallback = await getDormSettingsFromAppSettings(faculty)
+      if (fallback) return fallback
+      console.error('Dorm settings lookup failed and legacy fallback empty:', error)
     }
     return { ...DORM_DEFAULTS, ttjName: '' }
+  }
+
+  async function getDormSettingsFromAppSettings(faculty: string) {
+    const pick = async (f: string) => {
+      const { data, error } = await supabase.from('app_settings').select('*').eq('faculty', f).maybeSingle()
+      if (error) throw error
+      const row = data as Record<string, unknown> | null
+      // Only usable while 202609150000 hasn't dropped the columns yet.
+      if (!row || row.floor_count == null) return null
+      return toDormSettings(row)
+    }
+    try {
+      return (await pick(faculty)) ?? (faculty !== PRIMARY_FACULTY ? await pick(PRIMARY_FACULTY) : null)
+    } catch {
+      return null
+    }
   }
 
   async function get(faculty: string = PRIMARY_FACULTY): Promise<AppSettings> {

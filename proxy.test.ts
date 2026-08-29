@@ -12,7 +12,8 @@ describe('public entry auth redirects', () => {
   })
 
   it('redirects active roles to their own dashboard', () => {
-    expect(publicEntryRedirectTarget(true, 'admin', '/login')).toBe('/admin/dashboard')
+    // `admin` is retired — its home is the dekan panel now (see ROLE_HOME).
+    expect(publicEntryRedirectTarget(true, 'admin', '/login')).toBe('/dekan/dashboard')
     expect(publicEntryRedirectTarget(true, 'dekan', '/login')).toBe('/dekan/dashboard')
     expect(publicEntryRedirectTarget(true, 'talaba', '/')).toBe('/talaba/dashboard')
   })

@@ -15,9 +15,13 @@ export default function ArizaTuriTanlash() {
   const isLight = theme === 'light'
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-hidden ${isLight ? 'bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 text-slate-900' : 'bg-[#020617] text-white'}`}>
-      <div className="absolute top-[-20%] left-[-15%] w-[55%] h-[55%] bg-blue-500/10 rounded-full blur-[130px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-15%] w-[55%] h-[55%] bg-indigo-500/10 rounded-full blur-[130px] pointer-events-none" />
+    <div className={`relative min-h-screen flex items-center justify-center px-4 sm:px-6 py-20 overflow-x-hidden ${isLight ? 'bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 text-slate-900' : 'bg-[#020617] text-white'}`}>
+      {/* Decorative orbs live in their own clipped, fixed layer so the
+          page can still scroll when the cards are taller than the phone. */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-20%] left-[-15%] w-[55%] h-[55%] bg-blue-500/10 rounded-full blur-[130px]" />
+        <div className="absolute bottom-[-20%] right-[-15%] w-[55%] h-[55%] bg-indigo-500/10 rounded-full blur-[130px]" />
+      </div>
 
       <div className="absolute top-4 right-4 z-20">
         <ThemeToggle />

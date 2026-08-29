@@ -6,7 +6,7 @@ import { checkRateLimit } from '@/lib/security'
 
 export async function POST(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
     // Barring a resident frees their bed and emails them — throttle it as
     // hard as a warning so a stuck UI can't fire it repeatedly.
     const throttle = await checkRateLimit(`dekan-blacklist:${staff.id}`, 10, 60_000)

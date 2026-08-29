@@ -12,7 +12,7 @@ function errorResponse(error: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
     const students = await createRoomAssignmentService().listStudents(staff.faculty)
     return NextResponse.json({ students })
   } catch (error) {
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
     const throttle = await checkRateLimit(`dekan-room-assign:${staff.id}`, 20, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: "Juda ko'p urinish. Keyinroq urinib ko'ring." }, { status: 429 })

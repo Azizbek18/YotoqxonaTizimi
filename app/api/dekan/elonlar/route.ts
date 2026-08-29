@@ -12,7 +12,7 @@ function errorResponse(error: unknown, fallback: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
     const elonlar = await createAnnouncementService().listAuthored(staff.faculty)
     return NextResponse.json({ elonlar })
   } catch (error) {
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
     const throttle = await checkRateLimit(`dekan-elon:${staff.id}`, 20, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: "Juda ko'p urinish. Keyinroq urinib ko'ring." }, { status: 429 })
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
     const body = await request.json().catch(() => null)
     const elon = await createAnnouncementService().updateAuthored(staff.faculty, body)
     return NextResponse.json({ elon })
@@ -48,7 +48,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
     const result = await createAnnouncementService().removeAuthored(
       staff.faculty,
       request.nextUrl.searchParams.get('id'),

@@ -11,7 +11,7 @@ function errorResponse(error: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
     return NextResponse.json(await createPermitAdminService().overview(staff.faculty))
   } catch (error) {
     return errorResponse(error)
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
     return NextResponse.json(await createPermitAdminService().update(staff.faculty, await request.json(), staff.id))
   } catch (error) {
     return errorResponse(error)

@@ -16,7 +16,7 @@ function errorResponse(error: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
     const faculty = requireStaffFaculty(staff.faculty)
 
     const floor = request.nextUrl.searchParams.get('floor')
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
     const faculty = requireStaffFaculty(staff.faculty)
 
     const body = await request.json()

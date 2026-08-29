@@ -7,7 +7,7 @@ import { getApiError } from '@/server/http/api-error'
 // back to 'placed' rather than widening the result set by accident.
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
     const scope = request.nextUrl.searchParams.get('scope')
     const students = await createFacultyStudentsService().listStudents(staff.faculty, scope)
     return NextResponse.json({ students })

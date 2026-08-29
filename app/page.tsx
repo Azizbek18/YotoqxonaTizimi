@@ -138,13 +138,6 @@ export default function Home() {
       color: "from-indigo-500/20 to-purple-600/25 border-indigo-500/30 text-indigo-300",
       btnColor: "from-indigo-500 to-purple-600 shadow-indigo-500/20 hover:shadow-indigo-500/35",
       icon: "https://img.icons8.com/3d-fluency/188/user-male-circle.png"
-    },
-    {
-      title: "Tizim Admini",
-      desc: "Foydalanuvchilar bazasi va tizim sozlamalarini to'liq boshqarish.",
-      color: "from-rose-500/20 to-red-600/25 border-rose-500/30 text-rose-300",
-      btnColor: "from-rose-500 to-red-600 shadow-rose-500/20 hover:shadow-rose-500/35",
-      icon: "https://img.icons8.com/3d-fluency/188/laptop.png"
     }
   ];
 
@@ -638,7 +631,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {staffRoles.map((role) => (
             <motion.div
               key={role.title}

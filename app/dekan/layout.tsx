@@ -206,7 +206,7 @@ export default function DekanLayout({
             onClick={() => setMobileSidebarOpen(false)}
             className={`group mb-3 flex items-center justify-between gap-3 rounded-xl border p-3 transition-all hover:-translate-y-0.5 ${
               isLight
-                ? 'border-indigo-200/70 bg-gradient-to-br from-indigo-50 to-violet-50 hover:border-indigo-300'
+                ? 'border-indigo-200/70 bg-indigo-50 hover:border-indigo-300 hover:bg-indigo-100/70'
                 : 'border-indigo-500/25 bg-indigo-500/10 hover:border-indigo-500/40'
             }`}
           >

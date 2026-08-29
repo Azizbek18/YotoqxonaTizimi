@@ -4,10 +4,25 @@ import { findRoleByUserId, type AppRole } from '@/lib/auth-tables'
 import type { Database } from '@/types/database.generated'
 
 const ROLE_HOME: Record<Exclude<AppRole, null>, string> = {
-  admin: '/admin/dashboard',
+  // `admin` is a retired role — the standalone /admin panel is gone and its
+  // pages now live under /dekan. The role still exists in the DB/RLS and is
+  // still accepted by /api/admin/* and the tarbiyachi-shared guards, so an
+  // existing admin account keeps working; it just lands in the dekan panel.
+  admin: '/dekan/dashboard',
   tarbiyachi: '/tarbiyachi/dashboard',
   dekan: '/dekan/dashboard',
   talaba: '/talaba/dashboard',
+}
+
+// Every retired /admin/* path -> its /dekan/* home. Anything not listed
+// falls back to the dekan dashboard.
+const ADMIN_ROUTE_REDIRECTS: Record<string, string> = {
+  '/admin/login': '/login',
+  '/admin/foydalanuvchilar': '/dekan/talabalar',
+  '/admin/xodimlar': '/dekan/xodimlar',
+  '/admin/arizalar': '/dekan/murojaatlar',
+  '/admin/elonlar': '/dekan/elonlar',
+  '/admin/reports': '/dekan/hisobotlar',
 }
 
 // Where to send a signed-in user whose role doesn't match the route they're
@@ -131,18 +146,16 @@ export async function proxy(request: NextRequest) {
   }
 
   // ========================
-  // ADMIN ROUTES HIMOYASI
+  // ADMIN ROUTES — retired
   // ========================
-  // The /admin/* panel is the faculty-admin toolset (payments, user CRUD,
-  // tarbiyachi accounts). "admin" is the transitional system-owner role;
-  // "dekan" is the faculty admin — both reach it, each scoped to their own
-  // faculty by the /api/admin/* routes.
-  if (path === '/admin/login') {
-    if (session && (userRole === 'admin' || userRole === 'dekan')) return redirect('/admin/dashboard')
-    return allow()
+  // The standalone /admin/* panel has been folded into the dekan
+  // (faculty-admin) panel. Every /admin/* path redirects to its /dekan/*
+  // equivalent; the /dekan guard below then applies its own auth. The
+  // `admin` role itself is untouched (DB/RLS, /api/admin/*, tarbiyachi
+  // guards) — only the panel and its entry points are gone.
+  if (path === '/admin' || path.startsWith('/admin/')) {
+    return redirect(ADMIN_ROUTE_REDIRECTS[path] ?? '/dekan/dashboard')
   }
-  const adminGuard = guardRole('/admin', ['admin', 'dekan'], '/admin/login')
-  if (adminGuard) return adminGuard
 
   // ========================
   // TALABA ROUTES HIMOYASI

@@ -221,26 +221,12 @@ export interface Database {
         frozen_reason: string | null
         created_at: string
       }>
+      // Since P2 (202609150000) app_settings holds only the two fee amounts,
+      // per faculty. Everything else moved to `dorms`.
       app_settings: Table<{
         faculty: string
         monthly_fee: number
         yearly_contract_fee: number
-        default_room_capacity: number
-        floor_count: number
-        tarbiyachi_name: string
-        tarbiyachi_phone: string
-        komendant_name: string
-        komendant_phone: string
-        doctor_name: string
-        doctor_phone: string
-        talaba_kengashi_raisi_ogil_name: string
-        talaba_kengashi_raisi_ogil_phone: string
-        talaba_kengashi_raisi_qiz_name: string
-        talaba_kengashi_raisi_qiz_phone: string
-        security_phone: string
-        max_upload_size_mb: number
-        warning_threshold: number
-        ttj_name: string
         updated_at: string
       }>
       // Shared dorm tenancy (P0, migration 202609130000). Not read by

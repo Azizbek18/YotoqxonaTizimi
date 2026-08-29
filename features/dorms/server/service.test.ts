@@ -11,6 +11,7 @@ function fakeRepo(overrides: Partial<DormRepository> = {}, floors: DormFloorRow[
     findDormByNumber: vi.fn(async () => DORM),
     createDorm: vi.fn(async () => DORM),
     linkFaculty: vi.fn(async () => undefined),
+    setStaffDorm: vi.fn(async () => undefined),
     listFloors: vi.fn(async () => floors),
     facultyResidentCount: vi.fn(async () => 0),
     claimFloors: vi.fn(async () => ({ confirmed: [], proposed: [] })),

@@ -66,6 +66,11 @@ export function createDormRepository() {
       if (error) throw error
     },
 
+    async setStaffDorm(staffId: string, dormId: string): Promise<void> {
+      const { error } = await supabase.from('staff').update({ dorm_id: dormId }).eq('id', staffId)
+      if (error) throw error
+    },
+
     async listFloors(dormId: string): Promise<DormFloorRow[]> {
       const { data, error } = await supabase
         .from('dorm_floor')

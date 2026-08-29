@@ -1,5 +1,6 @@
 import 'server-only'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import { ApiError } from '@/server/http/api-error'
 import { PRIMARY_FACULTY } from '@/lib/faculties'
 import type { Database } from '@/types/database.generated'
 import type { AppSettings } from '../types'
@@ -183,6 +184,27 @@ export function createAppSettingsRepository() {
       if (Object.keys(dormRow).length > 0) {
         const dormId = await ownDormId(faculty)
         if (!dormId) throw new Error(`Fakultetга yotoqxona biriktirilmagan: ${faculty}`)
+
+        // Can't shrink the building below a floor a faculty has claimed —
+        // that floor's dorm_floor row (and any rooms on it) would be
+        // orphaned out of view.
+        if (dormRow.floor_count !== undefined) {
+          const nextCount = Number(dormRow.floor_count)
+          const { data: claimed } = await supabase
+            .from('dorm_floor')
+            .select('floor_number')
+            .eq('dorm_id', dormId)
+            .gt('floor_number', nextCount)
+            .order('floor_number', { ascending: false })
+            .limit(1)
+          if (claimed && claimed.length > 0) {
+            throw new ApiError(
+              409,
+              `Qavatlar sonini kamaytirib bo‘lmaydi — ${claimed[0].floor_number}-qavat fakultetga biriktirilgan`,
+            )
+          }
+        }
+
         const { error } = await supabase
           .from('dorms')
           .update({ ...dormRow, updated_at: new Date().toISOString() })

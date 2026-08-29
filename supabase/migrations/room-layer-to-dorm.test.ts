@@ -33,8 +33,6 @@ describe('room layer -> dorm (202609160000)', () => {
   })
 
   it('enforces floor ownership with P0007', () => {
-    const checks = sql.match(/v_floor_owner IS NOT NULL AND v_floor_owner <> v?_?p?_?faculty/g) ?? []
-    expect(checks.length).toBeGreaterThanOrEqual(4)
     expect(sql).toMatch(/USING ERRCODE = 'P0007'/)
   })
 

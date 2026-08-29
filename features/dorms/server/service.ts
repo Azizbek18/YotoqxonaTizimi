@@ -179,6 +179,7 @@ export function createDormService(repository: DormRepository = createDormReposit
       }
 
       await repository.linkFaculty(staff.faculty, dorm.id)
+      await repository.setStaffDorm(staff.id, dorm.id)
 
       const floors = parsed.floors.length
         ? parsed.floors.filter((f) => f <= dorm!.floor_count)

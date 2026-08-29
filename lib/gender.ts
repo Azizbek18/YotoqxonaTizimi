@@ -35,35 +35,36 @@ export function genderLabel(value: string | null | undefined): string {
 }
 
 /**
- * Shared gender identity for the dekan panel (room map, arizalar avatars).
- * The panel runs on a single indigo-on-slate palette, so gender is carried
- * by weight/shade rather than hue: male = indigo (the panel accent),
- * female = slate. Consistent everywhere so the same person never gets
- * recoloured between pages. `letter` is the fallback cue where a colour
- * alone would be too subtle (dense room-map beds).
+ * Shared gender identity for the dekan panel (room map, arizalar avatars,
+ * student list). Gender is carried by hue — male = blue, female = pink —
+ * per an explicit product call (2026-08-29): the dekan wanted rooms on the
+ * Xona xaritasi to read as boy/girl at a glance. Consistent everywhere so
+ * the same person never gets recoloured between pages. `letter` is the
+ * fallback cue where a colour alone would be too subtle (dense room-map
+ * beds). Rose stays reserved for the genuine mixed-gender error.
  */
 export function genderAccent(value: string | null | undefined) {
   const normalized = normalizeGender(value)
   if (normalized === 'male') {
     return {
       letter: 'E',
-      dot: 'bg-indigo-500',
-      text: 'text-indigo-500',
-      badgeBg: 'bg-indigo-500/10',
-      badgeBgLight: 'bg-indigo-100/70',
-      border: 'border-indigo-500/25',
-      borderLight: 'border-indigo-200',
+      dot: 'bg-blue-500',
+      text: 'text-blue-500',
+      badgeBg: 'bg-blue-500/10',
+      badgeBgLight: 'bg-blue-100/70',
+      border: 'border-blue-500/25',
+      borderLight: 'border-blue-200',
     }
   }
   if (normalized === 'female') {
     return {
       letter: 'A',
-      dot: 'bg-slate-400',
-      text: 'text-slate-500',
-      badgeBg: 'bg-slate-500/10',
-      badgeBgLight: 'bg-slate-200/70',
-      border: 'border-slate-400/30',
-      borderLight: 'border-slate-300',
+      dot: 'bg-pink-500',
+      text: 'text-pink-500',
+      badgeBg: 'bg-pink-500/10',
+      badgeBgLight: 'bg-pink-100/70',
+      border: 'border-pink-500/30',
+      borderLight: 'border-pink-200',
     }
   }
   return {

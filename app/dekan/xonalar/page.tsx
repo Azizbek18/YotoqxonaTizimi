@@ -427,11 +427,11 @@ export default function DekanXonalarMap() {
         {/* Rooms Grid (Left) */}
         <div className={`lg:col-span-8 p-5 rounded-2xl border ${surfaceBg}`}>
           <div className={`flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4 pb-4 border-b text-[10px] font-medium ${ui.border} ${textMuted}`}>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-indigo-500" /> O&apos;g&apos;il bolalar</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-400" /> Qiz bolalar</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" /> O&apos;g&apos;il bolalar</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-pink-500" /> Qiz bolalar</span>
             <span className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`} /> Bo&apos;sh joy</span>
             <span className="flex items-center gap-1.5"><AlertTriangle size={11} className={isLight ? 'text-rose-500' : 'text-rose-400'} /> Gender aralashuvi</span>
-            <span className="flex items-center gap-1.5"><Snowflake size={11} className={ui.faint} /> Muzlatilgan (ta&apos;mirlash)</span>
+            <span className="flex items-center gap-1.5"><Snowflake size={11} className={isLight ? 'text-cyan-500' : 'text-cyan-400'} /> Muzlatilgan (ta&apos;mirlash)</span>
           </div>
           {loading || !floorsLoaded ? (
             <div className="flex h-64 items-center justify-center">
@@ -495,30 +495,37 @@ export default function DekanXonalarMap() {
                 const count = room.occupants.length
                 const isSelected = selectedRoom?.roomNumber === room.roomNumber
 
-                // Structural cue first (mixed / frozen / selected), then a
-                // faint gender wash on a normal room. All within the panel's
-                // slate + indigo palette; rose stays reserved for the genuine
-                // mixed-gender error.
+                // Gender wash first — blue for boys, pink for girls — so the
+                // grid reads as boy/girl at a glance. A frozen room (ice
+                // cyan) or a mixed-gender room (rose error) overrides that
+                // wash; selection is shown with a ring so it keeps its
+                // gender colour.
                 let roomBorderColor = ui.border
                 let roomBgColor = ''
 
-                if (room.gender === 'mixed') {
-                  roomBorderColor = isLight ? 'border-rose-300 bg-rose-50' : 'border-rose-500/40 bg-rose-500/10'
-                } else if (room.frozen) {
-                  roomBorderColor = isLight ? 'border-slate-300 bg-slate-100' : 'border-slate-600 bg-slate-800/60'
-                } else if (isSelected) {
-                  roomBorderColor = isLight ? 'border-indigo-400 bg-indigo-50' : 'border-indigo-500/60 bg-indigo-500/10'
-                } else if (room.gender === 'male' || room.gender === 'female') {
+                if (room.gender === 'male' || room.gender === 'female') {
                   const accent = genderAccent(room.gender)
                   roomBgColor = isLight ? accent.badgeBgLight : accent.badgeBg
                   roomBorderColor = isLight ? accent.borderLight : accent.border
                 }
 
+                if (room.gender === 'mixed') {
+                  roomBgColor = ''
+                  roomBorderColor = isLight ? 'border-rose-300 bg-rose-50' : 'border-rose-500/40 bg-rose-500/10'
+                } else if (room.frozen) {
+                  roomBgColor = ''
+                  roomBorderColor = isLight ? 'border-cyan-300 bg-cyan-50' : 'border-cyan-500/40 bg-cyan-500/10'
+                }
+
+                const roomRing = isSelected
+                  ? (isLight ? 'ring-2 ring-indigo-500 ring-offset-1' : 'ring-2 ring-indigo-400 ring-offset-1 ring-offset-slate-900')
+                  : ''
+
                 return (
                   <div
                     key={room.roomNumber}
                     onClick={() => selectRoom(room)}
-                    className={`p-3 rounded-xl border cursor-pointer transition-colors text-center flex flex-col justify-between h-24 hover:border-indigo-400/60 ${roomBorderColor} ${roomBgColor} ${room.frozen ? 'opacity-75' : ''}`}
+                    className={`p-3 rounded-xl border cursor-pointer transition-colors text-center flex flex-col justify-between h-24 hover:border-indigo-400/60 ${roomBorderColor} ${roomBgColor} ${roomRing} ${room.frozen ? 'opacity-75' : ''}`}
                   >
                     <div className="flex items-center justify-between">
                       <span className={`text-[10px] font-bold uppercase tracking-wider ${textMuted}`}>
@@ -527,7 +534,7 @@ export default function DekanXonalarMap() {
                       {room.gender === 'mixed' ? (
                         <AlertTriangle size={12} className={isLight ? 'text-rose-500' : 'text-rose-400'} />
                       ) : room.frozen ? (
-                        <Snowflake size={12} className={ui.faint} />
+                        <Snowflake size={12} className={isLight ? 'text-cyan-500' : 'text-cyan-400'} />
                       ) : null}
                     </div>
 

@@ -245,9 +245,9 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="relative z-10 max-w-5xl mx-auto px-4 pt-12 md:pt-20 text-center space-y-5">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
+        <motion.div
+          initial={{ scale: 0.97 }}
+          animate={{ scale: 1 }}
           className={`inline-flex items-center gap-2 sm:gap-2.5 max-w-full px-3 sm:px-4.5 py-2 rounded-full border text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-widest text-center transition-colors duration-500 ${
             isLight
               ? 'border-indigo-500/20 bg-indigo-500/5 text-indigo-600 shadow-sm shadow-indigo-50'
@@ -259,8 +259,8 @@ export default function Home() {
         </motion.div>
 
         <motion.h1
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ y: 12 }}
+          animate={{ y: 0 }}
           className={`text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-[1.05] uppercase max-w-4xl mx-auto transition-colors duration-500 syne-font ${
             isLight ? 'text-slate-900' : 'text-white'
           }`}
@@ -278,9 +278,8 @@ export default function Home() {
             scrolls to their full status panel below, same as before. */}
         {!checkingPermit && !permitRequest && (
           <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            initial={{ y: 12 }}
+            animate={{ y: 0 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2"
           >
             <Link
@@ -651,6 +650,8 @@ export default function Home() {
                     src={role.icon}
                     alt={role.title}
                     fill
+                    sizes="96px"
+                    loading="lazy"
                     unoptimized
                     className="object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.2)] group-hover:scale-110 transition-transform duration-300"
                   />

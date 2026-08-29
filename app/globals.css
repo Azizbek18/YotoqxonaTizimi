@@ -898,3 +898,45 @@ html.theme-anim canvas {
   }
 }
 
+
+/* ===================================================================
+   LOW-END DEVICE PERF PASS
+   Students open this on whatever phone they have. blur / backdrop-filter
+   and long-duration decorative animations are what make cheap Android
+   GPUs drop frames while scrolling. On small screens we trade the
+   frosted-glass look for a solid tint and cut the decorative motion.
+   Content, layout and colours are untouched.
+   =================================================================== */
+@media (max-width: 768px) {
+  /* frosted panels -> cheap near-solid. Tailwind composes backdrop-filter
+     from CSS vars, so zero the vars AND the property to be sure. */
+  [class*="backdrop-blur"] {
+    -webkit-backdrop-filter: blur(2px) !important;
+    backdrop-filter: blur(2px) !important;
+    --tw-backdrop-blur: blur(2px) !important;
+  }
+
+  /* big decorative glow orbs — nobody blurs actual content by 24px+.
+     Hide them on phones; the layout doesn't depend on them. */
+  [class*="blur-2xl"], [class*="blur-3xl"],
+  [class*="blur-[40px]"], [class*="blur-[50px]"], [class*="blur-[60px]"],
+  [class*="blur-[80px]"], [class*="blur-[100px]"], [class*="blur-[120px]"],
+  [class*="blur-[140px]"], [class*="blur-[160px]"] {
+    display: none !important;
+  }
+
+  /* infinite ambient animations (pulse/ping/slow spins) burn battery and
+     main-thread time for almost no visual payoff on a small screen. */
+  .animate-pulse, .animate-ping, [class*="animate-[spin"] {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

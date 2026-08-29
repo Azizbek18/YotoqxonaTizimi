@@ -8,6 +8,17 @@
 -- must be investigated before the migration (see 202607280018 for how a
 -- `USING (true)` policy once reached production outside the migration files).
 
+-- Shared-dorm tenancy (P0–P5, migrations 202609130000–202609160000):
+--   dorms / faculty_dorm / dorm_floor — RLS ENABLED, 0 policies (service-role
+--   only, same as app_settings / floor_room_layout / staff_invites). Their
+--   anon/authenticated base grants match every other locked-down table; RLS
+--   is the gate. All access is via /api/dekan/dorm, /api/dekan/room-layout,
+--   /api/staff/* which run as service_role and scope in the service layer.
+--   dorm_claim_floors / dorm_resolve_floor / dorm_withdraw_floors and the
+--   four rewritten room RPCs: SET search_path = public, EXECUTE revoked from
+--   anon/authenticated. Expect queries 2/4 below to show NO new policy and
+--   NO new anon/authenticated-callable function.
+
 -- 1. Every table in `public`: is RLS enabled? is it FORCED?
 SELECT
   n.nspname                         AS schema,

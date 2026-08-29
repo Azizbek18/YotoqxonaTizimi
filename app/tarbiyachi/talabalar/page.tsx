@@ -12,7 +12,7 @@ export default function TarbiyachiTalabalarPage() {
   const isLight = theme === 'light'
   const [students, setStudents] = useState<Student[]>([])
   const [query, setQuery] = useState('')
-  const [scope, setScope] = useState<{ faculty?: string | null }>({})
+  const [scope, setScope] = useState<{ faculty?: string | null; faculties?: string[] }>({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
 
@@ -27,7 +27,7 @@ export default function TarbiyachiTalabalarPage() {
         const result = (await response.json()) as {
           ok: boolean
           students?: Student[]
-          scope?: { faculty?: string | null }
+          scope?: { faculty?: string | null; faculties?: string[] }
         }
 
         if (!response.ok || !result.ok) {
@@ -69,7 +69,9 @@ export default function TarbiyachiTalabalarPage() {
         <div>
           <h2 className={`text-2xl font-black ${textStrong}`}>Talabalar ro&apos;yxati</h2>
           <p className={`mt-1 text-sm ${textMuted}`}>
-            {scope.faculty ? `${permitFacultyLabel(scope.faculty)} yotoqxonasi` : 'Yotoqxona'} · barcha qavatlar va xonalar
+            {(scope.faculties?.length ?? 0) > 1
+              ? 'Yotoqxona · barcha fakultetlar'
+              : scope.faculty ? `${permitFacultyLabel(scope.faculty)} yotoqxonasi` : 'Yotoqxona'} · barcha qavatlar va xonalar
           </p>
         </div>
         <div className="relative w-full max-w-sm">

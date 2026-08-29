@@ -4,7 +4,7 @@ import { requireActiveStaff } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
 
 // Read-only by design: the dekan sees who has paid and who is in debt,
-// but approving/rejecting a receipt stays with the admin (/api/admin/payments).
+// but approving/rejecting a receipt stays with the admin (/api/tarbiyachi/payments).
 export async function GET(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])

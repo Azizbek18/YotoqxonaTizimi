@@ -15,7 +15,7 @@ export function submitStudentPayment(form: FormData) {
 
 export async function fetchAdminPayments(studentId?: string) {
   const query = studentId ? `?studentId=${encodeURIComponent(studentId)}` : ''
-  const result = await requestJson<{ payments: PaymentRecord[] }>(`/api/admin/payments${query}`)
+  const result = await requestJson<{ payments: PaymentRecord[] }>(`/api/tarbiyachi/payments${query}`)
   return result.payments
 }
 
@@ -25,7 +25,7 @@ export async function fetchAdminPaymentSummary(): Promise<PaymentSummary> {
     if (!authHeaders.Authorization) {
       return { waitingCount: 0 }
     }
-    return await requestJson<PaymentSummary>('/api/admin/payments?summary=1')
+    return await requestJson<PaymentSummary>('/api/tarbiyachi/payments?summary=1')
   } catch {
     return { waitingCount: 0 }
   }
@@ -44,7 +44,7 @@ export function reviewAdminPayments(input: {
   status: Extract<PaymentStatus, 'approved' | 'rejected'>
   message: string
 }) {
-  return requestJson<{ ok: true }>('/api/admin/payments', {
+  return requestJson<{ ok: true }>('/api/tarbiyachi/payments', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),

@@ -225,7 +225,7 @@ export default function ImtiyozliAriza() {
   }
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-3 sm:p-6 relative overflow-hidden print:block print:p-0 print:min-h-0 ${isLight ? 'bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 text-slate-900' : 'bg-[#020617] text-white'}`}>
+    <div className={`min-h-screen flex items-center justify-center px-3 sm:px-6 py-16 relative overflow-x-hidden print:block print:p-0 print:min-h-0 ${isLight ? 'bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 text-slate-900' : 'bg-[#020617] text-white'}`}>
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           body * { visibility: hidden; }
@@ -235,8 +235,11 @@ export default function ImtiyozliAriza() {
         }
       `}} />
 
-      <div className="absolute top-[-20%] left-[-15%] w-[55%] h-[55%] bg-blue-500/10 rounded-full blur-[130px] pointer-events-none print:hidden" />
-      <div className="absolute bottom-[-20%] right-[-15%] w-[55%] h-[55%] bg-amber-500/10 rounded-full blur-[130px] pointer-events-none print:hidden" />
+      {/* Orbs in a fixed clipped layer so a tall form still scrolls on phones. */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none print:hidden">
+        <div className="absolute top-[-20%] left-[-15%] w-[55%] h-[55%] bg-blue-500/10 rounded-full blur-[130px]" />
+        <div className="absolute bottom-[-20%] right-[-15%] w-[55%] h-[55%] bg-amber-500/10 rounded-full blur-[130px]" />
+      </div>
 
       {/* Data-accuracy warning — same standing rule as the Yo'llanma flow */}
       <AnimatePresence>
@@ -293,7 +296,7 @@ export default function ImtiyozliAriza() {
         </Link>
       </div>
 
-      <div className="relative z-10 w-full max-w-2xl my-14 print:my-0 print:max-w-none">
+      <div className="relative z-10 w-full max-w-2xl print:my-0 print:max-w-none">
         <div className={`backdrop-blur-3xl border rounded-3xl p-4 sm:p-8 shadow-2xl print:hidden ${isLight ? 'bg-white/90 border-slate-200' : 'bg-[#0b1120]/80 border-white/10'}`}>
           {/* Header */}
           <div className="text-center mb-6">

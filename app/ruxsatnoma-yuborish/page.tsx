@@ -617,7 +617,7 @@ export default function RuxsatnomaYuborish() {
   }
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-3 sm:p-4 relative overflow-hidden ${isLight ? 'bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 text-slate-900' : 'bg-[#020617] text-white'}`}>
+    <div className={`min-h-screen flex items-center justify-center px-3 sm:px-4 py-14 relative overflow-x-hidden ${isLight ? 'bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 text-slate-900' : 'bg-[#020617] text-white'}`}>
       
       {/* 3D Premium Custom CSS Styles */}
       <style dangerouslySetInnerHTML={{ __html: `
@@ -790,11 +790,13 @@ export default function RuxsatnomaYuborish() {
         )}
       </AnimatePresence>
 
-      {/* Floating 3D Orbs / Spheres */}
-      <div className="absolute top-[-25%] left-[-25%] w-[65%] h-[65%] bg-blue-500/5 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-[-25%] right-[-25%] w-[65%] h-[65%] bg-purple-500/5 rounded-full blur-[140px] pointer-events-none" />
+      {/* Floating 3D Orbs — fixed clipped layer so the tall form still scrolls on phones. */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-25%] left-[-25%] w-[65%] h-[65%] bg-blue-500/5 rounded-full blur-[140px]" />
+        <div className="absolute bottom-[-25%] right-[-25%] w-[65%] h-[65%] bg-purple-500/5 rounded-full blur-[140px]" />
+      </div>
 
-      <div className="relative z-10 w-full max-w-5xl my-1">
+      <div className="relative z-10 w-full max-w-5xl">
         
         {/* Navigation and Sound settings */}
         <div className="flex justify-between items-center mb-3 sm:mb-4">

@@ -265,7 +265,22 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
 
       {/* --- 1. DYNAMIC BACKGROUND LAYER --- */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        {!isLight && (
+        {isLight ? (
+          /* Ruled-paper grid that fades out toward the bottom — keeps the
+             light theme from reading as a flat white sheet. */
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                'linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)',
+              backgroundSize: '20px 30px',
+              WebkitMaskImage:
+                'radial-gradient(ellipse 70% 60% at 50% 0%, #000 60%, transparent 100%)',
+              maskImage:
+                'radial-gradient(ellipse 70% 60% at 50% 0%, #000 60%, transparent 100%)',
+            }}
+          />
+        ) : (
           <>
             <div className="absolute top-[-15%] left-[-10%] w-[80%] h-[70%] bg-blue-600/10 blur-[140px] rounded-full opacity-60" />
             <div className="absolute bottom-[-10%] right-[-5%] w-[60%] h-[50%] bg-cyan-600/10 blur-[120px] rounded-full opacity-40" />

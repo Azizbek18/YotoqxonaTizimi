@@ -129,7 +129,7 @@ export default function Step4Study({ data, onChange, onNext, onBack }: Props) {
             <div className={`absolute -inset-1 rounded-2xl blur-md opacity-30 transition duration-1000 ${type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'
               }`} />
 
-            <div className="relative bg-[#1e293b]/95 backdrop-blur-2xl border border-white/10 p-4 rounded-2xl shadow-2xl flex items-center gap-3">
+            <div className={`relative backdrop-blur-2xl border p-4 rounded-2xl shadow-2xl flex items-center gap-3 ${isLight ? 'bg-white/95 border-slate-200' : 'bg-[#1e293b]/95 border-white/10'}`}>
               <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border ${type === 'success'
                 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
                 : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
@@ -141,7 +141,7 @@ export default function Step4Study({ data, onChange, onNext, onBack }: Props) {
                   }`}>
                   {type === 'success' ? 'Muvaffaqiyatli' : 'Ma\'lumot yetarli emas'}
                 </p>
-                <p className="text-slate-200 text-[12px] font-medium leading-tight">
+                <p className={`text-[12px] font-medium leading-tight ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>
                   {message}
                 </p>
               </div>

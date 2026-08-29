@@ -30,11 +30,11 @@ export default function Step8Room({ data, onChange, onNext, onBack }: Props) {
             className="relative z-[9999] w-[90vw] max-w-[350px] mx-auto"
           >
             <div className={`absolute -inset-1 rounded-2xl blur-md opacity-30 ${type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-            <div className="relative bg-[#1e293b]/95 backdrop-blur-2xl border border-white/10 p-3.5 rounded-2xl flex items-center gap-3 shadow-2xl">
+            <div className={`relative backdrop-blur-2xl border p-3.5 rounded-2xl flex items-center gap-3 shadow-2xl ${isLight ? 'bg-white/95 border-slate-200' : 'bg-[#1e293b]/95 border-white/10'}`}>
               <div className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center border ${type === 'success' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'}`}>
                 {type === 'success' ? <Sparkles size={18} /> : <ShieldAlert size={18} />}
               </div>
-              <p className="text-slate-200 text-[11px] font-medium leading-tight">{message}</p>
+              <p className={`text-[11px] font-medium leading-tight ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>{message}</p>
             </div>
           </motion.div>
         )}

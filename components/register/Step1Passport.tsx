@@ -30,13 +30,13 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                         className="relative z-9999 w-[92vw] max-w-100 mx-auto"
                     >
                         <div className={`absolute -inset-1 rounded-2xl blur-md opacity-30 ${type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                        <div className="relative bg-[#1e293b]/95 backdrop-blur-2xl border border-white/10 p-4 rounded-2xl shadow-2xl flex items-center gap-3">
+                        <div className={`relative backdrop-blur-2xl border p-4 rounded-2xl shadow-2xl flex items-center gap-3 ${isLight ? 'bg-white/95 border-slate-200' : 'bg-[#1e293b]/95 border-white/10'}`}>
                             <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border ${type === 'success' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'}`}>
                                 {type === 'success' ? <Sparkles size={20} /> : <ShieldAlert size={20} />}
                             </div>
                             <div className="flex-1">
                                 <p className={`text-[9px] font-black uppercase tracking-widest ${type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>{type === 'success' ? 'Muvaffaqiyatli' : 'Xatolik'}</p>
-                                <p className="text-slate-200 text-[12px] font-medium leading-tight">{message}</p>
+                                <p className={`text-[12px] font-medium leading-tight ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>{message}</p>
                             </div>
                         </div>
                     </motion.div>
@@ -130,12 +130,12 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: -8 }} exit={{ opacity: 0, y: 10 }}
                                             className="absolute bottom-full left-0 right-0 z-50 mb-2 pointer-events-none"
                                         >
-                                            <div className="bg-[#1e293b]/95 border border-sky-500/30 p-2.5 rounded-xl shadow-2xl backdrop-blur-md">
-                                                <p className="text-sky-100 text-[10px] flex items-center gap-2">
-                                                    <Info size={12} className="text-sky-400" /> Passportning amal qilish muddatini emas, berilgan sanasini tanlang.
+                                            <div className={`p-2.5 rounded-xl shadow-2xl backdrop-blur-md border ${isLight ? 'bg-white border-sky-200' : 'bg-[#1e293b]/95 border-sky-500/30'}`}>
+                                                <p className={`text-[10px] flex items-center gap-2 ${isLight ? 'text-slate-700' : 'text-sky-100'}`}>
+                                                    <Info size={12} className="text-sky-500 shrink-0" /> Passportning amal qilish muddatini emas, berilgan sanasini tanlang.
                                                 </p>
                                             </div>
-                                            <div className="absolute -bottom-1 left-6 w-2 h-2 bg-[#1e293b] border-r border-b border-sky-500/30 rotate-45" />
+                                            <div className={`absolute -bottom-1 left-6 w-2 h-2 rotate-45 border-r border-b ${isLight ? 'bg-white border-sky-200' : 'bg-[#1e293b] border-sky-500/30'}`} />
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
@@ -164,12 +164,12 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: -8 }} exit={{ opacity: 0, y: 10 }}
                                         className="absolute bottom-full left-0 right-0 z-50 mb-2 pointer-events-none"
                                     >
-                                        <div className="bg-[#1e293b]/95 border border-sky-500/30 p-2.5 rounded-xl shadow-2xl backdrop-blur-md">
-                                            <p className="text-sky-100 text-[10px] flex items-center gap-2">
-                                                <Info size={12} className="text-sky-400" /> Passportingizning orqa tarafidagi &quot;Berilgan joyi&quot; qismidagi matnni kiriting.
+                                        <div className={`p-2.5 rounded-xl shadow-2xl backdrop-blur-md border ${isLight ? 'bg-white border-sky-200' : 'bg-[#1e293b]/95 border-sky-500/30'}`}>
+                                            <p className={`text-[10px] flex items-center gap-2 ${isLight ? 'text-slate-700' : 'text-sky-100'}`}>
+                                                <Info size={12} className="text-sky-500 shrink-0" /> Passportingizning orqa tarafidagi &quot;Berilgan joyi&quot; qismidagi matnni kiriting.
                                             </p>
                                         </div>
-                                        <div className="absolute -bottom-1 left-6 w-2 h-2 bg-[#1e293b] border-r border-b border-sky-500/30 rotate-45" />
+                                        <div className={`absolute -bottom-1 left-6 w-2 h-2 rotate-45 border-r border-b ${isLight ? 'bg-white border-sky-200' : 'bg-[#1e293b] border-sky-500/30'}`} />
                                     </motion.div>
                                 )}
                             </AnimatePresence>

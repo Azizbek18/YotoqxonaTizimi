@@ -9,6 +9,9 @@ import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchAppSettings, updateAppSettings } from '@/features/app-settings/client/api'
 import type { AppSettings } from '@/features/app-settings/types'
+import { fetchDekanDorm } from '@/features/dorms/client/api'
+import type { DekanDorm } from '@/features/dorms/types'
+import DormFloorsCard from '@/components/dekan/DormFloorsCard'
 import { dekanUI } from '@/lib/dekan-ui'
 
 type NumberField = {
@@ -27,6 +30,7 @@ export default function DekanSozlamalarPage() {
 
     const [settings, setSettings] = useState<AppSettings | null>(null)
     const [savedSettings, setSavedSettings] = useState<AppSettings | null>(null)
+    const [dorm, setDorm] = useState<DekanDorm | null>(null)
     const [loading, setLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
     const [saving, setSaving] = useState(false)
@@ -52,6 +56,12 @@ export default function DekanSozlamalarPage() {
     useEffect(() => {
         void loadSettings()
     }, [loadSettings])
+
+    useEffect(() => {
+        fetchDekanDorm()
+            .then(({ dorm }) => setDorm(dorm))
+            .catch(() => setDorm(null))
+    }, [])
 
     const handleChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
         setSettings((prev) => prev ? { ...prev, [key]: value } : prev)
@@ -188,6 +198,12 @@ export default function DekanSozlamalarPage() {
             ) : (
                 <>
                     <div className="space-y-6">
+                        {dorm && (
+                            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+                                <DormFloorsCard dorm={dorm} onChange={setDorm} />
+                            </motion.div>
+                        )}
+
                         {renderSection(Wallet, "To'lov sozlamalari", 0, (
                             <>{paymentFields.map((field) => renderNumberRow(field, 'sm:w-36'))}</>
                         ))}

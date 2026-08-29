@@ -54,6 +54,27 @@ export type DormPreview = {
   }>
 }
 
+/** One building as the superadmin sees it — full settings + partition. */
+export type SuperadminDorm = {
+  id: string
+  number: string
+  name: string
+  address: string
+  floorCount: number
+  defaultRoomCapacity: number
+  ttjName: string
+  tarbiyachiName: string
+  tarbiyachiPhone: string
+  komendantName: string
+  komendantPhone: string
+  doctorName: string
+  doctorPhone: string
+  securityPhone: string
+  faculties: string[]
+  floors: Array<{ floor: number; faculty: string | null; pendingFaculty: string | null }>
+  residentCount: number
+}
+
 export type DormSetupInput = {
   /** Building number the dekan types. */
   number: string

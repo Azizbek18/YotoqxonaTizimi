@@ -121,6 +121,108 @@ export function createDormRepository() {
       })
       if (error) throw error
     },
+
+    // ---- superadmin ----
+    async listAllDorms() {
+      const { data, error } = await supabase
+        .from('dorms')
+        .select('*')
+        .order('number', { ascending: true })
+      if (error) throw error
+      return data ?? []
+    },
+
+    async listAllFloors() {
+      const { data, error } = await supabase
+        .from('dorm_floor')
+        .select('dorm_id, floor_number, faculty, pending_faculty')
+      if (error) throw error
+      return data ?? []
+    },
+
+    async listFacultyDorm() {
+      const { data, error } = await supabase.from('faculty_dorm').select('faculty, dorm_id')
+      if (error) throw error
+      return data ?? []
+    },
+
+    async residentCountByDorm() {
+      const { data, error } = await supabase
+        .from('users')
+        .select('dorm_id')
+        .eq('role', 'talaba')
+        .not('room_number', 'is', null)
+      if (error) throw error
+      const counts = new Map<string, number>()
+      for (const row of data ?? []) {
+        if (row.dorm_id) counts.set(row.dorm_id, (counts.get(row.dorm_id) ?? 0) + 1)
+      }
+      return counts
+    },
+
+    async createDormShell(input: { number: string; name: string; floorCount: number; roomCapacity: number }) {
+      const { data, error } = await supabase
+        .from('dorms')
+        .insert({
+          number: input.number,
+          name: input.name,
+          floor_count: input.floorCount,
+          default_room_capacity: input.roomCapacity,
+        })
+        .select('id')
+        .single()
+      if (error) throw error
+      return data.id as string
+    },
+
+    async patchDorm(dormId: string, patch: Record<string, unknown>) {
+      const { error } = await supabase
+        .from('dorms')
+        .update({ ...patch, updated_at: new Date().toISOString() })
+        .eq('id', dormId)
+      if (error) throw error
+    },
+
+    // Superadmin arbitration: force a floor to a faculty, clearing any
+    // pending claim. Blocked if the losing faculty still has residents there.
+    async forceFloor(dormId: string, floor: number, faculty: string | null) {
+      if (faculty === null) {
+        const { error } = await supabase
+          .from('dorm_floor')
+          .delete()
+          .eq('dorm_id', dormId)
+          .eq('floor_number', floor)
+        if (error) throw error
+        return
+      }
+      const { count } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'talaba')
+        .eq('dorm_id', dormId)
+        .eq('assigned_floor', floor)
+        .neq('faculty', faculty)
+      if ((count ?? 0) > 0) {
+        return { blocked: count ?? 0 }
+      }
+      const { error } = await supabase
+        .from('dorm_floor')
+        .upsert(
+          {
+            dorm_id: dormId,
+            floor_number: floor,
+            faculty,
+            pending_faculty: null,
+            pending_by: null,
+            pending_at: null,
+            confirmed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'dorm_id,floor_number' },
+        )
+      if (error) throw error
+      return { blocked: 0 }
+    },
   }
 }
 

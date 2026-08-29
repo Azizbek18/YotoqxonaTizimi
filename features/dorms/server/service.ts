@@ -220,6 +220,119 @@ export function createDormService(repository: DormRepository = createDormReposit
       await repository.withdrawFloors(dormId, staff.faculty, clean)
       return buildDekanDorm(staff)
     },
+
+    // ---- superadmin ----
+    async listAll() {
+      const [dorms, floors, links, residents] = await Promise.all([
+        repository.listAllDorms(),
+        repository.listAllFloors(),
+        repository.listFacultyDorm(),
+        repository.residentCountByDorm(),
+      ])
+      const facByDorm = new Map<string, string[]>()
+      for (const l of links) {
+        if (!facByDorm.has(l.dorm_id)) facByDorm.set(l.dorm_id, [])
+        facByDorm.get(l.dorm_id)!.push(l.faculty)
+      }
+      const floorsByDorm = new Map<string, typeof floors>()
+      for (const f of floors) {
+        if (!floorsByDorm.has(f.dorm_id)) floorsByDorm.set(f.dorm_id, [])
+        floorsByDorm.get(f.dorm_id)!.push(f)
+      }
+      return dorms.map((d) => {
+        const df = new Map((floorsByDorm.get(d.id) ?? []).map((x) => [x.floor_number, x]))
+        return {
+          id: d.id,
+          number: d.number,
+          name: d.name,
+          address: d.address,
+          floorCount: d.floor_count,
+          defaultRoomCapacity: d.default_room_capacity,
+          ttjName: d.ttj_name,
+          tarbiyachiName: d.tarbiyachi_name,
+          tarbiyachiPhone: d.tarbiyachi_phone,
+          komendantName: d.komendant_name,
+          komendantPhone: d.komendant_phone,
+          doctorName: d.doctor_name,
+          doctorPhone: d.doctor_phone,
+          securityPhone: d.security_phone,
+          faculties: (facByDorm.get(d.id) ?? []).sort(),
+          floors: Array.from({ length: d.floor_count }, (_, i) => {
+            const row = df.get(i + 1)
+            return { floor: i + 1, faculty: row?.faculty ?? null, pendingFaculty: row?.pending_faculty ?? null }
+          }),
+          residentCount: residents.get(d.id) ?? 0,
+        }
+      })
+    },
+
+    async create(input: unknown) {
+      const s = (input ?? {}) as Record<string, unknown>
+      const number = typeof s.number === 'string' ? s.number.trim() : ''
+      if (!number || number.length > 40) throw new ApiError(400, 'Yotoqxona raqami noto‘g‘ri')
+      const floorCount = Number(s.floorCount)
+      if (!Number.isInteger(floorCount) || floorCount < 1 || floorCount > 50) {
+        throw new ApiError(400, 'Qavatlar soni noto‘g‘ri')
+      }
+      const roomCapacity = s.roomCapacity === undefined ? 4 : Number(s.roomCapacity)
+      if (!Number.isInteger(roomCapacity) || roomCapacity < 1 || roomCapacity > 20) {
+        throw new ApiError(400, 'Xona sig‘imi noto‘g‘ri')
+      }
+      const existing = await repository.findDormByNumber(number)
+      if (existing) throw new ApiError(409, 'Bu raqamli yotoqxona allaqachon mavjud')
+      await repository.createDormShell({
+        number,
+        name: typeof s.name === 'string' ? s.name.trim().slice(0, 80) : '',
+        floorCount,
+        roomCapacity,
+      })
+    },
+
+    async patchSettings(dormId: string, input: unknown) {
+      const s = (input ?? {}) as Record<string, unknown>
+      const patch: Record<string, unknown> = {}
+      const str = (k: string, col: string, max = 100) => {
+        if (typeof s[k] === 'string') patch[col] = (s[k] as string).trim().slice(0, max)
+      }
+      str('name', 'name', 80)
+      str('address', 'address', 200)
+      str('ttjName', 'ttj_name', 60)
+      str('tarbiyachiName', 'tarbiyachi_name')
+      str('tarbiyachiPhone', 'tarbiyachi_phone', 30)
+      str('komendantName', 'komendant_name')
+      str('komendantPhone', 'komendant_phone', 30)
+      str('doctorName', 'doctor_name')
+      str('doctorPhone', 'doctor_phone', 30)
+      str('securityPhone', 'security_phone', 30)
+      if (s.defaultRoomCapacity !== undefined) {
+        const n = Number(s.defaultRoomCapacity)
+        if (!Number.isInteger(n) || n < 1 || n > 20) throw new ApiError(400, 'Xona sig‘imi noto‘g‘ri')
+        patch.default_room_capacity = n
+      }
+      if (s.floorCount !== undefined) {
+        const n = Number(s.floorCount)
+        if (!Number.isInteger(n) || n < 1 || n > 50) throw new ApiError(400, 'Qavatlar soni noto‘g‘ri')
+        const floors = await repository.listAllFloors()
+        const maxClaimed = Math.max(
+          0,
+          ...floors.filter((f) => f.dorm_id === dormId).map((f) => f.floor_number),
+        )
+        if (n < maxClaimed) {
+          throw new ApiError(409, `Qavatlar soni ${maxClaimed} dan kam bo‘la olmaydi — ${maxClaimed}-qavat biriktirilgan`)
+        }
+        patch.floor_count = n
+      }
+      if (Object.keys(patch).length === 0) throw new ApiError(400, 'O‘zgartiriladigan maydon yo‘q')
+      await repository.patchDorm(dormId, patch)
+    },
+
+    async reassignFloor(dormId: string, floor: number, faculty: string | null) {
+      if (!Number.isInteger(floor) || floor < 1) throw new ApiError(400, 'Qavat noto‘g‘ri')
+      const result = await repository.forceFloor(dormId, floor, faculty)
+      if (result && 'blocked' in result && result.blocked > 0) {
+        throw new ApiError(409, `${floor}-qavatda boshqa fakultetning ${result.blocked} ta talabasi bor — avval ularni ko‘chiring`)
+      }
+    },
   }
 }
 

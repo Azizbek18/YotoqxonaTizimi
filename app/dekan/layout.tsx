@@ -50,7 +50,7 @@ export default function DekanLayout({
   const [mounted, setMounted] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
-  const { faculty: dekanFaculty, fullName: dekanName, resolved: facultyResolved } = useDekanScope()
+  const { faculty: dekanFaculty, fullName: dekanName, role: dekanRole, resolved: facultyResolved } = useDekanScope()
   useToastOffset(84)
   const [recentPending, setRecentPending] = useState<{ id: string; full_name: string; direction: string; created_at: string | null }[]>([])
   const [notifOpen, setNotifOpen] = useState(false)
@@ -190,8 +190,12 @@ export default function DekanLayout({
     { label: 'Tarbiyachilar', caption: 'Xodim hisoblari', href: '/dekan/xodimlar', icon: Building2 },
     { label: 'E‘lonlar', caption: 'Fakultet talabalariga', href: '/dekan/elonlar', icon: Megaphone },
     { label: 'Hisobotlar', caption: 'Excel eksport', href: '/dekan/hisobotlar', icon: FileSpreadsheet },
+    // Superadmin only: manage every dorm building, not just this faculty's.
+    ...(dekanRole === 'admin'
+      ? [{ label: 'Yotoqxonalar', caption: 'Barcha binolar (superadmin)', href: '/dekan/yotoqxonalar', icon: Building2 }]
+      : []),
     { label: 'Sozlamalar', caption: 'Tizim boshqaruvi', href: '/dekan/sozlamalar', icon: Settings },
-  ]), [pendingCount])
+  ]), [pendingCount, dekanRole])
 
   const handleLogout = async () => {
     try {

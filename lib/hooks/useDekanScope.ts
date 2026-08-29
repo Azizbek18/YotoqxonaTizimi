@@ -6,6 +6,9 @@ import { supabase } from '@/lib/supabase'
 export interface DekanScope {
   faculty: string | null
   fullName: string | null
+  /** 'dekan' | 'admin' — an admin rides this panel and gets the extra
+   *  superadmin (dorm management) surface. */
+  role: string | null
   resolved: boolean
 }
 
@@ -17,6 +20,7 @@ export interface DekanScope {
  */
 export function useDekanScope(): DekanScope {
   const [faculty, setFaculty] = useState<string | null>(null)
+  const [role, setRole] = useState<string | null>(null)
   const [fullName, setFullName] = useState<string | null>(null)
   const [resolved, setResolved] = useState(false)
 
@@ -30,13 +34,14 @@ export function useDekanScope(): DekanScope {
 
         const { data: staffRow } = await supabase
           .from('staff')
-          .select('full_name, faculty')
+          .select('full_name, faculty, role')
           .eq('id', user.id)
           .maybeSingle()
 
         if (!cancelled) {
           setFaculty(staffRow?.faculty ?? null)
           setFullName(staffRow?.full_name ?? null)
+          setRole(staffRow?.role ?? null)
         }
       } catch (err) {
         console.error('Error resolving dekan scope:', err)
@@ -51,5 +56,5 @@ export function useDekanScope(): DekanScope {
     }
   }, [])
 
-  return { faculty, fullName, resolved }
+  return { faculty, fullName, role, resolved }
 }

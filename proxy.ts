@@ -172,7 +172,11 @@ export async function proxy(request: NextRequest) {
   // ========================
   // DEKAN ROUTES HIMOYASI
   // ========================
-  const dekanGuard = guardRole('/dekan', 'dekan', '/login')
+  // `admin` is accepted here too: the standalone /admin panel is retired,
+  // so `ROLE_HOME.admin` points at /dekan/dashboard — the guard must let
+  // that role in or an admin session loops forever. Faza 2 migrates the
+  // row to `dekan` and this extra role can go.
+  const dekanGuard = guardRole('/dekan', ['dekan', 'admin'], '/login')
   if (dekanGuard) return dekanGuard
 
   // ========================

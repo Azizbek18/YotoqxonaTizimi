@@ -20,6 +20,7 @@ export type UserRow = {
   phone: string | null
   phone_number: string | null
   faculty: string | null
+  dorm_id: string | null
   direction: string | null
   role: string | null
   status: string | null
@@ -63,6 +64,7 @@ export type StaffRow = {
   phone_number: string | null
   gender: string | null
   faculty: string | null
+  dorm_id: string | null
   assigned_floor: number | null
   assigned_gender: string | null
   created_by: string | null
@@ -137,6 +139,7 @@ export type PermitRequestRow = {
   phone: string
   gender: string
   faculty: string
+  dorm_id: string | null
   direction: string
   course: number
   permit_url: string
@@ -208,6 +211,7 @@ export interface Database {
       floor_room_layout: Table<{
         id: string
         faculty: string
+        dorm_id: string | null
         floor_number: number
         room_number: string
         side: string
@@ -237,6 +241,46 @@ export interface Database {
         max_upload_size_mb: number
         warning_threshold: number
         ttj_name: string
+        updated_at: string
+      }>
+      // Shared dorm tenancy (P0, migration 202609130000). Not read by
+      // application code yet — everything still routes through `faculty`.
+      dorms: Table<{
+        id: string
+        number: string
+        name: string
+        address: string
+        default_room_capacity: number
+        floor_count: number
+        tarbiyachi_name: string
+        tarbiyachi_phone: string
+        komendant_name: string
+        komendant_phone: string
+        doctor_name: string
+        doctor_phone: string
+        talaba_kengashi_raisi_ogil_name: string
+        talaba_kengashi_raisi_ogil_phone: string
+        talaba_kengashi_raisi_qiz_name: string
+        talaba_kengashi_raisi_qiz_phone: string
+        security_phone: string
+        max_upload_size_mb: number
+        warning_threshold: number
+        ttj_name: string
+        created_at: string
+        updated_at: string
+      }>
+      faculty_dorm: Table<{
+        faculty: string
+        dorm_id: string
+        created_at: string
+      }>
+      dorm_floor: Table<{
+        dorm_id: string
+        floor_number: number
+        faculty: string
+        confirmed_by: string | null
+        confirmed_at: string
+        created_at: string
         updated_at: string
       }>
     }

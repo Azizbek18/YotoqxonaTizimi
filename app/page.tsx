@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import {
   Sparkles, ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw, FileText, Hand, Handshake
 } from 'lucide-react';
@@ -28,7 +27,6 @@ interface PermitRequest {
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const [permitRequest, setPermitRequest] = useState<PermitRequest | null>(null);
   const [checkingPermit, setCheckingPermit] = useState(false);
 
@@ -72,16 +70,12 @@ export default function Home() {
   useEffect(() => {
     const mountId = window.setTimeout(() => {
       setMounted(true);
-      setIsMobile(window.innerWidth < 640);
     }, 0);
-    const handleResize = () => setIsMobile(window.innerWidth < 640);
-    window.addEventListener('resize', handleResize);
-    
+
     checkStatus();
 
     return () => {
       window.clearTimeout(mountId);
-      window.removeEventListener('resize', handleResize);
     };
   }, []);
 
@@ -186,31 +180,13 @@ export default function Home() {
       `}} />
 
       {/* 3D Floating Glowing Background Spheres */}
-      <motion.div 
-        animate={isMobile ? {} : {
-          x: [0, 80, -40, 0],
-          y: [0, -90, 60, 0],
-          scale: [1, 1.2, 0.9, 1]
-        }}
-        transition={{ repeat: Infinity, duration: 18, ease: "easeInOut" }}
+      <div
         className="glow-sphere bg-blue-500 w-[450px] h-[450px] top-[-5%] left-[-10%]"
       />
-      <motion.div 
-        animate={isMobile ? {} : {
-          x: [0, -100, 50, 0],
-          y: [0, 80, -70, 0],
-          scale: [1, 0.9, 1.1, 1]
-        }}
-        transition={{ repeat: Infinity, duration: 22, ease: "easeInOut" }}
+      <div
         className="glow-sphere bg-purple-500 w-[500px] h-[500px] top-[20%] right-[-15%]"
       />
-      <motion.div 
-        animate={isMobile ? {} : {
-          x: [0, 50, -60, 0],
-          y: [0, -40, 80, 0],
-          scale: [1, 1.15, 0.95, 1]
-        }}
-        transition={{ repeat: Infinity, duration: 20, ease: "easeInOut" }}
+      <div
         className="glow-sphere bg-pink-500 w-[350px] h-[350px] bottom-[5%] left-[5%]"
       />
 
@@ -255,9 +231,7 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="relative z-10 max-w-5xl mx-auto px-4 pt-12 md:pt-20 text-center space-y-5">
-        <motion.div
-          initial={{ scale: 0.97 }}
-          animate={{ scale: 1 }}
+        <div
           className={`inline-flex items-center gap-2 sm:gap-2.5 max-w-full px-3 sm:px-4.5 py-2 rounded-full border text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-widest text-center transition-colors duration-500 ${
             isLight
               ? 'border-indigo-500/20 bg-indigo-500/5 text-indigo-600 shadow-sm shadow-indigo-50'
@@ -266,11 +240,9 @@ export default function Home() {
         >
           <Sparkles size={12} className="shrink-0 animate-pulse text-indigo-500" />
           <span className="break-words">YOTOQXONADA JOY OLISH MULTI-BOSQICHLI TIZIMI</span>
-        </motion.div>
+        </div>
 
-        <motion.h1
-          initial={{ y: 12 }}
-          animate={{ y: 0 }}
+        <h1
           className={`text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-[1.05] uppercase max-w-4xl mx-auto transition-colors duration-500 syne-font ${
             isLight ? 'text-slate-900' : 'text-white'
           }`}
@@ -279,7 +251,7 @@ export default function Home() {
           <span className="bg-gradient-to-r from-cyan-400 via-indigo-500 to-purple-500 bg-clip-text text-transparent drop-shadow-sm">
             3 bosqichli smart
           </span> oqimda
-        </motion.h1>
+        </h1>
 
         {/* First thing a never-applied talaba should see — no scrolling
             past the (purely decorative) 3-step timeline required. Only
@@ -287,9 +259,7 @@ export default function Home() {
             this session; someone with a pending/approved/etc. one instead
             scrolls to their full status panel below, same as before. */}
         {!checkingPermit && !permitRequest && (
-          <motion.div
-            initial={{ y: 12 }}
-            animate={{ y: 0 }}
+          <div
             className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2"
           >
             <Link
@@ -308,7 +278,7 @@ export default function Home() {
             >
               Statusni Tekshirish
             </Link>
-          </motion.div>
+          </div>
         )}
       </section>
 
@@ -324,9 +294,8 @@ export default function Home() {
           <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 relative">
             {/* Step 1 */}
             <div className="flex flex-col items-center text-center flex-1 z-10 relative">
-              <motion.div 
-                whileHover={{ scale: 1.05 }}
-                className={`w-14 h-14 rounded-[20px] flex items-center justify-center font-black transition-all ${
+              <div
+        className={`w-14 h-14 rounded-[20px] flex items-center justify-center font-black transition-all ${
                   activeStep === 1 
                     ? 'bg-blue-600 text-white ring-4 ring-blue-500/20 scale-110 shadow-lg shadow-blue-500/40 border border-blue-400/20'
                     : activeStep > 1 
@@ -335,7 +304,7 @@ export default function Home() {
                 }`}
               >
                 {activeStep > 1 ? <CheckCircle2 size={24} /> : "1"}
-              </motion.div>
+              </div>
               <h4 className={`text-xs font-black uppercase tracking-wider mt-4 syne-font ${activeStep === 1 ? 'text-blue-500' : isLight ? 'text-slate-900' : 'text-white'}`}>
                 Yo&apos;llanma yuklash
               </h4>
@@ -364,8 +333,7 @@ export default function Home() {
             <div className="flex flex-col items-center text-center flex-1 z-10 relative">
               {/* Decorative loop: spinning gradient border welcomes the arriving document, centered on the step-2 icon */}
               <div className="hero-ring-show gradient-border-spin hidden md:block absolute top-7 left-1/2 w-16 h-16 rounded-[24px] pointer-events-none" />
-              <motion.div
-                whileHover={{ scale: 1.05 }}
+              <div
                 className={`w-14 h-14 rounded-[20px] flex items-center justify-center font-black transition-all ${
                   activeStep === 2
                     ? 'bg-amber-500 text-slate-950 ring-4 ring-amber-500/20 scale-110 shadow-lg shadow-amber-500/40 border border-amber-400/20'
@@ -375,7 +343,7 @@ export default function Home() {
                 }`}
               >
                 {activeStep > 2 ? <CheckCircle2 size={24} /> : activeStep === 2 ? <Clock size={22} className="animate-spin" /> : "2"}
-              </motion.div>
+              </div>
               <h4 className={`text-xs font-black uppercase tracking-wider mt-4 syne-font ${activeStep === 2 ? 'text-amber-500' : isLight ? 'text-slate-900' : 'text-white'}`}>
                 Dekan tasdig&apos;i
               </h4>
@@ -421,9 +389,8 @@ export default function Home() {
 
             {/* Step 3 */}
             <div className="flex flex-col items-center text-center flex-1 z-10 relative">
-              <motion.div 
-                whileHover={{ scale: 1.05 }}
-                className={`w-14 h-14 rounded-[20px] flex items-center justify-center font-black transition-all ${
+              <div
+        className={`w-14 h-14 rounded-[20px] flex items-center justify-center font-black transition-all ${
                   activeStep === 3 
                     ? permitRequest?.status === 'registered'
                       ? 'bg-sky-500 text-white ring-4 ring-sky-500/20 scale-110 shadow-lg shadow-sky-500/40 border border-sky-400/20'
@@ -432,7 +399,7 @@ export default function Home() {
                 }`}
               >
                 {permitRequest?.status === 'registered' ? <CheckCircle2 size={24} /> : "3"}
-              </motion.div>
+              </div>
               <h4 className={`text-xs font-black uppercase tracking-wider mt-4 syne-font ${activeStep === 3 ? 'text-emerald-500' : isLight ? 'text-slate-900' : 'text-white'}`}>
                 Akkaunt faolligi
               </h4>
@@ -642,9 +609,8 @@ export default function Home() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {staffRoles.map((role) => (
-            <motion.div
+            <div
               key={role.title}
-              whileHover={{ y: -6, scale: 1.02 }}
               className={`border p-5 sm:p-6 rounded-[32px] flex flex-col justify-between min-h-[340px] shadow-xl relative overflow-hidden group transition-all duration-300 ${
                 isLight
                   ? 'bg-white border-slate-200 shadow-slate-200/50'
@@ -684,7 +650,7 @@ export default function Home() {
                 <span className="text-white">Tizimga Kirish</span>
                 <ArrowRight size={11} className="text-white group-hover:translate-x-1 transition-transform" />
               </Link>
-            </motion.div>
+            </div>
           ))}
         </div>
       </section>

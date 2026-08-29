@@ -277,9 +277,12 @@ export interface Database {
       dorm_floor: Table<{
         dorm_id: string
         floor_number: number
-        faculty: string
+        faculty: string | null
         confirmed_by: string | null
         confirmed_at: string
+        pending_faculty: string | null
+        pending_by: string | null
+        pending_at: string | null
         created_at: string
         updated_at: string
       }>
@@ -344,6 +347,19 @@ export interface Database {
           p_text: string
         }
         Returns: string
+      }
+      // Shared dorm tenancy — floor handshake (P1a, migration 202609140000).
+      dorm_claim_floors: {
+        Args: { p_dorm_id: string; p_faculty: string; p_floors: number[]; p_staff_id: string }
+        Returns: Json
+      }
+      dorm_resolve_floor: {
+        Args: { p_dorm_id: string; p_floor: number; p_staff_id: string; p_accept: boolean }
+        Returns: Json
+      }
+      dorm_withdraw_floors: {
+        Args: { p_dorm_id: string; p_faculty: string; p_floors: number[] }
+        Returns: Json
       }
       submit_payment_batch_atomic: {
         Args: {

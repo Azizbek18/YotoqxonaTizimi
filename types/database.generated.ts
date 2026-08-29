@@ -221,26 +221,12 @@ export interface Database {
         frozen_reason: string | null
         created_at: string
       }>
+      // Since P2 (202609150000) app_settings holds only the two fee amounts,
+      // per faculty. Everything else moved to `dorms`.
       app_settings: Table<{
         faculty: string
         monthly_fee: number
         yearly_contract_fee: number
-        default_room_capacity: number
-        floor_count: number
-        tarbiyachi_name: string
-        tarbiyachi_phone: string
-        komendant_name: string
-        komendant_phone: string
-        doctor_name: string
-        doctor_phone: string
-        talaba_kengashi_raisi_ogil_name: string
-        talaba_kengashi_raisi_ogil_phone: string
-        talaba_kengashi_raisi_qiz_name: string
-        talaba_kengashi_raisi_qiz_phone: string
-        security_phone: string
-        max_upload_size_mb: number
-        warning_threshold: number
-        ttj_name: string
         updated_at: string
       }>
       // Shared dorm tenancy (P0, migration 202609130000). Not read by
@@ -277,9 +263,12 @@ export interface Database {
       dorm_floor: Table<{
         dorm_id: string
         floor_number: number
-        faculty: string
+        faculty: string | null
         confirmed_by: string | null
         confirmed_at: string
+        pending_faculty: string | null
+        pending_by: string | null
+        pending_at: string | null
         created_at: string
         updated_at: string
       }>
@@ -344,6 +333,19 @@ export interface Database {
           p_text: string
         }
         Returns: string
+      }
+      // Shared dorm tenancy — floor handshake (P1a, migration 202609140000).
+      dorm_claim_floors: {
+        Args: { p_dorm_id: string; p_faculty: string; p_floors: number[]; p_staff_id: string }
+        Returns: Json
+      }
+      dorm_resolve_floor: {
+        Args: { p_dorm_id: string; p_floor: number; p_staff_id: string; p_accept: boolean }
+        Returns: Json
+      }
+      dorm_withdraw_floors: {
+        Args: { p_dorm_id: string; p_faculty: string; p_floors: number[] }
+        Returns: Json
       }
       submit_payment_batch_atomic: {
         Args: {

@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search, CheckCircle2, XCircle,
   HelpCircle, AlertTriangle, ChevronRight, ChevronLeft, House, LogIn
@@ -152,16 +151,9 @@ function StatusCheckContent() {
           {/* Form and result are two separate steps — never both on screen
               at once. The form (or its loading state) shows until a check
               actually finishes; only then does the result replace it. */}
-          <AnimatePresence mode="wait">
+          <>
             {!showResult ? (
-              <motion.form
-                key="form"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                onSubmit={handleFormSubmit}
-                className="space-y-4"
-              >
+              <form onSubmit={handleFormSubmit} className="space-y-4">
             <div className="space-y-1">
               <label className={`text-[9px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Pasport Seriyasi & Raqami</label>
               <input
@@ -220,15 +212,9 @@ function StatusCheckContent() {
                 </>
               )}
             </button>
-              </motion.form>
+              </form>
             ) : (
-              <motion.div
-                key="result"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                className="space-y-4"
-              >
+              <div className="space-y-4">
                 <button
                   type="button"
                   onClick={handleBackToForm}
@@ -345,9 +331,9 @@ function StatusCheckContent() {
                     </div>
                   </div>
                 )}
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
+          </>
 
           {/* Footer Navigation */}
           <div className="flex justify-between items-center mt-6 border-t border-slate-700/20 dark:border-white/5 pt-4 text-xs font-bold">

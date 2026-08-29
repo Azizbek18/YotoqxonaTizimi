@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { motion } from 'framer-motion'
 import { FileCheck2, Globe2, ArrowLeft, ChevronRight } from 'lucide-react'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -35,23 +34,15 @@ export default function ArizaTuriTanlash() {
       </div>
 
       <div className="relative z-10 w-full max-w-3xl">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8 sm:mb-10"
-        >
+        <div className="text-center mb-8 sm:mb-10">
           <h1 className="text-xl sm:text-3xl font-black uppercase tracking-tight">Siz kimsiz?</h1>
           <p className={`text-xs sm:text-sm font-medium mt-2 max-w-lg mx-auto ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
             Yotoqxonaga joylashish uchun to&apos;ldiriladigan hujjat toifangizga qarab farq qiladi — to&apos;g&apos;ri variantni tanlang.
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-          >
+          <div>
             <Link
               href="/ruxsatnoma-yuborish"
               className={`group h-full flex flex-col justify-between p-6 sm:p-7 rounded-3xl border backdrop-blur-3xl transition-all hover:-translate-y-1 ${
@@ -74,13 +65,9 @@ export default function ArizaTuriTanlash() {
                 <ChevronRight size={14} />
               </div>
             </Link>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
+          <div>
             <Link
               href="/imtiyozli-ariza"
               className={`group h-full flex flex-col justify-between p-6 sm:p-7 rounded-3xl border backdrop-blur-3xl transition-all hover:-translate-y-1 ${
@@ -103,7 +90,7 @@ export default function ArizaTuriTanlash() {
                 <ChevronRight size={14} />
               </div>
             </Link>
-          </motion.div>
+          </div>
         </div>
 
         <p className={`text-center text-[10px] font-medium mt-8 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>

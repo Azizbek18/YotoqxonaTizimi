@@ -3,7 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { getRequestUser } from '@/lib/server-auth'
 import { findStaffRowByIdentity } from '@/lib/auth-tables'
-import { normalizeFaculty, PRIMARY_FACULTY } from '@/lib/faculties'
+import { normalizeFaculty } from '@/lib/faculties'
+import { staffDormFaculties } from '@/server/auth/faculty'
 
 export type ScopedTarbiyachi = {
   id: string
@@ -13,10 +14,11 @@ export type ScopedTarbiyachi = {
   faculty?: string | null
 }
 
-// A tarbiyachi supervises their faculty's WHOLE dormitory — every floor,
-// both genders — not a single floor. Every /api/staff/* route requires the
-// caller to be an active tarbiyachi and scopes reads to their faculty's
-// residents.
+// A tarbiyachi supervises their WHOLE dormitory building — every floor,
+// both genders, and (shared-dorm tenancy, P4) every faculty living there.
+// Every /api/staff/* route requires the caller to be an active tarbiyachi
+// and scopes reads to `dormFaculties` — the faculties sharing their dorm.
+// In a single-faculty building that is just `[faculty]`, unchanged.
 export async function requireScopedTarbiyachi(request: NextRequest) {
   const user = await getRequestUser(request)
   if (!user?.id) {
@@ -45,17 +47,7 @@ export async function requireScopedTarbiyachi(request: NextRequest) {
     } as const
   }
 
-  return { staffUser, serviceSupabase, faculty } as const
-}
+  const dormFaculties = await staffDormFaculties(staffUser.id, staffUser.faculty)
 
-// Whether a student belongs to this tarbiyachi's faculty dormitory. A
-// faculty-less staff or student row is treated as the primary building's
-// during the transition, so today's single-building behaviour is unchanged.
-export function isTarbiyachiStudent(
-  staffUser: Pick<ScopedTarbiyachi, 'faculty'>,
-  student: { faculty?: string | null },
-) {
-  const staffFaculty = normalizeFaculty(staffUser.faculty ?? null) ?? PRIMARY_FACULTY
-  const studentFaculty = normalizeFaculty(student.faculty ?? null) ?? PRIMARY_FACULTY
-  return staffFaculty === studentFaculty
+  return { staffUser, serviceSupabase, faculty, dormFaculties } as const
 }

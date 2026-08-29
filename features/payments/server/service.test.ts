@@ -107,13 +107,13 @@ describe('payment review / listing faculty scoping', () => {
     repo.review.mockResolvedValue([{ id: 'p1' }])
 
     const service = createPaymentService(repo as never)
-    await service.listAll('kimyo')
-    await service.getSummary('kimyo')
-    await service.review('kimyo', { ids: ['00000000-0000-4000-8000-000000000001'], status: 'approved', message: 'ok' })
+    await service.listAll(['kimyo'])
+    await service.getSummary(['kimyo'])
+    await service.review(['kimyo'], { ids: ['00000000-0000-4000-8000-000000000001'], status: 'approved', message: 'ok' })
 
-    expect(repo.listAll).toHaveBeenCalledWith('kimyo', undefined)
-    expect(repo.countWaiting).toHaveBeenCalledWith('kimyo')
-    expect(repo.review).toHaveBeenCalledWith('kimyo', ['00000000-0000-4000-8000-000000000001'], 'approved', 'ok')
+    expect(repo.listAll).toHaveBeenCalledWith(['kimyo'], undefined)
+    expect(repo.countWaiting).toHaveBeenCalledWith(['kimyo'])
+    expect(repo.review).toHaveBeenCalledWith(['kimyo'], ['00000000-0000-4000-8000-000000000001'], 'approved', 'ok')
   })
 
   it('rejects the batch when a payment id is outside the faculty (fewer rows updated)', async () => {
@@ -121,7 +121,7 @@ describe('payment review / listing faculty scoping', () => {
     repo.review.mockResolvedValue([]) // the other-faculty id matched nothing
 
     await expect(
-      createPaymentService(repo as never).review('kimyo', { ids: ['00000000-0000-4000-8000-000000000001'], status: 'approved', message: 'ok' }),
+      createPaymentService(repo as never).review(['kimyo'], { ids: ['00000000-0000-4000-8000-000000000001'], status: 'approved', message: 'ok' }),
     ).rejects.toMatchObject({ status: 409 })
   })
 })

@@ -12,13 +12,14 @@ export async function GET(req: NextRequest) {
   try {
     const scoped = await requireScopedTarbiyachi(req)
     if (scoped.error) return scoped.error
-    const { serviceSupabase, faculty } = scoped
+    const { serviceSupabase, faculty, dormFaculties } = scoped
 
-    // arizalar carries a faculty column (Bosqich 2a) — scope straight to it.
+    // arizalar carries a faculty column (Bosqich 2a); a tarbiyachi handles
+    // every faculty in their dorm.
     const { data: requests, error } = await serviceSupabase
       .from('arizalar')
       .select('id, student_id, student_name, text, type, level, status, created_at, response_date')
-      .ilike('faculty', faculty)
+      .in('faculty', dormFaculties)
       .in('type', ['ariza', 'tushuntirish'])
       .neq('status', 'draft')
       .order('created_at', { ascending: false })
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
       response_date: request.response_date ?? null,
     }))
 
-    return NextResponse.json({ ok: true, requests: formatted, scope: { faculty } })
+    return NextResponse.json({ ok: true, requests: formatted, scope: { faculty, faculties: dormFaculties } })
   } catch (error) {
     console.error('Staff arizalar GET xato:', error)
     return jsonError('Arizalarni yuklashda server xatosi yuz berdi', 500)
@@ -50,7 +51,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const scoped = await requireScopedTarbiyachi(req)
     if (scoped.error) return scoped.error
-    const { serviceSupabase, faculty } = scoped
+    const { serviceSupabase, dormFaculties } = scoped
 
     const body = await req.json()
     const id = typeof body.id === 'string' ? body.id : ''
@@ -81,7 +82,7 @@ export async function PATCH(req: NextRequest) {
     if (!existing) {
       return jsonError('Ariza topilmadi', 404)
     }
-    if ((normalizeFaculty(existing.faculty) ?? '') !== faculty) {
+    if (!dormFaculties.includes(normalizeFaculty(existing.faculty) ?? '')) {
       return jsonError('Ushbu arizani boshqarish huquqingiz yo\'q', 403)
     }
 
@@ -90,7 +91,7 @@ export async function PATCH(req: NextRequest) {
       .update({ status, response_date: new Date().toISOString() })
       .eq('id', id)
       .eq('status', 'pending')
-      .ilike('faculty', faculty)
+      .in('faculty', dormFaculties)
       .select('id')
       .maybeSingle()
 

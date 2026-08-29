@@ -36,15 +36,15 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       return repository.listForStudent(studentId)
     },
 
-    listAll(faculty: string, studentId?: string) {
-      return repository.listAll(faculty, studentId)
+    listAll(faculties: string[], studentId?: string) {
+      return repository.listAll(faculties, studentId)
     },
 
-    async getSummary(faculty: string) {
-      return { waitingCount: await repository.countWaiting(faculty) }
+    async getSummary(faculties: string[]) {
+      return { waitingCount: await repository.countWaiting(faculties) }
     },
 
-    async review(faculty: string, input: { ids: unknown; status: unknown; message: unknown }) {
+    async review(faculties: string[], input: { ids: unknown; status: unknown; message: unknown }) {
       let review
       try {
         review = validatePaymentReview(input)
@@ -52,7 +52,7 @@ export function createPaymentService(repository: PaymentRepository = createPayme
         if (error instanceof PaymentValidationError) throw new ApiError(400, error.message, error.code)
         throw error
       }
-      const rows = await repository.review(faculty, review.ids, review.status, review.message)
+      const rows = await repository.review(faculties, review.ids, review.status, review.message)
       if (rows.length !== review.ids.length) throw new ApiError(409, 'Ba’zi to‘lovlar yangilanmadi')
       return { ok: true as const }
     },

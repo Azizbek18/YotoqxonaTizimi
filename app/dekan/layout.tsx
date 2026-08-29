@@ -29,8 +29,12 @@ import { useDekanScope } from '@/lib/hooks/useDekanScope'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
 import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
+import { fetchDekanDorm, resolveFloorClaim } from '@/features/dorms/client/api'
+import type { DekanDorm } from '@/features/dorms/types'
+import DormOnboarding from '@/components/dekan/DormOnboarding'
 import { getSafeSession } from '@/lib/auth-session'
 import { directionLabel } from '@/lib/directions'
+import { permitFacultyLabel } from '@/lib/faculties'
 import { dekanUI } from '@/lib/dekan-ui'
 import { supabase } from '@/lib/supabase'
 
@@ -54,6 +58,9 @@ export default function DekanLayout({
   // null while unchecked — only render the reminder once we actually know
   // it's missing, never as a false-positive flash before settings load.
   const [ttjNameMissing, setTtjNameMissing] = useState<boolean | null>(null)
+  // undefined = not checked yet, null = confirmed not set up (gate to
+  // onboarding), object = the dekan's dorm + floor partition.
+  const [dekanDorm, setDekanDorm] = useState<DekanDorm | null | undefined>(undefined)
 
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
@@ -104,6 +111,41 @@ export default function DekanLayout({
       clearInterval(interval)
     }
   }, [facultyResolved, dekanFaculty])
+
+  // The dekan's dorm + floor partition. Polled slowly (60s) alongside the
+  // permit poll so an incoming floor claim from the co-dekan shows up in
+  // the bell without a refresh. A fetch error leaves `dekanDorm` untouched
+  // so a network blip never locks a set-up dekan into the onboarding gate.
+  useEffect(() => {
+    if (!facultyResolved || !dekanFaculty) return
+    let active = true
+    async function loadDorm() {
+      const session = await getSafeSession()
+      if (!session || !active) return
+      try {
+        const { dorm } = await fetchDekanDorm()
+        if (active) setDekanDorm(dorm)
+      } catch {
+        // keep whatever we had; never gate on a transient failure
+      }
+    }
+    void loadDorm()
+    const interval = setInterval(loadDorm, 60_000)
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
+  }, [facultyResolved, dekanFaculty])
+
+  const handleResolveClaim = async (floor: number, accept: boolean) => {
+    try {
+      const { dorm } = await resolveFloorClaim(floor, accept)
+      setDekanDorm(dorm)
+      toast.success(accept ? `${floor}-qavat tasdiqlandi` : `${floor}-qavat rad etildi`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Amalni bajarib bo'lmadi")
+    }
+  }
 
   // Re-checked on every navigation (not polled — this rarely changes) so
   // the reminder banner below both shows up promptly and clears itself
@@ -167,6 +209,20 @@ export default function DekanLayout({
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-indigo-500" />
+      </div>
+    )
+  }
+
+  // A dekan with a faculty but no dorm can't do anything useful yet —
+  // block the panel until they name their building. Only an explicit
+  // `null` (checked, missing) gates; `undefined` (still loading) doesn't.
+  if (facultyResolved && dekanFaculty && dekanDorm === null) {
+    return (
+      <div className={`min-h-screen ${ui.shell}`}>
+        <DormOnboarding
+          facultyLabel={permitFacultyLabel(dekanFaculty) || dekanFaculty}
+          onDone={(dorm) => setDekanDorm(dorm)}
+        />
       </div>
     )
   }
@@ -368,13 +424,44 @@ export default function DekanLayout({
                   className={`relative rounded-lg border p-2.5 transition-colors ${ui.btnGhost}`}
                 >
                   <Bell size={18} />
-                  {pendingCount > 0 && (
-                    <span className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ${isLight ? 'ring-white' : 'ring-slate-950'}`} />
+                  {(pendingCount > 0 || (dekanDorm?.incoming.length ?? 0) > 0) && (
+                    <span className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full ring-2 ${
+                      (dekanDorm?.incoming.length ?? 0) > 0 ? 'bg-rose-500' : 'bg-amber-500'
+                    } ${isLight ? 'ring-white' : 'ring-slate-950'}`} />
                   )}
                 </button>
 
                 {notifOpen && (
                   <div className={`absolute right-0 mt-2 w-80 max-w-[90vw] rounded-xl border shadow-lg z-50 overflow-hidden ${ui.card}`}>
+                    {(dekanDorm?.incoming.length ?? 0) > 0 && (
+                      <div className={`border-b ${ui.border}`}>
+                        <div className={`px-4 py-3 text-xs font-bold uppercase tracking-wider ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>
+                          Qavat so&apos;rovlari ({dekanDorm?.incoming.length})
+                        </div>
+                        {dekanDorm?.incoming.map((claim) => (
+                          <div key={claim.floor} className={`px-4 pb-3 ${ui.border}`}>
+                            <p className={`text-[11px] ${ui.body}`}>
+                              <span className="font-semibold">{permitFacultyLabel(claim.faculty) || claim.faculty}</span> fakulteti{' '}
+                              <span className={`font-semibold ${ui.strong}`}>{claim.floor}-qavat</span>ni so&apos;rayapti
+                            </p>
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                onClick={() => handleResolveClaim(claim.floor, true)}
+                                className="flex-1 rounded-lg bg-emerald-500 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white transition-colors hover:bg-emerald-600"
+                              >
+                                Tasdiqlash
+                              </button>
+                              <button
+                                onClick={() => handleResolveClaim(claim.floor, false)}
+                                className={`flex-1 rounded-lg border py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.dangerSoft}`}
+                              >
+                                Rad etish
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <div className={`px-4 py-3 border-b text-xs font-bold uppercase tracking-wider ${ui.border} ${ui.body}`}>
                       Kutilayotgan yo&apos;llanmalar {pendingCount > 0 && `(${pendingCount})`}
                     </div>

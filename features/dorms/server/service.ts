@@ -1,6 +1,6 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
-import type { DekanDorm, DormFloor, DormFloorState, DormSetupInput } from '../types'
+import type { DekanDorm, DormFloor, DormFloorState, DormPreview, DormSetupInput } from '../types'
 import { createDormRepository, type DormFloorRow, type DormRepository } from './repository'
 
 export type DekanStaffCtx = { id: string; faculty: string }
@@ -100,6 +100,53 @@ export function createDormService(repository: DormRepository = createDormReposit
     /** The dekan's dorm + per-floor state, or null if not set up yet. */
     getDekanDorm(staff: DekanStaffCtx) {
       return buildDekanDorm(staff)
+    },
+
+    /** Preview a dorm by number so the onboarding picker can show which
+     *  floors are already spoken for. A number nobody has used yet comes
+     *  back `exists: false` with a default 5-floor grid. */
+    async preview(staff: DekanStaffCtx, rawNumber: string): Promise<DormPreview> {
+      const number = String(rawNumber ?? '').trim()
+      if (!number || number.length > 40) throw new ApiError(400, 'Yotoqxona raqami noto‘g‘ri')
+
+      const dorm = await repository.findDormByNumber(number)
+      if (!dorm) {
+        return {
+          exists: false,
+          number,
+          name: '',
+          floorCount: 5,
+          floors: Array.from({ length: 5 }, (_, i) => ({
+            floor: i + 1,
+            ownerFaculty: null,
+            pendingFaculty: null,
+            taken: false,
+          })),
+        }
+      }
+
+      const rows = await repository.listFloors(dorm.id)
+      const byFloor = new Map(rows.map((r) => [r.floor_number, r]))
+      return {
+        exists: true,
+        number: dorm.number,
+        name: dorm.name,
+        floorCount: dorm.floor_count,
+        floors: Array.from({ length: dorm.floor_count }, (_, i) => {
+          const row = byFloor.get(i + 1)
+          const owner = row?.faculty ?? null
+          const pending = row?.pending_faculty ?? null
+          return {
+            floor: i + 1,
+            ownerFaculty: owner,
+            pendingFaculty: pending,
+            // free for me to claim iff nobody else owns or is proposing it
+            taken:
+              (Boolean(owner) && owner !== staff.faculty) ||
+              (Boolean(pending) && pending !== staff.faculty),
+          }
+        }),
+      }
     },
 
     /**

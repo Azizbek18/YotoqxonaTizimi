@@ -39,6 +39,21 @@ export type DekanDorm = {
   incoming: IncomingClaim[]
 }
 
+/** What the onboarding floor-picker needs before the dekan commits. */
+export type DormPreview = {
+  exists: boolean
+  number: string
+  name: string
+  floorCount: number
+  /** Per floor: who holds it and whether it's already spoken for. */
+  floors: Array<{
+    floor: number
+    ownerFaculty: string | null
+    pendingFaculty: string | null
+    taken: boolean
+  }>
+}
+
 export type DormSetupInput = {
   /** Building number the dekan types. */
   number: string

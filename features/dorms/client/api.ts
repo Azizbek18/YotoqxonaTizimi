@@ -1,10 +1,14 @@
 'use client'
 
 import { apiRequest } from '@/lib/api-client'
-import type { DekanDorm } from '../types'
+import type { DekanDorm, DormPreview } from '../types'
 
 export function fetchDekanDorm() {
   return apiRequest<{ dorm: DekanDorm | null }>('/api/dekan/dorm')
+}
+
+export function previewDorm(number: string) {
+  return apiRequest<{ preview: DormPreview }>(`/api/dekan/dorm?number=${encodeURIComponent(number.trim())}`)
 }
 
 export function setUpDorm(input: {

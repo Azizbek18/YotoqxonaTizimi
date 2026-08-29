@@ -13,7 +13,12 @@ async function dekanCtx(request: NextRequest): Promise<DekanStaffCtx> {
 
 export async function GET(request: NextRequest) {
   try {
-    const dorm = await createDormService().getDekanDorm(await dekanCtx(request))
+    const staff = await dekanCtx(request)
+    const number = request.nextUrl.searchParams.get('number')
+    if (number !== null) {
+      return NextResponse.json({ preview: await createDormService().preview(staff, number) })
+    }
+    const dorm = await createDormService().getDekanDorm(staff)
     return NextResponse.json({ dorm })
   } catch (error) {
     console.error('Dekan dorm GET error:', error)

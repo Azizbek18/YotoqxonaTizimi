@@ -940,3 +940,19 @@ html.theme-anim canvas {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* ===================================================================
+   CHEAP ENTRANCE ANIMATION
+   Replaces the framer-motion "fade-in-up" we stripped from the public
+   entry pages. Pure opacity + transform = compositor-only, one-shot,
+   no JS, safe even on low-end GPUs. Stagger via inline animation-delay.
+   The prefers-reduced-motion block above already neutralises it.
+   =================================================================== */
+@keyframes anim-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+.anim-in {
+  animation: anim-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}

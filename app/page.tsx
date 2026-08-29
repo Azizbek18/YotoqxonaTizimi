@@ -232,7 +232,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative z-10 max-w-5xl mx-auto px-4 pt-12 md:pt-20 text-center space-y-5">
         <div
-          className={`inline-flex items-center gap-2 sm:gap-2.5 max-w-full px-3 sm:px-4.5 py-2 rounded-full border text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-widest text-center transition-colors duration-500 ${
+          className={`anim-in inline-flex items-center gap-2 sm:gap-2.5 max-w-full px-3 sm:px-4.5 py-2 rounded-full border text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-widest text-center transition-colors duration-500 ${
             isLight
               ? 'border-indigo-500/20 bg-indigo-500/5 text-indigo-600 shadow-sm shadow-indigo-50'
               : 'border-indigo-500/20 bg-indigo-500/10 text-indigo-400 shadow-md shadow-indigo-950/20'
@@ -243,7 +243,8 @@ export default function Home() {
         </div>
 
         <h1
-          className={`text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-[1.05] uppercase max-w-4xl mx-auto transition-colors duration-500 syne-font ${
+          style={{ animationDelay: '0.06s' }}
+          className={`anim-in text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-[1.05] uppercase max-w-4xl mx-auto transition-colors duration-500 syne-font ${
             isLight ? 'text-slate-900' : 'text-white'
           }`}
         >
@@ -260,7 +261,8 @@ export default function Home() {
             scrolls to their full status panel below, same as before. */}
         {!checkingPermit && !permitRequest && (
           <div
-            className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2"
+            style={{ animationDelay: '0.12s' }}
+            className="anim-in flex flex-col sm:flex-row items-center justify-center gap-3 pt-2"
           >
             <Link
               href="/ariza-yuborish"
@@ -419,7 +421,7 @@ export default function Home() {
             <p className="text-[10px] text-indigo-400 uppercase tracking-[0.25em] font-black animate-pulse syne-font">Ma&apos;lumotlar yangilanmoqda...</p>
           </div>
         ) : permitRequest ? (
-          <div className={`p-5 sm:p-10 rounded-[28px] sm:rounded-[36px] glass-panel text-center space-y-6 relative overflow-hidden transition-all ${
+          <div className={`anim-in p-5 sm:p-10 rounded-[28px] sm:rounded-[36px] glass-panel text-center space-y-6 relative overflow-hidden transition-all ${
             isLight ? 'bg-white/90' : 'bg-[#060a17]/90'
           }`}>
             <div className="absolute inset-0 bg-radial-gradient from-indigo-500/10 via-transparent to-transparent opacity-40 pointer-events-none" />
@@ -557,7 +559,7 @@ export default function Home() {
             )}
           </div>
         ) : (
-          <div className={`p-5 sm:p-10 rounded-[28px] sm:rounded-[36px] glass-panel text-center space-y-6 relative overflow-hidden transition-all ${
+          <div className={`anim-in p-5 sm:p-10 rounded-[28px] sm:rounded-[36px] glass-panel text-center space-y-6 relative overflow-hidden transition-all ${
             isLight ? 'bg-white/90' : 'bg-[#060a17]/90'
           }`}>
             <div className="absolute inset-0 bg-radial-gradient from-indigo-500/10 via-transparent to-transparent opacity-40 pointer-events-none" />
@@ -611,9 +613,9 @@ export default function Home() {
           {staffRoles.map((role) => (
             <div
               key={role.title}
-              className={`border p-5 sm:p-6 rounded-[32px] flex flex-col justify-between min-h-[340px] shadow-xl relative overflow-hidden group transition-all duration-300 ${
+              className={`border p-5 sm:p-6 rounded-[32px] flex flex-col justify-between min-h-[340px] shadow-xl relative overflow-hidden group transition-all duration-300 hover:-translate-y-1 ${
                 isLight
-                  ? 'bg-white border-slate-200 shadow-slate-200/50'
+                  ? 'bg-white border-slate-200 shadow-slate-200/50 hover:border-slate-300'
                   : `bg-[#060a17]/80 border-white/5 hover:border-white/10`
               }`}
             >

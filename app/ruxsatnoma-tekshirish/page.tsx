@@ -153,7 +153,7 @@ function StatusCheckContent() {
               actually finishes; only then does the result replace it. */}
           <>
             {!showResult ? (
-              <form onSubmit={handleFormSubmit} className="space-y-4">
+              <form key="form" onSubmit={handleFormSubmit} className="anim-in space-y-4">
             <div className="space-y-1">
               <label className={`text-[9px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Pasport Seriyasi & Raqami</label>
               <input
@@ -214,7 +214,7 @@ function StatusCheckContent() {
             </button>
               </form>
             ) : (
-              <div className="space-y-4">
+              <div key="result" className="anim-in space-y-4">
                 <button
                   type="button"
                   onClick={handleBackToForm}

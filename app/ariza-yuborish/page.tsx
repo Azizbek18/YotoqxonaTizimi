@@ -34,7 +34,7 @@ export default function ArizaTuriTanlash() {
       </div>
 
       <div className="relative z-10 w-full max-w-3xl">
-        <div className="text-center mb-8 sm:mb-10">
+        <div className="anim-in text-center mb-8 sm:mb-10">
           <h1 className="text-xl sm:text-3xl font-black uppercase tracking-tight">Siz kimsiz?</h1>
           <p className={`text-xs sm:text-sm font-medium mt-2 max-w-lg mx-auto ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
             Yotoqxonaga joylashish uchun to&apos;ldiriladigan hujjat toifangizga qarab farq qiladi — to&apos;g&apos;ri variantni tanlang.
@@ -42,7 +42,7 @@ export default function ArizaTuriTanlash() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-          <div>
+          <div className="anim-in" style={{ animationDelay: '0.05s' }}>
             <Link
               href="/ruxsatnoma-yuborish"
               className={`group h-full flex flex-col justify-between p-6 sm:p-7 rounded-3xl border backdrop-blur-3xl transition-all hover:-translate-y-1 ${
@@ -67,7 +67,7 @@ export default function ArizaTuriTanlash() {
             </Link>
           </div>
 
-          <div>
+          <div className="anim-in" style={{ animationDelay: '0.1s' }}>
             <Link
               href="/imtiyozli-ariza"
               className={`group h-full flex flex-col justify-between p-6 sm:p-7 rounded-3xl border backdrop-blur-3xl transition-all hover:-translate-y-1 ${

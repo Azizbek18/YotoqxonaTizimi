@@ -211,7 +211,7 @@ export interface Database {
       floor_room_layout: Table<{
         id: string
         faculty: string
-        dorm_id: string | null
+        dorm_id: string
         floor_number: number
         room_number: string
         side: string

@@ -25,6 +25,10 @@ function throwForRoomError(error: unknown): never {
     // almost always a concurrent "tasdiqni bekor qilish".
     throw new ApiError(409, "Ariza holati o'zgardi — sahifani yangilang")
   }
+  if (code === 'P0007') {
+    // Shared dorm: the room sits on a floor another faculty has confirmed.
+    throw new ApiError(403, "Bu xona boshqa fakultetning qavatida — joylashtirib bo'lmaydi")
+  }
   throw error as Error
 }
 

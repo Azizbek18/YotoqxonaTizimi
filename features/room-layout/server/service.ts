@@ -139,9 +139,11 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
 
       // Students already sitting in these rooms (placed before the layout
       // existed) get their floor filled in right away.
+      const { dormId } = await repository.scopeFor(faculty)
       await Promise.all(
         [...new Set(rooms.map((room) => room.floor))].map((floor) =>
           repository.syncAssignedFloors(
+            dormId,
             floor,
             rooms.filter((room) => room.floor === floor).map((room) => room.roomNumber),
           ),
@@ -209,6 +211,12 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
         if (code === 'P0003') {
           throw new ApiError(409, "Band xonani sxemadan olib tashlab bo'lmaydi — avval talaba yoki yo'llanmani boshqa xonaga ko'chiring")
         }
+        if (code === 'P0007') {
+          throw new ApiError(403, "Bu qavat boshqa fakultetga tegishli — tarxini o'zgartirib bo'lmaydi")
+        }
+        if (code === 'P0002') {
+          throw new ApiError(400, "Sizga yotoqxona biriktirilmagan — avval yotoqxonani sozlang")
+        }
         throw error
       }
 
@@ -216,7 +224,8 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
       // committed at this point, so telling the admin "saqlanmadi" would be
       // a lie and re-saving is the correct recovery.
       try {
-        await repository.syncAssignedFloors(floorNumber, blocks.map((block) => block.roomNumber))
+        const { dormId } = await repository.scopeFor(faculty)
+        await repository.syncAssignedFloors(dormId, floorNumber, blocks.map((block) => block.roomNumber))
       } catch (error) {
         console.error('assigned_floor sync failed after layout save:', error)
         throw new ApiError(

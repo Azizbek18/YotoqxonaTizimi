@@ -233,5 +233,24 @@ export function createPermitAdminService(
       await audit()
       return { success: true as const, request }
     },
+
+    /**
+     * Superadmin cross-faculty step-in: approve / reject / cancel a permit
+     * for whichever faculty owns it — used when a faculty has no active dean
+     * and its queue would otherwise be stuck. Resolves the permit's own
+     * faculty, then defers to update() so every sameFaculty() guard and the
+     * audit log still bind to the real faculty.
+     */
+    async updateGlobal(value: unknown, actorId: string | null = null) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, 'So\'rov noto\'g\'ri')
+      const id = typeof (value as Record<string, unknown>).id === 'string'
+        ? String((value as Record<string, unknown>).id).trim()
+        : ''
+      if (!id) throw new ApiError(400, 'So\'rov noto\'g\'ri')
+      const existing = await repository.find(id)
+      if (!existing) throw new ApiError(404, 'Yo\'llanma topilmadi')
+      if (!existing.faculty) throw new ApiError(409, 'Bu yo\'llanmaga fakultet biriktirilmagan')
+      return this.update(existing.faculty, value, actorId)
+    },
   }
 }

@@ -142,6 +142,32 @@ describe('permit admin service — approve / reject audit + email', () => {
   })
 })
 
+describe('permit admin service — updateGlobal (superadmin step-in)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('acts as the permit\'s own faculty and audits under it', async () => {
+    const repo = repository({ find: vi.fn(async () => permit({ status: 'pending', faculty: 'Biologiya' })) })
+
+    await createPermitAdminService(repo).updateGlobal({ id: 'permit-1', action: 'approve' }, 'sa-1')
+
+    expect(sendPermitApprovedEmail).toHaveBeenCalled()
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: 'permit.approve', details: expect.objectContaining({ faculty: 'Biologiya' }) }),
+    )
+  })
+
+  it('404s a missing permit', async () => {
+    const repo = repository({ find: vi.fn(async () => null) })
+    await expect(createPermitAdminService(repo).updateGlobal({ id: 'x', action: 'approve' }))
+      .rejects.toMatchObject({ status: 404 })
+  })
+
+  it('rejects a malformed body', async () => {
+    await expect(createPermitAdminService(repository()).updateGlobal({ action: 'approve' }))
+      .rejects.toMatchObject({ status: 400 })
+  })
+})
+
 describe('permit admin service — overview', () => {
   beforeEach(() => vi.clearAllMocks())
 

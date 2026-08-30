@@ -82,7 +82,7 @@ export default function DekanLayout({
   // Dashboard); everything operational needs one faculty to act on.
   const SINGLE_FACULTY_PATHS = [
     '/dekan/3d-xonalar', '/dekan/xonalar', '/dekan/sozlamalar',
-    '/dekan/talabalar', '/dekan/arizalar', '/dekan/murojaatlar',
+    '/dekan/talabalar', '/dekan/murojaatlar',
     '/dekan/xodimlar', '/dekan/elonlar', '/dekan/hisobotlar',
   ]
   const needsFacultyPick = scopeIsGlobal && SINGLE_FACULTY_PATHS.includes(pathname)

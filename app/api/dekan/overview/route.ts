@@ -24,12 +24,13 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
-    // Approving/rejecting a permit is always a single-faculty action — a
-    // superadmin picks the faculty first (or acts from that faculty's queue).
+    const body = await request.json()
+    // A superadmin in global scope steps in for whichever faculty owns the
+    // permit — the queue of a dean-less faculty would be stuck otherwise.
     if (staff.superadminGlobal) {
-      return NextResponse.json({ error: 'Avval fakultetni tanlang', code: 'SCOPE_REQUIRED' }, { status: 400 })
+      return NextResponse.json(await createPermitAdminService().updateGlobal(body, staff.id))
     }
-    return NextResponse.json(await createPermitAdminService().update(staff.faculty, await request.json(), staff.id))
+    return NextResponse.json(await createPermitAdminService().update(staff.faculty, body, staff.id))
   } catch (error) {
     return errorResponse(error)
   }

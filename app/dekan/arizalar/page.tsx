@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, Suspense } from 'react'
+import React, { useCallback, useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { downloadXlsx } from '@/lib/spreadsheet-export'
@@ -77,8 +77,12 @@ function ArizalarContent() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<PermitRequest['status']>('pending')
+  const [facultyFilter, setFacultyFilter] = useState('')
   const [selectedReq, setSelectedReq] = useState<PermitRequest | null>(null)
-  const { faculty: dekanFaculty, resolved: facultyResolved } = useDekanScope()
+  const { faculty: dekanFaculty, role: dekanRole, scope: saScope, resolved: facultyResolved } = useDekanScope()
+  // Superadmin acting cross-faculty — one queue over all 13 faculties, with
+  // step-in approve/reject (server routes through updateGlobal()).
+  const isGlobal = dekanRole === 'admin' && (!saScope || saScope === '*')
 
   // Confirmation modals
   const [approveModalOpen, setApproveModalOpen] = useState(false)
@@ -100,11 +104,12 @@ function ArizalarContent() {
     window.open(result.url, '_blank', 'noopener,noreferrer')
   }
 
-  // Fetch all requests (scoped to this dekan's own faculty)
-  const fetchRequests = async (faculty: string | null) => {
+  // Faculty-scoped for a dekan; all 13 faculties for a global superadmin
+  // (the server returns overviewGlobal() off staff.superadminGlobal).
+  const fetchRequests = useCallback(async (faculty: string | null) => {
     setLoading(true)
     try {
-      if (!faculty) {
+      if (!faculty && !isGlobal) {
         setRequests([])
         setLoading(false)
         return
@@ -118,12 +123,12 @@ function ArizalarContent() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [isGlobal])
 
   useEffect(() => {
     if (!facultyResolved) return
     fetchRequests(dekanFaculty)
-  }, [facultyResolved, dekanFaculty])
+  }, [facultyResolved, dekanFaculty, fetchRequests])
 
   // Auto-open request from URL query params
   useEffect(() => {
@@ -136,16 +141,24 @@ function ArizalarContent() {
     }
   }, [searchParams, requests])
 
+  // Faculties present in the current queue (global mode only) — for the
+  // per-faculty dropdown filter.
+  const facultiesInQueue = isGlobal
+    ? Array.from(new Set(requests.map((r) => r.faculty)))
+        .sort((a, b) => permitFacultyLabel(a).localeCompare(permitFacultyLabel(b)))
+    : []
+
   // Filter requests
   const filteredRequests = requests.filter((req) => {
     const matchesStatus = req.status === statusFilter
+    const matchesFaculty = !facultyFilter || req.faculty === facultyFilter
     const matchesSearch =
       req.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.passport_series.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (req.jshshir?.includes(searchTerm) ?? false) ||
       req.faculty.toLowerCase().includes(searchTerm.toLowerCase())
 
-    return matchesStatus && matchesSearch
+    return matchesStatus && matchesFaculty && matchesSearch
   })
 
   // Export to Excel helper — boshqa hisobot eksportlari bilan bir xil dizayn:
@@ -281,9 +294,11 @@ function ArizalarContent() {
           <div>
             <h1 className={`text-xl font-bold tracking-tight ${ui.strong}`}>Yo‘llanmalar ro‘yxati</h1>
             <p className={`text-xs mt-1 ${ui.muted}`}>
-              {dekanFaculty
-                ? `${dekanFaculty.toUpperCase()} fakulteti bo'yicha kelib tushgan ruxsatnomalar`
-                : 'Kelib tushgan ruxsatnomalarni tekshirish va tasdiqlash'}
+              {isGlobal
+                ? 'Barcha fakultetlar bo‘yicha — dekani yo‘q fakultet arizalarini ham shu yerdan tasdiqlang'
+                : dekanFaculty
+                  ? `${dekanFaculty.toUpperCase()} fakulteti bo'yicha kelib tushgan ruxsatnomalar`
+                  : 'Kelib tushgan ruxsatnomalarni tekshirish va tasdiqlash'}
             </p>
           </div>
 
@@ -296,7 +311,7 @@ function ArizalarContent() {
           </button>
         </div>
 
-        {facultyResolved && !dekanFaculty && (
+        {facultyResolved && !dekanFaculty && !isGlobal && (
           <div className={`flex items-start gap-2 rounded-xl border p-4 text-xs font-medium ${
             isLight ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-amber-500/25 bg-amber-500/10 text-amber-200'
           }`}>
@@ -330,9 +345,24 @@ function ArizalarContent() {
             )}
           </div>
 
+          {isGlobal && facultiesInQueue.length > 0 && (
+            <select
+              value={facultyFilter}
+              onChange={(e) => { setFacultyFilter(e.target.value); setSelectedReq(null) }}
+              className={`w-full text-sm py-2.5 px-3 rounded-xl border transition-colors ${ui.input} ${ui.ring}`}
+            >
+              <option value="">Barcha fakultetlar ({requests.length})</option>
+              {facultiesInQueue.map((f) => (
+                <option key={f} value={f}>
+                  {permitFacultyLabel(f)} ({requests.filter((r) => r.faculty === f).length})
+                </option>
+              ))}
+            </select>
+          )}
+
           <div className={`flex flex-wrap gap-1 rounded-xl p-1 ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'}`}>
             {(Object.keys(STATUS_META) as PermitRequest['status'][]).map((status) => {
-              const count = requests.filter((r) => r.status === status).length
+              const count = requests.filter((r) => r.status === status && (!facultyFilter || r.faculty === facultyFilter)).length
               const meta = STATUS_META[status]
               const chip = statusChip(meta.tone, isLight)
               const isActive = statusFilter === status

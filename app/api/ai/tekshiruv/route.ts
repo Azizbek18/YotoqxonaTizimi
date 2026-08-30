@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     const fileBuffer = Buffer.from(arrayBuffer)
     const fileRule = PERMIT_FILE_RULES[file.type]
     if (!fileRule || !hasAllowedSignature(fileBuffer, fileRule.signatures) || (file.type === 'image/webp' && fileBuffer.subarray(8, 12).toString('ascii') !== 'WEBP')) {
-      return NextResponse.json({ error: 'Fayl tarkibi e’lon qilingan formatga mos emas' }, { status: 400 })
+      return NextResponse.json({ error: 'Chek rasmining formati qo‘llab-quvvatlanmaydi. iPhone rasmi (HEIC) bo‘lsa JPG ga o‘giring yoki skrinshot yuklang — PDF, JPG, PNG qabul qilinadi.' }, { status: 400 })
     }
     const fileHash = createHash('sha256').update(fileBuffer).digest('hex')
     const base64Data = fileBuffer.toString('base64')

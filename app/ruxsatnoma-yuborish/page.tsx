@@ -17,6 +17,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
 import { isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
+import { prepareUploadFile } from '@/lib/prepare-upload'
 
 interface Particle {
   id: number
@@ -49,7 +50,8 @@ export default function RuxsatnomaYuborish() {
   const [direction, setDirection] = useState('')
   const [course, setCourse] = useState('1')
   const [file, setFile] = useState<File | null>(null)
-  
+  const [preparingFile, setPreparingFile] = useState(false)
+
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
@@ -310,15 +312,25 @@ export default function RuxsatnomaYuborish() {
     }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const selected = e.target.files[0]
-      if (selected.size > 4 * 1024 * 1024) {
-        showToast('error', "Fayl o'lchami 4 MB dan oshmasligi kerak!")
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0]
+    e.target.value = '' // let the same file be re-picked after an error
+    if (!selected) return
+
+    setPreparingFile(true)
+    try {
+      // iPhone HEIC → JPEG, plus a downscale for oversized camera shots, so
+      // an honest yo'llanma photo isn't bounced by the server format/size check.
+      const prepared = await prepareUploadFile(selected, { allowPdf: true, maxDimension: 2200 })
+      if (!prepared.ok) {
+        showToast('error', prepared.message)
         return
       }
-      setFile(selected)
+      setFile(prepared.file)
       playSound('success')
+      if (prepared.changed) showToast('success', 'Rasm yuklashga tayyorlandi')
+    } finally {
+      setPreparingFile(false)
     }
   }
 
@@ -351,6 +363,10 @@ export default function RuxsatnomaYuborish() {
   }
 
   const validateStep3 = () => {
+    if (preparingFile) {
+      showToast('error', 'Rasm hali tayyorlanmoqda — biroz kuting.')
+      return false
+    }
     if (!passportSeries || !jshshir || !file) {
       showToast('error', "Iltimos, pasport ma'lumotlarini to'ldiring va faylni yuklang!")
       return false
@@ -1419,17 +1435,28 @@ export default function RuxsatnomaYuborish() {
                               type="file"
                               accept=".pdf,image/*"
                               onChange={handleFileChange}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              disabled={preparingFile}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait"
                               required
                             />
                             <div className="flex flex-col items-center justify-center gap-1">
-                              <Upload className={`h-6 w-6 transition-all duration-300 ${file ? 'text-emerald-400 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'text-slate-500'}`} />
-                              <span className="text-xs font-black tracking-wide">
-                                {file ? file.name : "Ruxsatnoma faylini tanlang"}
-                              </span>
-                              <span className="text-[10px] text-slate-500 font-sans">
-                                {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : "PDF, PNG, JPG (Maks. 4 MB)"}
-                              </span>
+                              {preparingFile ? (
+                                <>
+                                  <div className="h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                  <span className="text-xs font-black tracking-wide">Rasm tayyorlanmoqda…</span>
+                                  <span className="text-[10px] text-slate-500 font-sans">iPhone rasmi biroz vaqt olishi mumkin</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className={`h-6 w-6 transition-all duration-300 ${file ? 'text-emerald-400 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'text-slate-500'}`} />
+                                  <span className="text-xs font-black tracking-wide">
+                                    {file ? file.name : "Ruxsatnoma faylini tanlang"}
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 font-sans">
+                                    {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : "PDF, PNG, JPG (Maks. 4 MB) — iPhone rasmi ham bo‘ladi"}
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </motion.div>
                         </div>

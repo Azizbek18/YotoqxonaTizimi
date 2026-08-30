@@ -87,7 +87,7 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       }
       const buffer = Buffer.from(await file.arrayBuffer())
       if (!hasAllowedSignature(buffer, rule.signatures) || (file.type === 'image/webp' && buffer.subarray(8, 12).toString('ascii') !== 'WEBP')) {
-        throw new ApiError(400, 'Fayl tarkibi e’lon qilingan formatga mos emas')
+        throw new ApiError(400, 'Chek rasmining formati qo‘llab-quvvatlanmaydi. iPhone rasmi (HEIC) bo‘lsa JPG ga o‘giring yoki skrinshot yuklang — PDF, JPG, PNG qabul qilinadi.')
       }
 
       const receiptHash = createHash('sha256').update(buffer).digest('hex')

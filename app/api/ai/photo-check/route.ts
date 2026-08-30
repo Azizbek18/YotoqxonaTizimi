@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer())
     const rule = PERMIT_FILE_RULES[file.type]
     if (!rule || !hasAllowedSignature(buffer, rule.signatures) || (file.type === 'image/webp' && buffer.subarray(8, 12).toString('ascii') !== 'WEBP')) {
-      return NextResponse.json({ error: 'Rasm faylining haqiqiy formati noto‘g‘ri' }, { status: 400 })
+      return NextResponse.json({ error: 'Rasm formati qo‘llab-quvvatlanmaydi. iPhone rasmi (HEIC) bo‘lsa JPG ga o‘giring yoki skrinshot yuklang.' }, { status: 400 })
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY

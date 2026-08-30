@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const rule = PERMIT_FILE_RULES[file.type]
     const buffer = Buffer.from(await file.arrayBuffer())
     if (!rule || !hasAllowedSignature(buffer, rule.signatures)) {
-      return NextResponse.json({ error: 'Fayl tarkibi e’lon qilingan rasm formatiga mos emas' }, { status: 400 })
+      return NextResponse.json({ error: 'Rasm formati qo‘llab-quvvatlanmaydi. iPhone rasmi (HEIC) bo‘lsa JPG ga o‘giring yoki skrinshot yuklang.' }, { status: 400 })
     }
     if (file.type === 'image/webp' && buffer.subarray(8, 12).toString('ascii') !== 'WEBP') {
       return NextResponse.json({ error: 'WEBP fayl imzosi noto‘g‘ri' }, { status: 400 })

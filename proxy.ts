@@ -45,14 +45,18 @@ export function publicEntryRedirectTarget(
   return null
 }
 
+// A superadmin's `/dekan/dashboard` only makes sense once they've picked a
+// faculty to act as (sa_scope cookie = a faculty code). In global scope
+// (cookie `*`, empty or unset) the faculty dashboard has nothing to show, so
+// send them to the global oversight page instead. Any specific faculty —
+// not just AMIT — is a valid scope and passes through.
 export function superadminDashboardRedirectTarget(
   role: AppRole,
   path: string,
   scope: string | null,
 ): string | null {
-  return path === '/dekan/dashboard' && role === 'admin' && scope !== 'amit'
-    ? '/dekan/dekanlar'
-    : null
+  if (path !== '/dekan/dashboard' || role !== 'admin') return null
+  return !scope || scope === '*' ? '/dekan/dekanlar' : null
 }
 
 export async function proxy(request: NextRequest) {
@@ -167,13 +171,14 @@ export async function proxy(request: NextRequest) {
     return redirect(ADMIN_ROUTE_REDIRECTS[path] ?? '/dekan/dekanlar')
   }
 
-  // Existing superadmin tabs and old bookmarks may still point at the
-  // legacy AMIT dashboard. Move those to global oversight. AMIT remains
-  // intentionally reachable only through its explicitly labelled menu URL.
+  // A global-scope superadmin who lands on /dekan/dashboard (an old bookmark,
+  // or a stale tab) is bounced to global oversight; once they've picked a
+  // faculty via the "Kirish" button or the sidebar switcher, the sa_scope
+  // cookie carries that faculty and the dashboard opens scoped to it.
   const globalDashboardRedirect = superadminDashboardRedirectTarget(
     userRole,
     path,
-    request.nextUrl.searchParams.get('scope'),
+    request.cookies.get('sa_scope')?.value ?? null,
   )
   if (globalDashboardRedirect) return redirect(globalDashboardRedirect)
 

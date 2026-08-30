@@ -24,15 +24,28 @@ describe('public entry auth redirects', () => {
 })
 
 describe('superadmin dashboard redirects', () => {
-  it('moves an old AMIT dashboard URL to global oversight', () => {
+  it('sends a global-scope superadmin (no cookie) to oversight', () => {
     expect(superadminDashboardRedirectTarget('admin', '/dekan/dashboard', null)).toBe('/dekan/dekanlar')
   })
 
-  it('keeps the explicitly selected AMIT management URL available', () => {
+  it('sends an explicit global scope (*) to oversight', () => {
+    expect(superadminDashboardRedirectTarget('admin', '/dekan/dashboard', '*')).toBe('/dekan/dekanlar')
+  })
+
+  it('lets a superadmin who picked AMIT open the dashboard', () => {
     expect(superadminDashboardRedirectTarget('admin', '/dekan/dashboard', 'amit')).toBeNull()
+  })
+
+  it('lets a superadmin who picked any other faculty open the dashboard', () => {
+    // regression: "Kirish" on a non-AMIT faculty card used to bounce back
+    expect(superadminDashboardRedirectTarget('admin', '/dekan/dashboard', 'iqtisodiyot')).toBeNull()
   })
 
   it('never redirects a faculty dekan away from their dashboard', () => {
     expect(superadminDashboardRedirectTarget('dekan', '/dekan/dashboard', null)).toBeNull()
+  })
+
+  it('ignores non-dashboard paths', () => {
+    expect(superadminDashboardRedirectTarget('admin', '/dekan/dekanlar', null)).toBeNull()
   })
 })

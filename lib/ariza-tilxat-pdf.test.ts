@@ -38,4 +38,16 @@ describe('ariza-tilxat pdf', () => {
     const doc = await generateArizaTilxatPdf({ ...DATA, phone: '', relativePhone: '', ttjName: '' })
     expect(doc.getNumberOfPages()).toBe(2)
   })
+
+  it('stays 2 pages and fits the sheet even with a long name + long faculty', async () => {
+    const doc = await generateArizaTilxatPdf({
+      ...DATA,
+      fullName: 'Abdurahmonov-Toshkentskiy Shohruhmirzobek Abdusalomjonovich',
+      facultyLabel: 'Ijtimoiy-gumanitar fanlar va xorijiy tillar filologiyasi',
+    })
+    expect(doc.getNumberOfPages()).toBe(2)
+    const fit = (doc as unknown as { __fit: { p1: number; p2: number } }).__fit
+    expect(fit.p1).toBeLessThan(289)
+    expect(fit.p2).toBeLessThan(289)
+  })
 })

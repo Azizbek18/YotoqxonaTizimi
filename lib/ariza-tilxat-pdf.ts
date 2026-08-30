@@ -130,10 +130,10 @@ function header(c: Cursor, faculty: string, course: string, name: string) {
   textBlock(c, `Bakalavriat kunduzgi ta'lim yo'nalishi ${course}-kurs talabasi ${name}`, { size: 10.5, align: 'right', gap: 2 })
 }
 
-export async function generateArizaTilxatPdf(data: ArizaTilxatData): Promise<Doc> {
-  const { jsPDF } = await import('jspdf')
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-
+// Draw both pages at a given vertical scale (1 = default). Returns how far
+// down text reached on each page so the caller can shrink and re-run if a
+// long faculty name / long full name would push a signature off the sheet.
+function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; p2: number } {
   const name = normalizePdfText(data.fullName).trim() || '______________________________'
   const faculty = normalizePdfText(data.facultyLabel).trim() || '____________________________________'
   const course = String(data.course ?? '').trim() || '__'
@@ -145,43 +145,46 @@ export async function generateArizaTilxatPdf(data: ArizaTilxatData): Promise<Doc
   const budget = data.studyType === 'grant' ? 'X' : '__'
   const contract = data.studyType === 'kontrakt' ? 'X' : '__'
   const year = new Date().getFullYear()
+  const g = (mm: number) => mm * s // scale a vertical gap
 
   // ---------- Page 1: ARIZA ----------
-  const p1 = makeCursor(doc, 18)
+  const p1 = makeCursor(doc, 16)
   header(p1, faculty, course, name)
   centerTitle(p1, 'A R I Z A')
 
+  const bodySize = 11.5 * s
   textBlock(p1,
     `Men ${name} hozirgi kunda Mirzo Ulug'bek nomidagi O'zbekiston Milliy universitetining ${faculty} fakulteti bakalavriat kunduzgi ta'lim yo'nalishi ${course}-kursida ( ${budget} budjet ) ( ${contract} to'lov-shartnoma ) asosida tahsil olaman.`,
-    { indent: 1, align: 'justify', gap: 2 })
+    { indent: 1, align: 'justify', size: bodySize, gap: g(2) })
   textBlock(p1,
     `${year}/${year + 1} o'quv yilida an'anaviy dars-mashg'ulotlariga qatnashish uchun men ${country} davlati ${region} viloyatidan kelganligim, Toshkent shahrida turar joyim yo'qligi sababli, universitetga qarashli ${ttj}-sonli talabalar turar joyidan yashash uchun joy berishingizni va u yerga ro'yhatga olishingizni so'rayman.`,
-    { indent: 1, align: 'justify', gap: 2 })
+    { indent: 1, align: 'justify', size: bodySize, gap: g(2) })
   textBlock(p1,
     `Universitet "Talabalar turar joyi to'g'risida"gi Nizom, "Ichki tartib qoidalari", "Odob-ahloq qoidalari" va "Talabalar turar joyi Ichki tartib qoidalari"ga to'liq rioya qilib, talabalar turar joylari uchun universitet tomonidan belgilangan oylik ijara to'lovini o'quv yili mobaynida o'rnatilgan tartibda to'lash, shaxsiy gigiena, sog'lom turmush tarzi talablariga qat'iy amal qilib yashashga va'da beraman.`,
-    { indent: 1, align: 'justify', gap: 2 })
+    { indent: 1, align: 'justify', size: bodySize, gap: g(2) })
   textBlock(p1,
     `Pasportim va ijtimoiy mezonlarga muvofiqligimni tasdiqlovchi hujjatlar nusxalarini ilova qilmoqdaman. Ushbu ariza va unga ilova qilinayotgan hujjatlarda ko'rsatilgan barcha ma'lumotlarning haqiqiyligiga shaxsan o'zim javobgarman. Agar men tomonimdan talabalar turar joyi ichki tartib qoidalari buzilsa, u holda menga Nizomda belgilangan tartibda chora ko'rilishiga roziman.`,
-    { indent: 1, align: 'justify', gap: 3 })
+    { indent: 1, align: 'justify', size: bodySize, gap: g(3) })
 
   signatureRow(p1)
-  doc.setFont('times', 'normal'); doc.setFontSize(12)
+  doc.setFont('times', 'normal'); doc.setFontSize(11)
   doc.text(normalizePdfText(`Talaba tel: ${phone ? `+998 ${phone}` : '__________________'}`), p1.left, p1.y)
-  p1.y += 5.5
+  p1.y += g(5)
   doc.text(normalizePdfText(`Yaqin qarindoshi tel: ${relativePhone || '__________________'}`), p1.left, p1.y)
   doc.text('_____________', p1.right, p1.y, { align: 'right' })
-  p1.y += 3.8
+  p1.y += 3.5
   doc.setFontSize(9); doc.text('Sana', p1.right - 4, p1.y, { align: 'right' })
-  p1.y += 8
+  p1.y += g(6)
 
-  textBlock(p1, 'Eslatma:', { size: 10, style: 'bold', gap: 0.5 })
-  for (const note of ARIZA_NOTES) textBlock(p1, note, { size: 8.5, style: 'italic', gap: 0.8 })
+  textBlock(p1, 'Eslatma:', { size: 9.5, style: 'bold', gap: 0.5 })
+  for (const note of ARIZA_NOTES) textBlock(p1, note, { size: 8, style: 'italic', gap: 0.6 })
 
-  p1.y = Math.max(p1.y + 4, p1.pageH - 30)
-  doc.setFont('times', 'normal'); doc.setFontSize(11)
-  doc.text('Ariza No _________', p1.right - 60, p1.y)
-  p1.y += 5.5
-  doc.text('Berildi _____ qavat _____ xona', p1.right - 60, p1.y)
+  p1.y += g(4)
+  doc.setFont('times', 'normal'); doc.setFontSize(10.5)
+  doc.text('Ariza No _________', p1.right - 58, p1.y)
+  p1.y += 5
+  doc.text('Berildi _____ qavat _____ xona', p1.right - 58, p1.y)
+  const p1End = p1.y
 
   // ---------- Page 2: TILXAT ----------
   doc.addPage()
@@ -191,19 +194,38 @@ export async function generateArizaTilxatPdf(data: ArizaTilxatData): Promise<Doc
 
   textBlock(p2,
     `Men ${name} ${faculty} fakulteti bakalavriat ta'lim yo'nalishi ${course}-kurs talabasi ${ttj}-sonli Talabalar turar joyida yashash davrimda quyidagilarga:`,
-    { indent: 1, align: 'justify', size: 11, gap: 2 })
+    { indent: 1, align: 'justify', size: bodySize, gap: g(2) })
 
-  bulletList(p2, TILXAT_RULES)
+  bulletList(p2, TILXAT_RULES, 10 * s)
 
-  p2.y += 1
+  p2.y += g(1)
   textBlock(p2,
     `Agar men ushbu qoidalarga amal qilmasam yoki boshqa tarzda bo'yin tovlasam Nizomda belgilangan tartibda menga chora ko'rilishi xaqida ogohlantirildim.`,
-    { align: 'justify', size: 11, gap: 2 })
+    { align: 'justify', size: bodySize, gap: g(2) })
 
   signatureRow(p2)
-  doc.setFontSize(12); doc.text('_____________', p2.right, p2.y, { align: 'right' })
-  p2.y += 3.8
+  doc.setFontSize(11); doc.text('_____________', p2.right, p2.y, { align: 'right' })
+  p2.y += 3.5
   doc.setFontSize(9); doc.text('Sana', p2.right - 4, p2.y, { align: 'right' })
 
+  return { p1: p1End, p2: p2.y }
+}
+
+export async function generateArizaTilxatPdf(data: ArizaTilxatData): Promise<Doc & { __fit?: { p1: number; p2: number; scale: number } }> {
+  const { jsPDF } = await import('jspdf')
+  let doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const limit = doc.internal.pageSize.getHeight() - 8 // 297 - 8mm bottom safety
+
+  // First pass at full size; if a long name / faculty pushed either page's
+  // last line past the sheet, redraw everything a little tighter (down to 82%).
+  let fit = renderPages(doc, data, 1)
+  let scale = 1
+  const worst = Math.max(fit.p1, fit.p2)
+  if (worst > limit) {
+    scale = Math.max(0.82, (limit - 20) / (worst - 20))
+    doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    fit = renderPages(doc, data, scale)
+  }
+  ;(doc as Doc & { __fit?: unknown }).__fit = { ...fit, scale }
   return doc
 }

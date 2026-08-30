@@ -66,6 +66,9 @@ export default function DekanLayout({
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
   const ui = dekanUI(isLight)
+  const isSuperadmin = dekanRole === 'admin'
+  const isGlobalSuperadminPage = isSuperadmin
+    && (pathname === '/dekan/dekanlar' || pathname === '/dekan/yotoqxonalar')
 
   useEffect(() => {
     const mountId = window.setTimeout(() => setMounted(true), 0)
@@ -77,6 +80,11 @@ export default function DekanLayout({
     let active = true
 
     async function fetchPendingPermits() {
+      if (dekanRole === 'admin') {
+        setPendingCount(0)
+        setRecentPending([])
+        return
+      }
       if (!dekanFaculty) {
         setPendingCount(0)
         setRecentPending([])
@@ -111,14 +119,14 @@ export default function DekanLayout({
       active = false
       clearInterval(interval)
     }
-  }, [facultyResolved, dekanFaculty])
+  }, [facultyResolved, dekanFaculty, dekanRole])
 
   // The dekan's dorm + floor partition. Polled slowly (60s) alongside the
   // permit poll so an incoming floor claim from the co-dekan shows up in
   // the bell without a refresh. A fetch error leaves `dekanDorm` untouched
   // so a network blip never locks a set-up dekan into the onboarding gate.
   useEffect(() => {
-    if (!facultyResolved || !dekanFaculty) return
+    if (!facultyResolved || !dekanFaculty || dekanRole === 'admin') return
     let active = true
     async function loadDorm() {
       const session = await getSafeSession()
@@ -136,7 +144,7 @@ export default function DekanLayout({
       active = false
       clearInterval(interval)
     }
-  }, [facultyResolved, dekanFaculty])
+  }, [facultyResolved, dekanFaculty, dekanRole])
 
   const handleResolveClaim = async (floor: number, accept: boolean) => {
     try {
@@ -153,6 +161,10 @@ export default function DekanLayout({
   // right after the dekan saves it in Sozlamalar and navigates away,
   // rather than staying stale until a hard refresh.
   useEffect(() => {
+    if (dekanRole === 'admin') {
+      setTtjNameMissing(false)
+      return
+    }
     let active = true
     async function checkTtjName() {
       const session = await getSafeSession()
@@ -166,7 +178,7 @@ export default function DekanLayout({
     }
     void checkTtjName()
     return () => { active = false }
-  }, [pathname])
+  }, [pathname, dekanRole])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -179,28 +191,26 @@ export default function DekanLayout({
   }, [])
 
   const menuItems = useMemo(() => ([
-    { label: 'Dashboard', caption: 'Umumiy hisobot', href: '/dekan/dashboard', icon: LayoutDashboard },
-    { label: 'Yo‘llanmalar', caption: 'Yangi arizalar', href: '/dekan/arizalar', icon: FileText, badge: pendingCount > 0 ? pendingCount : undefined },
-    { label: 'Xonalar xaritasi', caption: 'Joylashtirish holati', href: '/dekan/xonalar', icon: Boxes },
-    { label: '3D Xonalar', caption: 'Qavat tarxi quruvchisi', href: '/dekan/3d-xonalar', icon: Layers3 },
-    { label: 'Talabalar', caption: 'Fakultet talabalari', href: '/dekan/talabalar', icon: Users },
+    ...(isSuperadmin
+      ? [
+          { label: 'Bosh nazorat', caption: 'Barcha fakultetlar', href: '/dekan/dekanlar', icon: UserRoundSearch },
+          { label: 'Yotoqxonalar', caption: 'Barcha binolar', href: '/dekan/yotoqxonalar', icon: Building2 },
+          { label: 'AMIT boshqaruvi', caption: 'Biriktirilgan fakultet', href: '/dekan/dashboard', icon: LayoutDashboard },
+        ]
+      : [{ label: 'Dashboard', caption: 'Umumiy hisobot', href: '/dekan/dashboard', icon: LayoutDashboard }]),
+    { label: 'Yo‘llanmalar', caption: isSuperadmin ? 'AMIT arizalari' : 'Yangi arizalar', href: '/dekan/arizalar', icon: FileText, badge: pendingCount > 0 ? pendingCount : undefined },
+    { label: 'Xonalar xaritasi', caption: isSuperadmin ? 'AMIT joylashuvi' : 'Joylashtirish holati', href: '/dekan/xonalar', icon: Boxes },
+    { label: '3D Xonalar', caption: isSuperadmin ? 'AMIT qavat tarxi' : 'Qavat tarxi quruvchisi', href: '/dekan/3d-xonalar', icon: Layers3 },
+    { label: 'Talabalar', caption: isSuperadmin ? 'AMIT talabalari' : 'Fakultet talabalari', href: '/dekan/talabalar', icon: Users },
     // Faculty-admin tools. The page bodies are the /admin/* implementations
     // (re-exported under /dekan/*), so they render inside THIS panel's chrome;
     // their /api/admin/* routes are already scoped to the dekan's own faculty.
-    { label: 'Arizalar', caption: 'Talaba murojaatlari', href: '/dekan/murojaatlar', icon: ShieldAlert },
-    { label: 'Tarbiyachilar', caption: 'Xodim hisoblari', href: '/dekan/xodimlar', icon: Building2 },
-    { label: 'E‘lonlar', caption: 'Fakultet talabalariga', href: '/dekan/elonlar', icon: Megaphone },
-    { label: 'Hisobotlar', caption: 'Excel eksport', href: '/dekan/hisobotlar', icon: FileSpreadsheet },
-    // Superadmin only: cross-faculty oversight, independent of the admin
-    // account's legacy `faculty = amit` assignment.
-    ...(dekanRole === 'admin'
-      ? [
-          { label: 'Dekanlar', caption: 'Barcha fakultetlar nazorati', href: '/dekan/dekanlar', icon: UserRoundSearch },
-          { label: 'Yotoqxonalar', caption: 'Barcha binolar (superadmin)', href: '/dekan/yotoqxonalar', icon: Building2 },
-        ]
-      : []),
-    { label: 'Sozlamalar', caption: 'Tizim boshqaruvi', href: '/dekan/sozlamalar', icon: Settings },
-  ]), [pendingCount, dekanRole])
+    { label: 'Arizalar', caption: isSuperadmin ? 'AMIT murojaatlari' : 'Talaba murojaatlari', href: '/dekan/murojaatlar', icon: ShieldAlert },
+    { label: 'Tarbiyachilar', caption: isSuperadmin ? 'AMIT xodimlari' : 'Xodim hisoblari', href: '/dekan/xodimlar', icon: Building2 },
+    { label: 'E‘lonlar', caption: isSuperadmin ? 'AMIT talabalari uchun' : 'Fakultet talabalariga', href: '/dekan/elonlar', icon: Megaphone },
+    { label: 'Hisobotlar', caption: isSuperadmin ? 'AMIT Excel eksporti' : 'Excel eksport', href: '/dekan/hisobotlar', icon: FileSpreadsheet },
+    { label: 'Sozlamalar', caption: isSuperadmin ? 'AMIT sozlamalari' : 'Tizim boshqaruvi', href: '/dekan/sozlamalar', icon: Settings },
+  ]), [pendingCount, isSuperadmin])
 
   const handleLogout = async () => {
     try {
@@ -225,7 +235,7 @@ export default function DekanLayout({
   // A dekan with a faculty but no dorm can't do anything useful yet —
   // block the panel until they name their building. Only an explicit
   // `null` (checked, missing) gates; `undefined` (still loading) doesn't.
-  if (facultyResolved && dekanFaculty && dekanDorm === null) {
+  if (facultyResolved && dekanRole !== 'admin' && dekanFaculty && dekanDorm === null) {
     return (
       <div className={`min-h-screen ${ui.shell}`}>
         <DormOnboarding
@@ -252,11 +262,11 @@ export default function DekanLayout({
 
           {!compact && (
             <div className="min-w-0 flex-1">
-              <h2 className={`text-xs font-bold tracking-tight leading-snug truncate ${ui.strong}`} title={dekanName || 'Dekan'}>
-                {dekanName || 'Dekan Boshqaruvi'}
+              <h2 className={`text-xs font-bold tracking-tight leading-snug truncate ${ui.strong}`} title={dekanName || (isSuperadmin ? 'Superadmin' : 'Dekan')}>
+                {dekanName || (isSuperadmin ? 'Superadmin Boshqaruvi' : 'Dekan Boshqaruvi')}
               </h2>
-              <p className={`text-[10px] font-medium truncate ${ui.muted}`} title={dekanFaculty || 'Fakultet'}>
-                {dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet sozlanmagan'}
+              <p className={`text-[10px] font-medium truncate ${ui.muted}`} title={isSuperadmin ? 'Superadmin' : dekanFaculty || 'Fakultet'}>
+                {isSuperadmin ? 'SUPERADMIN' : dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet sozlanmagan'}
               </p>
             </div>
           )}
@@ -412,7 +422,9 @@ export default function DekanLayout({
               </button>
 
               <div className="min-w-0">
-                <p className={`text-[10px] font-bold uppercase tracking-[0.22em] ${ui.accentText}`}>Dekan Paneli</p>
+                <p className={`text-[10px] font-bold uppercase tracking-[0.22em] ${ui.accentText}`}>
+                  {isSuperadmin ? 'Superadmin paneli' : 'Dekan paneli'}
+                </p>
                 <h1 className={`truncate text-base sm:text-lg font-bold tracking-tight ${ui.strong}`}>
                   {activeItem?.label ?? 'Yotoqxona boshqaruvi'}
                 </h1>
@@ -423,11 +435,11 @@ export default function DekanLayout({
               <div className={`hidden md:flex items-center gap-2 rounded-lg border px-3 py-2 ${ui.inset} ${ui.muted}`}>
                 <Building2 size={14} />
                 <span className="text-[11px] font-semibold truncate max-w-[160px]">
-                  {dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet yo‘q'}
+                  {isGlobalSuperadminPage ? 'BARCHA FAKULTETLAR' : dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet yo‘q'}
                 </span>
               </div>
 
-              <div className="relative" ref={notifRef}>
+              {!isSuperadmin && <div className="relative" ref={notifRef}>
                 <button
                   onClick={() => setNotifOpen((prev) => !prev)}
                   className={`relative rounded-lg border p-2.5 transition-colors ${ui.btnGhost}`}
@@ -502,7 +514,7 @@ export default function DekanLayout({
                     </Link>
                   </div>
                 )}
-              </div>
+              </div>}
             </div>
           </div>
         </header>

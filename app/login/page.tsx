@@ -105,9 +105,11 @@ function LoginContent() {
       show3DToast('success', 'Xush kelibsiz!')
 
       setTimeout(() => {
-        // Rol asosida yo'naltirish. `admin` — nafaqaga chiqqan rol: alohida
-        // panel yo'q, dekan paneliga tushadi.
-        if (userRole === 'admin' || userRole === 'dekan') {
+        // `admin` is the cross-faculty superadmin. It shares the dekan shell,
+        // but must land on global oversight rather than the legacy AMIT view.
+        if (userRole === 'admin') {
+          router.push('/dekan/dekanlar')
+        } else if (userRole === 'dekan') {
           router.push('/dekan/dashboard')
         } else if (userRole === 'tarbiyachi') {
           router.push('/tarbiyachi/dashboard')

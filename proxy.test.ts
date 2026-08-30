@@ -12,8 +12,8 @@ describe('public entry auth redirects', () => {
   })
 
   it('redirects active roles to their own dashboard', () => {
-    // `admin` is retired — its home is the dekan panel now (see ROLE_HOME).
-    expect(publicEntryRedirectTarget(true, 'admin', '/login')).toBe('/dekan/dashboard')
+    // `admin` is the global superadmin and must not land in AMIT scope.
+    expect(publicEntryRedirectTarget(true, 'admin', '/login')).toBe('/dekan/dekanlar')
     expect(publicEntryRedirectTarget(true, 'dekan', '/login')).toBe('/dekan/dashboard')
     expect(publicEntryRedirectTarget(true, 'talaba', '/')).toBe('/talaba/dashboard')
   })

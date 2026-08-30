@@ -4,11 +4,10 @@ import { findRoleByUserId, type AppRole } from '@/lib/auth-tables'
 import type { Database } from '@/types/database.generated'
 
 const ROLE_HOME: Record<Exclude<AppRole, null>, string> = {
-  // `admin` is a retired role — the standalone /admin panel is gone and its
-  // pages now live under /dekan. The role still exists in the DB/RLS and is
-  // still accepted by /api/admin/* and the tarbiyachi-shared guards, so an
-  // existing admin account keeps working; it just lands in the dekan panel.
-  admin: '/dekan/dashboard',
+  // The standalone /admin shell is retired, but the role is the active
+  // superadmin identity. Its home is global oversight, never the legacy
+  // AMIT-scoped faculty dashboard.
+  admin: '/dekan/dekanlar',
   tarbiyachi: '/tarbiyachi/dashboard',
   dekan: '/dekan/dashboard',
   talaba: '/talaba/dashboard',
@@ -155,7 +154,7 @@ export async function proxy(request: NextRequest) {
   // `admin` role itself is untouched (DB/RLS, /api/admin/*, tarbiyachi
   // guards) — only the panel and its entry points are gone.
   if (path === '/admin' || path.startsWith('/admin/')) {
-    return redirect(ADMIN_ROUTE_REDIRECTS[path] ?? '/dekan/dashboard')
+    return redirect(ADMIN_ROUTE_REDIRECTS[path] ?? '/dekan/dekanlar')
   }
 
   // ========================

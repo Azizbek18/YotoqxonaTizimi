@@ -4,6 +4,8 @@ import { sendPermitApprovalCancelledEmail, sendPermitApprovedEmail } from '@/lib
 import { writeAuditLog } from '@/lib/audit-log'
 import { createRoomLayoutRepository } from '@/features/room-layout/server/repository'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
+import { summariseBeds } from '@/lib/room-capacity'
+import { PERMIT_FACULTIES } from '@/lib/faculties'
 import type { DekanOverview } from '../types'
 import { createPermitAdminRepository, type PermitAdminRepository } from './repository'
 
@@ -71,18 +73,7 @@ export function createPermitAdminService(
       studentsWithRooms.forEach((user) => bumpRoom(user.room_number))
       approvedPermitsWithRooms.forEach((permit) => bumpRoom(permit.room_number))
 
-      let availableBeds = 0
-      let freeBeds = 0
-      let frozenRoomCount = 0
-      for (const room of scopedRooms) {
-        if (room.frozen) {
-          frozenRoomCount += 1
-          continue
-        }
-        const capacity = room.capacity ?? defaultCapacity
-        availableBeds += capacity
-        freeBeds += Math.max(0, capacity - (occByRoom.get(room.room_number) ?? 0))
-      }
+      const { availableBeds, freeBeds, frozenRoomCount } = summariseBeds(scopedRooms, defaultCapacity, occByRoom)
 
       const courses: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
       const faculties: Record<string, number> = Object.create(null)
@@ -112,6 +103,66 @@ export function createPermitAdminService(
           courseDistribution: Object.entries(courses).map(([course, talabalar]) => ({ course: `${course}-kurs`, talabalar })),
           facultyDistribution: Object.entries(faculties).map(([name, talabalar]) => ({ name, talabalar })),
           recentRequests: permits.filter((permit) => permit.status === 'pending').slice(0, 5),
+        },
+      }
+    },
+
+    /**
+     * Cross-faculty overview for a superadmin in global scope. Merges every
+     * faculty's `overview()` — 13 faculties of tiny early-stage data, so the
+     * fan-out is fine; revisit with an aggregation RPC at scale.
+     */
+    async overviewGlobal(): Promise<DekanOverview> {
+      const slices = await Promise.all(
+        PERMIT_FACULTIES.map(async ({ value, label }) => ({ value, label, data: await this.overview(value) })),
+      )
+
+      const sum = (pick: (d: DekanOverview['dashboard']) => number) =>
+        slices.reduce((total, s) => total + pick(s.data.dashboard), 0)
+      const mergeDist = (key: 'courseDistribution' | 'facultyDistribution') => {
+        const acc = new Map<string, number>()
+        for (const s of slices) {
+          for (const row of s.data.dashboard[key]) {
+            const label = key === 'courseDistribution'
+              ? (row as { course: string }).course
+              : (row as { name: string }).name
+            acc.set(label, (acc.get(label) ?? 0) + row.talabalar)
+          }
+        }
+        return [...acc.entries()].map(([k, talabalar]) =>
+          key === 'courseDistribution' ? { course: k, talabalar } : { name: k, talabalar })
+      }
+
+      return {
+        faculty: '*',
+        perFaculty: slices.map((s) => ({
+          faculty: s.value,
+          facultyLabel: s.label,
+          pendingCount: s.data.dashboard.pendingCount,
+          activeStudentsCount: s.data.dashboard.activeStudentsCount,
+          totalOccupiedBeds: s.data.dashboard.totalOccupiedBeds,
+          availableBeds: s.data.dashboard.availableBeds,
+          freeBeds: s.data.dashboard.freeBeds,
+        })),
+        requests: slices.flatMap((s) => s.data.requests),
+        usersWithRooms: slices.flatMap((s) => s.data.usersWithRooms),
+        approvedPermitsWithRooms: slices.flatMap((s) => s.data.approvedPermitsWithRooms),
+        dashboard: {
+          pendingCount: sum((d) => d.pendingCount),
+          approvedCount: sum((d) => d.approvedCount),
+          rejectedCount: sum((d) => d.rejectedCount),
+          registeredCount: sum((d) => d.registeredCount),
+          activeStudentsCount: sum((d) => d.activeStudentsCount),
+          totalOccupiedBeds: sum((d) => d.totalOccupiedBeds),
+          availableBeds: sum((d) => d.availableBeds),
+          freeBeds: sum((d) => d.freeBeds),
+          frozenRoomCount: sum((d) => d.frozenRoomCount),
+          courseDistribution: mergeDist('courseDistribution') as { course: string; talabalar: number }[],
+          facultyDistribution: mergeDist('facultyDistribution') as { name: string; talabalar: number }[],
+          recentRequests: slices
+            .flatMap((s) => s.data.dashboard.recentRequests)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 5),
         },
       }
     },

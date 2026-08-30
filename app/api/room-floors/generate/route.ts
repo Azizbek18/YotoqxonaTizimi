@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireActiveStaff } from '@/server/auth/guards'
-import { staffFacultyOrPrimary } from '@/server/auth/faculty'
+import { requirePickedFaculty } from '@/server/auth/faculty'
 import { createRoomLayoutService } from '@/features/room-layout/server/service'
 import { getApiError } from '@/server/http/api-error'
 
@@ -11,7 +11,7 @@ import { getApiError } from '@/server/http/api-error'
 export async function POST(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
-    const faculty = staffFacultyOrPrimary(staff.faculty)
+    const faculty = requirePickedFaculty(staff)
     const body = await request.json()
     const result = await createRoomLayoutService().generateFloors(faculty, body?.floors, body?.numbering)
     return NextResponse.json(result)

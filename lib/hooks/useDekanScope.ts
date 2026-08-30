@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { GLOBAL_SCOPE, readSuperadminScope } from '@/lib/superadmin-scope'
 
 export interface DekanScope {
   faculty: string | null
@@ -9,6 +10,12 @@ export interface DekanScope {
   /** 'dekan' | 'admin' — an admin rides this panel and gets the extra
    *  superadmin (dorm management) surface. */
   role: string | null
+  /**
+   * For an `admin` (superadmin): the acting scope from the sa_scope cookie —
+   * `*` (global / cross-faculty) or a faculty code. Always `*` for a plain
+   * dekan (their own faculty is `faculty`).
+   */
+  scope: string
   resolved: boolean
 }
 
@@ -22,7 +29,12 @@ export function useDekanScope(): DekanScope {
   const [faculty, setFaculty] = useState<string | null>(null)
   const [role, setRole] = useState<string | null>(null)
   const [fullName, setFullName] = useState<string | null>(null)
+  const [scope, setScope] = useState<string>(GLOBAL_SCOPE)
   const [resolved, setResolved] = useState(false)
+
+  useEffect(() => {
+    setScope(readSuperadminScope())
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -56,5 +68,5 @@ export function useDekanScope(): DekanScope {
     }
   }, [])
 
-  return { faculty, fullName, role, resolved }
+  return { faculty, fullName, role, scope, resolved }
 }

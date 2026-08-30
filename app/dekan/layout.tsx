@@ -33,9 +33,11 @@ import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { fetchDekanDorm, resolveFloorClaim } from '@/features/dorms/client/api'
 import type { DekanDorm } from '@/features/dorms/types'
 import DormOnboarding from '@/components/dekan/DormOnboarding'
+import PickFacultyGate from '@/components/dekan/PickFacultyGate'
 import { getSafeSession } from '@/lib/auth-session'
 import { directionLabel } from '@/lib/directions'
-import { permitFacultyLabel } from '@/lib/faculties'
+import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
+import { setSuperadminScope } from '@/lib/superadmin-scope'
 import { dekanUI } from '@/lib/dekan-ui'
 import { supabase } from '@/lib/supabase'
 
@@ -51,7 +53,7 @@ export default function DekanLayout({
   const [mounted, setMounted] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
-  const { faculty: dekanFaculty, fullName: dekanName, role: dekanRole, resolved: facultyResolved } = useDekanScope()
+  const { faculty: dekanFaculty, fullName: dekanName, role: dekanRole, scope: saScope, resolved: facultyResolved } = useDekanScope()
   useToastOffset(84)
   const [recentPending, setRecentPending] = useState<{ id: string; full_name: string; direction: string; created_at: string | null }[]>([])
   const [notifOpen, setNotifOpen] = useState(false)
@@ -69,6 +71,21 @@ export default function DekanLayout({
   const isSuperadmin = dekanRole === 'admin'
   const isGlobalSuperadminPage = isSuperadmin
     && (pathname === '/dekan/dekanlar' || pathname === '/dekan/yotoqxonalar')
+  const scopeIsGlobal = isSuperadmin && (!saScope || saScope === '*')
+  const scopeLabel = !isSuperadmin
+    ? null
+    : scopeIsGlobal
+      ? 'Barcha fakultetlar'
+      : (permitFacultyLabel(saScope) || saScope.toUpperCase())
+  // Sections a global-scope superadmin must pick a faculty for. Global mode
+  // keeps only the genuinely cross-faculty views (Bosh nazorat, Yotoqxonalar,
+  // Dashboard); everything operational needs one faculty to act on.
+  const SINGLE_FACULTY_PATHS = [
+    '/dekan/3d-xonalar', '/dekan/xonalar', '/dekan/sozlamalar',
+    '/dekan/talabalar', '/dekan/arizalar', '/dekan/murojaatlar',
+    '/dekan/xodimlar', '/dekan/elonlar', '/dekan/hisobotlar',
+  ]
+  const needsFacultyPick = scopeIsGlobal && SINGLE_FACULTY_PATHS.includes(pathname)
 
   useEffect(() => {
     const mountId = window.setTimeout(() => setMounted(true), 0)
@@ -190,27 +207,31 @@ export default function DekanLayout({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const menuItems = useMemo(() => ([
-    ...(isSuperadmin
-      ? [
-          { label: 'Bosh nazorat', caption: 'Barcha fakultetlar', href: '/dekan/dekanlar', icon: UserRoundSearch },
-          { label: 'Yotoqxonalar', caption: 'Barcha binolar', href: '/dekan/yotoqxonalar', icon: Building2 },
-          { label: 'AMIT boshqaruvi', caption: 'Biriktirilgan fakultet', href: '/dekan/dashboard?scope=amit', icon: LayoutDashboard },
-        ]
-      : [{ label: 'Dashboard', caption: 'Umumiy hisobot', href: '/dekan/dashboard', icon: LayoutDashboard }]),
-    { label: 'Yo‘llanmalar', caption: isSuperadmin ? 'AMIT arizalari' : 'Yangi arizalar', href: '/dekan/arizalar', icon: FileText, badge: pendingCount > 0 ? pendingCount : undefined },
-    { label: 'Xonalar xaritasi', caption: isSuperadmin ? 'AMIT joylashuvi' : 'Joylashtirish holati', href: '/dekan/xonalar', icon: Boxes },
-    { label: '3D Xonalar', caption: isSuperadmin ? 'AMIT qavat tarxi' : 'Qavat tarxi quruvchisi', href: '/dekan/3d-xonalar', icon: Layers3 },
-    { label: 'Talabalar', caption: isSuperadmin ? 'AMIT talabalari' : 'Fakultet talabalari', href: '/dekan/talabalar', icon: Users },
-    // Faculty-admin tools. The page bodies are the /admin/* implementations
-    // (re-exported under /dekan/*), so they render inside THIS panel's chrome;
-    // their /api/admin/* routes are already scoped to the dekan's own faculty.
-    { label: 'Arizalar', caption: isSuperadmin ? 'AMIT murojaatlari' : 'Talaba murojaatlari', href: '/dekan/murojaatlar', icon: ShieldAlert },
-    { label: 'Tarbiyachilar', caption: isSuperadmin ? 'AMIT xodimlari' : 'Xodim hisoblari', href: '/dekan/xodimlar', icon: Building2 },
-    { label: 'E‘lonlar', caption: isSuperadmin ? 'AMIT talabalari uchun' : 'Fakultet talabalariga', href: '/dekan/elonlar', icon: Megaphone },
-    { label: 'Hisobotlar', caption: isSuperadmin ? 'AMIT Excel eksporti' : 'Excel eksport', href: '/dekan/hisobotlar', icon: FileSpreadsheet },
-    { label: 'Sozlamalar', caption: isSuperadmin ? 'AMIT sozlamalari' : 'Tizim boshqaruvi', href: '/dekan/sozlamalar', icon: Settings },
-  ]), [pendingCount, isSuperadmin])
+  const menuItems = useMemo(() => {
+    // Operational item caption: reflects the superadmin's acting scope
+    // ("Barcha fakultetlar" / "Fizika"), or a plain description for a dekan.
+    const op = (dekanText: string) => (isSuperadmin ? scopeLabel! : dekanText)
+    return [
+      ...(isSuperadmin
+        ? [
+            { label: 'Bosh nazorat', caption: 'Barcha fakultetlar', href: '/dekan/dekanlar', icon: UserRoundSearch },
+            { label: 'Yotoqxonalar', caption: 'Barcha binolar', href: '/dekan/yotoqxonalar', icon: Building2 },
+          ]
+        : []),
+      { label: 'Dashboard', caption: op('Umumiy hisobot'), href: '/dekan/dashboard', icon: LayoutDashboard },
+      { label: 'Yo‘llanmalar', caption: op('Yangi arizalar'), href: '/dekan/arizalar', icon: FileText, badge: pendingCount > 0 ? pendingCount : undefined },
+      { label: 'Xonalar xaritasi', caption: op('Joylashtirish holati'), href: '/dekan/xonalar', icon: Boxes },
+      { label: '3D Xonalar', caption: op('Qavat tarxi quruvchisi'), href: '/dekan/3d-xonalar', icon: Layers3 },
+      { label: 'Talabalar', caption: op('Fakultet talabalari'), href: '/dekan/talabalar', icon: Users },
+      // Faculty-admin tools. The page bodies are the /admin/* implementations
+      // (re-exported under /dekan/*), so they render inside THIS panel's chrome.
+      { label: 'Arizalar', caption: op('Talaba murojaatlari'), href: '/dekan/murojaatlar', icon: ShieldAlert },
+      { label: 'Tarbiyachilar', caption: op('Xodim hisoblari'), href: '/dekan/xodimlar', icon: Building2 },
+      { label: 'E‘lonlar', caption: op('Fakultet talabalariga'), href: '/dekan/elonlar', icon: Megaphone },
+      { label: 'Hisobotlar', caption: op('Excel eksport'), href: '/dekan/hisobotlar', icon: FileSpreadsheet },
+      { label: 'Sozlamalar', caption: op('Tizim boshqaruvi'), href: '/dekan/sozlamalar', icon: Settings },
+    ]
+  }, [pendingCount, isSuperadmin, scopeLabel])
 
   const handleLogout = async () => {
     try {
@@ -266,12 +287,41 @@ export default function DekanLayout({
                 {dekanName || (isSuperadmin ? 'Superadmin Boshqaruvi' : 'Dekan Boshqaruvi')}
               </h2>
               <p className={`text-[10px] font-medium truncate ${ui.muted}`} title={isSuperadmin ? 'Superadmin' : dekanFaculty || 'Fakultet'}>
-                {isSuperadmin ? 'SUPERADMIN' : dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet sozlanmagan'}
+                {isSuperadmin
+                  ? `SUPERADMIN · ${scopeIsGlobal ? 'GLOBAL' : saScope.toUpperCase()}`
+                  : dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet sozlanmagan'}
               </p>
             </div>
           )}
         </div>
       </div>
+
+      {/* Superadmin scope switcher — every operational item below re-scopes
+          to whatever is picked here (or aggregates when "Barcha fakultetlar"). */}
+      {isSuperadmin && !compact && (
+        <div className={`px-3 pt-3`}>
+          <label className={`block text-[9px] font-bold uppercase tracking-[0.14em] mb-1.5 ${ui.muted}`}>
+            Ish maydoni
+          </label>
+          <div className="relative">
+            <select
+              value={scopeIsGlobal ? '*' : saScope}
+              onChange={(e) => {
+                setSuperadminScope(e.target.value)
+                router.refresh()
+                window.location.reload()
+              }}
+              className={`w-full appearance-none rounded-xl border pl-3 pr-9 py-2.5 text-xs font-bold outline-none transition-colors ${ui.input} ${ui.ring}`}
+            >
+              <option value="*">🌐 Barcha fakultetlar</option>
+              {PERMIT_FACULTIES.map((f) => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
+            </select>
+            <ChevronRight size={14} className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rotate-90 ${ui.faint}`} />
+          </div>
+        </div>
+      )}
 
       {/* Nav */}
       <div className="flex-1 px-3 py-3 overflow-y-auto">
@@ -535,7 +585,9 @@ export default function DekanLayout({
             </Link>
           )}
           <div className={`min-h-[calc(100vh-7rem)] rounded-3xl border p-3 sm:p-6 lg:p-8 ${ui.cardElevated}`}>
-            {children}
+            {needsFacultyPick
+              ? <div className="py-8"><PickFacultyGate title={activeItem?.label ?? "Bu bo'lim"} /></div>
+              : children}
           </div>
         </div>
       </div>

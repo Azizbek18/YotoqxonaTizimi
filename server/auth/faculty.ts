@@ -1,7 +1,37 @@
 import 'server-only'
+import { cookies } from 'next/headers'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { normalizeFaculty, PRIMARY_FACULTY } from '@/lib/faculties'
 import { ApiError } from '@/server/http/api-error'
+
+/** Superadmin (`admin` role) "acting scope" — a faculty code, or `*` = global. */
+export const SUPERADMIN_SCOPE_COOKIE = 'sa_scope'
+export const GLOBAL_SCOPE = '*'
+
+/**
+ * Reads the sa_scope cookie: `global` (cross-faculty) or one faculty. Only
+ * meaningful for the `admin` role — see the scope injection in
+ * requireActiveStaff (server/auth/guards.ts). A missing / `*` / unknown
+ * value is treated as global.
+ */
+export async function readSuperadminScope(): Promise<'global' | { faculty: string }> {
+  const raw = (await cookies()).get(SUPERADMIN_SCOPE_COOKIE)?.value
+  if (!raw || raw === GLOBAL_SCOPE) return 'global'
+  const faculty = normalizeFaculty(raw)
+  return faculty ? { faculty } : 'global'
+}
+
+/**
+ * The faculty for a route that can only ever operate on ONE faculty (the
+ * room editor, dorm setup, per-faculty settings). A superadmin in global
+ * mode gets SCOPE_REQUIRED so the client can show a faculty picker.
+ */
+export function requirePickedFaculty(staff: { faculty: string | null; superadminGlobal?: boolean }): string {
+  if (staff.superadminGlobal) {
+    throw new ApiError(400, 'Avval fakultetni tanlang', 'SCOPE_REQUIRED')
+  }
+  return requireStaffFaculty(staff.faculty)
+}
 
 /**
  * The faculty a staff member's `faculty` column names, canonicalised.
@@ -33,7 +63,14 @@ export function staffFacultyOrPrimary(faculty: string | null | undefined): strin
 export async function resolveCallerFaculty(userId: string): Promise<string> {
   const supabase = getServiceSupabase()
 
-  const { data: staff } = await supabase.from('staff').select('faculty').eq('id', userId).maybeSingle()
+  const { data: staff } = await supabase.from('staff').select('faculty, role').eq('id', userId).maybeSingle()
+  // A superadmin who has picked a faculty in the sidebar resolves to it;
+  // global mode falls through to their bound faculty as a harmless default
+  // (room-map style endpoints are inherently single-faculty).
+  if (staff?.role === 'admin') {
+    const scope = await readSuperadminScope()
+    if (scope !== 'global') return scope.faculty
+  }
   const staffFaculty = normalizeFaculty(staff?.faculty ?? null)
   if (staffFaculty) return staffFaculty
 

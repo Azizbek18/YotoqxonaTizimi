@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireActiveStaff } from '@/server/auth/guards'
-import { requireStaffFaculty } from '@/server/auth/faculty'
+import { requirePickedFaculty } from '@/server/auth/faculty'
 import { createRoomLayoutService } from '@/features/room-layout/server/service'
 import { getApiError } from '@/server/http/api-error'
 
@@ -17,7 +17,7 @@ function errorResponse(error: unknown) {
 export async function GET(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
-    const faculty = requireStaffFaculty(staff.faculty)
+    const faculty = requirePickedFaculty(staff)
 
     const floor = request.nextUrl.searchParams.get('floor')
     const blocks = await createRoomLayoutService().getFloor(faculty, floor)
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
-    const faculty = requireStaffFaculty(staff.faculty)
+    const faculty = requirePickedFaculty(staff)
 
     const body = await request.json()
     const result = await createRoomLayoutService().saveFloor(faculty, body?.floorNumber, body?.blocks)

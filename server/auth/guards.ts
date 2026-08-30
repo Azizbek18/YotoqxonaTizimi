@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import { getRequestUser } from '@/lib/server-auth'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { ApiError } from '@/server/http/api-error'
+import { readSuperadminScope } from './faculty'
 import { isActiveStaff, isActiveStudent, type AppRole } from './policies'
 
 type StudentIdentity = {
@@ -21,6 +22,13 @@ type StaffIdentity = {
   role: string
   status: string | null
   faculty: string | null
+  /**
+   * `admin` role only: true when the superadmin is acting cross-faculty
+   * (sa_scope cookie is `*` / unset). When they've picked one faculty,
+   * `faculty` is overwritten with it and this stays false, so every
+   * downstream `staff.faculty` consumer just works "as that faculty".
+   */
+  superadminGlobal?: boolean
 }
 
 export async function requireUser(request?: Request): Promise<User> {
@@ -61,7 +69,17 @@ export async function requireActiveStaff(
     throw new ApiError(403, 'Bu amal uchun ruxsat yo‘q', 'FORBIDDEN')
   }
 
-  return { user, staff: staff as StaffIdentity }
+  const identity = staff as StaffIdentity
+  // Superadmin scope injection: an `admin` who has picked a faculty in the
+  // sidebar acts as that faculty everywhere; global mode leaves `faculty`
+  // untouched and flags `superadminGlobal` for the routes that aggregate.
+  if (identity.role === 'admin') {
+    const scope = await readSuperadminScope()
+    if (scope === 'global') identity.superadminGlobal = true
+    else identity.faculty = scope.faculty
+  }
+
+  return { user, staff: identity }
 }
 
 export function requireAdmin(request?: Request) {

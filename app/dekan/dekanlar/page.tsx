@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  ArrowRight,
   Building2,
   CheckCircle2,
   Clock3,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { fetchSuperadminDekans } from '@/features/superadmin-dekans/client/api'
+import { setSuperadminScope } from '@/lib/superadmin-scope'
 import type {
   FacultyDekanOverview,
   SuperadminDekansPayload,
@@ -327,15 +329,25 @@ function FacultyCard({ row, isLight }: { row: FacultyDekanOverview; isLight: boo
         </div>
       </div>
 
-      <div className={`flex items-center gap-3 border-t px-5 py-3.5 ${ui.border} ${isLight ? 'bg-slate-50/70' : 'bg-slate-950/25'}`}>
-        <Building2 size={15} className={row.dorm ? ui.accentText : ui.faint} />
+      <div className={`flex items-center gap-3 border-t px-5 py-3 ${ui.border} ${isLight ? 'bg-slate-50/70' : 'bg-slate-950/25'}`}>
+        <Building2 size={15} className={`shrink-0 ${row.dorm ? ui.accentText : ui.faint}`} />
         {row.dorm ? (
-          <p className={`min-w-0 truncate text-xs font-semibold ${ui.body}`}>
+          <p className={`min-w-0 flex-1 truncate text-xs font-semibold ${ui.body}`}>
             {row.dorm.number}-sonli TTJ{row.dorm.name ? ` · ${row.dorm.name}` : ''}
           </p>
         ) : (
-          <p className={`text-xs ${ui.faint}`}>Yotoqxona biriktirilmagan</p>
+          <p className={`flex-1 text-xs ${ui.faint}`}>Yotoqxona biriktirilmagan</p>
         )}
+        <button
+          type="button"
+          onClick={() => {
+            setSuperadminScope(row.faculty)
+            window.location.href = '/dekan/dashboard'
+          }}
+          className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.accentSolid}`}
+        >
+          Kirish <ArrowRight size={12} />
+        </button>
       </div>
     </article>
   )

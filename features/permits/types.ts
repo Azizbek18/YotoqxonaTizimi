@@ -19,8 +19,21 @@ export type PermitRoomUser = {
   warning_count: number | null
 }
 
+/** One faculty's slice of the superadmin global overview. */
+export type FacultyOverviewSlice = {
+  faculty: string
+  facultyLabel: string
+  pendingCount: number
+  activeStudentsCount: number
+  totalOccupiedBeds: number
+  availableBeds: number
+  freeBeds: number
+}
+
 export type DekanOverview = {
   faculty: string
+  /** Present only on the superadmin cross-faculty overview. */
+  perFaculty?: FacultyOverviewSlice[]
   requests: EnrichedPermitRequest[]
   usersWithRooms: PermitRoomUser[]
   approvedPermitsWithRooms: PermitRequestRow[]

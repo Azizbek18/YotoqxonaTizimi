@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireActiveStaff } from '@/server/auth/guards'
-import { requireStaffFaculty } from '@/server/auth/faculty'
+import { requirePickedFaculty } from '@/server/auth/faculty'
 import { createDormService, type DekanStaffCtx } from '@/features/dorms/server/service'
 import { getApiError } from '@/server/http/api-error'
 
@@ -8,7 +8,7 @@ import { getApiError } from '@/server/http/api-error'
 // accepted for the transition (retired role, rides the dekan panel).
 async function dekanCtx(request: NextRequest): Promise<DekanStaffCtx> {
   const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
-  return { id: staff.id, faculty: requireStaffFaculty(staff.faculty) }
+  return { id: staff.id, faculty: requirePickedFaculty(staff) }
 }
 
 export async function GET(request: NextRequest) {

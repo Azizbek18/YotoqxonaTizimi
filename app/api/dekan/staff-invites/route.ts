@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireActiveStaff } from '@/server/auth/guards'
-import { staffFacultyOrPrimary } from '@/server/auth/faculty'
+import { requirePickedFaculty } from '@/server/auth/faculty'
 import { createStaffInviteService } from '@/features/staff-invites/server/service'
 import { getApiError } from '@/server/http/api-error'
 import { checkRateLimit } from '@/lib/security'
@@ -17,7 +17,7 @@ function errorResponse(error: unknown) {
 export async function GET(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
-    const faculty = staffFacultyOrPrimary(staff.faculty)
+    const faculty = requirePickedFaculty(staff)
     return NextResponse.json({ invites: await createStaffInviteService().list(faculty) })
   } catch (error) {
     return errorResponse(error)
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { user, staff } = await requireActiveStaff(request, ['admin', 'dekan'])
-    const faculty = staffFacultyOrPrimary(staff.faculty)
+    const faculty = requirePickedFaculty(staff)
     const throttle = await checkRateLimit(`staff-invite-create:${user.id}`, 20, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: "Juda ko'p urinish. Keyinroq urinib ko'ring." }, { status: 429 })
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
-    const faculty = staffFacultyOrPrimary(staff.faculty)
+    const faculty = requirePickedFaculty(staff)
     const id = request.nextUrl.searchParams.get('id')
     return NextResponse.json(await createStaffInviteService().revoke(faculty, id))
   } catch (error) {

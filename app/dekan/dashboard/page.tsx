@@ -77,7 +77,8 @@ export default function DekanDashboard() {
   const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([])
   const [courseDistribution, setCourseDistribution] = useState<{ course: string; talabalar: number }[]>([])
   const [facultyDistribution, setFacultyDistribution] = useState<{ name: string; talabalar: number }[]>([])
-  const { faculty: dekanFaculty, resolved: facultyResolved } = useDekanScope()
+  const { faculty: dekanFaculty, role: dekanRole, scope: saScope, resolved: facultyResolved } = useDekanScope()
+  const isGlobal = dekanRole === 'admin' && (!saScope || saScope === '*')
 
   const loadData = async (faculty: string | null) => {
     try {
@@ -177,10 +178,12 @@ export default function DekanDashboard() {
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white backdrop-blur-sm">
-              Umumiy hisobot
+              {isGlobal ? 'Barcha fakultetlar' : 'Umumiy hisobot'}
             </span>
             <h1 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight text-white">
-              {dekanFaculty ? `${dekanFaculty.toUpperCase()} fakulteti` : 'Yotoqxona boshqaruvi'}
+              {isGlobal
+                ? 'Yotoqxona — umumiy holat'
+                : dekanFaculty ? `${dekanFaculty.toUpperCase()} fakulteti` : 'Yotoqxona boshqaruvi'}
             </h1>
             <p className="mt-1.5 max-w-xl text-xs sm:text-sm leading-relaxed text-indigo-100">
               Yo&apos;llanmalar ko&apos;rib chiqilishi, talabalar oqimi va xonalar taqsimotini shu yerdan boshqaring.

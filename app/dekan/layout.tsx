@@ -195,7 +195,7 @@ export default function DekanLayout({
       ? [
           { label: 'Bosh nazorat', caption: 'Barcha fakultetlar', href: '/dekan/dekanlar', icon: UserRoundSearch },
           { label: 'Yotoqxonalar', caption: 'Barcha binolar', href: '/dekan/yotoqxonalar', icon: Building2 },
-          { label: 'AMIT boshqaruvi', caption: 'Biriktirilgan fakultet', href: '/dekan/dashboard', icon: LayoutDashboard },
+          { label: 'AMIT boshqaruvi', caption: 'Biriktirilgan fakultet', href: '/dekan/dashboard?scope=amit', icon: LayoutDashboard },
         ]
       : [{ label: 'Dashboard', caption: 'Umumiy hisobot', href: '/dekan/dashboard', icon: LayoutDashboard }]),
     { label: 'Yo‘llanmalar', caption: isSuperadmin ? 'AMIT arizalari' : 'Yangi arizalar', href: '/dekan/arizalar', icon: FileText, badge: pendingCount > 0 ? pendingCount : undefined },
@@ -246,7 +246,7 @@ export default function DekanLayout({
     )
   }
 
-  const activeItem = menuItems.find((item) => item.href === pathname)
+  const activeItem = menuItems.find((item) => item.href.split('?')[0] === pathname)
 
   const renderNavContent = (compact: boolean) => (
     <div className="relative flex h-full flex-col select-none no-shelf overflow-hidden" data-sidebar="true">
@@ -302,7 +302,7 @@ export default function DekanLayout({
 
         <nav className="space-y-1">
           {menuItems.map((item) => {
-            const active = pathname === item.href
+            const active = pathname === item.href.split('?')[0]
             const Icon = item.icon
             return (
               <Link

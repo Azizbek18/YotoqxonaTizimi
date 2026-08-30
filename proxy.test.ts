@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { publicEntryRedirectTarget } from './proxy'
+import { publicEntryRedirectTarget, superadminDashboardRedirectTarget } from './proxy'
 
 describe('public entry auth redirects', () => {
   it('keeps an unknown-role session on login instead of creating a redirect loop', () => {
@@ -20,5 +20,19 @@ describe('public entry auth redirects', () => {
 
   it('does not redirect signed-out visitors', () => {
     expect(publicEntryRedirectTarget(false, null, '/login')).toBeNull()
+  })
+})
+
+describe('superadmin dashboard redirects', () => {
+  it('moves an old AMIT dashboard URL to global oversight', () => {
+    expect(superadminDashboardRedirectTarget('admin', '/dekan/dashboard', null)).toBe('/dekan/dekanlar')
+  })
+
+  it('keeps the explicitly selected AMIT management URL available', () => {
+    expect(superadminDashboardRedirectTarget('admin', '/dekan/dashboard', 'amit')).toBeNull()
+  })
+
+  it('never redirects a faculty dekan away from their dashboard', () => {
+    expect(superadminDashboardRedirectTarget('dekan', '/dekan/dashboard', null)).toBeNull()
   })
 })

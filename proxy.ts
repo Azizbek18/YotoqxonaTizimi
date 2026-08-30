@@ -45,6 +45,16 @@ export function publicEntryRedirectTarget(
   return null
 }
 
+export function superadminDashboardRedirectTarget(
+  role: AppRole,
+  path: string,
+  scope: string | null,
+): string | null {
+  return path === '/dekan/dashboard' && role === 'admin' && scope !== 'amit'
+    ? '/dekan/dekanlar'
+    : null
+}
+
 export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDev = process.env.NODE_ENV === 'development'
@@ -156,6 +166,16 @@ export async function proxy(request: NextRequest) {
   if (path === '/admin' || path.startsWith('/admin/')) {
     return redirect(ADMIN_ROUTE_REDIRECTS[path] ?? '/dekan/dekanlar')
   }
+
+  // Existing superadmin tabs and old bookmarks may still point at the
+  // legacy AMIT dashboard. Move those to global oversight. AMIT remains
+  // intentionally reachable only through its explicitly labelled menu URL.
+  const globalDashboardRedirect = superadminDashboardRedirectTarget(
+    userRole,
+    path,
+    request.nextUrl.searchParams.get('scope'),
+  )
+  if (globalDashboardRedirect) return redirect(globalDashboardRedirect)
 
   // ========================
   // TALABA ROUTES HIMOYASI

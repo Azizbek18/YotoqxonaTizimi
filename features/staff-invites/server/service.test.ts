@@ -6,8 +6,11 @@ import { hashInviteCode, normalizeInviteCode } from '@/lib/staff-invite'
 function fakeRepository(overrides: Partial<StaffInviteRepository> = {}) {
   return {
     listByFaculty: vi.fn(async () => []),
+    listByRole: vi.fn(async () => []),
     staffEmailExists: vi.fn(async () => false),
     pendingInviteForEmail: vi.fn(async () => null),
+    pendingInviteForEmailAnywhere: vi.fn(async () => null),
+    activeDekanExists: vi.fn(async () => false),
     insert: vi.fn(async (row: Record<string, unknown>) => ({
       id: 'inv-1',
       faculty: row.faculty,
@@ -21,6 +24,7 @@ function fakeRepository(overrides: Partial<StaffInviteRepository> = {}) {
       use_count: 0,
     })),
     revoke: vi.fn(async () => ({ id: 'inv-1' })),
+    revokeAnyDean: vi.fn(async () => ({ id: 'inv-1' })),
     ...overrides,
   } as unknown as StaffInviteRepository
 }
@@ -96,6 +100,39 @@ describe('staff invite service', () => {
   it('revoke scopes by faculty and 404s a missing invite', async () => {
     const repo = fakeRepository({ revoke: vi.fn(async () => null) })
     await expect(createStaffInviteService(repo).revoke('kimyo', 'inv-x')).rejects.toMatchObject({ status: 404 })
+  })
+})
+
+describe('superadmin dean invites', () => {
+  const DEAN = { faculty: 'Fizika', email: 'Dekan@Example.com', expiryDays: 20 }
+
+  it('mints a faculty-bound, email-bound, single-use dekan code', async () => {
+    const repo = fakeRepository()
+    const invite = await createStaffInviteService(repo).createDeanInvite('sa-1', DEAN)
+
+    expect(invite.role).toBe('dekan')
+    expect(invite.faculty).toBe('fizika')
+    expect(invite.email).toBe('dekan@example.com')
+    const insertArg = (repo.insert as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(insertArg.max_uses).toBe(1)
+    expect(insertArg.role).toBe('dekan')
+  })
+
+  it('refuses a faculty that already has an active dean', async () => {
+    const repo = fakeRepository({ activeDekanExists: vi.fn(async () => true) })
+    await expect(createStaffInviteService(repo).createDeanInvite('sa-1', DEAN)).rejects.toMatchObject({ status: 409 })
+    expect(repo.insert).not.toHaveBeenCalled()
+  })
+
+  it('refuses an email that already holds a pending code anywhere', async () => {
+    const repo = fakeRepository({ pendingInviteForEmailAnywhere: vi.fn(async () => ({ id: 'x' })) })
+    await expect(createStaffInviteService(repo).createDeanInvite('sa-1', DEAN)).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('rejects an unknown faculty code', async () => {
+    await expect(
+      createStaffInviteService(fakeRepository()).createDeanInvite('sa-1', { ...DEAN, faculty: 'nope' }),
+    ).rejects.toMatchObject({ status: 400 })
   })
 })
 

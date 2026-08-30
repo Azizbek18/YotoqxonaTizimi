@@ -26,3 +26,29 @@ export function revokeStaffInvite(id: string): Promise<{ ok: true }> {
     method: 'DELETE',
   }, "Taklif kodini bekor qilib bo'lmadi")
 }
+
+// ---- superadmin: dean invites ----
+
+export async function fetchDeanInvites(): Promise<StaffInviteRow[]> {
+  const result = await apiRequest<{ invites: StaffInviteRow[] }>('/api/admin/dean-invites', undefined, "Dekan taklif kodlarini yuklab bo'lmadi")
+  return result.invites
+}
+
+export function createDeanInvite(input: {
+  faculty: string
+  email: string
+  label?: string
+  expiryDays?: number
+}): Promise<CreatedStaffInvite> {
+  return apiRequest<CreatedStaffInvite>('/api/admin/dean-invites', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  }, "Dekan taklif kodini yaratib bo'lmadi")
+}
+
+export function revokeDeanInvite(id: string): Promise<{ ok: true }> {
+  return apiRequest<{ ok: true }>(`/api/admin/dean-invites?id=${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  }, "Dekan taklif kodini bekor qilib bo'lmadi")
+}

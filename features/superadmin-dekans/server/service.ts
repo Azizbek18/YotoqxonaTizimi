@@ -1,5 +1,6 @@
 import 'server-only'
 import { PERMIT_FACULTIES, normalizeFaculty, permitFacultyLabel } from '@/lib/faculties'
+import { summariseBeds } from '@/lib/room-capacity'
 import type { SuperadminDekan, SuperadminDekansPayload } from '../types'
 import {
   createSuperadminDekanRepository,
@@ -37,9 +38,28 @@ export function createSuperadminDekanService(
 ) {
   return {
     async getOverview(): Promise<SuperadminDekansPayload> {
-      const { dekans, educators, students, permits, facultyDorms, dorms } = await repository.loadAll()
+      const { dekans, educators, students, permits, facultyDorms, dorms, rooms } = await repository.loadAll()
       const mappedDekans = (dekans as RawDekan[]).map(mapDekan)
       const dormById = new Map(dorms.map((dorm) => [dorm.id, dorm]))
+
+      // Per-room occupancy for the bed maths — students + approved-permit
+      // reservations, keyed by room number (unique per dorm).
+      const occByRoom = new Map<string, number>()
+      const bumpRoom = (roomNumber: string | null | undefined) => {
+        if (!roomNumber) return
+        occByRoom.set(roomNumber, (occByRoom.get(roomNumber) ?? 0) + 1)
+      }
+      students.forEach((s) => bumpRoom(s.room_number))
+      permits.forEach((p) => { if (p.status === 'approved') bumpRoom(p.room_number) })
+
+      const roomsByFaculty = new Map<string, typeof rooms>()
+      for (const room of rooms) {
+        const code = normalizeFaculty(room.faculty)
+        if (!code) continue
+        const list = roomsByFaculty.get(code) ?? []
+        list.push(room)
+        roomsByFaculty.set(code, list)
+      }
 
       const extraFacultyCodes = mappedDekans
         .map((dekan) => normalizeFaculty(dekan.faculty))
@@ -60,6 +80,13 @@ export function createSuperadminDekanService(
         const link = facultyDorms.find((item) => sameFaculty(item.faculty, faculty))
         const dorm = link ? dormById.get(link.dorm_id) : null
 
+        const defaultCapacity = dorm?.default_room_capacity ?? 4
+        const { availableBeds, freeBeds } = summariseBeds(
+          roomsByFaculty.get(faculty) ?? [],
+          defaultCapacity,
+          occByRoom,
+        )
+
         return {
           faculty,
           facultyLabel: permitFacultyLabel(faculty),
@@ -74,6 +101,8 @@ export function createSuperadminDekanService(
             pendingPermits: permits.filter(
               (permit) => sameFaculty(permit.faculty, faculty) && permit.status === 'pending',
             ).length,
+            availableBeds,
+            freeBeds,
           },
           dorm: dorm
             ? { id: dorm.id, number: dorm.number, name: dorm.name }
@@ -93,6 +122,9 @@ export function createSuperadminDekanService(
           vacantFaculties: faculties.length - coveredFaculties,
           totalStudents: students.length,
           pendingPermits: permits.filter((permit) => permit.status === 'pending').length,
+          facultiesWithBuilding: faculties.filter((f) => f.dorm).length,
+          availableBeds: faculties.reduce((total, f) => total + f.stats.availableBeds, 0),
+          freeBeds: faculties.reduce((total, f) => total + f.stats.freeBeds, 0),
         },
         faculties,
         unassignedDekans: mappedDekans.filter((dekan) => !normalizeFaculty(dekan.faculty)),

@@ -6,7 +6,7 @@ export function createSuperadminDekanRepository() {
 
   return {
     async loadAll() {
-      const [dekansResult, educatorsResult, studentsResult, permitsResult, facultyDormResult, dormsResult] = await Promise.all([
+      const [dekansResult, educatorsResult, studentsResult, permitsResult, facultyDormResult, dormsResult, roomsResult] = await Promise.all([
         supabase
           .from('staff')
           .select('id, full_name, email, phone_number, faculty, status, created_at')
@@ -16,22 +16,28 @@ export function createSuperadminDekanRepository() {
           .from('staff')
           .select('faculty, status')
           .eq('role', 'tarbiyachi'),
+        // TODO(scale): unbounded — PostgREST caps at db-max-rows (1000).
+        // Fine for the current dataset; move to count queries / an
+        // aggregation RPC before the building exceeds ~1000 residents.
         supabase
           .from('users')
           .select('faculty, status, room_number')
           .eq('role', 'talaba'),
         supabase
           .from('permit_requests')
-          .select('faculty, status'),
+          .select('faculty, status, room_number'),
         supabase
           .from('faculty_dorm')
           .select('faculty, dorm_id'),
         supabase
           .from('dorms')
-          .select('id, number, name'),
+          .select('id, number, name, default_room_capacity'),
+        supabase
+          .from('floor_room_layout')
+          .select('faculty, room_number, frozen, capacity'),
       ])
 
-      const failed = [dekansResult, educatorsResult, studentsResult, permitsResult, facultyDormResult, dormsResult]
+      const failed = [dekansResult, educatorsResult, studentsResult, permitsResult, facultyDormResult, dormsResult, roomsResult]
         .find((result) => result.error)
       if (failed?.error) throw failed.error
 
@@ -42,6 +48,7 @@ export function createSuperadminDekanRepository() {
         permits: permitsResult.data ?? [],
         facultyDorms: facultyDormResult.data ?? [],
         dorms: dormsResult.data ?? [],
+        rooms: roomsResult.data ?? [],
       }
     },
   }

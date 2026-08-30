@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { fetchSuperadminDekans } from '@/features/superadmin-dekans/client/api'
+import DeanInviteManager from '@/components/dekan/DeanInviteManager'
 import { setSuperadminScope } from '@/lib/superadmin-scope'
 import type {
   FacultyDekanOverview,
@@ -51,6 +52,7 @@ export default function SuperadminDekansPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
+  const [inviteOpen, setInviteOpen] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -89,6 +91,19 @@ export default function SuperadminDekansPage() {
   const coverage = summary && summary.totalFaculties > 0
     ? Math.round((summary.coveredFaculties / summary.totalFaculties) * 100)
     : 0
+  const coveredSet = useMemo(
+    () => new Set((payload?.faculties ?? []).filter((f) => f.dekan?.status === 'active').map((f) => f.faculty)),
+    [payload],
+  )
+  // Faculties nobody is reviewing — pending applications with no active dean.
+  const stranded = useMemo(
+    () => (payload?.faculties ?? []).filter((f) => f.dekan?.status !== 'active' && f.stats.pendingPermits > 0),
+    [payload],
+  )
+  const noBuilding = useMemo(
+    () => (payload?.faculties ?? []).filter((f) => !f.dorm),
+    [payload],
+  )
 
   const filters: Array<{ key: Filter; label: string; count: number }> = [
     { key: 'all', label: 'Barchasi', count: summary?.totalFaculties ?? 0 },
@@ -125,42 +140,44 @@ export default function SuperadminDekansPage() {
 
         <div className="relative mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
-            label="Faol dekanlar"
-            value={summary?.activeDekans ?? 0}
-            caption={`${summary?.coveredFaculties ?? 0} ta fakultet qamrab olingan`}
+            label="Qamrab olingan fakultet"
+            value={`${summary?.coveredFaculties ?? 0}/${summary?.totalFaculties ?? 0}`}
+            caption={`${summary?.activeDekans ?? 0} ta faol dekan`}
             icon={UserRoundCheck}
-            tone="success"
-            isLight={isLight}
-          />
-          <SummaryCard
-            label="Dekan tayinlanmagan"
-            value={summary?.vacantFaculties ?? 0}
-            caption={`${summary?.totalFaculties ?? 0} ta fakultetdan`}
-            icon={UserRoundX}
             tone={(summary?.vacantFaculties ?? 0) > 0 ? 'warning' : 'success'}
             isLight={isLight}
           />
           <SummaryCard
-            label="Jami talabalar"
-            value={summary?.totalStudents ?? 0}
-            caption="Barcha fakultetlar bo‘yicha"
+            label="Binoli fakultet"
+            value={`${summary?.facultiesWithBuilding ?? 0}/${summary?.totalFaculties ?? 0}`}
+            caption="Yotoqxona biriktirilgan"
+            icon={Building2}
+            tone={(summary?.totalFaculties ?? 0) > (summary?.facultiesWithBuilding ?? 0) ? 'warning' : 'success'}
+            isLight={isLight}
+          />
+          <SummaryCard
+            label="Bo‘sh o‘rinlar"
+            value={summary?.freeBeds ?? 0}
+            caption={`${summary?.availableBeds ?? 0} ta o‘rindan · barcha bino`}
             icon={GraduationCap}
-            tone="info"
+            tone={(summary?.freeBeds ?? 0) === 0 ? 'danger' : 'info'}
             isLight={isLight}
           />
           <SummaryCard
             label="Kutilayotgan yo‘llanmalar"
             value={summary?.pendingPermits ?? 0}
-            caption="Dekan qarorini kutmoqda"
+            caption={stranded.length > 0 ? `${stranded.length} ta fakultetда dekan yo‘q` : 'Dekan qarorini kutmoqda'}
             icon={Clock3}
-            tone={(summary?.pendingPermits ?? 0) > 0 ? 'warning' : 'neutral'}
+            tone={stranded.length > 0 ? 'danger' : (summary?.pendingPermits ?? 0) > 0 ? 'warning' : 'neutral'}
             isLight={isLight}
           />
         </div>
 
         <div className={`relative mt-5 rounded-2xl border p-4 ${ui.inset}`}>
           <div className="flex items-center justify-between gap-4 text-xs">
-            <span className={`font-bold ${ui.strong}`}>Fakultetlar qamrovi</span>
+            <span className={`font-bold ${ui.strong}`}>
+              Fakultetlar qamrovi · {summary?.totalStudents ?? 0} talaba
+            </span>
             <span className={`font-black ${ui.accentText}`}>{coverage}%</span>
           </div>
           <div className={`mt-2 h-2.5 overflow-hidden rounded-full ${isLight ? 'bg-slate-200' : 'bg-slate-800'}`}>
@@ -171,6 +188,47 @@ export default function SuperadminDekansPage() {
           </div>
         </div>
       </section>
+
+      {stranded.length > 0 && (
+        <section className={`rounded-2xl border p-4 ${isLight ? 'border-rose-200 bg-rose-50' : 'border-rose-500/25 bg-rose-500/10'}`}>
+          <div className="flex items-start gap-3">
+            <Clock3 className={isLight ? 'text-rose-600' : 'text-rose-400'} size={20} />
+            <div className="min-w-0">
+              <p className={`text-sm font-bold ${isLight ? 'text-rose-900' : 'text-rose-200'}`}>
+                Dekansiz fakultetда kutilayotgan yo‘llanmalar bor
+              </p>
+              <p className={`mt-1 text-xs ${isLight ? 'text-rose-700' : 'text-rose-300'}`}>
+                {stranded.map((f) => `${f.facultyLabel} (${f.stats.pendingPermits})`).join(' · ')} — dekan
+                tayinlang yoki fakultetга kirib arizalarni ko‘rib chiqing.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {noBuilding.length > 0 && (
+        <section className={`rounded-2xl border p-4 ${isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'}`}>
+          <div className="flex items-start gap-3">
+            <Building2 className={isLight ? 'text-amber-600' : 'text-amber-400'} size={20} />
+            <div className="min-w-0">
+              <p className={`text-sm font-bold ${isLight ? 'text-amber-900' : 'text-amber-200'}`}>
+                Yotoqxona biriktirilmagan fakultet: {noBuilding.length} ta
+              </p>
+              <p className={`mt-1 text-xs ${isLight ? 'text-amber-700' : 'text-amber-300'}`}>
+                {noBuilding.map((f) => f.facultyLabel).join(' · ')} — «Yotoqxonalar» bo‘limidan bino biriktiring.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <DeanInviteManager
+        openFor={inviteOpen}
+        coveredFaculties={coveredSet}
+        onRequestOpen={setInviteOpen}
+        onClose={() => setInviteOpen(null)}
+        onChanged={load}
+      />
 
       {(payload?.unassignedDekans.length ?? 0) > 0 && (
         <section className={`rounded-2xl border p-4 ${isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'}`}>
@@ -231,7 +289,7 @@ export default function SuperadminDekansPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
           {filtered.map((row) => (
-            <FacultyCard key={row.faculty} row={row} isLight={isLight} />
+            <FacultyCard key={row.faculty} row={row} isLight={isLight} onInvite={setInviteOpen} />
           ))}
         </div>
       )}
@@ -248,7 +306,7 @@ function SummaryCard({
   isLight,
 }: {
   label: string
-  value: number
+  value: number | string
   caption: string
   icon: typeof Users
   tone: Parameters<typeof statusChip>[0]
@@ -272,7 +330,15 @@ function SummaryCard({
   )
 }
 
-function FacultyCard({ row, isLight }: { row: FacultyDekanOverview; isLight: boolean }) {
+function FacultyCard({
+  row,
+  isLight,
+  onInvite,
+}: {
+  row: FacultyDekanOverview
+  isLight: boolean
+  onInvite: (faculty: string) => void
+}) {
   const ui = dekanUI(isLight)
   const active = row.dekan?.status === 'active'
   const state = row.dekan ? statusChip(active ? 'success' : 'warning', isLight) : statusChip('neutral', isLight)
@@ -317,14 +383,20 @@ function FacultyCard({ row, isLight }: { row: FacultyDekanOverview; isLight: boo
           <div className={`mt-5 flex min-h-36 flex-col items-center justify-center rounded-2xl border border-dashed p-5 text-center ${ui.inset}`}>
             <UserRoundX size={26} className={ui.faint} />
             <p className={`mt-2 text-sm font-bold ${ui.strong}`}>Dekan tayinlanmagan</p>
-            <p className={`mt-1 text-[11px] ${ui.muted}`}>Fakultet ro‘yxatdan o‘tishini kutmoqda</p>
+            <button
+              type="button"
+              onClick={() => onInvite(row.faculty)}
+              className={`mt-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${ui.accentSolid}`}
+            >
+              <UserRoundCheck size={12} /> Dekan taklif qilish
+            </button>
           </div>
         )}
 
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Metric icon={GraduationCap} label="Talabalar" value={row.stats.students} isLight={isLight} />
-          <Metric icon={MapPin} label="Joylashgan" value={row.stats.placedStudents} isLight={isLight} />
-          <Metric icon={Users} label="Tarbiyachi" value={row.stats.activeEducators} isLight={isLight} />
+          <Metric icon={MapPin} label="Bo‘sh o‘rin" value={row.stats.freeBeds} isLight={isLight} warn={row.stats.freeBeds === 0} />
+          <Metric icon={Users} label="Tarbiyachi" value={row.stats.activeEducators} isLight={isLight} warn={row.stats.activeEducators === 0 && row.stats.placedStudents > 0} />
           <Metric icon={Clock3} label="Kutilmoqda" value={row.stats.pendingPermits} isLight={isLight} warn={row.stats.pendingPermits > 0} />
         </div>
       </div>

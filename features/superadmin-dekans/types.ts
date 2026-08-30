@@ -18,6 +18,10 @@ export type FacultyDekanOverview = {
     placedStudents: number
     activeEducators: number
     pendingPermits: number
+    /** Beds in non-frozen rooms on this faculty's floors (per-room capacity applied). */
+    availableBeds: number
+    /** Unoccupied beds in those rooms — the real "bo'sh joy". */
+    freeBeds: number
   }
   dorm: {
     id: string
@@ -35,6 +39,12 @@ export type SuperadminDekansPayload = {
     vacantFaculties: number
     totalStudents: number
     pendingPermits: number
+    /** How many of the 13 faculties have a dorm building assigned. */
+    facultiesWithBuilding: number
+    /** Cross-building sum of non-frozen beds. */
+    availableBeds: number
+    /** Cross-building sum of unoccupied non-frozen beds. */
+    freeBeds: number
   }
   faculties: FacultyDekanOverview[]
   unassignedDekans: SuperadminDekan[]

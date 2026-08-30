@@ -407,7 +407,7 @@ export default function ImtiyozliAriza() {
                     <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="talaba@example.com"
                         className={`w-full border p-3 pl-11 rounded-xl text-sm outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200' : 'bg-slate-900/30 border-white/15 text-white focus:border-amber-500/50'}`} />
                     </div>
-                    {email && !isValidEmail(email) && <p className="ml-2 text-[10px] font-bold text-rose-500">Email formati noto'g'ri.</p>}
+                    {email && !isValidEmail(email) && <p className="ml-2 text-[10px] font-bold text-rose-500">Email formati noto‘g‘ri.</p>}
                   </div>
                   <div className="space-y-1">
                     <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Telefon raqamingiz</label>
@@ -535,7 +535,7 @@ export default function ImtiyozliAriza() {
                   {getForeignIdFormatError(idNumber) ? (
                     <p className="ml-2 text-[10px] font-bold leading-relaxed text-rose-500" role="alert">{getForeignIdFormatError(idNumber)}</p>
                   ) : (
-                    <p className={`ml-2 text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>4–16 ta harf va raqam. Bo'sh joy yoki chiziq avtomatik olib tashlanadi.</p>
+                    <p className={`ml-2 text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>4–16 ta harf va raqam. Bo‘sh joy yoki chiziq avtomatik olib tashlanadi.</p>
                   )}
                 </div>
                 <div className="space-y-1">

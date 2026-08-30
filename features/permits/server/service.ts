@@ -2,6 +2,8 @@ import 'server-only'
 import { ApiError } from '@/server/http/api-error'
 import { sendPermitApprovalCancelledEmail, sendPermitApprovedEmail } from '@/lib/email'
 import { writeAuditLog } from '@/lib/audit-log'
+import { createRoomLayoutRepository } from '@/features/room-layout/server/repository'
+import { createAppSettingsService } from '@/features/app-settings/server/service'
 import type { DekanOverview } from '../types'
 import { createPermitAdminRepository, type PermitAdminRepository } from './repository'
 
@@ -9,7 +11,17 @@ function sameFaculty(value: string | null, faculty: string) {
   return (value ?? '').trim().toLocaleLowerCase() === faculty.trim().toLocaleLowerCase()
 }
 
-export function createPermitAdminService(repository: PermitAdminRepository = createPermitAdminRepository()) {
+// Only what overview() needs for its bed-capacity maths — kept narrow so
+// the service test can stub it without a Supabase client.
+type CapacityDeps = {
+  roomLayout?: { listAllRooms: (faculty: string) => Promise<Array<{ room_number: string; frozen: boolean; capacity: number | null }>> }
+  appSettings?: { get: (faculty: string) => Promise<{ defaultRoomCapacity: number }> }
+}
+
+export function createPermitAdminService(
+  repository: PermitAdminRepository = createPermitAdminRepository(),
+  capacityDeps: CapacityDeps = {},
+) {
   return {
     async overview(facultyValue: string | null): Promise<DekanOverview> {
       const faculty = facultyValue?.trim()
@@ -42,6 +54,36 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
         (permit) => permit.status === 'approved' && permit.room_number,
       )
 
+      // Real bed capacity for THIS dekan's scope — the rooms on their own
+      // floors (shared-dorm aware via listAllRooms), each room's own
+      // capacity override, and frozen rooms excluded: a room in ta'mirlash
+      // is not a free bed, even if empty.
+      const [scopedRooms, appSettings] = await Promise.all([
+        (capacityDeps.roomLayout ?? createRoomLayoutRepository()).listAllRooms(faculty),
+        (capacityDeps.appSettings ?? createAppSettingsService()).get(faculty),
+      ])
+      const defaultCapacity = appSettings.defaultRoomCapacity
+      const occByRoom = new Map<string, number>()
+      const bumpRoom = (roomNumber: string | null | undefined) => {
+        if (!roomNumber) return
+        occByRoom.set(roomNumber, (occByRoom.get(roomNumber) ?? 0) + 1)
+      }
+      studentsWithRooms.forEach((user) => bumpRoom(user.room_number))
+      approvedPermitsWithRooms.forEach((permit) => bumpRoom(permit.room_number))
+
+      let availableBeds = 0
+      let freeBeds = 0
+      let frozenRoomCount = 0
+      for (const room of scopedRooms) {
+        if (room.frozen) {
+          frozenRoomCount += 1
+          continue
+        }
+        const capacity = room.capacity ?? defaultCapacity
+        availableBeds += capacity
+        freeBeds += Math.max(0, capacity - (occByRoom.get(room.room_number) ?? 0))
+      }
+
       const courses: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
       const faculties: Record<string, number> = Object.create(null)
       const addDistribution = (course: number | null, targetFaculty: string | null) => {
@@ -64,6 +106,9 @@ export function createPermitAdminService(repository: PermitAdminRepository = cre
           registeredCount: permits.filter((permit) => permit.status === 'registered').length,
           activeStudentsCount: students.filter((user) => user.status === 'active').length,
           totalOccupiedBeds: usersWithRooms.length + approvedPermitsWithRooms.length,
+          availableBeds,
+          freeBeds,
+          frozenRoomCount,
           courseDistribution: Object.entries(courses).map(([course, talabalar]) => ({ course: `${course}-kurs`, talabalar })),
           facultyDistribution: Object.entries(faculties).map(([name, talabalar]) => ({ name, talabalar })),
           recentRequests: permits.filter((permit) => permit.status === 'pending').slice(0, 5),

@@ -243,6 +243,9 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
         position: row.position,
         size: row.size as RoomBlockSize,
         capacity: row.capacity ?? null,
+        // Read-only here — freezing lives in the Xonalar xaritasi. Surfaced
+        // so the builder's "bo'sh joy" summary can exclude frozen rooms.
+        frozen: Boolean(row.frozen),
       }))
     },
 

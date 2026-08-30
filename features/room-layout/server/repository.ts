@@ -80,7 +80,7 @@ export function createRoomLayoutRepository() {
       const scope = await scopeFor(faculty)
       let query = supabase
         .from('floor_room_layout')
-        .select('room_number, side, position, size, capacity')
+        .select('room_number, side, position, size, capacity, frozen')
         .eq('floor_number', floorNumber)
         .order('side', { ascending: true })
         .order('position', { ascending: true })

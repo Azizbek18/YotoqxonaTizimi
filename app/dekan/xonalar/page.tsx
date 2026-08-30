@@ -370,26 +370,41 @@ export default function DekanXonalarMap() {
   // Effective bed count for a room: its own override, else the dorm default.
   const roomBeds = (room: RoomData) => room.capacity ?? defaultCapacity
 
-  // Calculate totals
+  // Calculate totals. `rooms` is already scoped to this dekan's floors
+  // (useRoomFloors -> repository scopeFor). A frozen room contributes no
+  // capacity and no free places — it's out of circulation, not empty.
   const totalOccupiedBeds = rooms.reduce((acc, r) => acc + r.occupants.length, 0)
-  const totalBeds = rooms.reduce((acc, r) => acc + roomBeds(r), 0)
+  const availableBeds = rooms.reduce((acc, r) => acc + (r.frozen ? 0 : roomBeds(r)), 0)
+  const freePlaces = rooms.reduce(
+    (acc, r) => acc + (r.frozen ? 0 : Math.max(0, roomBeds(r) - r.occupants.length)),
+    0,
+  )
+  const frozenRooms = rooms.filter((r) => r.frozen).length
   const totalRoomsWithMixedGenders = rooms.filter((r) => r.gender === 'mixed').length
-  const totalEmptyRooms = rooms.filter((r) => r.occupants.length === 0).length
-  const totalFullRooms = rooms.filter((r) => r.occupants.length >= roomBeds(r)).length
+  const totalFullRooms = rooms.filter((r) => !r.frozen && r.occupants.length >= roomBeds(r)).length
 
   return (
     <div className="space-y-6">
       {/* 1. Header Overview Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
-          { label: 'Jami band joylar', value: `${totalOccupiedBeds} / ${totalBeds}`, icon: BedDouble },
+          { label: 'Band joylar', value: `${totalOccupiedBeds} / ${availableBeds}`, icon: BedDouble },
+          {
+            label: 'Bo‘sh joylar',
+            value: `${freePlaces} ta`,
+            icon: DoorOpen,
+            tone: freePlaces === 0 ? 'danger' as const : undefined,
+          },
           // Roomless active students + approved-but-unregistered permits of
           // this faculty — the same list the "Talaba joylashtirish" modal
           // draws from. Surfaced here so a student left without a room (e.g.
           // just removed from one) is visible without opening every room.
           { label: 'Xonasiz talabalar', value: `${students.length} ta`, icon: UserMinus, tone: students.length > 0 ? 'warning' as const : undefined },
-          { label: 'Bo‘sh xonalar', value: `${totalEmptyRooms} ta`, icon: DoorOpen },
-          { label: 'To‘la xonalar', value: `${totalFullRooms} ta`, icon: DoorClosed },
+          {
+            label: frozenRooms > 0 ? `To‘la xonalar · ${frozenRooms} muzlatilgan` : 'To‘la xonalar',
+            value: `${totalFullRooms} ta`,
+            icon: DoorClosed,
+          },
           { label: 'Gender xatoliklar', value: `${totalRoomsWithMixedGenders} ta xona`, icon: Users2, tone: totalRoomsWithMixedGenders > 0 ? 'danger' as const : undefined },
         ].map((stat, idx) => (
           <motion.div
@@ -797,14 +812,16 @@ export default function DekanXonalarMap() {
 
                 {/* Capacity + occupancy — one calm block. Bed count is a
                     stepper; landing on the building default clears the
-                    override (see stepCapacity). Only for rooms in the tarx. */}
+                    override (see stepCapacity). A frozen room's beds never
+                    count as free. */}
                 {(() => {
                   const isOverride = selectedRoom.inLayout && selectedRoom.capacity != null
                   const beds = roomBeds(selectedRoom)
                   const occ = selectedRoom.occupants.length
+                  const free = Math.max(0, beds - occ)
                   const tone = getRoomOccupancyTone(occ, beds)
                   const toneText = {
-                    empty: isLight ? 'text-slate-500' : 'text-slate-400',
+                    empty: isLight ? 'text-emerald-600' : 'text-emerald-400',
                     partial: isLight ? 'text-amber-600' : 'text-amber-400',
                     full: isLight ? 'text-rose-600' : 'text-rose-400',
                     unknown: isLight ? 'text-slate-500' : 'text-slate-400',
@@ -812,66 +829,69 @@ export default function DekanXonalarMap() {
                   return (
                     <div className={`shrink-0 mt-3 rounded-xl border overflow-hidden ${ui.inset}`}>
                       {selectedRoom.inLayout && (
-                        <div className={`flex items-center gap-3 p-3 border-b ${ui.border}`}>
-                          <BedDouble size={16} className={`shrink-0 ${ui.accentText}`} />
-                          <div className="min-w-0 flex-1">
-                            <p className={`text-[10px] font-bold uppercase tracking-wider ${textStrong}`}>
+                        <div className={`p-3 border-b ${ui.border}`}>
+                          <div className="flex items-center gap-3">
+                            <BedDouble size={16} className={`shrink-0 ${ui.accentText}`} />
+                            <p className={`flex-1 text-[10px] font-bold uppercase tracking-wider ${textStrong}`}>
                               Xona sig&apos;imi
                             </p>
-                            <p className={`text-[10px] leading-tight mt-0.5 ${textMuted}`}>
-                              {isOverride ? (
-                                <>
-                                  Istisno xona · standart {defaultCapacity} ta ·{' '}
-                                  <button
-                                    type="button"
-                                    disabled={savingCapacity}
-                                    onClick={() => handleSetCapacity(null)}
-                                    className={`font-bold underline underline-offset-2 disabled:opacity-50 ${ui.accentText}`}
-                                  >
-                                    standartga qaytarish
-                                  </button>
-                                </>
-                              ) : (
-                                'Bino standarti bo’yicha'
-                              )}
-                            </p>
+                            <div className="shrink-0 flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                aria-label="Kamaytirish"
+                                disabled={savingCapacity || beds <= CAPACITY_MIN}
+                                onClick={() => stepCapacity(-1)}
+                                className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30 ${ui.btnGhost}`}
+                              >
+                                <Minus size={13} />
+                              </button>
+                              <span className={`w-8 text-center text-lg font-black tabular-nums ${isOverride ? ui.accentText : textStrong}`}>
+                                {beds}
+                              </span>
+                              <button
+                                type="button"
+                                aria-label="Ko‘paytirish"
+                                disabled={savingCapacity || beds >= CAPACITY_MAX}
+                                onClick={() => stepCapacity(1)}
+                                className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30 ${ui.accentSolid}`}
+                              >
+                                <Plus size={13} />
+                              </button>
+                            </div>
                           </div>
-                          <div className="shrink-0 flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              aria-label="Kamaytirish"
-                              disabled={savingCapacity || beds <= CAPACITY_MIN}
-                              onClick={() => stepCapacity(-1)}
-                              className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30 ${ui.btnGhost}`}
-                            >
-                              <Minus size={13} />
-                            </button>
-                            <span
-                              className={`w-9 text-center text-lg font-black tabular-nums ${
-                                isOverride ? ui.accentText : textStrong
-                              }`}
-                            >
-                              {beds}
+                          <div className="mt-2 flex items-center justify-between gap-2 pl-7">
+                            <span className={`text-[10px] ${textMuted}`}>
+                              {isOverride ? `Istisno · bino standarti ${defaultCapacity} ta` : 'Bino standarti bo’yicha'}
                             </span>
-                            <button
-                              type="button"
-                              aria-label="Ko‘paytirish"
-                              disabled={savingCapacity || beds >= CAPACITY_MAX}
-                              onClick={() => stepCapacity(1)}
-                              className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30 ${ui.accentSolid}`}
-                            >
-                              <Plus size={13} />
-                            </button>
+                            {isOverride && (
+                              <button
+                                type="button"
+                                disabled={savingCapacity}
+                                onClick={() => handleSetCapacity(null)}
+                                className={`shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.accentSoft}`}
+                              >
+                                <RotateCcw size={11} />
+                                Standart
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}
-                      <div className="flex items-center justify-between p-3">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${textMuted}`}>
-                          Band joylar
-                        </span>
-                        <span className={`text-xs font-black tabular-nums ${toneText}`}>
-                          {occ} / {beds}
-                        </span>
+                      <div className="p-3">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider ${textMuted}`}>
+                            {selectedRoom.frozen ? 'Bandlik' : "Bo'sh joylar"}
+                          </span>
+                          <span className={`text-xs font-black tabular-nums ${selectedRoom.frozen ? textMuted : toneText}`}>
+                            {selectedRoom.frozen ? `${occ} / ${beds}` : `${free} / ${beds}`}
+                          </span>
+                        </div>
+                        {selectedRoom.frozen && (
+                          <p className={`mt-1.5 flex items-center gap-1.5 text-[10px] font-medium ${isLight ? 'text-cyan-600' : 'text-cyan-400'}`}>
+                            <Snowflake size={11} className="shrink-0" />
+                            Muzlatilgan — o&apos;rinlar bo&apos;sh hisoblanmaydi
+                          </p>
+                        )}
                       </div>
                     </div>
                   )

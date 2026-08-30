@@ -145,6 +145,14 @@ describe('permit admin service — approve / reject audit + email', () => {
 describe('permit admin service — overview', () => {
   beforeEach(() => vi.clearAllMocks())
 
+  const capacityDeps = (
+    rooms: Array<{ room_number: string; frozen: boolean; capacity: number | null }> = [],
+    defaultRoomCapacity = 4,
+  ) => ({
+    roomLayout: { listAllRooms: vi.fn(async () => rooms) },
+    appSettings: { get: vi.fn(async () => ({ defaultRoomCapacity })) },
+  })
+
   it('loads only the dekan\'s own faculty and never redacts (data is already scoped)', async () => {
     const load = vi.fn(async () => ({
       permits: [permit({ id: 'p1', faculty: 'fizika', status: 'approved', room_number: '12' })],
@@ -154,7 +162,7 @@ describe('permit admin service — overview', () => {
         direction: 'astronomiya', course: 2, room_number: '12', warning_count: 0, blacklisted: false,
       }],
     }))
-    const overview = await createPermitAdminService(repository({ load })).overview('fizika')
+    const overview = await createPermitAdminService(repository({ load }), capacityDeps()).overview('fizika')
 
     expect(load).toHaveBeenCalledWith('fizika')
     expect(overview.faculty).toBe('fizika')
@@ -164,7 +172,31 @@ describe('permit admin service — overview', () => {
     expect(overview.dashboard.totalOccupiedBeds).toBe(2)
   })
 
+  it('bed capacity: frozen rooms give no free places, per-room overrides applied', async () => {
+    // room 12 holds 2 (student + permit) with an override cap of 3 -> 1 free.
+    // room 20 is default 4, empty -> 4 free. room 30 is frozen -> 0, excluded.
+    const load = vi.fn(async () => ({
+      permits: [permit({ id: 'p1', faculty: 'fizika', status: 'approved', room_number: '12' })],
+      users: [{
+        id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Aziz',
+        passport_series: 'AB1', jshshir: 'J1', phone_number: '+998', gender: 'male',
+        direction: 'astronomiya', course: 2, room_number: '12', warning_count: 0, blacklisted: false,
+      }],
+    }))
+    const deps = capacityDeps([
+      { room_number: '12', frozen: false, capacity: 3 },
+      { room_number: '20', frozen: false, capacity: null },
+      { room_number: '30', frozen: true, capacity: null },
+    ], 4)
+
+    const { dashboard } = await createPermitAdminService(repository({ load }), deps).overview('fizika')
+
+    expect(dashboard.availableBeds).toBe(7)   // 3 + 4, frozen room excluded
+    expect(dashboard.freeBeds).toBe(5)        // (3-2) + (4-0)
+    expect(dashboard.frozenRoomCount).toBe(1)
+  })
+
   it('rejects a dekan with no faculty', async () => {
-    await expect(createPermitAdminService(repository()).overview(null)).rejects.toMatchObject({ status: 403 })
+    await expect(createPermitAdminService(repository(), capacityDeps()).overview(null)).rejects.toMatchObject({ status: 403 })
   })
 })

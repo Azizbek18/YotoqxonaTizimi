@@ -31,7 +31,7 @@ interface RoomOccupancySnapshot {
   students: StudentInfo[]
 }
 
-type EditableBlock = { id: string; roomNumber: string; size: RoomBlockSize; capacity: number | null }
+type EditableBlock = { id: string; roomNumber: string; size: RoomBlockSize; capacity: number | null; frozen: boolean }
 
 // Compact capacity picker options in the row: "Standart" (null = inherit
 // dorms.default_room_capacity) plus the realistic exception sizes.
@@ -72,6 +72,7 @@ type PositionedRoom = {
   side: RoomBlockSide
   size: RoomBlockSize
   capacity: number | null
+  frozen: boolean
   x: number
   z: number
   width: number
@@ -105,7 +106,7 @@ function layoutSide(blocks: EditableBlock[], side: RoomBlockSide): { rooms: Posi
       const units = SIZE_UNITS[b.size]
       const z = cursor + units.depth / 2
       cursor += units.depth + GAP
-      return { roomNumber: b.roomNumber.trim(), size: b.size, capacity: b.capacity, z, ...units }
+      return { roomNumber: b.roomNumber.trim(), size: b.size, capacity: b.capacity, frozen: b.frozen, z, ...units }
     })
 
   const totalDepth = Math.max(cursor - GAP, 0)
@@ -118,6 +119,7 @@ function layoutSide(blocks: EditableBlock[], side: RoomBlockSide): { rooms: Posi
     side,
     size: r.size,
     capacity: r.capacity,
+    frozen: r.frozen,
     x: xSign * (CORRIDOR_WIDTH / 2 + r.width / 2 + GAP),
     z: r.z - centerOffset,
     width: r.width,
@@ -233,6 +235,7 @@ export default function Dekan3DXonalarPage() {
         roomNumber: b.roomNumber,
         size: b.size,
         capacity: b.capacity ?? null,
+        frozen: b.frozen ?? false,
       })
       const left = blocks.filter((b) => b.side === 'left').map(toEditable)
       const right = blocks.filter((b) => b.side === 'right').map(toEditable)
@@ -317,6 +320,7 @@ export default function Dekan3DXonalarPage() {
         roomNumber: start === null ? '' : String(start + i),
         size: 'medium',
         capacity: null,
+        frozen: false,
       }))
       return [...prev, ...additions]
     })
@@ -470,16 +474,20 @@ export default function Dekan3DXonalarPage() {
       const occupied = snap?.occupied ?? 0
       const occupancyTone = getRoomOccupancyTone(occupied, room.capacity ?? defaultRoomCapacity)
 
-      const color = {
-        empty: 0x10b981,
-        partial: 0xf59e0b,
-        full: 0xef4444,
-        unknown: 0x64748b,
-      }[occupancyTone]
+      // A frozen room is cyan regardless of occupancy — matches the Xonalar
+      // xaritasi and reads as "out of circulation", not empty.
+      const color = room.frozen
+        ? 0x06b6d4
+        : {
+            empty: 0x10b981,
+            partial: 0xf59e0b,
+            full: 0xef4444,
+            unknown: 0x64748b,
+          }[occupancyTone]
 
       const geo = new THREE.BoxGeometry(room.width, room.height, room.depth)
       const material = new THREE.MeshStandardMaterial({
-        color, roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.85,
+        color, roughness: 0.2, metalness: 0.1, transparent: true, opacity: room.frozen ? 0.55 : 0.85,
       })
       const mesh = new THREE.Mesh(geo, material)
       mesh.position.set(room.x, room.height / 2, room.z)
@@ -575,18 +583,21 @@ export default function Dekan3DXonalarPage() {
 
   const summary = useMemo(() => {
     const roomCount = positionedRooms.rooms.length
+    const liveRooms = positionedRooms.rooms.filter((r) => !r.frozen)
     const occupiedPlaces = roomSnapshots
-      .filter((room) => positionedRooms.rooms.some((r) => r.roomNumber === room.roomNumber))
+      .filter((room) => liveRooms.some((r) => r.roomNumber === room.roomNumber))
       .reduce((total, room) => total + room.occupied, 0)
-    // Total beds = sum of each room's effective capacity (override, else the
-    // dorm default), not roomCount * default — otherwise the exception rooms
-    // make "bo'sh joy" wrong.
-    const totalBeds = defaultRoomCapacity === null && positionedRooms.rooms.some((r) => r.capacity === null)
+    // Total beds = sum of each non-frozen room's effective capacity
+    // (override, else the dorm default). Frozen rooms are out of
+    // circulation — their beds are neither "band" nor "bo'sh".
+    const capacityUnknown = defaultRoomCapacity === null && liveRooms.some((r) => r.capacity === null)
+    const totalBeds = capacityUnknown
       ? null
-      : positionedRooms.rooms.reduce((sum, r) => sum + (r.capacity ?? defaultRoomCapacity ?? 0), 0)
+      : liveRooms.reduce((sum, r) => sum + (r.capacity ?? defaultRoomCapacity ?? 0), 0)
     return {
       occupiedPlaces,
       totalRooms: roomCount,
+      frozenRooms: positionedRooms.rooms.length - liveRooms.length,
       freePlaces: getFreePlaces(totalBeds, occupiedPlaces),
     }
   }, [roomSnapshots, positionedRooms, defaultRoomCapacity])
@@ -600,6 +611,7 @@ export default function Dekan3DXonalarPage() {
       occupied: snap?.occupied ?? 0,
       capacity: block?.capacity ?? defaultRoomCapacity,
       isCapacityOverride: block?.capacity != null,
+      frozen: block?.frozen ?? false,
       students: snap?.students ?? []
     }
   }, [selectedRoomNumber, roomSnapshots, defaultRoomCapacity, previewLeft, previewRight])
@@ -713,9 +725,11 @@ export default function Dekan3DXonalarPage() {
               const over = trimmed && effectiveCap !== null && occupied > effectiveCap
               const occText = !trimmed
                 ? ''
-                : occupied === 0
-                  ? "bo'sh"
-                  : `${occupied}/${effectiveCap ?? '?'}`
+                : block.frozen
+                  ? 'muzlatilgan'
+                  : occupied === 0
+                    ? "bo'sh"
+                    : `${occupied}/${effectiveCap ?? '?'}`
               return (
                 <RoomRow
                   key={block.id}
@@ -723,7 +737,7 @@ export default function Dekan3DXonalarPage() {
                   isLight={isLight}
                   inputBg={inputBg}
                   textMuted={textMuted}
-                  toneDot={trimmed ? TONE_DOT[tone] : isLight ? 'bg-slate-300' : 'bg-slate-600'}
+                  toneDot={block.frozen ? 'bg-cyan-500' : trimmed ? TONE_DOT[tone] : isLight ? 'bg-slate-300' : 'bg-slate-600'}
                   occText={occText}
                   over={Boolean(over)}
                   defaultCapacity={defaultRoomCapacity}
@@ -755,16 +769,22 @@ export default function Dekan3DXonalarPage() {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:min-w-[520px]">
           {[
-            { icon: Users, label: 'Band joy', value: summary.occupiedPlaces },
-            { icon: DoorOpen, label: "Bo'sh joy", value: summary.freePlaces ?? '—' },
-            { icon: Layers3, label: 'Jami xona', value: `${summary.totalRooms} ta` },
-          ].map(({ icon: Icon, label, value }) => (
+            { icon: Users, label: 'Band joy', value: summary.occupiedPlaces, hint: undefined as string | undefined },
+            { icon: DoorOpen, label: "Bo'sh joy", value: summary.freePlaces ?? '—', hint: undefined as string | undefined },
+            {
+              icon: Layers3,
+              label: 'Jami xona',
+              value: `${summary.totalRooms} ta`,
+              hint: summary.frozenRooms > 0 ? `${summary.frozenRooms} ta muzlatilgan` : undefined,
+            },
+          ].map(({ icon: Icon, label, value, hint }) => (
             <div key={label} className={`rounded-xl border p-4 ${cardBg}`}>
               <div className={`flex items-center gap-2 ${textMuted}`}>
                 <Icon className={`h-4 w-4 ${ui.accentText}`} />
                 <span className="text-xs font-semibold uppercase tracking-[0.16em]">{label}</span>
               </div>
               <p className={`mt-2 truncate text-2xl font-bold ${textStrong}`}>{value}</p>
+              {hint && <p className={`mt-0.5 truncate text-[10px] font-medium ${textMuted}`}>{hint}</p>}
             </div>
           ))}
         </div>
@@ -976,13 +996,22 @@ export default function Dekan3DXonalarPage() {
                   />
                   <Detail
                     label="Bo'sh joylar"
-                    value={selectedRoomData.capacity === null
-                      ? "Noma'lum"
-                      : `${getFreePlaces(selectedRoomData.capacity, selectedRoomData.occupied)} ta`}
+                    value={selectedRoomData.frozen
+                      ? 'Muzlatilgan'
+                      : selectedRoomData.capacity === null
+                        ? "Noma'lum"
+                        : `${getFreePlaces(selectedRoomData.capacity, selectedRoomData.occupied)} ta`}
                     icon={<DoorOpen size={16} />}
                     textStrong={textStrong}
                     cardBg={cardBg}
                   />
+
+                  {selectedRoomData.frozen && (
+                    <p className={`md:col-span-3 -mt-1 flex items-center gap-1.5 text-[11px] font-medium ${isLight ? 'text-cyan-600' : 'text-cyan-400'}`}>
+                      <MousePointer2 size={12} className="shrink-0" />
+                      Bu xona ta&apos;mirlash uchun muzlatilgan — o&apos;rinlari bo&apos;sh joy hisoblanmaydi.
+                    </p>
+                  )}
 
                   {selectedRoomData.students.length > 0 && (
                     <div className="md:col-span-3">

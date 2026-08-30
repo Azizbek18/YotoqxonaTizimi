@@ -30,7 +30,14 @@ export type DekanOverview = {
     rejectedCount: number
     registeredCount: number
     activeStudentsCount: number
+    /** Students + approved-permit reservations holding a room, this faculty's scope. */
     totalOccupiedBeds: number
+    /** Beds in non-frozen rooms on this dekan's floors (per-room capacity applied). */
+    availableBeds: number
+    /** Unoccupied beds in those non-frozen rooms — the real "bo'sh joy". */
+    freeBeds: number
+    /** How many of this dekan's rooms are frozen for ta'mirlash. */
+    frozenRoomCount: number
     courseDistribution: { course: string; talabalar: number }[]
     facultyDistribution: { name: string; talabalar: number }[]
     recentRequests: PermitRequestRow[]

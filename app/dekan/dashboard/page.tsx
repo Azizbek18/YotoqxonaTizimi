@@ -39,6 +39,9 @@ interface DashboardStats {
   registeredCount: number
   activeStudentsCount: number
   totalOccupiedBeds: number
+  availableBeds: number
+  freeBeds: number
+  frozenRoomCount: number
   loading: boolean
 }
 
@@ -65,6 +68,9 @@ export default function DekanDashboard() {
     registeredCount: 0,
     activeStudentsCount: 0,
     totalOccupiedBeds: 0,
+    availableBeds: 0,
+    freeBeds: 0,
+    frozenRoomCount: 0,
     loading: true,
   })
 
@@ -87,6 +93,9 @@ export default function DekanDashboard() {
         registeredCount: dashboard.registeredCount,
         activeStudentsCount: dashboard.activeStudentsCount,
         totalOccupiedBeds: dashboard.totalOccupiedBeds,
+        availableBeds: dashboard.availableBeds,
+        freeBeds: dashboard.freeBeds,
+        frozenRoomCount: dashboard.frozenRoomCount,
         loading: false,
       })
     } catch (err) {
@@ -102,12 +111,15 @@ export default function DekanDashboard() {
     return () => clearInterval(interval)
   }, [facultyResolved, dekanFaculty])
 
-  const totalBedsCapacity = 600 // 150 rooms * 4 beds
-  const freeBeds = Math.max(0, totalBedsCapacity - stats.totalOccupiedBeds)
-  const occupancyRate = totalBedsCapacity > 0 ? Math.round((stats.totalOccupiedBeds / totalBedsCapacity) * 100) : 0
+  // Real capacity for this dekan's scope: their own floors, per-room
+  // capacity overrides, frozen (ta'mirlash) rooms excluded.
+  const totalBedsCapacity = stats.availableBeds
+  const freeBeds = stats.freeBeds
+  const occupiedInAvailable = Math.max(0, totalBedsCapacity - freeBeds)
+  const occupancyRate = totalBedsCapacity > 0 ? Math.round((occupiedInAvailable / totalBedsCapacity) * 100) : 0
 
   const occupancyPieData = [
-    { name: 'Band joylar', value: stats.totalOccupiedBeds, color: dekanChart.primary },
+    { name: 'Band joylar', value: occupiedInAvailable, color: dekanChart.primary },
     { name: "Bo'sh joylar", value: freeBeds, color: dekanChart.track(isLight) },
   ]
 
@@ -127,10 +139,10 @@ export default function DekanDashboard() {
       link: '/dekan/xonalar',
     },
     {
-      title: 'Joylashtirilganlar',
-      value: stats.totalOccupiedBeds,
+      title: 'Bo‘sh o‘rinlar',
+      value: stats.freeBeds,
       icon: Home,
-      description: `${occupancyRate}% bandlik darajasi`,
+      description: `${occupancyRate}% bandlik · ${occupiedInAvailable}/${totalBedsCapacity} band${stats.frozenRoomCount > 0 ? ` · ${stats.frozenRoomCount} muzlatilgan` : ''}`,
       link: '/dekan/xonalar',
     },
     {
@@ -232,7 +244,10 @@ export default function DekanDashboard() {
         <div className={`rounded-2xl border p-5 lg:col-span-1 flex flex-col justify-between ${ui.card}`}>
           <div>
             <h3 className={`text-sm font-bold ${ui.strong}`}>Yotoqxona bandligi</h3>
-            <p className={`text-[10px] font-medium mt-0.5 ${ui.muted}`}>Jami o‘rinlar sig‘imi: {totalBedsCapacity} ta</p>
+            <p className={`text-[10px] font-medium mt-0.5 ${ui.muted}`}>
+              Foydalanish mumkin: {totalBedsCapacity} o‘rin
+              {stats.frozenRoomCount > 0 ? ` · ${stats.frozenRoomCount} ta xona muzlatilgan` : ''}
+            </p>
           </div>
           <div className="h-56 relative flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
@@ -269,16 +284,16 @@ export default function DekanDashboard() {
             <div className="flex items-center justify-between text-xs font-semibold">
               <div className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-sm bg-gradient-to-br from-indigo-500 to-violet-600" />
-                <span className={ui.muted}>Joylashtirilgan talabalar</span>
+                <span className={ui.muted}>Band o&apos;rinlar</span>
               </div>
-              <span className={ui.strong}>{stats.totalOccupiedBeds} ta</span>
+              <span className={ui.strong}>{occupiedInAvailable} ta</span>
             </div>
             <div className="flex items-center justify-between text-xs font-semibold">
               <div className="flex items-center gap-2">
                 <span className={`h-2.5 w-2.5 rounded-sm ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`} />
                 <span className={ui.muted}>Bo&apos;sh o&apos;rinlar</span>
               </div>
-              <span className={ui.strong}>{freeBeds} ta</span>
+              <span className={`font-bold ${freeBeds > 0 ? ui.accentText : ui.strong}`}>{freeBeds} ta</span>
             </div>
           </div>
         </div>

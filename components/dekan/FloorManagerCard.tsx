@@ -54,10 +54,13 @@ export default function FloorManagerCard({
     const allFloors = [...new Set([...declared, ...byFloor.keys()])].sort((a, b) => a - b)
     return allFloors.map((floor) => {
       const floorRooms = byFloor.get(floor) ?? []
+      const live = floorRooms.filter((r) => !r.frozen)
       return {
         floor,
         count: floorRooms.length,
-        breakdown: getRoomCapacityBreakdown(floorRooms, defaultCapacity),
+        frozen: floorRooms.length - live.length,
+        beds: defaultCapacity === null ? null : live.reduce((s, r) => s + (r.capacity ?? defaultCapacity), 0),
+        breakdown: getRoomCapacityBreakdown(live, defaultCapacity),
         beyondDeclared: floor > floorCount,
       }
     })
@@ -132,9 +135,13 @@ export default function FloorManagerCard({
         <p className={`mt-4 text-xs font-medium ${ui.muted}`}>Yuklanmoqda...</p>
       ) : (
         <div className="mt-4 space-y-1.5">
-          {floorRows.map(({ floor, count, breakdown, beyondDeclared }) => {
+          {floorRows.map(({ floor, count, frozen, beds, breakdown, beyondDeclared }) => {
             const empty = count === 0
-            const breakdownText = breakdown.map((b) => `${b.count}×${b.capacity}`).join(' · ')
+            const breakdownText = [
+              breakdown.map((b) => `${b.count}×${b.capacity}`).join(' · '),
+              beds !== null ? `${beds} o‘rin` : '',
+              frozen > 0 ? `${frozen} muzlatilgan` : '',
+            ].filter(Boolean).join(' · ')
             return (
               <div
                 key={floor}

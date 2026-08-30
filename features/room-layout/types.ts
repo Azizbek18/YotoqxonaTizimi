@@ -9,6 +9,9 @@ export type RoomLayoutBlock = {
   /** Per-room bed count override. null/undefined = inherit
    *  dorms.default_room_capacity (migration 202609180000). */
   capacity?: number | null
+  /** Read-only in the builder (freezing lives in Xonalar xaritasi); the
+   *  save path never sends it and replace_floor_room_layout ignores it. */
+  frozen?: boolean
 }
 
 // Which floor a room sits on, exactly as the admin entered it in the

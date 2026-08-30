@@ -22,6 +22,7 @@ import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { supabase } from '@/lib/supabase'
 import { getSafeUser } from '@/lib/auth-session'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
+import { prepareUploadFile } from '@/lib/prepare-upload'
 import toast from 'react-hot-toast'
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
@@ -1117,13 +1118,28 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
   }, [])
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
-    if (!selectedFile) return
+    const picked = e.target.files?.[0]
+    e.target.value = ''
+    if (!picked) return
 
-    // Validate type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp']
-    if (!validTypes.includes(selectedFile.type)) {
-      toast.error("Faqat JPEG, PNG yoki WebP formatidagi rasmlar qabul qilinadi")
+    setAiResult(null)
+    setErrorMsg('')
+    setAiChecking(true)
+
+    let selectedFile: File
+    try {
+      // iPhone HEIC → JPEG, plus a downscale — the AI photo-check and the
+      // avatar endpoint both do a strict signature check that raw HEIC fails.
+      const prepared = await prepareUploadFile(picked, { allowPdf: false, maxDimension: 1200 })
+      if (!prepared.ok) {
+        toast.error(prepared.message)
+        setAiChecking(false)
+        return
+      }
+      selectedFile = prepared.file
+    } catch {
+      toast.error("Rasmni tayyorlab bo'lmadi. Boshqa rasm tanlang.")
+      setAiChecking(false)
       return
     }
 
@@ -1131,14 +1147,12 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
     // server enforces it regardless, so this is a UX hint, not the guard)
     if (maxUploadSizeMb !== null && selectedFile.size > maxUploadSizeMb * 1024 * 1024) {
       toast.error(`Rasm hajmi ${maxUploadSizeMb}MB dan kichik bo'lishi shart`)
+      setAiChecking(false)
       return
     }
 
     setFile(selectedFile)
     setPreview(URL.createObjectURL(selectedFile))
-    setAiResult(null)
-    setErrorMsg('')
-    setAiChecking(true)
 
     try {
       const formData = new FormData()

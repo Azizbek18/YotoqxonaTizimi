@@ -16,6 +16,7 @@ import ArizaTilxatDocument from '@/components/documents/ArizaTilxatDocument'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
+import { prepareUploadFile } from '@/lib/prepare-upload'
 
 const STUDY_TYPES = [
   { value: 'grant', label: "Davlat granti" },
@@ -50,6 +51,7 @@ export default function ImtiyozliAriza() {
   const [originRegion, setOriginRegion] = useState('')
   const [idNumber, setIdNumber] = useState('')
   const [passportPhoto, setPassportPhoto] = useState<File | null>(null)
+  const [preparingPhoto, setPreparingPhoto] = useState(false)
 
   // Dekan-configured dormitory number/name (Sozlamalar) — fetched publicly
   // since the applicant isn't logged in yet. Empty until the dekan sets
@@ -69,14 +71,24 @@ export default function ImtiyozliAriza() {
 
   const acknowledgeWarning = () => setShowWarning(false)
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const selected = e.target.files[0]
-      if (selected.size > 4 * 1024 * 1024) {
-        toast.error("Fayl o'lchami 4 MB dan oshmasligi kerak!")
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0]
+    e.target.value = '' // let the same file be re-picked after an error
+    if (!selected) return
+
+    setPreparingPhoto(true)
+    try {
+      // Converts iPhone HEIC → JPEG and shrinks oversized camera shots so
+      // the server's format/size check doesn't reject an honest photo.
+      const prepared = await prepareUploadFile(selected, { allowPdf: true, maxDimension: 2200 })
+      if (!prepared.ok) {
+        toast.error(prepared.message)
         return
       }
-      setPassportPhoto(selected)
+      setPassportPhoto(prepared.file)
+      if (prepared.changed) toast.success('Rasm yuklashga tayyorlandi')
+    } finally {
+      setPreparingPhoto(false)
     }
   }
 
@@ -123,6 +135,10 @@ export default function ImtiyozliAriza() {
     }
     if (!idNumber.trim() || idNumber.trim().length < 4) {
       toast.error("Pasport/ID hujjat raqamini kiriting!")
+      return false
+    }
+    if (preparingPhoto) {
+      toast.error('Rasm hali tayyorlanmoqda — biroz kuting.')
       return false
     }
     if (!passportPhoto) {
@@ -495,11 +511,21 @@ export default function ImtiyozliAriza() {
                 <div className="space-y-1">
                   <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Pasport rasmi</label>
                   <div className={`relative border border-dashed rounded-xl p-4 text-center transition-all ${passportPhoto ? 'border-emerald-500/40 bg-emerald-500/5' : isLight ? 'border-slate-300 hover:bg-slate-50' : 'border-white/10 hover:bg-white/5'}`}>
-                    <input type="file" accept=".pdf,image/*" onChange={handlePhotoChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    <input type="file" accept=".pdf,image/*" onChange={handlePhotoChange} disabled={preparingPhoto} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait" />
                     <div className="flex flex-col items-center gap-1">
-                      <Upload className={`h-6 w-6 ${passportPhoto ? 'text-emerald-500' : 'text-slate-500'}`} />
-                      <span className="text-xs font-black">{passportPhoto ? passportPhoto.name : 'Rasmni tanlang'}</span>
-                      <span className="text-[10px] text-slate-500">PDF, PNG, JPG (Maks. 4 MB)</span>
+                      {preparingPhoto ? (
+                        <>
+                          <div className="h-6 w-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                          <span className="text-xs font-black">Rasm tayyorlanmoqda…</span>
+                          <span className="text-[10px] text-slate-500">iPhone rasmi biroz vaqt olishi mumkin</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className={`h-6 w-6 ${passportPhoto ? 'text-emerald-500' : 'text-slate-500'}`} />
+                          <span className="text-xs font-black">{passportPhoto ? passportPhoto.name : 'Rasmni tanlang'}</span>
+                          <span className="text-[10px] text-slate-500">PDF, PNG, JPG (Maks. 4 MB) — iPhone rasmi ham bo‘ladi</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

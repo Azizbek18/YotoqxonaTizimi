@@ -25,6 +25,7 @@ import {
 } from '@/features/profile/client/api'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/password-policy'
+import { prepareUploadFile } from '@/lib/prepare-upload'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Profile {
@@ -404,22 +405,26 @@ export default function StudentProfile() {
   }
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !profile) return
-
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    if (!validTypes.includes(file.type)) {
-      setMessage({ type: 'error', text: 'Faqat rasm formatidagi fayllar qabul qilinadi' })
-      return
-    }
-
-    if (maxUploadSizeMb !== null && file.size > maxUploadSizeMb * 1024 * 1024) {
-      setMessage({ type: 'error', text: `Rasm ${maxUploadSizeMb}MB dan kichik bo'lishi shart` })
-      return
-    }
+    const picked = e.target.files?.[0]
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (!picked || !profile) return
 
     setUploading(true)
     try {
+      // iPhone HEIC → JPEG and a downscale, so the avatar endpoint's
+      // format/size check accepts an honest photo.
+      const prepared = await prepareUploadFile(picked, { allowPdf: false, maxDimension: 1024 })
+      if (!prepared.ok) {
+        setMessage({ type: 'error', text: prepared.message })
+        return
+      }
+      const file = prepared.file
+
+      if (maxUploadSizeMb !== null && file.size > maxUploadSizeMb * 1024 * 1024) {
+        setMessage({ type: 'error', text: `Rasm ${maxUploadSizeMb}MB dan kichik bo'lishi shart` })
+        return
+      }
+
       await uploadStudentAvatar(file)
 
       await refreshProfile()

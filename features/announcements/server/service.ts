@@ -72,6 +72,9 @@ export function createAnnouncementService(repository: AnnouncementRepository = c
 
       const elonlar = rows
         .filter((row) => {
+          // A superadmin's tizim-wide notice — reaches every student, no
+          // matter their faculty, floor or gender.
+          if (row.audience === 'system') return true
           // 'all' is a building-wide notice, but every building now belongs to
           // one faculty — so it is scoped exactly like 'faculty', not shown
           // dorm-wide across tenants. A reader with no resolvable faculty
@@ -101,7 +104,7 @@ export function createAnnouncementService(repository: AnnouncementRepository = c
             title: row.title,
             text: row.text,
             type: row.type as 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish',
-            audience: row.audience as 'all' | 'faculty' | 'floor',
+            audience: row.audience as 'all' | 'faculty' | 'floor' | 'system',
             faculty: row.faculty,
             created_at: row.created_at,
             published_at: row.published_at,
@@ -176,6 +179,62 @@ export function createAnnouncementService(repository: AnnouncementRepository = c
       const id = (idValue ?? '').trim()
       if (!id) throw new ApiError(400, "E'lon tanlanmagan")
       const deleted = await repository.deleteByFaculty(id, faculty)
+      if (!deleted) throw new ApiError(404, "E'lon topilmadi")
+      return { ok: true as const }
+    },
+
+    // ---- superadmin: tizim-wide announcements (audience='system') ----
+
+    async listSystem(): Promise<AuthoredAnnouncement[]> {
+      return (await repository.listByAudience('system')) as AuthoredAnnouncement[]
+    },
+
+    /**
+     * A tizim-wide announcement reaches every student regardless of faculty.
+     * The stored `faculty` is a placeholder (elonlar.faculty is NOT NULL) —
+     * listForUser ignores it for audience='system'.
+     */
+    async createSystem(creatorId: string, value: unknown): Promise<AuthoredAnnouncement> {
+      const input = parseAnnouncementInput(value)
+      const isPublished = input.is_published !== false
+      return (await repository.insertAuthored({
+        title: input.title!,
+        text: input.text!,
+        type: input.type!,
+        audience: 'system',
+        faculty: PRIMARY_FACULTY,
+        is_published: isPublished,
+        created_by: creatorId,
+        published_at: isPublished ? new Date().toISOString() : null,
+      })) as AuthoredAnnouncement
+    },
+
+    async updateSystem(value: unknown): Promise<AuthoredAnnouncement> {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, "So'rov noto'g'ri")
+      const body = value as Record<string, unknown>
+      const id = typeof body.id === 'string' ? body.id.trim() : ''
+      if (!id) throw new ApiError(400, "E'lon tanlanmagan")
+
+      const input = parseAnnouncementInput(body, true)
+      const updates: Partial<AnnouncementRow> = {}
+      if (input.title !== undefined) updates.title = input.title
+      if (input.text !== undefined) updates.text = input.text
+      if (input.type !== undefined) updates.type = input.type
+      if (input.is_published !== undefined) {
+        updates.is_published = input.is_published
+        if (input.is_published) updates.published_at = new Date().toISOString()
+      }
+      if (Object.keys(updates).length === 0) throw new ApiError(400, "Yangilash uchun ma'lumot yo'q")
+
+      const updated = await repository.updateSystemById(id, updates)
+      if (!updated) throw new ApiError(404, "E'lon topilmadi")
+      return updated as AuthoredAnnouncement
+    },
+
+    async removeSystem(idValue: unknown): Promise<{ ok: true }> {
+      const id = typeof idValue === 'string' ? idValue.trim() : ''
+      if (!id) throw new ApiError(400, "E'lon tanlanmagan")
+      const deleted = await repository.deleteSystemById(id)
       if (!deleted) throw new ApiError(404, "E'lon topilmadi")
       return { ok: true as const }
     },

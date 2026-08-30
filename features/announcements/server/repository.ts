@@ -44,6 +44,42 @@ export function createAnnouncementRepository() {
       if (error) throw error
       return data ?? []
     },
+    // Superadmin — every tizim-wide announcement, regardless of the
+    // placeholder faculty stored on the row.
+    async listByAudience(audience: string) {
+      const { data, error } = await supabase
+        .from('elonlar')
+        .select(AUTHORED_COLUMNS)
+        .eq('audience', audience)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data ?? []
+    },
+
+    async updateSystemById(id: string, updates: Partial<AnnouncementRow>) {
+      const { data, error } = await supabase
+        .from('elonlar')
+        .update(updates)
+        .eq('id', id)
+        .eq('audience', 'system')
+        .select(AUTHORED_COLUMNS)
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+
+    async deleteSystemById(id: string) {
+      const { data, error } = await supabase
+        .from('elonlar')
+        .delete()
+        .eq('id', id)
+        .eq('audience', 'system')
+        .select('id')
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+
     async insertAuthored(row: {
       title: string
       text: string

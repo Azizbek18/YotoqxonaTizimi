@@ -31,9 +31,12 @@ function fakeRepository(overrides: Partial<AnnouncementRepository> = {}) {
     })),
     listPublished: vi.fn(async () => [] as PublishedRow[]),
     listByFaculty: vi.fn(async () => []),
+    listByAudience: vi.fn(async () => []),
     insertAuthored: vi.fn(async (value: unknown) => value),
     updateByFaculty: vi.fn(async () => null),
     deleteByFaculty: vi.fn(async () => null),
+    updateSystemById: vi.fn(async (id: string, updates: Record<string, unknown>) => ({ id, ...updates })),
+    deleteSystemById: vi.fn(async (id: string) => ({ id })),
     listStudentCreators: vi.fn(async () => []),
     listStaffCreators: vi.fn(async () => [{ id: 'dekan-1', full_name: 'Dekan Ismi' }]),
     ...overrides,
@@ -87,6 +90,23 @@ describe('listForUser audience filtering', () => {
     const { elonlar } = await createAnnouncementService(repository).listForUser('student-1')
 
     expect(elonlar).toHaveLength(0)
+  })
+
+  it('delivers a tizim-wide (audience=system) announcement across every faculty', async () => {
+    const repository = fakeRepository({
+      // placeholder faculty is 'kimyo' — irrelevant for a system notice
+      listPublished: vi.fn(async () => [row({ id: 'sys', audience: 'system', faculty: 'kimyo' })]),
+    })
+    const { elonlar } = await createAnnouncementService(repository).listForUser('student-1')
+    expect(elonlar.map((e) => e.id)).toEqual(['sys'])
+  })
+
+  it('delivers a tizim-wide announcement even to a signed-out reader', async () => {
+    const repository = fakeRepository({
+      listPublished: vi.fn(async () => [row({ id: 'sys', audience: 'system', faculty: 'fizika' })]),
+    })
+    const { elonlar } = await createAnnouncementService(repository).listForUser(null)
+    expect(elonlar.map((e) => e.id)).toEqual(['sys'])
   })
 
   it('shows a signed-out reader only the primary building’s dorm-wide notices', async () => {
@@ -207,6 +227,35 @@ describe('updateAuthored / removeAuthored', () => {
     const service = createAnnouncementService(fakeRepository())
     await expect(service.listAuthored(null)).rejects.toThrow(/fakulteti/i)
     await expect(service.removeAuthored(null, 'e1')).rejects.toThrow(/fakulteti/i)
+  })
+})
+
+describe('superadmin tizim-wide announcements', () => {
+  it('createSystem stores audience=system with a placeholder faculty', async () => {
+    const insertAuthored = vi.fn(async (v: unknown) => v)
+    const service = createAnnouncementService(fakeRepository({ insertAuthored } as unknown as Partial<AnnouncementRepository>))
+
+    await service.createSystem('sa-1', { title: 'Ta’til e’loni', text: 'Barcha talabalar uchun', type: 'Muhim', is_published: true })
+    expect(insertAuthored).toHaveBeenCalledWith(expect.objectContaining({
+      audience: 'system', faculty: 'amit', created_by: 'sa-1', is_published: true,
+    }))
+  })
+
+  it('updateSystem / removeSystem route through the system-scoped repo methods', async () => {
+    const updateSystemById = vi.fn(async () => ({ id: 'sys-1', title: 'Yangi' }))
+    const deleteSystemById = vi.fn(async () => ({ id: 'sys-1' }))
+    const service = createAnnouncementService(fakeRepository({ updateSystemById, deleteSystemById } as unknown as Partial<AnnouncementRepository>))
+
+    await service.updateSystem({ id: 'sys-1', title: 'Yangi sarlavha' })
+    expect(updateSystemById).toHaveBeenCalledWith('sys-1', expect.objectContaining({ title: 'Yangi sarlavha' }))
+
+    await service.removeSystem('sys-1')
+    expect(deleteSystemById).toHaveBeenCalledWith('sys-1')
+  })
+
+  it('removeSystem 404s an unknown id', async () => {
+    const service = createAnnouncementService(fakeRepository({ deleteSystemById: vi.fn(async () => null) } as unknown as Partial<AnnouncementRepository>))
+    await expect(service.removeSystem('nope')).rejects.toThrow(/topilmadi/)
   })
 })
 

@@ -30,7 +30,7 @@ interface Elon {
   text: string;
   date: string;
   type: 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish';
-  audience: 'all' | 'faculty' | 'floor';
+  audience: 'all' | 'faculty' | 'floor' | 'system';
   faculty: string | null;
   teacher: string;
   room: string;
@@ -43,7 +43,7 @@ interface DbElon {
   title: string;
   text: string;
   type: Elon['type'];
-  audience: 'all' | 'faculty' | 'floor';
+  audience: 'all' | 'faculty' | 'floor' | 'system';
   faculty: string | null;
   is_published?: boolean;
   created_at: string;
@@ -205,7 +205,12 @@ export default function ElonlarPage() {
     };
   }, []);
 
-  const dormElonlar = useMemo(() => elonlar.filter((elon) => elon.audience === 'all'), [elonlar]);
+  // 'system' — a superadmin's university-wide notice; shown in the general
+  // (dorm) view alongside building-wide announcements.
+  const dormElonlar = useMemo(
+    () => elonlar.filter((elon) => elon.audience === 'all' || elon.audience === 'system'),
+    [elonlar]
+  );
   const facultyElonlar = useMemo(
     () => elonlar.filter((elon) => elon.audience === 'faculty' && currentFaculty && elon.faculty === currentFaculty),
     [currentFaculty, elonlar]

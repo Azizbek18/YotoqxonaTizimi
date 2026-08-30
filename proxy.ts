@@ -201,6 +201,7 @@ export async function proxy(request: NextRequest) {
     ?? guardRole('/dekan/audit', ['admin'], '/dekan/dashboard')
     ?? guardRole('/dekan/tekshiruv', ['admin'], '/dekan/dashboard')
     ?? guardRole('/dekan/talabalar-global', ['admin'], '/dekan/dashboard')
+    ?? guardRole('/dekan/tizim-elonlari', ['admin'], '/dekan/dashboard')
   if (superadminGuard) return superadminGuard
 
   // `admin` is accepted here too: the standalone /admin panel is retired,

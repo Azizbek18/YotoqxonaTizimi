@@ -3,7 +3,7 @@ export type StudentAnnouncement = {
   title: string
   text: string
   type: 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish'
-  audience: 'all' | 'faculty' | 'floor'
+  audience: 'all' | 'faculty' | 'floor' | 'system'
   faculty: string | null
   created_at: string
   published_at: string | null

@@ -49,6 +49,9 @@ export const FACULTY_DIRECTIONS: Record<PermitFacultyValue, readonly DirectionOp
   biologiya: [
     { value: 'biotexnologiya', label: 'Biotexnologiya (tarmoqlar bo’yicha)' },
     { value: 'biologiya', label: 'Biologiya (turlari bo’yicha)' },
+    { value: 'ekologiya-atrof-muhit', label: 'Ekologiya (atrof-muhit muhofazasi)' },
+    { value: 'agrokimyo-tuproqshunoslik', label: 'Agrokimyo va tuproqshunoslik' },
+    { value: 'hayot-faoliyati-xavfsizligi', label: 'Hayot faoliyati xavfsizligi' },
   ],
   geologiya: [
     { value: 'konlarni-geomodellashtirish', label: 'Foydali qazilma konlarini baholash va geomodellashtirish' },
@@ -61,11 +64,19 @@ export const FACULTY_DIRECTIONS: Record<PermitFacultyValue, readonly DirectionOp
     { value: 'geografiya', label: 'Geografiya' },
   ],
   iqtisodiyot: [
-    { value: 'ijtimoiy-ish', label: 'Ijtimoiy ish' },
+    // Programmes the faculty confirmed applicants pick from (2026-08-30). The
+    // 4th course swaps "Soliq va soliqqa tortish" for "Sug'urta ishi"; both
+    // are offered here since the form doesn't filter directions by course.
+    { value: 'iqtisodiyot-tarmoqlar', label: 'Iqtisodiyot (tarmoqlar va sohalar bo’yicha)' },
     { value: 'jahon-iqtisodiyoti', label: 'Jahon iqtisodiyoti va xalqaro iqtisodiy munosabatlar' },
-    { value: 'inson-resurslari', label: 'Inson resurslarini boshqarish' },
+    { value: 'bank-ishi', label: 'Bank ishi' },
+    { value: 'moliya-texnologiyalari', label: 'Moliya va moliyaviy texnologiyalar' },
+    { value: 'soliq-soliqqa-tortish', label: 'Soliq va soliqqa tortish' },
+    { value: 'sugurta-ishi', label: 'Sug’urta ishi' },
     { value: 'menejment', label: 'Menejment (tarmoqlar va sohalar bo’yicha)' },
+    { value: 'inson-resurslari', label: 'Inson resurslarini boshqarish' },
     { value: 'byudjet-gaznachilik', label: 'Byudjet nazorati va g’aznachiligi' },
+    { value: 'ijtimoiy-ish', label: 'Ijtimoiy ish' },
   ],
   tarix: [
     { value: 'antropologiya-etnologiya', label: 'Antropologiya va etnologiya' },

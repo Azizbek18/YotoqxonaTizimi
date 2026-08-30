@@ -1,0 +1,6 @@
+-- Migration history marker.
+--
+-- This version was applied to production before the canonical repository
+-- migration was committed. The reproducible schema change remains in
+-- 202609180000_room_capacity_override.sql. Supabase compares migration
+-- timestamps, so this no-op file keeps local and remote history aligned.

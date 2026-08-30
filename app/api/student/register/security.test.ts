@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 const source = readFileSync(new URL('./route.ts', import.meta.url), 'utf8')
 const foreignRegistrationMigration = readFileSync(
-  new URL('../../../../supabase/migrations/202608300010_foreign_student_registration.sql', import.meta.url),
+  new URL('../../../../supabase/migrations/20260830173311_foreign_student_registration.sql', import.meta.url),
   'utf8',
 )
 

@@ -20,12 +20,11 @@ describe('permit validation', () => {
     expect(isValidPassport('AA123456')).toBe(false)
   })
 
-  it('accepts Turkmen passport identifiers with one letter and digits', () => {
-    expect(normalizePassport(' a 1234567 ')).toBe('A1234567')
-    expect(isValidPassport('A1234567')).toBe(true)
-    expect(isValidPassport('A12345678')).toBe(true)
-    expect(isValidPassport('A123456')).toBe(false)
-    expect(isValidPassport('A12B4567')).toBe(false)
+  it('keeps foreign IDs out of the regular Uzbek yo\'llanma validator', () => {
+    expect(isValidPassport('A1234567')).toBe(false)
+    expect(isValidPassport('A12345678')).toBe(false)
+    expect(isValidForeignIdNumber('A1234567')).toBe(true)
+    expect(isValidForeignIdNumber('A12345678')).toBe(true)
   })
 
   it.each([

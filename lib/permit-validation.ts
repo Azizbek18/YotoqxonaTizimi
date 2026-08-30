@@ -20,9 +20,9 @@ export function normalizeJshshir(input: unknown) {
 }
 
 export function isValidPassport(value: string) {
-  // Uzbekistan: AA1234567. Turkmenistan/foreign students commonly use
-  // A1234567 (and some current documents carry one extra serial digit).
-  return /^(?:[A-Z]{2}\d{7}|[A-Z]\d{7,8})$/.test(value)
+  // The regular yo'llanma flow is only for Uzbekistan passports.
+  // Foreign documents use isValidForeignIdNumber in the imtiyozli flow.
+  return /^[A-Z]{2}\d{7}$/.test(value)
 }
 
 export function isValidForeignIdNumber(value: string) {
@@ -52,7 +52,7 @@ export function isPlausibleInternationalPhone(input: unknown) {
 export function getPassportFormatError(input: unknown): string | null {
   const value = normalizePassport(input)
   if (!value || isValidPassport(value)) return null
-  return "Format noto'g'ri. O'zbekiston: AA1234567; xorijiy pasport: A1234567 yoki A12345678."
+  return "Format noto'g'ri. O'zbekiston pasporti: AA1234567. Xorijiy talaba bo'lsangiz, xorijiy/imtiyozli ariza turini tanlang."
 }
 
 export function isValidJshshir(value: string) {

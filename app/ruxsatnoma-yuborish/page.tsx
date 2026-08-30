@@ -1372,7 +1372,7 @@ export default function RuxsatnomaYuborish() {
                                     (value) => setPassportSeries(normalizePassport(value)),
                                     'passport',
                                   )}
-                                  placeholder="AA1234567 yoki A1234567"
+                                  placeholder="AA1234567"
                                   className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 ${
                                     isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
                                   }`}
@@ -1386,7 +1386,7 @@ export default function RuxsatnomaYuborish() {
                               </p>
                             ) : (
                               <p className={`px-2 text-[9px] leading-relaxed ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-                                O&apos;zbekiston: AA1234567 · xorijiy: A1234567
+                                O&apos;zbekiston yo&apos;llanmasi: AA1234567 · xorijiy talabalar alohida ariza turidan foydalanadi
                               </p>
                             )}
                           </div>

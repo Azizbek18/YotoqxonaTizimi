@@ -2,6 +2,10 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const source = readFileSync(new URL('./route.ts', import.meta.url), 'utf8')
+const foreignRegistrationMigration = readFileSync(
+  new URL('../../../../supabase/migrations/202608300010_foreign_student_registration.sql', import.meta.url),
+  'utf8',
+)
 
 describe('student registration security invariants', () => {
   it('never assigns a requester-supplied password before email proof', () => {
@@ -15,5 +19,13 @@ describe('student registration security invariants', () => {
     expect(source).toContain("status: 'pending'")
     expect(source).not.toContain(".update({ status: 'registered'")
     expect(source).toContain('requiresEmailVerification: true')
+  })
+
+  it('allows JSHSHIR-less registration only for imtiyozli permits', () => {
+    expect(source).toContain("applicationType === 'imtiyozli'")
+    expect(source).toContain("permitQuery.is('jshshir', null)")
+    expect(source).toContain("jshshir: applicationType === 'imtiyozli' ? null : jshshir")
+    expect(foreignRegistrationMigration).toContain("NEW.jshshir IS NULL AND jshshir IS NULL AND application_type = 'imtiyozli'")
+    expect(foreignRegistrationMigration).toContain("NEW.jshshir IS NOT NULL AND jshshir = NEW.jshshir AND application_type = 'yollanma'")
   })
 })

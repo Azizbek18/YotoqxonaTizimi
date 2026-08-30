@@ -2,7 +2,14 @@ import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
-import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
+import {
+  PERMIT_FILE_RULES,
+  detectPermitFileMimeType,
+  isPlausibleInternationalPhone,
+  isValidEmail,
+  isValidForeignIdNumber,
+  normalizeForeignIdNumber,
+} from '@/lib/permit-validation'
 import { directionBelongsToFaculty, normalizeDirection } from '@/lib/directions'
 import { isPermitFacultyValue } from '@/lib/faculties'
 import { writeAuditLog } from '@/lib/audit-log'
@@ -17,16 +24,6 @@ import { getApiError } from '@/server/http/api-error'
 // runs here: there's no official document format to verify against.
 function value(form: FormData, name: string, maxLength = 200) {
   return String(form.get(name) ?? '').trim().slice(0, maxLength)
-}
-
-// Foreign ID/passport numbers don't follow the Uzbek AA1234567 pattern, so
-// this only rules out empty/garbage input — not a specific format.
-function isPlausibleIdNumber(value: string) {
-  return value.length >= 4 && value.length <= 20 && /^[A-Z0-9\-\s]+$/i.test(value)
-}
-
-function isPlausiblePhone(value: string) {
-  return value.replace(/[\s()-]/g, '').length >= 7 && value.length <= 32
 }
 
 export async function POST(request: NextRequest) {
@@ -46,7 +43,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Pasport rasmi topilmadi.' }, { status: 400 })
     }
 
-    const idNumber = value(form, 'idNumber', 20).toUpperCase()
+    const idNumber = normalizeForeignIdNumber(form.get('idNumber'))
     const fullName = value(form, 'fullName', 160)
     const email = value(form, 'email', 254).toLowerCase()
     const phone = value(form, 'phone', 32)
@@ -59,13 +56,13 @@ export async function POST(request: NextRequest) {
     const originCountry = value(form, 'originCountry', 120)
     const originRegion = value(form, 'originRegion', 120)
 
-    if (!isPlausibleIdNumber(idNumber)) {
+    if (!isValidForeignIdNumber(idNumber)) {
       return NextResponse.json({ error: 'Pasport/ID hujjat raqami noto‘g‘ri kiritildi.' }, { status: 400 })
     }
-    if (fullName.length < 3 || !/^\S+@\S+\.\S+$/.test(email) || !isPlausiblePhone(phone)) {
+    if (fullName.length < 3 || !isValidEmail(email) || !isPlausibleInternationalPhone(phone)) {
       return NextResponse.json({ error: 'Shaxsiy ma’lumotlar to‘liq yoki to‘g‘ri kiritilmagan.' }, { status: 400 })
     }
-    if (!isPlausiblePhone(relativePhone)) {
+    if (!isPlausibleInternationalPhone(relativePhone)) {
       return NextResponse.json({ error: 'Yaqin qarindoshning telefon raqami noto‘g‘ri.' }, { status: 400 })
     }
     if (
@@ -86,17 +83,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Qaysi davlat/viloyatdan kelganingizni kiriting.' }, { status: 400 })
     }
 
-    const fileRule = PERMIT_FILE_RULES[file.type]
-    if (!fileRule || file.size < 16 || file.size > MAX_UPLOAD_SIZE_BYTES) {
+    if (file.size < 16 || file.size > MAX_UPLOAD_SIZE_BYTES) {
       return NextResponse.json({ error: 'Faqat PDF, JPG, PNG yoki WEBP (4 MB gacha) qabul qilinadi.' }, { status: file.size > MAX_UPLOAD_SIZE_BYTES ? 413 : 400 })
     }
     const buffer = Buffer.from(await file.arrayBuffer())
-    if (!hasAllowedSignature(buffer, fileRule.signatures)) {
+    const detectedMimeType = detectPermitFileMimeType(buffer)
+    if (!detectedMimeType) {
       return NextResponse.json({ error: 'Rasm formati qo‘llab-quvvatlanmaydi. iPhone rasmi (HEIC) bo‘lsa JPG ga o‘giring yoki skrinshot yuklang — PDF, JPG, PNG qabul qilinadi.' }, { status: 400 })
     }
-    if (file.type === 'image/webp' && buffer.subarray(8, 12).toString('ascii') !== 'WEBP') {
-      return NextResponse.json({ error: 'WEBP fayl imzosi noto‘g‘ri.' }, { status: 400 })
-    }
+    const fileRule = PERMIT_FILE_RULES[detectedMimeType]
 
     const supabase = getServiceSupabase()
 
@@ -110,7 +105,7 @@ export async function POST(request: NextRequest) {
 
     const storagePath = `imtiyozli/${new Date().getUTCFullYear()}/${randomUUID()}.${fileRule.extension}`
     const { error: uploadError } = await supabase.storage.from('permits').upload(storagePath, buffer, {
-      contentType: file.type,
+      contentType: detectedMimeType,
       upsert: false,
     })
     if (uploadError) throw uploadError

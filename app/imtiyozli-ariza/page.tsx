@@ -17,6 +17,13 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
 import { prepareUploadFile } from '@/lib/prepare-upload'
+import {
+  getForeignIdFormatError,
+  isPlausibleInternationalPhone,
+  isValidEmail,
+  isValidForeignIdNumber,
+  normalizeForeignIdNumber,
+} from '@/lib/permit-validation'
 
 const STUDY_TYPES = [
   { value: 'grant', label: "Davlat granti" },
@@ -52,6 +59,20 @@ export default function ImtiyozliAriza() {
   const [idNumber, setIdNumber] = useState('')
   const [passportPhoto, setPassportPhoto] = useState<File | null>(null)
   const [preparingPhoto, setPreparingPhoto] = useState(false)
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('permit_resubmit')
+      if (!raw) return
+      const saved = JSON.parse(raw) as { passport?: unknown; email?: unknown; applicationType?: unknown }
+      if (saved.applicationType !== 'imtiyozli') return
+      setIdNumber(normalizeForeignIdNumber(saved.passport))
+      setEmail(String(saved.email ?? '').trim().toLowerCase().slice(0, 254))
+      sessionStorage.removeItem('permit_resubmit')
+    } catch {
+      sessionStorage.removeItem('permit_resubmit')
+    }
+  }, [])
 
   // Dekan-configured dormitory number/name (Sozlamalar) — fetched publicly
   // since the applicant isn't logged in yet. Empty until the dekan sets
@@ -97,15 +118,15 @@ export default function ImtiyozliAriza() {
       toast.error('F.I.Sh to‘liq kiriting!')
       return false
     }
-    if (!email.trim() || !email.includes('@')) {
+    if (!isValidEmail(email)) {
       toast.error('To‘g‘ri email manzilini kiriting!')
       return false
     }
-    if (phone.replace(/\D/g, '').length < 7) {
-      toast.error("Telefon raqamingizni to'liq kiriting!")
+    if (phone.replace(/\D/g, '').length !== 9) {
+      toast.error("+998 dan keyin 9 ta raqam kiriting!")
       return false
     }
-    if (relativePhone.replace(/\D/g, '').length < 7) {
+    if (!isPlausibleInternationalPhone(relativePhone)) {
       toast.error("Yaqin qarindoshingizning telefon raqamini kiriting!")
       return false
     }
@@ -133,8 +154,8 @@ export default function ImtiyozliAriza() {
       toast.error("Qaysi davlat/viloyatdan kelganingizni kiriting!")
       return false
     }
-    if (!idNumber.trim() || idNumber.trim().length < 4) {
-      toast.error("Pasport/ID hujjat raqamini kiriting!")
+    if (!isValidForeignIdNumber(normalizeForeignIdNumber(idNumber))) {
+      toast.error(getForeignIdFormatError(idNumber) ?? "Pasport/ID hujjat raqamini kiriting!")
       return false
     }
     if (preparingPhoto) {
@@ -169,7 +190,7 @@ export default function ImtiyozliAriza() {
     try {
       const submission = new FormData()
       submission.append('file', passportPhoto)
-      submission.append('idNumber', idNumber.trim())
+      submission.append('idNumber', normalizeForeignIdNumber(idNumber))
       submission.append('fullName', fullName.trim())
       submission.append('email', email.trim().toLowerCase())
       submission.append('phone', `+998${phone.replace(/\D/g, '')}`)
@@ -187,8 +208,10 @@ export default function ImtiyozliAriza() {
       if (!response.ok) throw new Error(result.error || 'Arizani saqlashda xatolik yuz berdi')
 
       if (typeof window !== 'undefined') {
-        sessionStorage.setItem('student_permit_passport', idNumber.trim().toUpperCase())
+        sessionStorage.setItem('student_permit_passport', normalizeForeignIdNumber(idNumber))
         sessionStorage.setItem('student_permit_email', email.trim().toLowerCase())
+        sessionStorage.setItem('student_permit_type', 'imtiyozli')
+        sessionStorage.removeItem('student_permit_jshshir')
       }
 
       setSubmitted(true)
@@ -381,9 +404,10 @@ export default function ImtiyozliAriza() {
                     <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Email</label>
                     <div className="relative">
                       <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="talaba@example.com"
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="talaba@example.com"
                         className={`w-full border p-3 pl-11 rounded-xl text-sm outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200' : 'bg-slate-900/30 border-white/15 text-white focus:border-amber-500/50'}`} />
                     </div>
+                    {email && !isValidEmail(email) && <p className="ml-2 text-[10px] font-bold text-rose-500">Email formati noto'g'ri.</p>}
                   </div>
                   <div className="space-y-1">
                     <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Telefon raqamingiz</label>
@@ -401,9 +425,10 @@ export default function ImtiyozliAriza() {
                   <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Yaqin qarindoshingizning telefon raqami</label>
                   <div className="relative">
                     <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input type="tel" value={relativePhone} onChange={(e) => setRelativePhone(e.target.value)} placeholder="+992 90 123 45 67"
+                    <input type="tel" maxLength={24} value={relativePhone} onChange={(e) => setRelativePhone(e.target.value.replace(/[^\d+\s()-]/g, '').slice(0, 24))} placeholder="+993 65 123456"
                       className={`w-full border p-3 pl-11 rounded-xl text-sm outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200' : 'bg-slate-900/30 border-white/15 text-white focus:border-amber-500/50'}`} />
                   </div>
+                  {relativePhone && !isPlausibleInternationalPhone(relativePhone) && <p className="ml-2 text-[10px] font-bold text-rose-500">7–15 ta raqam kiriting.</p>}
                 </div>
                 <div className="space-y-1">
                   <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Jinsi</label>
@@ -504,9 +529,14 @@ export default function ImtiyozliAriza() {
                   <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Pasport / ID hujjat raqami</label>
                   <div className="relative">
                     <CreditCard size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input type="text" value={idNumber} onChange={(e) => setIdNumber(e.target.value)} placeholder="Hujjatdagi raqam"
+                    <input type="text" autoCapitalize="characters" maxLength={16} value={idNumber} onChange={(e) => setIdNumber(normalizeForeignIdNumber(e.target.value))} placeholder="Masalan: A1234567"
                       className={`w-full border p-3 pl-11 rounded-xl text-sm outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200' : 'bg-slate-900/30 border-white/15 text-white focus:border-amber-500/50'}`} />
                   </div>
+                  {getForeignIdFormatError(idNumber) ? (
+                    <p className="ml-2 text-[10px] font-bold leading-relaxed text-rose-500" role="alert">{getForeignIdFormatError(idNumber)}</p>
+                  ) : (
+                    <p className={`ml-2 text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>4–16 ta harf va raqam. Bo'sh joy yoki chiziq avtomatik olib tashlanadi.</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Pasport rasmi</label>
@@ -600,7 +630,7 @@ export default function ImtiyozliAriza() {
           <div className="text-center pt-4 mt-4 border-t border-slate-700/10 dark:border-white/5">
             <Link href="/ruxsatnoma-tekshirish" className="text-xs font-black uppercase tracking-wider text-blue-500 hover:underline flex items-center justify-center gap-1.5">
               <FileText size={12} />
-              <span>Ariza statusini tekshirish</span>
+              <span>Ariza holatini tekshirish</span>
             </Link>
           </div>
         </div>

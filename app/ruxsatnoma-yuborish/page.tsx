@@ -16,7 +16,7 @@ import DeveloperContactLink from '@/components/DeveloperContactLink'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
-import { isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
+import { getPassportFormatError, isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
 import { prepareUploadFile } from '@/lib/prepare-upload'
 
 interface Particle {
@@ -375,8 +375,9 @@ export default function RuxsatnomaYuborish() {
     // passport here (not just JShSHIR) means the student sees a clear
     // error right away, instead of reaching the review card and only
     // finding out when the final submit gets rejected.
-    if (!isValidPassport(normalizePassport(passportSeries))) {
-      showToast('error', "Pasport seriyasi noto'g'ri! Namuna: AB1234567 (2 harf + 7 raqam)")
+    const passportError = getPassportFormatError(passportSeries)
+    if (passportError) {
+      showToast('error', passportError)
       return false
     }
     if (!isValidJshshir(normalizeJshshir(jshshir))) {
@@ -1359,14 +1360,19 @@ export default function RuxsatnomaYuborish() {
 
                                 <input
                                   type="text"
+                                  maxLength={9}
                                   value={passportSeries}
                                   onFocus={() => {
                                     setFocusedField('passport')
                                     playSound('focus')
                                   }}
                                   onBlur={() => setFocusedField(null)}
-                                  onChange={(e) => handleInputChange(e, setPassportSeries, 'passport')}
-                                  placeholder="AA1234567"
+                                  onChange={(e) => handleInputChange(
+                                    e,
+                                    (value) => setPassportSeries(normalizePassport(value)),
+                                    'passport',
+                                  )}
+                                  placeholder="AA1234567 yoki A1234567"
                                   className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 ${
                                     isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
                                   }`}
@@ -1374,6 +1380,15 @@ export default function RuxsatnomaYuborish() {
                                 />
                               </div>
                             </div>
+                            {getPassportFormatError(passportSeries) ? (
+                              <p className="px-2 text-[10px] font-semibold leading-relaxed text-rose-500" role="alert">
+                                {getPassportFormatError(passportSeries)}
+                              </p>
+                            ) : (
+                              <p className={`px-2 text-[9px] leading-relaxed ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                                O&apos;zbekiston: AA1234567 · xorijiy: A1234567
+                              </p>
+                            )}
                           </div>
 
                           {/* JSHSHIR */}
@@ -1659,7 +1674,7 @@ export default function RuxsatnomaYuborish() {
                       onClick={() => playSound('tab')}
                       className="text-xs font-black uppercase tracking-wider text-blue-500 hover:text-blue-600 flex items-center justify-center gap-1.5 transition-all duration-300"
                     >
-                      <span>Ariza statusini tekshirish</span>
+                      <span>Ariza holatini tekshirish</span>
                       <ChevronRight size={12} />
                     </Link>
                   </div>
@@ -1713,7 +1728,7 @@ export default function RuxsatnomaYuborish() {
                   }}
                   className="flex-1 p-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest transition-all duration-300 active:scale-95"
                 >
-                  Statusni Tekshirish
+                  Ariza holatini tekshirish
                 </button>
                 <button
                   onClick={() => {

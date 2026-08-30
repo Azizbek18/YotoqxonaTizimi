@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
-import { isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
+import {
+  isValidEmail,
+  isValidForeignIdNumber,
+  isValidJshshir,
+  isValidPassport,
+  normalizeForeignIdNumber,
+  normalizeJshshir,
+  normalizePassport,
+} from '@/lib/permit-validation'
 
 export async function POST(request: NextRequest) {
   const throttle = await checkRateLimit(`permit-status:${getClientIp(request)}`, 15, 10 * 60_000)
@@ -14,21 +22,38 @@ export async function POST(request: NextRequest) {
       passportSeries?: unknown
       jshshir?: unknown
       email?: unknown
+      applicationType?: unknown
     } | null
-    const passport = normalizePassport(body?.passportSeries)
+    const applicationType = body?.applicationType === 'imtiyozli' ? 'imtiyozli' : 'yollanma'
+    const passport = applicationType === 'imtiyozli'
+      ? normalizeForeignIdNumber(body?.passportSeries)
+      : normalizePassport(body?.passportSeries)
     const jshshir = normalizeJshshir(body?.jshshir)
     const email = String(body?.email ?? '').trim().toLowerCase().slice(0, 254)
-    if (!isValidPassport(passport) || !isValidJshshir(jshshir) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: 'Pasport, JShSHIR yoki email formati noto‘g‘ri.' }, { status: 400 })
+    const identityIsValid = applicationType === 'imtiyozli'
+      ? isValidForeignIdNumber(passport)
+      : isValidPassport(passport) && isValidJshshir(jshshir)
+    if (!identityIsValid || !isValidEmail(email)) {
+      return NextResponse.json({
+        error: applicationType === 'imtiyozli'
+          ? 'Pasport/ID yoki email formati noto‘g‘ri.'
+          : 'Pasport, JShSHIR yoki email formati noto‘g‘ri.',
+      }, { status: 400 })
     }
 
     const supabase = getServiceSupabase()
-    const { data, error } = await supabase
+    let query = supabase
       .from('permit_requests')
       .select('id, full_name, status, room_number, reject_reason, created_at, faculty, phone, gender, direction, course, application_type')
       .eq('passport_series', passport)
-      .eq('jshshir', jshshir)
       .eq('email', email)
+      .eq('application_type', applicationType)
+
+    query = applicationType === 'imtiyozli'
+      ? query.is('jshshir', null)
+      : query.eq('jshshir', jshshir)
+
+    const { data, error } = await query
       .maybeSingle()
     if (error) throw error
 

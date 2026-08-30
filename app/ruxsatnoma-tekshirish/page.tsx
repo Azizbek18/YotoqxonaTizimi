@@ -11,18 +11,31 @@ import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
+import {
+  getForeignIdFormatError,
+  getPassportFormatError,
+  isValidEmail,
+  isValidForeignIdNumber,
+  isValidJshshir,
+  isValidPassport,
+  normalizeForeignIdNumber,
+  normalizeJshshir,
+  normalizePassport,
+} from '@/lib/permit-validation'
+
+type ApplicationType = 'yollanma' | 'imtiyozli'
 
 interface PermitRequest {
   id: string
   passport_series: string
-  jshshir: string
+  jshshir: string | null
   full_name: string
   email: string
   permit_url: string
   status: 'pending' | 'approved' | 'rejected' | 'registered'
   room_number: string | null
   reject_reason: string | null
+  application_type: ApplicationType
   /** Only set while status is 'pending' — how many arizalar in the same
    *  faculty were submitted before this one, and the total waiting. */
   queuePosition?: number
@@ -38,6 +51,7 @@ function StatusCheckContent() {
   const [passportSeries, setPassportSeries] = useState('')
   const [jshshir, setJshshir] = useState('')
   const [email, setEmail] = useState('')
+  const [applicationType, setApplicationType] = useState<ApplicationType>('yollanma')
   const [focusedField, setFocusedField] = useState<string | null>(null)
 
   const [loading, setLoading] = useState(false)
@@ -48,20 +62,20 @@ function StatusCheckContent() {
     toast.error(message)
   }
 
-  const handleSearch = useCallback(async (passport: string, pin: string, applicantEmail: string) => {
+  const handleSearch = useCallback(async (passport: string, pin: string, applicantEmail: string, type: ApplicationType) => {
     setLoading(true)
     setSearched(true)
     setResult(null)
 
     try {
-      const cleanPassport = passport.toUpperCase().replace(/\s/g, '')
-      const cleanJshshir = pin.trim()
+      const cleanPassport = type === 'imtiyozli' ? normalizeForeignIdNumber(passport) : normalizePassport(passport)
+      const cleanJshshir = type === 'imtiyozli' ? '' : normalizeJshshir(pin)
       const cleanEmail = applicantEmail.trim().toLowerCase()
 
       const response = await fetch('/api/permit-requests/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passportSeries: cleanPassport, jshshir: cleanJshshir, email: cleanEmail }),
+        body: JSON.stringify({ passportSeries: cleanPassport, jshshir: cleanJshshir, email: cleanEmail, applicationType: type }),
       })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Qidirishda xatolik yuz berdi')
@@ -72,8 +86,10 @@ function StatusCheckContent() {
         if (typeof window !== 'undefined') {
           // sessionStorage, not localStorage — see app/page.tsx for why.
           sessionStorage.setItem('student_permit_passport', cleanPassport)
-          sessionStorage.setItem('student_permit_jshshir', cleanJshshir)
           sessionStorage.setItem('student_permit_email', cleanEmail)
+          sessionStorage.setItem('student_permit_type', type)
+          if (type === 'imtiyozli') sessionStorage.removeItem('student_permit_jshshir')
+          else sessionStorage.setItem('student_permit_jshshir', cleanJshshir)
         }
       } else {
         setResult(null)
@@ -93,11 +109,13 @@ function StatusCheckContent() {
       const passportValue = sessionStorage.getItem('student_permit_passport') ?? ''
       const jshshirValue = sessionStorage.getItem('student_permit_jshshir') ?? ''
       const emailValue = sessionStorage.getItem('student_permit_email') ?? ''
-      if (passportValue && jshshirValue && emailValue) {
+      const typeValue: ApplicationType = sessionStorage.getItem('student_permit_type') === 'imtiyozli' ? 'imtiyozli' : 'yollanma'
+      if (passportValue && emailValue && (typeValue === 'imtiyozli' || jshshirValue)) {
         setPassportSeries(passportValue)
         setJshshir(jshshirValue)
         setEmail(emailValue)
-        handleSearch(passportValue, jshshirValue, emailValue)
+        setApplicationType(typeValue)
+        handleSearch(passportValue, jshshirValue, emailValue, typeValue)
       }
     }, 0)
     return () => window.clearTimeout(restoreId)
@@ -105,11 +123,22 @@ function StatusCheckContent() {
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!passportSeries || !jshshir || !email) {
-      showToast("Pasport, JShSHIR va email ma'lumotlarini kiriting!")
+    if (!passportSeries || !email || (applicationType === 'yollanma' && !jshshir)) {
+      showToast(applicationType === 'imtiyozli' ? "Pasport/ID va emailni kiriting!" : "Pasport, JShSHIR va email ma'lumotlarini kiriting!")
       return
     }
-    handleSearch(passportSeries, jshshir, email)
+    const passportError = applicationType === 'imtiyozli'
+      ? getForeignIdFormatError(passportSeries)
+      : getPassportFormatError(passportSeries)
+    if (passportError) {
+      showToast(passportError)
+      return
+    }
+    if (!isValidEmail(email)) {
+      showToast("Email formati noto'g'ri.")
+      return
+    }
+    handleSearch(passportSeries, jshshir, email, applicationType)
   }
 
   // Back to the form without re-fetching — lets someone fix a typo (wrong
@@ -143,11 +172,13 @@ function StatusCheckContent() {
                 <Search className="h-6 w-6" />
               </div>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight">Statusni Tekshirish</h1>
+            <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight">Ariza holatini tekshirish</h1>
             <p className={`text-[10px] sm:text-xs font-medium mt-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               {showResult
                 ? "Arizangizning joriy holati"
-                : "Pasport, JShSHIR va arizada koʻrsatilgan email orqali yoʻllanma holatini tekshiring."}
+                : applicationType === 'imtiyozli'
+                  ? "Xorijiy/imtiyozli arizadagi pasport yoki ID va email orqali holatni tekshiring."
+                  : "Pasport, JShSHIR va arizada koʻrsatilgan email orqali yoʻllanma holatini tekshiring."}
             </p>
           </div>
 
@@ -157,12 +188,20 @@ function StatusCheckContent() {
           <>
             {!showResult ? (
               <form key="form" onSubmit={handleFormSubmit} className="anim-in space-y-4">
+            <div className={`grid grid-cols-2 gap-1 rounded-xl border p-1 ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-950/50 border-white/10'}`}>
+              {(['yollanma', 'imtiyozli'] as const).map((type) => (
+                <button key={type} type="button" onClick={() => { setApplicationType(type); setSearched(false); setResult(null) }}
+                  className={`rounded-lg px-2 py-2 text-[10px] font-black uppercase transition ${applicationType === type ? 'bg-blue-600 text-white shadow' : isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                  {type === 'yollanma' ? "Yo'llanma" : 'Xorijiy / imtiyozli'}
+                </button>
+              ))}
+            </div>
             {/* Fokusda `.cyber-border` gradient-sweep animatsiyasi — ariza
                 yuborish sahifasidagi inputlar bilan bir xil his-tuyg'u. */}
             <div className="space-y-1">
               <div className="flex justify-between items-center ml-2">
                 <label className={`text-[9px] font-black uppercase tracking-widest block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Pasport Seriyasi & Raqami</label>
-                {isValidPassport(normalizePassport(passportSeries)) && (
+                {(applicationType === 'imtiyozli' ? isValidForeignIdNumber(normalizeForeignIdNumber(passportSeries)) : isValidPassport(normalizePassport(passportSeries))) && (
                   <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
                 )}
               </div>
@@ -178,19 +217,28 @@ function StatusCheckContent() {
                     type="text"
                     name="passport"
                     autoComplete="off"
-                    maxLength={9}
+                    maxLength={applicationType === 'imtiyozli' ? 16 : 9}
                     value={passportSeries}
                     onFocus={() => setFocusedField('passport')}
                     onBlur={() => setFocusedField(null)}
-                    onChange={(e) => setPassportSeries(e.target.value)}
-                    placeholder="AA1234567"
+                    onChange={(e) => setPassportSeries(applicationType === 'imtiyozli' ? normalizeForeignIdNumber(e.target.value) : normalizePassport(e.target.value))}
+                    placeholder={applicationType === 'imtiyozli' ? 'Masalan: A1234567' : 'AA1234567'}
                     className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 font-sans ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'}`}
                     required
                   />
                 </div>
               </div>
+              {(applicationType === 'imtiyozli' ? getForeignIdFormatError(passportSeries) : getPassportFormatError(passportSeries)) ? (
+                <p className="px-2 text-[10px] font-semibold leading-relaxed text-rose-500" role="alert">
+                  {applicationType === 'imtiyozli' ? getForeignIdFormatError(passportSeries) : getPassportFormatError(passportSeries)}
+                </p>
+              ) : (
+                <p className={`px-2 text-[9px] ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {applicationType === 'imtiyozli' ? "4–16 ta harf va raqam; kamida bitta raqam" : "O'zbekiston: AA1234567"}
+                </p>
+              )}
             </div>
-            <div className="space-y-1">
+            {applicationType === 'yollanma' && <div className="space-y-1">
               <div className="flex justify-between items-center ml-2">
                 <label className={`text-[9px] font-black uppercase tracking-widest block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>JSHSHIR (14 ta raqam)</label>
                 {isValidJshshir(normalizeJshshir(jshshir)) && (
@@ -221,11 +269,11 @@ function StatusCheckContent() {
                   />
                 </div>
               </div>
-            </div>
+            </div>}
             <div className="space-y-1">
               <div className="flex justify-between items-center ml-2">
                 <label className={`text-[9px] font-black uppercase tracking-widest block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Arizadagi email</label>
-                {email.includes('@') && email.length > 5 && (
+                {isValidEmail(email) && (
                   <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
                 )}
               </div>
@@ -289,7 +337,7 @@ function StatusCheckContent() {
                         <div className="space-y-1">
                           <h3 className="text-xs font-black uppercase tracking-wider text-amber-400">Ko&apos;rib chiqilmoqda</h3>
                           <p className={`text-[11px] leading-relaxed font-sans ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                            Hurmatli {result.full_name}, siz yuborgan yo&apos;llanma arizasi hozirda kutilmoqda. Dekan arizani ko&apos;rib chiqib, xona raqamini belgilaganidan so&apos;ng bu yerda ro&apos;yxatdan o&apos;tish tugmasi ochiladi.
+                            Hurmatli {result.full_name}, siz yuborgan {result.application_type === 'imtiyozli' ? 'xorijiy/imtiyozli' : "yo'llanma"} arizasi hozirda kutilmoqda. Dekan arizani ko&apos;rib chiqqanidan so&apos;ng bu yerda ro&apos;yxatdan o&apos;tish tugmasi ochiladi.
                           </p>
                         </div>
                         {typeof result.queuePosition === 'number' && typeof result.queueTotal === 'number' && (
@@ -318,14 +366,14 @@ function StatusCheckContent() {
                           </p>
                         </div>
                         <Link
-                          href="/ruxsatnoma-yuborish"
+                          href={result.application_type === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'}
                           onClick={() => {
                             // Carry the identity so the submit form is prefilled and
                             // the server reopens THIS rejected row instead of 409-ing.
                             try {
                               sessionStorage.setItem(
                                 'permit_resubmit',
-                                JSON.stringify({ passport: passportSeries, jshshir, email }),
+                                JSON.stringify({ passport: passportSeries, jshshir, email, applicationType: result.application_type }),
                               )
                             } catch { /* private mode — user just retypes */ }
                           }}
@@ -343,9 +391,9 @@ function StatusCheckContent() {
                         <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-3">
                           <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-400" />
                           <div className="space-y-1">
-                            <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 font-sans">Yo&apos;llanma Tasdiqlangan!</h3>
+                            <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 font-sans">Ariza Tasdiqlangan!</h3>
                             <p className={`text-xs leading-relaxed font-sans ${isLight ? 'text-slate-600' : 'text-slate-200'}`}>
-                              Tabriklaymiz, yo&apos;llanmangiz tasdiqlandi! Endi <b>ro&apos;yxatdan o&apos;tishingiz</b> mumkin.
+                              Tabriklaymiz, arizangiz tasdiqlandi! Endi <b>ro&apos;yxatdan o&apos;tishingiz</b> mumkin.
                               Xona ro&apos;yxatdan o&apos;tganingizdan so&apos;ng biriktiriladi va bu haqda sizga
                               email orqali xabar yuboriladi.
                             </p>
@@ -388,11 +436,11 @@ function StatusCheckContent() {
                     <AlertTriangle className="mx-auto h-8 w-8 text-rose-500" />
                     <h3 className="text-xs font-black uppercase tracking-wider text-white">Ariza topilmadi</h3>
                     <p className={`text-[10px] leading-relaxed font-sans ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Kiritilgan pasport seriyasi ({passportSeries.toUpperCase()}) va JShSHIR bo&apos;yicha hech qanday ariza topilmadi. Ma&apos;lumotlar to&apos;g&apos;ri ekanini qayta tekshiring yoki yangi ariza yuboring.
+                      Kiritilgan pasport/ID ({passportSeries.toUpperCase()}){applicationType === 'yollanma' ? " va JShSHIR" : ''} bo&apos;yicha hech qanday ariza topilmadi. Ma&apos;lumotlar to&apos;g&apos;ri ekanini qayta tekshiring yoki yangi ariza yuboring.
                     </p>
                     <div className="pt-2">
-                      <Link href="/ruxsatnoma-yuborish" className="text-xs font-bold text-blue-500 hover:underline">
-                        Yo&apos;llanma yuklash →
+                      <Link href={applicationType === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'} className="text-xs font-bold text-blue-500 hover:underline">
+                        {applicationType === 'imtiyozli' ? 'Xorijiy ariza yuborish →' : "Yo'llanma yuklash →"}
                       </Link>
                     </div>
                   </div>
@@ -407,8 +455,8 @@ function StatusCheckContent() {
               <House size={14} />
               <span>Bosh sahifa</span>
             </Link>
-            <Link href="/ruxsatnoma-yuborish" className="text-blue-500 hover:underline flex items-center gap-0.5">
-              <span>Yo&apos;llanma yuborish</span>
+            <Link href={applicationType === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'} className="text-blue-500 hover:underline flex items-center gap-0.5">
+              <span>{applicationType === 'imtiyozli' ? 'Xorijiy ariza' : "Yo'llanma yuborish"}</span>
               <ChevronRight size={14} />
             </Link>
           </div>

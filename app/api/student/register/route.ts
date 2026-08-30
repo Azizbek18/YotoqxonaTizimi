@@ -3,9 +3,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import {
+  isValidEmail,
+  isValidForeignIdNumber,
   isValidJshshir,
   isValidPassport,
   namesLikelyMatch,
+  normalizeForeignIdNumber,
   normalizeJshshir,
   normalizePassport,
 } from '@/lib/permit-validation'
@@ -42,7 +45,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Noto‘g‘ri so‘rov' }, { status: 400 })
     }
 
-    const passport = normalizePassport(body.passportSeries)
+    const applicationType = body.applicationType === 'imtiyozli' ? 'imtiyozli' : 'yollanma'
+    const passport = applicationType === 'imtiyozli'
+      ? normalizeForeignIdNumber(body.passportSeries)
+      : normalizePassport(body.passportSeries)
     const jshshir = normalizeJshshir(body.jshshir)
     const email = text(body, 'email', 254).toLowerCase()
     const firstName = text(body, 'firstName', 80)
@@ -59,12 +65,12 @@ export async function POST(request: NextRequest) {
     const entryDate = text(body, 'entryDate', 10)
 
     if (
-      !isValidPassport(passport)
-      || !isValidJshshir(jshshir)
-      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+      !(applicationType === 'imtiyozli' ? isValidForeignIdNumber(passport) : isValidPassport(passport))
+      || (applicationType === 'yollanma' && !isValidJshshir(jshshir))
+      || !isValidEmail(email)
     ) {
       return NextResponse.json(
-        { error: 'Pasport, JShSHIR yoki email formati noto‘g‘ri.' },
+        { error: applicationType === 'imtiyozli' ? 'Pasport/ID yoki email formati noto‘g‘ri.' : 'Pasport, JShSHIR yoki email formati noto‘g‘ri.' },
         { status: 400 },
       )
     }
@@ -95,11 +101,18 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getServiceSupabase()
-    const { data: permit, error: permitError } = await supabase
+    let permitQuery = supabase
       .from('permit_requests')
       .select('email, full_name, gender, faculty, direction, course, room_number, status')
       .eq('passport_series', passport)
-      .eq('jshshir', jshshir)
+      .eq('email', email)
+      .eq('application_type', applicationType)
+
+    permitQuery = applicationType === 'imtiyozli'
+      ? permitQuery.is('jshshir', null)
+      : permitQuery.eq('jshshir', jshshir)
+
+    const { data: permit, error: permitError } = await permitQuery
       .maybeSingle()
     if (permitError) throw permitError
 
@@ -111,7 +124,7 @@ export async function POST(request: NextRequest) {
         targetRole: 'talaba',
       })
       return NextResponse.json(
-        { error: 'Yo‘llanma hali tasdiqlanmagan yoki ma’lumotlar mos emas.' },
+        { error: 'Ariza hali tasdiqlanmagan yoki ma’lumotlar mos emas.' },
         { status: 403 },
       )
     }
@@ -127,11 +140,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data: existingUser, error: existingUserError } = await supabase
+    let existingUserQuery = supabase
       .from('users')
       .select('id, email, role, status')
       .eq('passport_series', passport)
-      .eq('jshshir', jshshir)
+
+    existingUserQuery = applicationType === 'imtiyozli'
+      ? existingUserQuery.is('jshshir', null).eq('email', email)
+      : existingUserQuery.eq('jshshir', jshshir)
+
+    const { data: existingUser, error: existingUserError } = await existingUserQuery
       .maybeSingle()
     if (existingUserError) throw existingUserError
 
@@ -188,7 +206,7 @@ export async function POST(request: NextRequest) {
       district: text(body, 'district', 120) || null,
       mahalla: text(body, 'mahalla', 160) || null,
       passport_series: passport,
-      jshshir,
+      jshshir: applicationType === 'imtiyozli' ? null : jshshir,
       passport_date: passportDate,
       birth_date: birthDate,
       faculty: permit.faculty,

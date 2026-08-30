@@ -5,7 +5,7 @@ import { checkRateLimit, getClientIp } from '@/lib/security'
 import {
   PERMIT_FILE_RULES,
   canonicalizeFullName,
-  hasAllowedSignature,
+  detectPermitFileMimeType,
   isValidJshshir,
   isValidPassport,
   normalizeJshshir,
@@ -71,17 +71,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ta’lim ma’lumotlari noto‘g‘ri.' }, { status: 400 })
     }
 
-    const fileRule = PERMIT_FILE_RULES[file.type]
-    if (!fileRule || file.size < 16 || file.size > MAX_UPLOAD_SIZE_BYTES) {
+    if (file.size < 16 || file.size > MAX_UPLOAD_SIZE_BYTES) {
       return NextResponse.json({ error: 'Faqat PDF, JPG, PNG yoki WEBP (4 MB gacha) qabul qilinadi.' }, { status: file.size > MAX_UPLOAD_SIZE_BYTES ? 413 : 400 })
     }
     const buffer = Buffer.from(await file.arrayBuffer())
-    if (!hasAllowedSignature(buffer, fileRule.signatures)) {
+    const detectedMimeType = detectPermitFileMimeType(buffer)
+    if (!detectedMimeType) {
       return NextResponse.json({ error: 'Rasm formati qo‘llab-quvvatlanmaydi. iPhone rasmi (HEIC) bo‘lsa JPG ga o‘giring yoki skrinshot yuklang — PDF, JPG, PNG qabul qilinadi.' }, { status: 400 })
     }
-    if (file.type === 'image/webp' && buffer.subarray(8, 12).toString('ascii') !== 'WEBP') {
-      return NextResponse.json({ error: 'WEBP fayl imzosi noto‘g‘ri.' }, { status: 400 })
-    }
+    const fileRule = PERMIT_FILE_RULES[detectedMimeType]
 
     // The AI precheck (/api/ai/yollanma-tekshiruv) and this submission are
     // two independent requests — without this, a caller could skip
@@ -115,7 +113,7 @@ export async function POST(request: NextRequest) {
 
     const storagePath = `${new Date().getUTCFullYear()}/${randomUUID()}.${fileRule.extension}`
     const { error: uploadError } = await supabase.storage.from('permits').upload(storagePath, buffer, {
-      contentType: file.type,
+      contentType: detectedMimeType,
       upsert: false,
     })
     if (uploadError) throw uploadError

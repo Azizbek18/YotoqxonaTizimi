@@ -5,7 +5,7 @@ import { checkRateLimit, getClientIp } from '@/lib/security'
 import {
   PERMIT_FILE_RULES,
   canonicalizeFullName,
-  hasAllowedSignature,
+  detectPermitFileMimeType,
   namesLikelyMatch,
   normalizeJshshir,
   normalizePassport,
@@ -52,10 +52,6 @@ export async function POST(req: NextRequest) {
       jshshir: normalizeJshshir(declaredJshshir),
     }
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Faqat rasm yoki PDF hujjat qabul qilinadi' }, { status: 400 })
-    }
     // Matches /api/permit-requests and the hosting platform's effective
     // request-body ceiling.
     if (file.size > MAX_UPLOAD_SIZE_BYTES) {
@@ -64,13 +60,13 @@ export async function POST(req: NextRequest) {
 
     const arrayBuffer = await file.arrayBuffer()
     const fileBuffer = Buffer.from(arrayBuffer)
-    const fileRule = PERMIT_FILE_RULES[file.type]
-    if (!fileRule || !hasAllowedSignature(fileBuffer, fileRule.signatures) || (file.type === 'image/webp' && fileBuffer.subarray(8, 12).toString('ascii') !== 'WEBP')) {
+    const detectedMimeType = detectPermitFileMimeType(fileBuffer)
+    if (!detectedMimeType || !PERMIT_FILE_RULES[detectedMimeType]) {
       return NextResponse.json({ error: 'Rasm formati qo‘llab-quvvatlanmaydi. iPhone rasmi (HEIC) bo‘lsa JPG ga o‘giring yoki skrinshot yuklang — PDF, JPG, PNG qabul qilinadi.' }, { status: 400 })
     }
     const fileHash = createHash('sha256').update(fileBuffer).digest('hex')
     const base64Data = fileBuffer.toString('base64')
-    const mimeType = file.type || 'image/jpeg'
+    const mimeType = detectedMimeType
 
     const geminiApiKey = process.env.GEMINI_API_KEY
     if (!geminiApiKey) {

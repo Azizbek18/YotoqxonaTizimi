@@ -42,18 +42,19 @@ export default function Home() {
     const passport = sessionStorage.getItem('student_permit_passport');
     const jshshir = sessionStorage.getItem('student_permit_jshshir');
     const email = sessionStorage.getItem('student_permit_email');
-    if (passport && jshshir && email) {
+    const applicationType = sessionStorage.getItem('student_permit_type') === 'imtiyozli' ? 'imtiyozli' : 'yollanma';
+    if (passport && email && (applicationType === 'imtiyozli' || jshshir)) {
       if (!silent) setCheckingPermit(true);
       try {
         const response = await fetch('/api/permit-requests/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ passportSeries: passport, jshshir, email }),
+          body: JSON.stringify({ passportSeries: passport, jshshir, email, applicationType }),
         });
         const result = await response.json();
 
         if (response.ok && result.data) {
-          setPermitRequest({ ...result.data, passport_series: passport, jshshir });
+          setPermitRequest({ ...result.data, passport_series: passport, jshshir: jshshir ?? undefined });
         } else {
           setPermitRequest(null);
         }
@@ -84,6 +85,7 @@ export default function Home() {
       sessionStorage.removeItem('student_permit_passport');
       sessionStorage.removeItem('student_permit_jshshir');
       sessionStorage.removeItem('student_permit_email');
+      sessionStorage.removeItem('student_permit_type');
       setPermitRequest(null);
     }
   };
@@ -278,7 +280,7 @@ export default function Home() {
                   : 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
               }`}
             >
-              Statusni Tekshirish
+              Ariza holatini tekshirish
             </Link>
           </div>
         )}
@@ -590,7 +592,7 @@ export default function Home() {
                     : 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
                 }`}
               >
-                Statusni Tekshirish
+                Ariza holatini tekshirish
               </Link>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sniffAllowed, sniffHeif } from './prepare-upload'
+import { prepareUploadFile, sniffAllowed, sniffHeif } from './prepare-upload'
 
 const bytes = (...values: number[]) => new Uint8Array(values)
 const withFtyp = (brand: string) =>
@@ -46,5 +46,37 @@ describe('sniffHeif', () => {
   it('does not flag a plain JPEG or a short buffer', () => {
     expect(sniffHeif(bytes(0xff, 0xd8, 0xff))).toBe(false)
     expect(sniffHeif(bytes(0x00, 0x00))).toBe(false)
+  })
+})
+
+describe('prepareUploadFile', () => {
+  it('repairs a valid JPEG carrying a generic mobile-browser MIME type', async () => {
+    const input = new File(
+      [bytes(0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)],
+      'camera-upload.bin',
+      { type: 'application/octet-stream' },
+    )
+
+    const result = await prepareUploadFile(input)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.changed).toBe(true)
+    expect(result.file.type).toBe('image/jpeg')
+    expect(result.file.name).toBe('camera-upload.jpg')
+  })
+
+  it('repairs a PDF whose browser omitted the MIME type', async () => {
+    const input = new File(
+      [bytes(0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37, 0, 0, 0, 0, 0, 0, 0, 0)],
+      'yollanma',
+      { type: '' },
+    )
+
+    const result = await prepareUploadFile(input)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.changed).toBe(true)
+    expect(result.file.type).toBe('application/pdf')
+    expect(result.file.name).toBe('yollanma.pdf')
   })
 })

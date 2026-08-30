@@ -6,14 +6,23 @@ import toast from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Fingerprint, MapPin, CreditCard, Sparkles, ArrowRight, ShieldAlert, Info, Calendar as CalendarIcon } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import {
+    getForeignIdFormatError,
+    getPassportFormatError,
+    isValidForeignIdNumber,
+    isValidPassport,
+    normalizeForeignIdNumber,
+    normalizePassport,
+} from '@/lib/permit-validation'
 
 interface Props {
     data: RegisterData
     onChange: (data: Partial<RegisterData>) => void
     onNext: () => void
+    requiresJshshir?: boolean
 }
 
-export default function Step1Passport({ data, onChange, onNext }: Props) {
+export default function Step1Passport({ data, onChange, onNext, requiresJshshir = true }: Props) {
     // Har bir maydon uchun alohida focus holati
     const [focusedField, setFocusedField] = useState<'series' | 'jshshir' | 'place' | 'date' | null>(null)
     const theme = useThemeStore((state) => state.theme)
@@ -47,8 +56,13 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
 
     const validate = () => {
         const { passportSeries, jshshir, passportPlace, passportDate } = data
-        if (!passportSeries || passportSeries.trim().length < 9) return show3DToast("Passport seriyasini to'liq kiriting", 'error')
-        if (!jshshir || jshshir.length !== 14) return show3DToast("JSHSHIR 14 ta raqam bo'lishi shart", 'error')
+        const passportIsValid = requiresJshshir
+            ? isValidPassport(normalizePassport(passportSeries))
+            : isValidForeignIdNumber(normalizeForeignIdNumber(passportSeries))
+        if (!passportSeries || !passportIsValid) {
+            return show3DToast((requiresJshshir ? getPassportFormatError(passportSeries) : getForeignIdFormatError(passportSeries)) ?? "Passport seriyasini to'liq kiriting", 'error')
+        }
+        if (requiresJshshir && (!jshshir || jshshir.length !== 14)) return show3DToast("JSHSHIR 14 ta raqam bo'lishi shart", 'error')
         if (!passportDate) return show3DToast("Passport berilgan sanasini tanlang", 'error')
 
         const todayStr = new Date().toISOString().split('T')[0]
@@ -81,27 +95,34 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
             <div className="grid gap-4">
                 {/* Passport Seriya */}
                 <div className="group space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Passport Seriya</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">{requiresJshshir ? 'Passport Seriya' : 'Pasport / ID raqami'}</label>
                     <div className={`cyber-border ${focusedField === 'series' ? 'focused' : ''}`}>
                         <div className="cyber-input-inner relative flex items-center">
                             <CreditCard className={`absolute left-4 z-10 transition-colors ${focusedField === 'series' ? 'text-sky-400' : 'text-slate-500'}`} size={16} />
                             <input
                                 type="text"
                                 className={glassInput}
-                                placeholder="AA1234567"
-                                maxLength={9}
+                                placeholder={requiresJshshir ? 'AA1234567' : 'Masalan: A1234567'}
+                                maxLength={requiresJshshir ? 9 : 16}
                                 value={data.passportSeries || ''}
                                 onFocus={() => setFocusedField('series')}
                                 onBlur={() => setFocusedField(null)}
-                                onChange={e => onChange({ passportSeries: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })}
+                                onChange={e => onChange({ passportSeries: requiresJshshir ? normalizePassport(e.target.value) : normalizeForeignIdNumber(e.target.value) })}
                             />
                         </div>
                     </div>
+                    {(requiresJshshir ? getPassportFormatError(data.passportSeries) : getForeignIdFormatError(data.passportSeries)) ? (
+                        <p className="px-1 text-[10px] font-semibold leading-relaxed text-rose-400" role="alert">
+                            {requiresJshshir ? getPassportFormatError(data.passportSeries) : getForeignIdFormatError(data.passportSeries)}
+                        </p>
+                    ) : (
+                        <p className="px-1 text-[9px] text-slate-500">{requiresJshshir ? "O'zbekiston: AA1234567" : "Xorijiy hujjat: 4–16 ta harf va raqam"}</p>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* JSHSHIR */}
-                    <div className="group space-y-1.5">
+                    {requiresJshshir ? <div className="group space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">JSHSHIR</label>
                         <div className={`cyber-border ${focusedField === 'jshshir' ? 'focused' : ''}`}>
                             <div className="cyber-input-inner relative flex items-center">
@@ -118,7 +139,11 @@ export default function Step1Passport({ data, onChange, onNext }: Props) {
                                 />
                             </div>
                         </div>
-                    </div>
+                    </div> : (
+                        <div className="flex items-center rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 text-[10px] font-semibold leading-relaxed text-sky-400">
+                            Xorijiy/imtiyozli ariza uchun JSHSHIR talab qilinmaydi.
+                        </div>
+                    )}
 
                     {/* Passport Berilgan Sanasi + TOOLTIP */}
                     <div className="group space-y-1.5 relative">

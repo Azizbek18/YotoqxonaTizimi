@@ -82,6 +82,30 @@ export interface PrepareOptions {
   maxDimension?: number
 }
 
+const DETECTED_FILE_META = {
+  pdf: { type: 'application/pdf', extension: 'pdf' },
+  jpeg: { type: 'image/jpeg', extension: 'jpg' },
+  png: { type: 'image/png', extension: 'png' },
+  webp: { type: 'image/webp', extension: 'webp' },
+} as const
+
+function withCanonicalFileMetadata(input: File, kind: keyof typeof DETECTED_FILE_META): PreparedUpload {
+  const meta = DETECTED_FILE_META[kind]
+  if (input.type.toLowerCase() === meta.type) {
+    return { ok: true, file: input, changed: false }
+  }
+
+  const stem = input.name.replace(/\.[^.]+$/, '').trim() || 'hujjat'
+  return {
+    ok: true,
+    file: new File([input], `${stem}.${meta.extension}`, {
+      type: meta.type,
+      lastModified: input.lastModified,
+    }),
+    changed: true,
+  }
+}
+
 export async function prepareUploadFile(
   input: File,
   { allowPdf = true, maxDimension = 2200 }: PrepareOptions = {},
@@ -101,12 +125,12 @@ export async function prepareUploadFile(
     if (input.size > MAX_BYTES) {
       return { ok: false, message: "PDF hajmi 4 MB dan katta. Uni rasm (JPG) ko'rinishida yuklang." }
     }
-    return { ok: true, file: input, changed: false }
+    return withCanonicalFileMetadata(input, kind)
   }
 
   // Already a valid raster image, small enough — leave it exactly as picked.
   if (kind && input.size <= MAX_BYTES) {
-    return { ok: true, file: input, changed: false }
+    return withCanonicalFileMetadata(input, kind)
   }
 
   // Everything past here needs a fresh JPEG: HEIF, oversized, mislabelled,

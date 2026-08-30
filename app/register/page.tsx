@@ -30,12 +30,15 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1)
   const [data, setData] = useState<RegisterData>(initialData)
   const [loading, setLoading] = useState(false)
+  const [applicationType, setApplicationType] = useState<'yollanma' | 'imtiyozli'>('yollanma')
 
   useEffect(() => {
     const restoreId = window.setTimeout(() => {
       const passportSeries = sessionStorage.getItem('student_permit_passport') ?? ''
       const jshshir = sessionStorage.getItem('student_permit_jshshir') ?? ''
       const email = sessionStorage.getItem('student_permit_email') ?? ''
+      const restoredType = sessionStorage.getItem('student_permit_type') === 'imtiyozli' ? 'imtiyozli' : 'yollanma'
+      setApplicationType(restoredType)
       if (passportSeries || jshshir || email) {
         setData((current) => ({ ...current, passportSeries, jshshir, email }))
       }
@@ -47,11 +50,11 @@ export default function RegisterPage() {
       // Also matters functionally: /api/student/register rejects a
       // faculty/name mismatch against the permit, so prefilling avoids a
       // silent rejection from a student picking something different here.
-      if (passportSeries && jshshir && email) {
+      if (passportSeries && email && (restoredType === 'imtiyozli' || jshshir)) {
         fetch('/api/permit-requests/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ passportSeries, jshshir, email }),
+          body: JSON.stringify({ passportSeries, jshshir, email, applicationType: restoredType }),
         })
           .then((res) => (res.ok ? res.json() : null))
           .then((payload) => {
@@ -126,7 +129,7 @@ export default function RegisterPage() {
       const response = await fetch('/api/student/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, email: userEmail, passportSeries: passportSeriesClean, jshshir: jshshirClean }),
+        body: JSON.stringify({ ...data, email: userEmail, passportSeries: passportSeriesClean, jshshir: jshshirClean, applicationType }),
       })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || "Ro'yxatdan o'tishda xatolik")
@@ -209,7 +212,7 @@ export default function RegisterPage() {
                   exit={{ opacity: 0, x: -10 }}
                   transition={{ duration: 0.15 }}
                 >
-                  {step === 1 && <Step1Passport {...stepProps} />}
+                  {step === 1 && <Step1Passport {...stepProps} requiresJshshir={applicationType === 'yollanma'} />}
                   {step === 2 && <Step2Name {...stepProps} />}
                   {step === 3 && <Step3Gender {...stepProps} />}
                   {step === 4 && <Step4Study {...stepProps} />}

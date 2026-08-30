@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -106,6 +106,35 @@ export default function RuxsatnomaYuborish() {
     }
   }, [particles.length])
 
+  // One shared AudioContext for the whole page. The old code built a
+  // fresh `new AudioContext()` on every keystroke — each construction
+  // costs tens of ms, and browsers cap concurrent contexts (~6) after
+  // which creation stalls, so the sound always lagged behind typing.
+  // Reusing a single context makes playback effectively instant.
+  const audioCtxRef = useRef<AudioContext | null>(null)
+
+  const getAudioContext = (): AudioContext | null => {
+    if (typeof window === 'undefined') return null
+    if (!audioCtxRef.current) {
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext
+      if (!AudioContextClass) return null
+      audioCtxRef.current = new AudioContextClass()
+    }
+    // Autoplay policy parks a new context in "suspended" until a user
+    // gesture; resume() is a cheap no-op once it's already running.
+    if (audioCtxRef.current.state === 'suspended') {
+      void audioCtxRef.current.resume()
+    }
+    return audioCtxRef.current
+  }
+
+  useEffect(() => {
+    return () => {
+      void audioCtxRef.current?.close()
+      audioCtxRef.current = null
+    }
+  }, [])
+
   // Programmatic Sound Synthesis
   const playSound = (type: 'keypress' | 'success' | 'focus' | 'tab' | 'gender') => {
     if (typeof window === 'undefined') return
@@ -113,9 +142,8 @@ export default function RuxsatnomaYuborish() {
     if (currentMuted) return
 
     try {
-      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext
-      if (!AudioContextClass) return
-      const ctx = new AudioContextClass()
+      const ctx = getAudioContext()
+      if (!ctx) return
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
 
@@ -959,7 +987,7 @@ export default function RuxsatnomaYuborish() {
                                 onBlur={() => setFocusedField(null)}
                                 onChange={(e) => handleInputChange(e, setFullName, 'fullName')}
                                 placeholder="Ism Familya Sharif"
-                                className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-sm sm:text-base outline-none transition-colors duration-300 ${
+                                className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 ${
                                   isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
                                 }`}
                                 required
@@ -998,7 +1026,7 @@ export default function RuxsatnomaYuborish() {
                                   onBlur={() => setFocusedField(null)}
                                   onChange={(e) => handleInputChange(e, setEmail, 'email')}
                                   placeholder="misol@gmail.com"
-                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-sm sm:text-base outline-none transition-colors duration-300 ${
+                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 ${
                                     isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
                                   }`}
                                   required
@@ -1021,7 +1049,7 @@ export default function RuxsatnomaYuborish() {
                                   focusedField === 'phone' ? 'text-indigo-400 border-indigo-500/30' : `text-slate-500 ${isLight ? 'border-slate-200' : 'border-white/10'}`
                                 }`}>
                                   <Phone size={16} />
-                                  <span className="text-sm sm:text-base font-bold">+998</span>
+                                  <span className="text-base font-bold">+998</span>
                                 </div>
 
                                 {focusedField === 'phone' && (
@@ -1040,7 +1068,7 @@ export default function RuxsatnomaYuborish() {
                                   onBlur={() => setFocusedField(null)}
                                   onChange={(e) => handleInputChange(e, (val) => setPhone(val.replace(/\D/g, '').slice(0, 9)), 'phone')}
                                   placeholder="901234567"
-                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-24 sm:pl-28 rounded-xl text-sm sm:text-base outline-none transition-colors duration-300 ${
+                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-28 rounded-xl text-base outline-none transition-colors duration-300 ${
                                     isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
                                   }`}
                                   required
@@ -1157,7 +1185,7 @@ export default function RuxsatnomaYuborish() {
                                     playSound('keypress')
                                   }}
                                   options={[...PERMIT_FACULTIES]}
-                                  className={`bg-transparent p-2.5 sm:p-3 rounded-xl text-sm sm:text-base font-black uppercase tracking-wider transition-colors duration-300 ${
+                                  className={`bg-transparent p-2.5 sm:p-3 rounded-xl text-base font-black uppercase tracking-wider transition-colors duration-300 ${
                                     isLight ? 'text-slate-900' : 'text-white'
                                   }`}
                                 />
@@ -1202,7 +1230,7 @@ export default function RuxsatnomaYuborish() {
                                     value: option.value,
                                     label: option.label,
                                   }))}
-                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-sm sm:text-base transition-colors duration-300 ${
+                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base transition-colors duration-300 ${
                                     isLight ? 'text-slate-900' : 'text-white'
                                   }`}
                                 />
@@ -1283,7 +1311,7 @@ export default function RuxsatnomaYuborish() {
                                   onBlur={() => setFocusedField(null)}
                                   onChange={(e) => handleInputChange(e, setPassportSeries, 'passport')}
                                   placeholder="AA1234567"
-                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-sm sm:text-base outline-none transition-colors duration-300 ${
+                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 ${
                                     isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
                                   }`}
                                   required
@@ -1324,7 +1352,7 @@ export default function RuxsatnomaYuborish() {
                                   onBlur={() => setFocusedField(null)}
                                   onChange={(e) => handleInputChange(e, setJshshir, 'jshshir')}
                                   placeholder="30102030405060"
-                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-sm sm:text-base outline-none transition-colors duration-300 ${
+                                  className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 ${
                                     isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
                                   }`}
                                   required

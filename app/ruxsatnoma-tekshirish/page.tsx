@@ -4,12 +4,13 @@ import React, { useCallback, useEffect, useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Search, CheckCircle2, XCircle,
+  Search, CheckCircle2, XCircle, CreditCard, Mail,
   HelpCircle, AlertTriangle, ChevronRight, ChevronLeft, House, LogIn
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
 
 interface PermitRequest {
   id: string
@@ -36,7 +37,8 @@ function StatusCheckContent() {
   const [passportSeries, setPassportSeries] = useState('')
   const [jshshir, setJshshir] = useState('')
   const [email, setEmail] = useState('')
-  
+  const [focusedField, setFocusedField] = useState<string | null>(null)
+
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [result, setResult] = useState<PermitRequest | null>(null)
@@ -154,48 +156,101 @@ function StatusCheckContent() {
           <>
             {!showResult ? (
               <form key="form" onSubmit={handleFormSubmit} className="anim-in space-y-4">
+            {/* Fokusda `.cyber-border` gradient-sweep animatsiyasi — ariza
+                yuborish sahifasidagi inputlar bilan bir xil his-tuyg'u. */}
             <div className="space-y-1">
-              <label className={`text-[9px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Pasport Seriyasi & Raqami</label>
-              <input
-                type="text"
-                name="passport"
-                autoComplete="off"
-                maxLength={9}
-                value={passportSeries}
-                onChange={(e) => setPassportSeries(e.target.value)}
-                placeholder="AA1234567"
-                className={`w-full border p-3 rounded-xl text-xs outline-none transition-all font-sans ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200' : 'bg-slate-900/30 border-white/15 text-white placeholder:text-slate-400 focus:border-blue-500/50'}`}
-                required
-              />
+              <div className="flex justify-between items-center ml-2">
+                <label className={`text-[9px] font-black uppercase tracking-widest block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Pasport Seriyasi & Raqami</label>
+                {isValidPassport(normalizePassport(passportSeries)) && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+                )}
+              </div>
+              <div className={`cyber-border ${focusedField === 'passport' ? 'focused' : ''}`}>
+                <div className="cyber-input-inner relative">
+                  <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'passport' ? 'text-blue-400 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : 'text-slate-500'}`}>
+                    <CreditCard size={16} />
+                  </div>
+                  {focusedField === 'passport' && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-500/10 blur-[6px] pointer-events-none" />
+                  )}
+                  <input
+                    type="text"
+                    name="passport"
+                    autoComplete="off"
+                    maxLength={9}
+                    value={passportSeries}
+                    onFocus={() => setFocusedField('passport')}
+                    onBlur={() => setFocusedField(null)}
+                    onChange={(e) => setPassportSeries(e.target.value)}
+                    placeholder="AA1234567"
+                    className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 font-sans ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'}`}
+                    required
+                  />
+                </div>
+              </div>
             </div>
             <div className="space-y-1">
-              <label className={`text-[9px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>JSHSHIR (14 ta raqam)</label>
-              <input
-                type="text"
-                name="jshshir"
-                inputMode="numeric"
-                autoComplete="off"
-                maxLength={14}
-                value={jshshir}
-                onChange={(e) => setJshshir(e.target.value)}
-                placeholder="30102030405060"
-                className={`w-full border p-3 rounded-xl text-xs outline-none transition-all font-sans ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200' : 'bg-slate-900/30 border-white/15 text-white placeholder:text-slate-400 focus:border-blue-500/50'}`}
-                required
-              />
+              <div className="flex justify-between items-center ml-2">
+                <label className={`text-[9px] font-black uppercase tracking-widest block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>JSHSHIR (14 ta raqam)</label>
+                {isValidJshshir(normalizeJshshir(jshshir)) && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+                )}
+              </div>
+              <div className={`cyber-border ${focusedField === 'jshshir' ? 'focused' : ''}`}>
+                <div className="cyber-input-inner relative">
+                  <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'jshshir' ? 'text-blue-400 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : 'text-slate-500'}`}>
+                    <CreditCard size={16} />
+                  </div>
+                  {focusedField === 'jshshir' && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-500/10 blur-[6px] pointer-events-none" />
+                  )}
+                  <input
+                    type="text"
+                    name="jshshir"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={14}
+                    value={jshshir}
+                    onFocus={() => setFocusedField('jshshir')}
+                    onBlur={() => setFocusedField(null)}
+                    onChange={(e) => setJshshir(e.target.value)}
+                    placeholder="30102030405060"
+                    className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 font-sans ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'}`}
+                    required
+                  />
+                </div>
+              </div>
             </div>
             <div className="space-y-1">
-              <label className={`text-[9px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Arizadagi email</label>
-              <input
-                type="email"
-                name="email"
-                autoComplete="email"
-                maxLength={254}
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="talaba@example.com"
-                className={`w-full border p-3 rounded-xl text-xs outline-none transition-all font-sans ${isLight ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200' : 'bg-slate-900/30 border-white/15 text-white placeholder:text-slate-400 focus:border-blue-500/50'}`}
-                required
-              />
+              <div className="flex justify-between items-center ml-2">
+                <label className={`text-[9px] font-black uppercase tracking-widest block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Arizadagi email</label>
+                {email.includes('@') && email.length > 5 && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+                )}
+              </div>
+              <div className={`cyber-border ${focusedField === 'email' ? 'focused' : ''}`}>
+                <div className="cyber-input-inner relative">
+                  <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'email' ? 'text-blue-400 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : 'text-slate-500'}`}>
+                    <Mail size={16} />
+                  </div>
+                  {focusedField === 'email' && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-500/10 blur-[6px] pointer-events-none" />
+                  )}
+                  <input
+                    type="email"
+                    name="email"
+                    autoComplete="email"
+                    maxLength={254}
+                    value={email}
+                    onFocus={() => setFocusedField('email')}
+                    onBlur={() => setFocusedField(null)}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="talaba@example.com"
+                    className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 font-sans ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'}`}
+                    required
+                  />
+                </div>
+              </div>
             </div>
 
             <button

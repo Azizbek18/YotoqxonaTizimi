@@ -100,6 +100,11 @@ html {
     radial-gradient(circle at top left, var(--page-glow-a), transparent 34%),
     radial-gradient(circle at bottom right, var(--page-glow-b), transparent 30%),
     var(--background);
+  /* Stop mobile Safari / Android WebView (incl. in-app browsers like
+     Telegram) from auto-inflating or shrinking text per-device — that's
+     what made typed input text look tiny on "some phones" but not others. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -411,8 +416,10 @@ html.theme-light [class~="bg-red-500"] * {
   color: inherit !important;
 }
 
-html.theme-light [class*="blur-[100px]"],
-html.theme-light [class*="blur-[120px]"] {
+/* `~=` not `*=`: keep this off `backdrop-blur-[…]` utilities (see the
+   mobile blur-orb rule for the full story). */
+html.theme-light [class~="blur-[100px]"],
+html.theme-light [class~="blur-[120px]"] {
   opacity: 0.42;
 }
 
@@ -917,11 +924,15 @@ html.theme-anim canvas {
   }
 
   /* big decorative glow orbs — nobody blurs actual content by 24px+.
-     Hide them on phones; the layout doesn't depend on them. */
-  [class*="blur-2xl"], [class*="blur-3xl"],
-  [class*="blur-[40px]"], [class*="blur-[50px]"], [class*="blur-[60px]"],
-  [class*="blur-[80px]"], [class*="blur-[100px]"], [class*="blur-[120px]"],
-  [class*="blur-[140px]"], [class*="blur-[160px]"] {
+     Hide them on phones; the layout doesn't depend on them.
+     `~=` (exact whitespace-token match) is REQUIRED here: `*=` would
+     also match `backdrop-blur-3xl` / `backdrop-blur-2xl`, which sit on
+     almost every frosted card — hiding the card and its contents. */
+  [class~="blur-2xl"], [class~="blur-3xl"],
+  [class~="blur-[40px]"], [class~="blur-[50px]"], [class~="blur-[60px]"],
+  [class~="blur-[80px]"], [class~="blur-[100px]"], [class~="blur-[120px]"],
+  [class~="blur-[130px]"], [class~="blur-[140px]"], [class~="blur-[150px]"],
+  [class~="blur-[160px]"] {
     display: none !important;
   }
 

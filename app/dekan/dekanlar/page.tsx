@@ -20,6 +20,7 @@ import {
 import toast from 'react-hot-toast'
 import { fetchSuperadminDekans } from '@/features/superadmin-dekans/client/api'
 import DeanInviteManager from '@/components/dekan/DeanInviteManager'
+import DekanLifecycleControls from '@/components/dekan/DekanLifecycleControls'
 import { setSuperadminScope } from '@/lib/superadmin-scope'
 import type {
   FacultyDekanOverview,
@@ -289,7 +290,14 @@ export default function SuperadminDekansPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
           {filtered.map((row) => (
-            <FacultyCard key={row.faculty} row={row} isLight={isLight} onInvite={setInviteOpen} />
+            <FacultyCard
+              key={row.faculty}
+              row={row}
+              isLight={isLight}
+              onInvite={setInviteOpen}
+              coveredFaculties={coveredSet}
+              onChanged={load}
+            />
           ))}
         </div>
       )}
@@ -334,10 +342,14 @@ function FacultyCard({
   row,
   isLight,
   onInvite,
+  coveredFaculties,
+  onChanged,
 }: {
   row: FacultyDekanOverview
   isLight: boolean
   onInvite: (faculty: string) => void
+  coveredFaculties: Set<string>
+  onChanged: () => void
 }) {
   const ui = dekanUI(isLight)
   const active = row.dekan?.status === 'active'
@@ -378,6 +390,12 @@ function FacultyCard({
               )}
               <p className="flex items-center gap-2"><CheckCircle2 size={13} /> Ro‘yxatdan o‘tgan: {formatDate(row.dekan.createdAt)}</p>
             </div>
+            <DekanLifecycleControls
+              dekan={row.dekan}
+              currentFaculty={row.faculty}
+              coveredFaculties={coveredFaculties}
+              onChanged={onChanged}
+            />
           </div>
         ) : (
           <div className={`mt-5 flex min-h-36 flex-col items-center justify-center rounded-2xl border border-dashed p-5 text-center ${ui.inset}`}>

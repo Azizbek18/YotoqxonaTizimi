@@ -69,3 +69,61 @@ describe('superadmin dekan overview', () => {
     expect(result.unassignedDekans).toHaveLength(1)
   })
 })
+
+function lifecycleRepository(overrides: Partial<SuperadminDekanRepository> = {}) {
+  return {
+    loadAll: vi.fn(),
+    getDekan: vi.fn(async () => ({ id: 'd1', full_name: 'Dekan', email: 'd@x.uz', faculty: 'amit', status: 'active' })),
+    activeDekanFor: vi.fn(async () => null),
+    updateDekan: vi.fn(async (id: string, patch: Record<string, unknown>) => ({ id, faculty: 'amit', status: 'active', ...patch })),
+    ...overrides,
+  } as unknown as SuperadminDekanRepository
+}
+
+describe('dean lifecycle', () => {
+  it('deactivates a dean', async () => {
+    const repo = lifecycleRepository()
+    await createSuperadminDekanService(repo).setDekanStatus('d1', 'inactive')
+    expect(repo.updateDekan).toHaveBeenCalledWith('d1', { status: 'inactive' })
+  })
+
+  it('refuses to activate a dean whose faculty already has an active one', async () => {
+    const repo = lifecycleRepository({
+      getDekan: vi.fn(async () => ({ id: 'd1', full_name: 'Dekan', email: 'd@x.uz', faculty: 'amit', status: 'inactive' })),
+      activeDekanFor: vi.fn(async () => ({ id: 'd2', full_name: 'Boshqa Dekan' })),
+    })
+    await expect(createSuperadminDekanService(repo).setDekanStatus('d1', 'active')).rejects.toMatchObject({ status: 409 })
+    expect(repo.updateDekan).not.toHaveBeenCalled()
+  })
+
+  it('refuses to activate a faculty-less dean', async () => {
+    const repo = lifecycleRepository({
+      getDekan: vi.fn(async () => ({ id: 'd1', full_name: 'Dekan', email: 'd@x.uz', faculty: null, status: 'inactive' })),
+    })
+    await expect(createSuperadminDekanService(repo).setDekanStatus('d1', 'active')).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('rejects an unknown status', async () => {
+    await expect(createSuperadminDekanService(lifecycleRepository()).setDekanStatus('d1', 'archived')).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('reassigns an inactive dean without a coverage check', async () => {
+    const repo = lifecycleRepository({
+      getDekan: vi.fn(async () => ({ id: 'd1', full_name: 'Dekan', email: 'd@x.uz', faculty: 'amit', status: 'inactive' })),
+    })
+    await createSuperadminDekanService(repo).reassignDekan('d1', 'Fizika')
+    expect(repo.activeDekanFor).not.toHaveBeenCalled()
+    expect(repo.updateDekan).toHaveBeenCalledWith('d1', { faculty: 'fizika' })
+  })
+
+  it('refuses to move an active dean onto a covered faculty', async () => {
+    const repo = lifecycleRepository({ activeDekanFor: vi.fn(async () => ({ id: 'd2', full_name: 'Fizika Dekani' })) })
+    await expect(createSuperadminDekanService(repo).reassignDekan('d1', 'fizika')).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('treats a same-faculty reassign as a no-op', async () => {
+    const repo = lifecycleRepository()
+    await createSuperadminDekanService(repo).reassignDekan('d1', 'amit')
+    expect(repo.updateDekan).not.toHaveBeenCalled()
+  })
+})

@@ -51,6 +51,46 @@ export function createSuperadminDekanRepository() {
         rooms: roomsResult.data ?? [],
       }
     },
+
+    // ---- dean lifecycle (superadmin mutations) ----
+
+    async getDekan(id: string) {
+      const { data, error } = await supabase
+        .from('staff')
+        .select('id, full_name, email, faculty, status')
+        .eq('id', id)
+        .eq('role', 'dekan')
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+
+    // An active dean already sitting on this faculty (optionally ignoring one
+    // row, so a no-op reassign of the same dean doesn't collide with itself).
+    async activeDekanFor(faculty: string, exceptId?: string) {
+      let query = supabase
+        .from('staff')
+        .select('id, full_name')
+        .eq('role', 'dekan')
+        .eq('status', 'active')
+        .ilike('faculty', faculty)
+      if (exceptId) query = query.neq('id', exceptId)
+      const { data, error } = await query.maybeSingle()
+      if (error) throw error
+      return data
+    },
+
+    async updateDekan(id: string, patch: { status?: string; faculty?: string }) {
+      const { data, error } = await supabase
+        .from('staff')
+        .update({ ...patch, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('role', 'dekan')
+        .select('id, full_name, faculty, status')
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
   }
 }
 

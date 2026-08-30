@@ -16,3 +16,31 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response.body, { status: response.status })
   }
 }
+
+// Dean lifecycle: { id, action: 'activate' | 'deactivate' | 'reassign', faculty? }
+export async function PATCH(request: NextRequest) {
+  try {
+    await requireAdmin(request)
+    const body = (await request.json().catch(() => ({}))) as {
+      id?: unknown
+      action?: unknown
+      faculty?: unknown
+    }
+    const service = createSuperadminDekanService()
+
+    if (body.action === 'activate') {
+      return NextResponse.json(await service.setDekanStatus(body.id, 'active'))
+    }
+    if (body.action === 'deactivate') {
+      return NextResponse.json(await service.setDekanStatus(body.id, 'inactive'))
+    }
+    if (body.action === 'reassign') {
+      return NextResponse.json(await service.reassignDekan(body.id, body.faculty))
+    }
+    return NextResponse.json({ error: "Amal noto'g'ri" }, { status: 400 })
+  } catch (error) {
+    console.error('Superadmin dekans PATCH error:', error)
+    const response = getApiError(error, "Dekan hisobini yangilab bo'lmadi")
+    return NextResponse.json(response.body, { status: response.status })
+  }
+}

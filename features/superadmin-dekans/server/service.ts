@@ -1,6 +1,7 @@
 import 'server-only'
 import { PERMIT_FACULTIES, normalizeFaculty, permitFacultyLabel } from '@/lib/faculties'
 import { summariseBeds } from '@/lib/room-capacity'
+import { ApiError } from '@/server/http/api-error'
 import type { SuperadminDekan, SuperadminDekansPayload } from '../types'
 import {
   createSuperadminDekanRepository,
@@ -129,6 +130,65 @@ export function createSuperadminDekanService(
         faculties,
         unassignedDekans: mappedDekans.filter((dekan) => !normalizeFaculty(dekan.faculty)),
       }
+    },
+
+    // ---- dean lifecycle ----
+
+    /**
+     * Activate or deactivate a dean account. Activating is refused when the
+     * dean has no faculty, or when that faculty already has another active
+     * dean (the DB index `staff_one_active_dekan_per_faculty` enforces it
+     * too — we check first for a friendly message).
+     */
+    async setDekanStatus(idValue: unknown, statusValue: unknown): Promise<{ ok: true }> {
+      const id = typeof idValue === 'string' ? idValue.trim() : ''
+      if (!id) throw new ApiError(400, 'Dekan tanlanmagan')
+      const status = statusValue === 'active' ? 'active' : statusValue === 'inactive' ? 'inactive' : null
+      if (!status) throw new ApiError(400, "Holat noto'g'ri")
+
+      const dekan = await repository.getDekan(id)
+      if (!dekan) throw new ApiError(404, 'Dekan topilmadi')
+      if (dekan.status === status) return { ok: true }
+
+      if (status === 'active') {
+        const faculty = normalizeFaculty(dekan.faculty)
+        if (!faculty) throw new ApiError(400, 'Avval dekanni fakultetga biriktiring')
+        const clash = await repository.activeDekanFor(faculty, id)
+        if (clash) {
+          throw new ApiError(409, `${permitFacultyLabel(faculty)} fakultetida allaqachon faol dekan bor (${clash.full_name})`)
+        }
+      }
+
+      const updated = await repository.updateDekan(id, { status })
+      if (!updated) throw new ApiError(404, 'Dekan topilmadi')
+      return { ok: true }
+    },
+
+    /**
+     * Move a dean to a different faculty. An active dean cannot land on a
+     * faculty that already has one — deactivate or reassign the incumbent
+     * first.
+     */
+    async reassignDekan(idValue: unknown, facultyValue: unknown): Promise<{ ok: true }> {
+      const id = typeof idValue === 'string' ? idValue.trim() : ''
+      if (!id) throw new ApiError(400, 'Dekan tanlanmagan')
+      const faculty = normalizeFaculty(typeof facultyValue === 'string' ? facultyValue : null)
+      if (!faculty) throw new ApiError(400, "Fakultet noto'g'ri")
+
+      const dekan = await repository.getDekan(id)
+      if (!dekan) throw new ApiError(404, 'Dekan topilmadi')
+      if (normalizeFaculty(dekan.faculty) === faculty) return { ok: true }
+
+      if (dekan.status === 'active') {
+        const clash = await repository.activeDekanFor(faculty, id)
+        if (clash) {
+          throw new ApiError(409, `${permitFacultyLabel(faculty)} fakultetida allaqachon faol dekan bor (${clash.full_name})`)
+        }
+      }
+
+      const updated = await repository.updateDekan(id, { faculty })
+      if (!updated) throw new ApiError(404, 'Dekan topilmadi')
+      return { ok: true }
     },
   }
 }

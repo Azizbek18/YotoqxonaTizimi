@@ -7,6 +7,7 @@ import { directionBelongsToFaculty, normalizeDirection } from '@/lib/directions'
 import { isPermitFacultyValue } from '@/lib/faculties'
 import { writeAuditLog } from '@/lib/audit-log'
 import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
+import { classifyPermitResubmission } from '@/lib/permit-resubmission'
 import { getApiError } from '@/server/http/api-error'
 
 // Foreign and privileged (imtiyozli) students don't get a my.gov.uz
@@ -98,18 +99,14 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getServiceSupabase()
-    // jshshir is always NULL for this application type, so it's left out of
-    // the duplicate check entirely — an .eq() against null would not behave
-    // like an IS NULL match, and every imtiyozli row has it null anyway.
-    const duplicateChecks = await Promise.all([
-      supabase.from('permit_requests').select('id').eq('passport_series', idNumber).maybeSingle(),
-      supabase.from('permit_requests').select('id').eq('email', email).maybeSingle(),
-    ])
-    if (duplicateChecks.some(({ data }) => Boolean(data))) {
-      return NextResponse.json({ error: 'Bu hujjat raqami yoki email bilan ariza avval yuborilgan.' }, { status: 409 })
+
+    // jshshir is always NULL for imtiyozli — the identity anchor is the
+    // (foreign) ID number. A rejected applicant told to re-upload must be
+    // able to resubmit despite the UNIQUE(passport_series)/UNIQUE(email).
+    const outcome = await classifyPermitResubmission(supabase, { passport: idNumber, jshshir: null, email })
+    if (outcome.action === 'conflict') {
+      return NextResponse.json({ error: outcome.message }, { status: 409 })
     }
-    const duplicateError = duplicateChecks.find(({ error }) => error)?.error
-    if (duplicateError) throw duplicateError
 
     const storagePath = `imtiyozli/${new Date().getUTCFullYear()}/${randomUUID()}.${fileRule.extension}`
     const { error: uploadError } = await supabase.storage.from('permits').upload(storagePath, buffer, {
@@ -118,8 +115,9 @@ export async function POST(request: NextRequest) {
     })
     if (uploadError) throw uploadError
 
-    const { error: insertError } = await supabase.from('permit_requests').insert({
-      application_type: 'imtiyozli',
+    const nowIso = new Date().toISOString()
+    const fields = {
+      application_type: 'imtiyozli' as const,
       passport_series: idNumber,
       jshshir: null,
       full_name: fullName,
@@ -134,8 +132,42 @@ export async function POST(request: NextRequest) {
       origin_country: originCountry,
       origin_region: originRegion,
       permit_url: storagePath,
-      status: 'pending',
-    })
+      status: 'pending' as const,
+    }
+
+    if (outcome.action === 'reopen') {
+      const { data: reopened, error: reopenError } = await supabase
+        .from('permit_requests')
+        .update({ ...fields, reject_reason: null, room_number: null, dorm_id: null, created_at: nowIso, updated_at: nowIso })
+        .eq('id', outcome.rowId)
+        .eq('status', 'rejected')
+        .select('id')
+        .maybeSingle()
+      if (reopenError) {
+        await supabase.storage.from('permits').remove([storagePath])
+        if (reopenError.code === '23505') {
+          return NextResponse.json({ error: 'Bu email boshqa ariza bilan band.' }, { status: 409 })
+        }
+        throw reopenError
+      }
+      if (!reopened) {
+        await supabase.storage.from('permits').remove([storagePath])
+        return NextResponse.json({ error: 'Ariza holati o‘zgardi — sahifani yangilang.' }, { status: 409 })
+      }
+      if (outcome.oldPermitPath && outcome.oldPermitPath !== storagePath) {
+        await supabase.storage.from('permits').remove([outcome.oldPermitPath])
+      }
+      await writeAuditLog({
+        eventType: 'imtiyozli_request.resubmitted',
+        status: 'success',
+        ipAddress: getClientIp(request),
+        targetRole: 'talaba',
+        details: { faculty },
+      })
+      return NextResponse.json({ ok: true, resubmitted: true }, { status: 200 })
+    }
+
+    const { error: insertError } = await supabase.from('permit_requests').insert(fields)
     if (insertError) {
       await supabase.storage.from('permits').remove([storagePath])
       if (insertError.code === '23505') {

@@ -57,6 +57,11 @@ export default function RuxsatnomaYuborish() {
   // not something that only needs saying once per browser.
   const [showWarning, setShowWarning] = useState(true)
 
+  // Set when the applicant arrived via "Tuzatib qayta yuborish" from the
+  // status page after a rejection — the identity fields are prefilled and
+  // the server reopens their existing row instead of rejecting a duplicate.
+  const [resubmitMode, setResubmitMode] = useState(false)
+
   // Step 4's review card — front holds identity/course, back holds
   // contact/document — flips in place instead of stacking a second card.
   const [cardFlipped, setCardFlipped] = useState(false)
@@ -78,6 +83,22 @@ export default function RuxsatnomaYuborish() {
       const savedMuted = localStorage.getItem('dorm_sound_muted') === 'true'
       setIsMuted(savedMuted)
     }
+  }, [])
+
+  // Prefill the identity fields when resubmitting a rejected application, so
+  // the applicant only fixes the document and can't accidentally change the
+  // passport/JShSHIR that keys their existing row.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('permit_resubmit')
+      if (!raw) return
+      sessionStorage.removeItem('permit_resubmit')
+      const saved = JSON.parse(raw) as { passport?: string; jshshir?: string; email?: string }
+      if (saved.passport) setPassportSeries(saved.passport)
+      if (saved.jshshir) setJshshir(saved.jshshir)
+      if (saved.email) setEmail(saved.email)
+      setResubmitMode(true)
+    } catch { /* ignore malformed / unavailable storage */ }
   }, [])
 
   // Particle animation loop
@@ -470,7 +491,12 @@ export default function RuxsatnomaYuborish() {
 
       setSubmitted(true)
       playSound('success')
-      showToast('success', "Yo'llanma ko'rib chiqish uchun yuborildi!")
+      showToast(
+        'success',
+        submitResult.resubmitted
+          ? "Tuzatilgan yo'llanma qayta ko'rib chiqish uchun yuborildi!"
+          : "Yo'llanma ko'rib chiqish uchun yuborildi!",
+      )
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Xatolik yuz berdi')
       console.error(err)
@@ -885,7 +911,20 @@ export default function RuxsatnomaYuborish() {
                 {/* COLUMN 2: Form Wizard — spans the full width on Step 4,
                     since there's no side-column card to share space with. */}
                 <div className={`space-y-3.5 w-full ${formStep === 4 ? 'md:col-span-12' : 'md:col-span-7 md:col-start-6'}`}>
-                  
+
+                  {resubmitMode && (
+                    <div className={`flex items-start gap-2.5 rounded-xl border p-3 ${
+                      isLight ? 'border-blue-200 bg-blue-50' : 'border-blue-500/25 bg-blue-500/10'
+                    }`}>
+                      <RotateCw size={15} className={`mt-0.5 shrink-0 ${isLight ? 'text-blue-600' : 'text-blue-400'}`} />
+                      <p className={`text-[11px] leading-relaxed font-sans ${isLight ? 'text-blue-800' : 'text-blue-200'}`}>
+                        Rad etilgan arizangizni <span className="font-bold">tuzatib qayta yuboryapsiz</span>.
+                        Pasport, JShSHIR va emailni o&apos;zgartirmang — faqat to&apos;g&apos;ri hujjatni yuklang.
+                        Ariza qaytadan ko&apos;rib chiqish navbatiga tushadi.
+                      </p>
+                    </div>
+                  )}
+
                   {/* 3D Premium Wizard Tabs */}
                   <div className="relative p-1 rounded-xl bg-slate-950/20 dark:bg-slate-950/60 border border-slate-200/10 dark:border-white/5 shadow-[inset_0_2px_6px_rgba(0,0,0,0.5)] flex justify-between items-center gap-1 overflow-hidden">
                     {[

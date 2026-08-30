@@ -318,9 +318,19 @@ function StatusCheckContent() {
                         </div>
                         <Link
                           href="/ruxsatnoma-yuborish"
+                          onClick={() => {
+                            // Carry the identity so the submit form is prefilled and
+                            // the server reopens THIS rejected row instead of 409-ing.
+                            try {
+                              sessionStorage.setItem(
+                                'permit_resubmit',
+                                JSON.stringify({ passport: passportSeries, jshshir, email }),
+                              )
+                            } catch { /* private mode — user just retypes */ }
+                          }}
                           className="inline-flex items-center gap-1 text-xs font-bold text-blue-500 hover:underline"
                         >
-                          <span>Qayta yuborish</span>
+                          <span>Tuzatib qayta yuborish</span>
                           <ChevronRight size={12} />
                         </Link>
                       </div>

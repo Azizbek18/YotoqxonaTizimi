@@ -594,7 +594,7 @@ export default function RuxsatnomaYuborish() {
             SMARTDORM • TALABA ID
           </span>
           <h3 className={`text-xs sm:text-base font-black uppercase tracking-wide mt-2 font-sans leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
-            {fullName.trim() || "F.I.Sh (Ism Familiya)"}
+            {fullName.trim() || "F.I.Sh (Familiya Ism Sharif)"}
           </h3>
         </div>
 

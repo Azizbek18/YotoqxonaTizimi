@@ -18,6 +18,7 @@ import {
   FileSpreadsheet,
   Bell,
   Building2,
+  ClipboardList,
   Settings,
   ShieldAlert,
   UserRoundSearch,
@@ -71,7 +72,8 @@ export default function DekanLayout({
   const ui = dekanUI(isLight)
   const isSuperadmin = dekanRole === 'admin'
   const isGlobalSuperadminPage = isSuperadmin
-    && (pathname === '/dekan/dekanlar' || pathname === '/dekan/yotoqxonalar' || pathname === '/dekan/fakultet-tolovlari')
+    && (pathname === '/dekan/dekanlar' || pathname === '/dekan/yotoqxonalar'
+      || pathname === '/dekan/fakultet-tolovlari' || pathname === '/dekan/audit')
   const scopeIsGlobal = isSuperadmin && (!saScope || saScope === '*')
   const scopeLabel = !isSuperadmin
     ? null
@@ -218,6 +220,7 @@ export default function DekanLayout({
             { label: 'Bosh nazorat', caption: 'Barcha fakultetlar', href: '/dekan/dekanlar', icon: UserRoundSearch },
             { label: 'Yotoqxonalar', caption: 'Barcha binolar', href: '/dekan/yotoqxonalar', icon: Building2 },
             { label: 'Fakultet to‘lovlari', caption: 'Oylik / yillik tarif', href: '/dekan/fakultet-tolovlari', icon: Wallet },
+            { label: 'Audit jurnali', caption: 'Xavfsizlik amallari', href: '/dekan/audit', icon: ClipboardList },
           ]
         : []),
       { label: 'Dashboard', caption: op('Umumiy hisobot'), href: '/dekan/dashboard', icon: LayoutDashboard },

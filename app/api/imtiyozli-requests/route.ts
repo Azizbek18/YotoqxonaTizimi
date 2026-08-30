@@ -13,6 +13,7 @@ import {
   isValidForeignIdNumber,
   normalizeForeignIdNumber,
 } from '@/lib/permit-validation'
+import { cyrillicToLatin } from '@/lib/transliterate'
 import { directionBelongsToFaculty, normalizeDirection } from '@/lib/directions'
 import { isPermitFacultyValue } from '@/lib/faculties'
 import { writeAuditLog } from '@/lib/audit-log'
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
     const hasNameParts = Boolean(lastName || firstName || middleName)
     const fullName = hasNameParts
       ? buildFullName({ lastName, firstName, middleName: noMiddleName ? '' : middleName })
-      : value(form, 'fullName', 160)
+      : cyrillicToLatin(value(form, 'fullName', 160))
     const email = value(form, 'email', 254).toLowerCase()
     const phone = value(form, 'phone', 32)
     const relativePhone = value(form, 'relativePhone', 32)

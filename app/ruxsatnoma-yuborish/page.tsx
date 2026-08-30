@@ -17,6 +17,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
 import { getPassportFormatError, isValidJoinedFullName, isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
+import { cyrillicToLatin } from '@/lib/transliterate'
 import { prepareUploadFile } from '@/lib/prepare-upload'
 
 interface Particle {
@@ -1042,7 +1043,7 @@ export default function RuxsatnomaYuborish() {
                                   playSound('focus')
                                 }}
                                 onBlur={() => setFocusedField(null)}
-                                onChange={(e) => handleInputChange(e, setFullName, 'fullName')}
+                                onChange={(e) => handleInputChange(e, (v) => setFullName(cyrillicToLatin(v)), 'fullName')}
                                 placeholder="Familiya Ism Sharif"
                                 className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 ${
                                   isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
@@ -1052,7 +1053,7 @@ export default function RuxsatnomaYuborish() {
                             </div>
                           </div>
                           <p className={`px-2 text-[9px] leading-relaxed ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-                            To&apos;liq yozing: Familiya, Ism va Otasining ismi — 3 ta so&apos;z.
+                            To&apos;liq yozing: Familiya, Ism va Otasining ismi — 3 ta so&apos;z. Kirilcha yozsangiz avtomatik lotinga o&apos;giriladi.
                           </p>
                         </div>
 

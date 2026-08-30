@@ -8,6 +8,7 @@ import { User, UserCircle, Users, ArrowRight, Sparkles, ShieldAlert, Phone } fro
 import { useThemeStore } from '@/lib/stores/theme-store'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { getNamePartError } from '@/lib/permit-validation'
+import { cyrillicToLatin } from '@/lib/transliterate'
 
 interface Props {
   data: RegisterData
@@ -110,7 +111,7 @@ export default function Step2Name({ data, onChange, onNext, onBack, requiresMidd
                 value={data.lastName || ''}
                 onFocus={() => setFocusedField('lastName')}
                 onBlur={() => setFocusedField(null)}
-                onChange={e => onChange({ lastName: e.target.value })}
+                onChange={e => onChange({ lastName: cyrillicToLatin(e.target.value) })}
               />
             </div>
           </div>
@@ -130,7 +131,7 @@ export default function Step2Name({ data, onChange, onNext, onBack, requiresMidd
                   value={data.firstName || ''}
                   onFocus={() => setFocusedField('firstName')}
                   onBlur={() => setFocusedField(null)}
-                  onChange={e => onChange({ firstName: e.target.value })}
+                  onChange={e => onChange({ firstName: cyrillicToLatin(e.target.value) })}
                 />
               </div>
             </div>
@@ -147,7 +148,7 @@ export default function Step2Name({ data, onChange, onNext, onBack, requiresMidd
                   value={data.middleName || ''}
                   onFocus={() => setFocusedField('middleName')}
                   onBlur={() => setFocusedField(null)}
-                  onChange={e => onChange({ middleName: e.target.value })}
+                  onChange={e => onChange({ middleName: cyrillicToLatin(e.target.value) })}
                 />
               </div>
             </div>

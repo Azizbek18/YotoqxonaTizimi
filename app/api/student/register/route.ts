@@ -14,6 +14,7 @@ import {
   normalizeJshshir,
   normalizePassport,
 } from '@/lib/permit-validation'
+import { cyrillicToLatin } from '@/lib/transliterate'
 import { writeAuditLog } from '@/lib/audit-log'
 import { extractFloor } from '@/lib/floor'
 import { createAuthUserSafely, deleteAuthUserSafely } from '@/lib/supabase-admin-auth'
@@ -53,9 +54,9 @@ export async function POST(request: NextRequest) {
       : normalizePassport(body.passportSeries)
     const jshshir = normalizeJshshir(body.jshshir)
     const email = text(body, 'email', 254).toLowerCase()
-    const firstName = text(body, 'firstName', 80)
-    const lastName = text(body, 'lastName', 80)
-    const middleName = text(body, 'middleName', 80)
+    const firstName = cyrillicToLatin(text(body, 'firstName', 80))
+    const lastName = cyrillicToLatin(text(body, 'lastName', 80))
+    const middleName = cyrillicToLatin(text(body, 'middleName', 80))
     const fullName = buildFullName({ lastName, firstName, middleName })
     const phone = text(body, 'phone', 32)
     const gender = text(body, 'gender', 16)
@@ -221,10 +222,10 @@ export async function POST(request: NextRequest) {
       study_type: text(body, 'study_type', 40) || null,
       gender: permit.gender,
       phone_number: phone,
-      father_full_name: text(body, 'father_full_name', 160) || null,
+      father_full_name: cyrillicToLatin(text(body, 'father_full_name', 160)) || null,
       father_workplace: text(body, 'father_workplace', 200) || null,
       father_phone: text(body, 'father_phone', 32) || null,
-      mother_full_name: text(body, 'mother_full_name', 160) || null,
+      mother_full_name: cyrillicToLatin(text(body, 'mother_full_name', 160)) || null,
       mother_workplace: text(body, 'mother_workplace', 200) || null,
       mother_phone: text(body, 'mother_phone', 32) || null,
       room_number: permit.room_number,

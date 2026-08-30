@@ -26,6 +26,7 @@ import {
   isValidForeignIdNumber,
   normalizeForeignIdNumber,
 } from '@/lib/permit-validation'
+import { cyrillicToLatin } from '@/lib/transliterate'
 
 const STUDY_TYPES = [
   { value: 'grant', label: "Davlat granti" },
@@ -413,7 +414,7 @@ export default function ImtiyozliAriza() {
                         <label className={nameLabelCls}>Familiya</label>
                         <div className="relative">
                           <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                          <input type="text" autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Familiya" className={nameInputCls} />
+                          <input type="text" autoComplete="family-name" value={lastName} onChange={(e) => setLastName(cyrillicToLatin(e.target.value))} placeholder="Familiya" className={nameInputCls} />
                         </div>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -421,14 +422,14 @@ export default function ImtiyozliAriza() {
                           <label className={nameLabelCls}>Ism</label>
                           <div className="relative">
                             <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <input type="text" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Ism" className={nameInputCls} />
+                            <input type="text" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(cyrillicToLatin(e.target.value))} placeholder="Ism" className={nameInputCls} />
                           </div>
                         </div>
                         <div className="space-y-1">
                           <label className={nameLabelCls}>Otasining ismi</label>
                           <div className="relative">
                             <User size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${noMiddleName ? 'text-slate-600' : 'text-slate-500'}`} />
-                            <input type="text" autoComplete="additional-name" disabled={noMiddleName} value={noMiddleName ? '' : middleName} onChange={(e) => setMiddleName(e.target.value)} placeholder={noMiddleName ? '—' : 'Sharif'} className={`${nameInputCls} disabled:opacity-50`} />
+                            <input type="text" autoComplete="additional-name" disabled={noMiddleName} value={noMiddleName ? '' : middleName} onChange={(e) => setMiddleName(cyrillicToLatin(e.target.value))} placeholder={noMiddleName ? '—' : 'Sharif'} className={`${nameInputCls} disabled:opacity-50`} />
                           </div>
                         </div>
                       </div>
@@ -436,6 +437,9 @@ export default function ImtiyozliAriza() {
                         <input type="checkbox" checked={noMiddleName} onChange={(e) => setNoMiddleName(e.target.checked)} />
                         Hujjatimda otasining ismi yo‘q (xorijiy pasport)
                       </label>
+                      <p className={`ml-2 text-[10px] ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Ismni pasportdagidek yozing. Kirilcha yozsangiz avtomatik lotinga o‘giriladi.
+                      </p>
                     </div>
                   )
                 })()}

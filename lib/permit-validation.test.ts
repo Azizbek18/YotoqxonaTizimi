@@ -102,6 +102,13 @@ describe('name parts', () => {
     expect(buildFullName({ lastName: 'Smith', firstName: 'John', middleName: '' })).toBe('Smith John')
   })
 
+  it('buildFullName / isValidNamePart Latinise Cyrillic parts', () => {
+    expect(buildFullName({ lastName: 'Иванов', firstName: 'Пётр', middleName: '' })).toBe('Ivanov Petr')
+    expect(buildFullName({ lastName: 'Ғафуров', firstName: 'Хусан', middleName: 'Аброрович' }))
+      .toBe('Gʻafurov Xusan Abrorovich')
+    expect(isValidNamePart('Абдуллаев')).toBe(true)
+  })
+
   it('isValidJoinedFullName enforces the minimum part count', () => {
     expect(isValidJoinedFullName('Aliyev Vali Anvarovich')).toBe(true)
     expect(isValidJoinedFullName('Aliyev Vali')).toBe(false)

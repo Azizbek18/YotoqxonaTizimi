@@ -1,3 +1,5 @@
+import { cyrillicToLatin } from './transliterate'
+
 export const PERMIT_FILE_RULES: Record<string, { extension: string; signatures: number[][] }> = {
   'application/pdf': { extension: 'pdf', signatures: [[0x25, 0x50, 0x44, 0x46]] },
   'image/jpeg': { extension: 'jpg', signatures: [[0xff, 0xd8, 0xff]] },
@@ -81,48 +83,57 @@ export function detectPermitFileMimeType(buffer: Uint8Array): PermitFileMimeType
 }
 
 function normalizeNameToken(s: string): string {
-  return s.toUpperCase().replace(/[ʻʼ'`´]/g, '').replace(/[^A-ZА-Я]/g, '')
+  // Latinise first so a Cyrillic-era record still matches a Latin one.
+  return cyrillicToLatin(s).toUpperCase().replace(/[ʻʼ'`´]/g, '').replace(/[^A-ZА-Я]/g, '')
 }
 
 export function canonicalizeFullName(input: unknown): string {
   return String(input ?? '').trim().slice(0, 160)
 }
 
-// One part of a name (familiya / ism / sharif). Letters (Latin + Cyrillic),
-// the Uzbek apostrophe, hyphen and internal spaces (some surnames are two
-// words). 2–40 chars, must start with a letter. No digits, no punctuation.
+// One part of a name (familiya / ism / sharif). Latin letters only — a
+// Cyrillic name is transliterated first (see normalizeNamePart), so the
+// dekan tables and exports carry one spelling. Uzbek apostrophe, hyphen,
+// internal spaces (two-word surnames). 2–40 chars, starts with a letter.
 const NAME_PART_RE = /^\p{L}[\p{L}ʻʼ'’\- ]{1,39}$/u
 
+// Trim, collapse spaces, and Latinise any Cyrillic. Use this on every name
+// input (client onChange + server) so what gets validated/stored is Latin.
+export function normalizeNamePart(input: unknown): string {
+  return cyrillicToLatin(String(input ?? '').trim().replace(/\s+/g, ' '))
+}
+
 export function isValidNamePart(input: unknown): boolean {
-  const value = String(input ?? '').trim().replace(/\s+/g, ' ')
-  return NAME_PART_RE.test(value)
+  return NAME_PART_RE.test(normalizeNamePart(input))
 }
 
 export function getNamePartError(input: unknown, label: string): string | null {
-  const value = String(input ?? '').trim()
+  const value = normalizeNamePart(input)
   if (!value) return `${label}ni kiriting.`
   if (!isValidNamePart(value)) return `${label} faqat harflardan iborat, 2–40 belgi bo'lishi kerak.`
   return null
 }
 
-// The canonical full name, always "Familiya Ism Sharif" — the same order
-// app/api/student/register builds, so namesLikelyMatch lines up later.
+// The canonical full name, always "Familiya Ism Sharif" (the same order
+// app/api/student/register builds). Transliterated as ONE string so the
+// Uzbek-vs-Russian rule is chosen from the whole name, not a lone part
+// ("Ғафуров Хусан" → "Gʻafurov Xusan", not "Gʻafurov Khusan").
 export function buildFullName(parts: {
   lastName?: unknown
   firstName?: unknown
   middleName?: unknown
 }): string {
-  return [parts.lastName, parts.firstName, parts.middleName]
+  const joined = [parts.lastName, parts.firstName, parts.middleName]
     .map((part) => String(part ?? '').trim().replace(/\s+/g, ' '))
     .filter(Boolean)
     .join(' ')
-    .slice(0, 160)
+  return cyrillicToLatin(joined).slice(0, 160)
 }
 
 // Server-side guard for a joined name string: at least `minParts`
-// whitespace-separated tokens, every one a valid name part.
+// whitespace-separated tokens, every one a valid (Latinised) name part.
 export function isValidJoinedFullName(input: unknown, minParts = 3): boolean {
-  const parts = String(input ?? '').trim().split(/\s+/).filter(Boolean)
+  const parts = cyrillicToLatin(String(input ?? '').trim()).split(/\s+/).filter(Boolean)
   return parts.length >= minParts && parts.every(isValidNamePart)
 }
 

@@ -11,6 +11,7 @@ import {
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
+import DeveloperContactLink from '@/components/DeveloperContactLink'
 import ArizaTilxatDocument from '@/components/documents/ArizaTilxatDocument'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
@@ -220,6 +221,7 @@ export default function ImtiyozliAriza() {
             Bosh sahifa
           </button>
         </motion.div>
+        <DeveloperContactLink />
       </div>
     )
   }
@@ -599,6 +601,7 @@ export default function ImtiyozliAriza() {
           100% { background-position: 0% 50%; }
         }
       `}} />
+      <DeveloperContactLink />
     </div>
   )
 }

@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import DeveloperContactLink from '@/components/DeveloperContactLink'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { appFont as baloo2 } from '@/lib/app-font'
 
@@ -245,6 +246,7 @@ export default function RegisterPage() {
         .custom-scrollbar::-webkit-scrollbar { width: 3px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 10px; }
       `}</style>
+      <DeveloperContactLink />
     </main>
   )
 }

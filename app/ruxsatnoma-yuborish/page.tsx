@@ -12,6 +12,7 @@ import {
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
+import DeveloperContactLink from '@/components/DeveloperContactLink'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
@@ -1705,6 +1706,8 @@ export default function RuxsatnomaYuborish() {
           )}
         </AnimatePresence>
       </div>
+
+      <DeveloperContactLink />
     </div>
   )
 }

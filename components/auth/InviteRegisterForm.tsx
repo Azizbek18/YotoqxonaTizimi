@@ -8,6 +8,7 @@ import { KeyRound, User, Mail, Phone, GraduationCap, Users, Lock, ShieldCheck, A
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
+import DeveloperContactLink from '@/components/DeveloperContactLink'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/password-policy'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
@@ -423,6 +424,7 @@ export default function InviteRegisterForm({
           <Link href="/login" className="font-bold text-indigo-400 hover:underline">Kirish sahifasi</Link>
         </p>
       </motion.div>
+      <DeveloperContactLink />
     </div>
   )
 }

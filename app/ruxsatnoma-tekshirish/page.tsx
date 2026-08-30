@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import DeveloperContactLink from '@/components/DeveloperContactLink'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
 
@@ -425,6 +426,7 @@ export default function RuxsatnomaTekshirish() {
       </div>
     }>
       <StatusCheckContent />
+      <DeveloperContactLink />
     </Suspense>
   )
 }

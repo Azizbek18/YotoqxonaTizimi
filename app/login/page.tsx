@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { Mail, Lock, ChevronRight, House, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import DeveloperContactLink from '@/components/DeveloperContactLink'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { appFont as baloo2 } from '@/lib/app-font'
 
@@ -289,6 +290,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#020617]" />}>
       <LoginContent />
+      <DeveloperContactLink />
     </Suspense>
   )
 }

@@ -20,6 +20,7 @@ import {
   Building2,
   Settings,
   ShieldAlert,
+  UserRoundSearch,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -190,9 +191,13 @@ export default function DekanLayout({
     { label: 'Tarbiyachilar', caption: 'Xodim hisoblari', href: '/dekan/xodimlar', icon: Building2 },
     { label: 'E‘lonlar', caption: 'Fakultet talabalariga', href: '/dekan/elonlar', icon: Megaphone },
     { label: 'Hisobotlar', caption: 'Excel eksport', href: '/dekan/hisobotlar', icon: FileSpreadsheet },
-    // Superadmin only: manage every dorm building, not just this faculty's.
+    // Superadmin only: cross-faculty oversight, independent of the admin
+    // account's legacy `faculty = amit` assignment.
     ...(dekanRole === 'admin'
-      ? [{ label: 'Yotoqxonalar', caption: 'Barcha binolar (superadmin)', href: '/dekan/yotoqxonalar', icon: Building2 }]
+      ? [
+          { label: 'Dekanlar', caption: 'Barcha fakultetlar nazorati', href: '/dekan/dekanlar', icon: UserRoundSearch },
+          { label: 'Yotoqxonalar', caption: 'Barcha binolar (superadmin)', href: '/dekan/yotoqxonalar', icon: Building2 },
+        ]
       : []),
     { label: 'Sozlamalar', caption: 'Tizim boshqaruvi', href: '/dekan/sozlamalar', icon: Settings },
   ]), [pendingCount, dekanRole])

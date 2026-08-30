@@ -23,6 +23,7 @@ const ADMIN_ROUTE_REDIRECTS: Record<string, string> = {
   '/admin/arizalar': '/dekan/murojaatlar',
   '/admin/elonlar': '/dekan/elonlar',
   '/admin/reports': '/dekan/hisobotlar',
+  '/admin/dekanlar': '/dekan/dekanlar',
 }
 
 // Where to send a signed-in user whose role doesn't match the route they're
@@ -172,6 +173,13 @@ export async function proxy(request: NextRequest) {
   // ========================
   // DEKAN ROUTES HIMOYASI
   // ========================
+  // Cross-faculty oversight pages are superadmin-only. Hiding their menu
+  // entries is just presentation; this route guard prevents a dekan from
+  // opening the page directly, while the APIs repeat the same role check.
+  const superadminGuard = guardRole('/dekan/dekanlar', ['admin'], '/dekan/dashboard')
+    ?? guardRole('/dekan/yotoqxonalar', ['admin'], '/dekan/dashboard')
+  if (superadminGuard) return superadminGuard
+
   // `admin` is accepted here too: the standalone /admin panel is retired,
   // so `ROLE_HOME.admin` points at /dekan/dashboard — the guard must let
   // that role in or an admin session loops forever. Faza 2 migrates the

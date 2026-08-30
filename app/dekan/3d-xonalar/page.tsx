@@ -8,6 +8,7 @@ import {
   Plus, Trash2, GripVertical, Save, RotateCcw
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useScopedFontFamily } from '@/lib/font-scope-context'
 import toast from 'react-hot-toast'
@@ -148,6 +149,9 @@ export default function Dekan3DXonalarPage() {
   const [rightBlocks, setRightBlocks] = useState<EditableBlock[]>([])
   // Phones show one side at a time (segmented switch); md+ shows both columns.
   const [mobileSide, setMobileSide] = useState<RoomBlockSide>('left')
+  // Floor the dekan wants to switch to while the current one has unsaved
+  // edits — drives the "discard changes?" confirm modal.
+  const [pendingFloor, setPendingFloor] = useState<number | null>(null)
   // Snapshot of whatever's actually persisted on the server for the active
   // floor — compared against the live editor state so we can warn before
   // silently discarding unsaved edits (e.g. switching floor tabs).
@@ -657,9 +661,9 @@ export default function Dekan3DXonalarPage() {
               key={fl}
               onClick={() => {
                 if (fl === activeFloor) return
-                if (isDirty && !window.confirm(
-                  `${activeFloor}-qavatda saqlanmagan o'zgarishlar bor. Ularni saqlamasdan boshqa qavatga o'tsangiz, o'zgarishlar yo'qoladi. Davom etilsinmi?`
-                )) {
+                // Saqlanmagan o'zgarishlar bo'lsa — brauzer alert'i emas, modal.
+                if (isDirty) {
+                  setPendingFloor(fl)
                   return
                 }
                 setActiveFloor(fl)
@@ -883,6 +887,25 @@ export default function Dekan3DXonalarPage() {
           </AnimatePresence>
         </>
       )}
+
+      <ConfirmModal
+        isOpen={pendingFloor !== null}
+        title="Saqlanmagan o'zgarishlar"
+        description={`${activeFloor}-qavat tarxida saqlanmagan o'zgarishlar bor.`}
+        confirmText={`${pendingFloor ?? ''}-qavatga o'tish`}
+        cancelText="Bu qavatda qolish"
+        confirmVariant="danger"
+        onClose={() => setPendingFloor(null)}
+        onConfirm={() => {
+          if (pendingFloor !== null) setActiveFloor(pendingFloor)
+          setPendingFloor(null)
+        }}
+      >
+        <p className={textMuted}>
+          Boshqa qavatga o&apos;tsangiz, bu qavatdagi o&apos;zgarishlar saqlanmaydi va yo&apos;qoladi.
+          Avval <span className="font-bold">Saqlash</span> tugmasini bosing yoki o&apos;zgarishlarni bekor qiling.
+        </p>
+      </ConfirmModal>
     </div>
   )
 }

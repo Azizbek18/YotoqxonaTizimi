@@ -5,9 +5,9 @@ import { createPortal } from 'react-dom'
 import {
   Building2, DoorOpen, Layers3, Users,
   Info, MousePointer2,
-  Plus, Trash2, ChevronUp, ChevronDown, Save, RotateCcw
+  Plus, Trash2, GripVertical, Save, RotateCcw
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useScopedFontFamily } from '@/lib/font-scope-context'
 import toast from 'react-hot-toast'
@@ -30,9 +30,36 @@ interface RoomOccupancySnapshot {
   students: StudentInfo[]
 }
 
-type EditableBlock = { roomNumber: string; size: RoomBlockSize }
+type EditableBlock = { id: string; roomNumber: string; size: RoomBlockSize }
 
-const snapshotBlocks = (left: EditableBlock[], right: EditableBlock[]) => JSON.stringify({ left, right })
+// Reorder.Item needs a key that stays put while the room number is edited
+// (it can be blank or briefly duplicated mid-typing), so every row carries
+// a client-only id that is never sent to the server.
+const makeId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
+
+// Next room number = one past the highest number already in the column, so
+// "+5" fills 17,18,19,20,21 rather than five blank rows.
+const nextRoomNumber = (blocks: EditableBlock[]) => {
+  const nums = blocks.map((b) => parseInt(b.roomNumber, 10)).filter((n) => Number.isFinite(n))
+  return nums.length ? Math.max(...nums) + 1 : null
+}
+
+// The id is a per-session render key, never persisted — only room number,
+// order and size decide whether the floor has unsaved edits.
+const snapshotBlocks = (left: EditableBlock[], right: EditableBlock[]) => {
+  const strip = (list: EditableBlock[]) => list.map(({ roomNumber, size }) => ({ roomNumber, size }))
+  return JSON.stringify({ left: strip(left), right: strip(right) })
+}
+
+const SIZE_RANK: Record<RoomBlockSize, number> = { small: 1, medium: 2, large: 3 }
+const SIZE_CYCLE: RoomBlockSize[] = ['small', 'medium', 'large']
+const TONE_DOT: Record<RoomOccupancyTone, string> = {
+  empty: 'bg-emerald-500',
+  partial: 'bg-amber-500',
+  full: 'bg-rose-500',
+  unknown: 'bg-slate-400',
+}
 
 type PositionedRoom = {
   roomNumber: string
@@ -119,6 +146,8 @@ export default function Dekan3DXonalarPage() {
   const [saving, setSaving] = useState(false)
   const [leftBlocks, setLeftBlocks] = useState<EditableBlock[]>([])
   const [rightBlocks, setRightBlocks] = useState<EditableBlock[]>([])
+  // Phones show one side at a time (segmented switch); md+ shows both columns.
+  const [mobileSide, setMobileSide] = useState<RoomBlockSide>('left')
   // Snapshot of whatever's actually persisted on the server for the active
   // floor — compared against the live editor state so we can warn before
   // silently discarding unsaved edits (e.g. switching floor tabs).
@@ -185,8 +214,8 @@ export default function Dekan3DXonalarPage() {
     setSelectedRoomNumber(null)
     try {
       const blocks = await fetchFloorLayout(floor)
-      const left = blocks.filter((b) => b.side === 'left').map((b) => ({ roomNumber: b.roomNumber, size: b.size }))
-      const right = blocks.filter((b) => b.side === 'right').map((b) => ({ roomNumber: b.roomNumber, size: b.size }))
+      const left = blocks.filter((b) => b.side === 'left').map((b) => ({ id: makeId(), roomNumber: b.roomNumber, size: b.size }))
+      const right = blocks.filter((b) => b.side === 'right').map((b) => ({ id: makeId(), roomNumber: b.roomNumber, size: b.size }))
       setLeftBlocks(left)
       setRightBlocks(right)
       setLastSavedSnapshot(snapshotBlocks(left, right))
@@ -250,26 +279,30 @@ export default function Dekan3DXonalarPage() {
   }, [leftBlocks, rightBlocks])
 
   // --- Editor mutations ---
-  const addBlock = (side: RoomBlockSide) => {
-    const setter = side === 'left' ? setLeftBlocks : setRightBlocks
-    setter((prev) => [...prev, { roomNumber: '', size: 'medium' }])
+  const setSide = (side: RoomBlockSide) => (side === 'left' ? setLeftBlocks : setRightBlocks)
+
+  const addBlock = (side: RoomBlockSide, count = 1) => {
+    setSide(side)((prev) => {
+      const start = nextRoomNumber(prev)
+      const additions: EditableBlock[] = Array.from({ length: count }, (_, i) => ({
+        id: makeId(),
+        roomNumber: start === null ? '' : String(start + i),
+        size: 'medium',
+      }))
+      return [...prev, ...additions]
+    })
   }
-  const updateBlock = (side: RoomBlockSide, index: number, patch: Partial<EditableBlock>) => {
-    const setter = side === 'left' ? setLeftBlocks : setRightBlocks
-    setter((prev) => prev.map((b, i) => (i === index ? { ...b, ...patch } : b)))
+  const updateBlock = (side: RoomBlockSide, id: string, patch: Partial<EditableBlock>) => {
+    setSide(side)((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)))
   }
-  const removeBlock = (side: RoomBlockSide, index: number) => {
-    const setter = side === 'left' ? setLeftBlocks : setRightBlocks
-    setter((prev) => prev.filter((_, i) => i !== index))
+  const removeBlock = (side: RoomBlockSide, id: string) => {
+    setSide(side)((prev) => prev.filter((b) => b.id !== id))
   }
-  const moveBlock = (side: RoomBlockSide, index: number, direction: -1 | 1) => {
-    const setter = side === 'left' ? setLeftBlocks : setRightBlocks
-    setter((prev) => {
-      const target = index + direction
-      if (target < 0 || target >= prev.length) return prev
-      const next = [...prev]
-      ;[next[index], next[target]] = [next[target], next[index]]
-      return next
+  const reorderSide = (side: RoomBlockSide, orderedIds: string[]) => {
+    setSide(side)((prev) => {
+      const byId = new Map(prev.map((b) => [b.id, b]))
+      const next = orderedIds.map((id) => byId.get(id)).filter((b): b is EditableBlock => Boolean(b))
+      return next.length === prev.length ? next : prev
     })
   }
 
@@ -515,65 +548,75 @@ export default function Dekan3DXonalarPage() {
     }
   }, [selectedRoomNumber, roomSnapshots, defaultRoomCapacity])
 
-  const renderBlockColumn = (side: RoomBlockSide, blocks: EditableBlock[]) => (
-    <div className={`rounded-2xl border p-4 ${cardBg}`}>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className={`text-xs font-bold uppercase tracking-wider ${textStrong}`}>
-          {side === 'left' ? 'Chap tomon' : "O'ng tomon"}
-        </h3>
-        <span className={`text-[10px] font-bold ${textMuted}`}>{blocks.length} ta xona</span>
-      </div>
+  const quickAddBtn = isLight
+    ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+    : 'bg-white/5 text-slate-300 hover:bg-white/10'
 
-      <div className="space-y-2">
-        {blocks.map((block, index) => (
-          <div key={index} className={`rounded-xl border p-2.5 space-y-2 ${isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.02]'}`}>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={block.roomNumber}
-                onChange={(e) => updateBlock(side, index, { roomNumber: e.target.value })}
-                placeholder="Xona №"
-                className={`min-w-0 flex-1 text-xs py-1.5 px-2.5 rounded-lg outline-none border ${inputBg}`}
-              />
-              <button onClick={() => moveBlock(side, index, -1)} disabled={index === 0} className={`p-1.5 rounded-lg disabled:opacity-30 ${isLight ? 'hover:bg-slate-100' : 'hover:bg-white/5'} ${textMuted}`}>
-                <ChevronUp size={14} />
-              </button>
-              <button onClick={() => moveBlock(side, index, 1)} disabled={index === blocks.length - 1} className={`p-1.5 rounded-lg disabled:opacity-30 ${isLight ? 'hover:bg-slate-100' : 'hover:bg-white/5'} ${textMuted}`}>
-                <ChevronDown size={14} />
-              </button>
-              <button onClick={() => removeBlock(side, index)} className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 dark:text-rose-400">
-                <Trash2 size={14} />
-              </button>
-            </div>
-            <div className="flex gap-1.5">
-              {(['small', 'medium', 'large'] as const).map((size) => (
-                <button
-                  key={size}
-                  onClick={() => updateBlock(side, index, { size })}
-                  className={`flex-1 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${
-                    block.size === size
-                      ? 'bg-indigo-600 text-white'
-                      : isLight ? 'bg-slate-100 text-slate-500' : 'bg-white/5 text-slate-400'
-                  }`}
-                >
-                  {SIZE_LABELS[size]}
-                </button>
-              ))}
-            </div>
+  const renderColumn = (side: RoomBlockSide, blocks: EditableBlock[]) => {
+    const filledCount = blocks.filter((b) => b.roomNumber.trim()).length
+    const places = defaultRoomCapacity === null ? null : filledCount * defaultRoomCapacity
+    return (
+      <div className={`rounded-2xl border p-3 ${cardBg}`}>
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <h3 className={`text-xs font-bold uppercase tracking-wider ${textStrong}`}>
+            {side === 'left' ? 'Chap tomon' : "O'ng tomon"}
+          </h3>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] font-bold tabular-nums ${textMuted}`}>
+              {filledCount} ta{places !== null ? ` · ${places} joy` : ''}
+            </span>
+            <button type="button" onClick={() => addBlock(side, 1)} className={`flex items-center gap-0.5 rounded-lg px-2 py-1 text-[10px] font-bold ${quickAddBtn}`}>
+              <Plus size={11} /> 1
+            </button>
+            <button type="button" onClick={() => addBlock(side, 5)} className={`flex items-center gap-0.5 rounded-lg px-2 py-1 text-[10px] font-bold ${quickAddBtn}`}>
+              <Plus size={11} /> 5
+            </button>
           </div>
-        ))}
-      </div>
+        </div>
 
-      <button
-        onClick={() => addBlock(side)}
-        className={`mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed text-[10px] font-bold uppercase tracking-wider transition-all ${
-          isLight ? 'border-slate-300 text-slate-500 hover:bg-slate-100' : 'border-white/15 text-slate-400 hover:bg-white/5'
-        }`}
-      >
-        <Plus size={14} /> Xona qo&apos;shish
-      </button>
-    </div>
-  )
+        {blocks.length === 0 ? (
+          <p className={`py-5 text-center text-[11px] font-medium ${textMuted}`}>
+            Xona yo&apos;q — <span className="font-bold">+1</span> yoki <span className="font-bold">+5</span> bosing.
+          </p>
+        ) : (
+          <Reorder.Group
+            axis="y"
+            values={blocks.map((b) => b.id)}
+            onReorder={(ids) => reorderSide(side, ids as string[])}
+            className="space-y-1.5"
+          >
+            {blocks.map((block) => {
+              const trimmed = block.roomNumber.trim()
+              const snap = trimmed ? roomSnapshots.find((s) => s.roomNumber === trimmed) : undefined
+              const occupied = snap?.occupied ?? 0
+              const tone: RoomOccupancyTone = trimmed
+                ? getRoomOccupancyTone(occupied, defaultRoomCapacity)
+                : 'unknown'
+              const occText = !trimmed
+                ? ''
+                : occupied === 0
+                  ? "bo'sh"
+                  : `${occupied}/${defaultRoomCapacity ?? '?'}`
+              return (
+                <RoomRow
+                  key={block.id}
+                  block={block}
+                  isLight={isLight}
+                  inputBg={inputBg}
+                  textMuted={textMuted}
+                  toneDot={trimmed ? TONE_DOT[tone] : isLight ? 'bg-slate-300' : 'bg-slate-600'}
+                  occText={occText}
+                  onNumber={(v) => updateBlock(side, block.id, { roomNumber: v })}
+                  onCycleSize={() => updateBlock(side, block.id, { size: SIZE_CYCLE[SIZE_RANK[block.size] % 3] })}
+                  onRemove={() => removeBlock(side, block.id)}
+                />
+              )
+            })}
+          </Reorder.Group>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -660,7 +703,7 @@ export default function Dekan3DXonalarPage() {
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <div className="min-w-0">
                 <h2 className={`text-lg font-bold ${textStrong}`}>{activeFloor}-qavat tarxi</h2>
-                <p className={`text-xs mt-1 ${textMuted}`}>Zal ikki tomoni bo&apos;yicha xonalarni joylashtiring — lego kabi yig&apos;ing.</p>
+                <p className={`text-xs mt-1 ${textMuted}`}>+1 / +5 bilan xona qo&apos;shing, qatorni sudrab tartiblang, o&apos;lcham uchun pillni bosing.</p>
               </div>
               <div className="flex gap-2 shrink-0">
                 <button
@@ -680,9 +723,27 @@ export default function Dekan3DXonalarPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {renderBlockColumn('left', leftBlocks)}
-              {renderBlockColumn('right', rightBlocks)}
+            {/* Phones: one side at a time via a segment. md+: both columns. */}
+            <div className={`md:hidden flex gap-1 p-1 rounded-xl mb-3 ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'}`}>
+              {(['left', 'right'] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setMobileSide(s)}
+                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                    mobileSide === s ? 'bg-indigo-600 text-white' : textMuted
+                  }`}
+                >
+                  {s === 'left' ? 'Chap' : "O'ng"} tomon
+                </button>
+              ))}
+            </div>
+            <div className="md:hidden">
+              {renderColumn(mobileSide, mobileSide === 'left' ? leftBlocks : rightBlocks)}
+            </div>
+            <div className="hidden md:grid md:grid-cols-2 gap-4">
+              {renderColumn('left', leftBlocks)}
+              {renderColumn('right', rightBlocks)}
             </div>
           </div>
 
@@ -823,6 +884,82 @@ export default function Dekan3DXonalarPage() {
         </>
       )}
     </div>
+  )
+}
+
+// One compact editor row (~36px): drag handle · number · size pill · live
+// occupancy dot · delete. Kept module-level so its useDragControls hook
+// isn't recreated on every parent render (which would kill the drag).
+function RoomRow({
+  block, isLight, inputBg, textMuted, toneDot, occText, onNumber, onCycleSize, onRemove,
+}: {
+  block: EditableBlock
+  isLight: boolean
+  inputBg: string
+  textMuted: string
+  toneDot: string
+  occText: string
+  onNumber: (value: string) => void
+  onCycleSize: () => void
+  onRemove: () => void
+}) {
+  const controls = useDragControls()
+  return (
+    <Reorder.Item
+      value={block.id}
+      dragListener={false}
+      dragControls={controls}
+      className={`flex items-center gap-1.5 rounded-lg border pl-0.5 pr-1 h-9 ${
+        isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.02]'
+      }`}
+    >
+      <span
+        onPointerDown={(e) => controls.start(e)}
+        className={`shrink-0 touch-none cursor-grab active:cursor-grabbing px-0.5 ${textMuted}`}
+        aria-hidden
+      >
+        <GripVertical size={14} />
+      </span>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={block.roomNumber}
+        onChange={(e) => onNumber(e.target.value)}
+        placeholder="№"
+        className={`w-11 sm:w-12 shrink-0 text-xs text-center py-1 rounded-md outline-none border ${inputBg}`}
+      />
+      <button
+        type="button"
+        onClick={onCycleSize}
+        title="O'lchamni o'zgartirish"
+        className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 h-7 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${
+          isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
+        }`}
+      >
+        <span className="flex items-end gap-[2px]">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="w-[3px] rounded-[1px] bg-current"
+              style={{ height: 5 + i * 3, opacity: i < SIZE_RANK[block.size] ? 1 : 0.28 }}
+            />
+          ))}
+        </span>
+        {SIZE_LABELS[block.size]}
+      </button>
+      <span className="shrink-0 flex items-center justify-end gap-1 w-[52px]">
+        <span className={`h-2 w-2 rounded-full ${toneDot}`} />
+        <span className={`text-[9px] font-semibold tabular-nums ${textMuted}`}>{occText}</span>
+      </span>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="shrink-0 p-1 rounded-md text-rose-500 hover:bg-rose-500/10 dark:text-rose-400"
+        aria-label="O'chirish"
+      >
+        <Trash2 size={13} />
+      </button>
+    </Reorder.Item>
   )
 }
 

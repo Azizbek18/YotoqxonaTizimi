@@ -114,7 +114,7 @@ export function createDataIntegrityService(
           severity: 'warning',
           count: unknownFaculty.length,
           sample: sample(unknownFaculty),
-          href: '/dekan/talabalar',
+          href: '/dekan/talabalar-global',
         },
       ]
 

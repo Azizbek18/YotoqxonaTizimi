@@ -197,6 +197,7 @@ export async function proxy(request: NextRequest) {
   // opening the page directly, while the APIs repeat the same role check.
   const superadminGuard = guardRole('/dekan/dekanlar', ['admin'], '/dekan/dashboard')
     ?? guardRole('/dekan/yotoqxonalar', ['admin'], '/dekan/dashboard')
+    ?? guardRole('/dekan/fakultet-tolovlari', ['admin'], '/dekan/dashboard')
   if (superadminGuard) return superadminGuard
 
   // `admin` is accepted here too: the standalone /admin panel is retired,

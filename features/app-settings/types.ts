@@ -1,3 +1,14 @@
+/** One faculty's fee pair, for the superadmin cross-faculty fee table. */
+export type FacultyFee = {
+  faculty: string
+  facultyLabel: string
+  monthlyFee: number
+  yearlyContractFee: number
+  /** true = this faculty has its own app_settings row; false = the row is
+   *  the primary building's / the built-in default, shown until it's set. */
+  configured: boolean
+}
+
 export type AppSettings = {
   monthlyFee: number
   yearlyContractFee: number

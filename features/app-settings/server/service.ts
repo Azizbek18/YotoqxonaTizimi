@@ -1,7 +1,7 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
 import type { Database } from '@/types/database.generated'
-import type { AppSettings } from '../types'
+import type { AppSettings, FacultyFee } from '../types'
 import { createAppSettingsRepository, type AppSettingsRepository } from './repository'
 
 type AppSettingsUpdate = Database['public']['Tables']['app_settings']['Update']
@@ -75,6 +75,11 @@ export function createAppSettingsService(repository: AppSettingsRepository = cre
     // faculty omitted -> the primary building's settings (transition default).
     get(faculty?: string): Promise<AppSettings> {
       return repository.get(faculty)
+    },
+
+    // Superadmin: every faculty's effective monthly / yearly fees.
+    listFacultyFees(): Promise<FacultyFee[]> {
+      return repository.listFacultyFees()
     },
 
     async update(input: unknown, faculty?: string): Promise<AppSettings> {

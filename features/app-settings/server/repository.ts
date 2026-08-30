@@ -1,9 +1,9 @@
 import 'server-only'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { ApiError } from '@/server/http/api-error'
-import { PRIMARY_FACULTY } from '@/lib/faculties'
+import { PERMIT_FACULTIES, PRIMARY_FACULTY } from '@/lib/faculties'
 import type { Database } from '@/types/database.generated'
-import type { AppSettings } from '../types'
+import type { AppSettings, FacultyFee } from '../types'
 
 type AppSettingsUpdate = Database['public']['Tables']['app_settings']['Update']
 
@@ -158,8 +158,37 @@ export function createAppSettingsRepository() {
     return { ...dormSettings, ...fees }
   }
 
+  // Every faculty's effective fee pair in one query — for the superadmin
+  // fee table. A faculty with no row of its own shows the primary
+  // building's fees (or the built-in default) and `configured: false`.
+  async function listFacultyFees(): Promise<FacultyFee[]> {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('faculty, monthly_fee, yearly_contract_fee')
+    if (error) throw error
+    const byFaculty = new Map(
+      ((data ?? []) as Array<Record<string, unknown>>).map((row) => [
+        String(row.faculty ?? '').trim().toLowerCase(),
+        row,
+      ]),
+    )
+    const primary = byFaculty.get(PRIMARY_FACULTY)
+    return PERMIT_FACULTIES.map((f) => {
+      const own = byFaculty.get(f.value)
+      const src = own ?? primary
+      return {
+        faculty: f.value,
+        facultyLabel: f.label,
+        monthlyFee: src ? Number(src.monthly_fee) : FEE_DEFAULTS.monthlyFee,
+        yearlyContractFee: src ? Number(src.yearly_contract_fee) : FEE_DEFAULTS.yearlyContractFee,
+        configured: Boolean(own),
+      }
+    })
+  }
+
   return {
     get,
+    listFacultyFees,
 
     async update(row: AppSettingsUpdate, faculty: string = PRIMARY_FACULTY): Promise<AppSettings> {
       const source = row as Record<string, unknown>

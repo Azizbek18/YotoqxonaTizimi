@@ -28,6 +28,7 @@ function fakeRepository(overrides: Partial<AppSettingsRepository> = {}) {
   return {
     get: vi.fn(async () => SETTINGS),
     update: vi.fn(async () => SETTINGS),
+    listFacultyFees: vi.fn(async () => []),
     ...overrides,
   } as unknown as AppSettingsRepository
 }
@@ -59,5 +60,11 @@ describe('createAppSettingsService', () => {
     const repository = fakeRepository()
     await createAppSettingsService(repository).get()
     expect(repository.get).toHaveBeenCalledWith(undefined)
+  })
+
+  it('exposes the cross-faculty fee list', async () => {
+    const rows = [{ faculty: 'amit', facultyLabel: 'AMIT', monthlyFee: 300000, yearlyContractFee: 3000000, configured: true }]
+    const repository = fakeRepository({ listFacultyFees: vi.fn(async () => rows) })
+    await expect(createAppSettingsService(repository).listFacultyFees()).resolves.toEqual(rows)
   })
 })

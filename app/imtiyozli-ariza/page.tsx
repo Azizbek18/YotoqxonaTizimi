@@ -18,7 +18,9 @@ import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
 import { prepareUploadFile } from '@/lib/prepare-upload'
 import {
+  buildFullName,
   getForeignIdFormatError,
+  getNamePartError,
   isPlausibleInternationalPhone,
   isValidEmail,
   isValidForeignIdNumber,
@@ -41,7 +43,12 @@ export default function ImtiyozliAriza() {
   const [submitted, setSubmitted] = useState(false)
 
   // Step 1
-  const [fullName, setFullName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [middleName, setMiddleName] = useState('')
+  // Some countries have no patronymic — a foreign applicant can opt out.
+  const [noMiddleName, setNoMiddleName] = useState(false)
+  const fullName = buildFullName({ lastName, firstName, middleName: noMiddleName ? '' : middleName })
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [relativePhone, setRelativePhone] = useState('')
@@ -114,8 +121,11 @@ export default function ImtiyozliAriza() {
   }
 
   const validateStep1 = () => {
-    if (!fullName.trim() || fullName.trim().length < 5) {
-      toast.error('F.I.Sh to‘liq kiriting!')
+    const nameError = getNamePartError(lastName, 'Familiya')
+      || getNamePartError(firstName, 'Ism')
+      || (noMiddleName ? null : getNamePartError(middleName, 'Otasining ismi'))
+    if (nameError) {
+      toast.error(nameError)
       return false
     }
     if (!isValidEmail(email)) {
@@ -191,7 +201,10 @@ export default function ImtiyozliAriza() {
       const submission = new FormData()
       submission.append('file', passportPhoto)
       submission.append('idNumber', normalizeForeignIdNumber(idNumber))
-      submission.append('fullName', fullName.trim())
+      submission.append('lastName', lastName.trim())
+      submission.append('firstName', firstName.trim())
+      submission.append('middleName', noMiddleName ? '' : middleName.trim())
+      submission.append('fullName', fullName)
       submission.append('email', email.trim().toLowerCase())
       submission.append('phone', `+998${phone.replace(/\D/g, '')}`)
       submission.append('relativePhone', relativePhone.trim())
@@ -391,14 +404,41 @@ export default function ImtiyozliAriza() {
           <AnimatePresence mode="wait">
             {formStep === 1 && (
               <motion.div key="s1" initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} className="space-y-3.5">
-                <div className="space-y-1">
-                  <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>F.I.Sh (To&apos;liq)</label>
-                  <div className="relative">
-                    <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Familiya Ism Sharif"
-                      className={`w-full border p-3 pl-11 rounded-xl text-sm outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200' : 'bg-slate-900/30 border-white/15 text-white focus:border-amber-500/50'}`} />
-                  </div>
-                </div>
+                {(() => {
+                  const nameInputCls = `w-full border p-3 pl-11 rounded-xl text-sm outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200' : 'bg-slate-900/30 border-white/15 text-white focus:border-amber-500/50'}`
+                  const nameLabelCls = `text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`
+                  return (
+                    <div className="space-y-3.5">
+                      <div className="space-y-1">
+                        <label className={nameLabelCls}>Familiya</label>
+                        <div className="relative">
+                          <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                          <input type="text" autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Familiya" className={nameInputCls} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div className="space-y-1">
+                          <label className={nameLabelCls}>Ism</label>
+                          <div className="relative">
+                            <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <input type="text" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Ism" className={nameInputCls} />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className={nameLabelCls}>Otasining ismi</label>
+                          <div className="relative">
+                            <User size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${noMiddleName ? 'text-slate-600' : 'text-slate-500'}`} />
+                            <input type="text" autoComplete="additional-name" disabled={noMiddleName} value={noMiddleName ? '' : middleName} onChange={(e) => setMiddleName(e.target.value)} placeholder={noMiddleName ? '—' : 'Sharif'} className={`${nameInputCls} disabled:opacity-50`} />
+                          </div>
+                        </div>
+                      </div>
+                      <label className={`flex items-center gap-2 ml-2 text-[11px] font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                        <input type="checkbox" checked={noMiddleName} onChange={(e) => setNoMiddleName(e.target.checked)} />
+                        Hujjatimda otasining ismi yo‘q (xorijiy pasport)
+                      </label>
+                    </div>
+                  )
+                })()}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
                     <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Email</label>

@@ -7,15 +7,18 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { User, UserCircle, Users, ArrowRight, Sparkles, ShieldAlert, Phone } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import CustomSelect from '@/components/ui/CustomSelect'
+import { getNamePartError } from '@/lib/permit-validation'
 
 interface Props {
   data: RegisterData
   onChange: (d: Partial<RegisterData>) => void
   onNext: () => void
   onBack: () => void
+  /** Foreign (imtiyozli) applicants may have no patronymic. */
+  requiresMiddleName?: boolean
 }
 
-export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
+export default function Step2Name({ data, onChange, onNext, onBack, requiresMiddleName = true }: Props) {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
   const [focusedField, setFocusedField] = useState<'lastName' | 'firstName' | 'middleName' | 'phone' | null>(null)
@@ -52,9 +55,10 @@ export default function Step2Name({ data, onChange, onNext, onBack }: Props) {
     const { lastName, firstName, middleName, phone, birthDate } = data
     const phoneRegex = /^\d{9}$/;
 
-    if (!lastName.trim()) return show3DToast("Familiyangizni kiriting")
-    if (!firstName.trim()) return show3DToast("Ismingizni kiriting")
-    if (!middleName.trim()) return show3DToast("Otasining ismini kiriting")
+    const nameError = getNamePartError(lastName, 'Familiya')
+      || getNamePartError(firstName, 'Ism')
+      || (requiresMiddleName ? getNamePartError(middleName, 'Otasining ismi') : null)
+    if (nameError) return show3DToast(nameError)
 
     if (!birthDate || birthDate.includes('undefined')) return show3DToast('Tug‘ilgan sanangizni tanlang')
     // Telefon raqami validatsiyasi

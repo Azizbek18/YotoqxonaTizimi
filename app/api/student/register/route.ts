@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import {
+  buildFullName,
+  getNamePartError,
   isValidEmail,
   isValidForeignIdNumber,
   isValidJshshir,
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
     const firstName = text(body, 'firstName', 80)
     const lastName = text(body, 'lastName', 80)
     const middleName = text(body, 'middleName', 80)
-    const fullName = `${lastName} ${firstName} ${middleName}`.replace(/\s+/g, ' ').trim()
+    const fullName = buildFullName({ lastName, firstName, middleName })
     const phone = text(body, 'phone', 32)
     const gender = text(body, 'gender', 16)
     const faculty = text(body, 'faculty', 160)
@@ -74,8 +76,11 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       )
     }
+    const nameError = getNamePartError(lastName, 'Familiya')
+      || getNamePartError(firstName, 'Ism')
+      || (applicationType === 'imtiyozli' && !middleName ? null : getNamePartError(middleName, 'Otasining ismi'))
     if (
-      fullName.length < 5
+      nameError
       || !phone
       || !['male', 'female'].includes(gender)
       || !faculty

@@ -88,6 +88,44 @@ export function canonicalizeFullName(input: unknown): string {
   return String(input ?? '').trim().slice(0, 160)
 }
 
+// One part of a name (familiya / ism / sharif). Letters (Latin + Cyrillic),
+// the Uzbek apostrophe, hyphen and internal spaces (some surnames are two
+// words). 2–40 chars, must start with a letter. No digits, no punctuation.
+const NAME_PART_RE = /^\p{L}[\p{L}ʻʼ'’\- ]{1,39}$/u
+
+export function isValidNamePart(input: unknown): boolean {
+  const value = String(input ?? '').trim().replace(/\s+/g, ' ')
+  return NAME_PART_RE.test(value)
+}
+
+export function getNamePartError(input: unknown, label: string): string | null {
+  const value = String(input ?? '').trim()
+  if (!value) return `${label}ni kiriting.`
+  if (!isValidNamePart(value)) return `${label} faqat harflardan iborat, 2–40 belgi bo'lishi kerak.`
+  return null
+}
+
+// The canonical full name, always "Familiya Ism Sharif" — the same order
+// app/api/student/register builds, so namesLikelyMatch lines up later.
+export function buildFullName(parts: {
+  lastName?: unknown
+  firstName?: unknown
+  middleName?: unknown
+}): string {
+  return [parts.lastName, parts.firstName, parts.middleName]
+    .map((part) => String(part ?? '').trim().replace(/\s+/g, ' '))
+    .filter(Boolean)
+    .join(' ')
+    .slice(0, 160)
+}
+
+// Server-side guard for a joined name string: at least `minParts`
+// whitespace-separated tokens, every one a valid name part.
+export function isValidJoinedFullName(input: unknown, minParts = 3): boolean {
+  const parts = String(input ?? '').trim().split(/\s+/).filter(Boolean)
+  return parts.length >= minParts && parts.every(isValidNamePart)
+}
+
 // Lenient match: the compared full name may omit/reorder parts (e.g. a
 // document's formal "O'G'LI/QIZI" suffix), so we require most of one name's
 // tokens to have an exact counterpart among the other name's tokens, rather

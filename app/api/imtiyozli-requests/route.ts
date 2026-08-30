@@ -4,7 +4,10 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import {
   PERMIT_FILE_RULES,
+  buildFullName,
   detectPermitFileMimeType,
+  getNamePartError,
+  isValidJoinedFullName,
   isPlausibleInternationalPhone,
   isValidEmail,
   isValidForeignIdNumber,
@@ -44,7 +47,16 @@ export async function POST(request: NextRequest) {
     }
 
     const idNumber = normalizeForeignIdNumber(form.get('idNumber'))
-    const fullName = value(form, 'fullName', 160)
+    // F.I.Sh: three fields; a foreign applicant with no patronymic sends an
+    // empty middleName + noMiddleName='true'.
+    const lastName = value(form, 'lastName', 80)
+    const firstName = value(form, 'firstName', 80)
+    const middleName = value(form, 'middleName', 80)
+    const noMiddleName = String(form.get('noMiddleName') ?? '') === 'true'
+    const hasNameParts = Boolean(lastName || firstName || middleName)
+    const fullName = hasNameParts
+      ? buildFullName({ lastName, firstName, middleName: noMiddleName ? '' : middleName })
+      : value(form, 'fullName', 160)
     const email = value(form, 'email', 254).toLowerCase()
     const phone = value(form, 'phone', 32)
     const relativePhone = value(form, 'relativePhone', 32)
@@ -59,7 +71,13 @@ export async function POST(request: NextRequest) {
     if (!isValidForeignIdNumber(idNumber)) {
       return NextResponse.json({ error: 'Pasport/ID hujjat raqami noto‘g‘ri kiritildi.' }, { status: 400 })
     }
-    if (fullName.length < 3 || !isValidEmail(email) || !isPlausibleInternationalPhone(phone)) {
+    const nameError = hasNameParts
+      ? (getNamePartError(lastName, 'Familiya') || getNamePartError(firstName, 'Ism') || (noMiddleName ? null : getNamePartError(middleName, 'Otasining ismi')))
+      : (isValidJoinedFullName(fullName, noMiddleName ? 2 : 3) ? null : 'F.I.Sh to‘liq kiriting: Familiya, Ism va Otasining ismi.')
+    if (nameError) {
+      return NextResponse.json({ error: nameError }, { status: 400 })
+    }
+    if (!isValidEmail(email) || !isPlausibleInternationalPhone(phone)) {
       return NextResponse.json({ error: 'Shaxsiy ma’lumotlar to‘liq yoki to‘g‘ri kiritilmagan.' }, { status: 400 })
     }
     if (!isPlausibleInternationalPhone(relativePhone)) {

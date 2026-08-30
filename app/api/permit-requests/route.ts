@@ -4,8 +4,11 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import {
   PERMIT_FILE_RULES,
+  buildFullName,
   canonicalizeFullName,
   detectPermitFileMimeType,
+  getNamePartError,
+  isValidJoinedFullName,
   isValidJshshir,
   isValidPassport,
   normalizeJshshir,
@@ -42,7 +45,16 @@ export async function POST(request: NextRequest) {
 
     const passport = normalizePassport(form.get('passportSeries'))
     const jshshir = normalizeJshshir(form.get('jshshir'))
-    const fullName = value(form, 'fullName', 160)
+    // F.I.Sh: either three separate fields (imtiyozli-ariza) or one
+    // "Familiya Ism Sharif" string (ruxsatnoma-yuborish). Either way it is
+    // normalised to the canonical joined form + checked for 3 real parts.
+    const lastName = value(form, 'lastName', 80)
+    const firstName = value(form, 'firstName', 80)
+    const middleName = value(form, 'middleName', 80)
+    const hasNameParts = Boolean(lastName || firstName || middleName)
+    const fullName = hasNameParts
+      ? buildFullName({ lastName, firstName, middleName })
+      : value(form, 'fullName', 160)
     const email = value(form, 'email', 254).toLowerCase()
     const phone = value(form, 'phone', 32)
     const gender = value(form, 'gender', 10)
@@ -56,7 +68,13 @@ export async function POST(request: NextRequest) {
     if (!isValidPassport(passport) || !isValidJshshir(jshshir)) {
       return NextResponse.json({ error: 'Pasport yoki JShSHIR formati noto‘g‘ri.' }, { status: 400 })
     }
-    if (fullName.length < 3 || !/^\S+@\S+\.\S+$/.test(email) || phone.length < 7) {
+    const nameError = hasNameParts
+      ? (getNamePartError(lastName, 'Familiya') || getNamePartError(firstName, 'Ism') || getNamePartError(middleName, 'Otasining ismi'))
+      : (isValidJoinedFullName(fullName, 3) ? null : "F.I.Sh to‘liq kiriting: Familiya, Ism va Otasining ismi (kamida 3 so‘z).")
+    if (nameError) {
+      return NextResponse.json({ error: nameError }, { status: 400 })
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email) || phone.length < 7) {
       return NextResponse.json({ error: 'Shaxsiy ma’lumotlar to‘liq yoki to‘g‘ri kiritilmagan.' }, { status: 400 })
     }
     if (

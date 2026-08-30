@@ -16,7 +16,7 @@ import DeveloperContactLink from '@/components/DeveloperContactLink'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
-import { getPassportFormatError, isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
+import { getPassportFormatError, isValidJoinedFullName, isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
 import { prepareUploadFile } from '@/lib/prepare-upload'
 
 interface Particle {
@@ -335,8 +335,8 @@ export default function RuxsatnomaYuborish() {
   }
 
   const validateStep1 = () => {
-    if (!fullName.trim()) {
-      showToast('error', 'F.I.Sh kiriting!')
+    if (!isValidJoinedFullName(fullName, 3)) {
+      showToast('error', "F.I.Sh to'liq kiriting: Familiya, Ism va Otasining ismi (kamida 3 so'z).")
       return false
     }
     if (!email.trim() || !email.includes('@')) {
@@ -1018,7 +1018,7 @@ export default function RuxsatnomaYuborish() {
                         {/* Full Name */}
                         <div className="space-y-1">
                           <div className="flex justify-between items-center ml-2">
-                            <label className={`text-[10px] sm:text-xs font-black uppercase tracking-widest block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>F.I.Sh (Ism Familiya)</label>
+                            <label className={`text-[10px] sm:text-xs font-black uppercase tracking-widest block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>F.I.Sh (Familiya Ism Sharif)</label>
                             {fullName.trim().length > 5 && (
                               <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
                             )}
@@ -1043,7 +1043,7 @@ export default function RuxsatnomaYuborish() {
                                 }}
                                 onBlur={() => setFocusedField(null)}
                                 onChange={(e) => handleInputChange(e, setFullName, 'fullName')}
-                                placeholder="Ism Familya Sharif"
+                                placeholder="Familiya Ism Sharif"
                                 className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 ${
                                   isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
                                 }`}
@@ -1051,6 +1051,9 @@ export default function RuxsatnomaYuborish() {
                               />
                             </div>
                           </div>
+                          <p className={`px-2 text-[9px] leading-relaxed ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                            To&apos;liq yozing: Familiya, Ism va Otasining ismi — 3 ta so&apos;z.
+                          </p>
                         </div>
 
                         {/* Email & Phone */}

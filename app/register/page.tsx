@@ -213,7 +213,7 @@ export default function RegisterPage() {
                   transition={{ duration: 0.15 }}
                 >
                   {step === 1 && <Step1Passport {...stepProps} requiresJshshir={applicationType === 'yollanma'} />}
-                  {step === 2 && <Step2Name {...stepProps} />}
+                  {step === 2 && <Step2Name {...stepProps} requiresMiddleName={applicationType === 'yollanma'} />}
                   {step === 3 && <Step3Gender {...stepProps} />}
                   {step === 4 && <Step4Study {...stepProps} />}
                   {step === 5 && <Step5Address {...stepProps} />}

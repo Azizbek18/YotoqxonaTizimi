@@ -92,6 +92,32 @@ describe('directionBelongsToFaculty', () => {
     expect(directionBelongsToFaculty('nomavjud', 'suniy-intellekt')).toBe(true)
   })
 
+  it('accepts the economics faculty’s bachelor programmes', () => {
+    for (const value of [
+      'iqtisodiyot-tarmoqlar',
+      'bank-ishi',
+      'moliya-texnologiyalari',
+      'soliq-soliqqa-tortish',
+      'sugurta-ishi',
+      'menejment',
+    ]) {
+      expect(directionBelongsToFaculty('iqtisodiyot', value)).toBe(true)
+    }
+    // the legacy free-typed "Iqtisodiyot" is a different, non-selectable value
+    expect(normalizeDirection('Iqtisodiyot')).toBe('iqtisodiyot')
+    expect(directionBelongsToFaculty('iqtisodiyot', 'iqtisodiyot')).toBe(false)
+  })
+
+  it('accepts the ecology directions added for the biology faculty', () => {
+    for (const value of [
+      'ekologiya-atrof-muhit',
+      'agrokimyo-tuproqshunoslik',
+      'hayot-faoliyati-xavfsizligi',
+    ]) {
+      expect(directionBelongsToFaculty('biologiya', value)).toBe(true)
+    }
+  })
+
   it('accepts the teaching directions added for the two philology faculties', () => {
     expect(directionBelongsToFaculty('ozbek-filologiyasi', 'filologiya-ozbek')).toBe(true)
     expect(directionBelongsToFaculty('ozbek-filologiyasi', 'jurnalistika-internet')).toBe(true)

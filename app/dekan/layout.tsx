@@ -73,7 +73,8 @@ export default function DekanLayout({
   const isSuperadmin = dekanRole === 'admin'
   const isGlobalSuperadminPage = isSuperadmin
     && (pathname === '/dekan/dekanlar' || pathname === '/dekan/yotoqxonalar'
-      || pathname === '/dekan/fakultet-tolovlari' || pathname === '/dekan/audit')
+      || pathname === '/dekan/fakultet-tolovlari' || pathname === '/dekan/audit'
+      || pathname === '/dekan/tekshiruv')
   const scopeIsGlobal = isSuperadmin && (!saScope || saScope === '*')
   const scopeLabel = !isSuperadmin
     ? null
@@ -220,6 +221,7 @@ export default function DekanLayout({
             { label: 'Bosh nazorat', caption: 'Barcha fakultetlar', href: '/dekan/dekanlar', icon: UserRoundSearch },
             { label: 'Yotoqxonalar', caption: 'Barcha binolar', href: '/dekan/yotoqxonalar', icon: Building2 },
             { label: 'Fakultet to‘lovlari', caption: 'Oylik / yillik tarif', href: '/dekan/fakultet-tolovlari', icon: Wallet },
+            { label: 'Tizim tekshiruvi', caption: 'Ma‘lumot yaxlitligi', href: '/dekan/tekshiruv', icon: ShieldAlert },
             { label: 'Audit jurnali', caption: 'Xavfsizlik amallari', href: '/dekan/audit', icon: ClipboardList },
           ]
         : []),

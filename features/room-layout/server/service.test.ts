@@ -89,7 +89,7 @@ describe('room layout service', () => {
     it('skips room numbers that already exist and leaves them untouched', async () => {
       const repo = repository({
         listAllRooms: vi.fn(async () => [
-          { room_number: '1', floor_number: 1, side: 'left', frozen: false, frozen_reason: null },
+          { room_number: '1', floor_number: 1, side: 'left', frozen: false, frozen_reason: null, capacity: null },
         ]),
       } as Partial<RoomLayoutRepository>)
 
@@ -105,7 +105,7 @@ describe('room layout service', () => {
     it('is a no-op, not an error, when every planned room already exists', async () => {
       const repo = repository({
         listAllRooms: vi.fn(async () => [
-          { room_number: '1', floor_number: 1, side: 'left', frozen: false, frozen_reason: null },
+          { room_number: '1', floor_number: 1, side: 'left', frozen: false, frozen_reason: null, capacity: null },
         ]),
       } as Partial<RoomLayoutRepository>)
 
@@ -119,7 +119,7 @@ describe('room layout service', () => {
     it('skips a planned number that already exists on a different floor', async () => {
       const repo = repository({
         listAllRooms: vi.fn(async () => [
-          { room_number: '2', floor_number: 9, side: 'left', frozen: false, frozen_reason: null },
+          { room_number: '2', floor_number: 9, side: 'left', frozen: false, frozen_reason: null, capacity: null },
         ]),
       } as Partial<RoomLayoutRepository>)
 
@@ -161,14 +161,14 @@ describe('room layout service', () => {
   it('exposes the whole-building room -> floor map, including frozen state', async () => {
     const repo = repository({
       listAllRooms: vi.fn(async () => [
-        { room_number: '101', floor_number: 1, side: 'left', frozen: false, frozen_reason: null },
-        { room_number: '201', floor_number: 2, side: 'left', frozen: true, frozen_reason: "Ta'mirlash ishlari" },
+        { room_number: '101', floor_number: 1, side: 'left', frozen: false, frozen_reason: null, capacity: null },
+        { room_number: '201', floor_number: 2, side: 'left', frozen: true, frozen_reason: "Ta'mirlash ishlari", capacity: null },
       ]),
     } as Partial<RoomLayoutRepository>)
 
     await expect(createRoomLayoutService(repo).listRoomFloors(FACULTY)).resolves.toEqual([
-      { roomNumber: '101', floor: 1, frozen: false, frozenReason: null },
-      { roomNumber: '201', floor: 2, frozen: true, frozenReason: "Ta'mirlash ishlari" },
+      { roomNumber: '101', floor: 1, frozen: false, frozenReason: null, capacity: null },
+      { roomNumber: '201', floor: 2, frozen: true, frozenReason: "Ta'mirlash ishlari", capacity: null },
     ])
     expect(repo.listAllRooms).toHaveBeenCalledWith(FACULTY)
   })

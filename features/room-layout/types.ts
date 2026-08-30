@@ -6,6 +6,9 @@ export type RoomLayoutBlock = {
   side: RoomBlockSide
   position: number
   size: RoomBlockSize
+  /** Per-room bed count override. null/undefined = inherit
+   *  dorms.default_room_capacity (migration 202609180000). */
+  capacity?: number | null
 }
 
 // Which floor a room sits on, exactly as the admin entered it in the
@@ -26,6 +29,8 @@ export type RoomFloorStatus = RoomFloor & {
   frozen: boolean
   /** Free-text reason shown alongside the frozen state; null when not frozen. */
   frozenReason: string | null
+  /** Per-room bed count override; null = inherit dorms.default_room_capacity. */
+  capacity: number | null
 }
 
 /** How many rooms each floor should get when generating a layout from scratch. */

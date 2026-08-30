@@ -219,6 +219,8 @@ export interface Database {
         size: string
         frozen: boolean
         frozen_reason: string | null
+        // NULL = inherit dorms.default_room_capacity (migration 202609180000).
+        capacity: number | null
         created_at: string
       }>
       // Since P2 (202609150000) app_settings holds only the two fee amounts,

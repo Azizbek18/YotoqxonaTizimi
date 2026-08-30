@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchRoomFloors } from '@/features/room-layout/client/api'
-import { buildRoomFloorMap, resolveFloor } from '@/features/room-layout/floor-map'
+import { buildRoomCapacityMap, buildRoomFloorMap, resolveFloor } from '@/features/room-layout/floor-map'
 import type { RoomFloorStatus } from '@/features/room-layout/types'
 
 export interface RoomFloors {
@@ -14,6 +14,10 @@ export interface RoomFloors {
   map: Map<string, number>
   /** Resolved floor for a room, falling back to the legacy guess. */
   floorOf: (roomNumber?: string | null) => number | null
+  /** Raw per-room capacity override; null = inherit the dorm default, undefined = unknown room. */
+  capacityOf: (roomNumber?: string | null) => number | null | undefined
+  /** Effective bed count for a room: its override, else `fallback`. */
+  effectiveCapacity: (roomNumber: string | null | undefined, fallback: number | null) => number | null
   loaded: boolean
   /** Re-fetches the map, e.g. right after rooms are created. */
   reload: () => Promise<void>
@@ -62,6 +66,7 @@ export function useRoomFloors(): RoomFloors {
   }, [])
 
   const map = useMemo(() => buildRoomFloorMap(rooms), [rooms])
+  const capacityMap = useMemo(() => buildRoomCapacityMap(rooms), [rooms])
   const floors = useMemo(
     () => [...new Set(rooms.map((room) => room.floor))].sort((a, b) => a - b),
     [rooms],
@@ -70,6 +75,18 @@ export function useRoomFloors(): RoomFloors {
     (roomNumber?: string | null) => resolveFloor(map, roomNumber),
     [map],
   )
+  const capacityOf = useCallback(
+    (roomNumber?: string | null) =>
+      roomNumber ? capacityMap.get(roomNumber.trim()) : undefined,
+    [capacityMap],
+  )
+  const effectiveCapacity = useCallback(
+    (roomNumber: string | null | undefined, fallback: number | null) => {
+      const override = roomNumber ? capacityMap.get(roomNumber.trim()) : undefined
+      return override ?? fallback
+    },
+    [capacityMap],
+  )
 
-  return { rooms, floors, map, floorOf, loaded, reload }
+  return { rooms, floors, map, floorOf, capacityOf, effectiveCapacity, loaded, reload }
 }

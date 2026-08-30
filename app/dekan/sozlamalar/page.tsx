@@ -1,9 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
+import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Wallet, Boxes, Phone, ShieldAlert, LayoutGrid, ArrowRight, Globe2 } from 'lucide-react'
+import { Wallet, Boxes, Phone, ShieldAlert, Globe2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -12,6 +11,7 @@ import type { AppSettings } from '@/features/app-settings/types'
 import { fetchDekanDorm } from '@/features/dorms/client/api'
 import type { DekanDorm } from '@/features/dorms/types'
 import DormFloorsCard from '@/components/dekan/DormFloorsCard'
+import FloorManagerCard from '@/components/dekan/FloorManagerCard'
 import { dekanUI } from '@/lib/dekan-ui'
 
 type NumberField = {
@@ -26,7 +26,7 @@ export default function DekanSozlamalarPage() {
     const isLight = theme === 'light'
     const ui = dekanUI(isLight)
 
-    const { rooms: layoutRooms, loaded: layoutLoaded } = useRoomFloors()
+    const { rooms: layoutRooms, loaded: layoutLoaded, reload: reloadRoomFloors } = useRoomFloors()
 
     const [settings, setSettings] = useState<AppSettings | null>(null)
     const [savedSettings, setSavedSettings] = useState<AppSettings | null>(null)
@@ -93,8 +93,7 @@ export default function DekanSozlamalarPage() {
     ]
 
     const roomFields: NumberField[] = [
-        { key: 'defaultRoomCapacity', label: 'Xonaning standart sig\'imi', description: 'Xonalar xaritasi bo\'limida yangi xonalar uchun standart qiymat', suffix: 'kishi' },
-        { key: 'floorCount', label: 'Qavatlar soni', description: 'Yotoqxonadagi umumiy qavatlar soni', suffix: 'qavat' },
+        { key: 'defaultRoomCapacity', label: 'Xonaning standart sig\'imi', description: 'Istisno belgilanmagan barcha xonalar shu qiymatni oladi. 2/3 o\'rinli istisno xonalarni «3D Xonalar» yoki «Xonalar xaritasi»da alohida belgilaysiz.', suffix: 'kishi' },
     ]
 
     const limitFields: NumberField[] = [
@@ -110,22 +109,6 @@ export default function DekanSozlamalarPage() {
         { title: 'Talaba kengashi raisi (qiz)', nameKey: 'talabaKengashiRaisiQizName', phoneKey: 'talabaKengashiRaisiQizPhone', hasName: true },
         { title: 'Xavfsizlik bo\'limi', nameKey: 'securityPhone', phoneKey: 'securityPhone', hasName: false },
     ]
-
-    // One row per floor the dekan declared in "Qavatlar soni", with how many
-    // rooms are actually mapped to it. A floor with 0 rooms is the failure
-    // this whole section exists to make visible: nobody can be filtered or
-    // shown as living on a floor that has no rooms assigned to it.
-    const floorRoomCounts = useMemo(() => {
-        const counts = new Map<number, number>()
-        layoutRooms.forEach((room) => counts.set(room.floor, (counts.get(room.floor) ?? 0) + 1))
-        const declared = Array.from({ length: settings?.floorCount ?? 0 }, (_, i) => i + 1)
-        const allFloors = [...new Set([...declared, ...counts.keys()])].sort((a, b) => a - b)
-        return allFloors.map((floor) => ({
-            floor,
-            rooms: counts.get(floor) ?? 0,
-            beyondDeclared: floor > (settings?.floorCount ?? 0),
-        }))
-    }, [layoutRooms, settings?.floorCount])
 
     const isDirty = settings !== null && savedSettings !== null
         && JSON.stringify(settings) !== JSON.stringify(savedSettings)
@@ -212,59 +195,17 @@ export default function DekanSozlamalarPage() {
                           <>
                             {roomFields.map((field) => renderNumberRow(field, 'sm:w-24'))}
 
-                            {/* Room -> floor map. Not editable here on purpose: it lives in
-                                floor_room_layout, which the Xonalar xaritasi bo'limi writes. */}
-                            <div className={`rounded-xl border p-4 sm:p-5 ${ui.inset}`}>
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                    <div className="min-w-0">
-                                        <h3 className={`flex items-center gap-2 text-sm font-semibold ${ui.strong}`}>
-                                            <LayoutGrid size={16} className={`shrink-0 ${ui.accentText}`} />
-                                            Qaysi xona qaysi qavatda
-                                        </h3>
-                                        <p className={`mt-1 text-xs ${ui.muted}`}>
-                                            Talaba o&apos;z qavatini shu taqsimotdan oladi. Xonalarni qavatlarga
-                                            &laquo;Xonalar xaritasi&raquo; bo&apos;limida qo&apos;shasiz.
-                                        </p>
-                                    </div>
-                                    <Link
-                                        href="/dekan/xonalar"
-                                        className={`flex shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${ui.accentSolid}`}
-                                    >
-                                        Xonalar xaritasi
-                                        <ArrowRight size={14} />
-                                    </Link>
-                                </div>
-
-                                {!layoutLoaded ? (
-                                    <p className={`mt-4 text-xs font-medium ${ui.muted}`}>Yuklanmoqda...</p>
-                                ) : floorRoomCounts.length === 0 ? (
-                                    <p className={`mt-4 text-xs font-medium ${ui.muted}`}>Hali birorta qavat belgilanmagan.</p>
-                                ) : (
-                                    <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                                        {floorRoomCounts.map(({ floor, rooms, beyondDeclared }) => {
-                                            const warn = rooms === 0
-                                            return (
-                                                <div
-                                                    key={floor}
-                                                    className={`rounded-lg border px-3 py-2.5 ${
-                                                        warn
-                                                            ? isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'
-                                                            : isLight ? 'border-slate-200 bg-white' : 'border-slate-700 bg-slate-800/40'
-                                                    }`}
-                                                >
-                                                    <p className={`text-xs font-bold ${warn ? (isLight ? 'text-amber-700' : 'text-amber-300') : ui.strong}`}>
-                                                        {floor}-qavat
-                                                    </p>
-                                                    <p className={`mt-0.5 text-[10px] font-medium ${warn ? (isLight ? 'text-amber-600' : 'text-amber-400') : ui.muted}`}>
-                                                        {warn ? 'Xona kiritilmagan' : `${rooms} ta xona`}
-                                                        {beyondDeclared && rooms > 0 ? ' • qavatlar sonidan tashqarida' : ''}
-                                                    </p>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                )}
-                            </div>
+                            <FloorManagerCard
+                                floorCount={settings.floorCount}
+                                defaultCapacity={settings.defaultRoomCapacity}
+                                rooms={layoutRooms}
+                                roomsLoaded={layoutLoaded}
+                                onFloorCountSaved={(floorCount) => {
+                                    setSettings((prev) => (prev ? { ...prev, floorCount } : prev))
+                                    setSavedSettings((prev) => (prev ? { ...prev, floorCount } : prev))
+                                }}
+                                onRoomsChanged={() => { void reloadRoomFloors() }}
+                            />
                           </>
                         ))}
 

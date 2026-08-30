@@ -50,7 +50,7 @@ export function createRoomLayoutRepository() {
       const scope = await scopeFor(faculty)
       let query = supabase
         .from('floor_room_layout')
-        .select('room_number, floor_number, side, frozen, frozen_reason')
+        .select('room_number, floor_number, side, frozen, frozen_reason, capacity')
         .order('floor_number', { ascending: true })
         .order('room_number', { ascending: true })
       if (scope.dormId) query = query.eq('dorm_id', scope.dormId)
@@ -62,7 +62,7 @@ export function createRoomLayoutRepository() {
 
     async insertRooms(
       faculty: string,
-      rows: { floor_number: number; room_number: string; side: string; position: number; size: string }[],
+      rows: { floor_number: number; room_number: string; side: string; position: number; size: string; capacity?: number | null }[],
     ) {
       if (rows.length === 0) return
       const scope = await scopeFor(faculty)
@@ -80,7 +80,7 @@ export function createRoomLayoutRepository() {
       const scope = await scopeFor(faculty)
       let query = supabase
         .from('floor_room_layout')
-        .select('room_number, side, position, size')
+        .select('room_number, side, position, size, capacity')
         .eq('floor_number', floorNumber)
         .order('side', { ascending: true })
         .order('position', { ascending: true })
@@ -96,6 +96,9 @@ export function createRoomLayoutRepository() {
         side: block.side,
         position: block.position,
         size: block.size,
+        // Always present so the RPC treats it as authoritative (an explicit
+        // null clears a prior override).
+        capacity: block.capacity ?? null,
       }))
       const { error } = await supabase.rpc('replace_floor_room_layout', {
         p_faculty: faculty,
@@ -103,6 +106,33 @@ export function createRoomLayoutRepository() {
         p_rows: rows,
       })
       if (error) throw error
+    },
+
+    // Per-room capacity override (null = back to the dorm default). Scoped to
+    // this dorm's rows — mirrors setFrozen. Returns whether a row was hit.
+    async setCapacity(faculty: string, roomNumber: string, capacity: number | null) {
+      const scope = await scopeFor(faculty)
+      let query = supabase
+        .from('floor_room_layout')
+        .update({ capacity })
+        .eq('room_number', roomNumber)
+      if (scope.dormId) query = query.eq('dorm_id', scope.dormId)
+      const { data, error } = await query.select('room_number').maybeSingle()
+      if (error) throw error
+      return Boolean(data)
+    },
+
+    async bulkSetCapacity(faculty: string, roomNumbers: string[], capacity: number | null) {
+      if (roomNumbers.length === 0) return 0
+      const scope = await scopeFor(faculty)
+      let query = supabase
+        .from('floor_room_layout')
+        .update({ capacity })
+        .in('room_number', roomNumbers)
+      if (scope.dormId) query = query.eq('dorm_id', scope.dormId)
+      const { data, error } = await query.select('room_number')
+      if (error) throw error
+      return data?.length ?? 0
     },
 
     async setFrozen(faculty: string, roomNumber: string, frozen: boolean, reason: string | null) {

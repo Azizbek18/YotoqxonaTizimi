@@ -16,6 +16,23 @@ export function setRoomFrozen(roomNumber: string, frozen: boolean, reason?: stri
   })
 }
 
+/** Per-room bed-count override; `capacity: null` clears it (back to the dorm default). */
+export function setRoomCapacity(roomNumber: string, capacity: number | null) {
+  return requestJson<{ success: true; roomNumber: string; capacity: number | null }>('/api/room-floors/capacity', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomNumber, capacity }),
+  })
+}
+
+export function bulkSetRoomCapacity(roomNumbers: string[], capacity: number | null) {
+  return requestJson<{ success: true; changed: number; capacity: number | null }>('/api/room-floors/capacity', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomNumbers, capacity }),
+  })
+}
+
 export function generateRoomFloors(floors: FloorRoomPlan[], numbering: RoomNumbering) {
   return requestJson<{ success: true; created: number }>('/api/room-floors/generate', {
     method: 'POST',

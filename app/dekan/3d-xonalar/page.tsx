@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import {
   Building2, DoorOpen, Layers3, Users,
   Info, MousePointer2,
-  Plus, Trash2, GripVertical, Save, RotateCcw
+  Plus, Trash2, GripVertical, ChevronDown, Save, RotateCcw
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
 import ConfirmModal from '@/components/ui/ConfirmModal'
@@ -31,7 +31,11 @@ interface RoomOccupancySnapshot {
   students: StudentInfo[]
 }
 
-type EditableBlock = { id: string; roomNumber: string; size: RoomBlockSize }
+type EditableBlock = { id: string; roomNumber: string; size: RoomBlockSize; capacity: number | null }
+
+// Compact capacity picker options in the row: "Standart" (null = inherit
+// dorms.default_room_capacity) plus the realistic exception sizes.
+const CAPACITY_CHOICES: (number | null)[] = [null, 1, 2, 3, 4, 5, 6, 8]
 
 // Reorder.Item needs a key that stays put while the room number is edited
 // (it can be blank or briefly duplicated mid-typing), so every row carries
@@ -49,7 +53,8 @@ const nextRoomNumber = (blocks: EditableBlock[]) => {
 // The id is a per-session render key, never persisted — only room number,
 // order and size decide whether the floor has unsaved edits.
 const snapshotBlocks = (left: EditableBlock[], right: EditableBlock[]) => {
-  const strip = (list: EditableBlock[]) => list.map(({ roomNumber, size }) => ({ roomNumber, size }))
+  const strip = (list: EditableBlock[]) =>
+    list.map(({ roomNumber, size, capacity }) => ({ roomNumber, size, capacity }))
   return JSON.stringify({ left: strip(left), right: strip(right) })
 }
 
@@ -66,6 +71,7 @@ type PositionedRoom = {
   roomNumber: string
   side: RoomBlockSide
   size: RoomBlockSize
+  capacity: number | null
   x: number
   z: number
   width: number
@@ -99,7 +105,7 @@ function layoutSide(blocks: EditableBlock[], side: RoomBlockSide): { rooms: Posi
       const units = SIZE_UNITS[b.size]
       const z = cursor + units.depth / 2
       cursor += units.depth + GAP
-      return { roomNumber: b.roomNumber.trim(), size: b.size, z, ...units }
+      return { roomNumber: b.roomNumber.trim(), size: b.size, capacity: b.capacity, z, ...units }
     })
 
   const totalDepth = Math.max(cursor - GAP, 0)
@@ -111,6 +117,7 @@ function layoutSide(blocks: EditableBlock[], side: RoomBlockSide): { rooms: Posi
     roomNumber: r.roomNumber,
     side,
     size: r.size,
+    capacity: r.capacity,
     x: xSign * (CORRIDOR_WIDTH / 2 + r.width / 2 + GAP),
     z: r.z - centerOffset,
     width: r.width,
@@ -152,6 +159,9 @@ export default function Dekan3DXonalarPage() {
   // Floor the dekan wants to switch to while the current one has unsaved
   // edits — drives the "discard changes?" confirm modal.
   const [pendingFloor, setPendingFloor] = useState<number | null>(null)
+  // Which column's "ommaviy sig'im" panel is open; range bounds for it.
+  const [capPanelSide, setCapPanelSide] = useState<RoomBlockSide | null>(null)
+  const [capRange, setCapRange] = useState<{ from: string; to: string }>({ from: '', to: '' })
   // Snapshot of whatever's actually persisted on the server for the active
   // floor — compared against the live editor state so we can warn before
   // silently discarding unsaved edits (e.g. switching floor tabs).
@@ -218,8 +228,14 @@ export default function Dekan3DXonalarPage() {
     setSelectedRoomNumber(null)
     try {
       const blocks = await fetchFloorLayout(floor)
-      const left = blocks.filter((b) => b.side === 'left').map((b) => ({ id: makeId(), roomNumber: b.roomNumber, size: b.size }))
-      const right = blocks.filter((b) => b.side === 'right').map((b) => ({ id: makeId(), roomNumber: b.roomNumber, size: b.size }))
+      const toEditable = (b: (typeof blocks)[number]): EditableBlock => ({
+        id: makeId(),
+        roomNumber: b.roomNumber,
+        size: b.size,
+        capacity: b.capacity ?? null,
+      })
+      const left = blocks.filter((b) => b.side === 'left').map(toEditable)
+      const right = blocks.filter((b) => b.side === 'right').map(toEditable)
       setLeftBlocks(left)
       setRightBlocks(right)
       setLastSavedSnapshot(snapshotBlocks(left, right))
@@ -258,6 +274,14 @@ export default function Dekan3DXonalarPage() {
     void loadSettings()
   }, [loadSettings])
 
+  // Deep link from the Sozlamalar qavat menejeri: /dekan/3d-xonalar?floor=3.
+  // Read once on mount (client-only, so no Suspense boundary needed).
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get('floor')
+    const floor = raw ? parseInt(raw, 10) : NaN
+    if (Number.isInteger(floor) && floor >= 1 && floor <= 50) setActiveFloor(floor)
+  }, [])
+
   useEffect(() => {
     void loadFloorLayout(activeFloor)
   }, [activeFloor])
@@ -292,6 +316,7 @@ export default function Dekan3DXonalarPage() {
         id: makeId(),
         roomNumber: start === null ? '' : String(start + i),
         size: 'medium',
+        capacity: null,
       }))
       return [...prev, ...additions]
     })
@@ -310,6 +335,28 @@ export default function Dekan3DXonalarPage() {
     })
   }
 
+  // Ommaviy sig'im: butun tomon, yoki xona raqami [from..to] oralig'idagilar.
+  const applyColumnCapacity = (side: RoomBlockSide, capacity: number | null) => {
+    setSide(side)((prev) => prev.map((b) => ({ ...b, capacity })))
+    setCapPanelSide(null)
+  }
+  const applyRangeCapacity = (side: RoomBlockSide, capacity: number | null) => {
+    const from = parseInt(capRange.from, 10)
+    const to = parseInt(capRange.to, 10)
+    if (!Number.isFinite(from) || !Number.isFinite(to) || from > to) {
+      toast.error("Diapazon noto'g'ri (masalan 12–20)")
+      return
+    }
+    setSide(side)((prev) =>
+      prev.map((b) => {
+        const n = parseInt(b.roomNumber, 10)
+        return Number.isFinite(n) && n >= from && n <= to ? { ...b, capacity } : b
+      }),
+    )
+    setCapPanelSide(null)
+    setCapRange({ from: '', to: '' })
+  }
+
   const handleSave = async () => {
     // Bo'sh (raqami kiritilmagan) qatorlar shunchaki e'tiborsiz qoldiriladi —
     // avval bittasi bo'sh qolsa BUTUN saqlash bloklanardi, bu esa boshqa
@@ -322,8 +369,8 @@ export default function Dekan3DXonalarPage() {
     }
 
     const combined: RoomLayoutBlock[] = [
-      ...filledLeft.map((b, i) => ({ roomNumber: b.roomNumber.trim(), side: 'left' as const, size: b.size, position: i })),
-      ...filledRight.map((b, i) => ({ roomNumber: b.roomNumber.trim(), side: 'right' as const, size: b.size, position: i })),
+      ...filledLeft.map((b, i) => ({ roomNumber: b.roomNumber.trim(), side: 'left' as const, size: b.size, position: i, capacity: b.capacity })),
+      ...filledRight.map((b, i) => ({ roomNumber: b.roomNumber.trim(), side: 'right' as const, size: b.size, position: i, capacity: b.capacity })),
     ]
 
     setSaving(true)
@@ -421,7 +468,7 @@ export default function Dekan3DXonalarPage() {
     rooms.forEach((room) => {
       const snap = roomSnapshots.find((s) => s.roomNumber === room.roomNumber)
       const occupied = snap?.occupied ?? 0
-      const occupancyTone = getRoomOccupancyTone(occupied, defaultRoomCapacity)
+      const occupancyTone = getRoomOccupancyTone(occupied, room.capacity ?? defaultRoomCapacity)
 
       const color = {
         empty: 0x10b981,
@@ -531,34 +578,43 @@ export default function Dekan3DXonalarPage() {
     const occupiedPlaces = roomSnapshots
       .filter((room) => positionedRooms.rooms.some((r) => r.roomNumber === room.roomNumber))
       .reduce((total, room) => total + room.occupied, 0)
+    // Total beds = sum of each room's effective capacity (override, else the
+    // dorm default), not roomCount * default — otherwise the exception rooms
+    // make "bo'sh joy" wrong.
+    const totalBeds = defaultRoomCapacity === null && positionedRooms.rooms.some((r) => r.capacity === null)
+      ? null
+      : positionedRooms.rooms.reduce((sum, r) => sum + (r.capacity ?? defaultRoomCapacity ?? 0), 0)
     return {
       occupiedPlaces,
       totalRooms: roomCount,
-      freePlaces: getFreePlaces(
-        defaultRoomCapacity === null ? null : roomCount * defaultRoomCapacity,
-        occupiedPlaces,
-      ),
+      freePlaces: getFreePlaces(totalBeds, occupiedPlaces),
     }
   }, [roomSnapshots, positionedRooms, defaultRoomCapacity])
 
   const selectedRoomData = useMemo(() => {
     if (!selectedRoomNumber) return null
     const snap = roomSnapshots.find((s) => s.roomNumber === selectedRoomNumber)
+    const block = [...previewLeft, ...previewRight].find((b) => b.roomNumber.trim() === selectedRoomNumber)
     return {
       number: selectedRoomNumber,
       occupied: snap?.occupied ?? 0,
-      capacity: defaultRoomCapacity,
+      capacity: block?.capacity ?? defaultRoomCapacity,
+      isCapacityOverride: block?.capacity != null,
       students: snap?.students ?? []
     }
-  }, [selectedRoomNumber, roomSnapshots, defaultRoomCapacity])
+  }, [selectedRoomNumber, roomSnapshots, defaultRoomCapacity, previewLeft, previewRight])
 
   const quickAddBtn = isLight
     ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
     : 'bg-white/5 text-slate-300 hover:bg-white/10'
 
+  const capLabel = (c: number | null) => (c === null ? 'Standart' : String(c))
+
   const renderColumn = (side: RoomBlockSide, blocks: EditableBlock[]) => {
-    const filledCount = blocks.filter((b) => b.roomNumber.trim()).length
-    const places = defaultRoomCapacity === null ? null : filledCount * defaultRoomCapacity
+    const filled = blocks.filter((b) => b.roomNumber.trim())
+    const beds = filled.reduce((sum, b) => sum + (b.capacity ?? defaultRoomCapacity ?? 0), 0)
+    const bedsKnown = defaultRoomCapacity !== null || filled.every((b) => b.capacity !== null)
+    const panelOpen = capPanelSide === side
     return (
       <div className={`rounded-2xl border p-3 ${cardBg}`}>
         <div className="flex items-center justify-between gap-2 mb-2.5">
@@ -567,8 +623,18 @@ export default function Dekan3DXonalarPage() {
           </h3>
           <div className="flex items-center gap-1.5">
             <span className={`text-[10px] font-bold tabular-nums ${textMuted}`}>
-              {filledCount} ta{places !== null ? ` · ${places} joy` : ''}
+              {filled.length} ta{bedsKnown ? ` · ${beds} joy` : ''}
             </span>
+            <button
+              type="button"
+              onClick={() => setCapPanelSide(panelOpen ? null : side)}
+              className={`flex items-center gap-0.5 rounded-lg px-2 py-1 text-[10px] font-bold ${
+                panelOpen ? ui.accentSolid : quickAddBtn
+              }`}
+              title="Ommaviy sig'im"
+            >
+              Sig&apos;im <ChevronDown size={11} className={panelOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+            </button>
             <button type="button" onClick={() => addBlock(side, 1)} className={`flex items-center gap-0.5 rounded-lg px-2 py-1 text-[10px] font-bold ${quickAddBtn}`}>
               <Plus size={11} /> 1
             </button>
@@ -577,6 +643,53 @@ export default function Dekan3DXonalarPage() {
             </button>
           </div>
         </div>
+
+        {panelOpen && (
+          <div className={`mb-2.5 rounded-xl border p-2.5 space-y-2.5 text-[10px] ${isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.03]'}`}>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className={`font-bold uppercase tracking-wider ${textMuted}`}>Bu tomon hammasi →</span>
+              {CAPACITY_CHOICES.map((c) => (
+                <button
+                  key={String(c)}
+                  type="button"
+                  onClick={() => applyColumnCapacity(side, c)}
+                  className={`rounded-md px-2 py-1 font-bold ${quickAddBtn}`}
+                >
+                  {capLabel(c)}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className={`font-bold uppercase tracking-wider ${textMuted}`}>№</span>
+              <input
+                value={capRange.from}
+                onChange={(e) => setCapRange((r) => ({ ...r, from: e.target.value.replace(/\D/g, '') }))}
+                inputMode="numeric"
+                placeholder="12"
+                className={`w-12 text-center py-1 rounded-md outline-none border ${inputBg}`}
+              />
+              <span className={textMuted}>–</span>
+              <input
+                value={capRange.to}
+                onChange={(e) => setCapRange((r) => ({ ...r, to: e.target.value.replace(/\D/g, '') }))}
+                inputMode="numeric"
+                placeholder="20"
+                className={`w-12 text-center py-1 rounded-md outline-none border ${inputBg}`}
+              />
+              <span className={`font-bold uppercase tracking-wider ${textMuted}`}>→</span>
+              {CAPACITY_CHOICES.map((c) => (
+                <button
+                  key={String(c)}
+                  type="button"
+                  onClick={() => applyRangeCapacity(side, c)}
+                  className={`rounded-md px-2 py-1 font-bold ${quickAddBtn}`}
+                >
+                  {capLabel(c)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {blocks.length === 0 ? (
           <p className={`py-5 text-center text-[11px] font-medium ${textMuted}`}>
@@ -593,14 +706,16 @@ export default function Dekan3DXonalarPage() {
               const trimmed = block.roomNumber.trim()
               const snap = trimmed ? roomSnapshots.find((s) => s.roomNumber === trimmed) : undefined
               const occupied = snap?.occupied ?? 0
+              const effectiveCap = block.capacity ?? defaultRoomCapacity
               const tone: RoomOccupancyTone = trimmed
-                ? getRoomOccupancyTone(occupied, defaultRoomCapacity)
+                ? getRoomOccupancyTone(occupied, effectiveCap)
                 : 'unknown'
+              const over = trimmed && effectiveCap !== null && occupied > effectiveCap
               const occText = !trimmed
                 ? ''
                 : occupied === 0
                   ? "bo'sh"
-                  : `${occupied}/${defaultRoomCapacity ?? '?'}`
+                  : `${occupied}/${effectiveCap ?? '?'}`
               return (
                 <RoomRow
                   key={block.id}
@@ -610,8 +725,11 @@ export default function Dekan3DXonalarPage() {
                   textMuted={textMuted}
                   toneDot={trimmed ? TONE_DOT[tone] : isLight ? 'bg-slate-300' : 'bg-slate-600'}
                   occText={occText}
+                  over={Boolean(over)}
+                  defaultCapacity={defaultRoomCapacity}
                   onNumber={(v) => updateBlock(side, block.id, { roomNumber: v })}
                   onCycleSize={() => updateBlock(side, block.id, { size: SIZE_CYCLE[SIZE_RANK[block.size] % 3] })}
+                  onCapacity={(c) => updateBlock(side, block.id, { capacity: c })}
                   onRemove={() => removeBlock(side, block.id)}
                 />
               )
@@ -849,7 +967,7 @@ export default function Dekan3DXonalarPage() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <Detail label="Xona raqami" value={`#${selectedRoomData.number}`} icon={<MousePointer2 size={16} />} textStrong={textStrong} cardBg={cardBg} />
                   <Detail
-                    label="Bandlik holati"
+                    label={selectedRoomData.isCapacityOverride ? "Bandlik holati (istisno sig'im)" : 'Bandlik holati'}
                     value={`${selectedRoomData.occupied} / ${selectedRoomData.capacity ?? '?'}`}
                     icon={<Users size={16} />}
                     status={getRoomOccupancyTone(selectedRoomData.occupied, selectedRoomData.capacity)}
@@ -910,11 +1028,12 @@ export default function Dekan3DXonalarPage() {
   )
 }
 
-// One compact editor row (~36px): drag handle · number · size pill · live
-// occupancy dot · delete. Kept module-level so its useDragControls hook
-// isn't recreated on every parent render (which would kill the drag).
+// One compact editor row (~36px): drag handle · number · size pill · capacity
+// chip · live occupancy dot · delete. Kept module-level so its useDragControls
+// hook isn't recreated on every parent render (which would kill the drag).
 function RoomRow({
-  block, isLight, inputBg, textMuted, toneDot, occText, onNumber, onCycleSize, onRemove,
+  block, isLight, inputBg, textMuted, toneDot, occText, over, defaultCapacity,
+  onNumber, onCycleSize, onCapacity, onRemove,
 }: {
   block: EditableBlock
   isLight: boolean
@@ -922,17 +1041,23 @@ function RoomRow({
   textMuted: string
   toneDot: string
   occText: string
+  over: boolean
+  defaultCapacity: number | null
   onNumber: (value: string) => void
   onCycleSize: () => void
+  onCapacity: (capacity: number | null) => void
   onRemove: () => void
 }) {
   const controls = useDragControls()
+  const [capOpen, setCapOpen] = useState(false)
+  const isOverride = block.capacity != null
+  const shownCapacity = block.capacity ?? defaultCapacity
   return (
     <Reorder.Item
       value={block.id}
       dragListener={false}
       dragControls={controls}
-      className={`flex items-center gap-1.5 rounded-lg border pl-0.5 pr-1 h-9 ${
+      className={`relative flex items-center gap-1.5 rounded-lg border pl-0.5 pr-1 h-9 ${
         isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.02]'
       }`}
     >
@@ -970,9 +1095,51 @@ function RoomRow({
         </span>
         {SIZE_LABELS[block.size]}
       </button>
-      <span className="shrink-0 flex items-center justify-end gap-1 w-[52px]">
+
+      {/* Sig'im: bo'sh = standartdan meros (xira), override = indigo halqa. */}
+      <div className="shrink-0 relative">
+        <button
+          type="button"
+          onClick={() => setCapOpen((o) => !o)}
+          title={isOverride ? `Sig'im: ${block.capacity} (istisno)` : `Sig'im: standart (${defaultCapacity ?? '?'})`}
+          className={`h-7 min-w-[26px] px-1 rounded-md text-[11px] font-black tabular-nums transition-colors ${
+            isOverride
+              ? 'bg-indigo-500/10 text-indigo-500 ring-1 ring-indigo-500/30'
+              : isLight ? 'bg-slate-100 text-slate-400 hover:text-slate-600' : 'bg-white/5 text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          {shownCapacity ?? '·'}
+        </button>
+        {capOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setCapOpen(false)} />
+            <div
+              className={`absolute right-0 top-8 z-20 flex flex-wrap gap-1 w-[132px] rounded-lg border p-1.5 shadow-xl ${
+                isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-slate-900'
+              }`}
+            >
+              {CAPACITY_CHOICES.map((c) => (
+                <button
+                  key={String(c)}
+                  type="button"
+                  onClick={() => { onCapacity(c); setCapOpen(false) }}
+                  className={`min-w-[26px] px-1.5 py-1 rounded-md text-[10px] font-bold ${
+                    (c ?? null) === (block.capacity ?? null)
+                      ? 'bg-indigo-600 text-white'
+                      : isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                  }`}
+                >
+                  {c === null ? 'Std' : c}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <span className="shrink-0 flex items-center justify-end gap-1 w-[50px]">
         <span className={`h-2 w-2 rounded-full ${toneDot}`} />
-        <span className={`text-[9px] font-semibold tabular-nums ${textMuted}`}>{occText}</span>
+        <span className={`text-[9px] font-semibold tabular-nums ${over ? 'text-rose-500' : textMuted}`}>{occText}</span>
       </span>
       <button
         type="button"

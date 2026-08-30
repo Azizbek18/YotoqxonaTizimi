@@ -7,6 +7,19 @@ import { createRoomLayoutRepository, type RoomLayoutRepository } from './reposit
 const VALID_SIDES: RoomBlockSide[] = ['left', 'right']
 const VALID_SIZES: RoomBlockSize[] = ['small', 'medium', 'large']
 
+export const MAX_ROOM_CAPACITY = 20
+
+// null / undefined / '' -> null (inherit the dorm default). Any other value
+// must be a whole number in [1, MAX_ROOM_CAPACITY].
+function parseCapacity(value: unknown, label: string): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const n = Number(value)
+  if (!Number.isInteger(n) || n < 1 || n > MAX_ROOM_CAPACITY) {
+    throw new ApiError(400, `${label} noto'g'ri (1–${MAX_ROOM_CAPACITY})`)
+  }
+  return n
+}
+
 function parseFloorNumber(value: unknown) {
   const floorNumber = Number(value)
   if (!Number.isInteger(floorNumber) || floorNumber < 1) {
@@ -57,8 +70,10 @@ function parseBlocks(value: unknown): RoomLayoutBlock[] {
     const size = input.size as RoomBlockSize
     if (!VALID_SIZES.includes(size)) throw new ApiError(400, `${roomNumber}-xona uchun o'lcham noto'g'ri`)
 
+    const capacity = parseCapacity(input.capacity, `${roomNumber}-xona sig'imi`)
+
     const position = sideCounters[side]++
-    return { roomNumber, side, size, position }
+    return { roomNumber, side, size, position, capacity }
   })
 }
 
@@ -160,7 +175,40 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
         floor: row.floor_number,
         frozen: row.frozen,
         frozenReason: row.frozen_reason,
+        capacity: row.capacity ?? null,
       }))
+    },
+
+    /**
+     * Per-room bed-count override. `capacityValue` of null/'' clears it — the
+     * room goes back to inheriting dorms.default_room_capacity. Enforced for
+     * real inside the assign_*_room_atomic RPCs (COALESCE(capacity, default)).
+     */
+    async setCapacity(faculty: string, roomNumberValue: unknown, capacityValue: unknown) {
+      const roomNumber = typeof roomNumberValue === 'string' ? roomNumberValue.trim().slice(0, 20) : ''
+      if (!roomNumber) throw new ApiError(400, "Xona raqami kiritilmagan")
+      const capacity = parseCapacity(capacityValue, "Xona sig'imi")
+
+      const updated = await repository.setCapacity(faculty, roomNumber, capacity)
+      if (!updated) throw new ApiError(404, "Bunday xona xonalar sxemasida topilmadi")
+      return { success: true as const, roomNumber, capacity }
+    },
+
+    async bulkSetCapacity(faculty: string, roomNumbersValue: unknown, capacityValue: unknown) {
+      if (!Array.isArray(roomNumbersValue)) throw new ApiError(400, "So'rov noto'g'ri")
+      const roomNumbers = [
+        ...new Set(
+          roomNumbersValue
+            .map((value) => (typeof value === 'string' ? value.trim().slice(0, 20) : ''))
+            .filter(Boolean),
+        ),
+      ]
+      if (roomNumbers.length === 0) throw new ApiError(400, "Xonalar tanlanmagan")
+      if (roomNumbers.length > 500) throw new ApiError(400, "Bir vaqtda 500 tagacha xona")
+      const capacity = parseCapacity(capacityValue, "Xona sig'imi")
+
+      const changed = await repository.bulkSetCapacity(faculty, roomNumbers, capacity)
+      return { success: true as const, changed, capacity }
     },
 
     /**
@@ -194,6 +242,7 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
         side: row.side as RoomBlockSide,
         position: row.position,
         size: row.size as RoomBlockSize,
+        capacity: row.capacity ?? null,
       }))
     },
 

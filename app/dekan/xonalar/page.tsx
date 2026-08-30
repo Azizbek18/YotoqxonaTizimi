@@ -23,7 +23,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { fetchAssignableStudents, assignStudentRoom } from '@/features/room-assignment/client/api'
 import type { FacultyStudentRow } from '@/features/room-assignment/types'
-import { setRoomFrozen } from '@/features/room-layout/client/api'
+import { setRoomFrozen, setRoomCapacity as setRoomCapacityApi } from '@/features/room-layout/client/api'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import RoomLayoutGeneratorModal from '@/components/rooms/RoomLayoutGeneratorModal'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
@@ -54,6 +54,8 @@ interface RoomData {
   gender: string | null // 'male', 'female', or 'mixed' (warning)
   frozen: boolean
   frozenReason: string | null
+  /** Per-room bed-count override; null = inherit the dorm default. */
+  capacity: number | null
   // False for "orphan" rooms — occupied but missing from floor_room_layout
   // (see the comment above `orphans` below). Freezing writes to that table,
   // so a room that isn't in it can't be frozen from here.
@@ -78,7 +80,7 @@ export default function DekanXonalarMap() {
 
   // State
   const [occupantsByRoom, setOccupantsByRoom] = useState<Record<string, Occupant[]>>({})
-  const [roomCapacity, setRoomCapacity] = useState(4)
+  const [defaultCapacity, setDefaultCapacity] = useState(4)
   const [floorCount, setFloorCount] = useState(0)
   const [generatorOpen, setGeneratorOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -191,7 +193,7 @@ export default function DekanXonalarMap() {
     loadStudents()
     fetchAppSettings()
       .then((settings) => {
-        setRoomCapacity(settings.defaultRoomCapacity)
+        setDefaultCapacity(settings.defaultRoomCapacity)
         setFloorCount(settings.floorCount)
       })
       .catch((err) => console.error('Xona sozlamalarini yuklashda xato:', err))
@@ -206,9 +208,9 @@ export default function DekanXonalarMap() {
       return 'mixed'
     }
 
-    const fromLayout: RoomData[] = layoutRooms.map(({ roomNumber, floor, frozen, frozenReason }) => {
+    const fromLayout: RoomData[] = layoutRooms.map(({ roomNumber, floor, frozen, frozenReason, capacity }) => {
       const occupants = occupantsByRoom[roomNumber] ?? []
-      return { roomNumber, occupants, floor, gender: roomGender(occupants), frozen, frozenReason, inLayout: true }
+      return { roomNumber, occupants, floor, gender: roomGender(occupants), frozen, frozenReason, capacity, inLayout: true }
     })
 
     // A room can hold students and still be absent from the layout (placed
@@ -225,6 +227,7 @@ export default function DekanXonalarMap() {
         gender: roomGender(occupants),
         frozen: false,
         frozenReason: null,
+        capacity: null,
         inLayout: false,
       }))
 
@@ -309,6 +312,28 @@ export default function DekanXonalarMap() {
     }
   }
 
+  // Per-room bed count. null clears the override -> the room follows the dorm
+  // default again. Enforced for real inside assign_*_room_atomic.
+  const [savingCapacity, setSavingCapacity] = useState(false)
+  const handleSetCapacity = async (capacity: number | null) => {
+    if (!selectedRoom || !selectedRoom.inLayout) return
+    setSavingCapacity(true)
+    try {
+      await setRoomCapacityApi(selectedRoom.roomNumber, capacity)
+      setSelectedRoom((room) => (room ? { ...room, capacity } : room))
+      await reloadRoomFloors()
+      toast.success(
+        capacity === null
+          ? "Xona sig'imi standartga qaytarildi"
+          : `Xona sig'imi ${capacity} ta o'ringa o'zgartirildi`,
+      )
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Sig'imni o'zgartirib bo'lmadi")
+    } finally {
+      setSavingCapacity(false)
+    }
+  }
+
   // Filters
   const filteredRooms = rooms.filter((r) => {
     const matchesFloor = floorFilter === 'all' || r.floor === floorFilter
@@ -328,12 +353,15 @@ export default function DekanXonalarMap() {
       return normalizeGender(s.gender) === selectedRoom.gender
     })
 
+  // Effective bed count for a room: its own override, else the dorm default.
+  const roomBeds = (room: RoomData) => room.capacity ?? defaultCapacity
+
   // Calculate totals
   const totalOccupiedBeds = rooms.reduce((acc, r) => acc + r.occupants.length, 0)
-  const totalBeds = rooms.length * roomCapacity
+  const totalBeds = rooms.reduce((acc, r) => acc + roomBeds(r), 0)
   const totalRoomsWithMixedGenders = rooms.filter((r) => r.gender === 'mixed').length
   const totalEmptyRooms = rooms.filter((r) => r.occupants.length === 0).length
-  const totalFullRooms = rooms.filter((r) => r.occupants.length >= roomCapacity).length
+  const totalFullRooms = rooms.filter((r) => r.occupants.length >= roomBeds(r)).length
 
   return (
     <div className="space-y-6">
@@ -347,7 +375,7 @@ export default function DekanXonalarMap() {
           // just removed from one) is visible without opening every room.
           { label: 'Xonasiz talabalar', value: `${students.length} ta`, icon: UserMinus, tone: students.length > 0 ? 'warning' as const : undefined },
           { label: 'Bo‘sh xonalar', value: `${totalEmptyRooms} ta`, icon: DoorOpen },
-          { label: `To‘la xonalar (${roomCapacity}/${roomCapacity})`, value: `${totalFullRooms} ta`, icon: DoorClosed },
+          { label: 'To‘la xonalar', value: `${totalFullRooms} ta`, icon: DoorClosed },
           { label: 'Gender xatoliklar', value: `${totalRoomsWithMixedGenders} ta xona`, icon: Users2, tone: totalRoomsWithMixedGenders > 0 ? 'danger' as const : undefined },
         ].map((stat, idx) => (
           <motion.div
@@ -541,13 +569,15 @@ export default function DekanXonalarMap() {
                     <div>
                       <h4 className={`text-sm font-bold ${textStrong}`}>{room.roomNumber}-xona</h4>
                       <p className={`text-[9px] font-medium ${textMuted}`}>
-                        {room.frozen ? "Muzlatilgan" : `${count} / ${roomCapacity} o'rin`}
+                        {room.frozen
+                          ? "Muzlatilgan"
+                          : `${count} / ${roomBeds(room)} o'rin${room.capacity != null ? ' •' : ''}`}
                       </p>
                     </div>
 
-                    {/* One dot per bed, per the admin's xona sig'imi setting */}
+                    {/* One dot per bed — the room's own sig'im, else the dorm default */}
                     <div className="flex justify-center gap-1 mt-1 shrink-0">
-                      {Array.from({ length: roomCapacity }).map((_, idx) => {
+                      {Array.from({ length: roomBeds(room) }).map((_, idx) => {
                         const isOccupied = idx < count
                         const occ = room.occupants[idx]
 
@@ -605,7 +635,7 @@ export default function DekanXonalarMap() {
                 </div>
 
                 <div className="flex-1 min-h-0 space-y-4 overflow-y-auto custom-scrollbar pt-4 -mr-1 pr-1">
-                {selectedRoom.gender === 'mixed' || selectedRoom.frozen ? null : selectedRoom.occupants.length >= roomCapacity ? (
+                {selectedRoom.gender === 'mixed' || selectedRoom.frozen ? null : selectedRoom.occupants.length >= roomBeds(selectedRoom) ? (
                   <div className={`p-2.5 rounded-lg text-center text-[10px] font-medium ${ui.inset} ${textMuted}`}>
                     Xona to&apos;la — yangi talaba joylashtirib bo&apos;lmaydi
                   </div>
@@ -751,9 +781,43 @@ export default function DekanXonalarMap() {
                 </div>
                 </div>
 
+                {/* Xona sig'imi — istisno xonalar uchun (2/3 o'rinli). Bo'sh =
+                    binoning standart sig'imi. Faqat qavat tarxidagi xonalar. */}
+                {selectedRoom.inLayout && (
+                  <div className={`shrink-0 pt-3 mt-1 border-t space-y-1.5 ${ui.border}`}>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[9px] font-bold uppercase tracking-wider ${textMuted}`}>
+                        Xona sig&apos;imi
+                      </span>
+                      <span className={`text-[9px] font-medium ${textMuted}`}>
+                        {selectedRoom.capacity != null
+                          ? `Istisno: ${selectedRoom.capacity} ta`
+                          : `Standart: ${defaultCapacity} ta`}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {[null, 1, 2, 3, 4, 5, 6, 8].map((c) => (
+                        <button
+                          key={String(c)}
+                          type="button"
+                          disabled={savingCapacity || c === (selectedRoom.capacity ?? null)}
+                          onClick={() => handleSetCapacity(c)}
+                          className={`min-w-[28px] rounded-md px-1.5 py-1 text-[10px] font-bold transition-colors disabled:opacity-100 ${
+                            c === (selectedRoom.capacity ?? null)
+                              ? ui.accentSolid
+                              : isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                          }`}
+                        >
+                          {c === null ? 'Std' : c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className={`shrink-0 pt-3 mt-1 border-t text-[9px] font-medium flex justify-between ${ui.border} ${textMuted}`}>
                   <span>Jami o‘rindagi joylar:</span>
-                  <span>{selectedRoom.occupants.length} / {roomCapacity} band</span>
+                  <span>{selectedRoom.occupants.length} / {roomBeds(selectedRoom)} band</span>
                 </div>
               </motion.div>
             ) : (

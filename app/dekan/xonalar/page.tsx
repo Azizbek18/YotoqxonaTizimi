@@ -14,6 +14,7 @@ import {
   UserMinus,
   LayoutGrid,
   Plus,
+  Minus,
   RotateCcw,
   Snowflake,
   Unlock
@@ -28,6 +29,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal'
 import RoomLayoutGeneratorModal from '@/components/rooms/RoomLayoutGeneratorModal'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
+import { getRoomOccupancyTone } from '@/features/app-settings/presentation'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { directionLabel } from '@/lib/directions'
 import { normalizeGender, genderLabel, genderAccent } from '@/lib/gender'
@@ -332,6 +334,18 @@ export default function DekanXonalarMap() {
     } finally {
       setSavingCapacity(false)
     }
+  }
+
+  const CAPACITY_MIN = 1
+  const CAPACITY_MAX = 12
+  const stepCapacity = (delta: number) => {
+    if (!selectedRoom || savingCapacity) return
+    const current = selectedRoom.capacity ?? defaultCapacity
+    const next = Math.min(CAPACITY_MAX, Math.max(CAPACITY_MIN, current + delta))
+    if (next === current) return
+    // Landing back on the building default means "follow the default" again,
+    // not "pin an override that happens to equal it".
+    void handleSetCapacity(next === defaultCapacity ? null : next)
   }
 
   // Filters
@@ -781,44 +795,87 @@ export default function DekanXonalarMap() {
                 </div>
                 </div>
 
-                {/* Xona sig'imi — istisno xonalar uchun (2/3 o'rinli). Bo'sh =
-                    binoning standart sig'imi. Faqat qavat tarxidagi xonalar. */}
-                {selectedRoom.inLayout && (
-                  <div className={`shrink-0 pt-3 mt-1 border-t space-y-1.5 ${ui.border}`}>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-[9px] font-bold uppercase tracking-wider ${textMuted}`}>
-                        Xona sig&apos;imi
-                      </span>
-                      <span className={`text-[9px] font-medium ${textMuted}`}>
-                        {selectedRoom.capacity != null
-                          ? `Istisno: ${selectedRoom.capacity} ta`
-                          : `Standart: ${defaultCapacity} ta`}
-                      </span>
+                {/* Capacity + occupancy — one calm block. Bed count is a
+                    stepper; landing on the building default clears the
+                    override (see stepCapacity). Only for rooms in the tarx. */}
+                {(() => {
+                  const isOverride = selectedRoom.inLayout && selectedRoom.capacity != null
+                  const beds = roomBeds(selectedRoom)
+                  const occ = selectedRoom.occupants.length
+                  const tone = getRoomOccupancyTone(occ, beds)
+                  const toneText = {
+                    empty: isLight ? 'text-slate-500' : 'text-slate-400',
+                    partial: isLight ? 'text-amber-600' : 'text-amber-400',
+                    full: isLight ? 'text-rose-600' : 'text-rose-400',
+                    unknown: isLight ? 'text-slate-500' : 'text-slate-400',
+                  }[tone]
+                  return (
+                    <div className={`shrink-0 mt-3 rounded-xl border overflow-hidden ${ui.inset}`}>
+                      {selectedRoom.inLayout && (
+                        <div className={`flex items-center gap-3 p-3 border-b ${ui.border}`}>
+                          <BedDouble size={16} className={`shrink-0 ${ui.accentText}`} />
+                          <div className="min-w-0 flex-1">
+                            <p className={`text-[10px] font-bold uppercase tracking-wider ${textStrong}`}>
+                              Xona sig&apos;imi
+                            </p>
+                            <p className={`text-[10px] leading-tight mt-0.5 ${textMuted}`}>
+                              {isOverride ? (
+                                <>
+                                  Istisno xona · standart {defaultCapacity} ta ·{' '}
+                                  <button
+                                    type="button"
+                                    disabled={savingCapacity}
+                                    onClick={() => handleSetCapacity(null)}
+                                    className={`font-bold underline underline-offset-2 disabled:opacity-50 ${ui.accentText}`}
+                                  >
+                                    standartga qaytarish
+                                  </button>
+                                </>
+                              ) : (
+                                'Bino standarti bo’yicha'
+                              )}
+                            </p>
+                          </div>
+                          <div className="shrink-0 flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              aria-label="Kamaytirish"
+                              disabled={savingCapacity || beds <= CAPACITY_MIN}
+                              onClick={() => stepCapacity(-1)}
+                              className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30 ${ui.btnGhost}`}
+                            >
+                              <Minus size={13} />
+                            </button>
+                            <span
+                              className={`w-9 text-center text-lg font-black tabular-nums ${
+                                isOverride ? ui.accentText : textStrong
+                              }`}
+                            >
+                              {beds}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label="Ko‘paytirish"
+                              disabled={savingCapacity || beds >= CAPACITY_MAX}
+                              onClick={() => stepCapacity(1)}
+                              className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30 ${ui.accentSolid}`}
+                            >
+                              <Plus size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between p-3">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${textMuted}`}>
+                          Band joylar
+                        </span>
+                        <span className={`text-xs font-black tabular-nums ${toneText}`}>
+                          {occ} / {beds}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {[null, 1, 2, 3, 4, 5, 6, 8].map((c) => (
-                        <button
-                          key={String(c)}
-                          type="button"
-                          disabled={savingCapacity || c === (selectedRoom.capacity ?? null)}
-                          onClick={() => handleSetCapacity(c)}
-                          className={`min-w-[28px] rounded-md px-1.5 py-1 text-[10px] font-bold transition-colors disabled:opacity-100 ${
-                            c === (selectedRoom.capacity ?? null)
-                              ? ui.accentSolid
-                              : isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
-                          }`}
-                        >
-                          {c === null ? 'Std' : c}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className={`shrink-0 pt-3 mt-1 border-t text-[9px] font-medium flex justify-between ${ui.border} ${textMuted}`}>
-                  <span>Jami o‘rindagi joylar:</span>
-                  <span>{selectedRoom.occupants.length} / {roomBeds(selectedRoom)} band</span>
-                </div>
+                  )
+                })()}
               </motion.div>
             ) : (
               <div className={`p-10 rounded-2xl border ${surfaceBg} flex flex-col items-center justify-center text-center`}>

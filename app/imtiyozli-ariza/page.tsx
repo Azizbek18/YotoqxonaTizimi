@@ -190,12 +190,37 @@ export default function ImtiyozliAriza() {
 
   const facultyLabel = permitFacultyLabel(faculty)
 
-  const handleDownloadPdf = () => {
-    window.print()
+  const [documentDownloaded, setDocumentDownloaded] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+
+  const handleDownloadPdf = async () => {
+    if (downloadingPdf) return
+    setDownloadingPdf(true)
+    try {
+      const { generateArizaTilxatPdf, arizaTilxatFileName } = await import('@/lib/ariza-tilxat-pdf')
+      const doc = await generateArizaTilxatPdf({
+        fullName, facultyLabel, course, studyType,
+        originCountry: originCountry.trim(), originRegion: originRegion.trim(),
+        phone: phone.replace(/\D/g, ''), relativePhone: relativePhone.trim(), ttjName,
+      })
+      doc.save(arizaTilxatFileName(fullName))
+      setDocumentDownloaded(true)
+      toast.success('Hujjat yuklab olindi', { icon: '📄' })
+      toast('Uni chop etib, imzo qo‘yish uchun DEKANGA ko‘rsating.', { duration: 7000, icon: '✍️' })
+    } catch (err) {
+      console.error(err)
+      toast.error('Hujjatni yuklab bo‘lmadi. Qayta urinib ko‘ring.')
+    } finally {
+      setDownloadingPdf(false)
+    }
   }
 
   const handleSubmit = async () => {
     if (!validateStep1() || !validateStep2() || !validateStep3() || !passportPhoto) return
+    if (!documentDownloaded) {
+      toast.error('Avval Ariza va Tilxatni yuklab oling — dekanga imzoga topshirishingiz kerak.')
+      return
+    }
 
     setLoading(true)
     try {
@@ -280,16 +305,7 @@ export default function ImtiyozliAriza() {
   }
 
   return (
-    <div className={`min-h-screen flex items-center justify-center px-3 sm:px-6 py-16 relative overflow-x-hidden print:block print:p-0 print:min-h-0 ${isLight ? 'bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 text-slate-900' : 'bg-[#020617] text-white'}`}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @media print {
-          body * { visibility: hidden; }
-          #imtiyozli-print-area, #imtiyozli-print-area * { visibility: visible; }
-          #imtiyozli-print-area { position: absolute; top: 0; left: 0; width: 100%; }
-          .print-page { box-shadow: none !important; border: none !important; page-break-after: always; }
-        }
-      `}} />
-
+    <div className={`min-h-screen flex items-center justify-center px-3 sm:px-6 py-16 relative overflow-x-hidden ${isLight ? 'bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 text-slate-900' : 'bg-[#020617] text-white'}`}>
       {/* Orbs in a fixed clipped layer so a tall form still scrolls on phones. */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none print:hidden">
         <div className="absolute top-[-20%] left-[-15%] w-[55%] h-[55%] bg-blue-500/10 rounded-full blur-[130px]" />
@@ -641,10 +657,32 @@ export default function ImtiyozliAriza() {
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
-                  className={`w-full flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-black uppercase tracking-widest transition-all active:scale-95 ${isLight ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'}`}
+                  disabled={downloadingPdf}
+                  className={`w-full flex items-center justify-center gap-2 p-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-60 ${
+                    documentDownloaded
+                      ? (isLight ? 'border border-emerald-300 bg-emerald-50 text-emerald-700' : 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300')
+                      : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25'
+                  }`}
                 >
-                  <Download size={14} /> Yuklab olish (PDF)
+                  {downloadingPdf ? (
+                    <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : documentDownloaded ? (
+                    <><CheckCircle2 size={14} /> Yuklab olindi — qayta yuklash</>
+                  ) : (
+                    <><Download size={14} /> Ariza va Tilxatni yuklab olish (PDF)</>
+                  )}
                 </button>
+
+                {documentDownloaded ? (
+                  <div className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-[11px] font-semibold leading-relaxed ${isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'}`}>
+                    <ShieldAlert size={14} className="shrink-0 mt-0.5" />
+                    <span>Yuklab olingan Ariza va Tilxatni <b>chop eting</b>, o‘zingiz imzo qo‘ying va <b>dekanga imzoga topshiring</b>. Keyin bu yerdan yuboring.</span>
+                  </div>
+                ) : (
+                  <p className={`text-center text-[11px] font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Yuborishdan oldin hujjatni 100% yuklab olishingiz shart.
+                  </p>
+                )}
 
                 <div className="flex gap-3 pt-1">
                   <button type="button" onClick={handlePrevStep} title="Orqaga" aria-label="Orqaga"
@@ -654,8 +692,9 @@ export default function ImtiyozliAriza() {
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={loading}
-                    className="flex-1 flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 hover:brightness-110 text-white font-black uppercase tracking-widest text-xs transition-all active:scale-95 disabled:opacity-50"
+                    disabled={loading || !documentDownloaded}
+                    title={documentDownloaded ? undefined : 'Avval hujjatni yuklab oling'}
+                    className="flex-1 flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 hover:brightness-110 text-white font-black uppercase tracking-widest text-xs transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {loading ? (
                       <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -677,13 +716,6 @@ export default function ImtiyozliAriza() {
               <span>Ariza holatini tekshirish</span>
             </Link>
           </div>
-        </div>
-
-        {/* Print-only: the actual documents, rendered off the normal flow so
-            window.print() can pick them up regardless of which wizard step
-            is on screen (only the CSS above decides what's visible on paper). */}
-        <div id="imtiyozli-print-area" className="hidden print:block">
-          {renderDocuments()}
         </div>
       </div>
 

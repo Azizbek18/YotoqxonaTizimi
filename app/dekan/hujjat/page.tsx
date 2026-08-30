@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Download, ArrowLeft, AlertTriangle } from 'lucide-react'
+import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { getAuthHeaders } from '@/lib/auth-session'
 import ArizaTilxatDocument, { type ArizaTilxatData } from '@/components/documents/ArizaTilxatDocument'
@@ -16,6 +17,22 @@ function HujjatContent() {
   const [data, setData] = useState<ArizaTilxatData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
+
+  const downloadPdf = async () => {
+    if (!data || downloading) return
+    setDownloading(true)
+    try {
+      const { generateArizaTilxatPdf, arizaTilxatFileName } = await import('@/lib/ariza-tilxat-pdf')
+      const doc = await generateArizaTilxatPdf(data)
+      doc.save(arizaTilxatFileName(data.fullName))
+    } catch (err) {
+      console.error(err)
+      toast.error('Hujjatni yuklab bo‘lmadi')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   useEffect(() => {
     if (!id) {
@@ -42,27 +59,19 @@ function HujjatContent() {
   }, [id])
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 p-3 sm:p-6 print:p-0 print:bg-white">
-      <style dangerouslySetInnerHTML={{ __html: `
-        @media print {
-          body * { visibility: hidden; }
-          #hujjat-print-area, #hujjat-print-area * { visibility: visible; }
-          #hujjat-print-area { position: absolute; top: 0; left: 0; width: 100%; }
-          .print-page { box-shadow: none !important; border: none !important; page-break-after: always; }
-        }
-      `}} />
-
-      <div className="max-w-2xl mx-auto print:max-w-none">
-        <div className="flex items-center justify-between mb-4 print:hidden">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 p-3 sm:p-6">
+      <div className="max-w-2xl mx-auto">
+        <div className="flex items-center justify-between mb-4">
           <Link href="/dekan/arizalar" className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
             <ArrowLeft size={14} /> <span>Arizalar</span>
           </Link>
           {data && (
             <button
-              onClick={() => window.print()}
-              className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
+              onClick={downloadPdf}
+              disabled={downloading}
+              className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors disabled:opacity-60"
             >
-              <Download size={14} /> <span>Yuklab olish (PDF)</span>
+              <Download size={14} /> <span>{downloading ? 'Tayyorlanmoqda…' : 'Yuklab olish (PDF)'}</span>
             </button>
           )}
         </div>
@@ -81,9 +90,7 @@ function HujjatContent() {
         )}
 
         {data && !loading && (
-          <div id="hujjat-print-area">
-            <ArizaTilxatDocument data={data} />
-          </div>
+          <ArizaTilxatDocument data={data} />
         )}
       </div>
     </div>

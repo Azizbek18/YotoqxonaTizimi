@@ -55,12 +55,18 @@ export function arizaTilxatFileName(fullName: string): string {
 
 type Doc = import('jspdf').jsPDF
 
-const LINE_FACTOR = 1.3
+// The .docx runs its body at line=276 (≈1.15) — match it so the wrapping and
+// the page fill line up with the template the student is comparing against.
+const LINE_FACTOR = 1.15
 // Line advance in mm for a given point size (72pt = 1in = 25.4mm).
 const mmLineHeight = (pt: number) => (pt * LINE_FACTOR * 25.4) / 72
 
 // Margins match the UzMU .docx (pgMar): left 30, right 15, top/bottom 20 mm.
 const MARGIN = { left: 30, right: 15, top: 20, bottom: 20 }
+// The .docx indents every body paragraph by firstLine=567 twips ≈ 10 mm, and
+// the address block by left=4111 twips ≈ 72.5 mm.
+const FIRST_LINE_INDENT = 10
+const HEADER_INDENT = 72.5
 
 function makeCursor(doc: Doc, topExtra = 0) {
   const pageW = doc.internal.pageSize.getWidth()
@@ -79,36 +85,49 @@ type Cursor = ReturnType<typeof makeCursor>
 function textBlock(
   c: Cursor,
   text: string,
-  opts: { size?: number; style?: 'normal' | 'bold' | 'italic'; align?: 'left' | 'justify' | 'right'; indent?: number; gap?: number; width?: number } = {},
+  opts: {
+    size?: number
+    style?: 'normal' | 'bold' | 'italic'
+    align?: 'left' | 'justify' | 'right'
+    /** First-line indent in mm (the .docx uses ≈10 mm on every body paragraph). */
+    firstLineIndent?: number
+    gap?: number
+    width?: number
+    /** Left edge override — used for the right-hand address column. */
+    x?: number
+  } = {},
 ) {
   const size = opts.size ?? 12
   const style = opts.style ?? 'normal'
   const align = opts.align ?? 'left'
-  const indent = opts.indent ?? 0
+  const fli = opts.firstLineIndent ?? 0
   const width = opts.width ?? c.width
+  const x = opts.x ?? (align === 'right' ? c.right : c.left)
   c.doc.setFont(FONT, style)
   c.doc.setFontSize(size)
-  const body = (indent ? '      ' : '') + normalizePdfText(text)
-  // Wrap inside `width`, not the full page — a right-aligned address block
-  // stays a tidy column on the right instead of stretching edge to edge.
+  const body = normalizePdfText(text)
+  const lh = mmLineHeight(size)
+
+  if (fli > 0 && align !== 'right') {
+    // First line pushed right by `fli` mm and wrapped at the reduced width;
+    // the rest of the paragraph runs at the full block width.
+    const first = (c.doc.splitTextToSize(body, width - fli) as string[])[0] ?? ''
+    const rest = body.slice(first.length).replace(/^\s+/, '')
+    const restLines = rest ? (c.doc.splitTextToSize(rest, width) as string[]) : []
+    c.doc.text(first, x + fli, c.y)
+    if (restLines.length) {
+      c.doc.text(restLines, x, c.y + lh, { align, maxWidth: width, lineHeightFactor: LINE_FACTOR })
+    }
+    c.y += (1 + restLines.length) * lh + (opts.gap ?? 1.5)
+    return
+  }
+
   const lines = c.doc.splitTextToSize(body, width) as string[]
-  const x = align === 'right' ? c.right : c.left
   c.doc.text(lines, x, c.y, { align, maxWidth: width, lineHeightFactor: LINE_FACTOR })
-  c.y += lines.length * mmLineHeight(size) + (opts.gap ?? 1.5)
+  c.y += lines.length * lh + (opts.gap ?? 1.5)
 }
 
-function bulletList(c: Cursor, items: string[], size = 10.5) {
-  const lf = 1.18
-  c.doc.setFont(FONT, 'normal')
-  c.doc.setFontSize(size)
-  const bx = 4.5
-  for (const item of items) {
-    const lines = c.doc.splitTextToSize(normalizePdfText(item), c.width - bx) as string[]
-    c.doc.text('•', c.left, c.y)
-    c.doc.text(lines, c.left + bx, c.y, { align: 'justify', maxWidth: c.width - bx, lineHeightFactor: lf })
-    c.y += lines.length * ((size * lf * 25.4) / 72) + 1.1
-  }
-}
+// (the rules list is plain justified paragraphs now — see renderPages)
 
 function centerTitle(c: Cursor, title: string) {
   c.y += 3
@@ -131,18 +150,20 @@ function signatureRow(c: Cursor) {
   c.y += 7
 }
 
-// The address-to block: a ~92 mm column hugging the right margin (the UzMU
-// template indents it ~72 mm from the left), every line right-aligned so it
-// reads as a neat right-hand block and long lines wrap inside the column.
+// The address-to block. The .docx puts it in a left-indented (≈72.5 mm),
+// justified column that runs to the right margin — so we anchor it at that
+// same left edge, justify it, and let long lines wrap inside the column.
+// 11 pt bold matches the template's default size + <w:b/>.
 function header(c: Cursor, faculty: string, course: string, name: string) {
-  const col = Math.min(96, c.width * 0.56)
+  const x = c.left + HEADER_INDENT
+  const width = c.right - x
   // The applicant line is "...talabasi <F.I.Sh.>dan" — the ablative "-dan"
   // ("kimdan") is what makes the address block read correctly. Skip it when
   // the name is still a blank underline (dekan-side preview).
   const applicant = name.startsWith('_') ? name : `${name}dan`
-  textBlock(c, UNIVERSITY_HEADER, { size: 10.5, align: 'right', width: col, gap: 1.5 })
-  textBlock(c, `${faculty} fakulteti`, { size: 10.5, align: 'right', width: col, gap: 0.5 })
-  textBlock(c, `Bakalavriat kunduzgi ta'lim yo'nalishi ${course}-kurs talabasi ${applicant}`, { size: 10.5, align: 'right', width: col, gap: 2 })
+  textBlock(c, UNIVERSITY_HEADER, { size: 11, style: 'bold', align: 'justify', x, width, gap: 1.5 })
+  textBlock(c, `${faculty} fakulteti`, { size: 11, style: 'bold', align: 'justify', x, width, gap: 0.5 })
+  textBlock(c, `Bakalavriat kunduzgi ta'lim yo'nalishi ${course}-kurs talabasi ${applicant}`, { size: 11, style: 'bold', align: 'justify', x, width, gap: 2 })
 }
 
 // Draw both pages at a given vertical scale (1 = default). Returns how far
@@ -170,16 +191,16 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
   const bodySize = 11.5 * s
   textBlock(p1,
     `Men ${name} hozirgi kunda Mirzo Ulug'bek nomidagi O'zbekiston Milliy universitetining ${faculty} fakulteti bakalavriat kunduzgi ta'lim yo'nalishi ${course}-kursida ( ${budget} budjet ) ( ${contract} to'lov-shartnoma ) asosida tahsil olaman.`,
-    { indent: 1, align: 'justify', size: bodySize, gap: g(2) })
+    { firstLineIndent: FIRST_LINE_INDENT, align: 'justify', size: bodySize, gap: g(2) })
   textBlock(p1,
     `${year}/${year + 1} o'quv yilida an'anaviy dars-mashg'ulotlariga qatnashish uchun men ${country} davlati ${region} viloyatidan kelganligim, Toshkent shahrida turar joyim yo'qligi sababli, universitetga qarashli ${ttj}-sonli talabalar turar joyidan yashash uchun joy berishingizni va u yerga ro'yhatga olishingizni so'rayman.`,
-    { indent: 1, align: 'justify', size: bodySize, gap: g(2) })
+    { firstLineIndent: FIRST_LINE_INDENT, align: 'justify', size: bodySize, gap: g(2) })
   textBlock(p1,
     `Universitet "Talabalar turar joyi to'g'risida"gi Nizom, "Ichki tartib qoidalari", "Odob-ahloq qoidalari" va "Talabalar turar joyi Ichki tartib qoidalari"ga to'liq rioya qilib, talabalar turar joylari uchun universitet tomonidan belgilangan oylik ijara to'lovini o'quv yili mobaynida o'rnatilgan tartibda to'lash, shaxsiy gigiena, sog'lom turmush tarzi talablariga qat'iy amal qilib yashashga va'da beraman.`,
-    { indent: 1, align: 'justify', size: bodySize, gap: g(2) })
+    { firstLineIndent: FIRST_LINE_INDENT, align: 'justify', size: bodySize, gap: g(2) })
   textBlock(p1,
     `Pasportim va ijtimoiy mezonlarga muvofiqligimni tasdiqlovchi hujjatlar nusxalarini ilova qilmoqdaman. Ushbu ariza va unga ilova qilinayotgan hujjatlarda ko'rsatilgan barcha ma'lumotlarning haqiqiyligiga shaxsan o'zim javobgarman. Agar men tomonimdan talabalar turar joyi ichki tartib qoidalari buzilsa, u holda menga Nizomda belgilangan tartibda chora ko'rilishiga roziman.`,
-    { indent: 1, align: 'justify', size: bodySize, gap: g(3) })
+    { firstLineIndent: FIRST_LINE_INDENT, align: 'justify', size: bodySize, gap: g(3) })
 
   signatureRow(p1)
   doc.setFont(FONT, 'normal'); doc.setFontSize(11)
@@ -191,8 +212,11 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
   doc.setFontSize(9); doc.text('Sana', p1.right - 4, p1.y, { align: 'right' })
   p1.y += g(6)
 
-  textBlock(p1, 'Eslatma:', { size: 9.5, style: 'bold', gap: 0.5 })
-  for (const note of ARIZA_NOTES) textBlock(p1, note, { size: 8, style: 'italic', gap: 0.6 })
+  // The .docx runs the notes as a decimal list (1. 2. 3.), Times italic, 9 pt.
+  textBlock(p1, 'Eslatma:', { size: 9, style: 'bold', gap: 0.5 })
+  ARIZA_NOTES.forEach((note, i) =>
+    textBlock(p1, `${i + 1}. ${note}`, { size: 9, style: 'italic', firstLineIndent: FIRST_LINE_INDENT, gap: g(0.8) }),
+  )
 
   p1.y += g(4)
   doc.setFont(FONT, 'normal'); doc.setFontSize(10.5)
@@ -203,20 +227,24 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
 
   // ---------- Page 2: TILXAT ----------
   doc.addPage()
-  const p2 = makeCursor(doc, 4)
+  const p2 = makeCursor(doc)
   header(p2, faculty, course, name)
   centerTitle(p2, 'T I L X A T')
 
   textBlock(p2,
     `Men ${name} ${faculty} fakulteti bakalavriat ta'lim yo'nalishi ${course}-kurs talabasi ${ttj}-sonli Talabalar turar joyida yashash davrimda quyidagilarga:`,
-    { indent: 1, align: 'justify', size: bodySize, gap: g(2) })
+    { firstLineIndent: FIRST_LINE_INDENT, align: 'justify', size: bodySize, gap: g(2) })
 
-  bulletList(p2, TILXAT_RULES, 10 * s)
+  // The .docx lists the rules as plain justified paragraphs (firstLine ≈10 mm,
+  // 11.5 pt), each closed with ";" — no bullets or numbers.
+  for (const rule of TILXAT_RULES) {
+    textBlock(p2, rule, { firstLineIndent: FIRST_LINE_INDENT, align: 'justify', size: bodySize, gap: g(1) })
+  }
 
   p2.y += g(1)
   textBlock(p2,
     `Agar men ushbu qoidalarga amal qilmasam yoki boshqa tarzda bo'yin tovlasam Nizomda belgilangan tartibda menga chora ko'rilishi xaqida ogohlantirildim.`,
-    { align: 'justify', size: bodySize, gap: g(2) })
+    { firstLineIndent: FIRST_LINE_INDENT, align: 'justify', size: bodySize, gap: g(2) })
 
   signatureRow(p2)
   doc.setFontSize(11); doc.text('_____________', p2.right, p2.y, { align: 'right' })

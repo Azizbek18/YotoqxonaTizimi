@@ -274,23 +274,31 @@ export default function DekanSozlamalarPage() {
                         {renderSection(Send, 'Yangi ariza — Telegram bildirishnomasi', 0.07, (
                           <div className="space-y-4">
                             <p className={`text-xs leading-relaxed ${ui.muted}`}>
-                                Talaba yangi yo&apos;llanma yoki xorijlik/imtiyozli ariza yuborganda shu Telegram
-                                guruhiga darhol xabar keladi. Yoqish uchun: guruh yarating &rarr;
-                                <span className={`font-semibold ${ui.strong}`}> @MeningYotoqxonamBot</span> ni guruhga
-                                qo&apos;shing &rarr; guruh ID sini (masalan <code>-1001234567890</code>) pastga yozing.
-                                Bo&apos;sh qoldirilsa bildirishnoma o&apos;chadi.
+                                Talaba yangi yo&apos;llanma yoki xorijlik/imtiyozli ariza yuborganda shu yerga darhol
+                                Telegram xabari keladi. Bo&apos;sh qoldirilsa bildirishnoma o&apos;chadi.
                             </p>
+                            <ul className={`text-xs leading-relaxed space-y-1.5 ${ui.muted}`}>
+                                <li>
+                                    <span className={`font-semibold ${ui.strong}`}>Shaxsan o&apos;zingizga:</span>{' '}
+                                    <span className={`font-semibold ${ui.strong}`}>@MeningYotoqxonamBot</span> ni oching
+                                    &rarr; <b>START</b> bosing &rarr; bot yuborgan ID ni pastga yozing.
+                                </li>
+                                <li>
+                                    <span className={`font-semibold ${ui.strong}`}>Guruhga:</span> guruh yarating &rarr;
+                                    botni qo&apos;shing &rarr; guruh ID sini (masalan <code>-1001234567890</code>) yozing.
+                                </li>
+                            </ul>
                             <div className="flex flex-col sm:flex-row sm:items-end gap-3">
                                 <div className="flex-1 min-w-0">
                                     <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${ui.muted}`}>
-                                        Guruh ID yoki @kanal
+                                        Telegram ID (shaxsiy yoki guruh)
                                     </label>
                                     <input
                                         type="text"
                                         inputMode="text"
                                         value={telegramChat}
                                         onChange={(e) => setTelegramChat(e.target.value)}
-                                        placeholder="-1001234567890"
+                                        placeholder="123456789 yoki -1001234567890"
                                         maxLength={40}
                                         className={`${inputCls} w-full`}
                                     />

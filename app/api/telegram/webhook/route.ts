@@ -27,7 +27,12 @@ export async function POST(request: Request) {
 
     const match = text.match(/^\/start(?:@[A-Za-z0-9_]+)?(?:\s+([A-Za-z0-9_-]{20,64}))?$/)
     if (!match?.[1]) {
-      await sendTelegramChatMessage(String(chatId), 'Assalomu alaykum! Arizangiz yuborilgandan keyin saytdagi <b>Telegram botga ulash</b> tugmasini bosing.', { parseMode: 'HTML' })
+      await sendTelegramChatMessage(
+        String(chatId),
+        'Assalomu alaykum! Arizangiz yuborilgandan keyin saytdagi <b>Telegram botga ulash</b> tugmasini bosing.\n\n'
+          + `Agar siz <b>dekan</b> bo‘lsangiz — quyidagi ID ni saytda «Sozlamalar → Yangi ariza Telegram bildirishnomasi»ga kiriting:\n<code>${chatId}</code>`,
+        { parseMode: 'HTML' },
+      )
       return NextResponse.json({ ok: true })
     }
 

@@ -50,16 +50,28 @@ export default function RegisterPage() {
       // Also matters functionally: /api/student/register rejects a
       // faculty/name mismatch against the permit, so prefilling avoids a
       // silent rejection from a student picking something different here.
-      if (passportSeries && email && (restoredType === 'imtiyozli' || jshshir)) {
+      // An imtiyozli (foreign) applicant has no JShSHIR, so when one isn't
+      // in this tab's storage — a closed tab loses it — look them up as
+      // imtiyozli rather than falling back to a yo'llanma the wizard would
+      // then wrongly demand a JShSHIR and patronymic for.
+      const lookupType: 'yollanma' | 'imtiyozli' =
+        restoredType === 'imtiyozli' || !jshshir ? 'imtiyozli' : 'yollanma'
+      if (passportSeries && email) {
         fetch('/api/permit-requests/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ passportSeries, jshshir, email, applicationType: restoredType }),
+          body: JSON.stringify({ passportSeries, jshshir, email, applicationType: lookupType }),
         })
           .then((res) => (res.ok ? res.json() : null))
           .then((payload) => {
             const permit = payload?.data
             if (!permit || permit.status !== 'approved') return
+
+            // The permit row is the source of truth for the application
+            // type — trust it over the (losable) sessionStorage hint.
+            if (permit.application_type === 'imtiyozli' || permit.application_type === 'yollanma') {
+              setApplicationType(permit.application_type)
+            }
 
             const nameParts = String(permit.full_name ?? '').trim().split(/\s+/).filter(Boolean)
             const [lastName = '', firstName = '', ...rest] = nameParts

@@ -23,6 +23,10 @@ export default function Step2Name({ data, onChange, onNext, onBack, requiresMidd
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
   const [focusedField, setFocusedField] = useState<'lastName' | 'firstName' | 'middleName' | 'phone' | null>(null)
+  // Foreign (imtiyozli) applicants whose passport has no patronymic can
+  // opt out — same affordance as the imtiyozli ariza form.
+  const [noMiddleName, setNoMiddleName] = useState(false)
+  const middleNameOptional = !requiresMiddleName
 
   const show3DToast = (message: string, type: 'success' | 'error' = 'error') => {
     toast.custom((t) => (
@@ -56,9 +60,12 @@ export default function Step2Name({ data, onChange, onNext, onBack, requiresMidd
     const { lastName, firstName, middleName, phone, birthDate } = data
     const phoneRegex = /^\d{9}$/;
 
+    // Patronymic: always checked for yo'llanma; for a foreign applicant only
+    // when they left the opt-out unticked AND actually typed something.
+    const checkMiddleName = requiresMiddleName || (!noMiddleName && Boolean(middleName.trim()))
     const nameError = getNamePartError(lastName, 'Familiya')
       || getNamePartError(firstName, 'Ism')
-      || (requiresMiddleName ? getNamePartError(middleName, 'Otasining ismi') : null)
+      || (checkMiddleName ? getNamePartError(middleName, 'Otasining ismi') : null)
     if (nameError) return show3DToast(nameError)
 
     if (!birthDate || birthDate.includes('undefined')) return show3DToast('Tug‘ilgan sanangizni tanlang')
@@ -137,15 +144,18 @@ export default function Step2Name({ data, onChange, onNext, onBack, requiresMidd
             </div>
           </div>
           <div className="space-y-1.5 group">
-            <label className={labelClass}>Otasining ismi</label>
+            <label className={labelClass}>
+              Otasining ismi{middleNameOptional && <span className="text-slate-500 normal-case"> (ixtiyoriy)</span>}
+            </label>
             <div className={`cyber-border ${focusedField === 'middleName' ? 'focused' : ''}`}>
               <div className="cyber-input-inner relative flex items-center">
                 <Sparkles className={`absolute left-4 z-10 transition-colors ${focusedField === 'middleName' ? 'text-indigo-400' : 'text-slate-500'}`} size={16} />
                 <input
                   type="text"
-                  className={glassInput}
-                  placeholder="Otasining ismi"
-                  value={data.middleName || ''}
+                  className={`${glassInput} disabled:opacity-40`}
+                  placeholder={noMiddleName ? '—' : 'Otasining ismi'}
+                  disabled={noMiddleName}
+                  value={noMiddleName ? '' : (data.middleName || '')}
                   onFocus={() => setFocusedField('middleName')}
                   onBlur={() => setFocusedField(null)}
                   onChange={e => onChange({ middleName: cyrillicToLatin(e.target.value) })}
@@ -154,6 +164,20 @@ export default function Step2Name({ data, onChange, onNext, onBack, requiresMidd
             </div>
           </div>
         </div>
+
+        {middleNameOptional && (
+          <label className={`flex items-center gap-2 -mt-1 ml-1 text-[11px] font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            <input
+              type="checkbox"
+              checked={noMiddleName}
+              onChange={e => {
+                setNoMiddleName(e.target.checked)
+                if (e.target.checked) onChange({ middleName: '' })
+              }}
+            />
+            Hujjatimda otasining ismi yo&lsquo;q (xorijiy pasport)
+          </label>
+        )}
 
         {/* Tug'ilgan sana - 3D Interaktiv Element */}
         <div className="space-y-1.5 group">

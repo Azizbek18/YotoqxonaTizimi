@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { fetchFacultyFees, updateFacultyFee } from '@/features/app-settings/client/api'
 import type { FacultyFee } from '@/features/app-settings/types'
 import { dekanUI, statusChip } from '@/lib/dekan-ui'
+import { SkelTableRows } from '@/components/dekan/Skeletons'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
 const sum = (value: number) => `${value.toLocaleString('uz-UZ')} so'm`
@@ -120,9 +121,7 @@ export default function FacultyFeesPage() {
             </thead>
             <tbody className={`divide-y ${ui.divide}`}>
               {loading && fees.length === 0 ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i}><td colSpan={6} className="px-4 py-4"><div className={`h-6 animate-pulse rounded ${ui.inset}`} /></td></tr>
-                ))
+                <SkelTableRows rows={6} cols={6} />
               ) : (
                 fees.map((fee) => {
                   const isEditing = editing === fee.faculty

@@ -27,6 +27,7 @@ import type {
   SuperadminDekansPayload,
 } from '@/features/superadmin-dekans/types'
 import { dekanUI, statusChip } from '@/lib/dekan-ui'
+import { SkelCards } from '@/components/dekan/Skeletons'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
 type Filter = 'all' | 'covered' | 'vacant' | 'attention'
@@ -276,11 +277,7 @@ export default function SuperadminDekansPage() {
       </section>
 
       {loading && !payload ? (
-        <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className={`h-72 animate-pulse rounded-3xl border ${ui.inset}`} />
-          ))}
-        </div>
+        <SkelCards count={6} />
       ) : filtered.length === 0 ? (
         <div className={`rounded-3xl border p-12 text-center ${ui.card}`}>
           <Search className={`mx-auto ${ui.faint}`} size={32} />

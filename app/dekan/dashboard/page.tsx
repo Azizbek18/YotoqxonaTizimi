@@ -31,6 +31,7 @@ import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { directionLabel } from '@/lib/directions'
 import { dekanUI, dekanChart, statusChip } from '@/lib/dekan-ui'
+import { Skel, SkelStatGrid, SkelList } from '@/components/dekan/Skeletons'
 
 interface DashboardStats {
   pendingCount: number
@@ -157,8 +158,13 @@ export default function DekanDashboard() {
 
   if (stats.loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-700" />
+      <div className="space-y-6">
+        <Skel className="h-40 w-full rounded-3xl" />
+        <SkelStatGrid count={4} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <SkelList count={4} />
+          <SkelList count={4} />
+        </div>
       </div>
     )
   }

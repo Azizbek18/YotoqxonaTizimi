@@ -31,6 +31,7 @@ import { permitFacultyLabel } from '@/lib/faculties'
 import { directionLabel } from '@/lib/directions'
 import { genderLabel } from '@/lib/gender'
 import { dekanUI, statusChip, type DekanStatusTone } from '@/lib/dekan-ui'
+import { SkelList } from '@/components/dekan/Skeletons'
 
 interface PermitRequest {
   id: string
@@ -389,9 +390,7 @@ function ArizalarContent() {
 
         {/* List */}
         {loading ? (
-          <div className="flex h-48 items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-700" />
-          </div>
+          <SkelList count={6} />
         ) : filteredRequests.length === 0 ? (
           <div className={`rounded-2xl border p-10 text-center ${ui.card}`}>
             <div className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-slate-800 text-slate-500'}`}>

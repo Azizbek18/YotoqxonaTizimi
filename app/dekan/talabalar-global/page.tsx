@@ -18,6 +18,7 @@ import toast from 'react-hot-toast'
 import { fetchSuperadminStudents, runStudentAction } from '@/features/superadmin-students/client/api'
 import type { SuperadminStudentRow, SuperadminStudentsPage } from '@/features/superadmin-students/types'
 import CustomSelect from '@/components/ui/CustomSelect'
+import { SkelTableRows } from '@/components/dekan/Skeletons'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import { directionLabel } from '@/lib/directions'
 import { dekanUI, statusChip } from '@/lib/dekan-ui'
@@ -192,9 +193,7 @@ export default function GlobalStudentsPage() {
             </thead>
             <tbody className={`divide-y ${ui.divide}`}>
               {loading && students.length === 0 ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i}><td colSpan={6} className="px-4 py-4"><div className={`h-6 animate-pulse rounded ${ui.inset}`} /></td></tr>
-                ))
+                <SkelTableRows rows={8} cols={6} />
               ) : students.length === 0 ? (
                 <tr><td colSpan={6} className={`px-4 py-12 text-center text-sm ${ui.muted}`}>Bu filtrlar bo‘yicha talaba yo‘q</td></tr>
               ) : students.map((s) => {

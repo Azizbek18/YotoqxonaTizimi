@@ -15,6 +15,7 @@ import {
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
+import { SkelList } from '@/components/dekan/Skeletons'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import {
   createSystemAnnouncement,
@@ -152,9 +153,7 @@ export default function SystemAnnouncementsPage() {
       </section>
 
       {loading && items.length === 0 ? (
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => <div key={i} className={`h-24 animate-pulse rounded-2xl border ${ui.inset}`} />)}
-        </div>
+        <SkelList count={4} />
       ) : items.length === 0 ? (
         <div className={`rounded-3xl border p-12 text-center ${ui.card}`}>
           <Megaphone className={`mx-auto ${ui.faint}`} size={30} />

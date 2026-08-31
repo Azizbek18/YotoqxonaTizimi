@@ -33,6 +33,7 @@ import {
 import { ANNOUNCEMENT_TYPES, type AnnouncementType, type AuthoredAnnouncement } from '@/features/announcements/types'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { dekanUI, statusChip, type DekanStatusTone } from '@/lib/dekan-ui'
+import { SkelList } from '@/components/dekan/Skeletons'
 
 // Type is genuine categorisation, so it keeps a colour — but only from the
 // panel's three status tones plus neutral, never a fifth hue.
@@ -293,9 +294,7 @@ export default function DekanAnnouncementsPage() {
 
       {/* List */}
       {loading ? (
-        <div className={`flex h-40 items-center justify-center rounded-2xl border ${ui.card}`}>
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-700" />
-        </div>
+        <SkelList count={5} />
       ) : filtered.length === 0 ? (
         <div className={`rounded-2xl border p-12 text-center ${ui.card}`}>
           <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-slate-800 text-slate-500'}`}>

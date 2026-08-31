@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { fetchIntegrityReport } from '@/features/data-integrity/client/api'
 import type { IntegrityCheck, IntegrityReport } from '@/features/data-integrity/types'
 import { dekanUI, statusChip, type DekanStatusTone } from '@/lib/dekan-ui'
+import { Skel } from '@/components/dekan/Skeletons'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
 const SEVERITY_TONE: Record<IntegrityCheck['severity'], DekanStatusTone> = {
@@ -91,7 +92,14 @@ export default function DataIntegrityPage() {
       {loading && !report ? (
         <div className="grid gap-4 lg:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className={`h-40 animate-pulse rounded-3xl border ${ui.inset}`} />
+            <div key={i} className="space-y-3 rounded-3xl border border-slate-200/70 bg-white/55 p-5 dark:border-slate-800 dark:bg-slate-900/40">
+              <div className="flex items-center gap-3">
+                <Skel className="h-9 w-9 rounded-xl" />
+                <Skel className="h-3.5 w-40" />
+              </div>
+              <Skel className="h-3 w-full" />
+              <Skel className="h-3 w-2/3" />
+            </div>
           ))}
         </div>
       ) : (

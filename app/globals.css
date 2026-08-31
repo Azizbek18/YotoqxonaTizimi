@@ -979,3 +979,52 @@ html.theme-anim canvas {
     animation: anim-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
 }
+
+
+/* ===================================================================
+   SKELETON LOADING
+   A neutral block with a soft left-to-right sheen sweeping across it —
+   used by the dekan / superadmin panels while their data loads.
+   Colour comes from here (keyed off the <html> theme class) so the
+   React component is a plain <div className="skeleton …"> with no
+   theme subscription. Compositor-only (transform), pauses for
+   reduced-motion.
+   =================================================================== */
+@keyframes skeleton-sheen {
+  100% { transform: translateX(100%); }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.625rem;
+  background-color: rgb(148 163 184 / 0.16);
+}
+html.theme-light .skeleton {
+  background-color: rgb(148 163 184 / 0.22);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.07) 45%,
+    rgb(255 255 255 / 0.07) 55%,
+    transparent 100%
+  );
+  animation: skeleton-sheen 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+html.theme-light .skeleton::after {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.65) 45%,
+    rgb(255 255 255 / 0.65) 55%,
+    transparent 100%
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; opacity: 0; }
+}

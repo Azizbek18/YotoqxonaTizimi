@@ -1,10 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Building2, Plus, Loader2, ChevronDown, Save } from 'lucide-react'
+import { Building2, Plus, ChevronDown, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import CustomSelect from '@/components/ui/CustomSelect'
+import { Skel } from '@/components/dekan/Skeletons'
 import { dekanUI } from '@/lib/dekan-ui'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 import {
@@ -98,8 +99,16 @@ export default function SuperadminDormsPage() {
 
   if (dorms === null) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className={`h-6 w-6 animate-spin ${ui.accentText}`} />
+      <div className="space-y-5">
+        <div className="flex items-center justify-between">
+          <Skel className="h-8 w-48" />
+          <Skel className="h-10 w-32 rounded-xl" />
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skel key={i} className="h-24 w-full rounded-2xl" />
+          ))}
+        </div>
       </div>
     )
   }

@@ -12,6 +12,7 @@ import toast from 'react-hot-toast'
 import { fetchAuditLog } from '@/features/audit-log/client/api'
 import type { AuditLogEntry, AuditLogPage } from '@/features/audit-log/types'
 import CustomSelect from '@/components/ui/CustomSelect'
+import { Skel } from '@/components/dekan/Skeletons'
 import { dekanUI, statusChip, type DekanStatusTone } from '@/lib/dekan-ui'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
@@ -152,9 +153,16 @@ export default function AuditLogPageView() {
         </div>
 
         {loading && !page ? (
-          <div className="space-y-px">
+          <div className={`divide-y ${ui.divide}`}>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="px-4 py-4"><div className={`h-6 animate-pulse rounded ${ui.inset}`} /></div>
+              <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+                <Skel className="h-8 w-8 shrink-0 rounded-lg" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skel className="h-3.5 w-48" />
+                  <Skel className="h-2.5 w-32" />
+                </div>
+                <Skel className="hidden h-3 w-20 shrink-0 sm:block" />
+              </div>
             ))}
           </div>
         ) : (page?.entries.length ?? 0) === 0 ? (

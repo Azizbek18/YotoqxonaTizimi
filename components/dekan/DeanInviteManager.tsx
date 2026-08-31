@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 import { dekanUI } from '@/lib/dekan-ui'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import CustomSelect from '@/components/ui/CustomSelect'
 import {
   createDeanInvite,
   fetchDeanInvites,
@@ -194,16 +195,14 @@ export default function DeanInviteManager({
               <div className="mt-4 space-y-3">
                 <div>
                   <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${ui.muted}`}>Fakultet</label>
-                  <select
+                  <CustomSelect
                     value={form.faculty}
-                    onChange={(e) => setForm((f) => ({ ...f, faculty: e.target.value }))}
-                    className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none ${ui.input} ${ui.ring}`}
-                  >
-                    <option value="">— tanlang —</option>
-                    {availableFaculties.map((f) => (
-                      <option key={f.value} value={f.value}>{f.label}</option>
-                    ))}
-                  </select>
+                    onChange={(value) => setForm((f) => ({ ...f, faculty: value }))}
+                    placeholder="— tanlang —"
+                    className={`w-full rounded-xl border px-3 py-2.5 text-sm ${ui.input} ${ui.ring}`}
+                    options={availableFaculties.map((f) => ({ value: f.value, label: f.label }))}
+                    emptyText="Bo‘sh fakultet yo‘q"
+                  />
                   {availableFaculties.length === 0 && (
                     <p className={`mt-1 text-[11px] ${ui.muted}`}>Barcha fakultetда faol dekan bor.</p>
                   )}

@@ -33,6 +33,7 @@ import { genderLabel } from '@/lib/gender'
 import { dekanUI, statusChip, type DekanStatusTone } from '@/lib/dekan-ui'
 import { SkelList } from '@/components/dekan/Skeletons'
 import { Loader } from '@/components/ui/Loader'
+import CustomSelect from '@/components/ui/CustomSelect'
 
 interface PermitRequest {
   id: string
@@ -362,18 +363,18 @@ function ArizalarContent() {
           </div>
 
           {isGlobal && facultiesInQueue.length > 0 && (
-            <select
+            <CustomSelect
               value={facultyFilter}
-              onChange={(e) => { setFacultyFilter(e.target.value); setSelectedReq(null) }}
+              onChange={(value) => { setFacultyFilter(value); setSelectedReq(null) }}
               className={`w-full text-sm py-2.5 px-3 rounded-xl border transition-colors ${ui.input} ${ui.ring}`}
-            >
-              <option value="">Barcha fakultetlar ({requests.length})</option>
-              {facultiesInQueue.map((f) => (
-                <option key={f} value={f}>
-                  {permitFacultyLabel(f)} ({requests.filter((r) => r.faculty === f).length})
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: '', label: `Barcha fakultetlar (${requests.length})` },
+                ...facultiesInQueue.map((f) => ({
+                  value: f,
+                  label: `${permitFacultyLabel(f)} (${requests.filter((r) => r.faculty === f).length})`,
+                })),
+              ]}
+            />
           )}
 
           <div className={`flex flex-wrap gap-1 rounded-xl p-1 ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'}`}>

@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import { dekanUI } from '@/lib/dekan-ui'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { updateDekanAccount } from '@/features/superadmin-dekans/client/api'
 import type { SuperadminDekan } from '@/features/superadmin-dekans/types'
 
@@ -83,16 +84,14 @@ export default function DekanLifecycleControls({
           <label className={`block text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>
             Qaysi fakultetга ko‘chirilsin?
           </label>
-          <select
+          <CustomSelect
             value={target}
-            onChange={(e) => setTarget(e.target.value)}
-            className={`w-full rounded-lg border px-2.5 py-2 text-xs outline-none ${ui.input} ${ui.ring}`}
-          >
-            <option value="">— tanlang —</option>
-            {reassignOptions.map((f) => (
-              <option key={f.value} value={f.value}>{f.label}</option>
-            ))}
-          </select>
+            onChange={setTarget}
+            placeholder="— tanlang —"
+            className={`w-full rounded-lg border px-2.5 py-2 text-xs ${ui.input} ${ui.ring}`}
+            options={reassignOptions.map((f) => ({ value: f.value, label: f.label }))}
+            emptyText="Ko‘chirish uchun fakultet yo‘q"
+          />
           {reassignOptions.length === 0 && (
             <p className={`text-[11px] ${ui.muted}`}>Barcha boshqa fakultetда faol dekan bor.</p>
           )}

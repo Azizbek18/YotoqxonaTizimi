@@ -15,7 +15,7 @@ import {
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { fetchStudentProfile, updateStudentProfile, uploadStudentAvatar } from '@/features/profile/client/api'
+import { fetchStudentProfile, uploadStudentAvatar } from '@/features/profile/client/api'
 import { createStudentApplication, fetchStudentApplications } from '@/features/applications/client/api'
 import { fetchStudentAnnouncements } from '@/features/announcements/client/api'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
@@ -247,7 +247,11 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
     }
   }
 
-  const isProfileIncomplete = mounted && profile !== null && (!profile.avatar_url || !profile.group)
+  // Guruh ro'yxatdan o'tish vaqtida bazaga yoziladi va barcha sahifalarda
+  // profil API orqali o'qiladi. Birinchi kirish oynasi uni qayta so'ramaydi
+  // hamda mavjud qiymatni tasodifan almashtirmaydi — bu yerda faqat rasm
+  // majburiy.
+  const isProfileIncomplete = mounted && profile !== null && !profile.avatar_url
 
   if (!mounted) return null
 
@@ -1099,7 +1103,6 @@ interface ProfileSetupProps {
 }
 
 function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) {
-  const [group, setGroup] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [aiChecking, setAiChecking] = useState(false)
@@ -1199,20 +1202,13 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
       toast.error("Iltimos, avval AI tomonidan tasdiqlangan 3x4 rasm yuklang")
       return
     }
-    if (!group.trim()) {
-      toast.error("Iltimos, guruhingizni kiriting")
-      return
-    }
-
     setSubmitting(true)
     try {
-      // 1. Upload verified avatar to storage
+      // Guruh ro'yxatdan o'tishda saqlangan. Bu modal faqat AI tasdiqlagan
+      // profil rasmini yuklaydi; guruhni qayta yozmaydi.
       await uploadStudentAvatar(file)
 
-      // 2. Update student profile group
-      await updateStudentProfile({ group: group.trim() })
-
-      toast.success("Profil sozlamalari muvaffaqiyatli saqlandi!")
+      toast.success("Profil rasmi muvaffaqiyatli saqlandi!")
       onComplete()
     } catch (err: unknown) {
       console.error(err)
@@ -1238,30 +1234,11 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
             </div>
             <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wide">Profilni Sozlash</h2>
             <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'} max-w-md mx-auto leading-relaxed`}>
-              Tizimga birinchi marta kirganingiz sababli shaxsiy 3x4 rasmingiz va guruhingizni sozlash majburiydir.
+              Tizimga birinchi marta kirganingiz sababli shaxsiy 3x4 rasmingizni yuklash majburiydir. Guruhingiz ro&apos;yxatdan o&apos;tishdagi ma&apos;lumotdan olinadi.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Guruh Input */}
-            <div className="space-y-2">
-              <label className={`block text-xs font-black uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                Guruhingiz
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Masalan: 301-guruh"
-                value={group}
-                onChange={(e) => setGroup(e.target.value)}
-                className={`w-full px-4 py-3 rounded-2xl border text-sm outline-none transition-all ${
-                  isLight
-                    ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-500 focus:bg-white'
-                    : 'bg-white/5 border-white/5 text-white focus:border-cyan-500/40'
-                }`}
-              />
-            </div>
-
             {/* Rasm Upload */}
             <div className="space-y-3">
               <label className={`block text-xs font-black uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
@@ -1355,7 +1332,7 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
             {/* Submit */}
             <button
               type="submit"
-              disabled={submitting || aiChecking || !file || !aiResult?.is_human || !group.trim()}
+              disabled={submitting || aiChecking || !file || !aiResult?.is_human}
               className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all bg-gradient-to-r text-white ${
                 isLight
                   ? 'from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600'

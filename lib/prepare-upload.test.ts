@@ -50,6 +50,18 @@ describe('sniffHeif', () => {
 })
 
 describe('prepareUploadFile', () => {
+  it('materializes a valid mobile image into an independent memory-backed File', async () => {
+    const originalBytes = bytes(0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+    const input = new File([originalBytes], 'yollanma.jpg', { type: 'image/jpeg' })
+
+    const result = await prepareUploadFile(input)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.changed).toBe(false)
+    expect(result.file).not.toBe(input)
+    expect(new Uint8Array(await result.file.arrayBuffer())).toEqual(originalBytes)
+  })
+
   it('repairs a valid JPEG carrying a generic mobile-browser MIME type', async () => {
     const input = new File(
       [bytes(0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)],

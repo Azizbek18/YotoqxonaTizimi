@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 const gatewayGenerate = vi.fn()
 vi.mock('./ai-gateway', () => ({ aiGatewayConfigured: () => true, gatewayGenerate }))
+const groqConfigured = vi.fn(() => false)
+const groqAnalyzeImages = vi.fn()
 vi.mock('./groq', () => ({
-  groqConfigured: () => false,
+  groqConfigured,
   groqGenerateText: vi.fn(),
-  groqAnalyzeImages: vi.fn(),
+  groqAnalyzeImages,
 }))
 const callGemini = vi.fn()
 vi.mock('./gemini', () => ({ callGemini }))
@@ -15,13 +17,20 @@ vi.mock('./telegram', () => ({ sendTelegramAdminMessage: vi.fn() }))
 const { aiChatReply, aiVisionJson } = await import('./ai')
 
 describe('AI provider routing with Gateway', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    groqConfigured.mockReturnValue(false)
+  })
 
-  it('uses Gateway for vision before consuming Gemini quota', async () => {
+  it('uses paid Gateway for vision before Groq and Gemini', async () => {
+    groqConfigured.mockReturnValue(true)
     gatewayGenerate.mockResolvedValue('{"valid":true}')
-    const result = await aiVisionJson({ contents: [] }, 'gemini-key')
+    const result = await aiVisionJson({
+      contents: [{ parts: [{ inlineData: { mimeType: 'image/jpeg', data: 'AAAA' } }] }],
+    }, 'gemini-key')
     expect(result.candidates[0].content.parts[0].text).toBe('{"valid":true}')
     expect(gatewayGenerate).toHaveBeenCalledWith(expect.anything(), 'vision')
+    expect(groqAnalyzeImages).not.toHaveBeenCalled()
     expect(callGemini).not.toHaveBeenCalled()
   })
 

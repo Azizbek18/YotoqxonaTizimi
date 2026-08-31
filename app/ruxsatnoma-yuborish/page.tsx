@@ -32,6 +32,27 @@ interface Particle {
   alpha: number
 }
 
+const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
+
+async function postWithOneNetworkRetry(url: string, buildBody: () => FormData): Promise<Response> {
+  try {
+    return await fetch(url, { method: 'POST', body: buildBody() })
+  } catch {
+    // A single retry covers brief 4G handovers and Android in-app browser
+    // upload interruptions. This endpoint only analyzes a file and does not
+    // create a database row, so retrying it cannot duplicate an application.
+    await wait(900)
+    return fetch(url, { method: 'POST', body: buildBody() })
+  }
+}
+
+function submissionErrorMessage(error: unknown): string {
+  if (error instanceof TypeError && /fetch|network|load/i.test(error.message)) {
+    return "Faylni serverga yuborib bo‘lmadi. Internetni tekshiring yoki Telegram ichki brauzeri o‘rniga Chrome’da ochib, qayta urinib ko‘ring."
+  }
+  return error instanceof Error ? error.message : 'Xatolik yuz berdi'
+}
+
 export default function RuxsatnomaYuborish() {
   const router = useRouter()
   const theme = useThemeStore((state) => state.theme)
@@ -468,16 +489,16 @@ export default function RuxsatnomaYuborish() {
       // my.gov.uz namunasiga mosligi va undagi FISH/JSHSHIR/pasport
       // ma'lumotlari formada kiritilgan ma'lumotlar bilan mosligini
       // tasdiqlaydi. Fayl saqlanishidan oldin ishlaydi.
-      const aiFormData = new FormData()
-      aiFormData.append('file', file)
-      aiFormData.append('fullName', fullName.trim())
-      aiFormData.append('jshshir', cleanJshshir)
-      aiFormData.append('passportSeries', cleanPassport)
+      const buildAiFormData = () => {
+        const aiFormData = new FormData()
+        aiFormData.append('file', file)
+        aiFormData.append('fullName', fullName.trim())
+        aiFormData.append('jshshir', cleanJshshir)
+        aiFormData.append('passportSeries', cleanPassport)
+        return aiFormData
+      }
 
-      const aiResponse = await fetch('/api/ai/yollanma-tekshiruv', {
-        method: 'POST',
-        body: aiFormData
-      })
+      const aiResponse = await postWithOneNetworkRetry('/api/ai/yollanma-tekshiruv', buildAiFormData)
       const aiResult = await aiResponse.json()
 
       if (!aiResponse.ok) {
@@ -538,7 +559,7 @@ export default function RuxsatnomaYuborish() {
           : "Yo'llanma ko'rib chiqish uchun yuborildi!",
       )
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Xatolik yuz berdi')
+      showToast('error', submissionErrorMessage(err))
       console.error(err)
     } finally {
       setLoading(false)

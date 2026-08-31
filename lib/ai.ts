@@ -6,7 +6,7 @@ import { aiGatewayConfigured, gatewayGenerate } from './ai-gateway'
 
 // Provider routing for the AI features:
 //   - chat: Groq first, cheap AI Gateway models next, Gemini last
-//   - images/OCR: Groq Qwen vision first, Gateway next, Gemini last
+//   - images/OCR: paid Gateway first, Groq Qwen next, Gemini last
 //   - PDFs: Gateway first, Gemini last (Groq vision does not accept PDFs)
 // Both helpers take the Gemini-shaped request the routes already build and
 // return a Gemini-shaped response, so callers only swap the function name.
@@ -68,11 +68,11 @@ async function alertOutage(where: string, error: unknown): Promise<void> {
   const message = error instanceof Error ? error.message : String(error)
   await sendTelegramAdminMessage(
     `⚠️ Sun'iy intellekt ishlamayapti (${where})\n\n${describeAiFailure(message)}\n\n` +
-      "Talabalar hozircha AI javob o'rniga zaxira javob / qo'lda tekshiruv olishmoqda.",
+      "AI talab qiladigan amallar xavfsizlik uchun o'tkazilmayapti; provayder tiklangach qayta urinish kerak.",
   )
 }
 
-// ---- vision / OCR: Groq image primary, Gateway/Gemini fallback ----
+// ---- vision / OCR: Gateway primary, Groq/Gemini fallback ----
 
 export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string | undefined): Promise<GeminiResponse> {
   const system = payload.systemInstruction?.parts?.map((p) => p.text).filter(Boolean).join('\n\n') ?? ''
@@ -90,21 +90,21 @@ export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string 
   const wantsJson = payload.generationConfig?.responseMimeType === 'application/json'
 
   let providerError: unknown = null
-  if (groqConfigured() && onlyImages) {
-    try {
-      return shaped(await groqAnalyzeImages(system, prompt, images, wantsJson))
-    } catch (error) {
-      providerError = error
-      console.error('Groq vision call failed, trying AI Gateway:', error)
-    }
-  }
-
   if (aiGatewayConfigured()) {
     try {
       return shaped(await gatewayGenerate(payload, 'vision'))
     } catch (error) {
+      providerError = error
+      console.error('AI Gateway vision call failed, trying Groq:', error)
+    }
+  }
+
+  if (groqConfigured() && onlyImages) {
+    try {
+      return shaped(await groqAnalyzeImages(system, prompt, images, wantsJson))
+    } catch (error) {
       providerError = providerError ?? error
-      console.error('AI Gateway vision call failed, trying Gemini:', error)
+      console.error('Groq vision fallback failed, trying Gemini:', error)
     }
   }
 

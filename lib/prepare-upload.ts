@@ -89,20 +89,26 @@ const DETECTED_FILE_META = {
   webp: { type: 'image/webp', extension: 'webp' },
 } as const
 
-function withCanonicalFileMetadata(input: File, kind: keyof typeof DETECTED_FILE_META): PreparedUpload {
+async function materializeCanonicalFile(input: File, kind: keyof typeof DETECTED_FILE_META): Promise<PreparedUpload> {
   const meta = DETECTED_FILE_META[kind]
-  if (input.type.toLowerCase() === meta.type) {
-    return { ok: true, file: input, changed: false }
-  }
-
+  const metadataChanged = input.type.toLowerCase() !== meta.type
   const stem = input.name.replace(/\.[^.]+$/, '').trim() || 'hujjat'
+  const fileName = metadataChanged ? `${stem}.${meta.extension}` : input.name
+
+  // Read the entire content while the native file picker still owns the
+  // selected URI. Some Android in-app browsers revoke their temporary
+  // content-provider handle after the <input> is unmounted between wizard
+  // steps. Keeping the original File then makes fetch(FormData) fail before
+  // a request reaches the server. A memory-backed File is independent of
+  // that temporary handle and is safe because uploads are capped at 4 MB.
+  const bytes = await input.arrayBuffer()
   return {
     ok: true,
-    file: new File([input], `${stem}.${meta.extension}`, {
+    file: new File([bytes], fileName, {
       type: meta.type,
       lastModified: input.lastModified,
     }),
-    changed: true,
+    changed: metadataChanged,
   }
 }
 
@@ -125,12 +131,21 @@ export async function prepareUploadFile(
     if (input.size > MAX_BYTES) {
       return { ok: false, message: "PDF hajmi 4 MB dan katta. Uni rasm (JPG) ko'rinishida yuklang." }
     }
-    return withCanonicalFileMetadata(input, kind)
+    try {
+      return await materializeCanonicalFile(input, kind)
+    } catch {
+      return { ok: false, message: "Faylni to'liq o'qib bo'lmadi. Uni telefon xotirasiga saqlab, qayta tanlang." }
+    }
   }
 
-  // Already a valid raster image, small enough — leave it exactly as picked.
+  // Already a valid raster image, small enough — preserve its bytes, but
+  // detach them from the Android file picker's temporary content URI.
   if (kind && input.size <= MAX_BYTES) {
-    return withCanonicalFileMetadata(input, kind)
+    try {
+      return await materializeCanonicalFile(input, kind)
+    } catch {
+      return { ok: false, message: "Rasmni to'liq o'qib bo'lmadi. Uni telefon xotirasiga saqlab, qayta tanlang." }
+    }
   }
 
   // Everything past here needs a fresh JPEG: HEIF, oversized, mislabelled,

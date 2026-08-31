@@ -68,6 +68,18 @@ const STATUS_META: Record<PermitRequest['status'], { label: string; tone: DekanS
   registered: { label: 'Ro‘yxatdan o‘tgan', tone: 'info' },
 }
 
+// Dekan arizani qachon — kunini emas, soat-daqiqasigacha — ko'rishi kerak,
+// shunda navbat qay tartibda kelganini aniqlay oladi.
+function submittedDate(iso: string) {
+  return new Date(iso).toLocaleDateString('uz-UZ')
+}
+function submittedDateTime(iso: string) {
+  return new Date(iso).toLocaleString('uz-UZ', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
 function ArizalarContent() {
   const searchParams = useSearchParams()
   const theme = useThemeStore((state) => state.theme)
@@ -181,6 +193,7 @@ function ArizalarContent() {
       'Xona raqami',
       'Status',
       'Yuborilgan sana',
+      'Yuborilgan vaqt',
     ]
 
     const rawRows = dataToExport.map((req, idx) => [
@@ -197,7 +210,8 @@ function ArizalarContent() {
       `${req.course}-kurs`,
       req.room_number ? `№-${req.room_number}` : 'Biriktirilmagan',
       req.status,
-      new Date(req.created_at).toLocaleDateString('uz-UZ'),
+      submittedDate(req.created_at),
+      new Date(req.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }),
     ])
 
     downloadXlsx({
@@ -453,8 +467,8 @@ function ArizalarContent() {
                         ) : (
                           <span className={`text-[10px] font-medium ${ui.faint}`}>Xona biriktirilmagan</span>
                         )}
-                        <p className={`text-[9px] mt-0.5 ${ui.faint}`}>
-                          {new Date(req.created_at).toLocaleDateString('uz-UZ')}
+                        <p className={`text-[9px] mt-0.5 tabular-nums ${ui.faint}`}>
+                          {submittedDateTime(req.created_at)}
                         </p>
                       </div>
                       <ChevronRight size={16} className={ui.faint} />
@@ -547,6 +561,7 @@ function ArizalarContent() {
                 {fieldRow('Yo‘nalish', <span className="max-w-[60%] truncate inline-block align-bottom" title={directionLabel(selectedReq.direction)}>{directionLabel(selectedReq.direction)}</span>)}
                 {fieldRow('Kurs', `${selectedReq.course}-kurs`)}
                 {fieldRow('Jinsi', genderLabel(selectedReq.gender))}
+                {fieldRow('Yuborilgan', <span className="tabular-nums">{submittedDateTime(selectedReq.created_at)}</span>)}
                 {selectedReq.reject_reason && (
                   <div className={`mt-3 rounded-xl border p-3 ${ui.dangerSoft}`}>
                     <p className="text-[10px] font-bold uppercase">Rad etish sababi</p>

@@ -371,8 +371,10 @@ export default function DekanDashboard() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`hidden sm:inline text-[9px] font-medium px-2 py-0.5 rounded ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-slate-800 text-slate-400'}`}>
-                        {new Date(req.created_at).toLocaleDateString('uz-UZ')}
+                      <span className={`hidden sm:inline text-[9px] font-medium tabular-nums px-2 py-0.5 rounded ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-slate-800 text-slate-400'}`}>
+                        {new Date(req.created_at).toLocaleString('uz-UZ', {
+                          day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                        })}
                       </span>
                       <Link
                         href={`/dekan/arizalar?id=${req.id}`}

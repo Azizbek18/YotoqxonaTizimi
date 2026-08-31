@@ -85,11 +85,13 @@ export function createAppSettingsRepository() {
 
   // For reads only: fall back to the primary building while a faculty is
   // still being set up (matches the fee fallback and PRIMARY_FACULTY).
-  async function resolveDormIdForRead(faculty: string): Promise<string | null> {
+  // `ownDorm` says whether the id is the faculty's own — the TTJ building
+  // number must never be borrowed from another building (see getDormSettings).
+  async function resolveDormIdForRead(faculty: string): Promise<{ dormId: string | null; ownDorm: boolean }> {
     const own = await ownDormId(faculty)
-    if (own) return own
-    if (faculty !== PRIMARY_FACULTY) return ownDormId(PRIMARY_FACULTY)
-    return null
+    if (own) return { dormId: own, ownDorm: true }
+    if (faculty !== PRIMARY_FACULTY) return { dormId: await ownDormId(PRIMARY_FACULTY), ownDorm: false }
+    return { dormId: null, ownDorm: false }
   }
 
   async function getFees(faculty: string) {
@@ -114,7 +116,7 @@ export function createAppSettingsRepository() {
 
   async function getDormSettings(faculty: string) {
     try {
-      const dormId = await resolveDormIdForRead(faculty)
+      const { dormId, ownDorm } = await resolveDormIdForRead(faculty)
       if (dormId) {
         const { data, error } = await supabase
           .from('dorms')
@@ -122,7 +124,15 @@ export function createAppSettingsRepository() {
           .eq('id', dormId)
           .maybeSingle()
         if (error) throw error
-        if (data) return toDormSettings(data as Record<string, unknown>)
+        if (data) {
+          const settings = toDormSettings(data as Record<string, unknown>)
+          // ttj_name is the building's official number and lands on the
+          // imtiyozli Ariza/Tilxat ("__-sonli talabalar turar joyi"). A
+          // faculty with no dorm of its own must show a blank to fill in,
+          // never the primary building's number.
+          if (!ownDorm) settings.ttjName = ''
+          return settings
+        }
       }
     } catch (error) {
       // Deploy window: this code can go live a few minutes before

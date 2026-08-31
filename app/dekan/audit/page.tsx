@@ -11,6 +11,7 @@ import {
 import toast from 'react-hot-toast'
 import { fetchAuditLog } from '@/features/audit-log/client/api'
 import type { AuditLogEntry, AuditLogPage } from '@/features/audit-log/types'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { dekanUI, statusChip, type DekanStatusTone } from '@/lib/dekan-ui'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
@@ -98,35 +99,30 @@ export default function AuditLogPageView() {
         </div>
 
         <div className="mt-6 grid gap-2.5 sm:grid-cols-3">
-          <select
+          <CustomSelect
             value={eventType}
-            onChange={(e) => setEventType(e.target.value)}
-            className={`rounded-xl border px-3 py-2.5 text-sm outline-none ${ui.input} ${ui.ring}`}
-          >
-            <option value="">Barcha amallar</option>
-            {(page?.eventTypes ?? []).map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          <select
+            onChange={setEventType}
+            className={`rounded-xl border px-3 py-2.5 text-sm ${ui.input}`}
+            options={[
+              { value: '', label: 'Barcha amallar' },
+              ...(page?.eventTypes ?? []).map((t) => ({ value: t, label: t })),
+            ]}
+          />
+          <CustomSelect
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className={`rounded-xl border px-3 py-2.5 text-sm outline-none ${ui.input} ${ui.ring}`}
-          >
-            <option value="">Har qanday holat</option>
-            {Object.entries(STATUS_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-          <select
+            onChange={setStatus}
+            className={`rounded-xl border px-3 py-2.5 text-sm ${ui.input}`}
+            options={[
+              { value: '', label: 'Har qanday holat' },
+              ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label })),
+            ]}
+          />
+          <CustomSelect
             value={String(sinceHours ?? '')}
-            onChange={(e) => setSinceHours(e.target.value ? Number(e.target.value) : null)}
-            className={`rounded-xl border px-3 py-2.5 text-sm outline-none ${ui.input} ${ui.ring}`}
-          >
-            {SINCE_OPTIONS.map((o) => (
-              <option key={o.label} value={String(o.hours ?? '')}>{o.label}</option>
-            ))}
-          </select>
+            onChange={(v) => setSinceHours(v ? Number(v) : null)}
+            className={`rounded-xl border px-3 py-2.5 text-sm ${ui.input}`}
+            options={SINCE_OPTIONS.map((o) => ({ value: String(o.hours ?? ''), label: o.label }))}
+          />
         </div>
       </section>
 

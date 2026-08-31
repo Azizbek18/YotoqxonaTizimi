@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import {
   createSystemAnnouncement,
@@ -220,13 +221,12 @@ export default function SystemAnnouncementsPage() {
                 className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none ${ui.input} ${ui.ring}`}
               />
               <div className="flex flex-wrap items-center gap-3">
-                <select
+                <CustomSelect
                   value={form.type}
-                  onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as AnnouncementType }))}
-                  className={`rounded-xl border px-3 py-2.5 text-sm outline-none ${ui.input} ${ui.ring}`}
-                >
-                  {ANNOUNCEMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
+                  onChange={(v) => setForm((f) => ({ ...f, type: v as AnnouncementType }))}
+                  className={`rounded-xl border px-3 py-2.5 text-sm ${ui.input}`}
+                  options={ANNOUNCEMENT_TYPES.map((t) => ({ value: t, label: t }))}
+                />
                 <label className={`flex items-center gap-2 text-xs font-bold ${ui.body}`}>
                   <input type="checkbox" checked={form.is_published} onChange={(e) => setForm((f) => ({ ...f, is_published: e.target.checked }))} />
                   Darhol chop etilsin

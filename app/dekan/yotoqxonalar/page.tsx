@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Building2, Plus, Loader2, ChevronDown, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { dekanUI } from '@/lib/dekan-ui'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 import {
@@ -182,17 +183,16 @@ export default function SuperadminDormsPage() {
                     {d.floors.map((f) => (
                       <div key={f.floor} className="flex items-center gap-2">
                         <span className={`w-16 text-xs font-bold ${ui.strong}`}>{f.floor}-qavat</span>
-                        <select
+                        <CustomSelect
                           value={f.faculty ?? ''}
                           disabled={busy}
-                          onChange={(e) => reassign(dorm.id, f.floor, e.target.value || null)}
+                          onChange={(v) => reassign(dorm.id, f.floor, v || null)}
                           className={`flex-1 rounded-lg border px-2.5 py-1.5 text-xs ${ui.input}`}
-                        >
-                          <option value="">— bo&apos;sh —</option>
-                          {PERMIT_FACULTIES.map((pf) => (
-                            <option key={pf.value} value={pf.value}>{pf.label}</option>
-                          ))}
-                        </select>
+                          options={[
+                            { value: '', label: '— bo‘sh —' },
+                            ...PERMIT_FACULTIES.map((pf) => ({ value: pf.value, label: pf.label })),
+                          ]}
+                        />
                         {f.pendingFaculty && (
                           <span className="text-[9px] font-bold uppercase text-amber-500">
                             {permitFacultyLabel(f.pendingFaculty)} kutmoqda

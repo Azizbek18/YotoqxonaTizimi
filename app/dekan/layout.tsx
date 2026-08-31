@@ -27,6 +27,7 @@ import {
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useDekanScope } from '@/lib/hooks/useDekanScope'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
@@ -312,23 +313,19 @@ export default function DekanLayout({
           <label className={`block text-[9px] font-bold uppercase tracking-[0.14em] mb-1.5 ${ui.muted}`}>
             Ish maydoni
           </label>
-          <div className="relative">
-            <select
-              value={scopeIsGlobal ? '*' : saScope}
-              onChange={(e) => {
-                setSuperadminScope(e.target.value)
-                router.refresh()
-                window.location.reload()
-              }}
-              className={`w-full appearance-none rounded-xl border pl-3 pr-9 py-2.5 text-xs font-bold outline-none transition-colors ${ui.input} ${ui.ring}`}
-            >
-              <option value="*">🌐 Barcha fakultetlar</option>
-              {PERMIT_FACULTIES.map((f) => (
-                <option key={f.value} value={f.value}>{f.label}</option>
-              ))}
-            </select>
-            <ChevronRight size={14} className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rotate-90 ${ui.faint}`} />
-          </div>
+          <CustomSelect
+            value={scopeIsGlobal ? '*' : saScope}
+            onChange={(v) => {
+              setSuperadminScope(v)
+              router.refresh()
+              window.location.reload()
+            }}
+            className={`w-full rounded-xl border pl-3 pr-9 py-2.5 text-xs font-bold ${ui.input}`}
+            options={[
+              { value: '*', label: '🌐 Barcha fakultetlar' },
+              ...PERMIT_FACULTIES.map((f) => ({ value: f.value, label: f.label })),
+            ]}
+          />
         </div>
       )}
 

@@ -17,6 +17,7 @@ import {
 import toast from 'react-hot-toast'
 import { fetchSuperadminStudents, runStudentAction } from '@/features/superadmin-students/client/api'
 import type { SuperadminStudentRow, SuperadminStudentsPage } from '@/features/superadmin-students/types'
+import CustomSelect from '@/components/ui/CustomSelect'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import { directionLabel } from '@/lib/directions'
 import { dekanUI, statusChip } from '@/lib/dekan-ui'
@@ -123,22 +124,37 @@ export default function GlobalStudentsPage() {
           />
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <select value={faculty} onChange={(e) => setFaculty(e.target.value)} className={`rounded-xl border px-3 py-2.5 text-sm outline-none ${ui.input} ${ui.ring}`}>
-            <option value="">Barcha fakultet</option>
-            {PERMIT_FACULTIES.map((f) => {
-              const c = page?.facultyCounts.find((x) => x.faculty === f.value)?.count
-              return <option key={f.value} value={f.value}>{f.label}{c != null ? ` (${c})` : ''}</option>
-            })}
-          </select>
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className={`rounded-xl border px-3 py-2.5 text-sm outline-none ${ui.input} ${ui.ring}`}>
-            <option value="">Har qanday holat</option>
-            {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-          <select value={placement} onChange={(e) => setPlacement(e.target.value)} className={`rounded-xl border px-3 py-2.5 text-sm outline-none ${ui.input} ${ui.ring}`}>
-            <option value="">Joylashuv: barchasi</option>
-            <option value="placed">Xonaga joylashgan</option>
-            <option value="roomless">Xonasiz</option>
-          </select>
+          <CustomSelect
+            value={faculty}
+            onChange={setFaculty}
+            className={`rounded-xl border px-3 py-2.5 text-sm ${ui.input}`}
+            options={[
+              { value: '', label: 'Barcha fakultet' },
+              ...PERMIT_FACULTIES.map((f) => {
+                const c = page?.facultyCounts.find((x) => x.faculty === f.value)?.count
+                return { value: f.value, label: `${f.label}${c != null ? ` (${c})` : ''}` }
+              }),
+            ]}
+          />
+          <CustomSelect
+            value={status}
+            onChange={setStatus}
+            className={`rounded-xl border px-3 py-2.5 text-sm ${ui.input}`}
+            options={[
+              { value: '', label: 'Har qanday holat' },
+              ...Object.entries(STATUS_LABEL).map(([v, l]) => ({ value: v, label: l })),
+            ]}
+          />
+          <CustomSelect
+            value={placement}
+            onChange={setPlacement}
+            className={`rounded-xl border px-3 py-2.5 text-sm ${ui.input}`}
+            options={[
+              { value: '', label: 'Joylashuv: barchasi' },
+              { value: 'placed', label: 'Xonaga joylashgan' },
+              { value: 'roomless', label: 'Xonasiz' },
+            ]}
+          />
           <div className="flex items-center gap-3 px-1">
             <label className={`flex items-center gap-1.5 text-[11px] font-bold ${ui.body}`}>
               <input type="checkbox" checked={blacklistedOnly} onChange={(e) => setBlacklistedOnly(e.target.checked)} /> Qora ro‘yxat
@@ -314,12 +330,13 @@ function ActionModal({ student, mode, isLight, onClose, onDone }: {
         <div className="mt-4 space-y-3">
           {mode === 'move' && (
             <>
-              <select value={faculty} onChange={(e) => setFaculty(e.target.value)} className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none ${ui.input} ${ui.ring}`}>
-                <option value="">— to‘g‘ri fakultetni tanlang —</option>
-                {PERMIT_FACULTIES.filter((f) => f.value !== student.faculty).map((f) => (
-                  <option key={f.value} value={f.value}>{f.label}</option>
-                ))}
-              </select>
+              <CustomSelect
+                value={faculty}
+                onChange={setFaculty}
+                placeholder="— to‘g‘ri fakultetni tanlang —"
+                className={`w-full rounded-xl border px-3 py-2.5 text-sm ${ui.input}`}
+                options={PERMIT_FACULTIES.filter((f) => f.value !== student.faculty).map((f) => ({ value: f.value, label: f.label }))}
+              />
               {student.roomNumber && (
                 <p className={`text-[11px] ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>
                   Diqqat: xona (№{student.roomNumber}) bo‘shatiladi — yangi fakultet dekani qayta joylashtiradi.

@@ -2,5 +2,5 @@
     "buildCommand": "npm run build:production",
     "outputDirectory": ".next",
     "devCommand": "next dev",
-    "installCommand": "npm ci"
+    "installCommand": "npm install --no-audit --no-fund"
 }

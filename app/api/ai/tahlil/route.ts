@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { aiVisionJson } from '@/lib/ai'
-import { groqConfigured } from '@/lib/groq'
 import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { extractReceiptPath } from '@/lib/safe-storage-url'
@@ -81,7 +80,7 @@ export async function POST(req: NextRequest) {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY
-    if (!geminiApiKey && !groqConfigured()) {
+    if (!geminiApiKey) {
       return NextResponse.json({ error: 'AI tekshiruv xizmati vaqtincha mavjud emas' }, { status: 503 })
     }
 

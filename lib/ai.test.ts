@@ -22,13 +22,16 @@ describe('describeAiFailure', () => {
   it('names an invalid key', () => {
     expect(describeAiFailure('Groq API error (401): PERMISSION_DENIED')).toMatch(/kalit/i)
   })
+  it('names a dead model', () => {
+    expect(describeAiFailure('Groq API error (404): the model does not exist')).toMatch(/model/i)
+  })
   it('passes an unknown error through, trimmed', () => {
     expect(describeAiFailure('weird thing')).toBe('weird thing')
   })
 })
 
-describe('aiVisionJson — Gemini primary, Groq fallback', () => {
-  it('uses Gemini when it succeeds and never calls Groq', async () => {
+describe('aiVisionJson — Gemini only', () => {
+  it('returns the Gemini text, Groq is never involved', async () => {
     vi.stubEnv('GROQ_API_KEY', 'g')
     const fetchMock = vi.fn(async (url: unknown) => (isGroq(url) ? GROQ_OK('x') : GEMINI_OK()))
     vi.stubGlobal('fetch', fetchMock)
@@ -41,41 +44,26 @@ describe('aiVisionJson — Gemini primary, Groq fallback', () => {
     expect(fetchMock.mock.calls.every((c) => !isGroq(c[0]))).toBe(true)
   })
 
-  it('falls back to Groq (and strips code fences) when Gemini fails', async () => {
-    vi.stubEnv('GROQ_API_KEY', 'g')
-    const fetchMock = vi.fn(async (url: unknown) =>
-      isGroq(url) ? GROQ_OK('```json\n{"ok":true}\n```') : new Response('boom', { status: 500 }),
-    )
+  it('throws (no silent success) when Gemini fails', async () => {
+    const fetchMock = vi.fn(async () => new Response('boom', { status: 500 }))
     vi.stubGlobal('fetch', fetchMock)
-
-    const res = await aiVisionJson(
-      { contents: [{ parts: [{ text: 'check' }, { inlineData: { mimeType: 'image/jpeg', data: 'AAAA' } }] }] },
-      'gemini-key',
-    )
-    expect(res.candidates[0].content.parts[0].text).toBe('{"ok":true}')
-  })
-
-  it('does not fall back to Groq for a PDF (image models cannot read it)', async () => {
-    vi.stubEnv('GROQ_API_KEY', 'g')
-    const fetchMock = vi.fn(async (url: unknown) => (isGroq(url) ? GROQ_OK('x') : new Response('boom', { status: 500 })))
-    vi.stubGlobal('fetch', fetchMock)
-
     await expect(
       aiVisionJson(
-        { contents: [{ parts: [{ text: 'x' }, { inlineData: { mimeType: 'application/pdf', data: 'JVBER' } }] }] },
+        { contents: [{ parts: [{ text: 'x' }, { inlineData: { mimeType: 'image/jpeg', data: 'AAAA' } }] }] },
         'gemini-key',
       ),
     ).rejects.toThrow()
-    expect(fetchMock.mock.calls.every((c) => !isGroq(c[0]))).toBe(true)
+  })
+
+  it('throws immediately when no Gemini key is set', async () => {
+    await expect(aiVisionJson({ contents: [] }, undefined)).rejects.toThrow(/GEMINI_API_KEY/)
   })
 })
 
 describe('aiChatReply — Groq primary, Gemini fallback', () => {
   it('uses Groq when configured', async () => {
     vi.stubEnv('GROQ_API_KEY', 'g')
-    const fetchMock = vi.fn(async (url: unknown) =>
-      isGroq(url) ? GROQ_OK('salom') : GEMINI_OK(),
-    )
+    const fetchMock = vi.fn(async (url: unknown) => (isGroq(url) ? GROQ_OK('salom') : GEMINI_OK()))
     vi.stubGlobal('fetch', fetchMock)
 
     const res = await aiChatReply(
@@ -84,6 +72,20 @@ describe('aiChatReply — Groq primary, Gemini fallback', () => {
     )
     expect(res.candidates[0].content.parts[0].text).toBe('salom')
     expect(isGroq(fetchMock.mock.calls[0][0])).toBe(true)
+  })
+
+  it('falls back to Gemini when Groq fails', async () => {
+    vi.stubEnv('GROQ_API_KEY', 'g')
+    const fetchMock = vi.fn(async (url: unknown) =>
+      isGroq(url) ? new Response('down', { status: 503 }) : GEMINI_OK(),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const res = await aiChatReply(
+      { contents: [{ role: 'user', parts: [{ text: 'hi' }] }], systemInstruction: { parts: [{ text: 'sys' }] } },
+      'gemini-key',
+    )
+    expect(res.candidates[0].content.parts[0].text).toBe('natija')
   })
 
   it('falls back to Gemini when Groq is not configured', async () => {

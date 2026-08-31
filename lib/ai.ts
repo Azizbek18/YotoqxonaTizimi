@@ -1,11 +1,11 @@
 import 'server-only'
 import { callGemini } from './gemini'
-import { groqAnalyzeImage, groqConfigured, groqGenerateText } from './groq'
+import { groqConfigured, groqGenerateText } from './groq'
 import { sendTelegramMessage } from './telegram'
 
-// Provider routing for every AI feature:
-//   - chat assistant + free-text checks  -> Groq (free) first, Gemini fallback
-//   - image / document checks (OCR)      -> Gemini first (best OCR), Groq fallback
+// Provider routing for the AI features:
+//   - chat assistant  -> Groq (free) first, Gemini fallback
+//   - image / document checks (OCR) -> Gemini only (Groq has no vision model)
 // Both helpers take the Gemini-shaped request the routes already build and
 // return a Gemini-shaped response, so callers only swap the function name.
 
@@ -27,21 +27,6 @@ function textOf(res: unknown): string {
   return r?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
 }
 
-// Markdown code fences slip past `response_format: json_object` on some open
-// models — strip them so the caller's JSON.parse still works.
-function unfence(text: string): string {
-  return text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-}
-
-function splitPayload(payload: GeminiPayload) {
-  const system = payload.systemInstruction?.parts?.map((p) => p.text).filter(Boolean).join('\n\n') ?? ''
-  const parts = (payload.contents ?? []).flatMap((c) => c.parts ?? [])
-  const image = parts.find((p) => p.inlineData)?.inlineData ?? null
-  const texts = parts.filter((p) => typeof p.text === 'string').map((p) => p.text as string)
-  const wantsJson = String(payload.generationConfig?.responseMimeType ?? '').includes('json')
-  return { system, image, texts, wantsJson }
-}
-
 // ---- outage alert (throttled, once per warm instance per window) ----
 
 const ALERT_COOLDOWN_MS = 30 * 60_000
@@ -54,7 +39,7 @@ export function describeAiFailure(message: string): string {
   if (/API_KEY_INVALID|API key not valid|PERMISSION_DENIED|\(40[13]\)/i.test(message)) {
     return 'AI API kaliti yaroqsiz yoki cheklangan (Vercel: GEMINI_API_KEY / GROQ_API_KEY).'
   }
-  if (/is not found|not supported|\(404\)/i.test(message)) {
+  if (/is not found|not supported|does not exist|\(404\)/i.test(message)) {
     return "AI modeli topilmadi — model nomi eskirgan bo'lishi mumkin (lib/gemini.ts / lib/groq.ts)."
   }
   return message.slice(0, 300)
@@ -71,48 +56,34 @@ async function alertOutage(where: string, error: unknown): Promise<void> {
   )
 }
 
-// ---- vision / OCR: Gemini primary, Groq fallback ----
+// ---- vision / OCR: Gemini only ----
 
 export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string | undefined): Promise<GeminiResponse> {
-  let geminiError: unknown = null
-  if (geminiApiKey) {
-    try {
-      return shaped(textOf(await callGemini(payload, geminiApiKey)))
-    } catch (error) {
-      geminiError = error
-      console.error('Gemini vision call failed, trying Groq:', error)
-    }
+  if (!geminiApiKey) {
+    const error = new Error('GEMINI_API_KEY sozlanmagan — rasm tekshiruvi ishlamaydi')
+    await alertOutage('rasm tekshiruvi', error)
+    throw error
   }
-
-  const { system, image, texts, wantsJson } = splitPayload(payload)
-  // Groq's vision models take images only — a PDF can't fall back to them.
-  if (groqConfigured() && image && image.mimeType.startsWith('image/')) {
-    try {
-      const prompt = texts.join('\n\n') || 'Analyze the attached image.'
-      const raw = await groqAnalyzeImage(system || prompt, prompt, { mimeType: image.mimeType, base64: image.data }, wantsJson)
-      return shaped(unfence(raw))
-    } catch (groqError) {
-      console.error('Groq vision fallback failed:', groqError)
-      await alertOutage('rasm tekshiruvi', geminiError ?? groqError)
-      throw groqError
-    }
+  try {
+    return shaped(textOf(await callGemini(payload, geminiApiKey)))
+  } catch (error) {
+    console.error('Gemini vision call failed:', error)
+    await alertOutage('rasm tekshiruvi', error)
+    throw error
   }
-
-  const finalError = geminiError ?? new Error('AI rasm tekshiruvi sozlanmagan')
-  await alertOutage('rasm tekshiruvi', finalError)
-  throw finalError
 }
 
 // ---- chat / free text: Groq primary, Gemini fallback ----
 
 export async function aiChatReply(payload: GeminiPayload, geminiApiKey: string | undefined): Promise<GeminiResponse> {
-  const { system } = splitPayload(payload)
-  const turns = (payload.contents ?? []).map((c) => {
-    const speaker = c.role === 'model' ? 'Yordamchi' : 'Talaba'
-    const text = (c.parts ?? []).map((p) => p.text).filter(Boolean).join(' ')
-    return `${speaker}: ${text}`
-  })
-  const prompt = turns.join('\n')
+  const system = payload.systemInstruction?.parts?.map((p) => p.text).filter(Boolean).join('\n\n') ?? ''
+  const prompt = (payload.contents ?? [])
+    .map((c) => {
+      const speaker = c.role === 'model' ? 'Yordamchi' : 'Talaba'
+      const text = (c.parts ?? []).map((p) => p.text).filter(Boolean).join(' ')
+      return `${speaker}: ${text}`
+    })
+    .join('\n')
 
   let groqError: unknown = null
   if (groqConfigured()) {

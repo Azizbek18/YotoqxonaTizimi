@@ -467,8 +467,8 @@ function ArizalarContent() {
         )}
       </div>
 
-      {/* Detail panel */}
-      <div className="lg:col-span-4">
+      {/* Detail panel — stays in view while the list scrolls */}
+      <div className="lg:col-span-4 lg:sticky lg:top-24 lg:self-start">
         <AnimatePresence mode="wait">
           {selectedReq ? (
             <motion.div
@@ -477,7 +477,7 @@ function ArizalarContent() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 12 }}
               transition={{ duration: 0.18 }}
-              className={`rounded-2xl border p-5 space-y-5 ${ui.card}`}
+              className={`rounded-2xl border p-5 space-y-5 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto ${ui.card}`}
             >
               <div className="flex items-center justify-between">
                 <h3 className={`text-xs font-bold uppercase tracking-wider ${ui.body}`}>Ariza tafsilotlari</h3>

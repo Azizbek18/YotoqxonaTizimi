@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: "MTalaba",
+    title: "Mening Yotoqxonam",
   },
   icons: {
     icon: '/logo.png',

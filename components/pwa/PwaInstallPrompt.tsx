@@ -144,7 +144,7 @@ export default function PwaInstallPrompt() {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <h4 className="text-sm font-black text-white uppercase tracking-wider">MTalaba Ilovasi</h4>
+                    <h4 className="text-sm font-black text-white uppercase tracking-wider">Mening Yotoqxonam</h4>
                     <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[8px] font-black uppercase tracking-wider">
                       <Sparkles size={8} /> PWA
                     </span>

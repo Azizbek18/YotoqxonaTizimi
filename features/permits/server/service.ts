@@ -8,9 +8,20 @@ import { summariseBeds } from '@/lib/room-capacity'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import type { DekanOverview } from '../types'
 import { createPermitAdminRepository, type PermitAdminRepository } from './repository'
+import { notifyPermitTelegram } from '@/lib/permit-telegram'
 
 function sameFaculty(value: string | null, faculty: string) {
   return (value ?? '').trim().toLocaleLowerCase() === faculty.trim().toLocaleLowerCase()
+}
+
+async function notifyTelegramWithoutBreakingDecision(request: Awaited<ReturnType<PermitAdminRepository['find']>>) {
+  if (!request) return
+  try {
+    await notifyPermitTelegram(request)
+  } catch (error) {
+    // A Telegram outage must never roll back a dean's database decision.
+    console.error('Permit Telegram notification failed:', error)
+  }
 }
 
 // Only what overview() needs for its bed-capacity maths — kept narrow so
@@ -205,6 +216,7 @@ export function createPermitAdminService(
         const request = await repository.cancelApproval(id)
         if (!request) throw new ApiError(409, 'Ariza holati o\'zgardi — sahifani yangilang')
         await sendPermitApprovalCancelledEmail(existing.email, existing.full_name)
+        await notifyTelegramWithoutBreakingDecision(request)
         await audit({ deletedPendingUserId: linked?.id ?? null })
         return { success: true as const, request }
       }
@@ -224,12 +236,14 @@ export function createPermitAdminService(
         // Xat yuborilmasa ham tasdiqlash kuchda qoladi — sendMail o'zi
         // xatolarni yutadi, shuning uchun bu yerda try/catch shart emas.
         await sendPermitApprovedEmail(request.email, request.full_name, request.application_type)
+        await notifyTelegramWithoutBreakingDecision(request)
         await audit()
         return { success: true as const, request }
       }
       const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 2000) : ''
       if (!reason) throw new ApiError(400, 'Rad etish sababi talab qilinadi')
       const request = await repository.update(id, { status: 'rejected', room_number: null, reject_reason: reason })
+      await notifyTelegramWithoutBreakingDecision(request)
       await audit()
       return { success: true as const, request }
     },

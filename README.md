@@ -10,7 +10,7 @@ Loyihaning asosi quyidagi zamonaviy texnologiyalar ustiga qurilgan:
 - **Karkas**: [Next.js 16 (App Router)](https://nextjs.org/) (Turbopack bilan)
 - **Frontend / UI**: [React 19](https://react.dev/), [Tailwind CSS v4](https://tailwindcss.com/) (Dinamik Light/Dark mode va premium animatsiyalar bilan)
 - **Ma'lumotlar bazasi va Auth**: [Supabase](https://supabase.com/) (PostgreSQL, Row Level Security xavfsizlik qoidalari bilan)
-- **3D Render**: [Three.js](https://threejs.org/) va [BabylonJS](https://www.babylonjs.com/) (Xonalarni interaktiv 3D formatda ko'rish uchun)
+- **3D Render**: [Three.js](https://threejs.org/) (Xonalarni interaktiv 3D formatda ko'rish uchun)
 - **Tahlil va Grafika**: [Recharts](https://recharts.org/) (Hisobotlar sahifasidagi oylik dinamika, qabul va rad etishlar, rollar taqsimotini vizuallashtirish uchun)
 - **Hisobotlarni Yuklash**: [XLSX (xlsx-js-style)](https://sheetjs.com/) (Excel formatiga moslashtirilgan chiroyli dizayndagi eksportlar)
 
@@ -52,7 +52,7 @@ Loyihaning asosi quyidagi zamonaviy texnologiyalar ustiga qurilgan:
 cd yotoqxonatizimi
 
 # Kutubxonalarni o'rnating
-npm install
+npm ci
 ```
 
 ### 2. Environment o'zgaruvchilarini sozlash
@@ -91,9 +91,40 @@ Migratsiyalar quyidagi jarayonlarni amalga oshiradi:
 
 ---
 
-## 🔑 Administratorni yaratish
+## 🔑 Administrator va xodimlarni yaratish
 
-Dekan tizimda eng yuqori lavozim hisoblanadi va `DEKAN_PORTAL_KEY`/`DEKAN_REGISTER_CODE` orqali `/register/dekan` sahifasida bir marta o'zi ro'yxatdan o'tadi. Admin akkaunti ham xuddi shunday, alohida jarayon orqali beriladi. Tarbiyachi akkauntlari esa admin panelidagi "Tarbiyachilar" bo'limi (`/admin/xodimlar`) orqali to'g'ridan-to'g'ri parol bilan yaratiladi (dekan bu imkoniyatga ega emas — faqat admin, chunki tarbiyachi butun qavatni, barcha fakultetlarni ko'radi). Repository, hujjatlar yoki mijoz kodiga haqiqiy login/parol yozmang.
+`admin` — barcha fakultetlarni kuzatadigan global superadmin roli. Dekanlar superadmin yaratgan, emailga bog‘langan taklif orqali `/register/dekan` sahifasida ro‘yxatdan o‘tadi va faqat o‘z fakultetini boshqaradi. Tarbiyachi va boshqa xodimlar `/dekan/xodimlar` bo‘limidagi takliflar orqali yaratiladi. Repository, hujjatlar yoki mijoz kodiga haqiqiy login/parol yozmang.
+
+## ✅ Tekshiruvlar
+
+```bash
+npm run lint
+npm run typecheck
+npm run test:coverage
+npm run build
+npm run test:e2e
+```
+
+CI Node.js 22 da unit/integration testlar, coverage chegaralari, production build, Chromium desktop/mobile E2E va production dependency auditini bajaradi.
+
+### AI providerlar va arzon fallback
+
+Talabalar savol-javobi avval Groq’dan, keyin Vercel AI Gateway’dagi arzon
+modellardan foydalanadi. Rasm tahlili avval Groq Qwen vision orqali ishlaydi;
+PDF esa Gateway’dagi multimodal modeldan boshlanadi. Provider limiti yoki
+uzilishi bo‘lsa keyingi model avtomatik sinab ko‘riladi, eski Gemini oxirgi
+fallback bo‘lib qoladi.
+
+- Matn: Groq `openai/gpt-oss-20b` → `openai/gpt-oss-120b` →
+  `alibaba/qwen3.7-flash` → `amazon/nova-micro` → Gemini.
+- Rasm: Groq `qwen/qwen3.6-27b` → `qwen/qwen3.8-27b` → Gateway zanjiri.
+- PDF/Gateway zanjiri: `alibaba/qwen3.7-flash` → `amazon/nova-lite` →
+  `openai/gpt-5-nano` → `google/gemini-2.5-flash-lite` → to‘g‘ridan-to‘g‘ri Gemini.
+
+Vercel deployda AI Gateway OIDC orqali autentifikatsiya qilinadi. Mahalliy
+muhit yoki statik kalit kerak bo‘lgan joyda `AI_GATEWAY_API_KEY` qo‘ying.
+Model va fallbacklar `.env.example` dagi o‘zgaruvchilar bilan kodni qayta
+yozmasdan almashtiriladi.
 
 ---
 
@@ -103,5 +134,21 @@ Loyiha Vercel platformasida ishlashga 100% tayyorlangan. Yuklash uchun quyidagi 
 
 1. GitHub-da yangi repository ochib, loyihani yuklang.
 2. Vercel dashboardiga kiring, loyihani bog'lang.
-3. **Environment Variables** bo'limida `.env.local` ichidagi barcha o'zgaruvchilarni Vercelga kiriting.
+3. **Environment Variables** bo'limida `.env.local` ichidagi barcha o'zgaruvchilarni Vercelga kiriting. Dekanlar superadmin yaratgan taklif kodi orqali ro'yxatdan o'tsa, `DEKAN_ALLOWED_IDS=disabled` qo'ying — bu eski doimiy-ID yo'lini yopadi, takliflar esa ishlashda davom etadi.
 4. **Deploy** tugmasini bosing. Vercel loyihani avtomatik tarzda build qilib ishga tushiradi.
+
+### Telegram orqali yo‘llanma javobi
+
+`TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` va kamida 32 belgili tasodifiy
+`TELEGRAM_WEBHOOK_SECRET` ni Production muhitiga kiriting. Yangi versiya
+deploy bo‘lgach webhookni bir marta sozlang:
+
+```bash
+npm run telegram:webhook
+```
+
+Talaba ariza yuborganda yoki ariza holatini tekshirganda berilgan Telegram
+tugmasini ochib bir marta `START` bosadi. Bog‘lanishdan keyin dekan tasdiqlash,
+rad etish yoki tasdiqni bekor qilish holatini o‘zgartirsa, bot talabaning
+shaxsiy chatiga avtomatik xabar yuboradi. Deep linkda pasport va JShSHIR emas,
+faqat 30 kunlik bir martalik tasodifiy token ishlatiladi.

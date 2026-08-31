@@ -6,6 +6,7 @@ import { requireActiveStudent } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
+import { checkRateLimit } from '@/lib/security'
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
@@ -51,6 +52,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const context = await requireStudent(request)
+    const throttle = await checkRateLimit(`student-avatar:${context.user.id}`, 10, 5 * 60_000)
+    if (!throttle.allowed) {
+      return NextResponse.json({ error: "Juda ko'p rasm yuklandi. Keyinroq urinib ko'ring." }, { status: 429 })
+    }
 
     const form = await readMultipartForm(request)
     const file = form.get('file')
@@ -102,6 +107,10 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const context = await requireStudent(request)
+    const throttle = await checkRateLimit(`student-avatar-delete:${context.user.id}`, 20, 5 * 60_000)
+    if (!throttle.allowed) {
+      return NextResponse.json({ error: "Juda ko'p urinish. Keyinroq urinib ko'ring." }, { status: 429 })
+    }
 
     const oldPath = pathFromPublicAvatarUrl(context.profile.avatar_url)
     const { error } = await context.supabase

@@ -43,15 +43,19 @@ export function createSuperadminDekanService(
       const mappedDekans = (dekans as RawDekan[]).map(mapDekan)
       const dormById = new Map(dorms.map((dorm) => [dorm.id, dorm]))
 
-      // Per-room occupancy for the bed maths — students + approved-permit
-      // reservations, keyed by room number (unique per dorm).
-      const occByRoom = new Map<string, number>()
-      const bumpRoom = (roomNumber: string | null | undefined) => {
-        if (!roomNumber) return
-        occByRoom.set(roomNumber, (occByRoom.get(roomNumber) ?? 0) + 1)
+      // Per-faculty room occupancy. Room numbers repeat across buildings, so
+      // a global "101" key would subtract one faculty's residents from every
+      // other building that also has room 101.
+      const occupancyByFaculty = new Map<string, Map<string, number>>()
+      const bumpRoom = (facultyValue: string | null | undefined, roomNumber: string | null | undefined) => {
+        const faculty = normalizeFaculty(facultyValue)
+        if (!faculty || !roomNumber) return
+        const occupancy = occupancyByFaculty.get(faculty) ?? new Map<string, number>()
+        occupancy.set(roomNumber, (occupancy.get(roomNumber) ?? 0) + 1)
+        occupancyByFaculty.set(faculty, occupancy)
       }
-      students.forEach((s) => bumpRoom(s.room_number))
-      permits.forEach((p) => { if (p.status === 'approved') bumpRoom(p.room_number) })
+      students.forEach((s) => bumpRoom(s.faculty, s.room_number))
+      permits.forEach((p) => { if (p.status === 'approved') bumpRoom(p.faculty, p.room_number) })
 
       const roomsByFaculty = new Map<string, typeof rooms>()
       for (const room of rooms) {
@@ -85,7 +89,7 @@ export function createSuperadminDekanService(
         const { availableBeds, freeBeds } = summariseBeds(
           roomsByFaculty.get(faculty) ?? [],
           defaultCapacity,
-          occByRoom,
+          occupancyByFaculty.get(faculty) ?? new Map(),
         )
 
         return {

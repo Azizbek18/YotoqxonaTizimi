@@ -34,14 +34,31 @@ describe('describeAiFailure', () => {
   })
 })
 
-describe('aiVisionJson — Gemini only', () => {
-  it('returns the Gemini text, Groq is never involved', async () => {
+describe('aiVisionJson — Groq image primary, direct Gemini fallback', () => {
+  it('uses Groq vision when an image is provided', async () => {
+    vi.stubEnv('GROQ_API_KEY', 'g')
+    const fetchMock = vi.fn(async (url: unknown) => (isGroq(url) ? GROQ_OK('{"valid":true}') : GEMINI_OK()))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const res = await aiVisionJson(
+      { contents: [{ parts: [{ text: 'check' }, { inlineData: { mimeType: 'image/jpeg', data: 'AAAA' } }] }] },
+      'gemini-key',
+    )
+    expect(res.candidates[0].content.parts[0].text).toBe('{"valid":true}')
+    expect(isGroq(fetchMock.mock.calls[0][0])).toBe(true)
+    const firstCall = fetchMock.mock.calls[0] as unknown as [unknown, RequestInit]
+    const body = JSON.parse(String(firstCall[1]?.body))
+    expect(body.model).toBe('qwen/qwen3.6-27b')
+    expect(body.messages[1].content[1].image_url.url).toBe('data:image/jpeg;base64,AAAA')
+  })
+
+  it('skips Groq for PDF and uses Gemini when Gateway is unavailable', async () => {
     vi.stubEnv('GROQ_API_KEY', 'g')
     const fetchMock = vi.fn(async (url: unknown) => (isGroq(url) ? GROQ_OK('x') : GEMINI_OK()))
     vi.stubGlobal('fetch', fetchMock)
 
     const res = await aiVisionJson(
-      { contents: [{ parts: [{ text: 'check' }, { inlineData: { mimeType: 'image/jpeg', data: 'AAAA' } }] }] },
+      { contents: [{ parts: [{ text: 'check' }, { inlineData: { mimeType: 'application/pdf', data: 'AAAA' } }] }] },
       'gemini-key',
     )
     expect(res.candidates[0].content.parts[0].text).toBe('natija')
@@ -60,7 +77,7 @@ describe('aiVisionJson — Gemini only', () => {
   })
 
   it('throws immediately when no Gemini key is set', async () => {
-    await expect(aiVisionJson({ contents: [] }, undefined)).rejects.toThrow(/GEMINI_API_KEY/)
+    await expect(aiVisionJson({ contents: [] }, undefined)).rejects.toThrow(/provider/i)
   })
 })
 

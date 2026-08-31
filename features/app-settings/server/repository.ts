@@ -31,7 +31,7 @@ const DORM_DEFAULTS = {
   talabaKengashiRaisiQizName: '',
   talabaKengashiRaisiQizPhone: '',
   securityPhone: '',
-  maxUploadSizeMb: 5,
+  maxUploadSizeMb: 4,
   warningThreshold: 2,
 }
 

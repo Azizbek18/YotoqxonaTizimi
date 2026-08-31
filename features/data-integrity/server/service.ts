@@ -6,6 +6,11 @@ import { createDataIntegrityRepository, type DataIntegrityRepository } from './r
 const STALE_PERMIT_DAYS = 14
 const FACULTY_SET = new Set(PERMIT_FACULTIES.map((f) => f.value))
 
+function facultyRoomKey(faculty: string | null | undefined, roomNumber: string | null | undefined) {
+  const code = normalizeFaculty(faculty) ?? String(faculty ?? '').trim().toLowerCase()
+  return code && roomNumber ? `${code}:${roomNumber}` : ''
+}
+
 function sample(rows: Array<{ id?: string; full_name?: string | null; faculty?: string | null }>, limit = 8): IntegritySample[] {
   return rows.slice(0, limit).map((r, i) => ({
     id: String(r.id ?? i),
@@ -42,12 +47,12 @@ export function createDataIntegrityService(
       ])
 
       // Frozen rooms that still have a resident.
-      const frozenByRoom = new Set(frozenRooms.map((r) => String(r.room_number)))
-      const residentsInFrozen = housed.filter((s) => s.room_number && frozenByRoom.has(String(s.room_number)))
+      const frozenByRoom = new Set(frozenRooms.map((r) => facultyRoomKey(r.faculty, r.room_number)).filter(Boolean))
+      const residentsInFrozen = housed.filter((s) => frozenByRoom.has(facultyRoomKey(s.faculty, s.room_number)))
 
       // Housed students whose room isn't on any floor plan.
-      const layoutSet = new Set(layoutRooms.map((r) => String(r.room_number)))
-      const roomsOffPlan = housed.filter((s) => s.room_number && !layoutSet.has(String(s.room_number)))
+      const layoutSet = new Set(layoutRooms.map((r) => facultyRoomKey(r.faculty, r.room_number)).filter(Boolean))
+      const roomsOffPlan = housed.filter((s) => s.room_number && !layoutSet.has(facultyRoomKey(s.faculty, s.room_number)))
 
       // Students on a faculty code the app doesn't recognise.
       const unknownFaculty = allStudents.filter((s) => {

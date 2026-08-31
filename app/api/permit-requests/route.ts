@@ -22,6 +22,7 @@ import { verifyFileClaim } from '@/lib/receipt-claim'
 import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
 import { classifyPermitResubmission } from '@/lib/permit-resubmission'
 import { getApiError } from '@/server/http/api-error'
+import { issuePermitTelegramLinkSafely } from '@/lib/permit-telegram'
 
 function value(form: FormData, name: string, maxLength = 200) {
   return String(form.get(name) ?? '').trim().slice(0, maxLength)
@@ -182,10 +183,11 @@ export async function POST(request: NextRequest) {
         targetRole: 'talaba',
         details: { faculty },
       })
-      return NextResponse.json({ ok: true, resubmitted: true }, { status: 200 })
+      const telegram = await issuePermitTelegramLinkSafely(reopened.id)
+      return NextResponse.json({ ok: true, resubmitted: true, telegram }, { status: 200 })
     }
 
-    const { error: insertError } = await supabase.from('permit_requests').insert(fields)
+    const { data: inserted, error: insertError } = await supabase.from('permit_requests').insert(fields).select('id').single()
     if (insertError) {
       await supabase.storage.from('permits').remove([storagePath])
       if (insertError.code === '23505') {
@@ -201,7 +203,8 @@ export async function POST(request: NextRequest) {
       targetRole: 'talaba',
       details: { faculty },
     })
-    return NextResponse.json({ ok: true }, { status: 201 })
+    const telegram = await issuePermitTelegramLinkSafely(inserted.id)
+    return NextResponse.json({ ok: true, telegram }, { status: 201 })
   } catch (error) {
     console.error('Permit submission failed:', error)
     const response = getApiError(error, 'Arizani saqlashda server xatoligi yuz berdi.')

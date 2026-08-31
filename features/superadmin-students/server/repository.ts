@@ -1,5 +1,6 @@
 import 'server-only'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import { fetchAllSupabaseRows } from '@/lib/server-supabase-pagination'
 import type { SuperadminStudentsQuery } from '../types'
 
 const LIST_COLUMNS =
@@ -32,13 +33,14 @@ export function createSuperadminStudentsRepository() {
       return { rows: data ?? [], total: count ?? 0 }
     },
 
-    // Faculty breakdown over every student — one lightweight column scan.
-    // TODO(scale): move to a grouped count RPC past ~a few thousand rows.
     async facultyTallies(): Promise<Map<string, number>> {
-      const { data, error } = await supabase.from('users').select('faculty').eq('role', 'talaba')
-      if (error) throw error
+      const data = await fetchAllSupabaseRows<{ faculty: string | null }>((from, to) => supabase
+        .from('users')
+        .select('faculty')
+        .eq('role', 'talaba')
+        .range(from, to))
       const map = new Map<string, number>()
-      for (const row of data ?? []) {
+      for (const row of data) {
         const key = String(row.faculty ?? '').trim().toLowerCase()
         map.set(key, (map.get(key) ?? 0) + 1)
       }

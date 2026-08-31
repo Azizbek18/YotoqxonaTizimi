@@ -1,11 +1,13 @@
 import 'server-only'
 import { callGemini } from './gemini'
-import { groqConfigured, groqGenerateText } from './groq'
+import { groqAnalyzeImages, groqConfigured, groqGenerateText } from './groq'
 import { sendTelegramMessage } from './telegram'
+import { aiGatewayConfigured, gatewayGenerate } from './ai-gateway'
 
 // Provider routing for the AI features:
-//   - chat assistant  -> Groq (free) first, Gemini fallback
-//   - image / document checks (OCR) -> Gemini only (Groq has no vision model)
+//   - chat: Groq first, cheap AI Gateway models next, Gemini last
+//   - images/OCR: Groq Qwen vision first, Gateway next, Gemini last
+//   - PDFs: Gateway first, Gemini last (Groq vision does not accept PDFs)
 // Both helpers take the Gemini-shaped request the routes already build and
 // return a Gemini-shaped response, so callers only swap the function name.
 
@@ -33,8 +35,8 @@ const ALERT_COOLDOWN_MS = 30 * 60_000
 let lastAlertAt = 0
 
 export function describeAiFailure(message: string): string {
-  if (/RESOURCE_EXHAUSTED|credits are depleted|quota/i.test(message)) {
-    return "Gemini krediti/kvotasi tugagan — AI Studio'da (ai.studio/projects) billing to'ldirilishi kerak."
+  if (/RESOURCE_EXHAUSTED|credits are depleted|quota|Payment Required|\(402\)/i.test(message)) {
+    return "AI krediti/kvotasi tugagan — Vercel AI Gateway yoki Google AI Studio balansini tekshiring."
   }
   if (/dunning|billing account|account.*(suspend|disabled)|payment/i.test(message)) {
     return "Gemini loyihasining to'lovi muammoli (Google Cloud billing) — hisobni to'lang / to'lov usulini tekshiring."
@@ -48,6 +50,14 @@ export function describeAiFailure(message: string): string {
   return message.slice(0, 300)
 }
 
+export function aiVisionConfigured() {
+  return groqConfigured() || aiGatewayConfigured() || Boolean(process.env.GEMINI_API_KEY)
+}
+
+export function aiChatConfigured() {
+  return groqConfigured() || aiGatewayConfigured() || Boolean(process.env.GEMINI_API_KEY)
+}
+
 async function alertOutage(where: string, error: unknown): Promise<void> {
   const now = Date.now()
   if (now - lastAlertAt < ALERT_COOLDOWN_MS) return
@@ -59,21 +69,55 @@ async function alertOutage(where: string, error: unknown): Promise<void> {
   )
 }
 
-// ---- vision / OCR: Gemini only ----
+// ---- vision / OCR: Groq image primary, Gateway/Gemini fallback ----
 
 export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string | undefined): Promise<GeminiResponse> {
-  if (!geminiApiKey) {
-    const error = new Error('GEMINI_API_KEY sozlanmagan — rasm tekshiruvi ishlamaydi')
-    await alertOutage('rasm tekshiruvi', error)
-    throw error
+  const system = payload.systemInstruction?.parts?.map((p) => p.text).filter(Boolean).join('\n\n') ?? ''
+  const prompt = (payload.contents ?? [])
+    .flatMap((content) => content.parts ?? [])
+    .map((part) => part.text)
+    .filter((text): text is string => Boolean(text))
+    .join('\n\n')
+  const files = (payload.contents ?? [])
+    .flatMap((content) => content.parts ?? [])
+    .map((part) => part.inlineData)
+    .filter((file): file is NonNullable<GeminiPart['inlineData']> => Boolean(file))
+  const images = files.filter((file) => file.mimeType.startsWith('image/'))
+  const onlyImages = images.length > 0 && images.length === files.length
+  const wantsJson = payload.generationConfig?.responseMimeType === 'application/json'
+
+  let providerError: unknown = null
+  if (groqConfigured() && onlyImages) {
+    try {
+      return shaped(await groqAnalyzeImages(system, prompt, images, wantsJson))
+    } catch (error) {
+      providerError = error
+      console.error('Groq vision call failed, trying AI Gateway:', error)
+    }
   }
-  try {
-    return shaped(textOf(await callGemini(payload, geminiApiKey)))
-  } catch (error) {
-    console.error('Gemini vision call failed:', error)
-    await alertOutage('rasm tekshiruvi', error)
-    throw error
+
+  if (aiGatewayConfigured()) {
+    try {
+      return shaped(await gatewayGenerate(payload, 'vision'))
+    } catch (error) {
+      providerError = providerError ?? error
+      console.error('AI Gateway vision call failed, trying Gemini:', error)
+    }
   }
+
+  if (geminiApiKey) {
+    try {
+      return shaped(textOf(await callGemini(payload, geminiApiKey)))
+    } catch (geminiError) {
+      console.error('Gemini vision fallback failed:', geminiError)
+      await alertOutage('rasm tekshiruvi', providerError ?? geminiError)
+      throw geminiError
+    }
+  }
+
+  const finalError = providerError ?? new Error('Rasm tahlili uchun AI provider sozlanmagan')
+  await alertOutage('rasm tekshiruvi', finalError)
+  throw finalError
 }
 
 // ---- chat / free text: Groq primary, Gemini fallback ----
@@ -95,6 +139,15 @@ export async function aiChatReply(payload: GeminiPayload, geminiApiKey: string |
     } catch (error) {
       groqError = error
       console.error('Groq chat call failed, trying Gemini:', error)
+    }
+  }
+
+  if (aiGatewayConfigured()) {
+    try {
+      return shaped(await gatewayGenerate(payload, 'text'))
+    } catch (gatewayError) {
+      console.error('AI Gateway chat fallback failed, trying Gemini:', gatewayError)
+      groqError = groqError ?? gatewayError
     }
   }
 

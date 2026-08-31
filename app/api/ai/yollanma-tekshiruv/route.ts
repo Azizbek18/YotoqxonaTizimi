@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
-import { aiVisionJson } from '@/lib/ai'
+import { aiVisionConfigured, aiVisionJson } from '@/lib/ai'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import {
   PERMIT_FILE_RULES,
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     const mimeType = detectedMimeType
 
     const geminiApiKey = process.env.GEMINI_API_KEY
-    if (!geminiApiKey) {
+    if (!aiVisionConfigured()) {
       // No AI key configured — skip the automated check and let the
       // dekan's manual review be the only gate, same fallback used
       // by the payment receipt checker.

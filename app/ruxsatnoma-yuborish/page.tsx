@@ -13,6 +13,7 @@ import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
+import TelegramPermitConnect from '@/components/TelegramPermitConnect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
@@ -55,6 +56,8 @@ export default function RuxsatnomaYuborish() {
 
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [telegramLink, setTelegramLink] = useState<string | null>(null)
+  const [telegramLinked, setTelegramLinked] = useState(false)
 
   // Shown before the student can touch the form — must be acknowledged
   // every visit, since it's a warning about THIS submission's accuracy,
@@ -498,6 +501,9 @@ export default function RuxsatnomaYuborish() {
       if (!submitResponse.ok) {
         throw new Error(submitResult.error || 'Arizani saqlashda xatolik yuz berdi')
       }
+
+      setTelegramLink(submitResult.telegram?.url ?? null)
+      setTelegramLinked(submitResult.telegram?.linked === true)
 
       if (typeof window !== 'undefined') {
         // sessionStorage, not localStorage — these are sensitive national ID
@@ -1723,6 +1729,8 @@ export default function RuxsatnomaYuborish() {
                   </p>
                 </div>
               </div>
+
+              <TelegramPermitConnect url={telegramLink} linked={telegramLinked} isLight={isLight} />
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button

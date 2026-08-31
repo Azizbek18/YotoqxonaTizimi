@@ -3,6 +3,8 @@ import { safeEqual } from '@/lib/security'
 
 export type StaffRole = 'admin' | 'tarbiyachi' | 'dekan'
 
+const DISABLED_ALLOW_LIST = 'disabled'
+
 function envByRole(role: StaffRole) {
   if (role === 'admin') {
     return {
@@ -33,6 +35,9 @@ export function validateStaffLink(role: StaffRole, key: string | null | undefine
 export function validateStaffId(staffId: string | null | undefined) {
   const { allowedIds } = envByRole('dekan')
   if (!allowedIds || !staffId) return false
+  // New dean accounts should normally use a one-time staff invite. This
+  // explicit sentinel safely switches off the legacy env allow-list flow.
+  if (allowedIds.trim().toLowerCase() === DISABLED_ALLOW_LIST) return false
   const normalized = staffId.trim()
   const list = allowedIds.split(',').map((item) => item.trim()).filter(Boolean)
   return list.includes(normalized)

@@ -1,5 +1,6 @@
 import 'server-only'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import { fetchAllSupabaseRows } from '@/lib/server-supabase-pagination'
 
 const SAMPLE = 8
 
@@ -51,44 +52,40 @@ export function createDataIntegrityRepository() {
       return data ?? []
     },
 
-    // TODO(scale): unbounded — fine for the current dataset (~hundreds of
-    // residents), move to a targeted query once a building exceeds ~1000.
     async housedStudents() {
-      const { data, error } = await supabase
+      return fetchAllSupabaseRows<{ id: string; full_name: string | null; faculty: string | null; room_number: string | null }>((from, to) => supabase
         .from('users')
         .select('id, full_name, faculty, room_number')
         .eq('role', 'talaba')
         .not('room_number', 'is', null)
-      if (error) throw error
-      return data ?? []
+        .range(from, to))
     },
 
     async allStudentFaculties() {
-      const { data, error } = await supabase
+      return fetchAllSupabaseRows<{ id: string; full_name: string | null; faculty: string | null }>((from, to) => supabase
         .from('users')
         .select('id, full_name, faculty')
         .eq('role', 'talaba')
-      if (error) throw error
-      return data ?? []
+        .range(from, to))
     },
 
     async pendingPermitFaculties() {
-      const { data, error } = await supabase
+      const data = await fetchAllSupabaseRows<{ faculty: string | null }>((from, to) => supabase
         .from('permit_requests')
         .select('faculty')
         .eq('status', 'pending')
-      if (error) throw error
-      return (data ?? []).map((r) => String(r.faculty ?? ''))
+        .range(from, to))
+      return data.map((r) => String(r.faculty ?? ''))
     },
 
     async activeDeanFaculties() {
-      const { data, error } = await supabase
+      const data = await fetchAllSupabaseRows<{ faculty: string | null }>((from, to) => supabase
         .from('staff')
         .select('faculty')
         .eq('role', 'dekan')
         .eq('status', 'active')
-      if (error) throw error
-      return (data ?? []).map((r) => String(r.faculty ?? ''))
+        .range(from, to))
+      return data.map((r) => String(r.faculty ?? ''))
     },
   }
 }

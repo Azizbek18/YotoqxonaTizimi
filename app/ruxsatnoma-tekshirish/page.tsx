@@ -10,6 +10,7 @@ import {
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
+import TelegramPermitConnect from '@/components/TelegramPermitConnect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import {
   getForeignIdFormatError,
@@ -40,6 +41,7 @@ interface PermitRequest {
    *  faculty were submitted before this one, and the total waiting. */
   queuePosition?: number
   queueTotal?: number
+  telegram?: { linked: boolean; url: string | null }
 }
 
 function StatusCheckContent() {
@@ -330,6 +332,11 @@ function StatusCheckContent() {
 
                 {result ? (
                   <div className="space-y-4">
+                    <TelegramPermitConnect
+                      url={result.telegram?.url ?? null}
+                      linked={result.telegram?.linked === true}
+                      isLight={isLight}
+                    />
                     {/* 1. Pending Status */}
                     {result.status === 'pending' && (
                       <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center space-y-3">

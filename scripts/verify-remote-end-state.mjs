@@ -58,20 +58,27 @@ await check('Supabase API keys are accepted', async () => {
 })
 
 await check('app_settings schema and constraints', async () => {
-  const { data, error } = await service
-    .from('app_settings')
-    .select('id,monthly_fee,yearly_contract_fee,default_room_capacity,floor_count,max_upload_size_mb,warning_threshold')
-    .eq('id', 1)
-    .single()
+  const [feesResult, dormsResult] = await Promise.all([
+    service.from('app_settings').select('faculty,monthly_fee,yearly_contract_fee'),
+    service.from('dorms').select('id,default_room_capacity,floor_count,max_upload_size_mb,warning_threshold'),
+  ])
+  if (feesResult.error) throw feesResult.error
+  if (dormsResult.error) throw dormsResult.error
+  assert((feesResult.data?.length ?? 0) > 0, 'no faculty fee settings exist')
+  assert((dormsResult.data?.length ?? 0) > 0, 'no dorm settings exist')
 
-  if (error) throw error
-  assert(Number.isInteger(data.monthly_fee) && data.monthly_fee >= 1, 'monthly_fee is invalid')
-  assert(Number.isInteger(data.yearly_contract_fee) && data.yearly_contract_fee >= 1, 'yearly_contract_fee is invalid')
-  assert(data.yearly_contract_fee % data.monthly_fee === 0, 'yearly fee is not a multiple of monthly fee')
-  assert(Number.isInteger(data.default_room_capacity) && data.default_room_capacity >= 1 && data.default_room_capacity <= 20, 'room capacity is invalid')
-  assert(Number.isInteger(data.floor_count) && data.floor_count >= 1 && data.floor_count <= 50, 'floor count is invalid')
-  assert(Number.isInteger(data.max_upload_size_mb) && data.max_upload_size_mb >= 1 && data.max_upload_size_mb <= 4, 'upload limit is invalid')
-  assert(Number.isInteger(data.warning_threshold) && data.warning_threshold >= 1 && data.warning_threshold <= 20, 'warning threshold is invalid')
+  for (const data of feesResult.data ?? []) {
+    assert(Boolean(data.faculty), 'app_settings faculty is missing')
+    assert(Number.isInteger(data.monthly_fee) && data.monthly_fee >= 1, `${data.faculty} monthly_fee is invalid`)
+    assert(Number.isInteger(data.yearly_contract_fee) && data.yearly_contract_fee >= 1, `${data.faculty} yearly_contract_fee is invalid`)
+    assert(data.yearly_contract_fee % data.monthly_fee === 0, `${data.faculty} yearly fee is not a multiple of monthly fee`)
+  }
+  for (const data of dormsResult.data ?? []) {
+    assert(Number.isInteger(data.default_room_capacity) && data.default_room_capacity >= 1 && data.default_room_capacity <= 20, `${data.id} room capacity is invalid`)
+    assert(Number.isInteger(data.floor_count) && data.floor_count >= 1 && data.floor_count <= 50, `${data.id} floor count is invalid`)
+    assert(Number.isInteger(data.max_upload_size_mb) && data.max_upload_size_mb >= 1 && data.max_upload_size_mb <= 4, `${data.id} upload limit is invalid`)
+    assert(Number.isInteger(data.warning_threshold) && data.warning_threshold >= 1 && data.warning_threshold <= 20, `${data.id} warning threshold is invalid`)
+  }
 })
 
 await check('latest table columns are deployed', async () => {
@@ -89,20 +96,20 @@ await check('latest table columns are deployed', async () => {
 
 await check('anonymous users cannot read sensitive tables', async () => {
   const sensitiveTables = [
-    'users',
-    'staff',
-    'tolovlar',
-    'permit_requests',
-    'arizalar',
-    'cleaning_schedule',
-    'security_audit_logs',
-    'payment_receipt_uploads',
-    'payment_receipt_transactions',
+    ['users', 'id'],
+    ['staff', 'id'],
+    ['tolovlar', 'id'],
+    ['permit_requests', 'id'],
+    ['arizalar', 'id'],
+    ['cleaning_schedule', 'room_number'],
+    ['security_audit_logs', 'id'],
+    ['payment_receipt_uploads', 'receipt_hash'],
+    ['payment_receipt_transactions', 'receipt_hash'],
   ]
-  for (const table of sensitiveTables) {
+  for (const [table, probeColumn] of sensitiveTables) {
     const { data, error, count } = await anon
       .from(table)
-      .select('id', { count: 'exact' })
+      .select(probeColumn, { count: 'exact' })
       .limit(1)
 
     if (error) {
@@ -169,7 +176,6 @@ await check('atomic payment and duty RPCs are deployed and service-only', async 
     p_creator_id: '00000000-0000-0000-0000-000000000000',
     p_floor: 0,
     p_gender: '',
-    p_faculty: '',
     p_text: '{}',
   }
 

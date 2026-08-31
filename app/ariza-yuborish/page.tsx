@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { FileCheck2, Globe2, ArrowLeft, ChevronRight } from 'lucide-react'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import DeveloperContactLink from '@/components/DeveloperContactLink'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
 // The very first fork every applicant hits: a government "yo'llanma" only
@@ -100,10 +101,11 @@ export default function ArizaTuriTanlash() {
         <p className={`text-center text-[10px] font-medium mt-8 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
           Ariza yuborganingiz bor edimi?{' '}
           <Link href="/ruxsatnoma-tekshirish" className="text-blue-500 font-bold hover:underline">
-            Statusni tekshiring
+            Ariza holatini tekshiring
           </Link>
         </p>
       </div>
+      <DeveloperContactLink />
     </div>
   )
 }

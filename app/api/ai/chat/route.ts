@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { aiChatReply } from '@/lib/ai'
-import { groqConfigured } from '@/lib/groq'
+import { aiChatConfigured, aiChatReply } from '@/lib/ai'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 import { requireActiveStudent } from '@/server/auth/guards'
@@ -63,10 +62,10 @@ Muhim: sizda quyidagilar haqida real ma'lumot YO'Q — bunday savol kelsa, o'yla
 
 Javoblaringizni iloji boricha qisqa, tushunarli va chiroyli emojilar bilan bezab bering.`
 
-    if (geminiApiKey || groqConfigured()) {
+    if (aiChatConfigured()) {
       try {
-        // Gemini-shaped request — aiChatReply routes it to Groq first, Gemini
-        // as the fallback, and returns the same shape either way.
+        // Gemini-shaped request — aiChatReply routes it through the cheap
+        // multi-provider fallback chain and returns the same shape.
         const formattedContents: Array<{ role: 'user' | 'model'; parts: { text: string }[] }> = []
 
         if (Array.isArray(history)) {
@@ -107,7 +106,7 @@ Sizga qanday yordam bera olaman?`
       }
     } else {
       // Offline fallback simulator if GEMINI_API_KEY is not defined
-      let reply = '🤖 Salom! Men sizning yotoqxona AI yordamchingizman. Loyihada GEMINI_API_KEY sozlanmaganligi sababli cheklangan rejimda javob beryapman. Qanday yordam kerak?'
+      let reply = '🤖 Salom! Men sizning yotoqxona AI yordamchingizman. AI providerlar hozir sozlanmagani sababli cheklangan rejimda javob beryapman. Qanday yordam kerak?'
       const lower = message.toLowerCase()
       if (lower.includes('to\'lov') || lower.includes('tolov') || lower.includes('pul') || lower.includes('kontrakt')) {
         reply = `💳 Yotoqxona to'lovi oyiga **${monthlyFee.toLocaleString('uz-UZ')} UZS**ni tashkil etadi. Yillik jami shartnoma summasi **${yearlyContractFee.toLocaleString('uz-UZ')} UZS**. To'lov chekini shaxsiy kabinetingizdagi "To'lov qilish" bo'limidan yuklashingiz mumkin.`

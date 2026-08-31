@@ -10,6 +10,7 @@ import {
   normalizeJshshir,
   normalizePassport,
 } from '@/lib/permit-validation'
+import { issuePermitTelegramLinkSafely } from '@/lib/permit-telegram'
 
 export async function POST(request: NextRequest) {
   const throttle = await checkRateLimit(`permit-status:${getClientIp(request)}`, 15, 10 * 60_000)
@@ -87,6 +88,7 @@ export async function POST(request: NextRequest) {
     // them — /register reads this same endpoint to prefill the signup
     // wizard from the approved permit, so the student never retypes what
     // they already submitted here.
+    const telegram = await issuePermitTelegramLinkSafely(data.id)
     return NextResponse.json({
       data: {
         id: data.id,
@@ -103,6 +105,7 @@ export async function POST(request: NextRequest) {
         application_type: data.application_type,
         queuePosition,
         queueTotal,
+        telegram,
       },
     })
   } catch (error) {

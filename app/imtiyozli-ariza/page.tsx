@@ -12,6 +12,7 @@ import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
+import TelegramPermitConnect from '@/components/TelegramPermitConnect'
 import ArizaTilxatDocument from '@/components/documents/ArizaTilxatDocument'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
@@ -42,6 +43,8 @@ export default function ImtiyozliAriza() {
   const [formStep, setFormStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [telegramLink, setTelegramLink] = useState<string | null>(null)
+  const [telegramLinked, setTelegramLinked] = useState(false)
 
   // Step 1
   const [lastName, setLastName] = useState('')
@@ -246,6 +249,9 @@ export default function ImtiyozliAriza() {
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Arizani saqlashda xatolik yuz berdi')
 
+      setTelegramLink(result.telegram?.url ?? null)
+      setTelegramLinked(result.telegram?.linked === true)
+
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('student_permit_passport', normalizeForeignIdNumber(idNumber))
         sessionStorage.setItem('student_permit_email', email.trim().toLowerCase())
@@ -292,6 +298,7 @@ export default function ImtiyozliAriza() {
               Arizangiz va tilxatingiz ko&apos;rib chiqish uchun qabul qilindi. Dekan tasdiqlagach, sizga xona biriktiriladi va ro&apos;yxatdan o&apos;tishingiz mumkin bo&apos;ladi.
             </p>
           </div>
+          <TelegramPermitConnect url={telegramLink} linked={telegramLinked} isLight={isLight} />
           <button
             onClick={() => router.push('/')}
             className="w-full p-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest transition-all active:scale-95"

@@ -1,3 +1,5 @@
+import { isPlaceholderValue } from './env-placeholders.mjs'
+
 const required = [
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
@@ -15,11 +17,8 @@ const required = [
   'DEKAN_ALLOWED_IDS',
 ]
 
-const PLACEHOLDER_PATTERN = /^(your-|replace-with|change-?me|changeme|example\b)/i
-
 const missing = required.filter((name) => {
-  const value = process.env[name]?.trim()
-  return !value || PLACEHOLDER_PATTERN.test(value) || value.includes('replace-with')
+  return isPlaceholderValue(process.env[name])
 })
 if (missing.length > 0) {
   console.error(`Production environment variables are missing or still placeholders: ${missing.join(', ')}`)
@@ -62,6 +61,24 @@ const appUrl = new URL(process.env.NEXT_PUBLIC_APP_URL)
 if (appUrl.protocol !== 'https:') {
   console.error('NEXT_PUBLIC_APP_URL must use HTTPS in production.')
   process.exit(1)
+}
+
+// Telegram student notifications are optional until a bot webhook is
+// configured. Once either new setting is present, require the complete and
+// valid trio so a deployment cannot expose a half-working START button.
+if (process.env.TELEGRAM_BOT_USERNAME || process.env.TELEGRAM_WEBHOOK_SECRET) {
+  if (isPlaceholderValue(process.env.TELEGRAM_BOT_TOKEN)) {
+    console.error('TELEGRAM_BOT_TOKEN is required when Telegram student notifications are enabled.')
+    process.exit(1)
+  }
+  if (!/^[A-Za-z0-9_]{5,32}$/.test((process.env.TELEGRAM_BOT_USERNAME ?? '').replace(/^@/, ''))) {
+    console.error('TELEGRAM_BOT_USERNAME is not a valid Telegram bot username.')
+    process.exit(1)
+  }
+  if (!/^[A-Za-z0-9_-]{32,256}$/.test(process.env.TELEGRAM_WEBHOOK_SECRET ?? '')) {
+    console.error('TELEGRAM_WEBHOOK_SECRET must be a random 32-256 character webhook secret.')
+    process.exit(1)
+  }
 }
 
 console.log('Production environment validation passed.')

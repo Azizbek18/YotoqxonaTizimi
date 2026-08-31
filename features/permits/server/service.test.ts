@@ -10,6 +10,9 @@ vi.mock('@/lib/email', () => ({ sendPermitApprovedEmail, sendPermitApprovalCance
 const writeAuditLog = vi.fn(async () => {})
 vi.mock('@/lib/audit-log', () => ({ writeAuditLog }))
 
+const notifyPermitTelegram = vi.fn(async () => true)
+vi.mock('@/lib/permit-telegram', () => ({ notifyPermitTelegram }))
+
 const { createPermitAdminService } = await import('./service')
 
 function permit(overrides: Partial<PermitRequestRow> = {}): PermitRequestRow {
@@ -52,6 +55,7 @@ describe('permit admin service — cancel approval', () => {
     expect(repo.cancelApproval).toHaveBeenCalledWith('permit-1')
     expect(repo.deletePendingStudent).not.toHaveBeenCalled()
     expect(sendPermitApprovalCancelledEmail).toHaveBeenCalledWith('ali@example.com', 'Ali Valiyev')
+    expect(notifyPermitTelegram).toHaveBeenCalledWith(expect.objectContaining({ id: 'permit-1', status: 'pending' }))
     expect(writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'permit.cancel', actorUserId: 'dekan-1' }))
   })
 
@@ -128,6 +132,7 @@ describe('permit admin service — approve / reject audit + email', () => {
     await createPermitAdminService(repo).update('IT', { id: 'permit-1', action: 'approve' }, 'dekan-1')
 
     expect(sendPermitApprovedEmail).toHaveBeenCalledWith('ali@example.com', 'Ali Valiyev', 'yollanma')
+    expect(notifyPermitTelegram).toHaveBeenCalledWith(expect.objectContaining({ id: 'permit-1' }))
     expect(writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'permit.approve' }))
   })
 

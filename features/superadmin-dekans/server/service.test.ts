@@ -68,6 +68,21 @@ describe('superadmin dekan overview', () => {
     expect(result.summary.coveredFaculties).toBe(0)
     expect(result.unassignedDekans).toHaveLength(1)
   })
+
+  it('does not mix occupancy for identical room numbers in different faculties', async () => {
+    const result = await createSuperadminDekanService(repository({
+      dekans: [], educators: [],
+      students: [{ faculty: 'amit', status: 'active', room_number: '101' }],
+      permits: [], facultyDorms: [], dorms: [],
+      rooms: [
+        { faculty: 'amit', room_number: '101', frozen: false, capacity: 2 },
+        { faculty: 'biologiya', room_number: '101', frozen: false, capacity: 2 },
+      ],
+    })).getOverview()
+
+    expect(result.faculties.find((row) => row.faculty === 'amit')?.stats.freeBeds).toBe(1)
+    expect(result.faculties.find((row) => row.faculty === 'biologiya')?.stats.freeBeds).toBe(2)
+  })
 })
 
 function lifecycleRepository(overrides: Partial<SuperadminDekanRepository> = {}) {

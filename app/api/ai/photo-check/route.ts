@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { aiVisionJson } from '@/lib/ai'
+import { aiVisionConfigured, aiVisionJson } from '@/lib/ai'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY
-    if (!geminiApiKey) {
+    if (!aiVisionConfigured()) {
       return NextResponse.json({
         is_human: false,
         confidence: 0,

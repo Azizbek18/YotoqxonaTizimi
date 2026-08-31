@@ -4,6 +4,7 @@ import { requireActiveStaff } from '@/server/auth/guards'
 import { staffFacultyOrPrimary } from '@/server/auth/faculty'
 import { normalizeFaculty } from '@/lib/faculties'
 import { ApiError, getApiError } from '@/server/http/api-error'
+import { checkRateLimit } from '@/lib/security'
 
 function errorResponse(error: unknown) {
   console.error('Admin chat API error:', error instanceof Error ? (error.stack ?? error.message) : error)
@@ -35,7 +36,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const { user, staff } = await requireActiveStaff(request, ['admin', 'dekan'])
+    const throttle = await checkRateLimit(`admin-chat:${user.id}`, 60, 60_000)
+    if (!throttle.allowed) {
+      return NextResponse.json({ ok: false, error: "Juda ko'p xabar yuborildi. Keyinroq urinib ko'ring." }, { status: 429 })
+    }
     const faculty = staffFacultyOrPrimary(staff.faculty)
     const body = await request.json().catch(() => ({}))
     const studentId = typeof body.student_id === 'string' ? body.student_id.trim() : ''

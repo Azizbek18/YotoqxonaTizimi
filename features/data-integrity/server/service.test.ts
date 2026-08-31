@@ -37,6 +37,19 @@ describe('data integrity report', () => {
     expect(check.sample[0].label).toBe('Ali')
   })
 
+  it('does not mix identical room numbers across faculties', async () => {
+    const repo = repository({
+      frozenRooms: vi.fn(async () => [{ room_number: '101', faculty: 'amit' }]),
+      layoutRoomNumbers: vi.fn(async () => [{ room_number: '101', faculty: 'amit' }]),
+      housedStudents: vi.fn(async () => [
+        { id: 's1', full_name: 'Ali', faculty: 'biologiya', room_number: '101' },
+      ]),
+    })
+    const report = await createDataIntegrityService(repo).getReport()
+    expect(report.checks.find((c) => c.key === 'frozen-with-residents')?.count).toBe(0)
+    expect(report.checks.find((c) => c.key === 'rooms-off-plan')?.count).toBe(1)
+  })
+
   it('flags a pending-permit faculty with no active dean', async () => {
     const repo = repository({
       pendingPermitFaculties: vi.fn(async () => ['Biologiya', 'biologiya', 'amit']),

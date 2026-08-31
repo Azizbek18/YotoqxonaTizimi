@@ -156,6 +156,17 @@ export type PermitRequestRow = {
   study_type: string | null
 }
 
+export type PermitTelegramLinkRow = {
+  permit_request_id: string
+  token_hash: string
+  token_expires_at: string
+  chat_id: number | null
+  linked_at: string | null
+  last_notified_status: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -165,6 +176,7 @@ export interface Database {
       elonlar: Table<AnnouncementRow>
       tolovlar: Table<PaymentRow>
       permit_requests: Table<PermitRequestRow>
+      permit_telegram_links: Table<PermitTelegramLinkRow>
       cleaning_schedule: Table<{
         faculty: string
         room_number: string

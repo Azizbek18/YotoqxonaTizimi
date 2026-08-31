@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const supabase = getServiceSupabase()
     let query = supabase
       .from('permit_requests')
-      .select('id, full_name, status, room_number, reject_reason, created_at, faculty, phone, gender, direction, course, application_type')
+      .select('id, full_name, status, room_number, reject_reason, created_at, faculty, phone, gender, direction, course, application_type, relative_phone, study_type, origin_country, origin_region')
       .eq('passport_series', passport)
       .eq('email', email)
       .eq('application_type', applicationType)
@@ -83,11 +83,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Whitelist the fields the applicant's own status check actually needs,
-    // rather than forwarding the raw row. phone/gender/faculty/direction/
-    // course ride along even though the status page itself doesn't show
-    // them — /register reads this same endpoint to prefill the signup
-    // wizard from the approved permit, so the student never retypes what
-    // they already submitted here.
+    // rather than forwarding the raw row. Everything past application_type
+    // is the applicant's own submitted data, echoed back only to a caller
+    // who already proved the passport + email: /register prefills the
+    // signup wizard from it, and the status page prefills the submit form
+    // when the applicant pulls a pending request back to edit it.
     const telegram = await issuePermitTelegramLinkSafely(data.id)
     return NextResponse.json({
       data: {
@@ -103,6 +103,10 @@ export async function POST(request: NextRequest) {
         direction: data.direction,
         course: data.course,
         application_type: data.application_type,
+        relative_phone: data.relative_phone,
+        study_type: data.study_type,
+        origin_country: data.origin_country,
+        origin_region: data.origin_region,
         queuePosition,
         queueTotal,
         telegram,

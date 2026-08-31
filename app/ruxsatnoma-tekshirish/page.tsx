@@ -44,6 +44,10 @@ interface PermitRequest {
   faculty?: string | null
   direction?: string | null
   course?: number | null
+  relative_phone?: string | null
+  study_type?: string | null
+  origin_country?: string | null
+  origin_region?: string | null
   /** Only set while status is 'pending' — how many arizalar in the same
    *  faculty were submitted before this one, and the total waiting. */
   queuePosition?: number
@@ -103,6 +107,10 @@ function StatusCheckContent() {
             faculty: result.faculty ?? '',
             direction: result.direction ?? '',
             course: result.course != null ? String(result.course) : '',
+            relativePhone: result.relative_phone ?? '',
+            studyType: result.study_type ?? '',
+            originCountry: result.origin_country ?? '',
+            originRegion: result.origin_region ?? '',
           }))
         } catch { /* private mode — the student just retypes */ }
         router.push(result.application_type === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish')

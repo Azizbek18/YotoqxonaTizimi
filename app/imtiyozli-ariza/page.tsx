@@ -98,7 +98,7 @@ export default function ImtiyozliAriza() {
       if (saved.direction) setDirection(String(saved.direction))
       const course = String(saved.course ?? '')
       if (/^[1-6]$/.test(course)) setCourse(course)
-      if (saved.relativePhone) setRelativePhone(String(saved.relativePhone).slice(0, 32))
+      if (saved.relativePhone) setRelativePhone(String(saved.relativePhone).replace(/[^\d+\s()-]/g, '').slice(0, 24))
       if (saved.studyType === 'grant' || saved.studyType === 'kontrakt') setStudyType(saved.studyType)
       if (saved.originCountry) setOriginCountry(String(saved.originCountry).slice(0, 120))
       if (saved.originRegion) setOriginRegion(String(saved.originRegion).slice(0, 120))

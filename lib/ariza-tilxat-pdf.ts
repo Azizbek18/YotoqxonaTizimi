@@ -136,9 +136,13 @@ function signatureRow(c: Cursor) {
 // reads as a neat right-hand block and long lines wrap inside the column.
 function header(c: Cursor, faculty: string, course: string, name: string) {
   const col = Math.min(96, c.width * 0.56)
+  // The applicant line is "...talabasi <F.I.Sh.>dan" — the ablative "-dan"
+  // ("kimdan") is what makes the address block read correctly. Skip it when
+  // the name is still a blank underline (dekan-side preview).
+  const applicant = name.startsWith('_') ? name : `${name}dan`
   textBlock(c, UNIVERSITY_HEADER, { size: 10.5, align: 'right', width: col, gap: 1.5 })
   textBlock(c, `${faculty} fakulteti`, { size: 10.5, align: 'right', width: col, gap: 0.5 })
-  textBlock(c, `Bakalavriat kunduzgi ta'lim yo'nalishi ${course}-kurs talabasi ${name}`, { size: 10.5, align: 'right', width: col, gap: 2 })
+  textBlock(c, `Bakalavriat kunduzgi ta'lim yo'nalishi ${course}-kurs talabasi ${applicant}`, { size: 10.5, align: 'right', width: col, gap: 2 })
 }
 
 // Draw both pages at a given vertical scale (1 = default). Returns how far

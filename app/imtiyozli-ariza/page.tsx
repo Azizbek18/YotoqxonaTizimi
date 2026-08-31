@@ -78,6 +78,7 @@ export default function ImtiyozliAriza() {
       const saved = JSON.parse(raw) as {
         passport?: unknown; email?: unknown; applicationType?: unknown
         fullName?: unknown; phone?: unknown; gender?: unknown; faculty?: unknown; direction?: unknown; course?: unknown
+        relativePhone?: unknown; studyType?: unknown; originCountry?: unknown; originRegion?: unknown
       }
       if (saved.applicationType !== 'imtiyozli') return
       setIdNumber(normalizeForeignIdNumber(saved.passport))
@@ -97,6 +98,10 @@ export default function ImtiyozliAriza() {
       if (saved.direction) setDirection(String(saved.direction))
       const course = String(saved.course ?? '')
       if (/^[1-6]$/.test(course)) setCourse(course)
+      if (saved.relativePhone) setRelativePhone(String(saved.relativePhone).slice(0, 32))
+      if (saved.studyType === 'grant' || saved.studyType === 'kontrakt') setStudyType(saved.studyType)
+      if (saved.originCountry) setOriginCountry(String(saved.originCountry).slice(0, 120))
+      if (saved.originRegion) setOriginRegion(String(saved.originRegion).slice(0, 120))
       sessionStorage.removeItem('permit_resubmit')
     } catch {
       sessionStorage.removeItem('permit_resubmit')
@@ -251,6 +256,7 @@ export default function ImtiyozliAriza() {
       submission.append('lastName', lastName.trim())
       submission.append('firstName', firstName.trim())
       submission.append('middleName', noMiddleName ? '' : middleName.trim())
+      submission.append('noMiddleName', noMiddleName ? 'true' : 'false')
       submission.append('fullName', fullName)
       submission.append('email', email.trim().toLowerCase())
       submission.append('phone', `+998${phone.replace(/\D/g, '')}`)

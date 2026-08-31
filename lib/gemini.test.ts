@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { callGemini } from './gemini'
+import { callGemini, describeGeminiFailure } from './gemini'
 
 describe('Gemini retry policy', () => {
   afterEach(() => {
@@ -22,6 +22,22 @@ describe('Gemini retry policy', () => {
 
     await expect(callGemini({}, 'test-key')).resolves.toEqual({ candidates: [] })
     expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(String(fetchMock.mock.calls[1][0])).toContain('gemini-flash-latest')
+    expect(String(fetchMock.mock.calls[0][0])).toContain('gemini-flash-latest')
+    expect(String(fetchMock.mock.calls[1][0])).toContain('gemini-2.5-flash')
+  })
+})
+
+describe('describeGeminiFailure', () => {
+  it('names a depleted-credits outage as a billing problem', () => {
+    expect(describeGeminiFailure('Gemini API error (429): {"error":{"status":"RESOURCE_EXHAUSTED"}}'))
+      .toMatch(/billing|kredit/i)
+  })
+
+  it('names an invalid key', () => {
+    expect(describeGeminiFailure('Gemini API error (403): PERMISSION_DENIED')).toMatch(/kalit/i)
+  })
+
+  it('passes an unknown error through, trimmed', () => {
+    expect(describeGeminiFailure('something odd happened')).toBe('something odd happened')
   })
 })

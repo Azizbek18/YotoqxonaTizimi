@@ -356,8 +356,8 @@ function FacultyCard({
   const state = row.dekan ? statusChip(active ? 'success' : 'warning', isLight) : statusChip('neutral', isLight)
 
   return (
-    <article className={`group overflow-hidden rounded-3xl border ${ui.card} ${ui.hoverLift}`}>
-      <div className="p-5">
+    <article className={`group flex h-full flex-col overflow-hidden rounded-3xl border ${ui.card} ${ui.hoverLift}`}>
+      <div className="flex-1 p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className={`text-[10px] font-extrabold uppercase tracking-[0.18em] ${ui.accentText}`}>{row.faculty}</p>
@@ -369,7 +369,7 @@ function FacultyCard({
         </div>
 
         {row.dekan ? (
-          <div className={`mt-5 rounded-2xl border p-4 ${ui.inset}`}>
+          <div className={`mt-5 flex min-h-52 flex-col rounded-2xl border p-4 ${ui.inset}`}>
             <div className="flex items-center gap-3">
               <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-black ${active ? ui.accentTile : state.chip}`}>
                 {initials(row.dekan.fullName)}
@@ -390,15 +390,17 @@ function FacultyCard({
               )}
               <p className="flex items-center gap-2"><CheckCircle2 size={13} /> Ro‘yxatdan o‘tgan: {formatDate(row.dekan.createdAt)}</p>
             </div>
-            <DekanLifecycleControls
-              dekan={row.dekan}
-              currentFaculty={row.faculty}
-              coveredFaculties={coveredFaculties}
-              onChanged={onChanged}
-            />
+            <div className="mt-auto">
+              <DekanLifecycleControls
+                dekan={row.dekan}
+                currentFaculty={row.faculty}
+                coveredFaculties={coveredFaculties}
+                onChanged={onChanged}
+              />
+            </div>
           </div>
         ) : (
-          <div className={`mt-5 flex min-h-36 flex-col items-center justify-center rounded-2xl border border-dashed p-5 text-center ${ui.inset}`}>
+          <div className={`mt-5 flex min-h-52 flex-col items-center justify-center rounded-2xl border border-dashed p-5 text-center ${ui.inset}`}>
             <UserRoundX size={26} className={ui.faint} />
             <p className={`mt-2 text-sm font-bold ${ui.strong}`}>Dekan tayinlanmagan</p>
             <button

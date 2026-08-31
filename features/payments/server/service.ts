@@ -15,6 +15,7 @@ import {
   validatePaymentReview,
 } from '../domain/validation'
 import { createPaymentRepository, type PaymentRepository } from './repository'
+import { sendPushForUser, sendPushWithoutBreaking } from '@/lib/push-notifications'
 
 type StudentForPayment = { id: string; full_name: string | null; faculty?: string | null }
 
@@ -54,6 +55,22 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       }
       const rows = await repository.review(faculties, review.ids, review.status, review.message)
       if (rows.length !== review.ids.length) throw new ApiError(409, 'Ba’zi to‘lovlar yangilanmadi')
+      const byStudent = new Map<string, typeof rows>()
+      for (const row of rows) {
+        const current = byStudent.get(row.student_id) ?? []
+        current.push(row)
+        byStudent.set(row.student_id, current)
+      }
+      await Promise.all([...byStudent.entries()].map(([studentId, payments]) =>
+        sendPushWithoutBreaking(() => sendPushForUser(studentId, {
+          title: review.status === 'approved' ? 'To‘lov tasdiqlandi ✅' : 'To‘lov qaytarildi',
+          body: review.status === 'approved'
+            ? `${payments.map((payment) => payment.month).join(', ')} oylari uchun to‘lov qabul qilindi.`
+            : review.message || 'Chekni tekshirib, qayta yuboring.',
+          url: '/talaba/tolova',
+          tag: `payment-${studentId}`,
+        })),
+      ))
       return { ok: true as const }
     },
 

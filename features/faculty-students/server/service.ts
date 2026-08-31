@@ -1,6 +1,7 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
 import { sendStudentBlacklistEmail, sendStudentWarningEmail } from '@/lib/email'
+import { sendPushForUser, sendPushWithoutBreaking } from '@/lib/push-notifications'
 import { writeAuditLog } from '@/lib/audit-log'
 import type {
   FacultyPaymentRecord,
@@ -102,6 +103,12 @@ export function createFacultyStudentsService(
       // Best-effort, same rule as lib/telegram.ts: a mail outage must not
       // undo a warning that is already recorded in the database.
       await sendStudentWarningEmail(student.email ?? '', student.full_name ?? 'Talaba', level, message)
+      await sendPushWithoutBreaking(() => sendPushForUser(studentId, {
+        title: level === 'warning' ? 'Rasmiy ogohlantirish ⚠️' : 'Dekandan eslatma',
+        body: message,
+        url: '/talaba/dashboard',
+        tag: `warning-${result.warning_id}`,
+      }))
 
       return { ok: true as const, level, warningCount: Number(result.new_warning_count) }
     },

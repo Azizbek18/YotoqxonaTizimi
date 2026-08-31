@@ -16,6 +16,7 @@ import CleaningScheduleModal from '@/components/talaba/dashboard/CleaningSchedul
 import AdminChatModal from '@/components/talaba/dashboard/AdminChatModal';
 import DashboardHeader from '@/components/talaba/dashboard/DashboardHeader';
 import RoomAssignmentBanner from '@/components/talaba/dashboard/RoomAssignmentBanner';
+import PushNotificationCard from '@/components/pwa/PushNotificationCard';
 import RoomInfoCard from '@/components/talaba/dashboard/RoomInfoCard';
 import SardorPanelCard from '@/components/talaba/dashboard/SardorPanelCard';
 import FloorCaptainCard from '@/components/talaba/dashboard/FloorCaptainCard';
@@ -333,6 +334,8 @@ export default function TalabaDashboard() {
         onDismiss={dismissRoomBanner}
       />
 
+      <PushNotificationCard isLight={isLight} />
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
         {/* ================= LEFT COLUMN ================= */}
         <div className="lg:col-span-4 space-y-6 sm:space-y-8">
@@ -441,4 +444,3 @@ export default function TalabaDashboard() {
     </div>
   );
 }
-

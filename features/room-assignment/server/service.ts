@@ -2,6 +2,7 @@ import 'server-only'
 import { ApiError } from '@/server/http/api-error'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 import { sendRoomAssignedEmail } from '@/lib/email'
+import { sendPushForPermit, sendPushForUser, sendPushWithoutBreaking } from '@/lib/push-notifications'
 import type { FacultyStudentRow } from '../types'
 import { createRoomAssignmentRepository, type RoomAssignmentRepository } from './repository'
 
@@ -68,6 +69,12 @@ async function assignPermitRoom(
     if (error instanceof ApiError) throw error
     throwForRoomError(error)
   }
+  await sendPushWithoutBreaking(() => sendPushForPermit(permitId, {
+    title: 'Xonangiz biriktirildi 🏠',
+    body: `Siz uchun ${roomNumber}-xona band qilindi. Ro‘yxatdan o‘tishni davom ettiring.`,
+    url: '/ruxsatnoma-tekshirish',
+    tag: `room-permit-${permitId}`,
+  }))
   return { success: true as const }
 }
 
@@ -138,6 +145,12 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
       // Faqat haqiqatan biriktirilgandan keyin — yuqoridagi erta return'lar
       // (xona tozalash yoki ayni o'sha xona) xat yuborishga sabab bo'lmaydi.
       await sendRoomAssignedEmail(student.email ?? '', student.full_name ?? 'Talaba', roomNumber)
+      await sendPushWithoutBreaking(() => sendPushForUser(studentId, {
+        title: 'Xonangiz biriktirildi 🏠',
+        body: `Siz ${roomNumber}-xonaga joylashtirildingiz. Batafsil ma’lumot dashboardda.`,
+        url: '/talaba/dashboard',
+        tag: `room-user-${studentId}`,
+      }))
       return { success: true as const }
     },
   }

@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
       })
       const telegram = await issuePermitTelegramLinkSafely(reopened.id)
       await notifyDekanNewPermit({ fullName, faculty, direction, course, applicationType: 'yollanma', resubmitted: true })
-      return NextResponse.json({ ok: true, resubmitted: true, telegram }, { status: 200 })
+      return NextResponse.json({ ok: true, resubmitted: true, telegram, permitRequestId: reopened.id }, { status: 200 })
     }
 
     const { data: inserted, error: insertError } = await supabase.from('permit_requests').insert(fields).select('id').single()
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
     })
     const telegram = await issuePermitTelegramLinkSafely(inserted.id)
     await notifyDekanNewPermit({ fullName, faculty, direction, course, applicationType: 'yollanma' })
-    return NextResponse.json({ ok: true, telegram }, { status: 201 })
+    return NextResponse.json({ ok: true, telegram, permitRequestId: inserted.id }, { status: 201 })
   } catch (error) {
     console.error('Permit submission failed:', error)
     const response = getApiError(error, 'Arizani saqlashda server xatoligi yuz berdi.')

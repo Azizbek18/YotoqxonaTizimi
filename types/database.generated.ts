@@ -167,6 +167,20 @@ export type PermitTelegramLinkRow = {
   updated_at: string
 }
 
+export type PushSubscriptionRow = {
+  id: number
+  endpoint: string
+  p256dh: string
+  auth: string
+  user_id: string | null
+  permit_request_id: string | null
+  expiration_time: number | null
+  user_agent: string | null
+  enabled: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -177,6 +191,7 @@ export interface Database {
       tolovlar: Table<PaymentRow>
       permit_requests: Table<PermitRequestRow>
       permit_telegram_links: Table<PermitTelegramLinkRow>
+      push_subscriptions: Table<PushSubscriptionRow>
       cleaning_schedule: Table<{
         faculty: string
         room_number: string

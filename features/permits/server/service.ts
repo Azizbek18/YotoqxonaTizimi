@@ -9,6 +9,7 @@ import { PERMIT_FACULTIES } from '@/lib/faculties'
 import type { DekanOverview } from '../types'
 import { createPermitAdminRepository, type PermitAdminRepository } from './repository'
 import { notifyPermitTelegram } from '@/lib/permit-telegram'
+import { sendPushForPermit, sendPushWithoutBreaking } from '@/lib/push-notifications'
 
 function sameFaculty(value: string | null, faculty: string) {
   return (value ?? '').trim().toLocaleLowerCase() === faculty.trim().toLocaleLowerCase()
@@ -22,6 +23,20 @@ async function notifyTelegramWithoutBreakingDecision(request: Awaited<ReturnType
     // A Telegram outage must never roll back a dean's database decision.
     console.error('Permit Telegram notification failed:', error)
   }
+  await sendPushWithoutBreaking(() => sendPushForPermit(request.id, {
+    title: request.status === 'approved'
+      ? 'Arizangiz tasdiqlandi! 🎉'
+      : request.status === 'rejected'
+        ? 'Ariza bo‘yicha javob bor'
+        : 'Ariza holati yangilandi',
+    body: request.status === 'approved'
+      ? 'Dekan arizangizni tasdiqladi. Endi ro‘yxatdan o‘tish bosqichini davom ettirishingiz mumkin.'
+      : request.status === 'rejected'
+        ? `Sabab: ${request.reject_reason || 'Batafsil ma’lumotni ariza holatidan ko‘ring.'}`
+        : 'Arizangiz yana ko‘rib chiqish navbatiga qaytarildi.',
+    url: '/ruxsatnoma-tekshirish',
+    tag: `permit-${request.id}`,
+  }))
 }
 
 // Only what overview() needs for its bed-capacity maths — kept narrow so

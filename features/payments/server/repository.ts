@@ -137,7 +137,7 @@ export function createPaymentRepository() {
         .in('id', ids)
         .in('faculty', faculties)
         .eq('status', 'waiting')
-        .select('id')
+        .select('id, student_id, month, year')
       if (error) throw error
       return data ?? []
     },

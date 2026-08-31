@@ -14,6 +14,7 @@ import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
 import TelegramPermitConnect from '@/components/TelegramPermitConnect'
+import PushNotificationCard from '@/components/pwa/PushNotificationCard'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
@@ -80,6 +81,7 @@ export default function RuxsatnomaYuborish() {
   const [submitted, setSubmitted] = useState(false)
   const [telegramLink, setTelegramLink] = useState<string | null>(null)
   const [telegramLinked, setTelegramLinked] = useState(false)
+  const [permitRequestId, setPermitRequestId] = useState<string | null>(null)
 
   // Shown before the student can touch the form — must be acknowledged
   // every visit, since it's a warning about THIS submission's accuracy,
@@ -540,6 +542,7 @@ export default function RuxsatnomaYuborish() {
 
       setTelegramLink(submitResult.telegram?.url ?? null)
       setTelegramLinked(submitResult.telegram?.linked === true)
+      setPermitRequestId(typeof submitResult.permitRequestId === 'string' ? submitResult.permitRequestId : null)
 
       if (typeof window !== 'undefined') {
         // sessionStorage, not localStorage — these are sensitive national ID
@@ -1775,6 +1778,17 @@ export default function RuxsatnomaYuborish() {
               </div>
 
               <TelegramPermitConnect url={telegramLink} linked={telegramLinked} isLight={isLight} />
+
+              {permitRequestId ? (
+                <PushNotificationCard
+                  isLight={isLight}
+                  permitBinding={{
+                    id: permitRequestId,
+                    passport: normalizePassport(passportSeries),
+                    email: email.trim().toLowerCase(),
+                  }}
+                />
+              ) : null}
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button

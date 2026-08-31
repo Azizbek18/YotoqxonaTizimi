@@ -241,6 +241,7 @@ export interface Database {
         faculty: string
         monthly_fee: number
         yearly_contract_fee: number
+        dekan_telegram_chat_id: string | null
         updated_at: string
       }>
       // Shared dorm tenancy (P0, migration 202609130000). Not read by

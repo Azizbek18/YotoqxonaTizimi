@@ -21,6 +21,7 @@ import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
 import { classifyPermitResubmission } from '@/lib/permit-resubmission'
 import { getApiError } from '@/server/http/api-error'
 import { issuePermitTelegramLinkSafely } from '@/lib/permit-telegram'
+import { notifyDekanNewPermit } from '@/lib/dekan-telegram'
 
 // Foreign and privileged (imtiyozli) students don't get a my.gov.uz
 // "yo'llanma" at all — they submit a filled Ariza + Tilxat instead (built
@@ -180,6 +181,7 @@ export async function POST(request: NextRequest) {
         details: { faculty },
       })
       const telegram = await issuePermitTelegramLinkSafely(reopened.id)
+      await notifyDekanNewPermit({ fullName, faculty, direction, course, applicationType: 'imtiyozli', resubmitted: true })
       return NextResponse.json({ ok: true, resubmitted: true, telegram }, { status: 200 })
     }
 
@@ -200,6 +202,7 @@ export async function POST(request: NextRequest) {
       details: { faculty },
     })
     const telegram = await issuePermitTelegramLinkSafely(inserted.id)
+    await notifyDekanNewPermit({ fullName, faculty, direction, course, applicationType: 'imtiyozli' })
     return NextResponse.json({ ok: true, telegram }, { status: 201 })
   } catch (error) {
     console.error('Imtiyozli submission failed:', error)

@@ -2,11 +2,16 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Wallet, Boxes, Phone, ShieldAlert, Globe2 } from 'lucide-react'
+import { Wallet, Boxes, Phone, ShieldAlert, Globe2, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { fetchAppSettings, updateAppSettings } from '@/features/app-settings/client/api'
+import {
+    fetchAppSettings,
+    updateAppSettings,
+    fetchDekanTelegramChat,
+    updateDekanTelegramChat,
+} from '@/features/app-settings/client/api'
 import type { AppSettings } from '@/features/app-settings/types'
 import { fetchDekanDorm } from '@/features/dorms/client/api'
 import type { DekanDorm } from '@/features/dorms/types'
@@ -35,6 +40,10 @@ export default function DekanSozlamalarPage() {
     const [loadError, setLoadError] = useState<string | null>(null)
     const [saving, setSaving] = useState(false)
 
+    const [telegramChat, setTelegramChat] = useState('')
+    const [savedTelegramChat, setSavedTelegramChat] = useState('')
+    const [telegramSaving, setTelegramSaving] = useState(false)
+
     const loadSettings = useCallback(async () => {
         setLoading(true)
         setLoadError(null)
@@ -62,6 +71,26 @@ export default function DekanSozlamalarPage() {
             .then(({ dorm }) => setDorm(dorm))
             .catch(() => setDorm(null))
     }, [])
+
+    useEffect(() => {
+        fetchDekanTelegramChat()
+            .then((chatId) => { setTelegramChat(chatId); setSavedTelegramChat(chatId) })
+            .catch(() => { setTelegramChat(''); setSavedTelegramChat('') })
+    }, [])
+
+    const handleSaveTelegram = async () => {
+        try {
+            setTelegramSaving(true)
+            const saved = await updateDekanTelegramChat(telegramChat.trim())
+            setTelegramChat(saved)
+            setSavedTelegramChat(saved)
+            toast.success(saved ? 'Telegram bildirishnomasi yoqildi!' : 'Telegram bildirishnomasi o‘chirildi')
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Saqlanmadi')
+        } finally {
+            setTelegramSaving(false)
+        }
+    }
 
     const handleChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
         setSettings((prev) => prev ? { ...prev, [key]: value } : prev)
@@ -240,6 +269,47 @@ export default function DekanSozlamalarPage() {
                                 </div>
                             </div>
                           </>
+                        ))}
+
+                        {renderSection(Send, 'Yangi ariza — Telegram bildirishnomasi', 0.07, (
+                          <div className="space-y-4">
+                            <p className={`text-xs leading-relaxed ${ui.muted}`}>
+                                Talaba yangi yo&apos;llanma yoki xorijlik/imtiyozli ariza yuborganda shu Telegram
+                                guruhiga darhol xabar keladi. Yoqish uchun: guruh yarating &rarr;
+                                <span className={`font-semibold ${ui.strong}`}> @MeningYotoqxonamBot</span> ni guruhga
+                                qo&apos;shing &rarr; guruh ID sini (masalan <code>-1001234567890</code>) pastga yozing.
+                                Bo&apos;sh qoldirilsa bildirishnoma o&apos;chadi.
+                            </p>
+                            <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                                <div className="flex-1 min-w-0">
+                                    <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${ui.muted}`}>
+                                        Guruh ID yoki @kanal
+                                    </label>
+                                    <input
+                                        type="text"
+                                        inputMode="text"
+                                        value={telegramChat}
+                                        onChange={(e) => setTelegramChat(e.target.value)}
+                                        placeholder="-1001234567890"
+                                        maxLength={40}
+                                        className={`${inputCls} w-full`}
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveTelegram}
+                                    disabled={telegramSaving || telegramChat.trim() === savedTelegramChat.trim()}
+                                    className={`shrink-0 rounded-lg px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${ui.accentSolid}`}
+                                >
+                                    {telegramSaving ? 'Saqlanmoqda...' : 'Saqlash'}
+                                </button>
+                            </div>
+                            {savedTelegramChat && (
+                                <p className={`text-[11px] ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>
+                                    ✓ Bildirishnoma yoqilgan: <span className="font-mono">{savedTelegramChat}</span>
+                                </p>
+                            )}
+                          </div>
                         ))}
 
                         {renderSection(ShieldAlert, 'Fayl va ogohlantirish chegaralari', 0.08, (

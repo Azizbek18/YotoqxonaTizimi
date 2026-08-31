@@ -15,6 +15,22 @@ export function updateAppSettings(input: Partial<AppSettings>) {
   })
 }
 
+// ---- dekan: Telegram notification chat for new permit requests ----
+
+export async function fetchDekanTelegramChat(): Promise<string> {
+  const { chatId } = await apiRequest<{ chatId: string }>('/api/dekan/telegram-chat', undefined, "Telegram sozlamasini yuklab bo'lmadi")
+  return chatId
+}
+
+export async function updateDekanTelegramChat(chatId: string): Promise<string> {
+  const result = await apiRequest<{ chatId: string }>('/api/dekan/telegram-chat', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chatId }),
+  }, "Telegram sozlamasini saqlab bo'lmadi")
+  return result.chatId
+}
+
 // ---- superadmin: cross-faculty fee table ----
 
 export async function fetchFacultyFees(): Promise<FacultyFee[]> {

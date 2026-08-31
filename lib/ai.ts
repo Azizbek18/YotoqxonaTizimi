@@ -36,6 +36,9 @@ export function describeAiFailure(message: string): string {
   if (/RESOURCE_EXHAUSTED|credits are depleted|quota/i.test(message)) {
     return "Gemini krediti/kvotasi tugagan — AI Studio'da (ai.studio/projects) billing to'ldirilishi kerak."
   }
+  if (/dunning|billing account|account.*(suspend|disabled)|payment/i.test(message)) {
+    return "Gemini loyihasining to'lovi muammoli (Google Cloud billing) — hisobni to'lang / to'lov usulini tekshiring."
+  }
   if (/API_KEY_INVALID|API key not valid|PERMISSION_DENIED|\(40[13]\)/i.test(message)) {
     return 'AI API kaliti yaroqsiz yoki cheklangan (Vercel: GEMINI_API_KEY / GROQ_API_KEY).'
   }

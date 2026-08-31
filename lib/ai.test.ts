@@ -20,7 +20,11 @@ describe('describeAiFailure', () => {
     expect(describeAiFailure('Gemini API error (429): {"status":"RESOURCE_EXHAUSTED"}')).toMatch(/billing|kredit/i)
   })
   it('names an invalid key', () => {
-    expect(describeAiFailure('Groq API error (401): PERMISSION_DENIED')).toMatch(/kalit/i)
+    expect(describeAiFailure('Groq API error (401): bad Authorization')).toMatch(/kalit/i)
+  })
+  it('names a billing / dunning suspension', () => {
+    expect(describeAiFailure('Gemini API error (403): Lightning dunning decision is deny for project'))
+      .toMatch(/to'lov|billing/i)
   })
   it('names a dead model', () => {
     expect(describeAiFailure('Groq API error (404): the model does not exist')).toMatch(/model/i)

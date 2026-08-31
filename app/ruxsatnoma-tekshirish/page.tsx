@@ -37,6 +37,12 @@ interface PermitRequest {
   room_number: string | null
   reject_reason: string | null
   application_type: ApplicationType
+  /** Carried through for the "tahrirlash" prefill — the status endpoint
+   *  already returns these so /register can prefill the signup wizard. */
+  phone?: string | null
+  faculty?: string | null
+  direction?: string | null
+  course?: number | null
   /** Only set while status is 'pending' — how many arizalar in the same
    *  faculty were submitted before this one, and the total waiting. */
   queuePosition?: number
@@ -60,14 +66,62 @@ function StatusCheckContent() {
   const [searched, setSearched] = useState(false)
   const [result, setResult] = useState<PermitRequest | null>(null)
 
+  // Pull-back / edit of a still-pending application.
+  const [confirmMode, setConfirmMode] = useState<null | 'edit' | 'cancel'>(null)
+  const [cancelBusy, setCancelBusy] = useState<null | 'edit' | 'cancel'>(null)
+  const [cancelledOk, setCancelledOk] = useState(false)
+
   const showToast = (message: string) => {
     toast.error(message)
+  }
+
+  const runCancel = async (then: 'edit' | 'cancel') => {
+    if (!result) return
+    setCancelBusy(then)
+    try {
+      const res = await fetch('/api/permit-requests/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passportSeries, jshshir, email, applicationType: result.application_type }),
+      })
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(payload.error || 'Bekor qilishda xatolik yuz berdi')
+
+      if (then === 'edit') {
+        try {
+          // The submit form reads this and prefills every field, so the
+          // student only re-uploads the document and fixes the typo.
+          sessionStorage.setItem('permit_resubmit', JSON.stringify({
+            passport: passportSeries,
+            jshshir,
+            email,
+            applicationType: result.application_type,
+            fullName: result.full_name,
+            phone: result.phone ?? '',
+            faculty: result.faculty ?? '',
+            direction: result.direction ?? '',
+            course: result.course != null ? String(result.course) : '',
+          }))
+        } catch { /* private mode — the student just retypes */ }
+        router.push(result.application_type === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish')
+        return
+      }
+      setCancelledOk(true)
+      setResult(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Bekor qilishda xatolik yuz berdi')
+    } finally {
+      setCancelBusy(null)
+      setConfirmMode(null)
+    }
   }
 
   const handleSearch = useCallback(async (passport: string, pin: string, applicantEmail: string, type: ApplicationType) => {
     setLoading(true)
     setSearched(true)
     setResult(null)
+    setCancelledOk(false)
+    setConfirmMode(null)
 
     try {
       const cleanPassport = type === 'imtiyozli' ? normalizeForeignIdNumber(passport) : normalizePassport(passport)
@@ -148,6 +202,8 @@ function StatusCheckContent() {
   const handleBackToForm = () => {
     setSearched(false)
     setResult(null)
+    setCancelledOk(false)
+    setConfirmMode(null)
   }
 
   // Form and result are two distinct steps, never shown together: the
@@ -359,6 +415,39 @@ function StatusCheckContent() {
                             </span>
                           </div>
                         )}
+
+                        {/* Dekan hali ko'rmagan — talaba xatoni tuzatishi
+                            yoki arizani butunlay bekor qilishi mumkin. */}
+                        {confirmMode ? (
+                          <div className={`rounded-xl border p-3 text-left space-y-2.5 ${isLight ? 'bg-white border-amber-200' : 'bg-slate-950/40 border-amber-500/20'}`}>
+                            <p className={`text-[11px] leading-relaxed font-sans ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+                              {confirmMode === 'edit'
+                                ? "Tahrirlash uchun ariza bekor qilinadi, so‘ng forma to‘ldirilgan holda ochiladi — hujjatni qayta yuklab, xatoni tuzatasiz."
+                                : "Arizani butunlay bekor qilasizmi? Keyin xohlagan vaqtingizda qaytadan yuborishingiz mumkin."}
+                            </p>
+                            <div className="flex gap-2">
+                              <button type="button" onClick={() => setConfirmMode(null)} disabled={cancelBusy !== null}
+                                className={`flex-1 rounded-lg py-2 text-[10px] font-black uppercase tracking-wider transition ${isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'} disabled:opacity-50`}>
+                                Yo&apos;q
+                              </button>
+                              <button type="button" onClick={() => runCancel(confirmMode)} disabled={cancelBusy !== null}
+                                className="flex-1 rounded-lg py-2 text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white hover:bg-rose-700 transition disabled:opacity-50">
+                                {cancelBusy ? '...' : 'Ha, davom etish'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <button type="button" onClick={() => setConfirmMode('edit')}
+                              className={`flex-1 rounded-lg py-2.5 text-[10px] font-black uppercase tracking-wider border transition ${isLight ? 'border-amber-300 text-amber-700 hover:bg-amber-50' : 'border-amber-500/30 text-amber-300 hover:bg-amber-500/10'}`}>
+                              Ma&apos;lumotni tahrirlash
+                            </button>
+                            <button type="button" onClick={() => setConfirmMode('cancel')}
+                              className={`flex-1 rounded-lg py-2.5 text-[10px] font-black uppercase tracking-wider border transition ${isLight ? 'border-rose-300 text-rose-600 hover:bg-rose-50' : 'border-rose-500/30 text-rose-300 hover:bg-rose-500/10'}`}>
+                              Arizani bekor qilish
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -437,6 +526,19 @@ function StatusCheckContent() {
                         </button>
                       </div>
                     )}
+                  </div>
+                ) : cancelledOk ? (
+                  <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-2">
+                    <CheckCircle2 className="mx-auto h-9 w-9 text-emerald-400" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400">Ariza bekor qilindi</h3>
+                    <p className={`text-[10px] leading-relaxed font-sans ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Arizangiz o&apos;chirildi. Xohlagan vaqtingizda qaytadan yuborishingiz mumkin.
+                    </p>
+                    <div className="pt-2">
+                      <Link href={applicationType === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'} className="text-xs font-bold text-blue-500 hover:underline">
+                        {applicationType === 'imtiyozli' ? 'Qaytadan xorijiy ariza yuborish →' : "Qaytadan yo'llanma yuborish →"}
+                      </Link>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-4 rounded-2xl bg-slate-950/40 border border-white/5 text-center space-y-2">

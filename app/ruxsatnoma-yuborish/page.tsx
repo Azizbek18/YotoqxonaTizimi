@@ -92,18 +92,26 @@ export default function RuxsatnomaYuborish() {
     }
   }, [])
 
-  // Prefill the identity fields when resubmitting a rejected application, so
-  // the applicant only fixes the document and can't accidentally change the
-  // passport/JShSHIR that keys their existing row.
+  // Prefill when resubmitting: a rejected application (identity only) or a
+  // pending one the student pulled back to edit (every field, so they just
+  // re-upload the document and fix the typo).
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem('permit_resubmit')
       if (!raw) return
       sessionStorage.removeItem('permit_resubmit')
-      const saved = JSON.parse(raw) as { passport?: string; jshshir?: string; email?: string }
+      const saved = JSON.parse(raw) as {
+        passport?: string; jshshir?: string; email?: string
+        fullName?: string; phone?: string; faculty?: string; direction?: string; course?: string
+      }
       if (saved.passport) setPassportSeries(saved.passport)
       if (saved.jshshir) setJshshir(saved.jshshir)
       if (saved.email) setEmail(saved.email)
+      if (saved.fullName) setFullName(cyrillicToLatin(saved.fullName))
+      if (saved.phone) setPhone(String(saved.phone).replace(/\D/g, '').slice(-9))
+      if (saved.faculty && PERMIT_FACULTIES.some((f) => f.value === saved.faculty)) setFaculty(saved.faculty)
+      if (saved.direction) setDirection(saved.direction)
+      if (saved.course && /^[1-6]$/.test(saved.course)) setCourse(saved.course)
       setResubmitMode(true)
     } catch { /* ignore malformed / unavailable storage */ }
   }, [])

@@ -75,10 +75,27 @@ export default function ImtiyozliAriza() {
     try {
       const raw = sessionStorage.getItem('permit_resubmit')
       if (!raw) return
-      const saved = JSON.parse(raw) as { passport?: unknown; email?: unknown; applicationType?: unknown }
+      const saved = JSON.parse(raw) as {
+        passport?: unknown; email?: unknown; applicationType?: unknown
+        fullName?: unknown; phone?: unknown; faculty?: unknown; direction?: unknown; course?: unknown
+      }
       if (saved.applicationType !== 'imtiyozli') return
       setIdNumber(normalizeForeignIdNumber(saved.passport))
       setEmail(String(saved.email ?? '').trim().toLowerCase().slice(0, 254))
+      // Pulled back to edit — prefill the rest so only the passport photo
+      // needs re-uploading.
+      const parts = String(saved.fullName ?? '').trim().split(/\s+/).filter(Boolean)
+      if (parts[0]) setLastName(cyrillicToLatin(parts[0]))
+      if (parts[1]) setFirstName(cyrillicToLatin(parts[1]))
+      if (parts.length > 2) setMiddleName(cyrillicToLatin(parts.slice(2).join(' ')))
+      else if (parts.length === 2) setNoMiddleName(true)
+      const phone = String(saved.phone ?? '').replace(/\D/g, '').slice(-9)
+      if (phone) setPhone(phone)
+      const fac = String(saved.faculty ?? '')
+      if (PERMIT_FACULTIES.some((f) => f.value === fac)) setFaculty(fac)
+      if (saved.direction) setDirection(String(saved.direction))
+      const course = String(saved.course ?? '')
+      if (/^[1-6]$/.test(course)) setCourse(course)
       sessionStorage.removeItem('permit_resubmit')
     } catch {
       sessionStorage.removeItem('permit_resubmit')

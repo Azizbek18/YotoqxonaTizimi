@@ -20,7 +20,7 @@ import {
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { fetchStudentAnnouncements } from '@/features/announcements/client/api';
 import { fetchAppSettings } from '@/features/app-settings/client/api';
-import PageSkeleton from '@/components/ui/PageSkeleton';
+import { TalabaElonlarSkeleton } from '@/components/talaba/skeletons';
 import { StaggerList, StaggerItem } from '@/components/motion/StaggerList';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
 
@@ -371,7 +371,7 @@ export default function ElonlarPage() {
           {/* Main List Column */}
           <div className="lg:col-span-8 space-y-4">
             {loading && view === 'dorm' ? (
-              <PageSkeleton />
+              <TalabaElonlarSkeleton />
             ) : filteredElonlar.length === 0 ? (
               <div className={`rounded-[28px] border p-12 text-center ${panel} space-y-4`}>
                 <Megaphone className={`mx-auto opacity-35 ${textMuted}`} size={40} />

@@ -1,11 +1,11 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import PageSkeleton from '@/components/ui/PageSkeleton'
+import { TalabaArizalarSkeleton } from '@/components/talaba/skeletons'
 
 const ArizalarContent = dynamic(() => import('./ArizalarContent'), {
     ssr: false,
-    loading: () => <PageSkeleton />,
+    loading: () => <TalabaArizalarSkeleton />,
 })
 
 export default function Page() {

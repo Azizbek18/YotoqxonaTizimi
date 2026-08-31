@@ -15,7 +15,7 @@ import { motion, AnimatePresence, Variants } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import ProfileLoadError from '@/components/talaba/ProfileLoadError'
-import PageSkeleton from '@/components/ui/PageSkeleton'
+import { TalabaProfilSkeleton } from '@/components/talaba/skeletons'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import {
   deleteStudentAvatar,
@@ -573,7 +573,7 @@ export default function StudentProfile() {
   if (loading) {
     return (
       <div className="px-4 py-6">
-        <PageSkeleton />
+        <TalabaProfilSkeleton />
       </div>
     )
   }

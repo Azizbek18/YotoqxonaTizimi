@@ -13,7 +13,7 @@ import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { supabase } from '@/lib/supabase'
 import { getSafeUser } from '@/lib/auth-session'
-import PageSkeleton from '@/components/ui/PageSkeleton'
+import { TalabaTolovaSkeleton } from '@/components/talaba/skeletons'
 import { User } from '@supabase/supabase-js'
 import { fetchStudentPayments, submitStudentPayment, fetchReceiptSignedUrl } from '@/features/payments/client/api'
 import type { PaymentRecord } from '@/features/payments/types'
@@ -470,7 +470,7 @@ export default function TolovaPage() {
     return (
         <AnimatePresence mode="wait">
             {loading ? (
-                <PageSkeleton key="skeleton" />
+                <TalabaTolovaSkeleton key="skeleton" />
             ) : (
                 <motion.div
                     key="content"

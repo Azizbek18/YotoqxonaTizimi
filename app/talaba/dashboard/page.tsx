@@ -7,7 +7,7 @@ import { useThemeStore } from '@/lib/stores/theme-store';
 import { getSafeUser } from '@/lib/auth-session';
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors';
 import ProfileLoadError from '@/components/talaba/ProfileLoadError';
-import PageSkeleton from '@/components/ui/PageSkeleton';
+import { TalabaDashboardSkeleton } from '@/components/talaba/skeletons';
 import AiAssistant from '@/components/talaba/dashboard/AiAssistant';
 import WarningsModal from '@/components/talaba/dashboard/WarningsModal';
 import WarningDetailModal from '@/components/talaba/dashboard/WarningDetailModal';
@@ -304,8 +304,8 @@ export default function TalabaDashboard() {
 
   if (loadingProfile) {
     return (
-      <div className={`min-h-screen px-4 py-6 ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#02040a]'}`}>
-        <PageSkeleton />
+      <div className={`min-h-screen ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#02040a]'}`}>
+        <TalabaDashboardSkeleton />
       </div>
     );
   }

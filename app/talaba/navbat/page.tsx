@@ -8,7 +8,7 @@ import {
 import { getSafeSession } from '@/lib/auth-session'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import PageSkeleton from '@/components/ui/PageSkeleton'
+import { TalabaNavbatSkeleton } from '@/components/talaba/skeletons'
 
 interface Profile {
   id: string
@@ -87,8 +87,8 @@ export default function NavbatPage() {
 
   if (loading) {
     return (
-      <div className={`min-h-screen px-4 py-6 transition-colors duration-300 ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#020617] text-white'}`}>
-        <PageSkeleton />
+      <div className={`min-h-screen py-6 transition-colors duration-300 ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#020617] text-white'}`}>
+        <TalabaNavbatSkeleton />
       </div>
     )
   }

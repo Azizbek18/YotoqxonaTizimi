@@ -18,7 +18,7 @@ import {
   BookOpen
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import PageSkeleton from '@/components/ui/PageSkeleton'
+import { TalabaQoidalarSkeleton } from '@/components/talaba/skeletons'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 import toast from 'react-hot-toast'
 
@@ -243,7 +243,7 @@ export default function QoidalarPage() {
     loadData()
   }, [])
 
-  if (loading) return <PageSkeleton />
+  if (loading) return <div className="mx-auto w-full max-w-5xl px-4 py-6"><TalabaQoidalarSkeleton /></div>
 
   const warningCount = profile?.warning_count || 0
   const isBlacklisted = profile?.blacklisted || false

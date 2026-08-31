@@ -12,7 +12,7 @@ import { User } from '@supabase/supabase-js'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
-import PageSkeleton from '@/components/ui/PageSkeleton'
+import { TalabaArizalarSkeleton } from '@/components/talaba/skeletons'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 import {
@@ -307,7 +307,7 @@ export default function ArizalarContent() {
     }
 
     if (loading) {
-        return <PageSkeleton />
+        return <TalabaArizalarSkeleton />
     }
 
     return (

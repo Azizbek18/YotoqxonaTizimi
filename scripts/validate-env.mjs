@@ -81,4 +81,10 @@ if (process.env.TELEGRAM_BOT_USERNAME || process.env.TELEGRAM_WEBHOOK_SECRET) {
   }
 }
 
+if (process.env.TELEGRAM_ADMIN_CHAT_ID
+  && !/^(-?\d{1,20}|@[A-Za-z][A-Za-z0-9_]{3,31})$/.test(process.env.TELEGRAM_ADMIN_CHAT_ID.trim())) {
+  console.error('TELEGRAM_ADMIN_CHAT_ID must be a numeric Telegram chat ID or a public @channel handle.')
+  process.exit(1)
+}
+
 console.log('Production environment validation passed.')

@@ -19,6 +19,11 @@ describe('describeAiFailure', () => {
   it('names a depleted-credits outage as a billing problem', () => {
     expect(describeAiFailure('Gemini API error (429): {"status":"RESOURCE_EXHAUSTED"}')).toMatch(/billing|kredit/i)
   })
+  it('hides Groq rate-limit internals from Telegram alerts', () => {
+    const result = describeAiFailure('Groq API error (429): Rate limit reached for model qwen in organization org_secret')
+    expect(result).toMatch(/so‘rov limiti/i)
+    expect(result).not.toMatch(/qwen|org_secret|Groq API error/i)
+  })
   it('names an invalid key', () => {
     expect(describeAiFailure('Groq API error (401): bad Authorization')).toMatch(/kalit/i)
   })
@@ -29,8 +34,8 @@ describe('describeAiFailure', () => {
   it('names a dead model', () => {
     expect(describeAiFailure('Groq API error (404): the model does not exist')).toMatch(/model/i)
   })
-  it('passes an unknown error through, trimmed', () => {
-    expect(describeAiFailure('weird thing')).toBe('weird thing')
+  it('hides unknown provider details behind a safe operational message', () => {
+    expect(describeAiFailure('internal provider payload with secret details')).not.toMatch(/secret details/i)
   })
 })
 

@@ -58,6 +58,19 @@ describe('Telegram webhook', () => {
     expect(update).toHaveBeenCalledWith(expect.objectContaining({ last_notified_status: 'pending' }))
   })
 
+  it('does not subscribe a plain /start chat to any student notifications', async () => {
+    const response = await POST(request({
+      message: { text: '/start', chat: { id: 6386977575, type: 'private' } },
+    }))
+
+    expect(response.status).toBe(200)
+    expect(bindPermitTelegramChat).not.toHaveBeenCalled()
+    expect(sendTelegramChatMessage).toHaveBeenCalledTimes(1)
+    const plainStartCall = sendTelegramChatMessage.mock.calls[0] as unknown as [string, string]
+    expect(plainStartCall[1]).toMatch(/Arizangiz yuborilgandan keyin/i)
+    expect(plainStartCall[1]).not.toMatch(/Groq|API error|rate limit/i)
+  })
+
   it('does not bind a group chat', async () => {
     const response = await POST(request({
       message: { text: '/start abcdefghijklmnopqrstuv', chat: { id: -1001, type: 'supergroup' } },

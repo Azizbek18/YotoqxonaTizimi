@@ -152,3 +152,8 @@ tugmasini ochib bir marta `START` bosadi. Bog‘lanishdan keyin dekan tasdiqlash
 rad etish yoki tasdiqni bekor qilish holatini o‘zgartirsa, bot talabaning
 shaxsiy chatiga avtomatik xabar yuboradi. Deep linkda pasport va JShSHIR emas,
 faqat 30 kunlik bir martalik tasodifiy token ishlatiladi.
+
+Ichki AI nosozligi va talabalar taklifi kabi administrator xabarlari kerak
+bo‘lsa, faqat administratorga tegishli alohida `TELEGRAM_ADMIN_CHAT_ID` ni
+kiriting. Talabaning `/start` orqali olingan chat ID sini bu maydonga kiritmang.
+Eski `TELEGRAM_CHAT_ID` xavfsizlik sababli ishlatilmaydi.

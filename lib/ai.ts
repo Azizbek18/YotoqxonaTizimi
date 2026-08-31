@@ -1,7 +1,7 @@
 import 'server-only'
 import { callGemini } from './gemini'
 import { groqAnalyzeImages, groqConfigured, groqGenerateText } from './groq'
-import { sendTelegramMessage } from './telegram'
+import { sendTelegramAdminMessage } from './telegram'
 import { aiGatewayConfigured, gatewayGenerate } from './ai-gateway'
 
 // Provider routing for the AI features:
@@ -38,6 +38,9 @@ export function describeAiFailure(message: string): string {
   if (/RESOURCE_EXHAUSTED|credits are depleted|quota|Payment Required|\(402\)/i.test(message)) {
     return "AI krediti/kvotasi tugagan — Vercel AI Gateway yoki Google AI Studio balansini tekshiring."
   }
+  if (/rate limit|too many requests|tokens per minute|requests per minute|\(429\)/i.test(message)) {
+    return "AI provayderining vaqtinchalik so‘rov limiti tugagan. Birozdan keyin qayta uriniladi."
+  }
   if (/dunning|billing account|account.*(suspend|disabled)|payment/i.test(message)) {
     return "Gemini loyihasining to'lovi muammoli (Google Cloud billing) — hisobni to'lang / to'lov usulini tekshiring."
   }
@@ -47,7 +50,7 @@ export function describeAiFailure(message: string): string {
   if (/is not found|not supported|does not exist|\(404\)/i.test(message)) {
     return "AI modeli topilmadi — model nomi eskirgan bo'lishi mumkin (lib/gemini.ts / lib/groq.ts)."
   }
-  return message.slice(0, 300)
+  return "AI provayderida vaqtinchalik texnik xatolik yuz berdi. Tafsilotlar server jurnalida saqlandi."
 }
 
 export function aiVisionConfigured() {
@@ -63,7 +66,7 @@ async function alertOutage(where: string, error: unknown): Promise<void> {
   if (now - lastAlertAt < ALERT_COOLDOWN_MS) return
   lastAlertAt = now
   const message = error instanceof Error ? error.message : String(error)
-  await sendTelegramMessage(
+  await sendTelegramAdminMessage(
     `⚠️ Sun'iy intellekt ishlamayapti (${where})\n\n${describeAiFailure(message)}\n\n` +
       "Talabalar hozircha AI javob o'rniga zaxira javob / qo'lda tekshiruv olishmoqda.",
   )

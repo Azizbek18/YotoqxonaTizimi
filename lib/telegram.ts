@@ -31,10 +31,15 @@ export async function sendTelegramChatMessage(chatId: string, text: string, opti
   }
 }
 
-export async function sendTelegramMessage(text: string) {
-  const token = process.env.TELEGRAM_BOT_TOKEN
-  const chatId = process.env.TELEGRAM_CHAT_ID
-  if (!token || !chatId) return
+/**
+ * Sends operational messages only to an explicitly configured administrator.
+ * TELEGRAM_CHAT_ID used to share the student bot's recipient and is
+ * intentionally ignored: a student who starts the bot must never receive
+ * internal alerts or other students' submissions.
+ */
+export async function sendTelegramAdminMessage(text: string) {
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim()
+  if (!chatId) return false
 
-  await sendTelegramChatMessage(chatId, text)
+  return sendTelegramChatMessage(chatId, text)
 }

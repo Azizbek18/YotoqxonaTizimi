@@ -10,7 +10,7 @@ vi.mock('./groq', () => ({
 }))
 const callGemini = vi.fn()
 vi.mock('./gemini', () => ({ callGemini }))
-vi.mock('./telegram', () => ({ sendTelegramMessage: vi.fn() }))
+vi.mock('./telegram', () => ({ sendTelegramAdminMessage: vi.fn() }))
 
 const { aiChatReply, aiVisionJson } = await import('./ai')
 

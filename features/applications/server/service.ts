@@ -1,6 +1,6 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
-import { sendTelegramMessage } from '@/lib/telegram'
+import { sendTelegramAdminMessage } from '@/lib/telegram'
 import type { ApplicationListKind } from '../types'
 import { parseStudentApplication } from '../domain/validation'
 import { createApplicationRepository, type ApplicationRepository } from './repository'
@@ -43,7 +43,7 @@ export function createApplicationService(repository: ApplicationRepository = cre
       })
 
       if (input.type === 'taklif') {
-        await sendTelegramMessage(
+        await sendTelegramAdminMessage(
           `Yangi taklif/xabar\n\nTalaba: ${profile.full_name}\nFakultet: ${profile.faculty ?? '-'}\nYo'nalish: ${profile.direction ?? '-'}\n\n${input.text}`,
         )
       }

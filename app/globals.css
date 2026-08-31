@@ -941,6 +941,37 @@ html.theme-anim canvas {
   .animate-pulse, .animate-ping, [class*="animate-[spin"] {
     animation: none !important;
   }
+
+  /* Some Android WebViews corrupt cached compositor tiles when a fixed
+     Framer Motion layer also samples the page through backdrop-filter.
+     The symptom is duplicated/fragmented text while scrolling. Keep the
+     desktop effect, but make the install UI a stable opaque layer on phones. */
+  .pwa-install-banner,
+  .pwa-install-guide {
+    transform: none !important;
+    will-change: auto !important;
+  }
+
+  .pwa-install-card,
+  .pwa-install-overlay {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .pwa-install-card {
+    background-color: rgb(2 6 23 / 0.98) !important;
+  }
+
+  .pwa-install-overlay {
+    background-color: rgb(2 6 23 / 0.94) !important;
+  }
+
+  /* Landing-page entrance transforms can keep extra GPU layers alive in
+     older WebViews. Content remains fully visible without the decoration. */
+  .anim-in {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

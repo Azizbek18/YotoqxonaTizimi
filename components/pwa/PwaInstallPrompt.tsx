@@ -126,9 +126,9 @@ export default function PwaInstallPrompt() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-[420px] z-[99999]"
+            className="pwa-install-banner fixed bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-[420px] z-[99999]"
           >
-            <div className="relative overflow-hidden rounded-[28px] bg-slate-950/85 dark:bg-slate-950/90 backdrop-blur-2xl border border-white/10 p-5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] shadow-indigo-500/10">
+            <div className="pwa-install-card relative overflow-hidden rounded-[28px] bg-slate-950/85 dark:bg-slate-950/90 backdrop-blur-2xl border border-white/10 p-5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] shadow-indigo-500/10">
               {/* Decorative background glows */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -187,12 +187,12 @@ export default function PwaInstallPrompt() {
       {/* 2. IOS GUIDED INSTRUCTIONS MODAL */}
       <AnimatePresence>
         {showIosGuide && (
-          <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="pwa-install-overlay fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative overflow-hidden rounded-[32px] bg-slate-900 border border-white/10 p-6 shadow-2xl max-w-sm w-full text-center space-y-6"
+              className="pwa-install-guide relative overflow-hidden rounded-[32px] bg-slate-900 border border-white/10 p-6 shadow-2xl max-w-sm w-full text-center space-y-6"
             >
               {/* App Circular Icon */}
               <div className="mx-auto w-16 h-16 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 p-0.5">

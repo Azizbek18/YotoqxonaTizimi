@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { callGemini } from '@/lib/gemini'
+import { aiChatReply } from '@/lib/ai'
+import { groqConfigured } from '@/lib/groq'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 import { requireActiveStudent } from '@/server/auth/guards'
@@ -62,12 +63,12 @@ Muhim: sizda quyidagilar haqida real ma'lumot YO'Q — bunday savol kelsa, o'yla
 
 Javoblaringizni iloji boricha qisqa, tushunarli va chiroyli emojilar bilan bezab bering.`
 
-    if (geminiApiKey) {
+    if (geminiApiKey || groqConfigured()) {
       try {
-        // Format conversational history for Gemini
+        // Gemini-shaped request — aiChatReply routes it to Groq first, Gemini
+        // as the fallback, and returns the same shape either way.
         const formattedContents: Array<{ role: 'user' | 'model'; parts: { text: string }[] }> = []
 
-        // If there's prior history, map it to Gemini structure (user/model)
         if (Array.isArray(history)) {
           for (const msg of history) {
             if (!msg.text) continue
@@ -78,13 +79,12 @@ Javoblaringizni iloji boricha qisqa, tushunarli va chiroyli emojilar bilan bezab
           }
         }
 
-        // Add the current user message
         formattedContents.push({
           role: 'user',
           parts: [{ text: message }]
         })
 
-        const apiData = await callGemini({
+        const apiData = await aiChatReply({
           contents: formattedContents,
           systemInstruction: {
             parts: [{ text: systemInstruction }]
@@ -96,9 +96,9 @@ Javoblaringizni iloji boricha qisqa, tushunarli va chiroyli emojilar bilan bezab
         return NextResponse.json({ reply: aiReply })
 
       } catch (error: unknown) {
-        console.error('Gemini chat failed, using fallback:', error)
+        console.error('AI chat failed, using fallback:', error)
         return NextResponse.json({
-          reply: `🤖 Salom! [Gemini ulanish xatosi] Hozirda serverda texnik ishlar ketmoqda. Ammo men sizga quyidagicha yordam bera olaman:
+          reply: `🤖 Salom! [AI vaqtincha ishlamayapti] Hozirda serverda texnik ishlar ketmoqda. Ammo men sizga quyidagicha yordam bera olaman:
 - 🚪 Kirish-chiqish 06:00 dan 23:00 gacha.
 - 💳 To'lov oyiga ${monthlyFee.toLocaleString('uz-UZ')} UZS.
 - 📞 Qavat sardori va ma'muriyat aloqasini "Navbat" sahifasidan ko'rishingiz mumkin.

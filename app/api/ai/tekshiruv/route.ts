@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
 import { getServiceSupabase } from '@/lib/server-supabase'
-import { callGemini } from '@/lib/gemini'
+import { aiVisionJson } from '@/lib/ai'
+import { groqConfigured } from '@/lib/groq'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 import { signFileClaim } from '@/lib/receipt-claim'
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest) {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY
-    if (!geminiApiKey) {
+    if (!geminiApiKey && !groqConfigured()) {
       return NextResponse.json({
         valid: false,
         confidence: 0,
@@ -136,7 +137,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
     let paymentDate: string | null = null
 
     try {
-      const apiData = await callGemini({
+      const apiData = await aiVisionJson({
         contents: [{
           parts: [
             { text: systemPrompt },

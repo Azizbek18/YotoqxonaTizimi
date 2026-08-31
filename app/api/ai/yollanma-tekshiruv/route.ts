@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
-import { callGemini } from '@/lib/gemini'
+import { aiVisionJson } from '@/lib/ai'
+import { groqConfigured } from '@/lib/groq'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import {
   PERMIT_FILE_RULES,
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
     const mimeType = detectedMimeType
 
     const geminiApiKey = process.env.GEMINI_API_KEY
-    if (!geminiApiKey) {
+    if (!geminiApiKey && !groqConfigured()) {
       // No AI key configured — skip the automated check and let the
       // dekan's manual review be the only gate, same fallback used
       // by the payment receipt checker.
@@ -127,7 +128,7 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
     let extractedDormitoryAddress = ''
 
     try {
-      const apiData = await callGemini({
+      const apiData = await aiVisionJson({
         contents: [{
           parts: [
             { text: systemPrompt },

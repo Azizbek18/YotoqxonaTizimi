@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
 import { getServiceSupabase } from '@/lib/server-supabase'
-import { callGemini } from '@/lib/gemini'
+import { aiVisionJson } from '@/lib/ai'
+import { groqConfigured } from '@/lib/groq'
 import { getRequestUser } from '@/lib/server-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { extractReceiptPath } from '@/lib/safe-storage-url'
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest) {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY
-    if (!geminiApiKey) {
+    if (!geminiApiKey && !groqConfigured()) {
       return NextResponse.json({ error: 'AI tekshiruv xizmati vaqtincha mavjud emas' }, { status: 503 })
     }
 
@@ -128,7 +129,7 @@ Quyidagi JSON formatda javob qaytaring:
 MUHIM: Faqat va faqat toza JSON formatida javob bering, hech qanday markdown formatlash yoki qo'shimcha tushuntirish qo'shmang.`
 
         // 4. Call Gemini 2.5 Flash API via fetch
-        const apiData = await callGemini({
+        const apiData = await aiVisionJson({
           contents: [
             {
               parts: [

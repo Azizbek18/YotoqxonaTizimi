@@ -410,7 +410,7 @@ function ArizalarContent() {
                   onClick={() => setSelectedReq(req)}
                   className={`w-full text-left rounded-xl border p-4 transition-colors ${
                     isSelected
-                      ? isLight ? 'border-indigo-400 bg-indigo-50/50' : 'border-indigo-500/60 bg-indigo-500/10'
+                      ? isLight ? 'border-indigo-400 bg-indigo-500/[0.05]' : 'border-indigo-500/60 bg-indigo-500/10'
                       : `${ui.card} hover:border-indigo-400/50`
                   }`}
                 >

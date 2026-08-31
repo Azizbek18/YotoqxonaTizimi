@@ -77,7 +77,7 @@ export default function ImtiyozliAriza() {
       if (!raw) return
       const saved = JSON.parse(raw) as {
         passport?: unknown; email?: unknown; applicationType?: unknown
-        fullName?: unknown; phone?: unknown; faculty?: unknown; direction?: unknown; course?: unknown
+        fullName?: unknown; phone?: unknown; gender?: unknown; faculty?: unknown; direction?: unknown; course?: unknown
       }
       if (saved.applicationType !== 'imtiyozli') return
       setIdNumber(normalizeForeignIdNumber(saved.passport))
@@ -91,6 +91,7 @@ export default function ImtiyozliAriza() {
       else if (parts.length === 2) setNoMiddleName(true)
       const phone = String(saved.phone ?? '').replace(/\D/g, '').slice(-9)
       if (phone) setPhone(phone)
+      if (saved.gender === 'male' || saved.gender === 'female') setGender(saved.gender)
       const fac = String(saved.faculty ?? '')
       if (PERMIT_FACULTIES.some((f) => f.value === fac)) setFaculty(fac)
       if (saved.direction) setDirection(String(saved.direction))

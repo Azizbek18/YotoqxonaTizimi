@@ -102,13 +102,14 @@ export default function RuxsatnomaYuborish() {
       sessionStorage.removeItem('permit_resubmit')
       const saved = JSON.parse(raw) as {
         passport?: string; jshshir?: string; email?: string
-        fullName?: string; phone?: string; faculty?: string; direction?: string; course?: string
+        fullName?: string; phone?: string; gender?: string; faculty?: string; direction?: string; course?: string
       }
       if (saved.passport) setPassportSeries(saved.passport)
       if (saved.jshshir) setJshshir(saved.jshshir)
       if (saved.email) setEmail(saved.email)
       if (saved.fullName) setFullName(cyrillicToLatin(saved.fullName))
       if (saved.phone) setPhone(String(saved.phone).replace(/\D/g, '').slice(-9))
+      if (saved.gender === 'male' || saved.gender === 'female') setGender(saved.gender)
       if (saved.faculty && PERMIT_FACULTIES.some((f) => f.value === saved.faculty)) setFaculty(saved.faculty)
       if (saved.direction) setDirection(saved.direction)
       if (saved.course && /^[1-6]$/.test(saved.course)) setCourse(saved.course)

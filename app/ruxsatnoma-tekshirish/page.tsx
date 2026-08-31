@@ -40,6 +40,7 @@ interface PermitRequest {
   /** Carried through for the "tahrirlash" prefill — the status endpoint
    *  already returns these so /register can prefill the signup wizard. */
   phone?: string | null
+  gender?: 'male' | 'female' | null
   faculty?: string | null
   direction?: string | null
   course?: number | null
@@ -98,6 +99,7 @@ function StatusCheckContent() {
             applicationType: result.application_type,
             fullName: result.full_name,
             phone: result.phone ?? '',
+            gender: result.gender ?? '',
             faculty: result.faculty ?? '',
             direction: result.direction ?? '',
             course: result.course != null ? String(result.course) : '',

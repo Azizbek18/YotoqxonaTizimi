@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { Moon, Sparkles } from 'lucide-react'
+import { Loader } from '@/components/ui/Loader'
 
 export default function PageSkeleton() {
   const theme = useThemeStore((state) => state.theme)
@@ -16,54 +16,14 @@ export default function PageSkeleton() {
 
   return (
     <div className="space-y-10 pb-12">
-      {/* 1. PREMIUM DORMITORY THEMED ANIMATED LOADER */}
-      <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
-        <div className="relative w-36 h-36 flex items-center justify-center">
-          {/* Animated Sky Background */}
-          <div className="absolute inset-0 rounded-full bg-linear-to-tr from-indigo-500/10 to-cyan-500/10 blur-xl animate-pulse" />
-
-          {/* Sleeping Moon and Stars */}
-          <div className="absolute top-2 right-4 text-amber-400 animate-bounce">
-            <Moon size={20} className="fill-amber-400/20" />
-          </div>
-          <div className="absolute top-4 left-6 text-cyan-400 animate-ping duration-1000">
-            <Sparkles size={10} />
-          </div>
-
-          {/* Stylized Dormitory Building (SVG) */}
-          <svg
-            width="80"
-            height="100"
-            viewBox="0 0 80 100"
-            className={`relative z-10 filter drop-shadow-[0_0_15px_rgba(6,182,212,0.3)] ${
-              isLight ? 'text-slate-800' : 'text-slate-200'
-            }`}
-          >
-            {/* Building Frame */}
-            <rect x="15" y="10" width="50" height="90" rx="6" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="2.5" />
-            {/* Roof / Triangle Top */}
-            <path d="M 10 12 L 40 2 L 70 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            {/* Main Entrance Door */}
-            <rect x="34" y="80" width="12" height="20" rx="2" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="2" />
-
-            {/* Dormitory Windows (Grid of 6 Rooms) */}
-            {/* Row 1 */}
-            <rect x="23" y="24" width="10" height="12" rx="1.5" className="window-light window-1" stroke="currentColor" strokeWidth="1.5" />
-            <rect x="47" y="24" width="10" height="12" rx="1.5" className="window-light window-2" stroke="currentColor" strokeWidth="1.5" />
-            {/* Row 2 */}
-            <rect x="23" y="42" width="10" height="12" rx="1.5" className="window-light window-3" stroke="currentColor" strokeWidth="1.5" />
-            <rect x="47" y="42" width="10" height="12" rx="1.5" className="window-light window-4" stroke="currentColor" strokeWidth="1.5" />
-            {/* Row 3 */}
-            <rect x="23" y="60" width="10" height="12" rx="1.5" className="window-light window-5" stroke="currentColor" strokeWidth="1.5" />
-            <rect x="47" y="60" width="10" height="12" rx="1.5" className="window-light window-6" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
-        </div>
-
+      {/* 1. BRAND LOADER */}
+      <div className="flex flex-col items-center justify-center gap-5 py-12 text-center">
+        <Loader size={132} />
         <div className="space-y-1.5">
           <h3 className={`text-sm font-black uppercase tracking-[0.25em] ${isLight ? 'text-slate-800' : 'text-white'}`}>
-            Yotoqxona Yuklanmoqda...
+            Yotoqxona yuklanmoqda…
           </h3>
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider animate-pulse">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
             Xonalar va ma&apos;lumotlar tayyorlanmoqda
           </p>
         </div>
@@ -109,49 +69,10 @@ export default function PageSkeleton() {
         </div>
       </div>
 
-      {/* Styles for Dormitory Window lights and shimmer */}
       <style jsx>{`
         @keyframes shimmer {
           0% { background-position: 200% 0; }
           100% { background-position: -200% 0; }
-        }
-        
-        .window-light {
-          fill: transparent;
-          transition: fill 0.4s ease-in-out;
-        }
-
-        /* Dormitory lights turning on in sequence */
-        .window-1 { animation: windowGlow1 4s infinite; }
-        .window-2 { animation: windowGlow2 4s infinite; }
-        .window-3 { animation: windowGlow3 4s infinite; }
-        .window-4 { animation: windowGlow4 4s infinite; }
-        .window-5 { animation: windowGlow5 4s infinite; }
-        .window-6 { animation: windowGlow6 4s infinite; }
-
-        @keyframes windowGlow1 {
-          0%, 100% { fill: transparent; }
-          10%, 40% { fill: #facc15; } /* Yellow */
-        }
-        @keyframes windowGlow2 {
-          0%, 10%, 100% { fill: transparent; }
-          20%, 50% { fill: #22d3ee; } /* Cyan */
-        }
-        @keyframes windowGlow3 {
-          0%, 20%, 100% { fill: transparent; }
-          30%, 60% { fill: #facc15; }
-        }
-        @keyframes windowGlow4 {
-          0%, 30%, 100% { fill: transparent; }
-          40%, 70% { fill: #22d3ee; }
-        }
-        @keyframes windowGlow5 {
-          0%, 40%, 100% { fill: transparent; }
-          50%, 80% { fill: #facc15; }
-        }
-        @keyframes windowGlow6 {
-          0%, 50%, 100% { fill: transparent; }
-          60%, 90% { fill: #22d3ee; }
         }
       `}</style>
     </div>

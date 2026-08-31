@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import { Loader } from '@/components/ui/Loader'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { getAuthHeaders } from '@/lib/auth-session'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
@@ -73,7 +74,7 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
   if (!mounted) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center text-white">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-cyan-500" />
+        <Loader size={128} />
       </div>
     )
   }

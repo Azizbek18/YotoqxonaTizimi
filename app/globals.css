@@ -1059,3 +1059,88 @@ html.theme-light .skeleton::after {
 @media (prefers-reduced-motion: reduce) {
   .skeleton::after { animation: none; opacity: 0; }
 }
+
+
+/* ===================================================================
+   BRAND LOADER
+   A little dormitory whose windows light up floor-by-floor, held in a
+   glowing halo with one spark orbiting the rim. Scales + un-blurs in on
+   mount ("chiqib kelish"). transform / opacity only → compositor.
+   =================================================================== */
+@keyframes loader-rise {
+  from { opacity: 0; transform: scale(0.82) translateY(10px); filter: blur(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0);       filter: blur(0); }
+}
+@keyframes loader-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+@keyframes loader-orbit { to { transform: rotate(360deg); } }
+@keyframes loader-halo {
+  0%, 100% { opacity: 0.32; transform: scale(1); }
+  50%      { opacity: 0.62; transform: scale(1.09); }
+}
+@keyframes loader-window {
+  0%, 100% { opacity: 0.16; }
+  46%, 54% { opacity: 1; }
+}
+@keyframes loader-outline { to { stroke-dashoffset: -220; } }
+
+.brand-loader {
+  --loader-size: 120px;
+  position: relative;
+  width: var(--loader-size);
+  height: var(--loader-size);
+  animation: loader-rise 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.brand-loader__float {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  animation: loader-float 3.4s ease-in-out infinite;
+}
+.brand-loader__halo {
+  position: absolute; inset: -12%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgb(99 102 241 / 0.5), transparent 62%);
+  filter: blur(10px);
+  animation: loader-halo 2.6s ease-in-out infinite;
+}
+html.theme-light .brand-loader__halo {
+  background: radial-gradient(circle, rgb(129 140 248 / 0.5), transparent 62%);
+}
+/* Rotating two-tone rim. Plain border arcs — renders everywhere. */
+.brand-loader__aura {
+  position: absolute; inset: 0;
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  border-top-color: #6366f1;
+  border-right-color: #a855f7;
+  filter: drop-shadow(0 0 6px rgb(129 140 248 / 0.55));
+  animation: loader-orbit 2.4s linear infinite;
+}
+.brand-loader__spark {
+  position: absolute; top: 1px; left: 50%;
+  width: 6px; height: 6px; margin-left: -3px;
+  border-radius: 9999px;
+  background: #ddd6fe;
+  box-shadow: 0 0 10px 2px rgb(168 85 247 / 0.85);
+  transform-origin: 50% calc(var(--loader-size) / 2 - 1px);
+  animation: loader-orbit 2.4s linear infinite;
+}
+.brand-loader svg { position: relative; z-index: 1; overflow: visible; }
+.brand-loader__outline {
+  stroke-dasharray: 5 5;
+  animation: loader-outline 5s linear infinite;
+}
+.brand-loader__win {
+  animation: loader-window 1.9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-loader,
+  .brand-loader *,
+  .brand-loader__aura,
+  .brand-loader__spark { animation: none !important; }
+  .brand-loader { opacity: 1; transform: none; filter: none; }
+  .brand-loader__win { opacity: 0.85; }
+  .brand-loader__halo { opacity: 0.4; }
+}

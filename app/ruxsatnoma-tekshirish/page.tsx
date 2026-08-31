@@ -23,6 +23,7 @@ import {
   normalizeJshshir,
   normalizePassport,
 } from '@/lib/permit-validation'
+import { Loader } from '@/components/ui/Loader'
 
 type ApplicationType = 'yollanma' | 'imtiyozli'
 
@@ -588,8 +589,8 @@ function StatusCheckContent() {
 export default function RuxsatnomaTekshirish() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center text-white">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-cyan-500" />
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader size={128} />
       </div>
     }>
       <StatusCheckContent />

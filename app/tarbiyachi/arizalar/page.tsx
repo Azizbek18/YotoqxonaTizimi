@@ -1,10 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Search, Check, X, Loader2 } from 'lucide-react'
+import { Search, Check, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import CustomSelect from '@/components/ui/CustomSelect'
+import { Loader } from '@/components/ui/Loader'
 import { getAuthHeaders } from '@/lib/auth-session'
 import { permitFacultyLabel } from '@/lib/faculties'
 
@@ -178,9 +179,8 @@ export default function TarbiyachiArizalarPage() {
       </div>
 
       {loading ? (
-        <div className={`flex items-center justify-center gap-2 rounded-2xl border p-10 text-sm ${cardBorder} ${cardBg} ${textMuted}`}>
-          <Loader2 size={16} className="animate-spin" />
-          Yuklanmoqda...
+        <div className={`flex items-center justify-center rounded-2xl border p-10 ${cardBorder} ${cardBg}`}>
+          <Loader size={88} />
         </div>
       ) : loadError ? (
         <div className={`rounded-2xl border p-6 text-center text-sm ${isLight ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-rose-500/20 bg-rose-500/5 text-rose-300'}`}>

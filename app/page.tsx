@@ -7,6 +7,7 @@ import {
   Sparkles, ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw, FileText, Hand, Handshake
 } from 'lucide-react';
 import ThemeToggle from '@/components/theme/ThemeToggle';
+import { Loader } from '@/components/ui/Loader';
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { appFont as baloo2 } from '@/lib/app-font';
 
@@ -419,7 +420,7 @@ export default function Home() {
       <section className="relative z-10 max-w-3xl mx-auto px-4 pt-8">
         {checkingPermit ? (
           <div className="flex flex-col items-center justify-center p-12 space-y-4">
-            <div className="h-10 w-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <Loader size={112} />
             <p className="text-[10px] text-indigo-400 uppercase tracking-[0.25em] font-black animate-pulse syne-font">Ma&apos;lumotlar yangilanmoqda...</p>
           </div>
         ) : permitRequest ? (

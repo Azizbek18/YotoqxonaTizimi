@@ -32,6 +32,7 @@ import { directionLabel } from '@/lib/directions'
 import { genderLabel } from '@/lib/gender'
 import { dekanUI, statusChip, type DekanStatusTone } from '@/lib/dekan-ui'
 import { SkelList } from '@/components/dekan/Skeletons'
+import { Loader } from '@/components/ui/Loader'
 
 interface PermitRequest {
   id: string
@@ -691,7 +692,7 @@ export default function DekanArizalarPage() {
   return (
     <Suspense fallback={
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-700" />
+        <Loader size={104} />
       </div>
     }>
       <ArizalarContent />

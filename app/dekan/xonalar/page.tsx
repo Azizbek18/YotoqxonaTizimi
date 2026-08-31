@@ -26,6 +26,7 @@ import { fetchAssignableStudents, assignStudentRoom } from '@/features/room-assi
 import type { FacultyStudentRow } from '@/features/room-assignment/types'
 import { setRoomFrozen, setRoomCapacity as setRoomCapacityApi } from '@/features/room-layout/client/api'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import { Loader } from '@/components/ui/Loader'
 import RoomLayoutGeneratorModal from '@/components/rooms/RoomLayoutGeneratorModal'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
@@ -492,7 +493,7 @@ export default function DekanXonalarMap() {
           </div>
           {loading || !floorsLoaded ? (
             <div className="flex h-64 items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-700" />
+              <Loader size={104} />
             </div>
           ) : rooms.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-14 text-center">

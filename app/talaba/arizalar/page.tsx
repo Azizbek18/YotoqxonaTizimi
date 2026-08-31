@@ -1,12 +1,13 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { Loader } from '@/components/ui/Loader'
 
 const ArizalarContent = dynamic(() => import('./ArizalarContent'), {
     ssr: false,
     loading: () => (
         <div className="flex h-[60vh] items-center justify-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-cyan-400"></div>
+            <Loader size={96} />
         </div>
     )
 })

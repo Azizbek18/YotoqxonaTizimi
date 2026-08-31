@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { getAuthHeaders } from '@/lib/auth-session'
 import ArizaTilxatDocument, { type ArizaTilxatData } from '@/components/documents/ArizaTilxatDocument'
+import { Loader } from '@/components/ui/Loader'
 
 // Read-only view for dekan: the exact Ariza+Tilxat the applicant filled in
 // and reviewed themselves — reached from the "Tilxat va Arizani ko'rish"
@@ -78,7 +79,7 @@ function HujjatContent() {
 
         {loading && (
           <div className="flex justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-700" />
+            <Loader size={96} />
           </div>
         )}
 
@@ -101,7 +102,7 @@ export default function DekanHujjatPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-indigo-600" />
+        <Loader size={112} />
       </div>
     }>
       <HujjatContent />

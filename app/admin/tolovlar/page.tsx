@@ -11,6 +11,7 @@ import {
   Layers
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Loader as BrandLoader } from '@/components/ui/Loader'
 import { adminUI } from '@/lib/admin-ui'
 
 interface GroupedPayment {
@@ -339,9 +340,7 @@ export default function AdminTolovlarPage() {
       {/* Records Container */}
       {loading ? (
         <div className="flex h-[30vh] items-center justify-center">
-          <div className="relative flex items-center justify-center">
-            <div className={`animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500`}></div>
-          </div>
+          <BrandLoader size={96} />
         </div>
       ) : groupedPayments.length === 0 ? (
         <div className={`p-12 text-center rounded-[32px] border ${surfaceBg}`}>

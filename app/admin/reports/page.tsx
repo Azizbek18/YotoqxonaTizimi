@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Download, BarChart3, TrendingUp, Users, FileText } from 'lucide-react'
+import { Loader } from '@/components/ui/Loader'
 import toast from 'react-hot-toast'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { downloadXlsx } from '@/lib/spreadsheet-export'
@@ -329,7 +330,7 @@ export default function AdminReportsPage() {
     if (!mounted) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
-                <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                <Loader size={104} />
             </div>
         )
     }

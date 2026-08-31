@@ -12,6 +12,7 @@ import { User } from '@supabase/supabase-js'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
+import { Loader } from '@/components/ui/Loader'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 import {
@@ -308,7 +309,7 @@ export default function ArizalarContent() {
     if (loading) {
         return (
             <div className="flex h-[60vh] items-center justify-center">
-                <div className={`animate-spin rounded-full h-10 w-10 border-b-2 ${isLight ? 'border-blue-600' : 'border-cyan-400'}`}></div>
+                <Loader size={96} />
             </div>
         )
     }

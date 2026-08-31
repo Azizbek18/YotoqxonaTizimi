@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import { Loader } from '@/components/ui/Loader'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useScopedFontFamily } from '@/lib/font-scope-context'
 import toast from 'react-hot-toast'
@@ -836,7 +837,7 @@ export default function Dekan3DXonalarPage() {
 
       {loading ? (
         <div className={`backdrop-blur-xl border rounded-2xl p-16 ${surfaceBg} flex items-center justify-center`}>
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 border-t-indigo-500 dark:border-slate-700" />
+          <Loader size={104} />
         </div>
       ) : (
         <>

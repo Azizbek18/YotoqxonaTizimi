@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Mail, Phone, RotateCcw, UserCog, KeyRound, Copy, Trash2, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import { Loader } from '@/components/ui/Loader'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchStaffAccounts } from '@/features/staff-accounts/client/api'
 import { fetchStaffInvites, createStaffInvite, revokeStaffInvite } from '@/features/staff-invites/client/api'
@@ -219,7 +220,7 @@ export default function AdminXodimlarPage() {
       <div className={`rounded-2xl border p-2 sm:p-4 ${cardSurface}`}>
         {loading ? (
           <div className="flex items-center justify-center p-10">
-            <div className="animate-spin rounded-full h-7 w-7 border-2 border-indigo-500 border-t-transparent" />
+            <Loader size={88} />
           </div>
         ) : staff.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-10 text-center">

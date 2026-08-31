@@ -13,6 +13,7 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
+import { Loader } from '@/components/ui/Loader'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 
@@ -252,22 +253,10 @@ export default function SardorDashboard() {
     }
   }
 
-  if (!mounted) {
+  if (!mounted || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#070b13] text-white">
-        <div className="relative w-16 h-16 animate-spin">
-          <div className="absolute inset-0 rounded-full border-t-2 border-purple-500" />
-        </div>
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#070b13] text-white">
-        <div className="relative w-16 h-16 animate-spin">
-          <div className="absolute inset-0 rounded-full border-t-2 border-purple-500" />
-        </div>
+        <Loader size={128} />
       </div>
     )
   }

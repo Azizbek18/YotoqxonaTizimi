@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     // two independent requests — without this, a caller could skip
     // straight here with no document check at all. The claim is an HMAC
     // signature over this exact file's hash, only issued by the precheck
-    // when it actually passed (or explicitly fell back to manual review),
+    // when the document and identity checks actually passed,
     // so it can't be forged or reused for a different file.
     const fileHash = createHash('sha256').update(buffer).digest('hex')
     // Bound to the exact identity the precheck validated this file against

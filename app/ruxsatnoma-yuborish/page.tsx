@@ -55,6 +55,7 @@ export default function RuxsatnomaYuborish() {
   const [preparingFile, setPreparingFile] = useState(false)
 
   const [loading, setLoading] = useState(false)
+  const [submissionStage, setSubmissionStage] = useState<'idle' | 'ai' | 'saving'>('idle')
   const [submitted, setSubmitted] = useState(false)
   const [telegramLink, setTelegramLink] = useState<string | null>(null)
   const [telegramLinked, setTelegramLinked] = useState(false)
@@ -456,6 +457,7 @@ export default function RuxsatnomaYuborish() {
     if (!validateStep3() || !file) return
 
     setLoading(true)
+    setSubmissionStage('ai')
 
     try {
       const cleanPassport = passportSeries.toUpperCase().replace(/\s/g, '')
@@ -487,8 +489,12 @@ export default function RuxsatnomaYuborish() {
           : "Yuklangan hujjat rasmiy Yo'llanma namunasiga mos kelmadi."
         throw new Error(reason)
       }
+      if (!aiResult.claim) {
+        throw new Error("Yo‘llanma AI tekshiruvidan tasdiq olinmadi. Qayta urinib ko‘ring.")
+      }
 
       // 2. Server tekshiradi, private storage'ga yuklaydi va bazaga yozadi.
+      setSubmissionStage('saving')
       const submission = new FormData()
       submission.append('file', file)
       submission.append('passportSeries', cleanPassport)
@@ -500,7 +506,7 @@ export default function RuxsatnomaYuborish() {
       submission.append('faculty', faculty)
       submission.append('direction', direction.trim())
       submission.append('course', String(course))
-      if (aiResult.claim) submission.append('aiClaim', aiResult.claim)
+      submission.append('aiClaim', aiResult.claim)
 
       const submitResponse = await fetch('/api/permit-requests', {
         method: 'POST',
@@ -536,6 +542,7 @@ export default function RuxsatnomaYuborish() {
       console.error(err)
     } finally {
       setLoading(false)
+      setSubmissionStage('idle')
     }
   }
 
@@ -1493,6 +1500,10 @@ export default function RuxsatnomaYuborish() {
                               )}
                             </div>
                           </motion.div>
+                          <p className={`flex items-start gap-1.5 px-2 text-[10px] leading-relaxed font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                            <ShieldCheck size={13} className="mt-0.5 shrink-0 text-emerald-500" />
+                            Faqat my.gov.uz yo‘llanmasining to‘liq sahifasini yuklang. Sarlavha, talaba ma’lumotlari va QR kod aniq ko‘rinishi kerak — fayl yuborishdan oldin AI orqali tekshiriladi.
+                          </p>
                         </div>
                       </motion.div>
                     )}
@@ -1674,7 +1685,10 @@ export default function RuxsatnomaYuborish() {
                           className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all duration-300 active:scale-95 disabled:opacity-50"
                         >
                           {loading ? (
-                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <>
+                              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              <span>{submissionStage === 'ai' ? 'AI yo‘llanmani tekshirmoqda…' : 'Ariza yuborilmoqda…'}</span>
+                            </>
                           ) : (
                             <>
                               <CheckCircle2 size={14} />

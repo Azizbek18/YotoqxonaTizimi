@@ -6,20 +6,16 @@ import {
   PERMIT_FILE_RULES,
   canonicalizeFullName,
   detectPermitFileMimeType,
-  namesLikelyMatch,
   normalizeJshshir,
   normalizePassport,
 } from '@/lib/permit-validation'
 import { signFileClaim } from '@/lib/receipt-claim'
+import { evaluatePermitDocument, type PermitDocumentAiResult } from '@/lib/permit-document-ai'
 import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
 import { getApiError } from '@/server/http/api-error'
 
 // Public endpoint (students apply before they have an account), so we
 // rate-limit by IP only rather than requiring auth.
-
-function normalizeDigits(s: string): string {
-  return s.replace(/\D/g, '')
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -70,32 +66,29 @@ export async function POST(req: NextRequest) {
 
     const geminiApiKey = process.env.GEMINI_API_KEY
     if (!aiVisionConfigured()) {
-      // No AI key configured — skip the automated check and let the
-      // dekan's manual review be the only gate, same fallback used
-      // by the payment receipt checker.
       return NextResponse.json({
-        valid: true,
+        error: 'Yo‘llanmani AI orqali tekshirish vaqtincha ishlamayapti. Birozdan keyin qayta urinib ko‘ring.',
+        valid: false,
         confidence: 0,
-        is_authentic: null,
-        requires_manual_review: true,
         mismatches: [],
-        analysis: 'AI mavjud emas. Hujjat dekan tomonidan qo‘lda tekshirilishi shart.',
-        claim: signFileClaim('permit', fileHash, claimContext),
-      })
+        retryable: true,
+        claim: null,
+      }, { status: 503 })
     }
 
     const systemPrompt = `Siz O'zbekiston Respublikasi my.gov.uz davlat portalida generatsiya qilinadigan "YO'LLANMA" (talabalar turar joyiga yo'llanma) hujjatlarini tekshiradigan AI tizimisiz.
 
-Rasmiy hujjat namunasi quyidagi tuzilishga ega bo'ladi:
-- Yuqorida "my.gov.uz" logotipi va O'zbekiston Respublikasi Oliy ta'lim, fan va innovatsiyalar vazirligi emblemasi
-- Hujjat raqami, hujjat berilgan sana, ariza raqami, JShSHIR
-- Sarlavha: "YO'LLANMA / НАПРАВЛЕНИЕ"
-- Maydonlar: Oliy ta'lim muassasasi, Talaba FISH, JSHSHIR raqami, Pasport seriya va raqami, Ta'lim yo'nalishi, Kursi, Imtiyozi, Talabalar turar joyi nomi, Hudud (shahar), Tuman, Talabalar turar joyi manzili, Blok
-- Pastda amal qilish muddati haqida matn va litsenziyaga oid izoh
-- O'ng pastda QR kod
+Rasmiy hujjatning BARQAROR MAKET BELGILARI:
+- Bir sahifali A4 ko'rinish; yuqori chapda my.gov.uz, yuqorida vazirlik nomi/emblemasi
+- Yuqori qismda hujjat raqami/sana/ariza raqami va qabul qiluvchi talaba rekvizitlari
+- Markazda katta ikki tilli "YO'LLANMA / НАПРАВЛЕНИЕ" sarlavhasi
+- Pastma-past yorliqli maydonlar: Oliy ta'lim muassasasi, Talaba FISH, JSHSHIR, Pasport, Ta'lim yo'nalishi, Kursi, Imtiyozi, TTJ nomi va manzili, Blok
+- Pastda amal qilish muddati va huquqiy izoh; eng past o'ngda QR kod
+
+Talabaning ismi, raqamlari, universitet, TTJ, manzil, blok va ayrim matnlar har bir hujjatda boshqacha bo'lishi tabiiy. Ularni maket nomuvofiqligi deb hisoblamang. To'liq sahifa aniq ko'rinadigan foto yoki skrinshot ham qabul qilinadi; kesilgan, qisman ko'ringan yoki boshqa hujjat qabul qilinmaydi.
 
 VAZIFANGIZ:
-1. Yuborilgan faylni tahlil qiling va bu hujjat yuqoridagi rasmiy formatga (joylashuv, maydonlar, umumiy ko'rinish) mos keladimi yoki yo'qligini baholang. Boshqa turdagi hujjat, tasodifiy rasm, screenshot yoki qo'lda tahrirlangan/soxta ko'rinadigan fayl bo'lsa past ball bering.
+1. Fayl aynan my.gov.uz talabalar turar joyi yo'llanmasimi va yuqoridagi maket to'liq ko'rinadimi, baholang. Boshqa hujjat, odam rasmi, chek, ekran menyusi, tasodifiy rasm yoki kesilgan sahifani rad eting.
 2. Hujjatdan quyidagi maydonlarni aniq o'qib oling (topilmasa bo'sh qatorda qoldiring):
    - Talaba FISH (to'liq)
    - JSHSHIR raqami (14 ta raqam)
@@ -105,8 +98,14 @@ VAZIFANGIZ:
 
 Quyidagi JSON formatda javob qaytaring:
 {
-  "is_authentic": true,
-  "authenticity_confidence": 90,
+  "document_type": "dormitory_referral",
+  "matches_reference_layout": true,
+  "has_mygov_header": true,
+  "has_ministry_header": true,
+  "has_bilingual_title": true,
+  "has_student_identity_section": true,
+  "has_qr_code": true,
+  "document_confidence": 90,
   "extracted_full_name": "MO'MINOV AZIZBEK ULUG'BEK O'G'LI",
   "extracted_jshshir": "51804055310015",
   "extracted_passport": "AD0970061",
@@ -115,16 +114,7 @@ Quyidagi JSON formatda javob qaytaring:
   "analysis": "Qisqa xulosa"
 }
 
-MUHIM: Faqat va faqat toza JSON formatida javob bering.`
-
-    let isAuthentic = true
-    let authenticityConfidence = 100
-    let extractedFullName = declaredFullName
-    let extractedJshshir = declaredJshshir
-    let extractedPassport = declaredPassport
-    let analysis = ''
-    let extractedDormitoryName = ''
-    let extractedDormitoryAddress = ''
+MUHIM: document_type faqat hujjat aynan TTJ yo'llanmasi bo'lsa "dormitory_referral" bo'lsin. Ishonchingiz bo'lmasa yoki belgi ko'rinmasa boolean maydonni false qiling. Faqat toza JSON qaytaring.`
 
     try {
       const apiData = await aiVisionJson({
@@ -138,76 +128,39 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
       }, geminiApiKey)
 
       const textResponse = apiData?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-      const jsonResult = JSON.parse(textResponse.trim())
-
-      // Strict === true, not Boolean(...) — a loosely-formatted AI response
-      // with is_authentic as the STRING "false" would otherwise come out
-      // truthy (Boolean("false") === true), inverting the result.
-      isAuthentic = jsonResult.is_authentic === true
-      authenticityConfidence = typeof jsonResult.authenticity_confidence === 'number' ? jsonResult.authenticity_confidence : 0
-      extractedFullName = String(jsonResult.extracted_full_name || '')
-      extractedJshshir = String(jsonResult.extracted_jshshir || '')
-      extractedPassport = String(jsonResult.extracted_passport || '')
-      analysis = String(jsonResult.analysis || '')
-      extractedDormitoryName = String(jsonResult.extracted_dormitory_name || '')
-      extractedDormitoryAddress = String(jsonResult.extracted_dormitory_address || '')
-    } catch (geminiError: unknown) {
-      // Fail closed on the automated checks (don't fabricate a "verified"
-      // result), but still let the submission through for dekan manual
-      // review — same fallback used above when no API key is configured —
-      // so an AI outage doesn't permanently block genuine applicants.
-      console.error('Gemini API call failed during yollanma check, falling back to manual review:', geminiError)
-      return NextResponse.json({
-        valid: true,
-        confidence: 0,
-        is_authentic: null,
-        requires_manual_review: true,
-        mismatches: [],
-        analysis: "AI tekshiruvi vaqtincha ishlamadi. Hujjat dekan tomonidan qo'lda tekshirilishi shart.",
-        claim: signFileClaim('permit', fileHash, claimContext),
+      const jsonResult = JSON.parse(textResponse.trim()) as PermitDocumentAiResult
+      const evaluated = evaluatePermitDocument(jsonResult, {
+        fullName: declaredFullName,
+        jshshir: declaredJshshir,
+        passport: declaredPassport,
       })
+
+      return NextResponse.json({
+        valid: evaluated.valid,
+        confidence: evaluated.confidence,
+        mismatches: evaluated.mismatches,
+        extracted: {
+          full_name: evaluated.extracted.fullName,
+          jshshir: evaluated.extracted.jshshir,
+          passport_series: evaluated.extracted.passport,
+          dormitory_name: evaluated.extracted.dormitoryName,
+          dormitory_address: evaluated.extracted.dormitoryAddress,
+        },
+        structure: evaluated.structure,
+        analysis: evaluated.analysis,
+        claim: evaluated.valid ? signFileClaim('permit', fileHash, claimContext) : null,
+      })
+    } catch (geminiError: unknown) {
+      console.error('AI call failed during yollanma check:', geminiError)
+      return NextResponse.json({
+        error: 'Yo‘llanmani AI orqali tekshirib bo‘lmadi. Internetni tekshirib, birozdan keyin qayta urinib ko‘ring.',
+        valid: false,
+        confidence: 0,
+        mismatches: [],
+        retryable: true,
+        claim: null,
+      }, { status: 503 })
     }
-
-    const mismatches: string[] = []
-
-    if (!isAuthentic || authenticityConfidence < 50) {
-      mismatches.push('Hujjat rasmiy my.gov.uz Yo‘llanma namunasiga o‘xshamayapti.')
-    }
-
-    // Each check fails closed on a blank extraction (not just a mismatch) —
-    // otherwise a document the AI can't read these fields from, but still
-    // rates as "authentic-looking", would sail through with every identity
-    // field unverified, letting a claim be issued for whatever identity the
-    // caller declared in the form with nothing to contradict it.
-    if (!extractedJshshir || normalizeDigits(extractedJshshir) !== normalizeDigits(declaredJshshir)) {
-      mismatches.push('Hujjatdagi JSHSHIR aniqlanmadi yoki formada kiritilgan JSHSHIR bilan mos kelmadi.')
-    }
-
-    if (!extractedPassport || normalizePassport(extractedPassport) !== normalizePassport(declaredPassport)) {
-      mismatches.push('Hujjatdagi pasport seriya/raqami aniqlanmadi yoki formada kiritilgan ma’lumot bilan mos kelmadi.')
-    }
-
-    if (!extractedFullName || !namesLikelyMatch(declaredFullName, extractedFullName)) {
-      mismatches.push('Hujjatdagi F.I.Sh aniqlanmadi yoki formada kiritilgan ism-familiya bilan mos kelmadi.')
-    }
-
-    const valid = mismatches.length === 0
-
-    return NextResponse.json({
-      valid,
-      confidence: authenticityConfidence,
-      is_authentic: isAuthentic,
-      mismatches,
-      extracted: {
-        full_name: extractedFullName,
-        jshshir: extractedJshshir,
-        passport_series: extractedPassport,
-        dormitory_name: extractedDormitoryName,
-        dormitory_address: extractedDormitoryAddress
-      },
-      analysis,
-      claim: valid ? signFileClaim('permit', fileHash, claimContext) : null,
-    })
   } catch (error: unknown) {
     console.error('Yo‘llanma AI tekshiruvi xatoligi:', error)
     const apiError = getApiError(error, 'Yo‘llanma tekshiruvida server xatoligi yuz berdi')

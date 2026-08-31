@@ -21,7 +21,7 @@ import {
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import ConfirmModal from '@/components/ui/ConfirmModal'
-import { Loader } from '@/components/ui/Loader'
+import { SkelShell } from '@/components/ui/skeletons'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { getSafeSession } from '@/lib/auth-session'
 import { fetchAdminPaymentSummary } from '@/features/payments/client/api'
@@ -128,11 +128,7 @@ export default function AdminLayout({
   }
 
   if (!mounted) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center ${isLight ? 'bg-[#f3f4f9]' : 'bg-slate-950'}`}>
-        <Loader size={128} />
-      </div>
-    )
+    return <SkelShell />
   }
 
   const shellBg = isLight ? 'bg-[#f3f4f9]' : 'bg-slate-950'

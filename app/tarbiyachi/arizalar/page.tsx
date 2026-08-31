@@ -5,7 +5,7 @@ import { Search, Check, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import CustomSelect from '@/components/ui/CustomSelect'
-import { Loader } from '@/components/ui/Loader'
+import { SkelList } from '@/components/ui/skeletons'
 import { getAuthHeaders } from '@/lib/auth-session'
 import { permitFacultyLabel } from '@/lib/faculties'
 
@@ -179,9 +179,7 @@ export default function TarbiyachiArizalarPage() {
       </div>
 
       {loading ? (
-        <div className={`flex items-center justify-center rounded-2xl border p-10 ${cardBorder} ${cardBg}`}>
-          <Loader size={88} />
-        </div>
+        <SkelList count={5} />
       ) : loadError ? (
         <div className={`rounded-2xl border p-6 text-center text-sm ${isLight ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-rose-500/20 bg-rose-500/5 text-rose-300'}`}>
           Arizalarni yuklab bo&apos;lmadi.{' '}

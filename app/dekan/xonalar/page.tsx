@@ -26,7 +26,7 @@ import { fetchAssignableStudents, assignStudentRoom } from '@/features/room-assi
 import type { FacultyStudentRow } from '@/features/room-assignment/types'
 import { setRoomFrozen, setRoomCapacity as setRoomCapacityApi } from '@/features/room-layout/client/api'
 import ConfirmModal from '@/components/ui/ConfirmModal'
-import { Loader } from '@/components/ui/Loader'
+import { Skel } from '@/components/ui/skeletons'
 import RoomLayoutGeneratorModal from '@/components/rooms/RoomLayoutGeneratorModal'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
@@ -492,8 +492,10 @@ export default function DekanXonalarMap() {
             <span className="flex items-center gap-1.5"><Snowflake size={11} className={isLight ? 'text-cyan-500' : 'text-cyan-400'} /> Muzlatilgan (ta&apos;mirlash)</span>
           </div>
           {loading || !floorsLoaded ? (
-            <div className="flex h-64 items-center justify-center">
-              <Loader size={104} />
+            <div className="grid grid-cols-2 gap-3 p-1 sm:grid-cols-3 lg:grid-cols-4">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <Skel key={i} className="h-24 rounded-2xl" />
+              ))}
             </div>
           ) : rooms.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-14 text-center">

@@ -23,7 +23,7 @@ import {
   normalizeJshshir,
   normalizePassport,
 } from '@/lib/permit-validation'
-import { Loader } from '@/components/ui/Loader'
+import { Skel, SkelForm } from '@/components/ui/skeletons'
 
 type ApplicationType = 'yollanma' | 'imtiyozli'
 
@@ -589,8 +589,12 @@ function StatusCheckContent() {
 export default function RuxsatnomaTekshirish() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader size={128} />
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-4 rounded-3xl border border-slate-200/70 bg-white/55 p-6 dark:border-slate-800 dark:bg-slate-900/40">
+          <Skel className="h-6 w-40" />
+          <Skel className="h-3 w-56 max-w-full" />
+          <SkelForm fields={3} />
+        </div>
       </div>
     }>
       <StatusCheckContent />

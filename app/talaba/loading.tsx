@@ -1,5 +1,5 @@
-import PageSkeleton from '@/components/ui/PageSkeleton'
+import { LoaderScreen } from '@/components/ui/Loader'
 
 export default function Loading() {
-  return <PageSkeleton />
+  return <LoaderScreen />
 }

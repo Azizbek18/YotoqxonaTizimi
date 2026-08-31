@@ -18,7 +18,7 @@ import type { DekanDorm } from '@/features/dorms/types'
 import DormFloorsCard from '@/components/dekan/DormFloorsCard'
 import FloorManagerCard from '@/components/dekan/FloorManagerCard'
 import { dekanUI } from '@/lib/dekan-ui'
-import { Loader } from '@/components/ui/Loader'
+import { SkelForm } from '@/components/ui/skeletons'
 
 type NumberField = {
     key: 'monthlyFee' | 'yearlyContractFee' | 'defaultRoomCapacity' | 'floorCount' | 'maxUploadSizeMb' | 'warningThreshold'
@@ -190,8 +190,8 @@ export default function DekanSozlamalarPage() {
             </div>
 
             {loading ? (
-                <div className={`flex items-center justify-center rounded-2xl border p-16 ${ui.card}`}>
-                    <Loader size={104} />
+                <div className={`rounded-2xl border p-5 sm:p-6 ${ui.card}`}>
+                    <SkelForm fields={6} />
                 </div>
             ) : loadError || !settings ? (
                 <div className={`rounded-2xl border p-8 text-center ${ui.card}`}>

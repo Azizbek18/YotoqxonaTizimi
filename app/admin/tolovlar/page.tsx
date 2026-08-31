@@ -11,7 +11,7 @@ import {
   Layers
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { Loader as BrandLoader } from '@/components/ui/Loader'
+import { Skel } from '@/components/ui/skeletons'
 import { adminUI } from '@/lib/admin-ui'
 
 interface GroupedPayment {
@@ -339,8 +339,23 @@ export default function AdminTolovlarPage() {
 
       {/* Records Container */}
       {loading ? (
-        <div className="flex h-[30vh] items-center justify-center">
-          <BrandLoader size={96} />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-[32px] border border-slate-200/70 bg-white/55 p-5 space-y-4 dark:border-slate-800 dark:bg-slate-900/40">
+              <div className="flex items-center gap-3">
+                <Skel className="h-11 w-11 shrink-0 rounded-xl" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skel className="h-3.5 w-2/3" />
+                  <Skel className="h-2.5 w-2/5" />
+                </div>
+              </div>
+              <Skel className="h-20 w-full rounded-2xl" />
+              <div className="flex gap-2">
+                <Skel className="h-9 flex-1 rounded-xl" />
+                <Skel className="h-9 flex-1 rounded-xl" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : groupedPayments.length === 0 ? (
         <div className={`p-12 text-center rounded-[32px] border ${surfaceBg}`}>

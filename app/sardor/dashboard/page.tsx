@@ -13,7 +13,7 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
-import { Loader } from '@/components/ui/Loader'
+import { SkelPage } from '@/components/ui/skeletons'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 
@@ -255,8 +255,8 @@ export default function SardorDashboard() {
 
   if (!mounted || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#070b13] text-white">
-        <Loader size={128} />
+      <div className="min-h-screen bg-[#070b13] px-4 py-8 sm:px-6 lg:px-8">
+        <SkelPage />
       </div>
     )
   }

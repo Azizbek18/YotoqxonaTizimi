@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
 import ConfirmModal from '@/components/ui/ConfirmModal'
-import { Loader } from '@/components/ui/Loader'
+import { Skel } from '@/components/ui/skeletons'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useScopedFontFamily } from '@/lib/font-scope-context'
 import toast from 'react-hot-toast'
@@ -836,8 +836,13 @@ export default function Dekan3DXonalarPage() {
       )}
 
       {loading ? (
-        <div className={`backdrop-blur-xl border rounded-2xl p-16 ${surfaceBg} flex items-center justify-center`}>
-          <Loader size={104} />
+        <div className={`backdrop-blur-xl border rounded-2xl p-5 space-y-4 ${surfaceBg}`}>
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skel key={i} className="h-9 w-24 rounded-xl" />
+            ))}
+          </div>
+          <Skel className="h-[420px] w-full rounded-2xl" />
         </div>
       ) : (
         <>

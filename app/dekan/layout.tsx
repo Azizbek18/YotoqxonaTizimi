@@ -28,7 +28,7 @@ import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
-import { Loader } from '@/components/ui/Loader'
+import { SkelShell } from '@/components/ui/skeletons'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useDekanScope } from '@/lib/hooks/useDekanScope'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
@@ -257,11 +257,7 @@ export default function DekanLayout({
   }
 
   if (!mounted) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader size={128} />
-      </div>
-    )
+    return <SkelShell />
   }
 
   // A dekan with a faculty but no dorm can't do anything useful yet —

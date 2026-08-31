@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { getAuthHeaders } from '@/lib/auth-session'
 import ArizaTilxatDocument, { type ArizaTilxatData } from '@/components/documents/ArizaTilxatDocument'
-import { Loader } from '@/components/ui/Loader'
+import { Skel, SkelText } from '@/components/ui/skeletons'
 
 // Read-only view for dekan: the exact Ariza+Tilxat the applicant filled in
 // and reviewed themselves — reached from the "Tilxat va Arizani ko'rish"
@@ -78,8 +78,11 @@ function HujjatContent() {
         </div>
 
         {loading && (
-          <div className="flex justify-center py-20">
-            <Loader size={96} />
+          <div className="space-y-4">
+            <Skel className="h-8 w-1/2" />
+            <SkelText lines={4} />
+            <Skel className="h-64 w-full rounded-2xl" />
+            <SkelText lines={3} />
           </div>
         )}
 
@@ -101,8 +104,10 @@ function HujjatContent() {
 export default function DekanHujjatPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader size={112} />
+      <div className="mx-auto max-w-3xl space-y-4 p-4 md:p-6">
+        <Skel className="h-8 w-1/2" />
+        <SkelText lines={4} />
+        <Skel className="h-64 w-full rounded-2xl" />
       </div>
     }>
       <HujjatContent />

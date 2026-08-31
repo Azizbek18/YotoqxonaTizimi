@@ -7,7 +7,7 @@ import {
   Sparkles, ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw, FileText, Hand, Handshake
 } from 'lucide-react';
 import ThemeToggle from '@/components/theme/ThemeToggle';
-import { Loader } from '@/components/ui/Loader';
+import { Skel } from '@/components/ui/skeletons';
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { appFont as baloo2 } from '@/lib/app-font';
 
@@ -419,9 +419,16 @@ export default function Home() {
       {/* Dynamic Glass Action Container */}
       <section className="relative z-10 max-w-3xl mx-auto px-4 pt-8">
         {checkingPermit ? (
-          <div className="flex flex-col items-center justify-center p-12 space-y-4">
-            <Loader size={112} />
-            <p className="text-[10px] text-indigo-400 uppercase tracking-[0.25em] font-black animate-pulse syne-font">Ma&apos;lumotlar yangilanmoqda...</p>
+          <div className="anim-in rounded-[28px] sm:rounded-[36px] glass-panel p-5 sm:p-10 space-y-5">
+            <div className="flex items-center gap-4">
+              <Skel className="h-14 w-14 shrink-0 rounded-2xl" />
+              <div className="flex-1 space-y-2.5">
+                <Skel className="h-4 w-1/2" />
+                <Skel className="h-3 w-2/3" />
+              </div>
+            </div>
+            <Skel className="h-24 w-full rounded-2xl" />
+            <Skel className="h-12 w-full rounded-2xl" />
           </div>
         ) : permitRequest ? (
           <div className={`anim-in p-5 sm:p-10 rounded-[28px] sm:rounded-[36px] glass-panel text-center space-y-6 relative overflow-hidden transition-all ${

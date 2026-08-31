@@ -47,7 +47,8 @@ describe('ariza-tilxat pdf', () => {
     })
     expect(doc.getNumberOfPages()).toBe(2)
     const fit = (doc as unknown as { __fit: { p1: number; p2: number } }).__fit
-    expect(fit.p1).toBeLessThan(289)
-    expect(fit.p2).toBeLessThan(289)
+    // limit = A4 height (297) - bottom margin (20)
+    expect(fit.p1).toBeLessThan(277)
+    expect(fit.p2).toBeLessThan(277)
   })
 })

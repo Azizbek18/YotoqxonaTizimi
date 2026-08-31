@@ -59,16 +59,19 @@ const LINE_FACTOR = 1.3
 // Line advance in mm for a given point size (72pt = 1in = 25.4mm).
 const mmLineHeight = (pt: number) => (pt * LINE_FACTOR * 25.4) / 72
 
-function makeCursor(doc: Doc, margin: number) {
+// Margins match the UzMU .docx (pgMar): left 30, right 15, top/bottom 20 mm.
+const MARGIN = { left: 30, right: 15, top: 20, bottom: 20 }
+
+function makeCursor(doc: Doc, topExtra = 0) {
   const pageW = doc.internal.pageSize.getWidth()
   const pageH = doc.internal.pageSize.getHeight()
   return {
     doc,
-    left: margin,
-    right: pageW - margin,
-    width: pageW - margin * 2,
+    left: MARGIN.left,
+    right: pageW - MARGIN.right,
+    width: pageW - MARGIN.left - MARGIN.right,
     pageH,
-    y: margin,
+    y: MARGIN.top - topExtra,
   }
 }
 type Cursor = ReturnType<typeof makeCursor>
@@ -76,18 +79,21 @@ type Cursor = ReturnType<typeof makeCursor>
 function textBlock(
   c: Cursor,
   text: string,
-  opts: { size?: number; style?: 'normal' | 'bold' | 'italic'; align?: 'left' | 'justify' | 'right'; indent?: number; gap?: number } = {},
+  opts: { size?: number; style?: 'normal' | 'bold' | 'italic'; align?: 'left' | 'justify' | 'right'; indent?: number; gap?: number; width?: number } = {},
 ) {
   const size = opts.size ?? 12
   const style = opts.style ?? 'normal'
   const align = opts.align ?? 'left'
   const indent = opts.indent ?? 0
+  const width = opts.width ?? c.width
   c.doc.setFont(FONT, style)
   c.doc.setFontSize(size)
   const body = (indent ? '      ' : '') + normalizePdfText(text)
-  const lines = c.doc.splitTextToSize(body, c.width) as string[]
+  // Wrap inside `width`, not the full page — a right-aligned address block
+  // stays a tidy column on the right instead of stretching edge to edge.
+  const lines = c.doc.splitTextToSize(body, width) as string[]
   const x = align === 'right' ? c.right : c.left
-  c.doc.text(lines, x, c.y, { align, maxWidth: c.width, lineHeightFactor: LINE_FACTOR })
+  c.doc.text(lines, x, c.y, { align, maxWidth: width, lineHeightFactor: LINE_FACTOR })
   c.y += lines.length * mmLineHeight(size) + (opts.gap ?? 1.5)
 }
 
@@ -125,10 +131,14 @@ function signatureRow(c: Cursor) {
   c.y += 7
 }
 
+// The address-to block: a ~92 mm column hugging the right margin (the UzMU
+// template indents it ~72 mm from the left), every line right-aligned so it
+// reads as a neat right-hand block and long lines wrap inside the column.
 function header(c: Cursor, faculty: string, course: string, name: string) {
-  textBlock(c, UNIVERSITY_HEADER, { size: 10.5, align: 'right', gap: 1 })
-  textBlock(c, `${faculty} fakulteti`, { size: 10.5, align: 'right', gap: 0.5 })
-  textBlock(c, `Bakalavriat kunduzgi ta'lim yo'nalishi ${course}-kurs talabasi ${name}`, { size: 10.5, align: 'right', gap: 2 })
+  const col = Math.min(96, c.width * 0.56)
+  textBlock(c, UNIVERSITY_HEADER, { size: 10.5, align: 'right', width: col, gap: 1.5 })
+  textBlock(c, `${faculty} fakulteti`, { size: 10.5, align: 'right', width: col, gap: 0.5 })
+  textBlock(c, `Bakalavriat kunduzgi ta'lim yo'nalishi ${course}-kurs talabasi ${name}`, { size: 10.5, align: 'right', width: col, gap: 2 })
 }
 
 // Draw both pages at a given vertical scale (1 = default). Returns how far
@@ -149,7 +159,7 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
   const g = (mm: number) => mm * s // scale a vertical gap
 
   // ---------- Page 1: ARIZA ----------
-  const p1 = makeCursor(doc, 16)
+  const p1 = makeCursor(doc)
   header(p1, faculty, course, name)
   centerTitle(p1, 'A R I Z A')
 
@@ -189,7 +199,7 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
 
   // ---------- Page 2: TILXAT ----------
   doc.addPage()
-  const p2 = makeCursor(doc, 14)
+  const p2 = makeCursor(doc, 4)
   header(p2, faculty, course, name)
   centerTitle(p2, 'T I L X A T')
 
@@ -215,7 +225,7 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
 export async function generateArizaTilxatPdf(data: ArizaTilxatData): Promise<Doc & { __fit?: { p1: number; p2: number; scale: number } }> {
   const { jsPDF } = await import('jspdf')
   let doc = new jsPDF({ unit: 'mm', format: 'a4' }); registerTinos(doc)
-  const limit = doc.internal.pageSize.getHeight() - 8 // 297 - 8mm bottom safety
+  const limit = doc.internal.pageSize.getHeight() - MARGIN.bottom // keep clear of the bottom margin
 
   // First pass at full size; if a long name / faculty pushed either page's
   // last line past the sheet, redraw everything a little tighter (down to 82%).

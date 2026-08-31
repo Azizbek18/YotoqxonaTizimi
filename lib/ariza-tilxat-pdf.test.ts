@@ -14,8 +14,8 @@ const DATA = {
 }
 
 describe('ariza-tilxat pdf', () => {
-  it('normalises the Uzbek okina and smart quotes to a plain apostrophe', () => {
-    expect(normalizePdfText("Gʻafurov O'zbekiston ‘x’")).toBe("G'afurov O'zbekiston 'x'")
+  it('unifies every apostrophe glyph to the Uzbek okina (font covers it now)', () => {
+    expect(normalizePdfText("Gʻafurov O'zbekiston ‘x’ taʼlim")).toBe('Gʻafurov Oʻzbekiston ʻxʻ taʻlim')
   })
 
   it('builds a safe file name', () => {

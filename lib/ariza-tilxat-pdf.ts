@@ -8,6 +8,9 @@
 // on-screen preview) — same wording, same blanks.
 
 import type { ArizaTilxatData } from '@/components/documents/ArizaTilxatDocument'
+import { registerTinos } from './fonts/tinos'
+
+const FONT = 'Tinos'
 
 const UNIVERSITY_HEADER =
   "Mirzo Ulug'bek nomidagi O'zbekiston Milliy universiteti Birinchi prorektori — Yoshlar masalalari va ma'naviy-ma'rifiy ishlar bo'yicha prorektor T.N.Xojiyevga"
@@ -35,15 +38,13 @@ const ARIZA_NOTES = [
   "Agar talaba kam ta'minlangan oila farzandi bo'lsa jumladan, \"Ijtimoiy himoya yagona reestri\" avtomatlashtirilgan tizimi tomonidan shakillantirilgan hujjat, \"temir\" daftarga kiruvchi oila farzandi, onasi \"Ayollar daftari\"ga kiritilgan oila farzandi bo'lganlar talab etiladi.",
 ]
 
-// jsPDF's built-in Times covers a narrow character set — fold the Uzbek
-// okina, smart quotes, dashes and the numero sign to ASCII so every glyph
-// renders (a missing glyph shows as a black box / "?").
+// The embedded Tinos subset covers the Uzbek okina, numero sign and dashes,
+// so nothing is folded to ASCII any more — we only unify the apostrophe
+// glyphs (ASCII ', tutuq ʼ, smart quotes) to the okina ʻ, matching how
+// the UzMU template writes o'/g'/ta'lim.
 export function normalizePdfText(input: unknown): string {
   return String(input ?? '')
-    .replace(/[ʻʼ‘’`´]/g, "'")
-    .replace(/[“”«»]/g, '"')
-    .replace(/[–—]/g, '-')
-    .replace(/№/g, 'No')
+    .replace(/[ʼ‘’'`´]/g, 'ʻ')
     .replace(/ /g, ' ')
 }
 
@@ -81,7 +82,7 @@ function textBlock(
   const style = opts.style ?? 'normal'
   const align = opts.align ?? 'left'
   const indent = opts.indent ?? 0
-  c.doc.setFont('times', style)
+  c.doc.setFont(FONT, style)
   c.doc.setFontSize(size)
   const body = (indent ? '      ' : '') + normalizePdfText(text)
   const lines = c.doc.splitTextToSize(body, c.width) as string[]
@@ -92,12 +93,12 @@ function textBlock(
 
 function bulletList(c: Cursor, items: string[], size = 10.5) {
   const lf = 1.18
-  c.doc.setFont('times', 'normal')
+  c.doc.setFont(FONT, 'normal')
   c.doc.setFontSize(size)
   const bx = 4.5
   for (const item of items) {
     const lines = c.doc.splitTextToSize(normalizePdfText(item), c.width - bx) as string[]
-    c.doc.text('-', c.left, c.y)
+    c.doc.text('•', c.left, c.y)
     c.doc.text(lines, c.left + bx, c.y, { align: 'justify', maxWidth: c.width - bx, lineHeightFactor: lf })
     c.y += lines.length * ((size * lf * 25.4) / 72) + 1.1
   }
@@ -105,7 +106,7 @@ function bulletList(c: Cursor, items: string[], size = 10.5) {
 
 function centerTitle(c: Cursor, title: string) {
   c.y += 3
-  c.doc.setFont('times', 'bold')
+  c.doc.setFont(FONT, 'bold')
   c.doc.setFontSize(15)
   c.doc.text(title, (c.left + c.right) / 2, c.y, { align: 'center', charSpace: 2 })
   c.y += 9
@@ -113,7 +114,7 @@ function centerTitle(c: Cursor, title: string) {
 
 function signatureRow(c: Cursor) {
   c.y += 8
-  c.doc.setFont('times', 'normal')
+  c.doc.setFont(FONT, 'normal')
   c.doc.setFontSize(12)
   c.doc.text('______________________', c.left, c.y)
   c.doc.text('______________________', c.right, c.y, { align: 'right' })
@@ -167,7 +168,7 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
     { indent: 1, align: 'justify', size: bodySize, gap: g(3) })
 
   signatureRow(p1)
-  doc.setFont('times', 'normal'); doc.setFontSize(11)
+  doc.setFont(FONT, 'normal'); doc.setFontSize(11)
   doc.text(normalizePdfText(`Talaba tel: ${phone ? `+998 ${phone}` : '__________________'}`), p1.left, p1.y)
   p1.y += g(5)
   doc.text(normalizePdfText(`Yaqin qarindoshi tel: ${relativePhone || '__________________'}`), p1.left, p1.y)
@@ -180,8 +181,8 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
   for (const note of ARIZA_NOTES) textBlock(p1, note, { size: 8, style: 'italic', gap: 0.6 })
 
   p1.y += g(4)
-  doc.setFont('times', 'normal'); doc.setFontSize(10.5)
-  doc.text('Ariza No _________', p1.right - 58, p1.y)
+  doc.setFont(FONT, 'normal'); doc.setFontSize(10.5)
+  doc.text('Ariza № _________', p1.right - 58, p1.y)
   p1.y += 5
   doc.text('Berildi _____ qavat _____ xona', p1.right - 58, p1.y)
   const p1End = p1.y
@@ -213,7 +214,7 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
 
 export async function generateArizaTilxatPdf(data: ArizaTilxatData): Promise<Doc & { __fit?: { p1: number; p2: number; scale: number } }> {
   const { jsPDF } = await import('jspdf')
-  let doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  let doc = new jsPDF({ unit: 'mm', format: 'a4' }); registerTinos(doc)
   const limit = doc.internal.pageSize.getHeight() - 8 // 297 - 8mm bottom safety
 
   // First pass at full size; if a long name / faculty pushed either page's
@@ -223,7 +224,7 @@ export async function generateArizaTilxatPdf(data: ArizaTilxatData): Promise<Doc
   const worst = Math.max(fit.p1, fit.p2)
   if (worst > limit) {
     scale = Math.max(0.82, (limit - 20) / (worst - 20))
-    doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    doc = new jsPDF({ unit: 'mm', format: 'a4' }); registerTinos(doc)
     fit = renderPages(doc, data, scale)
   }
   ;(doc as Doc & { __fit?: unknown }).__fit = { ...fit, scale }

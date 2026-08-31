@@ -28,4 +28,10 @@ describe('student registration security invariants', () => {
     expect(foreignRegistrationMigration).toContain("NEW.jshshir IS NULL AND jshshir IS NULL AND application_type = 'imtiyozli'")
     expect(foreignRegistrationMigration).toContain("NEW.jshshir IS NOT NULL AND jshshir = NEW.jshshir AND application_type = 'yollanma'")
   })
+
+  it('persists and honors the foreign no-patronymic choice at final submit', () => {
+    expect(source).toContain("body.noMiddleName === true")
+    expect(source).toContain("const middleName = noMiddleName ? ''")
+    expect(source).toContain("applicationType === 'imtiyozli' && (noMiddleName || !middleName)")
+  })
 })

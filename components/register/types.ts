@@ -8,6 +8,7 @@ export interface RegisterData {
   lastName: string
   firstName: string
   middleName: string
+  noMiddleName: boolean
   birthDate: string
   phone: string
   // Step 3
@@ -48,6 +49,7 @@ export const initialData: RegisterData = {
   lastName: '',
   firstName: '',
   middleName: '',
+  noMiddleName: false,
   birthDate: '',
   phone: '',
   gender: '',

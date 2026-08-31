@@ -48,15 +48,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Noto‘g‘ri so‘rov' }, { status: 400 })
     }
 
-    const applicationType = body.applicationType === 'imtiyozli' ? 'imtiyozli' : 'yollanma'
+    const submittedJshshir = normalizeJshshir(body.jshshir)
+    // A foreign registration has no JShSHIR. Deriving that here as well as
+    // reading the client hint prevents stale/lost sessionStorage state from
+    // accidentally switching an imtiyozli applicant back to yo'llanma at
+    // the final submit. The approved permit lookup below remains authoritative.
+    const applicationType = body.applicationType === 'imtiyozli' || !submittedJshshir
+      ? 'imtiyozli'
+      : 'yollanma'
     const passport = applicationType === 'imtiyozli'
       ? normalizeForeignIdNumber(body.passportSeries)
       : normalizePassport(body.passportSeries)
-    const jshshir = normalizeJshshir(body.jshshir)
+    const jshshir = submittedJshshir
     const email = text(body, 'email', 254).toLowerCase()
     const firstName = cyrillicToLatin(text(body, 'firstName', 80))
     const lastName = cyrillicToLatin(text(body, 'lastName', 80))
-    const middleName = cyrillicToLatin(text(body, 'middleName', 80))
+    const noMiddleName = applicationType === 'imtiyozli' && body.noMiddleName === true
+    const middleName = noMiddleName ? '' : cyrillicToLatin(text(body, 'middleName', 80))
     const fullName = buildFullName({ lastName, firstName, middleName })
     const phone = text(body, 'phone', 32)
     const gender = text(body, 'gender', 16)
@@ -79,7 +87,9 @@ export async function POST(request: NextRequest) {
     }
     const nameError = getNamePartError(lastName, 'Familiya')
       || getNamePartError(firstName, 'Ism')
-      || (applicationType === 'imtiyozli' && !middleName ? null : getNamePartError(middleName, 'Otasining ismi'))
+      || (applicationType === 'imtiyozli' && (noMiddleName || !middleName)
+        ? null
+        : getNamePartError(middleName, 'Otasining ismi'))
     if (
       nameError
       || !phone

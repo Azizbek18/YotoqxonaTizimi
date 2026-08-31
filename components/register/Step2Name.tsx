@@ -23,9 +23,10 @@ export default function Step2Name({ data, onChange, onNext, onBack, requiresMidd
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
   const [focusedField, setFocusedField] = useState<'lastName' | 'firstName' | 'middleName' | 'phone' | null>(null)
-  // Foreign (imtiyozli) applicants whose passport has no patronymic can
-  // opt out — same affordance as the imtiyozli ariza form.
-  const [noMiddleName, setNoMiddleName] = useState(false)
+  // Keep this in the parent form state. A component-local checkbox resets
+  // when the student changes steps and the final submit then loses the
+  // explicit "no patronymic" choice.
+  const noMiddleName = data.noMiddleName
   const middleNameOptional = !requiresMiddleName
 
   const show3DToast = (message: string, type: 'success' | 'error' = 'error') => {
@@ -171,8 +172,10 @@ export default function Step2Name({ data, onChange, onNext, onBack, requiresMidd
               type="checkbox"
               checked={noMiddleName}
               onChange={e => {
-                setNoMiddleName(e.target.checked)
-                if (e.target.checked) onChange({ middleName: '' })
+                const checked = e.target.checked
+                onChange(checked
+                  ? { noMiddleName: true, middleName: '' }
+                  : { noMiddleName: false })
               }}
             />
             Hujjatimda otasining ismi yo&lsquo;q (xorijiy pasport)

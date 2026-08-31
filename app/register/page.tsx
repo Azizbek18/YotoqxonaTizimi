@@ -82,7 +82,9 @@ export default function RegisterPage() {
               ...current,
               lastName: lastName || current.lastName,
               firstName: firstName || current.firstName,
-              middleName: middleName || current.middleName,
+              middleName: current.noMiddleName ? '' : (middleName || current.middleName),
+              noMiddleName: current.noMiddleName
+                || (permit.application_type === 'imtiyozli' && !middleName),
               phone: phone || current.phone,
               gender: (permit.gender === 'male' || permit.gender === 'female') ? permit.gender : current.gender,
               faculty: permit.faculty || current.faculty,

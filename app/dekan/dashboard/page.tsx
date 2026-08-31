@@ -77,7 +77,7 @@ export default function DekanDashboard() {
   const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([])
   const [courseDistribution, setCourseDistribution] = useState<{ course: string; talabalar: number }[]>([])
   const [facultyDistribution, setFacultyDistribution] = useState<{ name: string; talabalar: number }[]>([])
-  const { faculty: dekanFaculty, role: dekanRole, scope: saScope, resolved: facultyResolved } = useDekanScope()
+  const { faculty: dekanFaculty, effectiveFaculty, role: dekanRole, scope: saScope, resolved: facultyResolved } = useDekanScope()
   const isGlobal = dekanRole === 'admin' && (!saScope || saScope === '*')
 
   const loadData = async (faculty: string | null) => {
@@ -183,7 +183,7 @@ export default function DekanDashboard() {
             <h1 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight text-white">
               {isGlobal
                 ? 'Yotoqxona — umumiy holat'
-                : dekanFaculty ? `${dekanFaculty.toUpperCase()} fakulteti` : 'Yotoqxona boshqaruvi'}
+                : effectiveFaculty ? `${permitFacultyLabel(effectiveFaculty)} fakulteti` : 'Yotoqxona boshqaruvi'}
             </h1>
             <p className="mt-1.5 max-w-xl text-xs sm:text-sm leading-relaxed text-indigo-100">
               Yo&apos;llanmalar ko&apos;rib chiqilishi, talabalar oqimi va xonalar taqsimotini shu yerdan boshqaring.

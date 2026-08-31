@@ -491,7 +491,9 @@ export default function DekanLayout({
               <div className={`hidden md:flex items-center gap-2 rounded-lg border px-3 py-2 ${ui.inset} ${ui.muted}`}>
                 <Building2 size={14} />
                 <span className="text-[11px] font-semibold truncate max-w-[160px]">
-                  {isGlobalSuperadminPage ? 'BARCHA FAKULTETLAR' : dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet yo‘q'}
+                  {isSuperadmin
+                    ? (isGlobalSuperadminPage || scopeIsGlobal ? 'BARCHA FAKULTETLAR' : saScope.toUpperCase())
+                    : dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet yo‘q'}
                 </span>
               </div>
 

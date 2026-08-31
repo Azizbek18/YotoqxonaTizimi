@@ -5,7 +5,12 @@ import { supabase } from '@/lib/supabase'
 import { GLOBAL_SCOPE, readSuperadminScope } from '@/lib/superadmin-scope'
 
 export interface DekanScope {
+  /** The signed-in staff member's own bound `staff.faculty`. */
   faculty: string | null
+  /** The faculty currently being acted on: the picked scope for a
+   *  superadmin working inside one faculty, otherwise `faculty`. Use this
+   *  for anything shown to the user ("X fakulteti bo'yicha…"). */
+  effectiveFaculty: string | null
   fullName: string | null
   /** 'dekan' | 'admin' — an admin rides this panel and gets the extra
    *  superadmin (dorm management) surface. */
@@ -68,5 +73,7 @@ export function useDekanScope(): DekanScope {
     }
   }, [])
 
-  return { faculty, fullName, role, scope, resolved }
+  const effectiveFaculty = role === 'admin' && scope && scope !== GLOBAL_SCOPE ? scope : faculty
+
+  return { faculty, effectiveFaculty, fullName, role, scope, resolved }
 }

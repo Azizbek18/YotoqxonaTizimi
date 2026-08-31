@@ -79,7 +79,7 @@ function ArizalarContent() {
   const [statusFilter, setStatusFilter] = useState<PermitRequest['status']>('pending')
   const [facultyFilter, setFacultyFilter] = useState('')
   const [selectedReq, setSelectedReq] = useState<PermitRequest | null>(null)
-  const { faculty: dekanFaculty, role: dekanRole, scope: saScope, resolved: facultyResolved } = useDekanScope()
+  const { faculty: dekanFaculty, effectiveFaculty, role: dekanRole, scope: saScope, resolved: facultyResolved } = useDekanScope()
   // Superadmin acting cross-faculty — one queue over all 13 faculties, with
   // step-in approve/reject (server routes through updateGlobal()).
   const isGlobal = dekanRole === 'admin' && (!saScope || saScope === '*')
@@ -296,8 +296,8 @@ function ArizalarContent() {
             <p className={`text-xs mt-1 ${ui.muted}`}>
               {isGlobal
                 ? 'Barcha fakultetlar bo‘yicha — dekani yo‘q fakultet arizalarini ham shu yerdan tasdiqlang'
-                : dekanFaculty
-                  ? `${dekanFaculty.toUpperCase()} fakulteti bo'yicha kelib tushgan ruxsatnomalar`
+                : effectiveFaculty
+                  ? `${permitFacultyLabel(effectiveFaculty)} fakulteti bo'yicha kelib tushgan ruxsatnomalar`
                   : 'Kelib tushgan ruxsatnomalarni tekshirish va tasdiqlash'}
             </p>
           </div>
@@ -311,7 +311,7 @@ function ArizalarContent() {
           </button>
         </div>
 
-        {facultyResolved && !dekanFaculty && !isGlobal && (
+        {facultyResolved && !effectiveFaculty && !isGlobal && (
           <div className={`flex items-start gap-2 rounded-xl border p-4 text-xs font-medium ${
             isLight ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-amber-500/25 bg-amber-500/10 text-amber-200'
           }`}>

@@ -92,17 +92,27 @@ describe('directionBelongsToFaculty', () => {
     expect(directionBelongsToFaculty('nomavjud', 'suniy-intellekt')).toBe(true)
   })
 
-  it('accepts the economics faculty’s bachelor programmes', () => {
+  it('accepts the economics faculty’s bachelor programmes, incl. the uzb/rus split', () => {
     for (const value of [
       'iqtisodiyot-tarmoqlar',
+      'iqtisodiyot-tarmoqlar-rus',
+      'jahon-iqtisodiyoti',
+      'jahon-iqtisodiyoti-rus',
       'bank-ishi',
+      'bank-ishi-rus',
       'moliya-texnologiyalari',
       'soliq-soliqqa-tortish',
       'sugurta-ishi',
       'menejment',
+      'inson-resurslari',
+      'byudjet-gaznachilik',
+      'ijtimoiy-ish',
     ]) {
       expect(directionBelongsToFaculty('iqtisodiyot', value)).toBe(true)
     }
+    // Russian-group labels resolve to their own value, not the base one
+    expect(normalizeDirection('Bank ishi (rus)')).toBe('bank-ishi-rus')
+    expect(directionLabel('bank-ishi')).toBe('Bank ishi (o’zbek)')
     // the legacy free-typed "Iqtisodiyot" is a different, non-selectable value
     expect(normalizeDirection('Iqtisodiyot')).toBe('iqtisodiyot')
     expect(directionBelongsToFaculty('iqtisodiyot', 'iqtisodiyot')).toBe(false)
@@ -118,8 +128,11 @@ describe('directionBelongsToFaculty', () => {
     }
   })
 
-  it('accepts the teaching directions added for the two philology faculties', () => {
+  it('accepts the teaching directions for the two philology faculties', () => {
     expect(directionBelongsToFaculty('ozbek-filologiyasi', 'filologiya-ozbek')).toBe(true)
+    // `filologiya-rus` is shared by both philology faculties
+    expect(directionBelongsToFaculty('ozbek-filologiyasi', 'filologiya-rus')).toBe(true)
+    expect(directionBelongsToFaculty('xorijiy-filologiya', 'filologiya-rus')).toBe(true)
     expect(directionBelongsToFaculty('ozbek-filologiyasi', 'jurnalistika-internet')).toBe(true)
     expect(directionBelongsToFaculty('xorijiy-filologiya', 'filologiya-ingliz')).toBe(true)
     expect(directionBelongsToFaculty('xorijiy-filologiya', 'tarjima-nemis')).toBe(true)

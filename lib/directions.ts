@@ -32,6 +32,7 @@ export const FACULTY_DIRECTIONS: Record<PermitFacultyValue, readonly DirectionOp
     { value: 'axborot-tizimlari', label: 'Axborot tizimlari va texnologiyalari' },
     { value: 'kompyuter-ilmlari', label: 'Kompyuter ilmlari va dasturlash texnologiyalari' },
     { value: 'amaliy-matematika', label: 'Amaliy matematika' },
+    { value: 'matematik-va-kompyuterli-modellashtirish', label: 'Matematik va kompyuterli modellashtirish' },
   ],
   fizika: [
     { value: 'tibbiyot-fizikasi', label: 'Tibbiyot fizikasi' },
@@ -64,12 +65,20 @@ export const FACULTY_DIRECTIONS: Record<PermitFacultyValue, readonly DirectionOp
     { value: 'geografiya', label: 'Geografiya' },
   ],
   iqtisodiyot: [
-    // Programmes the faculty confirmed applicants pick from (2026-08-30). The
-    // 4th course swaps "Soliq va soliqqa tortish" for "Sug'urta ishi"; both
-    // are offered here since the form doesn't filter directions by course.
-    { value: 'iqtisodiyot-tarmoqlar', label: 'Iqtisodiyot (tarmoqlar va sohalar bo’yicha)' },
-    { value: 'jahon-iqtisodiyoti', label: 'Jahon iqtisodiyoti va xalqaro iqtisodiy munosabatlar' },
-    { value: 'bank-ishi', label: 'Bank ishi' },
+    // Confirmed with the faculty (Joʻrabek X., 2026-08-30). The 4th course
+    // swaps "Soliq va soliqqa tortish" for "Sug'urta ishi"; both are offered
+    // here since the form doesn't filter directions by course. The first
+    // three run separate Uzbek and Russian groups — the dean needs to tell
+    // an applicant's group apart, so it is baked into the direction (same
+    // as the philology faculties' per-language entries). Existing rows keep
+    // the base value and now read "(o'zbek)"; the dean re-points the few
+    // Russian-group students by hand.
+    { value: 'iqtisodiyot-tarmoqlar', label: 'Iqtisodiyot (tarmoqlar va sohalar bo’yicha) (o’zbek)' },
+    { value: 'iqtisodiyot-tarmoqlar-rus', label: 'Iqtisodiyot (tarmoqlar va sohalar bo’yicha) (rus)' },
+    { value: 'jahon-iqtisodiyoti', label: 'Jahon iqtisodiyoti va xalqaro iqtisodiy munosabatlar (o’zbek)' },
+    { value: 'jahon-iqtisodiyoti-rus', label: 'Jahon iqtisodiyoti va xalqaro iqtisodiy munosabatlar (rus)' },
+    { value: 'bank-ishi', label: 'Bank ishi (o’zbek)' },
+    { value: 'bank-ishi-rus', label: 'Bank ishi (rus)' },
     { value: 'moliya-texnologiyalari', label: 'Moliya va moliyaviy texnologiyalar' },
     { value: 'soliq-soliqqa-tortish', label: 'Soliq va soliqqa tortish' },
     { value: 'sugurta-ishi', label: 'Sug’urta ishi' },
@@ -103,7 +112,11 @@ export const FACULTY_DIRECTIONS: Record<PermitFacultyValue, readonly DirectionOp
     { value: 'ona-tili-adabiyoti', label: 'Ona tili va adabiyoti' },
   ],
   'ozbek-filologiyasi': [
+    // Faculty confirmed (Joʻrabek X., 2026-08-30) that its filologiya
+    // programme also runs a Russian group — `filologiya-rus` is the same
+    // option the xorijiy-filologiya faculty offers (shared value, one label).
     { value: 'filologiya-ozbek', label: 'Filologiya va tillarni o’qitish (o’zbek tili)' },
+    { value: 'filologiya-rus', label: 'Filologiya va tillarni o’qitish (rus tili)' },
     { value: 'jurnalistika', label: 'Jurnalistika' },
     { value: 'jurnalistika-oav', label: 'Jurnalistika (OAV faoliyati)' },
     { value: 'jurnalistika-bosma', label: 'Jurnalistika (bosma OAV jurnalistikasi)' },

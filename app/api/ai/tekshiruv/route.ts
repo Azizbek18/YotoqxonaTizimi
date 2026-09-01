@@ -15,6 +15,29 @@ import { requireActiveStudent } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
 import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
 
+// Returned when no AI provider can check the receipt. The student proceeds;
+// features/payments/server/service.ts accepts the 'payment-unverified' claim
+// and marks the batch ai_review='manual'. transactionId is left out of the
+// claim context — the AI never read it, so the submission binds only
+// user + declared amount + file hash.
+function degradedPaymentResponse(fileHash: string, userId: string, amount: number) {
+  return NextResponse.json({
+    valid: true,
+    aiSkipped: true,
+    confidence: 0,
+    extracted_amount: null,
+    transaction_id: null,
+    payment_date: null,
+    analysis: 'AI tekshiruv xizmati hozir band — chek qo‘lda ko‘rib chiqiladi.',
+    amount_match: true,
+    is_duplicate: false,
+    is_suspicious_id: false,
+    duplicate_info: null,
+    file_hash: fileHash,
+    claim: signFileClaim('payment-unverified', fileHash, { userId, amount }),
+  })
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { student } = await requireActiveStudent(req)
@@ -86,17 +109,12 @@ export async function POST(req: NextRequest) {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY
+    // No AI provider available → don't block the student. The exact-file
+    // duplicate check above already ran; the payment is accepted with a
+    // 'payment-unverified' claim and flagged ai_review='manual' so a
+    // tarbiyachi checks the amount/receipt by hand before approving.
     if (!aiVisionConfigured()) {
-      return NextResponse.json({
-        valid: false,
-        confidence: 0,
-        extracted_amount: null,
-        transaction_id: null,
-        analysis: 'AI tekshiruv xizmati vaqtincha mavjud emas.',
-        amount_match: false,
-        is_duplicate: false,
-        file_hash: fileHash,
-      }, { status: 503 })
+      return degradedPaymentResponse(fileHash, student.id, declaredAmount)
     }
 
     // Prepare Gemini prompt for real-time validation
@@ -172,18 +190,9 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering.`
         amountMatch = Math.abs(extractedAmount - declaredAmount) <= tolerance
         if (jsonResult.amount_match === false) amountMatch = false
       }
-    } catch (geminiError: unknown) {
-      console.error('Gemini API call failed:', geminiError)
-      return NextResponse.json({
-        valid: false,
-        confidence: 0,
-        extracted_amount: null,
-        transaction_id: null,
-        analysis: 'AI tekshiruvi yakunlanmadi. Keyinroq qayta urinib ko‘ring.',
-        amount_match: false,
-        is_duplicate: false,
-        file_hash: fileHash,
-      }, { status: 502 })
+    } catch (aiError: unknown) {
+      console.error('AI unavailable during payment check, degrading to manual review:', aiError)
+      return degradedPaymentResponse(fileHash, student.id, declaredAmount)
     }
 
     // ========== DUPLICATE / SUSPICIOUS ID CHECK ==========

@@ -296,11 +296,17 @@ export default function TolovaPage() {
             const result = await res.json()
             setValidationResult(result)
 
-            if (!result.valid || result.amount_match === false || result.is_duplicate || result.is_suspicious_id) {
+            if (!result.aiSkipped && (!result.valid || result.amount_match === false || result.is_duplicate || result.is_suspicious_id)) {
                 // Show warning modal — amounts don't match, low confidence, or duplicate
                 setShowValidationModal(true)
                 setValidating(false)
                 return
+            }
+
+            // AI xizmati band edi — chek qabul qilinadi, tarbiyachi qo'lda
+            // tekshiradi. Talabaga xatolik emas, ma'lumot.
+            if (result.aiSkipped) {
+                toast.success("AI tekshiruv xizmati band — chek qabul qilindi va qo‘lda ko‘rib chiqiladi.")
             }
 
             // If valid — proceed to upload

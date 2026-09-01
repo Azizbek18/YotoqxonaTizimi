@@ -82,6 +82,60 @@ export interface PrepareOptions {
   maxDimension?: number
 }
 
+/**
+ * Builds the canonical file sent to vision providers and later stored with
+ * the application. Groq's vision API accepts raster images but not PDFs, so
+ * rendering the first (officially single-page) referral page here keeps it
+ * available as an independent fallback when the paid Gateway/Gemini paths
+ * are unavailable. Using the same returned bytes for analysis and storage is
+ * security-critical: the signed AI claim is bound to their SHA-256 hash.
+ *
+ * pdfjs is loaded only after a PDF is selected; normal photo uploads do not
+ * download the renderer or its worker.
+ */
+export async function prepareAiAnalysisFile(input: File, maxDimension = 2200): Promise<File> {
+  if (input.type !== 'application/pdf') return input
+
+  const pdfjs = await import('pdfjs-dist')
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url,
+  ).toString()
+
+  const loadingTask = pdfjs.getDocument({
+    data: new Uint8Array(await input.arrayBuffer()),
+  })
+
+  let document: Awaited<typeof loadingTask.promise> | null = null
+  try {
+    document = await loadingTask.promise
+    if (document.numPages < 1) throw new Error('PDF sahifasi topilmadi')
+
+    const page = await document.getPage(1)
+    const natural = page.getViewport({ scale: 1 })
+    const scale = Math.min(3, maxDimension / Math.max(natural.width, natural.height))
+    const viewport = page.getViewport({ scale: Math.max(1, scale) })
+    const canvas = window.document.createElement('canvas')
+    canvas.width = Math.ceil(viewport.width)
+    canvas.height = Math.ceil(viewport.height)
+
+    const context = canvas.getContext('2d', { alpha: false })
+    if (!context) throw new Error('PDF uchun canvas yaratilmadi')
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    await page.render({ canvas, canvasContext: context, viewport }).promise
+
+    const jpeg = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9))
+    if (!jpeg) throw new Error('PDF sahifasini JPEG ga aylantirib bo‘lmadi')
+    if (jpeg.size > MAX_BYTES) throw new Error('PDF sahifasi AI tekshiruvi uchun juda katta')
+
+    const stem = input.name.replace(/\.[^.]+$/, '').trim() || 'yollanma'
+    return new File([jpeg], `${stem}.jpg`, { type: 'image/jpeg' })
+  } finally {
+    await loadingTask.destroy()
+  }
+}
+
 const DETECTED_FILE_META = {
   pdf: { type: 'application/pdf', extension: 'pdf' },
   jpeg: { type: 'image/jpeg', extension: 'jpg' },

@@ -14,6 +14,9 @@ export type PaymentRecord = {
   ai_confidence?: number
   ai_extracted_amount?: number
   ai_analysis?: string
+  /** 'manual' = AI was down at submission, check the receipt by hand;
+   *  'skipped'/undefined = normal AI-checked path. */
+  ai_review?: 'manual' | 'skipped'
 }
 
 export type PaymentSummary = {

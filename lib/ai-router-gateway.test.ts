@@ -22,23 +22,32 @@ describe('AI provider routing with Gateway', () => {
     groqConfigured.mockReturnValue(false)
   })
 
-  it('uses paid Gateway for vision before Groq and Gemini', async () => {
+  it('uses Groq first for raster vision before Gateway and Gemini', async () => {
     groqConfigured.mockReturnValue(true)
-    gatewayGenerate.mockResolvedValue('{"valid":true}')
+    groqAnalyzeImages.mockResolvedValue('{"valid":true}')
     const result = await aiVisionJson({
       contents: [{ parts: [{ inlineData: { mimeType: 'image/jpeg', data: 'AAAA' } }] }],
     }, 'gemini-key')
     expect(result.candidates[0].content.parts[0].text).toBe('{"valid":true}')
-    expect(gatewayGenerate).toHaveBeenCalledWith(expect.anything(), 'vision')
-    expect(groqAnalyzeImages).not.toHaveBeenCalled()
+    expect(groqAnalyzeImages).toHaveBeenCalled()
+    expect(gatewayGenerate).not.toHaveBeenCalled()
     expect(callGemini).not.toHaveBeenCalled()
   })
 
-  it('uses Gateway for chat when Groq is unavailable', async () => {
+  it('prefers Gemini over Gateway for chat when Groq is unavailable', async () => {
+    callGemini.mockResolvedValue({ candidates: [{ content: { parts: [{ text: 'Salom!' }] } }] })
+    gatewayGenerate.mockResolvedValue('gateway javob')
+    const result = await aiChatReply({ contents: [{ parts: [{ text: 'Salom' }] }] }, 'gemini-key')
+    expect(result.candidates[0].content.parts[0].text).toBe('Salom!')
+    expect(callGemini).toHaveBeenCalled()
+    expect(gatewayGenerate).not.toHaveBeenCalled()
+  })
+
+  it('falls to Gateway for chat only after Groq and Gemini both fail', async () => {
+    callGemini.mockRejectedValue(new Error('Gemini down'))
     gatewayGenerate.mockResolvedValue('Salom!')
     const result = await aiChatReply({ contents: [{ parts: [{ text: 'Salom' }] }] }, 'gemini-key')
     expect(result.candidates[0].content.parts[0].text).toBe('Salom!')
     expect(gatewayGenerate).toHaveBeenCalledWith(expect.anything(), 'text')
-    expect(callGemini).not.toHaveBeenCalled()
   })
 })

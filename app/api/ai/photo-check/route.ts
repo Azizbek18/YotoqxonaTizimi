@@ -40,13 +40,16 @@ export async function POST(req: NextRequest) {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY
+    // No provider available → let the avatar through rather than blocking the
+    // student. Staff see the photo on the profile anyway.
     if (!aiVisionConfigured()) {
       return NextResponse.json({
-        is_human: false,
+        is_human: true,
+        aiSkipped: true,
         confidence: 0,
-        description: 'Rasmni tekshirish xizmati vaqtincha mavjud emas.',
-        reason: 'AI tekshiruvi bajarilmadi',
-      }, { status: 503 })
+        description: 'AI rasm tekshiruvi hozir band — rasm keyinroq ko‘rib chiqiladi.',
+        reason: null,
+      })
     }
 
     // Read file as base64
@@ -106,14 +109,15 @@ MUHIM: Faqat va faqat toza JSON formatida javob bering. Hech qanday markdown (ma
       confidence = typeof jsonResult.confidence === 'number' ? jsonResult.confidence : 50
       description = jsonResult.description || ''
       reason = jsonResult.reason || null
-    } catch (geminiError: unknown) {
-      console.error('Gemini API call failed during photo check:', geminiError)
+    } catch (aiError: unknown) {
+      console.error('AI unavailable during photo check, accepting the avatar:', aiError)
       return NextResponse.json({
-        is_human: false,
+        is_human: true,
+        aiSkipped: true,
         confidence: 0,
-        description: 'Rasmni tekshirib bo‘lmadi. Keyinroq qayta urinib ko‘ring.',
-        reason: 'AI tekshiruvi bajarilmadi',
-      }, { status: 502 })
+        description: 'AI rasm tekshiruvi hozir band — rasm keyinroq ko‘rib chiqiladi.',
+        reason: null,
+      })
     }
 
     return NextResponse.json({

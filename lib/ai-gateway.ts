@@ -21,9 +21,13 @@ function modelList(value: string | undefined, fallback: string[]) {
 }
 
 export function aiGatewayConfigured() {
-  // Vercel deployments receive a rotating OIDC token when AI Gateway is
-  // enabled. A static key remains available for local/CI use.
-  return Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || process.env.VERCEL === '1')
+  // Requires an explicit key. Every Vercel deployment also carries
+  // VERCEL_OIDC_TOKEN / VERCEL='1', so keying off those made the Gateway
+  // "configured" even with a zero-credit free-tier account — each vision
+  // request then burned a 25s timeout plus the AI SDK's 3 retries hitting
+  // an instant 429 before falling through to the next provider. Set
+  // AI_GATEWAY_API_KEY only once the Gateway actually has credit.
+  return Boolean(process.env.AI_GATEWAY_API_KEY)
 }
 
 function systemText(payload: GatewayCompatiblePayload) {

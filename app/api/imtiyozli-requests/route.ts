@@ -149,6 +149,9 @@ export async function POST(request: NextRequest) {
       origin_region: originRegion,
       permit_url: storagePath,
       status: 'pending' as const,
+      // No official document format to verify against — the dean reviews the
+      // Ariza + Tilxat + passport photo by hand regardless.
+      ai_review: 'skipped' as const,
     }
 
     if (outcome.action === 'reopen') {

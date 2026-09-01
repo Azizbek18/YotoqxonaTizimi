@@ -55,6 +55,9 @@ interface PermitRequest {
   /** 'yollanma' (government referral) | 'imtiyozli' (foreign/privileged —
    *  Ariza+Tilxat+passport photo instead). */
   application_type?: string
+  /** 'passed' = AI verified the document; 'manual' = every AI provider was
+   *  down at submission, verify the document by hand; 'skipped' = imtiyozli. */
+  ai_review?: string
   relative_phone?: string | null
   origin_country?: string | null
   origin_region?: string | null
@@ -451,6 +454,11 @@ function ArizalarContent() {
                               <AlertTriangle size={8} /> {req.warning_count} ogohlantirish
                             </span>
                           ) : null}
+                          {req.ai_review === 'manual' && (
+                            <span className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase ${statusChip('warning', isLight).chip}`}>
+                              <AlertTriangle size={8} /> AI tekshirmagan
+                            </span>
+                          )}
                         </div>
                         <p className={`text-[10px] mt-1 ${ui.muted}`}>
                           {permitFacultyLabel(req.faculty)} • {directionLabel(req.direction)} • {req.course}-kurs
@@ -541,6 +549,18 @@ function ArizalarContent() {
                   </div>
                 </div>
               ) : null}
+
+              {selectedReq.ai_review === 'manual' && (
+                <div className={`flex items-start gap-2 rounded-xl border p-3 text-[10px] font-medium ${
+                  isLight ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-amber-500/25 bg-amber-500/10 text-amber-200'
+                }`}>
+                  <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">AI hujjatni tekshira olmadi</p>
+                    <p className="mt-0.5 leading-tight">Yuborilganda AI tekshiruv xizmati band edi. Yo‘llanma hujjatini va undagi F.I.Sh / JSHSHIR / pasport ma’lumotlarini o‘zingiz diqqat bilan tekshiring.</p>
+                  </div>
+                </div>
+              )}
 
               {/* Data */}
               <div className="space-y-0 text-xs">

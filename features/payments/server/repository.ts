@@ -2,7 +2,7 @@ import 'server-only'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import type { PaymentRecord, PaymentStatus } from '../types'
 
-const PAYMENT_COLUMNS = 'id, student_id, student_name, month, year, amount, status, receipt_url, admin_message, created_at, ai_confidence, ai_extracted_amount, ai_analysis'
+const PAYMENT_COLUMNS = 'id, student_id, student_name, month, year, amount, status, receipt_url, admin_message, created_at, ai_confidence, ai_extracted_amount, ai_analysis, ai_review'
 
 function toPaymentRecord(row: Record<string, unknown>): PaymentRecord {
   return {
@@ -19,6 +19,7 @@ function toPaymentRecord(row: Record<string, unknown>): PaymentRecord {
     ai_confidence: typeof row.ai_confidence === 'number' ? row.ai_confidence : undefined,
     ai_extracted_amount: typeof row.ai_extracted_amount === 'number' ? row.ai_extracted_amount : undefined,
     ai_analysis: typeof row.ai_analysis === 'string' ? row.ai_analysis : undefined,
+    ai_review: row.ai_review === 'manual' || row.ai_review === 'skipped' ? row.ai_review : undefined,
   }
 }
 
@@ -122,6 +123,14 @@ export function createPaymentRepository() {
         p_transaction_id: input.transactionId,
         p_transaction_id_normalized: input.normalizedTransactionId,
       })
+    },
+
+    // Marks every row of a just-submitted batch as needing a manual look
+    // because the AI receipt check was unavailable at submission time. The
+    // receipt hash is reserved once per physical receipt (payment_receipt_
+    // uploads UNIQUE), so it targets exactly this batch's rows.
+    async flagReceiptManualReview(receiptHash: string) {
+      return supabase.from('tolovlar').update({ ai_review: 'manual' }).eq('receipt_hash', receiptHash)
     },
 
     async review(faculties: string[], ids: string[], status: Extract<PaymentStatus, 'approved' | 'rejected'>, adminMessage: string) {

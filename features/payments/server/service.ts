@@ -116,11 +116,23 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       // then reserved in the same database transaction that inserts the
       // payment rows, so a caller cannot skip a later background request.
       const claim = form.get('validatedHash')
-      if (!verifyFileClaim('payment', claim, receiptHash, {
+      // 'payment' = the AI checked the receipt. 'payment-unverified' = every
+      // AI provider was down, so /api/ai/tekshiruv accepted it for manual
+      // review (claim binds user + declared amount + file hash, but not the
+      // AI-read transaction id). The exact-file duplicate check still ran.
+      let aiReview: 'passed' | 'manual'
+      if (verifyFileClaim('payment', claim, receiptHash, {
         userId: student.id,
         amount,
         transactionId: normalizedTransactionId,
       })) {
+        aiReview = 'passed'
+      } else if (verifyFileClaim('payment-unverified', claim, receiptHash, {
+        userId: student.id,
+        amount,
+      })) {
+        aiReview = 'manual'
+      } else {
         throw new ApiError(400, 'Chek avval AI orqali tekshirilishi shart')
       }
       const batchId = randomUUID()
@@ -160,6 +172,13 @@ export function createPaymentService(repository: PaymentRepository = createPayme
           normalizedTransactionId,
         })
         if (error) throw error
+        // The batch rows were just inserted by this request (status='waiting',
+        // nobody else touches them yet), so a plain post-update is race-free
+        // and keeps the atomic RPC untouched.
+        if (aiReview === 'manual') {
+          const { error: flagError } = await repository.flagReceiptManualReview(receiptHash)
+          if (flagError) console.error('flagReceiptManualReview failed:', flagError)
+        }
         return {
           ok: true,
           records: (data ?? []).map((record) => ({

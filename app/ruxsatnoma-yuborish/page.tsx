@@ -20,7 +20,7 @@ import { PERMIT_FACULTIES } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
 import { getPassportFormatError, isValidJoinedFullName, isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
 import { cyrillicToLatin } from '@/lib/transliterate'
-import { prepareUploadFile } from '@/lib/prepare-upload'
+import { prepareAiAnalysisFile, prepareUploadFile } from '@/lib/prepare-upload'
 
 interface Particle {
   id: number
@@ -74,6 +74,7 @@ export default function RuxsatnomaYuborish() {
   const [direction, setDirection] = useState('')
   const [course, setCourse] = useState('1')
   const [file, setFile] = useState<File | null>(null)
+  const [aiAnalysisFile, setAiAnalysisFile] = useState<File | null>(null)
   const [preparingFile, setPreparingFile] = useState(false)
 
   const [loading, setLoading] = useState(false)
@@ -355,6 +356,8 @@ export default function RuxsatnomaYuborish() {
     if (!selected) return
 
     setPreparingFile(true)
+    setFile(null)
+    setAiAnalysisFile(null)
     try {
       // iPhone HEIC → JPEG, plus a downscale for oversized camera shots, so
       // an honest yo'llanma photo isn't bounced by the server format/size check.
@@ -363,9 +366,22 @@ export default function RuxsatnomaYuborish() {
         showToast('error', prepared.message)
         return
       }
-      setFile(prepared.file)
+      let analysisFile: File
+      try {
+        analysisFile = await prepareAiAnalysisFile(prepared.file)
+      } catch (error) {
+        console.error('PDF AI nusxasini tayyorlash xatoligi:', error)
+        showToast('error', "PDF sahifasini tekshiruv uchun tayyorlab bo‘lmadi. Yo‘llanmaning aniq skrinshotini JPG yoki PNG ko‘rinishida yuklang.")
+        return
+      }
+      // Keep the submitted file byte-for-byte identical to the AI input: the
+      // server signs the analyzed SHA-256 hash and verifies it again while
+      // saving the application.
+      setFile(analysisFile)
+      setAiAnalysisFile(analysisFile)
       playSound('success')
-      if (prepared.changed) showToast('success', 'Rasm yuklashga tayyorlandi')
+      if (prepared.file.type === 'application/pdf') showToast('success', 'PDF tekshiruv uchun rasmga aylantirildi')
+      else if (prepared.changed) showToast('success', 'Rasm yuklashga tayyorlandi')
     } finally {
       setPreparingFile(false)
     }
@@ -404,7 +420,7 @@ export default function RuxsatnomaYuborish() {
       showToast('error', 'Rasm hali tayyorlanmoqda — biroz kuting.')
       return false
     }
-    if (!passportSeries || !jshshir || !file) {
+    if (!passportSeries || !jshshir || !file || !aiAnalysisFile) {
       showToast('error', "Iltimos, pasport ma'lumotlarini to'ldiring va faylni yuklang!")
       return false
     }
@@ -477,7 +493,7 @@ export default function RuxsatnomaYuborish() {
     e.preventDefault()
 
     if (formStep !== 4) return
-    if (!validateStep3() || !file) return
+    if (!validateStep3() || !file || !aiAnalysisFile) return
 
     setLoading(true)
     setSubmissionStage('ai')
@@ -493,7 +509,7 @@ export default function RuxsatnomaYuborish() {
       // tasdiqlaydi. Fayl saqlanishidan oldin ishlaydi.
       const buildAiFormData = () => {
         const aiFormData = new FormData()
-        aiFormData.append('file', file)
+        aiFormData.append('file', aiAnalysisFile)
         aiFormData.append('fullName', fullName.trim())
         aiFormData.append('jshshir', cleanJshshir)
         aiFormData.append('passportSeries', cleanPassport)
@@ -514,6 +530,11 @@ export default function RuxsatnomaYuborish() {
       }
       if (!aiResult.claim) {
         throw new Error("Yo‘llanma AI tekshiruvidan tasdiq olinmadi. Qayta urinib ko‘ring.")
+      }
+      // AI xizmati band edi — ariza qabul qilinadi, lekin dekan hujjatni
+      // qo'lda tekshiradi. Talabaga xatolik emas, ma'lumot ko'rsatiladi.
+      if (aiResult.aiSkipped) {
+        showToast('success', "AI tekshiruv xizmati band — arizangiz qabul qilindi va qo‘lda ko‘rib chiqiladi.")
       }
 
       // 2. Server tekshiradi, private storage'ga yuklaydi va bazaga yozadi.

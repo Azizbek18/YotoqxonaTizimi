@@ -118,7 +118,18 @@ export async function POST(request: NextRequest) {
       passport,
       jshshir,
     }
-    if (!verifyFileClaim('permit', form.get('aiClaim'), fileHash, claimContext)) {
+    // 'permit' = the AI ran and the document/identity checks passed.
+    // 'permit-unverified' = every AI provider was down, so the precheck
+    // waved it through for mandatory manual review (same HMAC/hash/identity
+    // binding, only the content gate is skipped). A genuine "not a referral"
+    // verdict issues no claim at all and never reaches here.
+    const aiClaim = form.get('aiClaim')
+    let aiReview: 'passed' | 'manual'
+    if (verifyFileClaim('permit', aiClaim, fileHash, claimContext)) {
+      aiReview = 'passed'
+    } else if (verifyFileClaim('permit-unverified', aiClaim, fileHash, claimContext)) {
+      aiReview = 'manual'
+    } else {
       return NextResponse.json({ error: 'Hujjat avval AI orqali tekshirilishi shart.' }, { status: 400 })
     }
 
@@ -153,6 +164,7 @@ export async function POST(request: NextRequest) {
       permit_url: storagePath,
       status: 'pending' as const,
       application_type: 'yollanma' as const,
+      ai_review: aiReview,
     }
 
     if (outcome.action === 'reopen') {

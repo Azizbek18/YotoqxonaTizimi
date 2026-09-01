@@ -17,6 +17,23 @@ import { getApiError } from '@/server/http/api-error'
 // Public endpoint (students apply before they have an account), so we
 // rate-limit by IP only rather than requiring auth.
 
+// Returned when no AI provider can serve the check (all rate-limited /
+// billing-suspended / erroring). The applicant proceeds; /api/permit-requests
+// accepts the 'permit-unverified' claim and marks the row ai_review='manual'.
+function degradedResponse(
+  fileHash: string,
+  claimContext: { fullName: string; passport: string; jshshir: string },
+) {
+  return NextResponse.json({
+    valid: true,
+    aiSkipped: true,
+    confidence: 0,
+    mismatches: [],
+    analysis: "AI tekshiruv xizmati hozir band — arizangiz qo‘lda ko‘rib chiqiladi.",
+    claim: signFileClaim('permit-unverified', fileHash, claimContext),
+  })
+}
+
 export async function POST(req: NextRequest) {
   try {
     const throttle = await checkRateLimit(`ai-yollanma:${getClientIp(req)}`, 8, 5 * 60_000)
@@ -65,15 +82,14 @@ export async function POST(req: NextRequest) {
     const mimeType = detectedMimeType
 
     const geminiApiKey = process.env.GEMINI_API_KEY
+    // No AI provider available at all → degrade gracefully instead of
+    // blocking the applicant. The document still can't be forged past this
+    // point: the claim is HMAC-signed, file-hash- and identity-bound, and
+    // only issued after the file passed the format/signature checks above.
+    // It just carries the 'permit-unverified' purpose so the submission is
+    // stored for mandatory manual review by the dean.
     if (!aiVisionConfigured()) {
-      return NextResponse.json({
-        error: 'Yo‘llanmani AI orqali tekshirish vaqtincha ishlamayapti. Birozdan keyin qayta urinib ko‘ring.',
-        valid: false,
-        confidence: 0,
-        mismatches: [],
-        retryable: true,
-        claim: null,
-      }, { status: 503 })
+      return degradedResponse(fileHash, claimContext)
     }
 
     const systemPrompt = `Siz O'zbekiston Respublikasi my.gov.uz davlat portalida generatsiya qilinadigan "YO'LLANMA" (talabalar turar joyiga yo'llanma) hujjatlarini tekshiradigan AI tizimisiz.
@@ -150,16 +166,14 @@ MUHIM: document_type faqat hujjat aynan TTJ yo'llanmasi bo'lsa "dormitory_referr
         analysis: evaluated.analysis,
         claim: evaluated.valid ? signFileClaim('permit', fileHash, claimContext) : null,
       })
-    } catch (geminiError: unknown) {
-      console.error('AI call failed during yollanma check:', geminiError)
-      return NextResponse.json({
-        error: 'Yo‘llanmani AI orqali tekshirib bo‘lmadi. Internetni tekshirib, birozdan keyin qayta urinib ko‘ring.',
-        valid: false,
-        confidence: 0,
-        mismatches: [],
-        retryable: true,
-        claim: null,
-      }, { status: 503 })
+    } catch (aiError: unknown) {
+      // Every provider is exhausted / erroring, or the model returned
+      // unparseable output. Don't block the applicant — accept the document
+      // for manual review (see degradedResponse). A genuine "this isn't a
+      // referral" verdict never reaches here; it returns above with
+      // valid:false and mismatches.
+      console.error('AI unavailable during yollanma check, degrading to manual review:', aiError)
+      return degradedResponse(fileHash, claimContext)
     }
   } catch (error: unknown) {
     console.error('Yo‘llanma AI tekshiruvi xatoligi:', error)

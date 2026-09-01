@@ -130,9 +130,15 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
       setMounted(true)
     }, 0)
     const timer = setInterval(() => setTime(new Date()), 60000)
+
+    // Keep the student button theme scoped to this panel while also covering
+    // dialogs rendered directly into document.body through React portals.
+    document.body.classList.add('talaba-ui')
+
     return () => {
       clearTimeout(timeoutId)
       clearInterval(timer)
+      document.body.classList.remove('talaba-ui')
     }
   }, [])
 
@@ -605,6 +611,110 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
         ::-webkit-scrollbar-thumb:hover { background: rgba(34, 211, 238, 0.3); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Unified Duolingo-inspired action language for the student panel. */
+        body.talaba-ui {
+          --student-button-edge: #1d4ed8;
+          --student-button-focus: rgba(56, 189, 248, 0.48);
+          --student-button-shadow: rgba(37, 99, 235, 0.24);
+        }
+
+        body.talaba-ui :is(
+          button,
+          a[class*="bg-blue-"],
+          a[class*="bg-indigo-"],
+          a[class*="bg-purple-"],
+          a[class*="bg-violet-"],
+          a[class*="bg-cyan-"],
+          a[class*="bg-emerald-"],
+          a[class*="bg-green-"],
+          a[class*="bg-amber-"],
+          a[class*="bg-orange-"],
+          a[class*="bg-rose-"],
+          a[class*="bg-red-"],
+          a[class*="bg-gradient-to-"],
+          a[class*="bg-linear-to-"]
+        ):not([data-student-button="plain"]) {
+          color: #ffffff !important;
+          background-color: #2563eb !important;
+          background-image: linear-gradient(135deg, #7c3aed 0%, #4f46e5 34%, #2563eb 68%, #06b6d4 100%) !important;
+          border-color: rgba(255, 255, 255, 0.28) !important;
+          box-shadow:
+            0 5px 0 var(--student-button-edge),
+            0 10px 22px var(--student-button-shadow) !important;
+          text-shadow: 0 1px 1px rgba(15, 23, 42, 0.22);
+          translate: 0 0;
+          transition:
+            translate 140ms ease,
+            box-shadow 140ms ease,
+            filter 140ms ease,
+            opacity 140ms ease !important;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        body.talaba-ui :is(
+          button,
+          a[class*="bg-blue-"],
+          a[class*="bg-indigo-"],
+          a[class*="bg-purple-"],
+          a[class*="bg-violet-"],
+          a[class*="bg-cyan-"],
+          a[class*="bg-emerald-"],
+          a[class*="bg-green-"],
+          a[class*="bg-amber-"],
+          a[class*="bg-orange-"],
+          a[class*="bg-rose-"],
+          a[class*="bg-red-"],
+          a[class*="bg-gradient-to-"],
+          a[class*="bg-linear-to-"]
+        ):not([data-student-button="plain"]):not(:disabled):hover {
+          filter: brightness(1.07) saturate(1.08);
+          translate: 0 -1px;
+          box-shadow:
+            0 6px 0 var(--student-button-edge),
+            0 12px 26px var(--student-button-shadow) !important;
+        }
+
+        body.talaba-ui :is(
+          button,
+          a[class*="bg-blue-"],
+          a[class*="bg-indigo-"],
+          a[class*="bg-purple-"],
+          a[class*="bg-violet-"],
+          a[class*="bg-cyan-"],
+          a[class*="bg-emerald-"],
+          a[class*="bg-green-"],
+          a[class*="bg-amber-"],
+          a[class*="bg-orange-"],
+          a[class*="bg-rose-"],
+          a[class*="bg-red-"],
+          a[class*="bg-gradient-to-"],
+          a[class*="bg-linear-to-"]
+        ):not([data-student-button="plain"]):not(:disabled):active {
+          filter: brightness(0.98);
+          translate: 0 4px;
+          box-shadow:
+            0 1px 0 var(--student-button-edge),
+            0 4px 10px rgba(37, 99, 235, 0.18) !important;
+        }
+
+        body.talaba-ui button:not([data-student-button="plain"]):disabled {
+          cursor: not-allowed;
+          opacity: 0.48 !important;
+          filter: grayscale(0.25) saturate(0.6);
+          box-shadow: 0 3px 0 #475569 !important;
+        }
+
+        body.talaba-ui :is(button, a):focus-visible {
+          outline: 3px solid var(--student-button-focus) !important;
+          outline-offset: 3px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          body.talaba-ui :is(button, a) {
+            transition-duration: 0.01ms !important;
+          }
+        }
       `}</style>
     </div>
   )
@@ -1176,7 +1286,10 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
       }
 
       setAiResult(data)
-      if (!data.is_human) {
+      if (data.aiSkipped) {
+        // AI band edi — rasm qabul qilinadi, keyinroq ko'rib chiqiladi.
+        toast.success("AI rasm tekshiruvi band — rasm qabul qilindi.")
+      } else if (!data.is_human) {
         toast.error(data.reason || "Yuklangan rasmda inson yuzi aniqlanmadi!")
         // Clear file and preview since validation failed
         setFile(null)

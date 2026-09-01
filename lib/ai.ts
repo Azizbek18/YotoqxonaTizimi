@@ -4,10 +4,11 @@ import { groqAnalyzeImages, groqConfigured, groqGenerateText } from './groq'
 import { sendTelegramAdminMessage } from './telegram'
 import { aiGatewayConfigured, gatewayGenerate } from './ai-gateway'
 
-// Provider routing for the AI features:
-//   - chat: Groq first, cheap AI Gateway models next, Gemini last
-//   - images/OCR: paid Gateway first, Groq Qwen next, Gemini last
-//   - PDFs: Gateway first, Gemini last (Groq vision does not accept PDFs)
+// Provider routing for the AI features, cheapest-reliable first:
+//   1. Groq — free (chat: production models; vision: preview Qwen, low daily
+//      token cap, images only)
+//   2. Gemini — paid prepaid credit, reliable OCR
+//   3. AI Gateway — only when AI_GATEWAY_API_KEY is set (i.e. it has credit)
 // Both helpers take the Gemini-shaped request the routes already build and
 // return a Gemini-shaped response, so callers only swap the function name.
 
@@ -72,7 +73,7 @@ async function alertOutage(where: string, error: unknown): Promise<void> {
   )
 }
 
-// ---- vision / OCR: Gateway primary, Groq/Gemini fallback ----
+// ---- vision / OCR: Groq (images) → Gemini → AI Gateway ----
 
 export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string | undefined): Promise<GeminiResponse> {
   const system = payload.systemInstruction?.parts?.map((p) => p.text).filter(Boolean).join('\n\n') ?? ''
@@ -90,31 +91,36 @@ export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string 
   const wantsJson = payload.generationConfig?.responseMimeType === 'application/json'
 
   let providerError: unknown = null
-  if (aiGatewayConfigured()) {
-    try {
-      return shaped(await gatewayGenerate(payload, 'vision'))
-    } catch (error) {
-      providerError = error
-      console.error('AI Gateway vision call failed, trying Groq:', error)
-    }
-  }
 
+  // 1. Groq — free, images only. Most student referrals reach this function
+  // as raster images (PDFs are rendered client-side). Preview Qwen models
+  // with a low daily token cap, so falling through here is routine.
   if (groqConfigured() && onlyImages) {
     try {
       return shaped(await groqAnalyzeImages(system, prompt, images, wantsJson))
     } catch (error) {
-      providerError = providerError ?? error
-      console.error('Groq vision fallback failed, trying Gemini:', error)
+      providerError = error
+      console.error('Groq vision call failed, trying Gemini:', error)
     }
   }
 
+  // 2. Gemini — paid prepaid credit, reliable OCR.
   if (geminiApiKey) {
     try {
       return shaped(textOf(await callGemini(payload, geminiApiKey)))
-    } catch (geminiError) {
-      console.error('Gemini vision fallback failed:', geminiError)
-      await alertOutage('rasm tekshiruvi', providerError ?? geminiError)
-      throw geminiError
+    } catch (error) {
+      providerError = providerError ?? error
+      console.error('Gemini vision fallback failed, trying AI Gateway:', error)
+    }
+  }
+
+  // 3. AI Gateway — only reached when it actually has credit.
+  if (aiGatewayConfigured()) {
+    try {
+      return shaped(await gatewayGenerate(payload, 'vision'))
+    } catch (error) {
+      providerError = providerError ?? error
+      console.error('AI Gateway vision fallback failed:', error)
     }
   }
 
@@ -123,7 +129,7 @@ export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string 
   throw finalError
 }
 
-// ---- chat / free text: Groq primary, Gemini fallback ----
+// ---- chat / free text: Groq → Gemini → AI Gateway ----
 
 export async function aiChatReply(payload: GeminiPayload, geminiApiKey: string | undefined): Promise<GeminiResponse> {
   const system = payload.systemInstruction?.parts?.map((p) => p.text).filter(Boolean).join('\n\n') ?? ''
@@ -135,36 +141,36 @@ export async function aiChatReply(payload: GeminiPayload, geminiApiKey: string |
     })
     .join('\n')
 
-  let groqError: unknown = null
+  let providerError: unknown = null
+
   if (groqConfigured()) {
     try {
       return shaped(await groqGenerateText(system, prompt, false))
     } catch (error) {
-      groqError = error
+      providerError = error
       console.error('Groq chat call failed, trying Gemini:', error)
-    }
-  }
-
-  if (aiGatewayConfigured()) {
-    try {
-      return shaped(await gatewayGenerate(payload, 'text'))
-    } catch (gatewayError) {
-      console.error('AI Gateway chat fallback failed, trying Gemini:', gatewayError)
-      groqError = groqError ?? gatewayError
     }
   }
 
   if (geminiApiKey) {
     try {
       return shaped(textOf(await callGemini(payload, geminiApiKey)))
-    } catch (geminiError) {
-      console.error('Gemini chat fallback failed:', geminiError)
-      await alertOutage('chat', groqError ?? geminiError)
-      throw geminiError
+    } catch (error) {
+      providerError = providerError ?? error
+      console.error('Gemini chat fallback failed, trying AI Gateway:', error)
     }
   }
 
-  const finalError = groqError ?? new Error('AI chat sozlanmagan')
+  if (aiGatewayConfigured()) {
+    try {
+      return shaped(await gatewayGenerate(payload, 'text'))
+    } catch (error) {
+      providerError = providerError ?? error
+      console.error('AI Gateway chat fallback failed:', error)
+    }
+  }
+
+  const finalError = providerError ?? new Error('AI chat sozlanmagan')
   await alertOutage('chat', finalError)
   throw finalError
 }

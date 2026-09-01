@@ -12,7 +12,7 @@ afterEach(() => {
 })
 
 describe('AI Gateway adapter', () => {
-  it('recognizes a static key and Vercel OIDC deployments', () => {
+  it('is configured only when an explicit gateway key is set', () => {
     expect(aiGatewayConfigured()).toBe(false)
     vi.stubEnv('AI_GATEWAY_API_KEY', 'test-key')
     expect(aiGatewayConfigured()).toBe(true)

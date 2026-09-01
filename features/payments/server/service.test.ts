@@ -36,6 +36,7 @@ function repository() {
     setReceiptPath: vi.fn(async () => undefined),
     uploadReceipt: vi.fn(async () => ({ error: null })),
     removeReceipt: vi.fn(async () => undefined),
+    flagReceiptManualReview: vi.fn(async () => ({ error: null })),
     submitBatchAtomic: vi.fn(async () => ({
       data: [{ id: 'payment-1', month: 'Sentabr', year: 2026, status: 'waiting' }],
       error: null,
@@ -74,6 +75,45 @@ describe('payment submission service', () => {
       months: ['Sentabr'],
       amounts: [500000],
     }))
+  })
+
+  it('accepts a payment-unverified claim when the AI was down and flags it for manual review', async () => {
+    const repo = repository()
+    verifyFileClaim.mockImplementation((purpose: string) => purpose === 'payment-unverified')
+
+    const result = await createPaymentService(repo as never).submit(
+      { id: '00000000-0000-4000-8000-000000000001', full_name: 'Test Student' },
+      paymentForm(),
+    )
+
+    expect(result.ok).toBe(true)
+    expect(verifyFileClaim).toHaveBeenCalledWith(
+      'payment-unverified',
+      'signed-claim',
+      expect.stringMatching(/^[0-9a-f]{64}$/),
+      { userId: '00000000-0000-4000-8000-000000000001', amount: 500000 },
+    )
+    expect(repo.submitBatchAtomic).toHaveBeenCalled()
+    expect(repo.flagReceiptManualReview).toHaveBeenCalledWith(expect.stringMatching(/^[0-9a-f]{64}$/))
+  })
+
+  it('does not flag a normally AI-verified payment for manual review', async () => {
+    const repo = repository()
+    await createPaymentService(repo as never).submit(
+      { id: '00000000-0000-4000-8000-000000000001', full_name: 'Test Student' },
+      paymentForm(),
+    )
+    expect(repo.flagReceiptManualReview).not.toHaveBeenCalled()
+  })
+
+  it('rejects when neither claim verifies', async () => {
+    const repo = repository()
+    verifyFileClaim.mockReturnValue(false)
+    await expect(createPaymentService(repo as never).submit(
+      { id: '00000000-0000-4000-8000-000000000001', full_name: 'Test Student' },
+      paymentForm(),
+    )).rejects.toThrow('Chek avval AI orqali tekshirilishi shart')
+    expect(repo.submitBatchAtomic).not.toHaveBeenCalled()
   })
 
   it('rejects a missing or suspicious transaction id before reserving the receipt', async () => {

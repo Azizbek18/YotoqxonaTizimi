@@ -126,6 +126,8 @@ export type PaymentRow = {
   ai_confidence: number | null
   ai_extracted_amount: number | null
   ai_analysis: string | null
+  /** 'passed' (default) | 'manual' (AI was down at submission — check by hand). */
+  ai_review: string
   created_at: string
   updated_at: string
 }
@@ -154,6 +156,8 @@ export type PermitRequestRow = {
   origin_country: string | null
   origin_region: string | null
   study_type: string | null
+  /** 'passed' (default) | 'manual' (AI was down at submission — verify the document by hand) | 'skipped' (imtiyozli). */
+  ai_review: string
 }
 
 export type PermitTelegramLinkRow = {

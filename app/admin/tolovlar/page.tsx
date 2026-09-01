@@ -28,6 +28,7 @@ interface GroupedPayment {
   ai_confidence?: number
   ai_extracted_amount?: number
   ai_analysis?: string
+  ai_review?: 'manual' | 'skipped'
 }
 
 function getErrorMessage(error: unknown) {
@@ -197,7 +198,8 @@ export default function AdminTolovlarPage() {
         created_at: first.created_at,
         ai_confidence: first.ai_confidence,
         ai_extracted_amount: first.ai_extracted_amount,
-        ai_analysis: first.ai_analysis
+        ai_analysis: first.ai_analysis,
+        ai_review: first.ai_review,
       }
     }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   }
@@ -389,7 +391,13 @@ export default function AdminTolovlarPage() {
                     <h4 className={`text-sm font-extrabold truncate ${textStrong}`}>
                       {group.student_name}
                     </h4>
-                    <p className={`text-[10px] mt-0.5 ${textMuted}`}>Talaba</p>
+                    {group.ai_review === 'manual' ? (
+                      <p className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase mt-0.5 ${isLight ? 'text-amber-700' : 'text-amber-300'}`}>
+                        <AlertCircle size={9} /> AI tekshirmagan
+                      </p>
+                    ) : (
+                      <p className={`text-[10px] mt-0.5 ${textMuted}`}>Talaba</p>
+                    )}
                   </div>
                 </div>
 
@@ -593,6 +601,18 @@ export default function AdminTolovlarPage() {
               }`}>
                 {/* Decorative glow */}
                 <div className="absolute -top-12 -right-12 h-24 w-24 rounded-full bg-indigo-500/10 blur-xl pointer-events-none" />
+
+                {selectedGroup.ai_review === 'manual' && (
+                  <div className={`flex items-start gap-2 rounded-xl border p-3 text-[11px] font-medium ${
+                    isLight ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-amber-500/25 bg-amber-500/10 text-amber-200'
+                  }`}>
+                    <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">AI chekni tekshira olmadi</p>
+                      <p className="mt-0.5 leading-tight">Yuklanganda AI tekshiruv xizmati band edi. Chekdagi summa, sana va tranzaksiya raqamini o&apos;zingiz solishtiring.</p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

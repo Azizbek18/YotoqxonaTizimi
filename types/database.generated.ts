@@ -185,6 +185,42 @@ export type PushSubscriptionRow = {
   updated_at: string
 }
 
+export type AttendanceSessionRow = {
+  id: string
+  dorm_id: string
+  scheduled_for: string
+  kind: 'nightly' | 'adhoc'
+  gender: 'male' | 'female' | null
+  floor_number: number | null
+  opened_by: string | null
+  opened_at: string
+  closes_at: string
+  closed_by: string | null
+  closed_at: string | null
+  status: 'open' | 'closed' | 'auto_closed'
+  created_at: string
+}
+
+export type AttendanceRecordRow = {
+  id: string
+  session_id: string
+  student_id: string
+  room_number: string
+  floor_number: number | null
+  gender: string | null
+  state: 'present' | 'absent' | 'excused' | 'unmarked'
+  source: 'self_location' | 'captain' | 'tarbiyachi' | 'auto' | 'leave' | null
+  self_lat: number | null
+  self_lng: number | null
+  self_accuracy_m: number | null
+  self_distance_m: number | null
+  soft_flag: boolean
+  note: string | null
+  marked_by: string | null
+  marked_at: string | null
+  created_at: string
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -196,6 +232,8 @@ export interface Database {
       permit_requests: Table<PermitRequestRow>
       permit_telegram_links: Table<PermitTelegramLinkRow>
       push_subscriptions: Table<PushSubscriptionRow>
+      attendance_sessions: Table<AttendanceSessionRow>
+      attendance_records: Table<AttendanceRecordRow>
       cleaning_schedule: Table<{
         faculty: string
         room_number: string
@@ -286,6 +324,12 @@ export interface Database {
         max_upload_size_mb: number
         warning_threshold: number
         ttj_name: string
+        latitude: number | null
+        longitude: number | null
+        checkin_radius_m: number
+        attendance_enabled: boolean
+        attendance_open_time: string
+        attendance_close_time: string
         created_at: string
         updated_at: string
       }>

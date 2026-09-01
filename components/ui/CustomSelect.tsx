@@ -159,7 +159,7 @@ export default function CustomSelect({
                         onChange(opt.value)
                         setOpen(false)
                       }}
-                      className={`no-shelf w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-bold text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                      className={`no-shelf w-full flex items-start justify-between gap-2 px-3 py-2 text-xs font-bold text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                         opt.value === value
                           ? isLight
                             ? 'bg-blue-50 text-blue-700'
@@ -169,8 +169,11 @@ export default function CustomSelect({
                             : 'text-slate-200 hover:bg-white/5'
                       }`}
                     >
-                      <span className="truncate">{opt.label}</span>
-                      {opt.value === value && <Check size={13} className="shrink-0" />}
+                      {/* Wrap, don't truncate — option labels (e.g. full
+                          faculty-direction names) must stay readable in a
+                          narrow menu on a small phone. */}
+                      <span className="min-w-0 break-words leading-snug">{opt.label}</span>
+                      {opt.value === value && <Check size={13} className="mt-0.5 shrink-0" />}
                     </button>
                   ))
                 )}

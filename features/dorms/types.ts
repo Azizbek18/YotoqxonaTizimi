@@ -26,6 +26,18 @@ export type IncomingClaim = {
   at: string
 }
 
+/** Building-wide yo'qlama (attendance) config — shared by every faculty in
+ *  the dorm, edited once from Sozlamalar. */
+export type DormAttendanceConfig = {
+  latitude: number | null
+  longitude: number | null
+  radiusM: number
+  enabled: boolean
+  /** HH:MM, local Tashkent time. */
+  openTime: string
+  closeTime: string
+}
+
 export type DekanDorm = {
   dormId: string
   number: string
@@ -37,6 +49,7 @@ export type DekanDorm = {
   coFaculties: string[]
   /** Floors another faculty proposed that I must confirm or reject. */
   incoming: IncomingClaim[]
+  attendance: DormAttendanceConfig
 }
 
 /** What the onboarding floor-picker needs before the dekan commits. */

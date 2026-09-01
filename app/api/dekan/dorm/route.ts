@@ -51,6 +51,9 @@ export async function PATCH(request: NextRequest) {
     if (body?.action === 'withdraw') {
       return NextResponse.json({ dorm: await service.withdraw(staff, body.floors ?? []) })
     }
+    if (body?.action === 'attendance-settings') {
+      return NextResponse.json({ dorm: await service.patchOwnDorm(staff, body.settings ?? {}) })
+    }
     return NextResponse.json({ error: "Noma'lum amal" }, { status: 400 })
   } catch (error) {
     console.error('Dekan dorm PATCH error:', error)

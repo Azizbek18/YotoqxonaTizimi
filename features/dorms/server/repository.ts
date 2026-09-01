@@ -2,6 +2,14 @@ import 'server-only'
 import { getServiceSupabase } from '@/lib/server-supabase'
 
 export type DormRow = { id: string; number: string; name: string; floor_count: number }
+export type DormDetailRow = DormRow & {
+  latitude: number | null
+  longitude: number | null
+  checkin_radius_m: number
+  attendance_enabled: boolean
+  attendance_open_time: string
+  attendance_close_time: string
+}
 export type DormFloorRow = {
   floor_number: number
   faculty: string | null
@@ -23,14 +31,14 @@ export function createDormRepository() {
       return data?.dorm_id ?? null
     },
 
-    async getDorm(dormId: string): Promise<DormRow | null> {
+    async getDorm(dormId: string): Promise<DormDetailRow | null> {
       const { data, error } = await supabase
         .from('dorms')
-        .select('id, number, name, floor_count')
+        .select('id, number, name, floor_count, latitude, longitude, checkin_radius_m, attendance_enabled, attendance_open_time, attendance_close_time')
         .eq('id', dormId)
         .maybeSingle()
       if (error) throw error
-      return (data as DormRow) ?? null
+      return (data as DormDetailRow) ?? null
     },
 
     // Number uniqueness is on lower(trim(number)); dorm numbers are digits

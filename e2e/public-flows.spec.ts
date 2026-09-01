@@ -24,6 +24,27 @@ test('ariza holatini tekshirish yozuvi o‘zbekcha ko‘rsatiladi', async ({ pag
   await expect(page.getByText(/ariza holatini tekshirish/i)).toBeVisible()
 })
 
+test('yo‘qlama API sessiyasiz yopiq', async ({ request }) => {
+  const session = await request.get('/api/attendance/session')
+  expect(session.status()).toBe(401)
+
+  const summary = await request.get('/api/attendance/summary')
+  expect(summary.status()).toBe(401)
+
+  // Cron endpoint rejects a missing / wrong bearer secret.
+  const cron = await request.post('/api/attendance/cron')
+  expect(cron.status()).toBe(401)
+  const cronWrong = await request.post('/api/attendance/cron', {
+    headers: { authorization: 'Bearer definitely-not-the-secret' },
+  })
+  expect(cronWrong.status()).toBe(401)
+})
+
+test('sessiyasiz sardor yo‘qlama sahifasi login sahifasiga qaytaradi', async ({ page }) => {
+  await page.goto('/sardor/yoqlama')
+  await expect(page).toHaveURL(/\/login$/)
+})
+
 test('yo‘llanma PDF’i AI tekshiruvi uchun JPEG ga aylantiriladi', async ({ page }) => {
   const pageErrors: Error[] = []
   page.on('pageerror', (error) => pageErrors.push(error))

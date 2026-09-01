@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createDormService } from './service'
-import type { DormFloorRow, DormRepository, DormRow } from './repository'
+import type { DormDetailRow, DormFloorRow, DormRepository } from './repository'
 
-const DORM: DormRow = { id: 'd1', number: '3', name: 'Asosiy bino', floor_count: 5 }
+const DORM: DormDetailRow = {
+  id: 'd1', number: '3', name: 'Asosiy bino', floor_count: 5,
+  latitude: null, longitude: null, checkin_radius_m: 1000,
+  attendance_enabled: false, attendance_open_time: '21:00:00', attendance_close_time: '23:00:00',
+}
 
 function fakeRepo(overrides: Partial<DormRepository> = {}, floors: DormFloorRow[] = []) {
   return {

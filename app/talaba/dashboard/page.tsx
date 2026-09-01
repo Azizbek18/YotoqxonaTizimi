@@ -17,6 +17,7 @@ import AdminChatModal from '@/components/talaba/dashboard/AdminChatModal';
 import DashboardHeader from '@/components/talaba/dashboard/DashboardHeader';
 import RoomAssignmentBanner from '@/components/talaba/dashboard/RoomAssignmentBanner';
 import PushNotificationCard from '@/components/pwa/PushNotificationCard';
+import AttendanceCheckinBanner from '@/components/attendance/AttendanceCheckinBanner';
 import RoomInfoCard from '@/components/talaba/dashboard/RoomInfoCard';
 import SardorPanelCard from '@/components/talaba/dashboard/SardorPanelCard';
 import FloorCaptainCard from '@/components/talaba/dashboard/FloorCaptainCard';
@@ -333,6 +334,8 @@ export default function TalabaDashboard() {
         seenRoomAssignment={seenRoomAssignment}
         onDismiss={dismissRoomBanner}
       />
+
+      <AttendanceCheckinBanner isLight={isLight} />
 
       <PushNotificationCard isLight={isLight} />
 

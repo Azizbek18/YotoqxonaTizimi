@@ -93,10 +93,18 @@ export function createDormService(repository: DormRepository = createDormReposit
       floors,
       coFaculties,
       incoming,
+      attendance: {
+        latitude: dorm.latitude,
+        longitude: dorm.longitude,
+        radiusM: dorm.checkin_radius_m,
+        enabled: dorm.attendance_enabled,
+        openTime: (dorm.attendance_open_time ?? '21:00').slice(0, 5),
+        closeTime: (dorm.attendance_close_time ?? '23:00').slice(0, 5),
+      },
     }
   }
 
-  return {
+  const service = {
     /** The dekan's dorm + per-floor state, or null if not set up yet. */
     getDekanDorm(staff: DekanStaffCtx) {
       return buildDekanDorm(staff)
@@ -322,8 +330,46 @@ export function createDormService(repository: DormRepository = createDormReposit
         }
         patch.floor_count = n
       }
+
+      // ---- yo'qlama (attendance): geo + kechki oyna ----
+      const coord = (k: string, col: string, span: number) => {
+        if (s[k] === undefined) return
+        if (s[k] === null || s[k] === '') { patch[col] = null; return }
+        const n = Number(s[k])
+        if (!Number.isFinite(n) || n < -span || n > span) {
+          throw new ApiError(400, 'Koordinata noto‘g‘ri')
+        }
+        patch[col] = n
+      }
+      coord('latitude', 'latitude', 90)
+      coord('longitude', 'longitude', 180)
+      if (s.checkinRadiusM !== undefined) {
+        const n = Number(s.checkinRadiusM)
+        if (!Number.isInteger(n) || n < 50 || n > 20000) {
+          throw new ApiError(400, 'Radius 50–20000 metr orasida bo‘lishi kerak')
+        }
+        patch.checkin_radius_m = n
+      }
+      if (s.attendanceEnabled !== undefined) patch.attendance_enabled = Boolean(s.attendanceEnabled)
+      const timeField = (k: string, col: string) => {
+        if (typeof s[k] !== 'string') return
+        const v = (s[k] as string).trim()
+        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) throw new ApiError(400, 'Vaqt formati noto‘g‘ri (SS:DD)')
+        patch[col] = v
+      }
+      timeField('attendanceOpenTime', 'attendance_open_time')
+      timeField('attendanceCloseTime', 'attendance_close_time')
+
       if (Object.keys(patch).length === 0) throw new ApiError(400, 'O‘zgartiriladigan maydon yo‘q')
       await repository.patchDorm(dormId, patch)
+    },
+
+    /** The dekan edits their own building's yo'qlama config from Sozlamalar. */
+    async patchOwnDorm(staff: DekanStaffCtx, input: unknown) {
+      const dormId = await repository.facultyDormId(staff.faculty)
+      if (!dormId) throw new ApiError(400, 'Sizga yotoqxona biriktirilmagan')
+      await service.patchSettings(dormId, input)
+      return buildDekanDorm(staff)
     },
 
     async reassignFloor(dormId: string, floor: number, faculty: string | null) {
@@ -334,6 +380,8 @@ export function createDormService(repository: DormRepository = createDormReposit
       }
     },
   }
+
+  return service
 }
 
 export type DormService = ReturnType<typeof createDormService>

@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState, useMemo } from 'react'
 import { 
-  Users, Megaphone, LogOut, Search, Clock, 
-  Trash2, Plus, Sparkles, Building2, Phone, Mail, 
-  ArrowLeft, ShieldCheck, X
+  Users, Megaphone, LogOut, Search, Clock,
+  Trash2, Plus, Sparkles, Building2, Phone, Mail,
+  ArrowLeft, ShieldCheck, X, ClipboardCheck, ChevronRight
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getSafeUser, getAuthHeaders } from '@/lib/auth-session'
@@ -296,6 +296,21 @@ export default function SardorDashboard() {
           Talaba paneliga qaytish
         </Link>
       </header>
+
+      {/* Yo'qlama */}
+      <Link
+        href="/sardor/yoqlama"
+        className="group flex items-center gap-4 rounded-2xl border border-indigo-500/25 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 p-4 transition-all hover:border-indigo-500/40 hover:from-indigo-500/15 hover:to-purple-500/15"
+      >
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
+          <ClipboardCheck size={22} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-black tracking-tight text-white">Yo&apos;qlama</p>
+          <p className="text-xs text-slate-400">Qavatingizdagi talabalarni belgilang — kim bor, kim yo&apos;q</p>
+        </div>
+        <ChevronRight size={18} className="shrink-0 text-indigo-400 transition-transform group-hover:translate-x-0.5" />
+      </Link>
 
       {/* Tabs */}
       <div className="flex overflow-x-auto no-scrollbar gap-1.5 p-1.5 rounded-2xl bg-white/[0.03] border border-white/5 w-full sm:w-fit shrink-0">

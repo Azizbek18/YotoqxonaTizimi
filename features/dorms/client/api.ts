@@ -43,6 +43,21 @@ export function withdrawFloorClaims(floors: number[]) {
   })
 }
 
+export function saveDormAttendanceSettings(settings: {
+  latitude?: number | null
+  longitude?: number | null
+  checkinRadiusM?: number
+  attendanceEnabled?: boolean
+  attendanceOpenTime?: string
+  attendanceCloseTime?: string
+}) {
+  return apiRequest<{ dorm: DekanDorm | null }>('/api/dekan/dorm', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'attendance-settings', settings }),
+  })
+}
+
 // ---- superadmin (admin role only) ----
 export function fetchAllDorms() {
   return apiRequest<{ dorms: SuperadminDorm[] }>('/api/admin/dorms')

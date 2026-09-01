@@ -17,6 +17,7 @@ import { fetchDekanDorm } from '@/features/dorms/client/api'
 import type { DekanDorm } from '@/features/dorms/types'
 import DormFloorsCard from '@/components/dekan/DormFloorsCard'
 import FloorManagerCard from '@/components/dekan/FloorManagerCard'
+import AttendanceSettingsCard from '@/components/dekan/AttendanceSettingsCard'
 import { dekanUI } from '@/lib/dekan-ui'
 import { SkelForm } from '@/components/ui/skeletons'
 
@@ -214,6 +215,12 @@ export default function DekanSozlamalarPage() {
                         {dorm && (
                             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
                                 <DormFloorsCard dorm={dorm} onChange={setDorm} />
+                            </motion.div>
+                        )}
+
+                        {dorm && (
+                            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}>
+                                <AttendanceSettingsCard dorm={dorm} onChange={setDorm} />
                             </motion.div>
                         )}
 

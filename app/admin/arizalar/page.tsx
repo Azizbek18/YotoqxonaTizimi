@@ -10,6 +10,7 @@ import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { adminUI, adminStatusChip, type AdminStatusTone } from '@/lib/admin-ui'
+import ArizaSignatureBadge from '@/components/applications/ArizaSignatureBadge'
 
 interface ApplicationRequest {
   id: string
@@ -442,6 +443,9 @@ export default function AdminArizalar() {
               <div className={`p-4 rounded-xl border ${cardBg}`}>
                 <h3 className={`text-xs font-bold uppercase tracking-wider ${textMuted} mb-2`}>Murojaat matni</h3>
                 <p className={`text-sm leading-relaxed ${textBody}`}>{detailModal.request.text}</p>
+                <div className="mt-3">
+                  <ArizaSignatureBadge arizaId={detailModal.request.id} isLight={isLight} />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

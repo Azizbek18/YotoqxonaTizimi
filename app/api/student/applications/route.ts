@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createApplicationService } from '@/features/applications/server/service'
+import { createApplicationService, type SignatureEvidence } from '@/features/applications/server/service'
 import { requireActiveStudent } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+
+function evidence(request: NextRequest): SignatureEvidence {
+  return { ip: getClientIp(request) || null, userAgent: request.headers.get('user-agent') }
+}
 
 function errorResponse(error: unknown) {
   console.error('Student applications API error:', error)
@@ -30,7 +34,7 @@ export async function POST(request: NextRequest) {
     if (!throttle.allowed) {
       return NextResponse.json({ error: 'Juda ko\'p urinish. Keyinroq qayta urinib ko\'ring.' }, { status: 429 })
     }
-    return NextResponse.json(await createApplicationService().create(student.id, await request.json()))
+    return NextResponse.json(await createApplicationService().create(student.id, await request.json(), evidence(request)))
   } catch (error) {
     return errorResponse(error)
   }
@@ -40,7 +44,9 @@ export async function PATCH(request: NextRequest) {
   try {
     const { student } = await requireActiveStudent(request)
     const body = await request.json().catch(() => ({}))
-    return NextResponse.json(await createApplicationService().submit(student.id, body.id))
+    return NextResponse.json(
+      await createApplicationService().submit(student.id, body.id, body.signature, evidence(request)),
+    )
   } catch (error) {
     return errorResponse(error)
   }

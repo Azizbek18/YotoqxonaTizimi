@@ -45,6 +45,25 @@ test('sessiyasiz sardor yo‘qlama sahifasi login sahifasiga qaytaradi', async (
   await expect(page).toHaveURL(/\/login$/)
 })
 
+test('ariza imzosini tekshirish sahifasi ochiladi', async ({ page }) => {
+  await page.goto('/ariza-tekshirish')
+  await expect(page.getByPlaceholder('YT-XXXX-XXXX')).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Ariza imzosini tekshirish/i })).toBeVisible()
+})
+
+test('ariza imzo API: noma’lum kod va sessiyasiz kirish', async ({ request }) => {
+  // Public verify endpoint answers, but never confirms a bogus code.
+  const verify = await request.get('/api/ariza-signature/verify?code=YT-ZZZZ-ZZZZ')
+  expect(verify.status()).toBe(200)
+  expect((await verify.json()).valid).toBe(false)
+
+  // Signing an application and reading staff evidence both need a session.
+  const submit = await request.patch('/api/student/applications', { data: { id: 'x' } })
+  expect(submit.status()).toBe(401)
+  const staff = await request.get('/api/staff/ariza-signature?arizaId=x')
+  expect([401, 403]).toContain(staff.status())
+})
+
 test('yo‘llanma PDF’i AI tekshiruvi uchun JPEG ga aylantiriladi', async ({ page }) => {
   const pageErrors: Error[] = []
   page.on('pageerror', (error) => pageErrors.push(error))

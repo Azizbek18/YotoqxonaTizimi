@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import {
-    Plus, Download, Edit2, Trash2, Send, Sparkles,
+    Plus, Download, Edit2, Trash2, Sparkles, ShieldCheck,
     FileText, CheckCircle, Clock, AlertCircle
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -18,9 +18,13 @@ import { fetchStudentProfile } from '@/features/profile/client/api'
 import {
     createStudentApplication,
     deleteStudentApplication,
+    fetchArizaReceipt,
     fetchStudentApplications,
     submitStudentApplication,
+    type ArizaReceipt,
 } from '@/features/applications/client/api'
+import SignArizaModal from '@/components/applications/SignArizaModal'
+import { downloadArizaReceiptPdf } from '@/lib/ariza-receipt-pdf'
 
 interface Profile {
     id: string
@@ -65,6 +69,9 @@ export default function ArizalarContent() {
 
     const [showNewForm, setShowNewForm] = useState(false)
     const [selectedApp, setSelectedApp] = useState<Application | null>(null)
+    const [signTarget, setSignTarget] = useState<Application | null>(null)
+    const [signBusy, setSignBusy] = useState(false)
+    const [signReceipt, setSignReceipt] = useState<ArizaReceipt | null>(null)
     const [showDetailModal, setShowDetailModal] = useState(false)
     const [isGenerating, setIsGenerating] = useState(false)
     const [mounted, setMounted] = useState(false)
@@ -244,17 +251,39 @@ export default function ArizalarContent() {
         }
     }
 
-    const submitApp = async (app: Application) => {
-        try {
-            await submitStudentApplication(app.id)
+    const submitApp = (app: Application) => {
+        setSignReceipt(null)
+        setSignTarget(app)
+    }
 
+    const doSign = async (typedName: string) => {
+        if (!signTarget) return
+        setSignBusy(true)
+        try {
+            const { receipt } = await submitStudentApplication(signTarget.id, { typedName, attested: true })
             setApplications(applications.map(a =>
-                a.id === app.id ? { ...a, status: 'pending' as const } : a
+                a.id === signTarget.id ? { ...a, status: 'pending' as const } : a
             ))
+            if (receipt) setSignReceipt(receipt)
+            else { toast.success('Ariza yuborildi'); setSignTarget(null) }
         } catch (error) {
-            console.error('Error submitting application:', error)
             const errMsg = error instanceof Error ? error.message : String(error)
-            toast.error('Arizani yuborishda xatolik yuz berdi: ' + errMsg)
+            toast.error(errMsg)
+        } finally {
+            setSignBusy(false)
+        }
+    }
+
+    const openReceipt = async (app: Application) => {
+        try {
+            const { receipt } = await fetchArizaReceipt(app.id)
+            downloadArizaReceiptPdf(receipt, {
+                studentName: studentProfile?.full_name ?? receipt.studentName ?? '',
+                faculty: studentProfile?.faculty,
+                course: studentProfile?.course,
+            })
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Tilxatni ochib bo‘lmadi')
         }
     }
 
@@ -482,7 +511,7 @@ export default function ArizalarContent() {
                                             }}
                                             className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-emerald-600 text-white"
                                         >
-                                            <Send size={12} className="inline mr-1" /> Yuborish
+                                            <ShieldCheck size={12} className="inline mr-1" /> Imzolash va yuborish
                                         </button>
                                     )}
                                     <button
@@ -494,6 +523,17 @@ export default function ArizalarContent() {
                                     >
                                         <Download size={12} className="inline mr-1" /> PDF
                                     </button>
+                                    {app.status !== 'draft' && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                openReceipt(app)
+                                            }}
+                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-900/30 text-emerald-300'}`}
+                                        >
+                                            <ShieldCheck size={12} className="inline mr-1" /> Tilxat
+                                        </button>
+                                    )}
                                     {app.status === 'draft' && (
                                         <button
                                             onClick={(e) => {
@@ -577,12 +617,35 @@ export default function ArizalarContent() {
             <ConfirmModal
                 isOpen={deleteModal.isOpen}
                 title="Arizani o'chirish"
-                description="Ushbu qoralamani o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi."
+                description="Ushbu qoralamani o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaysiz."
                 onClose={deleteModal.close}
                 onConfirm={confirmDeleteApp}
                 confirmText="O'chirish"
                 confirmVariant="danger"
                 isLoading={deleteModal.isLoading}
+            />
+
+            <SignArizaModal
+                open={signTarget !== null}
+                onClose={() => { setSignTarget(null); setSignReceipt(null) }}
+                app={signTarget ? {
+                    title: signTarget.title,
+                    type: signTarget.type,
+                    reason: signTarget.reason,
+                    content: signTarget.content,
+                } : null}
+                expectedName={studentProfile?.full_name ?? ''}
+                busy={signBusy}
+                receipt={signReceipt}
+                onSign={doSign}
+                onDownloadReceipt={signReceipt ? () => downloadArizaReceiptPdf(
+                    { ...signReceipt, title: signTarget?.title, type: signTarget?.type },
+                    {
+                        studentName: studentProfile?.full_name ?? '',
+                        faculty: studentProfile?.faculty,
+                        course: studentProfile?.course,
+                    },
+                ) : undefined}
             />
         </div>
     )

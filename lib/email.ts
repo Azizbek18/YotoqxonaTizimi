@@ -97,6 +97,30 @@ function appUrl(path: string) {
   return base ? `${base}${path}` : path
 }
 
+/**
+ * Talaba arizani elektron imzolagach — vaqti belgilangan tashqi nusxa.
+ * Bu xat "men yozmaganman" bahsida dalil bo'ladi.
+ */
+export async function sendArizaSignedEmail(
+  to: string,
+  fullName: string,
+  info: { title: string; type: string; verifyCode: string; signedAt: string },
+) {
+  const when = new Date(info.signedAt).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' })
+  const kind = info.type === 'tushuntirish' ? 'Tushuntirish' : 'Ariza'
+  await sendMail({
+    to,
+    subject: `${kind} imzolandi — ${info.verifyCode}`,
+    heading: `${fullName}, arizangiz elektron imzolandi`,
+    paragraphs: [
+      `«${info.title}» nomli ${kind.toLowerCase()} ${when} (Toshkent) da siz tomoningizdan elektron tasdiqlandi va dekanatga yuborildi.`,
+      `Tekshiruv kodi: ${info.verifyCode}`,
+      'Agar bu arizani siz imzolamagan bo\'lsangiz, darhol fakultet dekanatiga xabar bering.',
+    ],
+    cta: { label: 'Imzoni tekshirish', url: appUrl(`/ariza-tekshirish?code=${encodeURIComponent(info.verifyCode)}`) },
+  })
+}
+
 /** Dekan yo'llanmani tasdiqlagach — talaba endi ro'yxatdan o'ta oladi. */
 export async function sendPermitApprovedEmail(to: string, fullName: string, applicationType?: string) {
   // Imtiyozli/xorijiy arizachilar JShSHIR'siz — ular /register orqali

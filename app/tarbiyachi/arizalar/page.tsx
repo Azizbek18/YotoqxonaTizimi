@@ -8,6 +8,7 @@ import CustomSelect from '@/components/ui/CustomSelect'
 import { SkelList } from '@/components/ui/skeletons'
 import { getAuthHeaders } from '@/lib/auth-session'
 import { permitFacultyLabel } from '@/lib/faculties'
+import ArizaSignatureBadge from '@/components/applications/ArizaSignatureBadge'
 
 interface StaffAriza {
   id: string
@@ -208,6 +209,12 @@ export default function TarbiyachiArizalarPage() {
                 )}
               </div>
               <p className={`text-sm whitespace-pre-wrap ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>{item.text}</p>
+
+              {(item.type === 'ariza' || item.type === 'tushuntirish') && (
+                <div className="mt-2">
+                  <ArizaSignatureBadge arizaId={item.id} isLight={isLight} />
+                </div>
+              )}
 
               {item.status === 'pending' && (
                 <div className="mt-3 flex gap-2">

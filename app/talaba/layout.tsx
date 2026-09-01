@@ -17,6 +17,8 @@ import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchStudentProfile, uploadStudentAvatar } from '@/features/profile/client/api'
 import { createStudentApplication, fetchStudentApplications } from '@/features/applications/client/api'
+import SignArizaModal from '@/components/applications/SignArizaModal'
+import { useArizaSigning } from '@/lib/hooks/useArizaSigning'
 import { fetchStudentAnnouncements } from '@/features/announcements/client/api'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { supabase } from '@/lib/supabase'
@@ -732,9 +734,10 @@ function NightPermModal({ onClose, profile, isLight }: ModalProps) {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [reason, setReason] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const submitting = false
+  const signing = useArizaSigning(onClose)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!profile) {
       toast.error('Profil yuklanmagan. Qaytadan urinib ko\'ring.')
@@ -744,31 +747,15 @@ function NightPermModal({ onClose, profile, isLight }: ModalProps) {
       toast.error('Iltimos, barcha maydonlarni to\'ldiring.')
       return
     }
-
-    setSubmitting(true)
-    try {
-      await createStudentApplication({
-        text: `Tungi ruxsat so'rovi. Sana: ${date}, Qaytish vaqti: ${time}, Sabab: ${reason}`,
-        level: 'info',
-        status: 'pending',
-        title: 'Tungi ruxsat so\'rovi',
-        type: 'ariza',
-        reason: reason,
-        aiGenerated: false
-      })
-
-      toast.success('Tungi ruxsat arizasi muvaffaqiyatli yuborildi!')
-      onClose()
-    } catch (err) {
-      console.error(err)
-      const errMsg = err instanceof Error ? err.message : 'Xatolik yuz berdi.'
-      toast.error(errMsg)
-    } finally {
-      setSubmitting(false)
-    }
+    signing.start({
+      text: `Tungi ruxsat so'rovi. Sana: ${date}, Qaytish vaqti: ${time}, Sabab: ${reason}`,
+      title: 'Tungi ruxsat so\'rovi',
+      reason,
+    })
   }
 
   return createPortal(
+    <>
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <motion.div
@@ -883,12 +870,22 @@ function NightPermModal({ onClose, profile, isLight }: ModalProps) {
                   : 'from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {submitting ? 'Yuborilmoqda...' : 'Yuborish'}
+              {submitting ? 'Yuborilmoqda...' : 'Imzolash va yuborish'}
             </button>
           </div>
         </form>
       </motion.div>
-    </div>,
+    </div>
+    <SignArizaModal
+      open={signing.payload !== null}
+      onClose={signing.close}
+      app={signing.payload ? { title: signing.payload.title, type: 'ariza', content: signing.payload.text } : null}
+      expectedName={profile?.full_name ?? ''}
+      busy={signing.busy}
+      receipt={signing.receipt}
+      onSign={signing.sign}
+    />
+    </>,
     document.body
   )
 }
@@ -904,9 +901,10 @@ function QueueSwapModal({ onClose, profile, roommates, isLight }: QueueSwapModal
   const [dutyDate, setDutyDate] = useState('')
   const [targetRoommateId, setTargetRoommateId] = useState('')
   const [reason, setReason] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const submitting = false
+  const signing = useArizaSigning(onClose)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!profile) {
       toast.error('Profil yuklanmagan. Qaytadan urinib ko\'ring.')
@@ -920,30 +918,15 @@ function QueueSwapModal({ onClose, profile, roommates, isLight }: QueueSwapModal
     const roommate = roommates.find(r => r.id === targetRoommateId)
     const roommateName = roommate ? roommate.full_name : 'Xonadosh'
 
-    setSubmitting(true)
-    try {
-      await createStudentApplication({
-        text: `Navbatchilik almashish so'rovi. Mening navbatchilik sanam: ${dutyDate}, Xonadosh: ${roommateName}, Sabab: ${reason}`,
-        level: 'info',
-        status: 'pending',
-        title: 'Navbatchilik almashish so\'rovi',
-        type: 'ariza',
-        reason: `Sana: ${dutyDate}, Kim bilan: ${roommateName}. Sabab: ${reason}`,
-        aiGenerated: false
-      })
-
-      toast.success('Navbat almashish arizasi muvaffaqiyatli yuborildi!')
-      onClose()
-    } catch (err) {
-      console.error(err)
-      const errMsg = err instanceof Error ? err.message : 'Xatolik yuz berdi.'
-      toast.error(errMsg)
-    } finally {
-      setSubmitting(false)
-    }
+    signing.start({
+      text: `Navbatchilik almashish so'rovi. Mening navbatchilik sanam: ${dutyDate}, Xonadosh: ${roommateName}, Sabab: ${reason}`,
+      title: 'Navbatchilik almashish so\'rovi',
+      reason: `Sana: ${dutyDate}, Kim bilan: ${roommateName}. Sabab: ${reason}`,
+    })
   }
 
   return createPortal(
+    <>
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <motion.div
@@ -1059,51 +1042,46 @@ function QueueSwapModal({ onClose, profile, roommates, isLight }: QueueSwapModal
                   : 'from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {submitting ? 'Yuborilmoqda...' : 'Yuborish'}
+              {submitting ? 'Yuborilmoqda...' : 'Imzolash va yuborish'}
             </button>
           </div>
         </form>
       </motion.div>
-    </div>,
+    </div>
+    <SignArizaModal
+      open={signing.payload !== null}
+      onClose={signing.close}
+      app={signing.payload ? { title: signing.payload.title, type: 'ariza', content: signing.payload.text } : null}
+      expectedName={profile?.full_name ?? ''}
+      busy={signing.busy}
+      receipt={signing.receipt}
+      onSign={signing.sign}
+    />
+    </>,
     document.body
   )
 }
 
 function CleanAuditModal({ onClose, profile, isLight }: ModalProps) {
   const [comment, setComment] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const submitting = false
+  const signing = useArizaSigning(onClose)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!profile) {
       toast.error('Profil yuklanmagan. Qaytadan urinib ko\'ring.')
       return
     }
-
-    setSubmitting(true)
-    try {
-      await createStudentApplication({
-        text: `Tozalik auditi so'rovi. Xona raqami: ${profile.room_number || 'Noma\'lum'}, Izoh: ${comment || 'Yo\'q'}`,
-        level: 'info',
-        status: 'pending',
-        title: 'Tozalik auditi so\'rovi',
-        type: 'ariza',
-        reason: `Xona: ${profile.room_number || 'Noma\'lum'}. Izoh: ${comment || 'Yo\'q'}`,
-        aiGenerated: false
-      })
-
-      toast.success('Tozalik auditi so\'rovi muvaffaqiyatli yuborildi!')
-      onClose()
-    } catch (err) {
-      console.error(err)
-      const errMsg = err instanceof Error ? err.message : 'Xatolik yuz berdi.'
-      toast.error(errMsg)
-    } finally {
-      setSubmitting(false)
-    }
+    signing.start({
+      text: `Tozalik auditi so'rovi. Xona raqami: ${profile.room_number || 'Noma\'lum'}, Izoh: ${comment || 'Yo\'q'}`,
+      title: 'Tozalik auditi so\'rovi',
+      reason: `Xona: ${profile.room_number || 'Noma\'lum'}. Izoh: ${comment || 'Yo\'q'}`,
+    })
   }
 
   return createPortal(
+    <>
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <motion.div
@@ -1194,12 +1172,22 @@ function CleanAuditModal({ onClose, profile, isLight }: ModalProps) {
                   : 'from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {submitting ? 'Yuborilmoqda...' : 'Yuborish'}
+              {submitting ? 'Yuborilmoqda...' : 'Imzolash va yuborish'}
             </button>
           </div>
         </form>
       </motion.div>
-    </div>,
+    </div>
+    <SignArizaModal
+      open={signing.payload !== null}
+      onClose={signing.close}
+      app={signing.payload ? { title: signing.payload.title, type: 'ariza', content: signing.payload.text } : null}
+      expectedName={profile?.full_name ?? ''}
+      busy={signing.busy}
+      receipt={signing.receipt}
+      onSign={signing.sign}
+    />
+    </>,
     document.body
   )
 }

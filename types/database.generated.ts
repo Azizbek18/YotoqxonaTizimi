@@ -93,6 +93,21 @@ export type ApplicationRow = {
   updated_at: string
 }
 
+export type ArizaSignatureRow = {
+  id: string
+  ariza_id: string
+  student_id: string
+  content_hash: string
+  content_snapshot: Record<string, unknown>
+  typed_name: string
+  signed_at: string
+  client_ip: string | null
+  user_agent: string | null
+  verify_code: string
+  signature: string
+  created_at: string
+}
+
 export type AnnouncementRow = {
   id: string
   title: string
@@ -227,6 +242,7 @@ export interface Database {
       users: Table<UserRow>
       staff: Table<StaffRow>
       arizalar: Table<ApplicationRow>
+      ariza_signatures: Table<ArizaSignatureRow>
       elonlar: Table<AnnouncementRow>
       tolovlar: Table<PaymentRow>
       permit_requests: Table<PermitRequestRow>

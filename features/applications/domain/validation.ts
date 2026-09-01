@@ -9,6 +9,17 @@ function text(value: unknown, max: number, required = false) {
   return normalized
 }
 
+export type SignatureInput = { typedName: string; attested: boolean }
+
+export function parseSignatureInput(value: unknown): SignatureInput | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const s = value as Record<string, unknown>
+  const typedName = typeof s.typedName === 'string' ? s.typedName.trim().slice(0, 160) : ''
+  const attested = s.attested === true
+  if (!typedName && !attested) return null
+  return { typedName, attested }
+}
+
 export function parseStudentApplication(value: unknown): CreateStudentApplication {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new ApiError(400, 'Murojaat ma\'lumotlari noto\'g\'ri')

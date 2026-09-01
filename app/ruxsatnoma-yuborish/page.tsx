@@ -94,6 +94,10 @@ export default function RuxsatnomaYuborish() {
   // the server reopens their existing row instead of rejecting a duplicate.
   const [resubmitMode, setResubmitMode] = useState(false)
 
+  // Gates the draft-save effect until the restore effect has run once, so
+  // the first (empty) render can't overwrite a saved draft.
+  const [draftLoaded, setDraftLoaded] = useState(false)
+
   // Step 4's review card — front holds identity/course, back holds
   // contact/document — flips in place instead of stacking a second card.
   const [cardFlipped, setCardFlipped] = useState(false)
@@ -117,30 +121,66 @@ export default function RuxsatnomaYuborish() {
     }
   }, [])
 
-  // Prefill when resubmitting: a rejected application (identity only) or a
-  // pending one the student pulled back to edit (every field, so they just
-  // re-upload the document and fix the typo).
+  // On mount, restore either a "Tuzatib qayta yuborish" prefill (a rejected
+  // application's identity, or a pending one pulled back to edit) or — failing
+  // that — an in-progress draft saved by the effect below, so a student who
+  // backgrounds the browser mid-form (common on mobile: the tab gets reloaded)
+  // comes back to their filled fields instead of a blank step 1.
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem('permit_resubmit')
-      if (!raw) return
-      sessionStorage.removeItem('permit_resubmit')
-      const saved = JSON.parse(raw) as {
-        passport?: string; jshshir?: string; email?: string
-        fullName?: string; phone?: string; gender?: string; faculty?: string; direction?: string; course?: string
+      const resubmitRaw = sessionStorage.getItem('permit_resubmit')
+      if (resubmitRaw) {
+        sessionStorage.removeItem('permit_resubmit')
+        const saved = JSON.parse(resubmitRaw) as {
+          passport?: string; jshshir?: string; email?: string
+          fullName?: string; phone?: string; gender?: string; faculty?: string; direction?: string; course?: string
+        }
+        if (saved.passport) setPassportSeries(saved.passport)
+        if (saved.jshshir) setJshshir(saved.jshshir)
+        if (saved.email) setEmail(saved.email)
+        if (saved.fullName) setFullName(cyrillicToLatin(saved.fullName))
+        if (saved.phone) setPhone(String(saved.phone).replace(/\D/g, '').slice(-9))
+        if (saved.gender === 'male' || saved.gender === 'female') setGender(saved.gender)
+        if (saved.faculty && PERMIT_FACULTIES.some((f) => f.value === saved.faculty)) setFaculty(saved.faculty)
+        if (saved.direction) setDirection(saved.direction)
+        if (saved.course && /^[1-6]$/.test(saved.course)) setCourse(saved.course)
+        setResubmitMode(true)
+        return
       }
-      if (saved.passport) setPassportSeries(saved.passport)
-      if (saved.jshshir) setJshshir(saved.jshshir)
-      if (saved.email) setEmail(saved.email)
-      if (saved.fullName) setFullName(cyrillicToLatin(saved.fullName))
-      if (saved.phone) setPhone(String(saved.phone).replace(/\D/g, '').slice(-9))
-      if (saved.gender === 'male' || saved.gender === 'female') setGender(saved.gender)
-      if (saved.faculty && PERMIT_FACULTIES.some((f) => f.value === saved.faculty)) setFaculty(saved.faculty)
-      if (saved.direction) setDirection(saved.direction)
-      if (saved.course && /^[1-6]$/.test(saved.course)) setCourse(saved.course)
-      setResubmitMode(true)
+
+      const draftRaw = sessionStorage.getItem('permit_draft')
+      if (!draftRaw) return
+      const d = JSON.parse(draftRaw) as Record<string, string>
+      if (d.fullName) setFullName(d.fullName)
+      if (d.passportSeries) setPassportSeries(d.passportSeries)
+      if (d.jshshir) setJshshir(d.jshshir)
+      if (d.email) setEmail(d.email)
+      if (d.phone) setPhone(d.phone)
+      if (d.gender === 'male' || d.gender === 'female') setGender(d.gender)
+      if (d.faculty && PERMIT_FACULTIES.some((f) => f.value === d.faculty)) setFaculty(d.faculty)
+      if (d.direction) setDirection(d.direction)
+      if (d.course && /^[1-6]$/.test(d.course)) setCourse(d.course)
+      // The document (step 3) can't be serialised, so never resume past it —
+      // the student re-picks the file, everything else is already filled.
+      const step = Number(d.formStep)
+      if (Number.isInteger(step) && step > 1) setFormStep(Math.min(step, 3))
     } catch { /* ignore malformed / unavailable storage */ }
+    finally { setDraftLoaded(true) }
   }, [])
+
+  // Persist the in-progress draft on every change (resubmit edits included —
+  // a backgrounded resubmit session should also come back). sessionStorage,
+  // not localStorage — passport/JShSHIR are national-ID fields and must not
+  // outlive the tab on a shared phone. Gated on draftLoaded so the first
+  // empty render can't clobber the saved draft before it's restored.
+  useEffect(() => {
+    if (!draftLoaded || submitted) return
+    try {
+      sessionStorage.setItem('permit_draft', JSON.stringify({
+        formStep, fullName, passportSeries, jshshir, email, phone, gender, faculty, direction, course,
+      }))
+    } catch { /* storage unavailable / full */ }
+  }, [draftLoaded, submitted, formStep, fullName, passportSeries, jshshir, email, phone, gender, faculty, direction, course])
 
   // Particle animation loop
   useEffect(() => {
@@ -489,7 +529,7 @@ export default function RuxsatnomaYuborish() {
     setParticles((prev) => [...prev, ...newParticles].slice(-50))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault()
 
     if (formStep !== 4) return
@@ -572,6 +612,8 @@ export default function RuxsatnomaYuborish() {
         sessionStorage.setItem('student_permit_passport', cleanPassport)
         sessionStorage.setItem('student_permit_jshshir', cleanJshshir)
         sessionStorage.setItem('student_permit_email', cleanEmail)
+        // The in-progress draft has served its purpose.
+        sessionStorage.removeItem('permit_draft')
       }
 
       setSubmitted(true)
@@ -1536,7 +1578,7 @@ export default function RuxsatnomaYuborish() {
                                 <>
                                   <Upload className={`h-6 w-6 transition-all duration-300 ${file ? 'text-emerald-400 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'text-slate-500'}`} />
                                   <span className="text-xs font-black tracking-wide">
-                                    {file ? file.name : "Ruxsatnoma faylini tanlang"}
+                                    {file ? file.name : "Yo‘llanma faylini tanlang"}
                                   </span>
                                   <span className="text-[10px] text-slate-500 font-sans">
                                     {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : "PDF, PNG, JPG (Maks. 4 MB) — iPhone rasmi ham bo‘ladi"}
@@ -1717,6 +1759,12 @@ export default function RuxsatnomaYuborish() {
 
                       {formStep < 4 ? (
                         <button
+                          // Distinct key from the submit button below: without
+                          // it React reuses the same <button> DOM node across
+                          // the step 3 -> 4 switch, so a tap that starts on
+                          // "Keyingi" completes on a now-type="submit" button
+                          // and the form auto-submits before the review card.
+                          key="wizard-next"
                           type="button"
                           onClick={handleNextStep}
                           className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-95"
@@ -1725,7 +1773,13 @@ export default function RuxsatnomaYuborish() {
                         </button>
                       ) : (
                         <button
-                          type="submit"
+                          key="wizard-submit"
+                          // Explicit type="button" + onClick (not a native
+                          // form-submit button) — a mutated submit button
+                          // would fire the form on the tap that switched to
+                          // step 4. The form's onSubmit still guards Enter.
+                          type="button"
+                          onClick={handleSubmit}
                           disabled={loading}
                           className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all duration-300 active:scale-95 disabled:opacity-50"
                         >

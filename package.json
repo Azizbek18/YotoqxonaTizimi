@@ -20,6 +20,7 @@
     "verify:http": "node scripts/verify-local-http.mjs",
     "verify:remote": "node --env-file=.env.local scripts/verify-remote-end-state.mjs",
     "telegram:webhook": "node --env-file=.env.local scripts/configure-telegram-webhook.mjs",
+    "telegram:test-alert": "node --env-file=.env.local scripts/test-ai-outage-alert.mjs",
     "build:production": "npm run validate:env:ci && next build",
     "migrate:legacy-permits": "node --env-file=.env.local scripts/migrate-legacy-permit-files.mjs",
     "mobile:sync": "npx cap sync",

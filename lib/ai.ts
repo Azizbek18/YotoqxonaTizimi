@@ -69,7 +69,7 @@ async function alertOutage(where: string, error: unknown): Promise<void> {
   const message = error instanceof Error ? error.message : String(error)
   await sendTelegramAdminMessage(
     `⚠️ Sun'iy intellekt ishlamayapti (${where})\n\n${describeAiFailure(message)}\n\n` +
-      "AI talab qiladigan amallar xavfsizlik uchun o'tkazilmayapti; provayder tiklangach qayta urinish kerak.",
+      "Talaba arizalari/cheklari to'xtatilmayapti — ular \"AI tekshirmagan\" belgisi bilan qo'lda ko'rib chiqishga o'tkazilmoqda. Provayder tiklangach belgisiz davom etadi.",
   )
 }
 

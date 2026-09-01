@@ -130,13 +130,17 @@ describe('directionBelongsToFaculty', () => {
 
   it('accepts the teaching directions for the two philology faculties', () => {
     expect(directionBelongsToFaculty('ozbek-filologiyasi', 'filologiya-ozbek')).toBe(true)
-    // `filologiya-rus` is shared by both philology faculties
+    // `filologiya-rus` belongs to the o'zbek filologiya faculty, not xorijiy
     expect(directionBelongsToFaculty('ozbek-filologiyasi', 'filologiya-rus')).toBe(true)
-    expect(directionBelongsToFaculty('xorijiy-filologiya', 'filologiya-rus')).toBe(true)
+    expect(directionBelongsToFaculty('xorijiy-filologiya', 'filologiya-rus')).toBe(false)
     expect(directionBelongsToFaculty('ozbek-filologiyasi', 'jurnalistika-internet')).toBe(true)
     expect(directionBelongsToFaculty('xorijiy-filologiya', 'filologiya-ingliz')).toBe(true)
     expect(directionBelongsToFaculty('xorijiy-filologiya', 'tarjima-nemis')).toBe(true)
+    expect(directionBelongsToFaculty('xorijiy-filologiya', 'xorijiy-til-va-adabiyoti')).toBe(true)
     // still strict: another faculty's programme is rejected
     expect(directionBelongsToFaculty('xorijiy-filologiya', 'suniy-intellekt')).toBe(false)
+    // dropped from the picker but still resolves for old rows
+    expect(normalizeDirection('Ona tili va adabiyoti')).toBe('ona-tili-adabiyoti')
+    expect(directionBelongsToFaculty('xorijiy-filologiya', 'ona-tili-adabiyoti')).toBe(false)
   })
 })

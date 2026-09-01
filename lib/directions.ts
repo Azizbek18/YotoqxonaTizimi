@@ -101,20 +101,20 @@ export const FACULTY_DIRECTIONS: Record<PermitFacultyValue, readonly DirectionOp
     { value: 'yurisprudensiya', label: 'Yurisprudensiya' },
   ],
   'xorijiy-filologiya': [
+    // Faculty-confirmed list (Joʻrabek X., 2026-09-01): the Russian /
+    // O'zbek-language and Ona-tili programmes belong to the o'zbek
+    // filologiya faculty, not this one — dropped here.
     { value: 'filologiya-ingliz', label: 'Filologiya va tillarni o’qitish (ingliz tili)' },
     { value: 'filologiya-nemis', label: 'Filologiya va tillarni o’qitish (nemis tili)' },
     { value: 'filologiya-fransuz', label: 'Filologiya va tillarni o’qitish (fransuz tili)' },
-    { value: 'filologiya-rus', label: 'Filologiya va tillarni o’qitish (rus tili)' },
     { value: 'tarjima-ingliz', label: 'Tarjima nazariyasi va amaliyoti (ingliz tili)' },
     { value: 'tarjima-nemis', label: 'Tarjima nazariyasi va amaliyoti (nemis tili)' },
     { value: 'tarjima-fransuz', label: 'Tarjima nazariyasi va amaliyoti (fransuz tili)' },
-    { value: 'rus-tili-ozga-guruh', label: 'O’zga tilli guruhlarda rus tili' },
-    { value: 'ona-tili-adabiyoti', label: 'Ona tili va adabiyoti' },
+    { value: 'xorijiy-til-va-adabiyoti', label: 'Xorijiy til va adabiyoti' },
   ],
   'ozbek-filologiyasi': [
     // Faculty confirmed (Joʻrabek X., 2026-08-30) that its filologiya
-    // programme also runs a Russian group — `filologiya-rus` is the same
-    // option the xorijiy-filologiya faculty offers (shared value, one label).
+    // programme also runs a Russian group — `filologiya-rus` lives here.
     { value: 'filologiya-ozbek', label: 'Filologiya va tillarni o’qitish (o’zbek tili)' },
     { value: 'filologiya-rus', label: 'Filologiya va tillarni o’qitish (rus tili)' },
     { value: 'jurnalistika', label: 'Jurnalistika' },
@@ -186,6 +186,10 @@ const LEGACY_DIRECTIONS: readonly DirectionOption[] = [
   { value: 'arabshunoslik', label: 'Arabshunoslik' },
   { value: 'xitoyshunoslik', label: 'Xitoyshunoslik' },
   { value: 'turkshunoslik', label: 'Turkshunoslik' },
+  // Dropped from the xorijiy-filologiya picker 2026-09-01 (belong to the
+  // o'zbek filologiya faculty); kept resolvable for any stored rows.
+  { value: 'rus-tili-ozga-guruh', label: 'O’zga tilli guruhlarda rus tili' },
+  { value: 'ona-tili-adabiyoti', label: 'Ona tili va adabiyoti' },
 ]
 
 /** Every selectable direction, de-duplicated (some are shared by faculties). */

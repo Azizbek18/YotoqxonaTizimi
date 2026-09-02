@@ -87,6 +87,48 @@ function normalizeNameToken(s: string): string {
   return cyrillicToLatin(s).toUpperCase().replace(/[ʻʼ'`´]/g, '').replace(/[^A-ZА-Я]/g, '')
 }
 
+// "son/daughter of" markers — they carry no identity, and the my.gov.uz
+// referral, the passport and the typed form disagree about whether to
+// include one at all. Dropped from both sides before matching.
+const PATRONYMIC_MARKERS = new Set([
+  'OGLI', 'UGLI', 'UGHLI', 'OGIL', 'QIZI', 'KIZI', 'QIZ', 'QYZY', 'UILI', 'ULI', 'ULY', 'UULU',
+])
+
+// True when one token is the other plus a short trailing bit — a patronymic
+// suffix (BAXTIYAR ↔ BAXTIYAROVICH, ABDULLA ↔ ABDULLAYEV) or a diminutive
+// tail (ISLOM ↔ ISLOMBEK). The shared root must be long enough that this
+// can't fuse two genuinely different names (RUSTAM vs SHERZOD).
+function patronymicRootMatches(a: string, b: string): boolean {
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a]
+  if (short.length < 5 || short === long) return false
+  return long.startsWith(short) && long.length - short.length <= 6
+}
+
+function nameTokenLikelyMatches(left: string, right: string): boolean {
+  if (left === right) return true
+  // OCR commonly drops or changes one character in a long name. Allow a
+  // single edit only for tokens long enough to make this safe; short names
+  // remain exact-match only so ALI cannot match Vali.
+  if (left.length < 5 || right.length < 5) return false
+  if (Math.abs(left.length - right.length) > 1) return false
+  const row = Array.from({ length: right.length + 1 }, (_, index) => index)
+  for (let i = 1; i <= left.length; i += 1) {
+    let diagonal = row[0]
+    row[0] = i
+    let rowMinimum = row[0]
+    for (let j = 1; j <= right.length; j += 1) {
+      const above = row[j]
+      row[j] = left[i - 1] === right[j - 1]
+        ? diagonal
+        : Math.min(diagonal, above, row[j - 1]) + 1
+      diagonal = above
+      rowMinimum = Math.min(rowMinimum, row[j])
+    }
+    if (rowMinimum > 1) return false
+  }
+  return row[right.length] <= 1
+}
+
 export function canonicalizeFullName(input: unknown): string {
   return String(input ?? '').trim().slice(0, 160)
 }
@@ -144,15 +186,30 @@ export function isValidJoinedFullName(input: unknown, minParts = 3): boolean {
 // containment ("ALI".includes-style) — that would match "Ali Karim" against
 // "Vali Karim" too, since "ALI" is a substring of "VALI".
 export function namesLikelyMatch(declared: string, other: string): boolean {
+  const tokenize = (name: string) =>
+    name.split(/\s+/)
+      .map(normalizeNameToken)
+      .filter((t) => t.length >= 2 && !PATRONYMIC_MARKERS.has(t))
+
   // De-duplicated — otherwise a declared name repeating a token (e.g. "Ali
   // Ali") would count that single shared token twice, inflating the match
   // ratio against a name that only actually shares one real token with it.
-  const declaredTokens = Array.from(new Set(declared.split(/\s+/).map(normalizeNameToken).filter((t) => t.length >= 2)))
+  const declaredTokens = Array.from(new Set(tokenize(declared)))
   if (declaredTokens.length === 0) return false
-  const otherTokens = new Set(other.split(/\s+/).map(normalizeNameToken).filter((t) => t.length >= 2))
-  if (otherTokens.size === 0) return false
+  const otherTokens = Array.from(new Set(tokenize(other)))
+  if (otherTokens.length === 0) return false
 
-  const matches = declaredTokens.filter((t) => otherTokens.has(t))
-  const requiredMatches = declaredTokens.length <= 2 ? declaredTokens.length : Math.ceil(declaredTokens.length * 0.7)
+  const matches = declaredTokens.filter((t) =>
+    otherTokens.some((candidate) =>
+      nameTokenLikelyMatches(t, candidate) || patronymicRootMatches(t, candidate),
+    ),
+  )
+  // Family name + given name are the identity anchors; the third part (the
+  // patronymic) is written inconsistently across the referral, the passport
+  // and the form — "Baxtiyarovich" vs "Baxtiyar o'g'li" vs omitted — and the
+  // JShSHIR + passport are already matched exactly by the caller, so a
+  // 3-part name only needs 2 of its parts to line up.
+  const n = declaredTokens.length
+  const requiredMatches = n <= 2 ? n : n === 3 ? 2 : Math.ceil(n * 0.7)
   return matches.length >= requiredMatches
 }

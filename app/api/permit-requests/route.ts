@@ -8,9 +8,11 @@ import {
   canonicalizeFullName,
   detectPermitFileMimeType,
   getNamePartError,
+  isPlausibleInternationalPhone,
   isValidJoinedFullName,
   isValidJshshir,
   isValidPassport,
+  isValidUzOriginRegion,
   normalizeJshshir,
   normalizePassport,
 } from '@/lib/permit-validation'
@@ -68,6 +70,13 @@ export async function POST(request: NextRequest) {
     // ikkiga bo'linib ketadi (guruhlash, filtr va eksport buziladi).
     const direction = normalizeDirection(value(form, 'direction', 200))
     const course = Number(value(form, 'course', 1))
+    // Extra facts the Ariza + Tilxat needs — a yo'llanma applicant now also
+    // downloads a signed Ariza/Tilxat, exactly like the imtiyozli flow. An
+    // Uzbek citizen's home country is always O'zbekiston; the region is
+    // picked from a fixed dropdown.
+    const studyType = value(form, 'studyType', 20)
+    const originRegion = value(form, 'originRegion', 120)
+    const relativePhone = value(form, 'relativePhone', 32)
 
     if (!isValidPassport(passport) || !isValidJshshir(jshshir)) {
       return NextResponse.json({ error: 'Pasport yoki JShSHIR formati noto‘g‘ri.' }, { status: 400 })
@@ -91,6 +100,15 @@ export async function POST(request: NextRequest) {
       || course > 6
     ) {
       return NextResponse.json({ error: 'Ta’lim ma’lumotlari noto‘g‘ri.' }, { status: 400 })
+    }
+    if (!['grant', 'kontrakt'].includes(studyType)) {
+      return NextResponse.json({ error: 'Ta’lim shaklini tanlang.' }, { status: 400 })
+    }
+    if (!isValidUzOriginRegion(originRegion)) {
+      return NextResponse.json({ error: 'Kelib chiqqan viloyatni ro‘yxatdan tanlang.' }, { status: 400 })
+    }
+    if (!isPlausibleInternationalPhone(relativePhone)) {
+      return NextResponse.json({ error: 'Yaqin qarindoshning telefon raqami noto‘g‘ri.' }, { status: 400 })
     }
 
     const supabase = getServiceSupabase()
@@ -166,6 +184,10 @@ export async function POST(request: NextRequest) {
       direction,
       course,
       application_type: 'yollanma' as const,
+      study_type: studyType,
+      origin_country: "O'zbekiston",
+      origin_region: originRegion,
+      relative_phone: relativePhone,
     }
     // permit_url / ai_review are only rewritten when a new document arrives.
     const docFields: { permit_url: string; ai_review: string } | Record<string, never> =

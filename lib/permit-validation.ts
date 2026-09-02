@@ -9,6 +9,31 @@ export const PERMIT_FILE_RULES: Record<string, { extension: string; signatures: 
 
 export type PermitFileMimeType = keyof typeof PERMIT_FILE_RULES
 
+// The applicant's home region, picked from a dropdown in the yo'llanma flow
+// (an Uzbek citizen always comes from one of these) so the generated
+// Ariza/Tilxat reads "<region> viloyatidan kelganligim" with a canonical
+// value. Foreign / imtiyozli applicants type theirs free-form instead.
+export const UZ_ORIGIN_REGIONS = [
+  'Andijon',
+  'Buxoro',
+  "Farg'ona",
+  'Jizzax',
+  'Namangan',
+  'Navoiy',
+  'Qashqadaryo',
+  "Qoraqalpog'iston Respublikasi",
+  'Samarqand',
+  'Sirdaryo',
+  'Surxondaryo',
+  'Toshkent shahri',
+  'Toshkent viloyati',
+  'Xorazm',
+] as const
+
+export function isValidUzOriginRegion(input: unknown): boolean {
+  return (UZ_ORIGIN_REGIONS as readonly string[]).includes(String(input ?? '').trim())
+}
+
 export function normalizeForeignIdNumber(input: unknown) {
   return String(input ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16)
 }

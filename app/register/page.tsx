@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, AlertTriangle } from 'lucide-react'
+import { CheckCircle, AlertTriangle, Download, FileSignature } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { permitFacultyLabel } from '@/lib/faculties'
+import type { ArizaTilxatData } from '@/components/documents/ArizaTilxatDocument'
 import { appFont as baloo2 } from '@/lib/app-font'
 
 import StepProgress from '@/components/register/StepProgress'
@@ -31,6 +33,29 @@ export default function RegisterPage() {
   const [data, setData] = useState<RegisterData>(initialData)
   const [loading, setLoading] = useState(false)
   const [applicationType, setApplicationType] = useState<'yollanma' | 'imtiyozli'>('yollanma')
+
+  // The approved applicant's Ariza + Tilxat, rebuilt from the permit row so
+  // they can reprint the signed paper here if they lost the copy they
+  // downloaded when submitting. Null until the approved permit loads (and
+  // stays null for old permits that predate the Ariza/Tilxat step).
+  const [arizaTilxatData, setArizaTilxatData] = useState<ArizaTilxatData | null>(null)
+  const [downloadingDoc, setDownloadingDoc] = useState(false)
+
+  const downloadArizaTilxat = async () => {
+    if (!arizaTilxatData || downloadingDoc) return
+    setDownloadingDoc(true)
+    try {
+      const { generateArizaTilxatPdf, arizaTilxatFileName } = await import('@/lib/ariza-tilxat-pdf')
+      const doc = await generateArizaTilxatPdf(arizaTilxatData)
+      doc.save(arizaTilxatFileName(arizaTilxatData.fullName))
+      toast.success('Ariza va Tilxat yuklab olindi', { icon: '📄' })
+    } catch (err) {
+      console.error(err)
+      toast.error('Hujjatni yuklab bo‘lmadi. Qayta urinib ko‘ring.')
+    } finally {
+      setDownloadingDoc(false)
+    }
+  }
 
   useEffect(() => {
     const restoreId = window.setTimeout(() => {
@@ -92,6 +117,28 @@ export default function RegisterPage() {
               course: permit.course ? String(permit.course) : current.course,
               room_number: permit.room_number || current.room_number,
             }))
+
+            // Both flows now generate an Ariza + Tilxat at submit time; give
+            // the approved applicant a way to reprint it here too. Skipped for
+            // old permits with no study/origin data (nothing to render).
+            if (permit.study_type || permit.origin_region) {
+              fetch(`/api/public/ttj-name?faculty=${encodeURIComponent(permit.faculty ?? '')}`)
+                .then((res) => (res.ok ? res.json() : null))
+                .then((ttj) => {
+                  setArizaTilxatData({
+                    fullName: String(permit.full_name ?? '').trim(),
+                    facultyLabel: permitFacultyLabel(permit.faculty ?? ''),
+                    course: permit.course ?? '',
+                    studyType: permit.study_type ?? '',
+                    originCountry: permit.origin_country ?? '',
+                    originRegion: permit.origin_region ?? '',
+                    phone: String(permit.phone ?? '').replace(/^\+998/, '').replace(/\D/g, ''),
+                    relativePhone: permit.relative_phone ?? '',
+                    ttjName: ttj?.ttjName ?? '',
+                  })
+                })
+                .catch(() => { /* reprint is a convenience, not required */ })
+            }
           })
           .catch(() => {
             // Prefill is a convenience, not a requirement — the student can
@@ -217,6 +264,36 @@ export default function RegisterPage() {
           </div>
 
           <div className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 sm:px-8 py-2 ${isLight ? '' : ''}`}>
+            {arizaTilxatData && (
+              <div className={`mt-3 flex items-start gap-3 rounded-2xl border p-3 ${
+                isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'
+              }`}>
+                <div className={`shrink-0 mt-0.5 ${isLight ? 'text-amber-600' : 'text-amber-400'}`}>
+                  <FileSignature size={16} />
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <p className={`text-[11px] leading-relaxed font-medium ${isLight ? 'text-amber-800' : 'text-amber-200'}`}>
+                    Imzolangan <span className="font-bold">Ariza va Tilxat</span>ni dekanga topshirdingizmi? Nusxangiz
+                    yo&apos;qolgan bo&apos;lsa, shu yerdan qayta yuklab oling.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={downloadArizaTilxat}
+                    disabled={downloadingDoc}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors disabled:opacity-60 ${
+                      isLight ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-amber-500 text-slate-950 hover:bg-amber-400'
+                    }`}
+                  >
+                    {downloadingDoc ? (
+                      <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Download size={12} />
+                    )}
+                    <span>Ariza va Tilxat (PDF)</span>
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="min-h-70 flex flex-col justify-start py-4">
               <AnimatePresence mode="wait">
                 <motion.div

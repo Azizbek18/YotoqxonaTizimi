@@ -1,14 +1,14 @@
 'use client'
 
-// Uzbekistan region / district / settlement reference data, served from our
-// own origin (public/data/uz-address.json) — never raw.githubusercontent.com,
-// which is unreliable / blocked for many UZ users. Regenerate with
-// `node scripts/build-uz-address.mjs`.
+// Uzbekistan region / district / mahalla (MFY) reference data, served from
+// our own origin (public/data/uz-address.json) — never
+// raw.githubusercontent.com, which is unreliable / blocked for many UZ
+// users. Regenerate with `node scripts/build-uz-address.mjs`.
 
 export type UzRegion = { id: number; name: string }
 export type UzDistrict = { id: number; regionId: number; name: string }
-export type UzVillage = { id: number; districtId: number; name: string }
-export type UzAddressData = { regions: UzRegion[]; districts: UzDistrict[]; villages: UzVillage[] }
+export type UzMahalla = { districtId: number; name: string }
+export type UzAddressData = { regions: UzRegion[]; districts: UzDistrict[]; mahallas: UzMahalla[] }
 
 // A tiny inline fallback for the (rare) case the static file itself can't be
 // read — the student can still pick a region and type the rest.
@@ -20,7 +20,7 @@ const FALLBACK: UzAddressData = {
     'Surxondaryo viloyati', 'Toshkent shahri', 'Toshkent viloyati', 'Xorazm viloyati',
   ].map((name, i) => ({ id: i + 1, name })),
   districts: [],
-  villages: [],
+  mahallas: [],
 }
 
 export function normalizeName(value: string): string {
@@ -41,7 +41,7 @@ export function loadUzAddress(): Promise<UzAddressData> {
     .then((d: UzAddressData) => ({
       regions: (d.regions ?? []).map((x) => ({ ...x, name: normalizeName(x.name) })),
       districts: (d.districts ?? []).map((x) => ({ ...x, name: normalizeName(x.name) })),
-      villages: (d.villages ?? []).map((x) => ({ ...x, name: normalizeName(x.name) })),
+      mahallas: (d.mahallas ?? []).map((x) => ({ ...x, name: normalizeName(x.name) })),
     }))
     .catch((err) => {
       console.error('uz-address load failed, using fallback:', err)
@@ -57,13 +57,13 @@ export function districtsOfRegion(data: UzAddressData, regionName: string): UzDi
   return data.districts.filter((d) => d.regionId === region.id)
 }
 
-export function villagesOfDistrict(
+export function mahallasOfDistrict(
   data: UzAddressData,
   regionName: string,
   districtName: string,
-): UzVillage[] {
+): UzMahalla[] {
   const district = districtsOfRegion(data, regionName)
     .find((d) => key(d.name) === key(districtName))
   if (!district) return []
-  return data.villages.filter((v) => v.districtId === district.id)
+  return data.mahallas.filter((m) => m.districtId === district.id)
 }

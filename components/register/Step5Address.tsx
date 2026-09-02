@@ -9,7 +9,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import {
   loadUzAddress,
   districtsOfRegion,
-  villagesOfDistrict,
+  mahallasOfDistrict,
   normalizeName,
   type UzAddressData,
 } from '@/lib/uz-address'
@@ -212,15 +212,16 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
     [districtRecords]
   )
 
-  const villageOptions = useMemo(
+  const mahallaOptions = useMemo(
     () => (addr && data.region && data.district
-      ? uniqueOptions(villagesOfDistrict(addr, data.region, data.district).map((v) => v.name))
+      ? uniqueOptions(mahallasOfDistrict(addr, data.region, data.district).map((m) => m.name))
       : []),
     [addr, data.region, data.district]
   )
-  // MFY and Qishloq are always type-able: the reference list can never be
-  // exhaustive (urban mahallas aren't in it at all).
-  const hasVillageOptions = villageOptions.length > 0
+  // MFY / qishloq stay type-able: the reference list (~9,800 MFYs) covers
+  // most districts but can never be 100% (mahallas are reorganised often,
+  // a handful of newly-split districts aren't in the source yet).
+  const hasMahallaOptions = mahallaOptions.length > 0
 
   // 3D Toast funksiyasi
   const show3DToast = (message: string, type: 'success' | 'error' = 'error') => {
@@ -271,7 +272,7 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
     if (!data.region) return show3DToast("Viloyatni tanlang", 'error')
     if (!data.district) return show3DToast("Tuman yoki shaharni tanlang", 'error')
     if (!data.mahalla) return show3DToast("Mahallani kiriting", 'error')
-    if (!data.qishloq) return show3DToast(hasVillageOptions ? "Qishloqni tanlang" : "Qishloqni kiriting", 'error')
+    if (!data.qishloq) return show3DToast(hasMahallaOptions ? "Qishloqni tanlang" : "Qishloqni kiriting", 'error')
     if (!data.street) return show3DToast("Ko'cha nomini kiriting", 'error')
     if (!data.houseNumber) return show3DToast("Uy raqamini kiriting", 'error')
 
@@ -334,7 +335,7 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
                   <Custom3DSelect
                     label="MFY / Mahalla"
                     value={data.mahalla}
-                    options={villageOptions}
+                    options={mahallaOptions}
                     icon={Home}
                     placeholder="Mahallangiz nomini yozing"
                     onChange={(v: string) => onChange({ mahalla: v })}
@@ -345,9 +346,9 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
                   <Custom3DSelect
                     label="Qishloq / shaharcha"
                     value={data.qishloq}
-                    options={villageOptions}
+                    options={mahallaOptions}
                     icon={MapPin}
-                    placeholder={hasVillageOptions ? 'Tanlang yoki yozing' : 'Qishloq / shaharcha nomini yozing'}
+                    placeholder={hasMahallaOptions ? 'Tanlang yoki yozing' : 'Qishloq / shaharcha nomini yozing'}
                     onChange={(v: string) => onChange({ qishloq: v })}
                     isLight={isLight}
                     allowCustom

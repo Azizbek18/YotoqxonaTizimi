@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { districtsOfRegion, normalizeName, villagesOfDistrict, type UzAddressData } from './uz-address'
+import { districtsOfRegion, mahallasOfDistrict, normalizeName, type UzAddressData } from './uz-address'
 
 const data: UzAddressData = {
   regions: [
@@ -11,10 +11,10 @@ const data: UzAddressData = {
     { id: 11, regionId: 1, name: 'Yunusobod tumani' },
     { id: 20, regionId: 2, name: 'Asaka tumani' },
   ],
-  villages: [
-    { id: 100, districtId: 20, name: "Qo'rg'ontepa" },
-    { id: 101, districtId: 20, name: 'Paxtaobod' },
-    { id: 102, districtId: 10, name: 'Katta Yigit' },
+  mahallas: [
+    { districtId: 20, name: "Qo'rg'ontepa" },
+    { districtId: 20, name: 'Paxtaobod' },
+    { districtId: 10, name: 'Al-Xorazmiy' },
   ],
 }
 
@@ -29,10 +29,10 @@ describe('uz-address helpers', () => {
     expect(districtsOfRegion(data, 'Nonexistent')).toEqual([])
   })
 
-  it('villagesOfDistrict scopes to region + district', () => {
-    expect(villagesOfDistrict(data, 'Andijon viloyati', 'Asaka tumani').map((v) => v.name))
+  it('mahallasOfDistrict scopes to region + district', () => {
+    expect(mahallasOfDistrict(data, 'Andijon viloyati', 'Asaka tumani').map((m) => m.name))
       .toEqual(["Qo'rg'ontepa", 'Paxtaobod'])
-    // Urban district with no villages in the dataset → empty, never an error.
-    expect(villagesOfDistrict(data, 'Toshkent shahri', 'Yunusobod tumani')).toEqual([])
+    // A district with no mahallas in the dataset → empty, never an error.
+    expect(mahallasOfDistrict(data, 'Toshkent shahri', 'Yunusobod tumani')).toEqual([])
   })
 })

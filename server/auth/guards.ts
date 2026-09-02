@@ -13,6 +13,7 @@ type StudentIdentity = {
   role: string | null
   status: string | null
   faculty: string | null
+  blacklisted: boolean | null
 }
 
 type StaffIdentity = {
@@ -37,17 +38,33 @@ export async function requireUser(request?: Request): Promise<User> {
   return user
 }
 
-export async function requireActiveStudent(request?: Request) {
+/**
+ * @param opts.allowBlacklisted keep read-only routes reachable for an
+ *   expelled student (e.g. so they can still open /talaba/qoidalar and see
+ *   why). Every mutating student route leaves this off, so a blacklisted
+ *   student can't submit arizas, pay, use the AI, check in, etc.
+ */
+export async function requireActiveStudent(
+  request?: Request,
+  opts?: { allowBlacklisted?: boolean },
+) {
   const user = await requireUser(request)
   const { data: student, error } = await getServiceSupabase()
     .from('users')
-    .select('id, full_name, email, role, status, faculty')
+    .select('id, full_name, email, role, status, faculty, blacklisted')
     .eq('id', user.id)
     .maybeSingle()
 
   if (error) throw new ApiError(500, 'Talaba profilini tekshirib bo‘lmadi')
   if (!isActiveStudent(student)) {
     throw new ApiError(403, 'Faol talaba profili talab qilinadi', 'FORBIDDEN')
+  }
+  if (student?.blacklisted && !opts?.allowBlacklisted) {
+    throw new ApiError(
+      403,
+      'Siz yotoqxona ro‘yxatidan chiqarilgansiz. Batafsil ma’lumot uchun dekanatga murojaat qiling.',
+      'BLACKLISTED',
+    )
   }
 
   return { user, student: student as StudentIdentity }

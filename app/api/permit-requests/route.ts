@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     const hasNameParts = Boolean(lastName || firstName || middleName)
     const fullName = hasNameParts
       ? buildFullName({ lastName, firstName, middleName })
-      : cyrillicToLatin(value(form, 'fullName', 160))
+      : canonicalizeFullName(cyrillicToLatin(value(form, 'fullName', 160)))
     const email = value(form, 'email', 254).toLowerCase()
     const phone = value(form, 'phone', 32)
     const gender = value(form, 'gender', 10)

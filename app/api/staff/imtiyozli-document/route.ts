@@ -31,9 +31,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Bu ariza uchun Ariza/Tilxat hujjati mavjud emas.' }, { status: 400 })
     }
 
+    const permitFacultyKey = (permit.faculty ?? '').trim().toLocaleLowerCase()
     if (
       staff.role === 'dekan'
-      && (!staff.faculty || staff.faculty.trim().toLocaleLowerCase() !== permit.faculty.trim().toLocaleLowerCase())
+      && (!staff.faculty || staff.faculty.trim().toLocaleLowerCase() !== permitFacultyKey)
     ) {
       return NextResponse.json({ error: 'Ruxsat berilmadi.' }, { status: 403 })
     }

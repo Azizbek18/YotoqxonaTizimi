@@ -5,6 +5,7 @@ import { checkRateLimit, getClientIp } from '@/lib/security'
 import {
   PERMIT_FILE_RULES,
   buildFullName,
+  canonicalizeFullName,
   detectPermitFileMimeType,
   getNamePartError,
   isValidJoinedFullName,
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     const hasNameParts = Boolean(lastName || firstName || middleName)
     const fullName = hasNameParts
       ? buildFullName({ lastName, firstName, middleName: noMiddleName ? '' : middleName })
-      : cyrillicToLatin(value(form, 'fullName', 160))
+      : canonicalizeFullName(cyrillicToLatin(value(form, 'fullName', 160)))
     const email = value(form, 'email', 254).toLowerCase()
     const phone = value(form, 'phone', 32)
     const relativePhone = value(form, 'relativePhone', 32)

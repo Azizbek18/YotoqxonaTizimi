@@ -66,4 +66,24 @@ describe('permit document AI evaluation', () => {
     )
     expect(evaluated.mismatches).toHaveLength(1)
   })
+
+  it('allows a one-character OCR error in a long name token', () => {
+    const evaluated = evaluatePermitDocument({
+      ...officialReferral,
+      extracted_full_name: "MO'MINOV AZIZBE ULUG'BEK O'G'LI",
+    }, declared)
+
+    expect(evaluated.valid).toBe(true)
+  })
+
+  it('does not turn short similar names into a match', () => {
+    const evaluated = evaluatePermitDocument({
+      ...officialReferral,
+      extracted_full_name: 'VALI',
+    }, { ...declared, fullName: 'ALI' })
+
+    expect(evaluated.mismatches).toContain(
+      'Hujjatdagi F.I.Sh aniqlanmadi yoki formada kiritilgan ism-familiya bilan mos kelmadi.',
+    )
+  })
 })

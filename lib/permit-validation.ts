@@ -154,8 +154,23 @@ function nameTokenLikelyMatches(left: string, right: string): boolean {
   return row[right.length] <= 1
 }
 
+// Mobile keyboards, IMEs and copy/paste from government PDFs slip exotic
+// spacing into a name: non-breaking / narrow / figure spaces (all matched by
+// \s), plus zero-width space/joiners and the word-joiner / BOM (which \s does
+// NOT match). A zero-width character between two words makes the validator
+// read "Familiya<ZWSP>Ism Sharif" as two parts, not three, and it survives
+// into the stored name — where namesLikelyMatch then fuses the glued tokens
+// and the generated Ariza/Tilxat PDF renders invisible gaps. Fold every one
+// of them to a single normal space. Not trimmed, so it is safe to run on
+// every keystroke of a name field (a trailing space is still being typed).
+const NAME_WHITESPACE_RE = /[\s\u200B\u200C\u200D\u2060\uFEFF]+/gu
+
+export function normalizeNameWhitespace(input: unknown): string {
+  return String(input ?? '').replace(NAME_WHITESPACE_RE, ' ')
+}
+
 export function canonicalizeFullName(input: unknown): string {
-  return String(input ?? '').trim().slice(0, 160)
+  return normalizeNameWhitespace(input).trim().slice(0, 160)
 }
 
 // One part of a name (familiya / ism / sharif). Latin letters only — a
@@ -167,7 +182,7 @@ const NAME_PART_RE = /^\p{L}[\p{L}ʻʼ'’\- ]{1,39}$/u
 // Trim, collapse spaces, and Latinise any Cyrillic. Use this on every name
 // input (client onChange + server) so what gets validated/stored is Latin.
 export function normalizeNamePart(input: unknown): string {
-  return cyrillicToLatin(String(input ?? '').trim().replace(/\s+/g, ' '))
+  return cyrillicToLatin(normalizeNameWhitespace(input).trim())
 }
 
 export function isValidNamePart(input: unknown): boolean {
@@ -191,7 +206,7 @@ export function buildFullName(parts: {
   middleName?: unknown
 }): string {
   const joined = [parts.lastName, parts.firstName, parts.middleName]
-    .map((part) => String(part ?? '').trim().replace(/\s+/g, ' '))
+    .map((part) => normalizeNameWhitespace(part).trim())
     .filter(Boolean)
     .join(' ')
   return cyrillicToLatin(joined).slice(0, 160)
@@ -200,7 +215,11 @@ export function buildFullName(parts: {
 // Server-side guard for a joined name string: at least `minParts`
 // whitespace-separated tokens, every one a valid (Latinised) name part.
 export function isValidJoinedFullName(input: unknown, minParts = 3): boolean {
-  const parts = cyrillicToLatin(String(input ?? '').trim()).split(/\s+/).filter(Boolean)
+  // Fold the exotic spacing a phone keyboard or a copied government PDF
+  // leaves between the F.I.Sh parts (see normalizeNameWhitespace) before
+  // counting them, otherwise "Familiya<ZWSP>Ism Sharif" reads as 2 parts.
+  const normalized = canonicalizeFullName(cyrillicToLatin(String(input ?? '')))
+  const parts = normalized.split(' ').filter(Boolean)
   return parts.length >= minParts && parts.every(isValidNamePart)
 }
 
@@ -212,7 +231,12 @@ export function isValidJoinedFullName(input: unknown, minParts = 3): boolean {
 // "Vali Karim" too, since "ALI" is a substring of "VALI".
 export function namesLikelyMatch(declared: string, other: string): boolean {
   const tokenize = (name: string) =>
-    name.split(/\s+/)
+    // Latinise the WHOLE name first: the Uzbek-vs-Russian transliteration
+    // rule is chosen from surrounding context, so a lone Cyrillic token
+    // ("Хусан") turns into "Khusan" but the same token inside "Ғафуров
+    // Хусан" correctly becomes "Xusan". Tokenising before transliterating
+    // would make the two spellings of one name fail to match.
+    cyrillicToLatin(normalizeNameWhitespace(name)).split(/\s+/)
       .map(normalizeNameToken)
       .filter((t) => t.length >= 2 && !PATRONYMIC_MARKERS.has(t))
 
@@ -224,17 +248,33 @@ export function namesLikelyMatch(declared: string, other: string): boolean {
   const otherTokens = Array.from(new Set(tokenize(other)))
   if (otherTokens.length === 0) return false
 
-  const matches = declaredTokens.filter((t) =>
+  // `declared` is always our own canonical "Familiya Ism [Sharif]" string
+  // (see buildFullName / canonicalizeFullName), so its first two tokens are
+  // the family name and the given name — the identity anchors. Both MUST
+  // line up, by an exact or single-OCR-edit match only: a shared root
+  // (BAXTIYAR↔BAXTIYAROVICH, ISLOM↔ISLOMBEK) is NOT enough for an anchor,
+  // otherwise a sibling's referral (same surname + patronymic, different
+  // given name) would pass.
+  const anchorCount = Math.min(2, declaredTokens.length)
+  for (let i = 0; i < anchorCount; i += 1) {
+    if (!otherTokens.some((candidate) => nameTokenLikelyMatches(declaredTokens[i], candidate))) {
+      return false
+    }
+  }
+  const n = declaredTokens.length
+  if (n <= 3) {
+    // The 3rd part (patronymic) is written inconsistently across the
+    // referral, the passport and the form — "Baxtiyarovich" vs "Baxtiyar
+    // o'g'li" vs omitted — and JShSHIR + passport are matched exactly by the
+    // caller, so with both anchors confirmed the patronymic is optional.
+    return true
+  }
+  // 4+ tokens (double surname / double given name): require ~70% overall,
+  // allowing a shared-root match for the non-anchor parts.
+  const extraMatches = declaredTokens.slice(2).filter((t) =>
     otherTokens.some((candidate) =>
       nameTokenLikelyMatches(t, candidate) || patronymicRootMatches(t, candidate),
     ),
-  )
-  // Family name + given name are the identity anchors; the third part (the
-  // patronymic) is written inconsistently across the referral, the passport
-  // and the form — "Baxtiyarovich" vs "Baxtiyar o'g'li" vs omitted — and the
-  // JShSHIR + passport are already matched exactly by the caller, so a
-  // 3-part name only needs 2 of its parts to line up.
-  const n = declaredTokens.length
-  const requiredMatches = n <= 2 ? n : n === 3 ? 2 : Math.ceil(n * 0.7)
-  return matches.length >= requiredMatches
+  ).length
+  return anchorCount + extraMatches >= Math.ceil(n * 0.7)
 }

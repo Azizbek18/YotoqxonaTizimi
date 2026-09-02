@@ -19,7 +19,7 @@ import ArizaTilxatDocument from '@/components/documents/ArizaTilxatDocument'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
-import { getPassportFormatError, isValidJoinedFullName, isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport, UZ_ORIGIN_REGIONS } from '@/lib/permit-validation'
+import { getPassportFormatError, isValidJoinedFullName, isValidJshshir, isValidPassport, normalizeJshshir, normalizeNameWhitespace, normalizePassport, UZ_ORIGIN_REGIONS } from '@/lib/permit-validation'
 import { cyrillicToLatin } from '@/lib/transliterate'
 import { prepareAiAnalysisFile, prepareUploadFile } from '@/lib/prepare-upload'
 
@@ -175,7 +175,7 @@ export default function RuxsatnomaYuborish() {
         if (saved.passport) setPassportSeries(saved.passport)
         if (saved.jshshir) setJshshir(saved.jshshir)
         if (saved.email) setEmail(saved.email)
-        if (saved.fullName) setFullName(cyrillicToLatin(saved.fullName))
+        if (saved.fullName) setFullName(normalizeNameWhitespace(cyrillicToLatin(saved.fullName)))
         if (saved.phone) setPhone(String(saved.phone).replace(/\D/g, '').slice(-9))
         if (saved.gender === 'male' || saved.gender === 'female') setGender(saved.gender)
         if (saved.faculty && PERMIT_FACULTIES.some((f) => f.value === saved.faculty)) setFaculty(saved.faculty)
@@ -193,7 +193,7 @@ export default function RuxsatnomaYuborish() {
       const draftRaw = sessionStorage.getItem('permit_draft')
       if (!draftRaw) return
       const d = JSON.parse(draftRaw) as Record<string, string>
-      if (d.fullName) setFullName(d.fullName)
+      if (d.fullName) setFullName(normalizeNameWhitespace(d.fullName))
       if (d.passportSeries) setPassportSeries(d.passportSeries)
       if (d.jshshir) setJshshir(d.jshshir)
       if (d.email) setEmail(d.email)
@@ -282,6 +282,14 @@ export default function RuxsatnomaYuborish() {
       audioCtxRef.current = null
     }
   }, [])
+
+  // The downloaded Ariza/Tilxat is a snapshot of the data at download time.
+  // If the applicant goes back and edits any field that appears on it, the
+  // signed paper they hand the dekan would no longer match what gets
+  // submitted — so force them to download a fresh copy.
+  useEffect(() => {
+    setDocumentDownloaded(false)
+  }, [fullName, faculty, course, studyType, originRegion, phone, relativePhone])
 
   // Programmatic Sound Synthesis
   const playSound = (type: 'keypress' | 'success' | 'focus' | 'tab' | 'gender') => {
@@ -1291,7 +1299,7 @@ export default function RuxsatnomaYuborish() {
                                   playSound('focus')
                                 }}
                                 onBlur={() => setFocusedField(null)}
-                                onChange={(e) => handleInputChange(e, (v) => setFullName(cyrillicToLatin(v)), 'fullName')}
+                                onChange={(e) => handleInputChange(e, (v) => setFullName(normalizeNameWhitespace(cyrillicToLatin(v))), 'fullName')}
                                 placeholder="Familiya Ism Sharif"
                                 className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 ${
                                   isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'

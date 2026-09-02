@@ -89,9 +89,6 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       const normalizedTransactionId = normalizePaymentTransactionId(transactionId)
       if (!(file instanceof File)) throw new ApiError(400, 'Chek fayli topilmadi')
       if (!Number.isInteger(year) || year < 2020 || year > 2100) throw new ApiError(400, 'To‘lov yili noto‘g‘ri')
-      if (transactionId.length > 256 || isSuspiciousPaymentTransactionId(normalizedTransactionId)) {
-        throw new ApiError(400, 'Chek tranzaksiya raqami noto‘g‘ri')
-      }
       // The monthly fee is the student's own faculty's dorm setting.
       const { monthlyFee } = await createAppSettingsService().get(student.faculty ?? undefined)
       if (amount !== monthlyFee * months.length) {
@@ -121,19 +118,26 @@ export function createPaymentService(repository: PaymentRepository = createPayme
       // review (claim binds user + declared amount + file hash, but not the
       // AI-read transaction id). The exact-file duplicate check still ran.
       let aiReview: 'passed' | 'manual'
-      if (verifyFileClaim('payment', claim, receiptHash, {
-        userId: student.id,
-        amount,
-        transactionId: normalizedTransactionId,
-      })) {
-        aiReview = 'passed'
-      } else if (verifyFileClaim('payment-unverified', claim, receiptHash, {
-        userId: student.id,
-        amount,
-      })) {
+      if (transactionId.length === 0) {
+        if (!verifyFileClaim('payment-unverified', claim, receiptHash, {
+          userId: student.id,
+          amount,
+        })) {
+          throw new ApiError(400, 'Chek avval AI orqali tekshirilishi shart')
+        }
         aiReview = 'manual'
       } else {
-        throw new ApiError(400, 'Chek avval AI orqali tekshirilishi shart')
+        if (transactionId.length > 256 || isSuspiciousPaymentTransactionId(normalizedTransactionId)) {
+          throw new ApiError(400, 'Chek tranzaksiya raqami noto‘g‘ri')
+        }
+        if (!verifyFileClaim('payment', claim, receiptHash, {
+          userId: student.id,
+          amount,
+          transactionId: normalizedTransactionId,
+        })) {
+          throw new ApiError(400, 'Chek avval AI orqali tekshirilishi shart')
+        }
+        aiReview = 'passed'
       }
       const batchId = randomUUID()
       const { error: claimError } = await repository.claimReceipt(receiptHash, batchId, student.id)
@@ -170,15 +174,9 @@ export function createPaymentService(repository: PaymentRepository = createPayme
           batchId,
           transactionId,
           normalizedTransactionId,
+          aiReview,
         })
         if (error) throw error
-        // The batch rows were just inserted by this request (status='waiting',
-        // nobody else touches them yet), so a plain post-update is race-free
-        // and keeps the atomic RPC untouched.
-        if (aiReview === 'manual') {
-          const { error: flagError } = await repository.flagReceiptManualReview(receiptHash)
-          if (flagError) console.error('flagReceiptManualReview failed:', flagError)
-        }
         return {
           ok: true,
           records: (data ?? []).map((record) => ({

@@ -110,6 +110,7 @@ export function createPaymentRepository() {
       batchId: string
       transactionId: string
       normalizedTransactionId: string
+      aiReview: 'passed' | 'manual'
     }) {
       return supabase.rpc('submit_payment_batch_atomic', {
         p_student_id: input.studentId,
@@ -122,15 +123,8 @@ export function createPaymentRepository() {
         p_batch_id: input.batchId,
         p_transaction_id: input.transactionId,
         p_transaction_id_normalized: input.normalizedTransactionId,
+        p_ai_review: input.aiReview,
       })
-    },
-
-    // Marks every row of a just-submitted batch as needing a manual look
-    // because the AI receipt check was unavailable at submission time. The
-    // receipt hash is reserved once per physical receipt (payment_receipt_
-    // uploads UNIQUE), so it targets exactly this batch's rows.
-    async flagReceiptManualReview(receiptHash: string) {
-      return supabase.from('tolovlar').update({ ai_review: 'manual' }).eq('receipt_hash', receiptHash)
     },
 
     async review(faculties: string[], ids: string[], status: Extract<PaymentStatus, 'approved' | 'rejected'>, adminMessage: string) {

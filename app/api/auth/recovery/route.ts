@@ -35,16 +35,34 @@ export async function POST(request: NextRequest) {
     auth: { persistSession: false, autoRefreshToken: false, flowType: 'implicit' },
   })
 
-  // Havola shu deploy'ning o'z origin'iga qaytadi, shuning uchun localda
-  // localhost, productionda vercel domeni ishlaydi. Begona origin xavf
-  // tug'dirmaydi: Supabase uni Redirect URLs ro'yxatiga solishtirib rad etadi.
+  // Productiondagi reset havolasi preview/alias domeniga emas, Supabase'dagi
+  // tasdiqlangan canonical domenimizga qaytishi kerak. Local developmentda esa
+  // so'rov origin'i saqlanadi, shunda localhost oqimi buzilmaydi.
+  const requestOrigin = new URL(request.url).origin
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '')
+  const redirectOrigin = configuredSiteUrl || (
+    process.env.NODE_ENV === 'production'
+      ? 'https://www.meningyotoqxonam.uz'
+      : requestOrigin
+  )
+
+  // Begona origin xavf tug'dirmaydi: Supabase uni Redirect URLs ro'yxatiga
+  // solishtirib rad etadi. `NEXT_PUBLIC_SITE_URL` esa deploy sozlamasida
+  // boshqa tasdiqlangan muhit (masalan staging) uchun almashtirilishi mumkin.
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${new URL(request.url).origin}/auth/confirm`,
+    redirectTo: `${redirectOrigin}/auth/confirm`,
   })
 
-  // Hisob mavjudligini oshkor qilmaymiz — javob har doim bir xil.
+  // Hisob mavjud-mavjudmasligini oshkor qilmaymiz: GoTrue `/recover` noma'lum
+  // email uchun ham 200 qaytaradi, shuning uchun `error` faqat infratuzilma
+  // nosozligida (SMTP yoki email bo'yicha cooldown) keladi — bu holatda
+  // foydalanuvchiga qayta urinishni aytamiz, hisob borligini bildirmaymiz.
   if (error) {
     console.error('Recovery mail request failed:', error.message)
+    return NextResponse.json(
+      { error: 'Xatni yuborib bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.' },
+      { status: 502 },
+    )
   }
   return NextResponse.json({ ok: true })
 }

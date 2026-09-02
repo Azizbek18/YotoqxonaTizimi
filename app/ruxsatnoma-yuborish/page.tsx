@@ -88,11 +88,18 @@ export default function RuxsatnomaYuborish() {
   // every visit, since it's a warning about THIS submission's accuracy,
   // not something that only needs saying once per browser.
   const [showWarning, setShowWarning] = useState(true)
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => setHydrated(true), [])
 
   // Set when the applicant arrived via "Tuzatib qayta yuborish" from the
   // status page after a rejection — the identity fields are prefilled and
   // the server reopens their existing row instead of rejecting a duplicate.
   const [resubmitMode, setResubmitMode] = useState(false)
+  // Set when the applicant arrived via "Ma'lumotni tahrirlash" on a STILL
+  // PENDING application — the server updates the same row in place (queue
+  // position kept) and the document is optional.
+  const [editMode, setEditMode] = useState(false)
 
   // Gates the draft-save effect until the restore effect has run once, so
   // the first (empty) render can't overwrite a saved draft.
@@ -128,10 +135,14 @@ export default function RuxsatnomaYuborish() {
   // comes back to their filled fields instead of a blank step 1.
   useEffect(() => {
     try {
-      const resubmitRaw = sessionStorage.getItem('permit_resubmit')
-      if (resubmitRaw) {
-        sessionStorage.removeItem('permit_resubmit')
-        const saved = JSON.parse(resubmitRaw) as {
+      // "Ma'lumotni tahrirlash" on a still-pending application. Kept in
+      // sessionStorage (not removed on read) so a mid-edit tab reload still
+      // resumes; cleared only after a successful save.
+      const editRaw = sessionStorage.getItem('permit_edit')
+      const prefill = editRaw ?? sessionStorage.getItem('permit_resubmit')
+      if (prefill) {
+        if (!editRaw) sessionStorage.removeItem('permit_resubmit')
+        const saved = JSON.parse(prefill) as {
           passport?: string; jshshir?: string; email?: string
           fullName?: string; phone?: string; gender?: string; faculty?: string; direction?: string; course?: string
         }
@@ -144,7 +155,9 @@ export default function RuxsatnomaYuborish() {
         if (saved.faculty && PERMIT_FACULTIES.some((f) => f.value === saved.faculty)) setFaculty(saved.faculty)
         if (saved.direction) setDirection(saved.direction)
         if (saved.course && /^[1-6]$/.test(saved.course)) setCourse(saved.course)
-        setResubmitMode(true)
+        if (editRaw) setEditMode(true)
+        else setResubmitMode(true)
+        setDraftLoaded(true)
         return
       }
 
@@ -460,8 +473,13 @@ export default function RuxsatnomaYuborish() {
       showToast('error', 'Rasm hali tayyorlanmoqda — biroz kuting.')
       return false
     }
-    if (!passportSeries || !jshshir || !file || !aiAnalysisFile) {
-      showToast('error', "Iltimos, pasport ma'lumotlarini to'ldiring va faylni yuklang!")
+    // In edit mode the existing document may be kept — only a fresh
+    // submission (or a chosen replacement) must have a prepared file.
+    const needsFile = !editMode || Boolean(file)
+    if (!passportSeries || !jshshir || (needsFile && (!file || !aiAnalysisFile))) {
+      showToast('error', editMode
+        ? "Iltimos, pasport ma'lumotlarini to'ldiring!"
+        : "Iltimos, pasport ma'lumotlarini to'ldiring va faylni yuklang!")
       return false
     }
     // Same rules the server checks at submission — catching a malformed
@@ -533,7 +551,11 @@ export default function RuxsatnomaYuborish() {
     e.preventDefault()
 
     if (formStep !== 4) return
-    if (!validateStep3() || !file || !aiAnalysisFile) return
+    // In edit mode the document is optional — the student may be fixing a
+    // typo, not the file. A fresh submission always needs the file.
+    const keepingExistingDoc = editMode && !file
+    if (!validateStep3()) return
+    if (!keepingExistingDoc && (!file || !aiAnalysisFile)) return
 
     setLoading(true)
     setSubmissionStage('ai')
@@ -543,44 +565,47 @@ export default function RuxsatnomaYuborish() {
       const cleanJshshir = jshshir.trim()
       const cleanEmail = email.trim().toLowerCase()
 
-      // 1. AI orqali yo'llanma hujjatini tekshirish — hujjat rasmiy
-      // my.gov.uz namunasiga mosligi va undagi FISH/JSHSHIR/pasport
-      // ma'lumotlari formada kiritilgan ma'lumotlar bilan mosligini
-      // tasdiqlaydi. Fayl saqlanishidan oldin ishlaydi.
-      const buildAiFormData = () => {
-        const aiFormData = new FormData()
-        aiFormData.append('file', aiAnalysisFile)
-        aiFormData.append('fullName', fullName.trim())
-        aiFormData.append('jshshir', cleanJshshir)
-        aiFormData.append('passportSeries', cleanPassport)
-        return aiFormData
-      }
+      let aiClaim: string | null = null
 
-      const aiResponse = await postWithOneNetworkRetry('/api/ai/yollanma-tekshiruv', buildAiFormData)
-      const aiResult = await aiResponse.json()
+      // 1. AI orqali yo'llanma hujjatini tekshirish — faqat yangi hujjat
+      // yuklanganda. Tahrirlash paytida hujjat o'zgarmasa, bu qadam tashlab
+      // o'tiladi.
+      if (file && aiAnalysisFile) {
+        const buildAiFormData = () => {
+          const aiFormData = new FormData()
+          aiFormData.append('file', aiAnalysisFile)
+          aiFormData.append('fullName', fullName.trim())
+          aiFormData.append('jshshir', cleanJshshir)
+          aiFormData.append('passportSeries', cleanPassport)
+          return aiFormData
+        }
 
-      if (!aiResponse.ok) {
-        throw new Error(aiResult.error || "Hujjatni tekshirishda xatolik yuz berdi")
-      }
-      if (!aiResult.valid) {
-        const reason = Array.isArray(aiResult.mismatches) && aiResult.mismatches.length > 0
-          ? aiResult.mismatches.join(' ')
-          : "Yuklangan hujjat rasmiy Yo'llanma namunasiga mos kelmadi."
-        throw new Error(reason)
-      }
-      if (!aiResult.claim) {
-        throw new Error("Yo‘llanma AI tekshiruvidan tasdiq olinmadi. Qayta urinib ko‘ring.")
-      }
-      // AI xizmati band edi — ariza qabul qilinadi, lekin dekan hujjatni
-      // qo'lda tekshiradi. Talabaga xatolik emas, ma'lumot ko'rsatiladi.
-      if (aiResult.aiSkipped) {
-        showToast('success', "AI tekshiruv xizmati band — arizangiz qabul qilindi va qo‘lda ko‘rib chiqiladi.")
+        const aiResponse = await postWithOneNetworkRetry('/api/ai/yollanma-tekshiruv', buildAiFormData)
+        const aiResult = await aiResponse.json()
+
+        if (!aiResponse.ok) {
+          throw new Error(aiResult.error || "Hujjatni tekshirishda xatolik yuz berdi")
+        }
+        if (!aiResult.valid) {
+          const reason = Array.isArray(aiResult.mismatches) && aiResult.mismatches.length > 0
+            ? aiResult.mismatches.join(' ')
+            : "Yuklangan hujjat rasmiy Yo'llanma namunasiga mos kelmadi."
+          throw new Error(reason)
+        }
+        if (!aiResult.claim) {
+          throw new Error("Yo‘llanma AI tekshiruvidan tasdiq olinmadi. Qayta urinib ko‘ring.")
+        }
+        if (aiResult.aiSkipped) {
+          showToast('success', "AI tekshiruv xizmati band — arizangiz qabul qilindi va qo‘lda ko‘rib chiqiladi.")
+        }
+        aiClaim = aiResult.claim
       }
 
       // 2. Server tekshiradi, private storage'ga yuklaydi va bazaga yozadi.
       setSubmissionStage('saving')
       const submission = new FormData()
-      submission.append('file', file)
+      if (file) submission.append('file', file)
+      if (editMode) submission.append('mode', 'edit')
       submission.append('passportSeries', cleanPassport)
       submission.append('jshshir', cleanJshshir)
       submission.append('fullName', fullName.trim())
@@ -590,7 +615,7 @@ export default function RuxsatnomaYuborish() {
       submission.append('faculty', faculty)
       submission.append('direction', direction.trim())
       submission.append('course', String(course))
-      submission.append('aiClaim', aiResult.claim)
+      if (aiClaim) submission.append('aiClaim', aiClaim)
 
       const submitResponse = await fetch('/api/permit-requests', {
         method: 'POST',
@@ -612,17 +637,20 @@ export default function RuxsatnomaYuborish() {
         sessionStorage.setItem('student_permit_passport', cleanPassport)
         sessionStorage.setItem('student_permit_jshshir', cleanJshshir)
         sessionStorage.setItem('student_permit_email', cleanEmail)
-        // The in-progress draft has served its purpose.
+        // The in-progress draft + edit prefill have served their purpose.
         sessionStorage.removeItem('permit_draft')
+        sessionStorage.removeItem('permit_edit')
       }
 
       setSubmitted(true)
       playSound('success')
       showToast(
         'success',
-        submitResult.resubmitted
-          ? "Tuzatilgan yo'llanma qayta ko'rib chiqish uchun yuborildi!"
-          : "Yo'llanma ko'rib chiqish uchun yuborildi!",
+        submitResult.edited
+          ? "Ma'lumotlaringiz yangilandi — ariza o'z o'rnida qoldi."
+          : submitResult.resubmitted
+            ? "Tuzatilgan yo'llanma qayta ko'rib chiqish uchun yuborildi!"
+            : "Yo'llanma ko'rib chiqish uchun yuborildi!",
       )
     } catch (err) {
       showToast('error', submissionErrorMessage(err))
@@ -958,10 +986,13 @@ export default function RuxsatnomaYuborish() {
                 </div>
 
                 <motion.button
+                  type="button"
+                  disabled={!hydrated}
+                  aria-busy={!hydrated}
                   whileHover={{ scale: 1.015 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={acknowledgeWarning}
-                  className="w-full flex items-center justify-center gap-2 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 hover:brightness-110 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-rose-500/25"
+                  className="w-full flex items-center justify-center gap-2 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 hover:brightness-110 disabled:opacity-60 disabled:cursor-wait text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-rose-500/25"
                 >
                   <ShieldCheck size={16} />
                   <span>Tushundim, davom etaman</span>
@@ -1044,6 +1075,18 @@ export default function RuxsatnomaYuborish() {
                     since there's no side-column card to share space with. */}
                 <div className={`space-y-3.5 w-full ${formStep === 4 ? 'md:col-span-12' : 'md:col-span-7 md:col-start-6'}`}>
 
+                  {editMode && (
+                    <div className={`flex items-start gap-2.5 rounded-xl border p-3 ${
+                      isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'
+                    }`}>
+                      <RotateCw size={15} className={`mt-0.5 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
+                      <p className={`text-[11px] leading-relaxed font-sans ${isLight ? 'text-amber-800' : 'text-amber-200'}`}>
+                        Yuborilgan arizangizni <span className="font-bold">tahrirlayapsiz</span>. Faqat noto&apos;g&apos;ri
+                        maydonlarni tuzating — <span className="font-bold">ariza o&apos;z o&apos;rnida qoladi</span>,
+                        hujjatni qayta yuklash shart emas.
+                      </p>
+                    </div>
+                  )}
                   {resubmitMode && (
                     <div className={`flex items-start gap-2.5 rounded-xl border p-3 ${
                       isLight ? 'border-blue-200 bg-blue-50' : 'border-blue-500/25 bg-blue-500/10'
@@ -1552,7 +1595,14 @@ export default function RuxsatnomaYuborish() {
 
                         {/* File Upload Permit */}
                         <div className="space-y-1">
-                          <label className={`text-[10px] sm:text-xs font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Yo&apos;llanma Hujjatini Yuklash (PDF yoki Rasm)</label>
+                          <label className={`text-[10px] sm:text-xs font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {editMode ? "Yo'llanma Hujjati (ixtiyoriy)" : "Yo'llanma Hujjatini Yuklash (PDF yoki Rasm)"}
+                          </label>
+                          {editMode && !file && (
+                            <p className={`ml-2 text-[10px] font-sans ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                              Avval yuklagan hujjatingiz saqlanadi. Almashtirmoqchi bo&apos;lsangiz — yangi fayl tanlang.
+                            </p>
+                          )}
                           <motion.div 
                             whileHover={{ scale: 1.01, y: -0.5 }}
                             className={`relative border border-dashed rounded-xl p-3 sm:p-4 text-center cursor-pointer transition-all duration-300 ${
@@ -1569,7 +1619,7 @@ export default function RuxsatnomaYuborish() {
                               onChange={handleFileChange}
                               disabled={preparingFile}
                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait"
-                              required
+                              required={!editMode}
                             />
                             <div className="flex flex-col items-center justify-center gap-1">
                               {preparingFile ? (
@@ -1716,7 +1766,7 @@ export default function RuxsatnomaYuborish() {
                                 {cardFieldRow(Mail, 'Email', email)}
                                 {cardFieldRow(Phone, 'Telefon', phone ? `+998 ${phone}` : '')}
                                 {cardFieldRow(BookOpen, "Yo'nalish", directionsForFaculty(faculty).find((d) => d.value === direction)?.label ?? direction)}
-                                {cardFieldRow(Upload, 'Fayl', file?.name ?? '')}
+                                {cardFieldRow(Upload, 'Fayl', file?.name ?? (editMode ? 'Avvalgi hujjat saqlanadi' : ''))}
                               </div>
 
                               <p className="text-[7px] sm:text-[8px] font-black text-slate-600 uppercase tracking-widest text-center pt-2 border-t border-slate-700/10 dark:border-white/5">
@@ -1790,12 +1840,12 @@ export default function RuxsatnomaYuborish() {
                           {loading ? (
                             <>
                               <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              <span>{submissionStage === 'ai' ? 'AI yo‘llanmani tekshirmoqda…' : 'Ariza yuborilmoqda…'}</span>
+                              <span>{submissionStage === 'ai' ? 'AI yo‘llanmani tekshirmoqda…' : editMode ? 'Yangilanmoqda…' : 'Ariza yuborilmoqda…'}</span>
                             </>
                           ) : (
                             <>
                               <CheckCircle2 size={14} />
-                              <span>Tasdiqlayman, Yuborish</span>
+                              <span>{editMode ? "O‘zgarishlarni saqlash" : 'Tasdiqlayman, Yuborish'}</span>
                             </>
                           )}
                         </button>
@@ -1832,9 +1882,13 @@ export default function RuxsatnomaYuborish() {
               </div>
               
               <div className="space-y-2">
-                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-emerald-400">Muvaffaqiyatli yuborildi!</h2>
+                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-emerald-400">
+                  {editMode ? "Ma'lumotlar yangilandi!" : 'Muvaffaqiyatli yuborildi!'}
+                </h2>
                 <p className={`text-xs leading-relaxed font-sans ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                  Sizning yotoqxona ruxsatnoma yo&apos;llanmangiz ko&apos;rib chiqish uchun qabul qilindi. Hujjat Dekan tomonidan tasdiqlanganidan so&apos;ng sizga xona biriktiriladi va tizimda to&apos;liq ro&apos;yxatdan o&apos;tishingiz mumkin bo&apos;ladi.
+                  {editMode
+                    ? "Arizangiz o'z o'rnida qoldi — navbatdagi joyingiz o'zgarmadi. Dekan yangilangan ma'lumotlar bilan ko'rib chiqadi."
+                    : "Sizning yotoqxona ruxsatnoma yo'llanmangiz ko'rib chiqish uchun qabul qilindi. Hujjat Dekan tomonidan tasdiqlanganidan so'ng sizga xona biriktiriladi va tizimda to'liq ro'yxatdan o'tishingiz mumkin bo'ladi."}
                 </p>
               </div>
 

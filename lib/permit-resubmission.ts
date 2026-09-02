@@ -17,6 +17,7 @@ type MatchedRow = {
 export type PermitResubmission =
   | { action: 'insert' }
   | { action: 'reopen'; rowId: string; oldPermitPath: string | null }
+  | { action: 'edit_pending'; rowId: string; oldPermitPath: string | null }
   | { action: 'conflict'; message: string }
 
 /**
@@ -40,6 +41,7 @@ export type PermitResubmission =
 export async function classifyPermitResubmission(
   supabase: Client,
   identity: { passport: string; jshshir: string | null; email: string },
+  opts: { allowPendingEdit?: boolean } = {},
 ): Promise<PermitResubmission> {
   const columns = 'id, status, passport_series, jshshir, email, permit_url, application_type'
   const [byPassport, byEmail, byJshshir] = await Promise.all([
@@ -74,6 +76,13 @@ export async function classifyPermitResubmission(
   }
   if (!identityRow) {
     return { action: 'conflict', message: 'Bu ma\'lumotlar bilan ariza avval yuborilgan.' }
+  }
+  // A still-pending applicant editing their own data in place ("Ma'lumotni
+  // tahrirlash"): keep the row, its queue position (created_at) and — unless
+  // they upload a new one — its document. Only reachable when the caller
+  // explicitly asks to edit; a plain re-submit still gets the conflict below.
+  if (identityRow.status === 'pending' && opts.allowPendingEdit) {
+    return { action: 'edit_pending', rowId: identityRow.id, oldPermitPath: identityRow.permit_url || null }
   }
   if (identityRow.status !== 'rejected') {
     return {

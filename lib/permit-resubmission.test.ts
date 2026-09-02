@@ -54,6 +54,31 @@ describe('classifyPermitResubmission', () => {
     expect((result as { message: string }).message).toContain("ko'rib chiqilmoqda")
   })
 
+  it('own pending row + explicit edit intent → edit_pending (keeps the row)', async () => {
+    const result = await classifyPermitResubmission(
+      fakeSupabase([row({ id: 'p1', status: 'pending' })]), yollanma, { allowPendingEdit: true },
+    )
+    expect(result).toEqual({ action: 'edit_pending', rowId: 'p1', oldPermitPath: '2026/old.pdf' })
+  })
+
+  it('allowPendingEdit does NOT bypass an approved row', async () => {
+    const result = await classifyPermitResubmission(
+      fakeSupabase([row({ id: 'p1', status: 'approved' })]), yollanma, { allowPendingEdit: true },
+    )
+    expect(result.action).toBe('conflict')
+  })
+
+  it('allowPendingEdit with someone else holding the email → still a conflict', async () => {
+    const rows = [
+      row({ id: 'mine', status: 'pending', email: 'a@x.uz' }),
+      row({ id: 'other', status: 'pending', passport_series: 'CD7654321', jshshir: '99999999999999', email: 'b@y.uz' }),
+    ]
+    const result = await classifyPermitResubmission(
+      fakeSupabase(rows), { passport: 'AB1234567', jshshir: '12345678901234', email: 'b@y.uz' }, { allowPendingEdit: true },
+    )
+    expect(result.action).toBe('conflict')
+  })
+
   it('own row already approved → conflict (points to status check)', async () => {
     const result = await classifyPermitResubmission(fakeSupabase([row({ id: 'p1', status: 'approved' })]), yollanma)
     expect(result.action).toBe('conflict')

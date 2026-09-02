@@ -44,10 +44,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'So‘rov hajmi 4 MB fayl chegarasidan oshmasligi kerak.' }, { status: 413 })
     }
     const form = await readMultipartForm(request)
+    // 'edit' — a still-pending applicant fixing a typo; same row, same queue
+    // position, passport photo kept unless they upload a new one.
+    const mode = value(form, 'mode', 10)
     const file = form.get('file')
-    if (!(file instanceof File)) {
-      return NextResponse.json({ error: 'Pasport rasmi topilmadi.' }, { status: 400 })
-    }
 
     const idNumber = normalizeForeignIdNumber(form.get('idNumber'))
     // F.I.Sh: three fields; a foreign applicant with no patronymic sends an
@@ -104,35 +104,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Qaysi davlat/viloyatdan kelganingizni kiriting.' }, { status: 400 })
     }
 
-    if (file.size < 16 || file.size > MAX_UPLOAD_SIZE_BYTES) {
-      return NextResponse.json({ error: 'Faqat PDF, JPG, PNG yoki WEBP (4 MB gacha) qabul qilinadi.' }, { status: file.size > MAX_UPLOAD_SIZE_BYTES ? 413 : 400 })
-    }
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const detectedMimeType = detectPermitFileMimeType(buffer)
-    if (!detectedMimeType) {
-      return NextResponse.json({ error: 'Rasm formati qo‘llab-quvvatlanmaydi. iPhone rasmi (HEIC) bo‘lsa JPG ga o‘giring yoki skrinshot yuklang — PDF, JPG, PNG qabul qilinadi.' }, { status: 400 })
-    }
-    const fileRule = PERMIT_FILE_RULES[detectedMimeType]
-
     const supabase = getServiceSupabase()
 
     // jshshir is always NULL for imtiyozli — the identity anchor is the
-    // (foreign) ID number. A rejected applicant told to re-upload must be
-    // able to resubmit despite the UNIQUE(passport_series)/UNIQUE(email).
-    const outcome = await classifyPermitResubmission(supabase, { passport: idNumber, jshshir: null, email })
+    // (foreign) ID number. Classify first: a rejected (reopen) or still-
+    // pending edit (edit_pending) applicant may keep the photo on file.
+    const outcome = await classifyPermitResubmission(
+      supabase, { passport: idNumber, jshshir: null, email }, { allowPendingEdit: mode === 'edit' },
+    )
     if (outcome.action === 'conflict') {
       return NextResponse.json({ error: outcome.message }, { status: 409 })
     }
+    const canKeepExistingDoc =
+      (outcome.action === 'edit_pending' || outcome.action === 'reopen') && Boolean(outcome.oldPermitPath)
 
-    const storagePath = `imtiyozli/${new Date().getUTCFullYear()}/${randomUUID()}.${fileRule.extension}`
-    const { error: uploadError } = await supabase.storage.from('permits').upload(storagePath, buffer, {
-      contentType: detectedMimeType,
-      upsert: false,
-    })
-    if (uploadError) throw uploadError
+    let newDocPath: string | null = null
+    if (file instanceof File && file.size >= 16) {
+      if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+        return NextResponse.json({ error: 'Faqat PDF, JPG, PNG yoki WEBP (4 MB gacha) qabul qilinadi.' }, { status: 413 })
+      }
+      const buffer = Buffer.from(await file.arrayBuffer())
+      const detectedMimeType = detectPermitFileMimeType(buffer)
+      if (!detectedMimeType) {
+        return NextResponse.json({ error: 'Rasm formati qo‘llab-quvvatlanmaydi. iPhone rasmi (HEIC) bo‘lsa JPG ga o‘giring yoki skrinshot yuklang — PDF, JPG, PNG qabul qilinadi.' }, { status: 400 })
+      }
+      const fileRule = PERMIT_FILE_RULES[detectedMimeType]
+      const storagePath = `imtiyozli/${new Date().getUTCFullYear()}/${randomUUID()}.${fileRule.extension}`
+      const { error: uploadError } = await supabase.storage.from('permits').upload(storagePath, buffer, {
+        contentType: detectedMimeType,
+        upsert: false,
+      })
+      if (uploadError) throw uploadError
+      newDocPath = storagePath
+    } else if (!canKeepExistingDoc) {
+      return NextResponse.json({ error: 'Pasport rasmi topilmadi.' }, { status: 400 })
+    }
+
+    const cleanupNewDoc = async () => {
+      if (newDocPath) await supabase.storage.from('permits').remove([newDocPath])
+    }
 
     const nowIso = new Date().toISOString()
-    const fields = {
+    const baseFields = {
       application_type: 'imtiyozli' as const,
       passport_series: idNumber,
       jshshir: null,
@@ -147,33 +160,54 @@ export async function POST(request: NextRequest) {
       study_type: studyType,
       origin_country: originCountry,
       origin_region: originRegion,
-      permit_url: storagePath,
-      status: 'pending' as const,
-      // No official document format to verify against — the dean reviews the
-      // Ariza + Tilxat + passport photo by hand regardless.
       ai_review: 'skipped' as const,
+    }
+    const docFields: { permit_url: string } | Record<string, never> = newDocPath ? { permit_url: newDocPath } : {}
+
+    if (outcome.action === 'edit_pending') {
+      const { data: edited, error } = await supabase
+        .from('permit_requests')
+        .update({ ...baseFields, ...docFields, status: 'pending', reject_reason: null, updated_at: nowIso })
+        .eq('id', outcome.rowId)
+        .eq('status', 'pending')
+        .select('id')
+        .maybeSingle()
+      if (error) {
+        await cleanupNewDoc()
+        if (error.code === '23505') return NextResponse.json({ error: 'Bu email yoki ID boshqa ariza bilan band.' }, { status: 409 })
+        throw error
+      }
+      if (!edited) {
+        await cleanupNewDoc()
+        return NextResponse.json({ error: 'Ariza holati o‘zgardi — «Ariza holatini tekshirish»ni yangilang.' }, { status: 409 })
+      }
+      if (newDocPath && outcome.oldPermitPath && outcome.oldPermitPath !== newDocPath) {
+        await supabase.storage.from('permits').remove([outcome.oldPermitPath])
+      }
+      await writeAuditLog({ eventType: 'imtiyozli_request.edited', status: 'success', ipAddress: getClientIp(request), targetRole: 'talaba', details: { faculty } })
+      return NextResponse.json({ ok: true, edited: true, permitRequestId: edited.id }, { status: 200 })
     }
 
     if (outcome.action === 'reopen') {
       const { data: reopened, error: reopenError } = await supabase
         .from('permit_requests')
-        .update({ ...fields, reject_reason: null, room_number: null, dorm_id: null, created_at: nowIso, updated_at: nowIso })
+        .update({ ...baseFields, ...docFields, status: 'pending', reject_reason: null, room_number: null, dorm_id: null, created_at: nowIso, updated_at: nowIso })
         .eq('id', outcome.rowId)
         .eq('status', 'rejected')
         .select('id')
         .maybeSingle()
       if (reopenError) {
-        await supabase.storage.from('permits').remove([storagePath])
+        await cleanupNewDoc()
         if (reopenError.code === '23505') {
           return NextResponse.json({ error: 'Bu email boshqa ariza bilan band.' }, { status: 409 })
         }
         throw reopenError
       }
       if (!reopened) {
-        await supabase.storage.from('permits').remove([storagePath])
+        await cleanupNewDoc()
         return NextResponse.json({ error: 'Ariza holati o‘zgardi — sahifani yangilang.' }, { status: 409 })
       }
-      if (outcome.oldPermitPath && outcome.oldPermitPath !== storagePath) {
+      if (newDocPath && outcome.oldPermitPath && outcome.oldPermitPath !== newDocPath) {
         await supabase.storage.from('permits').remove([outcome.oldPermitPath])
       }
       await writeAuditLog({
@@ -188,9 +222,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, resubmitted: true, telegram, permitRequestId: reopened.id }, { status: 200 })
     }
 
-    const { data: inserted, error: insertError } = await supabase.from('permit_requests').insert(fields).select('id').single()
+    if (!newDocPath) {
+      return NextResponse.json({ error: 'Pasport rasmi topilmadi.' }, { status: 400 })
+    }
+    const { data: inserted, error: insertError } = await supabase
+      .from('permit_requests')
+      .insert({ ...baseFields, permit_url: newDocPath, status: 'pending' as const })
+      .select('id')
+      .single()
     if (insertError) {
-      await supabase.storage.from('permits').remove([storagePath])
+      await cleanupNewDoc()
       if (insertError.code === '23505') {
         return NextResponse.json({ error: 'Bu ma’lumotlar bilan ariza avval yuborilgan.' }, { status: 409 })
       }

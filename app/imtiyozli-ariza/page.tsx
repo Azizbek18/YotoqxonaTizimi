@@ -72,10 +72,15 @@ export default function ImtiyozliAriza() {
   const [idNumber, setIdNumber] = useState('')
   const [passportPhoto, setPassportPhoto] = useState<File | null>(null)
   const [preparingPhoto, setPreparingPhoto] = useState(false)
+  // Set when the applicant arrived via "Ma'lumotni tahrirlash" on a still-
+  // pending application — the same row is updated in place (queue position
+  // kept) and the passport photo is optional.
+  const [editMode, setEditMode] = useState(false)
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem('permit_resubmit')
+      const editRaw = sessionStorage.getItem('permit_edit')
+      const raw = editRaw ?? sessionStorage.getItem('permit_resubmit')
       if (!raw) return
       const saved = JSON.parse(raw) as {
         passport?: unknown; email?: unknown; applicationType?: unknown
@@ -104,7 +109,10 @@ export default function ImtiyozliAriza() {
       if (saved.studyType === 'grant' || saved.studyType === 'kontrakt') setStudyType(saved.studyType)
       if (saved.originCountry) setOriginCountry(String(saved.originCountry).slice(0, 120))
       if (saved.originRegion) setOriginRegion(String(saved.originRegion).slice(0, 120))
-      sessionStorage.removeItem('permit_resubmit')
+      if (editRaw) setEditMode(true)
+      // Keep permit_edit until a successful save (mid-edit reload resumes);
+      // the one-shot resubmit prefill is consumed immediately.
+      else sessionStorage.removeItem('permit_resubmit')
     } catch {
       sessionStorage.removeItem('permit_resubmit')
     }
@@ -201,7 +209,8 @@ export default function ImtiyozliAriza() {
       toast.error('Rasm hali tayyorlanmoqda — biroz kuting.')
       return false
     }
-    if (!passportPhoto) {
+    // In edit mode the photo already on file is kept unless a new one is picked.
+    if (!editMode && !passportPhoto) {
       toast.error("Pasportingiz rasmini yuklang!")
       return false
     }
@@ -244,8 +253,10 @@ export default function ImtiyozliAriza() {
   }
 
   const handleSubmit = async () => {
-    if (!validateStep1() || !validateStep2() || !validateStep3() || !passportPhoto) return
-    if (!documentDownloaded) {
+    // In edit mode the passport photo already on file may be kept.
+    if (!validateStep1() || !validateStep2() || !validateStep3()) return
+    if (!editMode && !passportPhoto) return
+    if (!editMode && !documentDownloaded) {
       toast.error('Avval Ariza va Tilxatni yuklab oling — dekanga imzoga topshirishingiz kerak.')
       return
     }
@@ -253,7 +264,8 @@ export default function ImtiyozliAriza() {
     setLoading(true)
     try {
       const submission = new FormData()
-      submission.append('file', passportPhoto)
+      if (passportPhoto) submission.append('file', passportPhoto)
+      if (editMode) submission.append('mode', 'edit')
       submission.append('idNumber', normalizeForeignIdNumber(idNumber))
       submission.append('lastName', lastName.trim())
       submission.append('firstName', firstName.trim())
@@ -284,10 +296,13 @@ export default function ImtiyozliAriza() {
         sessionStorage.setItem('student_permit_email', email.trim().toLowerCase())
         sessionStorage.setItem('student_permit_type', 'imtiyozli')
         sessionStorage.removeItem('student_permit_jshshir')
+        sessionStorage.removeItem('permit_edit')
       }
 
       setSubmitted(true)
-      toast.success("Arizangiz ko'rib chiqish uchun yuborildi!")
+      toast.success(result.edited
+        ? "Ma'lumotlaringiz yangilandi — ariza o'z o'rnida qoldi."
+        : "Arizangiz ko'rib chiqish uchun yuborildi!")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Xatolik yuz berdi')
       console.error(err)
@@ -643,7 +658,12 @@ export default function ImtiyozliAriza() {
                   )}
                 </div>
                 <div className="space-y-1">
-                  <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Pasport rasmi</label>
+                  <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    {editMode ? 'Pasport rasmi (ixtiyoriy)' : 'Pasport rasmi'}
+                  </label>
+                  {editMode && !passportPhoto && (
+                    <p className={`ml-2 text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Avvalgi rasm saqlanadi. Almashtirmoqchi bo&apos;lsangiz — yangi rasm tanlang.</p>
+                  )}
                   <div className={`relative border border-dashed rounded-xl p-4 text-center transition-all ${passportPhoto ? 'border-emerald-500/40 bg-emerald-500/5' : isLight ? 'border-slate-300 hover:bg-slate-50' : 'border-white/10 hover:bg-white/5'}`}>
                     <input type="file" accept=".pdf,image/*" onChange={handlePhotoChange} disabled={preparingPhoto} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait" />
                     <div className="flex flex-col items-center gap-1">
@@ -736,8 +756,8 @@ export default function ImtiyozliAriza() {
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={loading || !documentDownloaded}
-                    title={documentDownloaded ? undefined : 'Avval hujjatni yuklab oling'}
+                    disabled={loading || (!editMode && !documentDownloaded)}
+                    title={editMode || documentDownloaded ? undefined : 'Avval hujjatni yuklab oling'}
                     className="flex-1 flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 hover:brightness-110 text-white font-black uppercase tracking-widest text-xs transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {loading ? (
@@ -745,7 +765,7 @@ export default function ImtiyozliAriza() {
                     ) : (
                       <>
                         <CheckCircle2 size={14} />
-                        <span>Tasdiqlayman, Yuborish</span>
+                        <span>{editMode ? "O‘zgarishlarni saqlash" : 'Tasdiqlayman, Yuborish'}</span>
                       </>
                     )}
                   </button>

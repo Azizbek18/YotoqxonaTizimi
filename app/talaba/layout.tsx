@@ -309,10 +309,10 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
       {/* `fixed` instead of `sticky`: an ancestor further up sets overflow-x-hidden,
           which per spec forces overflow-y to auto and turns that ancestor into the
           sticky containing block instead of the viewport, breaking `sticky top-0`. */}
-      <header className={`fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-4 transition-all ${isLight ? 'bg-white border-b border-slate-200' : 'bg-[#02040a] border-b border-white/5'}`}>
-        <div className="max-w-6xl mx-auto flex justify-between items-center gap-3">
+      <header className={`fixed top-0 left-0 right-0 z-50 px-3 max-[359px]:px-2 sm:px-6 py-3 sm:py-4 transition-all ${isLight ? 'bg-white border-b border-slate-200' : 'bg-[#02040a] border-b border-white/5'}`}>
+        <div className="max-w-6xl mx-auto flex justify-between items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-linear-to-tr p-px shrink-0 ${isLight ? 'from-blue-600 to-blue-400' : 'from-blue-600 to-cyan-400'}`}>
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-linear-to-tr p-px shrink-0 ${isLight ? 'from-blue-600 to-blue-400' : 'from-blue-600 to-cyan-400'}`}>
               <div className={`relative w-full h-full rounded-[15px] flex items-center justify-center overflow-hidden ${isLight ? 'bg-white' : 'bg-[#02040a]'}`}>
                 {profile?.avatar_url ? (
                   <Image
@@ -338,8 +338,10 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <ThemeToggle />
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="max-[359px]:scale-90 max-[359px]:-mx-1">
+              <ThemeToggle />
+            </div>
             <button
               onClick={() => setIsDevModalOpen(true)}
               className={`relative p-2 sm:p-2.5 rounded-xl transition-all group flex items-center justify-center ${
@@ -366,7 +368,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
 
       {/* --- 3. MAIN CONTENT --- */}
       {/* pt-[92px]/[104px] = fixed header's own rendered height + the original pt-6/pt-8 gap */}
-      <main className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-[92px] sm:pt-[104px] pb-40">
+      <main className="relative z-10 w-full max-w-6xl mx-auto px-3 max-[359px]:px-2 sm:px-6 pt-[80px] sm:pt-[104px] pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:pb-40">
 
         {/* Quick Actions Scrollable Row */}
         <section className="mb-6 sm:mb-8">
@@ -406,11 +408,11 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
       </main>
 
       {/* --- 4. FLOATING BOTTOM NAVIGATION --- */}
-      <nav className="fixed bottom-4 sm:bottom-8 left-0 right-0 z-40 flex justify-center px-3 sm:px-6 pointer-events-none">
+      <nav className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] sm:bottom-8 left-0 right-0 z-40 flex justify-center px-2 sm:px-6 pointer-events-none">
         <motion.div
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className={`relative flex items-center gap-0.5 sm:gap-1 w-full max-w-full sm:max-w-4xl backdrop-blur-none sm:backdrop-blur-[30px] rounded-3xl sm:rounded-4xl p-1.5 sm:p-2 transition-all overflow-x-auto no-scrollbar pointer-events-auto ${isLight ? 'bg-white/95 sm:bg-white/80 border border-slate-300 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'bg-slate-950/95 sm:bg-slate-950/60 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)]'}`}
+          className={`relative flex items-center gap-0.5 sm:gap-1 w-full max-w-full sm:max-w-4xl backdrop-blur-none sm:backdrop-blur-[30px] rounded-2xl sm:rounded-4xl p-1 sm:p-2 transition-all overflow-x-auto no-scrollbar pointer-events-auto ${isLight ? 'bg-white/95 sm:bg-white/80 border border-slate-300 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'bg-slate-950/95 sm:bg-slate-950/60 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)]'}`}
         >
           {/* Inner Glossy Glow */}
           <div className={`absolute inset-0 rounded-3xl sm:rounded-4xl pointer-events-none ${isLight ? 'bg-linear-to-b from-white to-transparent' : 'bg-linear-to-b from-white/5 to-transparent'}`} />
@@ -439,14 +441,14 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
 
                   <div className="relative mb-0.5 sm:mb-1">
                     <item.icon
-                      size={20}
+                      size={18}
                       strokeWidth={isActive ? 2.5 : 1.8}
                       className={`transition-all duration-300 ${isActive ? isLight ? 'text-blue-600 drop-shadow-[0_0_10px_rgba(37,99,235,0.5)]' : 'text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]' : isLight ? 'text-slate-400 group-hover:text-slate-500' : 'text-slate-500 group-hover:text-slate-300'
                         }`}
                     />
                   </div>
 
-                  <span className={`text-[7px] sm:text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${isActive ? isLight ? 'text-blue-600 opacity-100' : 'text-cyan-400 opacity-100' : isLight ? 'text-slate-500 opacity-0 h-0 overflow-hidden' : 'text-slate-500 opacity-0 h-0 overflow-hidden'
+                  <span className={`text-[6px] sm:text-[9px] font-black uppercase tracking-wider sm:tracking-widest transition-all duration-300 ${isActive ? isLight ? 'text-blue-600 opacity-100' : 'text-cyan-400 opacity-100' : isLight ? 'text-slate-500 opacity-0 h-0 overflow-hidden' : 'text-slate-500 opacity-0 h-0 overflow-hidden'
                     }`}>
                     {item.label}
                   </span>

@@ -316,7 +316,7 @@ export default function TalabaDashboard() {
   }
 
   return (
-    <div className="relative w-full max-w-6xl mx-auto p-2 sm:p-4 md:p-6 space-y-6 sm:space-y-8 min-h-screen transition-colors duration-300">
+    <div className="relative w-full max-w-6xl mx-auto p-0 sm:p-4 md:p-6 space-y-5 sm:space-y-8 min-h-screen transition-colors duration-300">
       
       <DashboardHeader
         isLight={isLight}
@@ -377,10 +377,10 @@ export default function TalabaDashboard() {
           {/* "Xabarlar" is the one action not already in the bottom nav bar. */}
           <button
             onClick={() => setIsChatModalOpen(true)}
-            className="w-full flex items-center gap-4 rounded-[32px] p-6 bg-blue-600 text-white text-left transition-all"
+            className="w-full flex items-center gap-3 sm:gap-4 rounded-3xl sm:rounded-[32px] p-4 sm:p-6 bg-blue-600 text-white text-left transition-all"
           >
-            <div className="shrink-0 flex items-center justify-center size-14 rounded-2xl bg-white/15">
-              <MessageSquare className="size-7" />
+            <div className="shrink-0 flex items-center justify-center size-12 sm:size-14 rounded-2xl bg-white/15">
+              <MessageSquare className="size-6 sm:size-7" />
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-black uppercase tracking-wider">Xabarlar</h3>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, CheckCircle } from 'lucide-react';
+import { BedDouble, Calendar, CheckCircle, ClipboardList } from 'lucide-react';
 import type { CleaningAssignee } from './types';
 
 type Props = {
@@ -19,7 +19,7 @@ type Props = {
 };
 
 /**
- * The blue room card: room number + floor, today's cleaning-duty person, a
+ * Room summary card: room number + floor, today's cleaning-duty person, a
  * "done today" toggle (per-device, resets each day), and course/group chips.
  */
 export default function RoomInfoCard({
@@ -59,80 +59,98 @@ export default function RoomInfoCard({
   };
 
   return (
-    <div className="relative overflow-hidden p-6 rounded-[32px] bg-blue-600 text-white border border-blue-500/40 transition-all duration-300">
-      {/* Background Glow */}
-      <div className="absolute right-[-10%] top-[-10%] w-[50%] h-[50%] rounded-full blur-[80px] bg-cyan-400/20" />
+    <div className="relative overflow-hidden rounded-3xl sm:rounded-[32px] border border-white/10 bg-gradient-to-br from-[#10182b] via-[#080d18] to-[#07111a] p-4 text-white shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:p-6">
+      {/* Quiet ambient accents keep the card connected to the cyan UI without
+          turning the whole surface into one saturated block. */}
+      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent" />
+      <div className="pointer-events-none absolute -right-16 -top-16 size-44 rounded-full bg-blue-500/15 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 -left-16 size-44 rounded-full bg-cyan-500/10 blur-3xl" />
 
       <div className="relative z-10 space-y-5">
         {/* Header Room Info */}
-        <div className="flex justify-between items-center py-1">
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">Yotgan Joyi</span>
-            <h2 className="text-3xl sm:text-4xl font-black italic tracking-tight text-white select-none">
-              {roomNumberFull}
-            </h2>
+        <div className="flex items-center justify-between gap-3 py-1">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-cyan-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+              <BedDouble size={20} />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan-300/70">Yotgan joyi</span>
+              <h2 className="truncate text-2xl font-black tracking-tight text-white sm:text-3xl">
+                {roomNumberFull}
+              </h2>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl text-xs font-black">
-            <Calendar size={14} className="text-cyan-300" />
+          <div className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-[10px] font-black text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+            <Calendar size={13} className="text-cyan-300" />
             <span>{floor ? `${floor}-qavat` : '—'}</span>
           </div>
         </div>
 
         {/* Cleaning Duty Schedule */}
-        <div className="space-y-3 pt-4 border-t border-white/10">
-          <div className="flex justify-between items-center">
-            <p className="text-[9px] font-black tracking-widest text-white/55 uppercase">Tozalik Navbatchiligi</p>
+        <div className="space-y-3 rounded-2xl border border-white/[0.08] bg-white/[0.035] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-4">
+          <div className="flex justify-between items-center gap-2 max-[359px]:flex-col max-[359px]:items-start">
+            <div className="flex items-center gap-2">
+              <ClipboardList size={14} className="text-indigo-300" />
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Tozalik navbatchiligi</p>
+            </div>
 
             <button
+              type="button"
               onClick={toggleDone}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-black transition-all uppercase ${
-                cleaningDone ? 'bg-green-500 text-white' : 'bg-white/15 text-white/70 hover:bg-white/20'
+              aria-pressed={cleaningDone}
+              className={`no-shelf shrink-0 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[9px] font-black uppercase shadow-none transition-all ${
+                cleaningDone
+                  ? 'border-emerald-400/25 bg-[#0d211d] text-emerald-300'
+                  : 'border-slate-700 bg-[#111827] text-slate-300 hover:border-slate-600 hover:bg-[#172033]'
               }`}
             >
-              {cleaningDone ? <CheckCircle size={10} /> : <div className="w-2.5 h-2.5 rounded-full border border-white/40" />}
+              {cleaningDone ? <CheckCircle size={11} /> : <div className="size-2.5 rounded-full border border-slate-400" />}
               <span>{cleaningDone ? 'Tozalangan' : 'Bajarilmadi'}</span>
             </button>
           </div>
 
-          <div className="space-y-2 text-xs font-semibold text-white/90">
-            <div className="flex flex-col gap-1.5 p-3 rounded-2xl bg-white/5 border border-white/5">
-              <div className="flex justify-between items-center text-[10px] opacity-60 font-semibold uppercase tracking-wider">
+          <div className="space-y-2 text-xs font-semibold text-slate-200">
+            <div className="relative flex flex-col gap-1.5 overflow-hidden rounded-xl border border-white/[0.07] bg-[#050914]/70 p-3.5 pl-4">
+              <div className="absolute inset-y-3 left-0 w-0.5 rounded-full bg-gradient-to-b from-indigo-400 to-cyan-400" />
+              <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider text-slate-500">
                 <span>Bugun ({todayName})</span>
-                <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                <span className="size-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
               </div>
-              <div className="text-sm font-black tracking-tight text-white mt-1">
+              <div className="mt-1 text-sm font-bold leading-relaxed tracking-tight text-slate-100">
                 {todayDutyPerson ? (
-                  <span className={todayDutyPerson.id === selfId ? 'text-cyan-200' : ''}>
+                  <span className={todayDutyPerson.id === selfId ? 'text-cyan-300' : ''}>
                     {todayDutyPerson.id === selfId ? `${selfName} (Siz)` : todayDutyPerson.name}
                   </span>
                 ) : (
-                  <span className="text-white/50 italic">Bugun hech kim biriktirilmagan — pastdagi tugma orqali tayinlang</span>
+                  <span className="text-slate-400">Bugun hech kim biriktirilmagan — pastdagi tugma orqali tayinlang</span>
                 )}
               </div>
             </div>
 
             <button
+              type="button"
               onClick={onOpenSchedule}
-              className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-1.5 mt-2"
+              className="no-shelf mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-cyan-400/15 bg-[#0d1725] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-slate-200 shadow-none transition-all hover:border-cyan-400/30 hover:bg-[#102033] active:scale-98"
             >
-              <span>📋 Hamma navbatchilikni ko&apos;rish</span>
+              <ClipboardList size={13} className="text-cyan-300" />
+              <span>Hamma navbatchilikni ko&apos;rish</span>
             </button>
           </div>
         </div>
 
         {/* Course / Group / Status indicators */}
-        <div className="grid grid-cols-3 gap-2 text-center pt-4 border-t border-white/10">
-          <div>
-            <p className="text-[9px] font-black text-white/40 mb-0.5 tracking-wider uppercase">Kurs</p>
-            <p className="text-sm font-black">{course}-kurs</p>
+        <div className="grid grid-cols-3 gap-1.5 text-center sm:gap-2">
+          <div className="min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.03] px-1.5 py-2.5">
+            <p className="mb-1 text-[8px] font-black uppercase tracking-wider text-slate-500">Kurs</p>
+            <p className="truncate text-xs font-black text-slate-100 sm:text-sm">{course}-kurs</p>
           </div>
-          <div>
-            <p className="text-[9px] font-black text-white/40 mb-0.5 tracking-wider uppercase">Guruh</p>
-            <p className="text-sm font-black truncate">{group}</p>
+          <div className="min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.03] px-1.5 py-2.5">
+            <p className="mb-1 text-[8px] font-black uppercase tracking-wider text-slate-500">Guruh</p>
+            <p className="truncate text-xs font-black text-slate-100 sm:text-sm">{group}</p>
           </div>
-          <div>
-            <p className="text-[9px] font-black text-white/40 mb-0.5 tracking-wider uppercase">Xona statusi</p>
-            <span className="text-[9px] font-black px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-md border border-emerald-500/20 inline-block">
+          <div className="min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.03] px-1 py-2.5">
+            <p className="mb-1 text-[8px] font-black uppercase tracking-wider text-slate-500">Xona statusi</p>
+            <span className="inline-block max-w-full truncate rounded-md border border-emerald-400/15 bg-emerald-400/10 px-1.5 py-0.5 text-[8px] font-black text-emerald-300">
               Namunali
             </span>
           </div>

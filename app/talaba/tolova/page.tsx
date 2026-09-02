@@ -395,7 +395,7 @@ export default function TolovaPage() {
 
     const getMonthCardClass = (monthName: string, status: string) => {
         const isSelected = selectedMonths.includes(monthName)
-        const baseClass = "relative rounded-2xl p-4 border transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl cursor-pointer flex flex-col justify-between h-28 "
+        const baseClass = "relative rounded-xl sm:rounded-2xl p-3 sm:p-4 border transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl cursor-pointer flex flex-col justify-between h-24 sm:h-28 min-w-0 "
 
         if (isSelected) {
             return baseClass + (isLight
@@ -484,7 +484,7 @@ export default function TolovaPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.6, ease: "easeOut" }}
-                    className="space-y-8 pb-12"
+                    className="space-y-6 sm:space-y-8 pb-12"
                 >
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -493,7 +493,7 @@ export default function TolovaPage() {
                                 <CreditCard size={20} className={isLight ? 'text-blue-600' : 'text-cyan-400'} />
                                 <span className={`text-[10px] font-black uppercase tracking-widest ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>Moliyaviy nazorat</span>
                             </div>
-                            <h1 className={`text-3xl sm:text-4xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                            <h1 className={`text-2xl min-[360px]:text-3xl sm:text-4xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                 To&apos;lov <span className="bg-gradient-to-r from-blue-500 to-cyan-400 bg-clip-text text-transparent">Boshqaruvi</span>
                             </h1>
                             <p className={`mt-2 text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
@@ -505,7 +505,7 @@ export default function TolovaPage() {
                     {/* 3D Stats Cards Deck */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                         {/* Paid Sum */}
-                        <div className={`group relative p-5 rounded-3xl border backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(16,185,129,0.12)] ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950/40 border-white/5'
+                        <div className={`group relative p-4 sm:p-5 rounded-3xl border backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(16,185,129,0.12)] ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950/40 border-white/5'
                             }`}>
                             <div className={`absolute inset-0 rounded-3xl -z-10 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                             <div className="flex items-center justify-between mb-4">
@@ -523,7 +523,7 @@ export default function TolovaPage() {
                         </div>
 
                         {/* Waiting Sum */}
-                        <div className={`group relative p-5 rounded-3xl border backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(59,130,246,0.12)] ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950/40 border-white/5'
+                        <div className={`group relative p-4 sm:p-5 rounded-3xl border backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(59,130,246,0.12)] ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950/40 border-white/5'
                             }`}>
                             <div className={`absolute inset-0 rounded-3xl -z-10 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                             <div className="flex items-center justify-between mb-4">
@@ -539,7 +539,7 @@ export default function TolovaPage() {
                         </div>
 
                         {/* Paid Months count */}
-                        <div className={`group relative p-5 rounded-3xl border backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(6,182,212,0.12)] ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950/40 border-white/5'
+                        <div className={`group relative p-4 sm:p-5 rounded-3xl border backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(6,182,212,0.12)] ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950/40 border-white/5'
                             }`}>
                             <div className={`absolute inset-0 rounded-3xl -z-10 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                             <div className="flex items-center justify-between mb-4">
@@ -555,7 +555,7 @@ export default function TolovaPage() {
                         </div>
 
                         {/* Progress Circle Card */}
-                        <div className={`group relative p-5 rounded-3xl border backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(168,85,247,0.12)] ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950/40 border-white/5'
+                        <div className={`group relative p-4 sm:p-5 rounded-3xl border backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(168,85,247,0.12)] ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950/40 border-white/5'
                             }`}>
                             <div className={`absolute inset-0 rounded-3xl -z-10 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                             <div className="flex items-center justify-between mb-4">
@@ -600,12 +600,12 @@ export default function TolovaPage() {
                     </div>
 
                     {/* Interactive Month Grid & Upload Plate */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
                         {/* Month Picker Plate */}
-                        <div className={`lg:col-span-2 rounded-[32px] border p-6 backdrop-blur-xl relative overflow-hidden flex flex-col justify-between ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950/40 border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.4)]'
+                        <div className={`lg:col-span-2 rounded-3xl sm:rounded-[32px] border p-4 sm:p-6 backdrop-blur-xl relative overflow-hidden flex flex-col justify-between ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950/40 border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.4)]'
                             }`}>
                             <div>
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
                                     <div>
                                         <h3 className={`text-lg font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                             📅 Oylar jadvali
@@ -616,12 +616,12 @@ export default function TolovaPage() {
                                     </div>
 
                                     {/* Year selector Tabs */}
-                                    <div className={`flex p-0.5 rounded-xl border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/60 border-white/5'}`}>
+                                    <div className={`grid grid-cols-3 min-[420px]:flex w-full min-[420px]:w-auto p-0.5 rounded-xl border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/60 border-white/5'}`}>
                                         {paymentYears.map((y) => (
                                             <button
                                                 key={y}
                                                 onClick={() => setSelectedYear(y)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${selectedYear === y
+                                                className={`min-w-0 px-1.5 min-[380px]:px-3 py-2 min-[420px]:py-1.5 rounded-lg text-[10px] min-[380px]:text-xs font-black transition-all ${selectedYear === y
                                                     ? isLight ? 'bg-white text-blue-600 shadow-sm' : 'bg-white/[0.08] text-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.1)] border border-cyan-400/20'
                                                     : isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
                                                     }`}
@@ -633,7 +633,7 @@ export default function TolovaPage() {
                                 </div>
 
                                 {/* 12 Months Grid Layout */}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-4">
                                     {MONTHS.map((m) => {
                                         const status = getMonthStatus(m, selectedYear)
                                         const isSelected = selectedMonths.includes(m)
@@ -669,9 +669,9 @@ export default function TolovaPage() {
                                 </div>
                             </div>
 
-                            <div className="mt-6 flex items-center justify-between text-xs border-t pt-4 border-slate-200/40">
+                            <div className="mt-5 sm:mt-6 flex flex-col min-[420px]:flex-row min-[420px]:items-center justify-between gap-3 text-xs border-t pt-4 border-slate-200/40">
                                 <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>Shartnoma to&apos;lovi bo&apos;yicha savollar bormi?</span>
-                                <button className="flex items-center gap-1 font-bold text-blue-500 hover:underline">
+                                <button className="flex w-full min-[420px]:w-auto items-center justify-center gap-1 rounded-xl bg-blue-500/10 px-3 py-2 font-bold text-blue-500 hover:bg-blue-500/15">
                                     <HelpCircle size={14} /> Bizga bog&apos;laning
                                 </button>
                             </div>
@@ -680,16 +680,16 @@ export default function TolovaPage() {
                         {/* Upload Form Card Plate */}
                         <div className="flex flex-col gap-6">
                             {/* Always visible 3D Dropzone plate */}
-                            <div className={`rounded-[32px] border p-6 backdrop-blur-xl relative overflow-hidden flex flex-col justify-between ${isLight ? 'bg-white border-slate-200 shadow-md' : 'bg-slate-950/40 border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.5)]'
+                            <div className={`rounded-3xl sm:rounded-[32px] border p-4 sm:p-6 backdrop-blur-xl relative overflow-hidden flex flex-col justify-between ${isLight ? 'bg-white border-slate-200 shadow-md' : 'bg-slate-950/40 border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.5)]'
                                 }`}>
                                 <div className="absolute top-0 right-0 w-24 h-24 bg-linear-to-bl from-blue-500/10 to-transparent blur-2xl rounded-full" />
 
                                 <div>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className={`text-lg font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                                        <h3 className={`text-base sm:text-lg font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                             📤 Chek yuklash oynasi
                                         </h3>
-                                        <div className={`px-2.5 py-1 rounded-full border text-[9px] font-black uppercase ${isLight ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                                        <div className={`max-w-full break-words px-2.5 py-1 rounded-full border text-[9px] font-black uppercase ${isLight ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
                                             }`}>
                                             {selectedMonths.length > 0 ? selectedMonths.join(', ') : 'Belgilanmagan'} / {selectedYear}
                                         </div>
@@ -719,7 +719,7 @@ export default function TolovaPage() {
                                     </div>
 
                                     {/* Dropzone */}
-                                    <label className={`block cursor-pointer border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-300 ${newReceipt
+                                    <label className={`block cursor-pointer border-2 border-dashed rounded-2xl p-4 sm:p-6 text-center transition-all duration-300 ${newReceipt
                                         ? 'border-emerald-500/50 bg-emerald-500/[0.02]'
                                         : isLight ? 'border-slate-300 bg-slate-50/50 hover:border-blue-400' : 'border-white/10 bg-white/[0.01] hover:border-cyan-400/50'
                                         }`}>
@@ -776,7 +776,7 @@ export default function TolovaPage() {
                     </div>
 
                     {/* Uploaded Receipts & Payments History */}
-                    <div className={`rounded-[32px] border p-6 backdrop-blur-xl ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950/40 border-white/5'
+                    <div className={`rounded-3xl sm:rounded-[32px] border p-4 sm:p-6 backdrop-blur-xl ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950/40 border-white/5'
                         }`}>
                         <div className="flex items-center gap-2 mb-6">
                             <FileText size={18} className={isLight ? 'text-blue-600' : 'text-cyan-400'} />

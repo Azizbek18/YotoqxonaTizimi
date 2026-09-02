@@ -53,15 +53,15 @@ type Props = {
 export default function MyApplicationsCard({ isLight, items }: Props) {
   const t = dashboardTheme(isLight);
   return (
-    <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${t.surfaceBg}`}>
-      <div className="flex justify-between items-center mb-5">
-        <div className="flex items-center gap-2">
+    <div className={`backdrop-blur-xl border rounded-3xl sm:rounded-[32px] p-4 sm:p-6 ${t.surfaceBg}`}>
+      <div className="flex flex-col min-[380px]:flex-row min-[380px]:justify-between min-[380px]:items-center gap-3 mb-5">
+        <div className="flex items-start gap-2 min-w-0">
           <ClipboardList className={isLight ? 'text-blue-600' : 'text-indigo-400'} size={18} />
-          <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${t.textStrong}`}>
+          <h3 className={`text-[11px] sm:text-xs font-black uppercase tracking-[0.14em] sm:tracking-[0.2em] leading-relaxed ${t.textStrong}`}>
             Murojaat va Arizalarim Statusi
           </h3>
         </div>
-        <Link href="/talaba/arizalar" className={`text-xs font-black uppercase tracking-wider px-4 py-2 rounded-xl border transition-all ${
+        <Link href="/talaba/arizalar" className={`w-full min-[380px]:w-auto text-center text-[11px] sm:text-xs font-black uppercase tracking-wider px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl border transition-all ${
           isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/5 text-gray-300 hover:bg-white/5'
         }`}>
           Yangi Ariza Yozish
@@ -96,7 +96,7 @@ export default function MyApplicationsCard({ isLight, items }: Props) {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className={`col-span-1 sm:col-span-3 flex flex-col items-center justify-center py-10 px-6 border border-dashed rounded-3xl transition-all duration-300 relative overflow-hidden group ${
+            className={`col-span-1 sm:col-span-3 flex flex-col items-center justify-center py-8 sm:py-10 px-4 sm:px-6 border border-dashed rounded-3xl transition-all duration-300 relative overflow-hidden group ${
               isLight ? 'border-slate-200 bg-white/50 hover:border-blue-400' : 'border-white/10 bg-slate-950/20 hover:border-indigo-500/40'
             }`}
           >

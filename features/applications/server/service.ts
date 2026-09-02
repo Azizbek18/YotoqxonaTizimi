@@ -1,8 +1,11 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
 import { sendTelegramAdminMessage } from '@/lib/telegram'
+import { sendStudentTelegram } from '@/lib/student-telegram'
 import { sendArizaSignedEmail } from '@/lib/email'
 import { cyrillicToLatin } from '@/lib/transliterate'
+import { permitFacultyLabel } from '@/lib/faculties'
+import { composeArizaFullText } from '@/lib/student-ariza-template'
 import {
   buildArizaSnapshot,
   canonicalJson,
@@ -13,7 +16,12 @@ import {
   verifyArizaRecord,
 } from '@/lib/ariza-signature'
 import type { ApplicationListKind } from '../types'
-import { parseSignatureInput, parseStudentApplication, type SignatureInput } from '../domain/validation'
+import {
+  parseFormalAriza,
+  parseSignatureInput,
+  parseStudentApplication,
+  type SignatureInput,
+} from '../domain/validation'
 import { createApplicationRepository, type ApplicationRepository } from './repository'
 
 const allowedKinds = new Set<ApplicationListKind>(['documents', 'warnings', 'chat', 'notifications'])
@@ -55,29 +63,40 @@ export function createApplicationService(repository: ApplicationRepository = cre
     signer: { name: string; email: string | null },
     signatureInput: SignatureInput | null,
     evidence: SignatureEvidence,
+    extraSnapshot: Record<string, unknown> = {},
   ) {
     const profileName = signer.name
     if (!signatureInput || !signatureInput.attested) {
       throw new ApiError(400, 'Arizani yuborishdan oldin imzolang: F.I.Sh.ingizni kiriting va tasdiqlang.')
     }
-    if (!nameKey(signatureInput.typedName) || nameKey(signatureInput.typedName) !== nameKey(profileName)) {
-      throw new ApiError(400, 'Imzo uchun F.I.Sh.ingizni to\'liq va to\'g\'ri kiriting (profilingizdagidek).')
+    // A hand-drawn signature stands in for the typed name; otherwise the
+    // typed name must match the profile.
+    const typedName = signatureInput.typedName || profileName
+    if (!signatureInput.image) {
+      if (!nameKey(typedName) || nameKey(typedName) !== nameKey(profileName)) {
+        throw new ApiError(400, 'Imzo uchun F.I.Sh.ingizni to\'liq va to\'g\'ri kiriting (profilingizdagidek).')
+      }
     }
 
     const signedAt = new Date().toISOString()
-    const snapshot = buildArizaSnapshot({
-      arizaId: ariza.id,
-      studentId: ariza.student_id ?? '',
-      studentName: profileName,
-      faculty: ariza.faculty,
-      direction: ariza.direction,
-      course: ariza.course,
-      title: ariza.title ?? '',
-      type: ariza.type ?? '',
-      reason: ariza.reason ?? '',
-      text: ariza.text ?? '',
-      signedAt,
-    })
+    const signatureImageHash = signatureInput.image ? sha256Hex(signatureInput.image) : null
+    const snapshot = {
+      ...buildArizaSnapshot({
+        arizaId: ariza.id,
+        studentId: ariza.student_id ?? '',
+        studentName: profileName,
+        faculty: ariza.faculty,
+        direction: ariza.direction,
+        course: ariza.course,
+        title: ariza.title ?? '',
+        type: ariza.type ?? '',
+        reason: ariza.reason ?? '',
+        text: ariza.text ?? '',
+        signedAt,
+      }),
+      signatureImageHash,
+      ...extraSnapshot,
+    }
     const contentHash = sha256Hex(canonicalJson(snapshot))
     const verifyCode = makeVerifyCode()
     const signature = signAriza({ contentHash, studentId: ariza.student_id ?? '', signedAt, verifyCode })
@@ -88,12 +107,13 @@ export function createApplicationService(repository: ApplicationRepository = cre
         student_id: ariza.student_id ?? '',
         content_hash: contentHash,
         content_snapshot: snapshot,
-        typed_name: signatureInput.typedName,
+        typed_name: typedName,
         signed_at: signedAt,
         client_ip: evidence.ip,
         user_agent: evidence.userAgent ? evidence.userAgent.slice(0, 400) : null,
         verify_code: verifyCode,
         signature,
+        signature_image: signatureInput.image ?? null,
       })
     } catch (err) {
       // e.g. UNIQUE(ariza_id) — already signed. Surface the existing record.
@@ -115,13 +135,23 @@ export function createApplicationService(repository: ApplicationRepository = cre
       throw new ApiError(409, 'Ariza allaqachon ko\'rib chiqilgan yoki yuborilgan.')
     }
 
+    // Timestamped out-of-band copies — both channels when available.
+    const notice = { title: ariza.title ?? '', type: ariza.type ?? 'ariza', verifyCode, signedAt }
     if (signer.email) {
-      await sendArizaSignedEmail(signer.email, profileName, {
-        title: ariza.title ?? '',
-        type: ariza.type ?? 'ariza',
-        verifyCode,
-        signedAt,
-      }).catch(() => { /* email is best-effort — the signature already stands */ })
+      await sendArizaSignedEmail(signer.email, profileName, notice)
+        .catch(() => { /* best-effort — the signature already stands */ })
+    }
+    if (ariza.student_id) {
+      const kind = notice.type === 'tushuntirish' ? 'Tushuntirish' : 'Ariza'
+      const when = new Date(signedAt).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' })
+      await sendStudentTelegram(
+        ariza.student_id,
+        `📄 <b>${kind} imzolandi</b>\n\n«${(ariza.title ?? '').replaceAll('<', '&lt;')}»\n${when} (Toshkent)\n\nTekshiruv kodi: <code>${verifyCode}</code>\n\nAgar bu arizani siz imzolamagan bo‘lsangiz — darhol dekanatga xabar bering.`,
+        {
+          parseMode: 'HTML',
+          replyMarkup: { inline_keyboard: [[{ text: 'Imzoni tekshirish', url: `${process.env.NEXT_PUBLIC_APP_URL}/ariza-tekshirish?code=${encodeURIComponent(verifyCode)}` }]] },
+        },
+      ).catch(() => {})
     }
 
     return { application: submitted, receipt: receiptDto(verifyCode, signedAt, contentHash) }
@@ -179,6 +209,70 @@ export function createApplicationService(repository: ApplicationRepository = cre
       }
 
       return { success: true as const, application: created }
+    },
+
+    /** The formal composer: server builds the UzMU-style text, then signs it
+     *  with the student's hand-drawn signature in one step. */
+    async createFormalAriza(
+      studentId: string,
+      value: unknown,
+      evidence: SignatureEvidence = { ip: null, userAgent: null },
+    ) {
+      const input = parseFormalAriza(value)
+      const profile = await repository.getStudentDetails(studentId)
+      if (!profile) throw new ApiError(404, 'Talaba profili topilmadi')
+
+      if (nameKey(input.fullName) !== nameKey(profile.full_name)) {
+        throw new ApiError(400, 'F.I.Sh profilingizdagi bilan mos kelishi kerak.')
+      }
+
+      const facultyLabel = permitFacultyLabel(profile.faculty ?? '') || (profile.faculty ?? '')
+      const dekanName = input.recipient === 'dekan'
+        ? await repository.dekanNameForFaculty(profile.faculty ?? '')
+        : null
+
+      const compose = {
+        kind: input.kind,
+        recipient: input.recipient,
+        fullName: input.fullName,
+        facultyLabel,
+        course: profile.course ?? 1,
+        ttjNumber: input.ttjNumber,
+        room: input.room,
+        incidentText: input.incidentText,
+        dekanName,
+      } as const
+      const fullText = composeArizaFullText(compose)
+
+      const created = await repository.create({
+        student_id: studentId,
+        student_name: profile.full_name,
+        faculty: profile.faculty,
+        direction: profile.direction,
+        course: profile.course ?? 1,
+        title: input.title,
+        type: input.kind,
+        reason: input.incidentText.slice(0, 4000),
+        text: fullText,
+        level: 'info',
+        status: 'draft',
+        ai_generated: false,
+        date: new Date().toISOString(),
+      })
+
+      const result = await signAndFinalise(
+        created as ArizaRowLite,
+        { name: profile.full_name ?? '', email: profile.email ?? null },
+        { typedName: input.fullName, attested: true, image: input.signatureImage },
+        evidence,
+        { formal: compose },
+      )
+      return {
+        success: true as const,
+        application: result.application,
+        receipt: result.receipt,
+        compose,
+      }
     },
 
     async submit(
@@ -257,6 +351,48 @@ export function createApplicationService(repository: ApplicationRepository = cre
         title: typeof snap.title === 'string' ? snap.title : null,
         type: typeof snap.type === 'string' ? snap.type : null,
         code: sig.verify_code,
+        signatureImage: sig.signature_image ?? null,
+      }
+    },
+
+    /** Prefill data for the formal composer's preview. */
+    async arizaContext(studentId: string) {
+      const profile = await repository.getStudentDetails(studentId)
+      if (!profile) throw new ApiError(404, 'Talaba profili topilmadi')
+      const [dekanName, ttjNumber] = await Promise.all([
+        repository.dekanNameForFaculty(profile.faculty ?? ''),
+        repository.ttjNumberForFaculty(profile.faculty ?? ''),
+      ])
+      return {
+        fullName: profile.full_name ?? '',
+        facultyLabel: permitFacultyLabel(profile.faculty ?? '') || (profile.faculty ?? ''),
+        course: profile.course ?? 1,
+        room: profile.room_number ?? '',
+        ttjNumber: ttjNumber ?? '',
+        dekanName,
+      }
+    },
+
+    /** Everything needed to (re)generate the signed PDF. Student can only see
+     *  their own; staff see any. */
+    async documentData(arizaIdValue: string | null, opts: { studentId?: string } = {}) {
+      const arizaId = text(arizaIdValue, 80, true)
+      const owned = opts.studentId
+        ? await repository.getOwned(opts.studentId, arizaId)
+        : await repository.arizaById(arizaId)
+      if (!owned) throw new ApiError(404, 'Ariza topilmadi')
+      const sig = await repository.signatureByAriza(arizaId)
+      if (!sig) throw new ApiError(404, 'Bu ariza imzolanmagan')
+      const snap = sig.content_snapshot as Record<string, unknown>
+      return {
+        success: true as const,
+        formal: (snap.formal as Record<string, unknown>) ?? null,
+        text: typeof snap.text === 'string' ? snap.text : owned.text,
+        title: typeof snap.title === 'string' ? snap.title : owned.title,
+        type: typeof snap.type === 'string' ? snap.type : owned.type,
+        signatureImage: sig.signature_image ?? null,
+        signedAt: sig.signed_at,
+        verifyCode: sig.verify_code,
       }
     },
 
@@ -287,6 +423,7 @@ export function createApplicationService(repository: ApplicationRepository = cre
           contentHash: sig.content_hash,
           clientIp: sig.client_ip,
           userAgent: sig.user_agent,
+          hasImage: Boolean(sig.signature_image),
           valid: check.valid,
           hashOk: check.hashOk,
           signatureOk: check.signatureOk,

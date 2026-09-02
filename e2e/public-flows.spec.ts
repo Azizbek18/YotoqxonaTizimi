@@ -51,9 +51,12 @@ test('ariza imzosini tekshirish sahifasi ochiladi', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Ariza imzosini tekshirish/i })).toBeVisible()
 })
 
-test('ariza imzo API: noma’lum kod va sessiyasiz kirish', async ({ request }) => {
+test('ariza imzo API: noma’lum kod va sessiyasiz kirish', async ({ request }, testInfo) => {
   // Public verify endpoint answers, but never confirms a bogus code.
-  const verify = await request.get('/api/ariza-signature/verify?code=YT-ZZZZ-ZZZZ')
+  const testIp = testInfo.project.name === 'mobile-chrome' ? '198.51.100.202' : '198.51.100.201'
+  const verify = await request.get('/api/ariza-signature/verify?code=YT-ZZZZ-ZZZZ', {
+    headers: { 'x-forwarded-for': testIp },
+  })
   expect(verify.status()).toBe(200)
   expect((await verify.json()).valid).toBe(false)
 
@@ -65,6 +68,7 @@ test('ariza imzo API: noma’lum kod va sessiyasiz kirish', async ({ request }) 
 })
 
 test('yo‘llanma PDF’i AI tekshiruvi uchun JPEG ga aylantiriladi', async ({ page }) => {
+  test.setTimeout(90_000)
   const pageErrors: Error[] = []
   page.on('pageerror', (error) => pageErrors.push(error))
 

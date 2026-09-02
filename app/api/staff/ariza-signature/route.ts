@@ -10,7 +10,12 @@ export async function GET(request: NextRequest) {
   try {
     await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
     const arizaId = request.nextUrl.searchParams.get('arizaId')
-    return NextResponse.json(await createApplicationService().staffSignature(arizaId))
+    const service = createApplicationService()
+    // ?document=1 → the payload to regenerate the signed PDF.
+    if (request.nextUrl.searchParams.get('document') === '1') {
+      return NextResponse.json(await service.documentData(arizaId))
+    }
+    return NextResponse.json(await service.staffSignature(arizaId))
   } catch (error) {
     const r = getApiError(error, 'Imzo ma‘lumotini yuklab bo‘lmadi')
     return NextResponse.json(r.body, { status: r.status })

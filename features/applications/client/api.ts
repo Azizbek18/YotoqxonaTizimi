@@ -60,3 +60,55 @@ export function fetchArizaReceipt(arizaId: string | number) {
     `/api/student/applications/receipt?id=${encodeURIComponent(String(arizaId))}`,
   )
 }
+
+export type ArizaContext = {
+  fullName: string
+  facultyLabel: string
+  course: string | number
+  room: string
+  ttjNumber: string
+  dekanName: string | null
+}
+
+export function fetchArizaContext() {
+  return request<ArizaContext>('/api/student/applications/context')
+}
+
+export type FormalArizaBody = {
+  kind: 'ariza' | 'tushuntirish'
+  recipient: 'rektor' | 'prorektor' | 'dekan'
+  title: string
+  fullName: string
+  ttjNumber: string
+  room: string
+  incidentText: string
+  signature: { attested: true; image: string }
+}
+
+export type ArizaDocumentData = {
+  success: true
+  formal: Record<string, unknown> | null
+  text: string
+  title: string | null
+  type: string | null
+  signatureImage: string | null
+  signedAt: string
+  verifyCode: string
+}
+
+export function submitFormalAriza(body: FormalArizaBody) {
+  return request<{ success: true; application: StudentApplication; receipt: ArizaReceipt; compose: Record<string, unknown> }>(
+    '/api/student/applications/formal',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  )
+}
+
+export function fetchArizaDocument(arizaId: string | number) {
+  return request<ArizaDocumentData>(
+    `/api/student/applications/document?id=${encodeURIComponent(String(arizaId))}`,
+  )
+}

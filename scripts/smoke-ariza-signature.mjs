@@ -132,16 +132,56 @@ try {
   r = await asDekan(`/api/staff/ariza-signature?arizaId=${trash.arizaId}`)
   check('staff signature endpoint: signed + valid', r.body?.signed === true && r.body?.signature?.valid === true, JSON.stringify(r.body?.signature))
 
-  // ---- 10. tamper the ariza text directly — snapshot still verifies (frozen), but staff sees content drift is not checked here; the snapshot is the record ----
+  // ---- 10. tamper the ariza text directly — snapshot still verifies (frozen) ----
   await svc.from('arizalar').update({ text: 'HACKED — men bunaqa yozmaganman' }).eq('id', trash.arizaId)
   r = await asPublic(`/api/ariza-signature/verify?code=${encodeURIComponent(code)}`)
   check('editing arizalar.text does not forge the signed snapshot', r.body?.valid === true, 'snapshot is the frozen source of truth')
+
+  // ---- 11. formal composer: one-step compose + hand-drawn signature ----
+  r = await asStudent('/api/student/applications/context')
+  check('ariza context prefill', r.status === 200 && typeof r.body?.facultyLabel === 'string', JSON.stringify(r.body))
+
+  const PNG = 'data:image/png;base64,' + Buffer.from('smoke-signature-strokes').toString('base64')
+  r = await asStudent('/api/student/applications/formal', {
+    method: 'POST',
+    body: JSON.stringify({
+      kind: 'tushuntirish', recipient: 'prorektor', title: 'Kechikish (smoke)',
+      fullName: NAME, ttjNumber: '12', room: '305',
+      incidentText: 'Bugun do‘stlarim bilan tug‘ilgan kunni nishonlab, yotoqxonaga kech qaytdim.',
+      signature: { attested: true, image: PNG },
+    }),
+  })
+  const fCode = r.body?.receipt?.verifyCode
+  const fId = r.body?.application?.id
+  trash.formalId = fId
+  check('formal ariza: composed + signed + pending', r.status === 200 && r.body?.application?.status === 'pending' && /^YT-/.test(fCode || ''), JSON.stringify(r.body?.error || fCode))
+
+  const ftext = (await svc.from('arizalar').select('text').eq('id', fId).maybeSingle()).data?.text ?? ''
+  check('formal text is the UzMU template', ftext.includes('12-sonli talabalar turar joyining 305-xonasida') && ftext.includes('T U S H U N T I R I S H'), ftext.slice(0, 80))
+
+  r = await asPublic(`/api/ariza-signature/verify?code=${encodeURIComponent(fCode)}`)
+  check('formal verify: valid + signature image returned', r.body?.valid === true && typeof r.body?.signatureImage === 'string', JSON.stringify({ valid: r.body?.valid, img: !!r.body?.signatureImage }))
+
+  r = await asStudent(`/api/student/applications/document?id=${fId}`)
+  check('document endpoint returns formal fields + image', r.body?.formal?.recipient === 'prorektor' && r.body?.signatureImage === PNG, JSON.stringify(r.body?.formal))
+
+  r = await asDekan(`/api/staff/ariza-signature?arizaId=${fId}&document=1`)
+  check('staff document endpoint', r.body?.formal?.recipient === 'prorektor', JSON.stringify(r.body?.error || 'ok'))
+
+  // ---- 12. student Telegram link issue ----
+  r = await asStudent('/api/student/telegram-link', { method: 'POST' })
+  check('telegram link: unlinked + deep link (or not configured)',
+    r.status === 200 && (r.body?.linked === false),
+    JSON.stringify(r.body))
 } catch (err) {
   check('EXCEPTION', false, err.message)
 } finally {
   if (!keep) {
     if (trash.arizaId) await svc.from('ariza_signatures').delete().eq('ariza_id', trash.arizaId)
+    if (trash.formalId) await svc.from('ariza_signatures').delete().eq('ariza_id', trash.formalId)
     if (trash.arizaId) await svc.from('arizalar').delete().eq('id', trash.arizaId)
+    if (trash.formalId) await svc.from('arizalar').delete().eq('id', trash.formalId)
+    if (trash.authId) await svc.from('student_telegram_links').delete().eq('student_id', trash.authId)
     if (trash.authId) await svc.from('arizalar').delete().eq('student_id', trash.authId)
     if (trash.authId) await svc.from('users').delete().eq('id', trash.authId)
     if (trash.permitId) await svc.from('permit_requests').delete().eq('id', trash.permitId)

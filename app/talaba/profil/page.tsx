@@ -26,6 +26,7 @@ import {
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/password-policy'
 import { prepareUploadFile } from '@/lib/prepare-upload'
+import StudentTelegramConnect from '@/components/talaba/StudentTelegramConnect'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Profile {
@@ -903,9 +904,14 @@ export default function StudentProfile() {
           </button>
         </motion.div>
 
+        {/* Telegram */}
+        <motion.div custom={roommates.length > 0 ? 8 : 7} variants={fadeUp} initial="hidden" animate="show">
+          <StudentTelegramConnect isLight={isLight} />
+        </motion.div>
+
         {/* Last Activity & Account Info Section */}
         <motion.div
-          custom={roommates.length > 0 ? 8 : 7} variants={fadeUp} initial="hidden" animate="show"
+          custom={roommates.length > 0 ? 9 : 8} variants={fadeUp} initial="hidden" animate="show"
           className="grid grid-cols-1 md:grid-cols-2 gap-6"
         >
           {/* Oxirgi Faollik */}

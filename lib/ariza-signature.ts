@@ -21,15 +21,27 @@ function signingKey(): Buffer {
   return createHmac('sha256', secret).update('ariza-signature:v1').digest()
 }
 
-/** Order-independent, unambiguous JSON — the exact bytes that get hashed. */
-export function canonicalJson(value: Record<string, unknown>): string {
-  const sorted = Object.keys(value)
-    .sort()
-    .reduce<Record<string, unknown>>((acc, k) => {
-      acc[k] = value[k]
-      return acc
-    }, {})
-  return JSON.stringify(sorted)
+/**
+ * Order-independent, unambiguous JSON — the exact bytes that get hashed.
+ * Keys are sorted recursively: Postgres JSONB reorders keys at every level
+ * on round-trip, so a shallow sort would make a signed nested object (e.g.
+ * the `formal` block) fail verification after it comes back from the DB.
+ */
+export function canonicalJson(value: unknown): string {
+  return JSON.stringify(sortDeep(value))
+}
+
+function sortDeep(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortDeep)
+  if (value && typeof value === 'object') {
+    return Object.keys(value as Record<string, unknown>)
+      .sort()
+      .reduce<Record<string, unknown>>((acc, k) => {
+        acc[k] = sortDeep((value as Record<string, unknown>)[k])
+        return acc
+      }, {})
+  }
+  return value
 }
 
 export function sha256Hex(input: string): string {

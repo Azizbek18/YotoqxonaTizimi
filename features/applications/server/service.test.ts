@@ -11,8 +11,9 @@ import type { ApplicationRepository } from './repository'
 
 const PROFILE = {
   id: 'stu-1', full_name: 'Aliyev Vali Akmal oʻgʻli', email: 'aliyev@example.com',
-  faculty: 'amit', direction: 'amaliy-matematika', course: 3,
+  faculty: 'amit', direction: 'amaliy-matematika', course: 3, room_number: '305',
 }
+const PNG = 'data:image/png;base64,' + Buffer.from('fake-signature-bytes').toString('base64')
 
 function fakeRepo(over: Partial<ApplicationRepository> = {}) {
   const store: { ariza: Record<string, unknown> | null; signature: Record<string, unknown> | null } = {
@@ -44,6 +45,8 @@ function fakeRepo(over: Partial<ApplicationRepository> = {}) {
     deleteOwned: vi.fn(async () => null),
     list: vi.fn(async () => []),
     updateOwned: vi.fn(async () => null),
+    dekanNameForFaculty: vi.fn(async () => 'Karimov B.'),
+    ttjNumberForFaculty: vi.fn(async () => '12'),
   }
   return { store, repo: { ...base, ...over } as unknown as ApplicationRepository }
 }
@@ -138,6 +141,48 @@ describe('createApplicationService — signing', () => {
   it('remove() refuses a non-draft (signed) application', async () => {
     const { repo } = fakeRepo({ deleteOwned: vi.fn(async () => null) })
     await expect(createApplicationService(repo).remove('stu-1', 'ariza-1')).rejects.toThrow(/o'chirib bo'lmaydi|topilmadi/i)
+  })
+
+  it('createFormalAriza: composes the text, embeds the drawn signature, one step', async () => {
+    const { repo, store } = fakeRepo()
+    const res = await createApplicationService(repo).createFormalAriza('stu-1', {
+      kind: 'tushuntirish',
+      recipient: 'dekan',
+      title: 'Kechikish',
+      fullName: PROFILE.full_name,
+      ttjNumber: '12',
+      room: '305',
+      incidentText: 'Bugun do‘stlarim bilan tug‘ilgan kunni nishonlab kech qaytdim.',
+      signature: { attested: true, image: PNG },
+    })
+    expect(res.receipt.verifyCode).toMatch(/^YT-/)
+    const ariza = store.ariza as Record<string, unknown>
+    expect(ariza.status).toBe('pending')
+    expect(ariza.type).toBe('tushuntirish')
+    expect(String(ariza.text)).toContain('12-sonli talabalar turar joyining 305-xonasida')
+    expect(String(ariza.text)).toContain('dekani Karimov B.ga')
+    const sig = store.signature as Record<string, unknown>
+    expect(sig.signature_image).toBe(PNG)
+    expect((sig.content_snapshot as Record<string, unknown>).signatureImageHash).toBeTruthy()
+    expect((sig.content_snapshot as Record<string, unknown>).formal).toBeTruthy()
+  })
+
+  it('createFormalAriza: rejects a name that is not the student', async () => {
+    const { repo } = fakeRepo()
+    await expect(createApplicationService(repo).createFormalAriza('stu-1', {
+      kind: 'ariza', recipient: 'rektor', title: 'X', fullName: 'Boshqa Odam',
+      ttjNumber: '', room: '', incidentText: 'matn matn matn',
+      signature: { attested: true, image: PNG },
+    })).rejects.toThrow(/F\.I\.Sh/i)
+  })
+
+  it('createFormalAriza: needs a drawn signature', async () => {
+    const { repo } = fakeRepo()
+    await expect(createApplicationService(repo).createFormalAriza('stu-1', {
+      kind: 'ariza', recipient: 'rektor', title: 'X', fullName: PROFILE.full_name,
+      ttjNumber: '', room: '', incidentText: 'matn matn matn',
+      signature: { attested: true },
+    })).rejects.toThrow(/[Ii]mzo/)
   })
 
   it('staffSignature: unsigned vs signed', async () => {

@@ -18,6 +18,7 @@ type VerifyResult =
       title: string | null
       type: string | null
       code: string
+      signatureImage: string | null
     }
 
 function Content() {
@@ -120,6 +121,13 @@ function Content() {
                   {result.title && <Row label="Hujjat" value={`${result.title} (${result.type === 'tushuntirish' ? 'tushuntirish' : 'ariza'})`} muted={muted} />}
                   <Row label="Kod" value={result.code} muted={muted} mono />
                 </dl>
+                {result.signatureImage && (
+                  <div className={`mt-3 rounded-xl border p-3 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-white/5'}`}>
+                    <p className={`mb-1 text-[10px] font-bold uppercase tracking-wider ${muted}`}>Qo‘yilgan imzo</p>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={result.signatureImage} alt="imzo" className="h-16 object-contain" />
+                  </div>
+                )}
               </>
             ) : 'signedBy' in result ? (
               <div className="flex items-center gap-3">

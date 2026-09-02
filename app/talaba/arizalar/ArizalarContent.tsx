@@ -3,28 +3,27 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import {
-    Plus, Download, Edit2, Trash2, Sparkles, ShieldCheck,
+    Plus, Download, Trash2, ShieldCheck,
     FileText, CheckCircle, Clock, AlertCircle
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { getSafeUser } from '@/lib/auth-session'
-import { User } from '@supabase/supabase-js'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
-import CustomSelect from '@/components/ui/CustomSelect'
 import { TalabaArizalarSkeleton } from '@/components/talaba/skeletons'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 import {
-    createStudentApplication,
     deleteStudentApplication,
-    fetchArizaReceipt,
+    fetchArizaDocument,
     fetchStudentApplications,
     submitStudentApplication,
     type ArizaReceipt,
 } from '@/features/applications/client/api'
 import SignArizaModal from '@/components/applications/SignArizaModal'
-import { downloadArizaReceiptPdf } from '@/lib/ariza-receipt-pdf'
+import FormalArizaComposer from '@/components/applications/FormalArizaComposer'
+import { generateStudentArizaPdf } from '@/lib/student-ariza-pdf'
+import type { ArizaComposeInput } from '@/lib/student-ariza-template'
 
 interface Profile {
     id: string
@@ -64,28 +63,20 @@ export default function ArizalarContent() {
 
     const [applications, setApplications] = useState<Application[]>([])
     const [loading, setLoading] = useState(true)
-    const [user, setUser] = useState<User | null>(null)
     const [studentProfile, setStudentProfile] = useState<Profile | null>(null)
 
-    const [showNewForm, setShowNewForm] = useState(false)
+    const [composerOpen, setComposerOpen] = useState(false)
     const [selectedApp, setSelectedApp] = useState<Application | null>(null)
     const [signTarget, setSignTarget] = useState<Application | null>(null)
     const [signBusy, setSignBusy] = useState(false)
     const [signReceipt, setSignReceipt] = useState<ArizaReceipt | null>(null)
     const [showDetailModal, setShowDetailModal] = useState(false)
-    const [isGenerating, setIsGenerating] = useState(false)
     const [mounted, setMounted] = useState(false)
     const deleteModal = useConfirmModal<number | string>()
 
     useEffect(() => {
         setMounted(true)
     }, [])
-
-    const [newAppForm, setNewAppForm] = useState({
-        type: 'ariza' as 'ariza' | 'tushuntirish',
-        title: '',
-        reason: ''
-    })
 
     useEffect(() => {
         if (showDetailModal) {
@@ -98,134 +89,72 @@ export default function ArizalarContent() {
         };
     }, [showDetailModal]);
 
-    useEffect(() => {
-        async function loadData() {
-            try {
-                setLoading(true)
-                const currentUser = await getSafeUser()
-                if (currentUser) {
-                    setUser(currentUser)
-
-                    const [profilePayload, applicationPayload] = await Promise.all([
-                        fetchStudentProfile(),
-                        fetchStudentApplications('documents'),
-                    ])
-                    setStudentProfile({
-                        ...profilePayload.profile,
-                        full_name: profilePayload.profile.full_name ?? '',
-                        email: profilePayload.profile.email ?? '',
-                    } as Profile)
-
-                    const appData = applicationPayload.applications
-                    if (appData) {
-                        const mapped = appData.map((app) => ({
-                            id: app.id,
-                            type: (app.type || 'ariza') as 'ariza' | 'tushuntirish',
-                            title: app.title || 'Sarlavhasiz',
-                            reason: app.reason || '',
-                            content: app.text || '',
-                            createdDate: app.date || app.created_at || new Date().toISOString(),
-                            status: (app.status || 'pending') as 'draft' | 'submitted' | 'pending' | 'approved' | 'rejected',
-                            aiGenerated: app.ai_generated || false,
-                            adminResponse: app.admin_response || undefined,
-                            responseDate: app.response_date || undefined
-                        }))
-                        setApplications(mapped)
-                    }
-                }
-            } catch (error) {
-                console.error('Data loading error:', error)
-            } finally {
-                setLoading(false)
-            }
+    const reload = React.useCallback(async () => {
+        try {
+            setLoading(true)
+            const currentUser = await getSafeUser()
+            if (!currentUser) return
+            const [profilePayload, applicationPayload] = await Promise.all([
+                fetchStudentProfile(),
+                fetchStudentApplications('documents'),
+            ])
+            setStudentProfile({
+                ...profilePayload.profile,
+                full_name: profilePayload.profile.full_name ?? '',
+                email: profilePayload.profile.email ?? '',
+            } as Profile)
+            const appData = applicationPayload.applications ?? []
+            setApplications(appData.map((app) => ({
+                id: app.id,
+                type: (app.type || 'ariza') as 'ariza' | 'tushuntirish',
+                title: app.title || 'Sarlavhasiz',
+                reason: app.reason || '',
+                content: app.text || '',
+                createdDate: app.date || app.created_at || new Date().toISOString(),
+                status: (app.status || 'pending') as 'draft' | 'submitted' | 'pending' | 'approved' | 'rejected',
+                aiGenerated: app.ai_generated || false,
+                adminResponse: app.admin_response || undefined,
+                responseDate: app.response_date || undefined,
+            })))
+        } catch (error) {
+            console.error('Data loading error:', error)
+        } finally {
+            setLoading(false)
         }
-        loadData()
     }, [])
 
-    const generateWithAI = async () => {
-        if (!newAppForm.title || !newAppForm.reason) {
-            toast.error('Iltimos, sarlavha va sababni kiriting')
-            return
-        }
+    useEffect(() => { reload() }, [reload])
 
-        if (!user) {
-            toast.error('Sessiya topilmadi. Tizimga qaytadan kiring.')
-            return
-        }
-
-        setIsGenerating(true)
+    // The signed formal document, regenerated from the frozen snapshot.
+    const downloadDocument = async (app: Application) => {
         try {
-            const generatedContent = generateAIContent(newAppForm)
-            const appDate = new Date().toISOString()
-
-            const newRecord = {
-                text: generatedContent,
-                level: 'info' as const,
-                status: 'draft' as const,
-                title: newAppForm.title,
-                type: newAppForm.type,
-                reason: newAppForm.reason,
-                aiGenerated: true
+            const doc = await fetchArizaDocument(app.id)
+            const formal = doc.formal as (ArizaComposeInput & Record<string, unknown>) | null
+            if (formal) {
+                await generateStudentArizaPdf({
+                    kind: (doc.type as 'ariza' | 'tushuntirish') ?? formal.kind,
+                    recipient: formal.recipient,
+                    fullName: String(formal.fullName ?? ''),
+                    facultyLabel: String(formal.facultyLabel ?? ''),
+                    course: (formal.course as string | number) ?? '',
+                    ttjNumber: String(formal.ttjNumber ?? ''),
+                    room: String(formal.room ?? ''),
+                    incidentText: String(formal.incidentText ?? ''),
+                    dekanName: (formal.dekanName as string | null) ?? null,
+                    signatureImage: doc.signatureImage,
+                    signedAt: doc.signedAt,
+                    verifyCode: doc.verifyCode,
+                })
+                return
             }
-
-            const { application: data } = await createStudentApplication(newRecord)
-
-            if (data) {
-                const newApp: Application = {
-                    id: data.id,
-                    type: data.type as 'ariza' | 'tushuntirish',
-                    title: data.title || newAppForm.title,
-                    reason: data.reason || newAppForm.reason,
-                    content: data.text || generatedContent,
-                    createdDate: data.date || appDate,
-                    status: data.status as 'draft' | 'submitted' | 'pending' | 'approved' | 'rejected',
-                    aiGenerated: Boolean(data.ai_generated)
-                }
-
-                setApplications([newApp, ...applications])
-                setNewAppForm({ type: 'ariza', title: '', reason: '' })
-                setShowNewForm(false)
-            }
-        } catch (error) {
-            console.error('Error generating and saving application:', error)
-            const errMsg = error instanceof Error ? error.message : String(error)
-            toast.error('Ariza yaratish va saqlashda xatolik yuz berdi: ' + errMsg)
-        } finally {
-            setIsGenerating(false)
-        }
-    }
-
-    const generateAIContent = (form: { type: string; title: string; reason: string }) => {
-        const fullName = studentProfile?.full_name || '__________ (F.I.O)'
-        const email = studentProfile?.email || '__________'
-
-        const prefix = form.type === 'ariza'
-            ? `O'zbekiston Milliy Universiteti Rektori bilan\n\nIltimos!\n\nMen, ${fullName}, talaba (${email}), sizga murojaat qilyapman.\n\n${form.title} haqida ariza topshiryapman.`
-            : `O'zbekiston Milliy Universiteti Rektori bilan\n\nIltimos!\n\nMen, ${fullName}, talaba (${email}), sizga murojaat qilyapman.\n\n${form.title} haqida tushuntirish taqdim qilyapman.`
-
-        return `${prefix}\n\nSabablari:\n${form.reason}\n\nBundan keyin barcha qoidalarga amal qilishimni kafolatlayman.\n\nHurmat bilan,\nMurojaatchi: ${fullName}\nSana: ${new Date().toISOString().split('T')[0]}`
-    }
-
-    const downloadPDF = async (app: Application) => {
-        try {
+            // Legacy plain-text ariza — simple fallback PDF.
             const { jsPDF } = await import('jspdf')
-            const doc = new jsPDF()
-            
-            // Set font and size (Helvetica is built-in and supports ASCII/Latin standard text)
-            doc.setFont('Helvetica', 'normal')
-            doc.setFontSize(11)
-            
-            // Split text to fit A4 page width with margins (180mm width)
-            const splitText = doc.splitTextToSize(app.content, 180)
-            
-            // Render text starting at x: 15, y: 20
-            doc.text(splitText, 15, 20)
-            
-            // Save as PDF file directly to downloads folder
-            doc.save(`${app.type}_${app.id}.pdf`)
+            const d = new jsPDF()
+            d.setFont('Helvetica', 'normal'); d.setFontSize(11)
+            d.text(d.splitTextToSize(doc.text || app.content, 180), 15, 20)
+            d.save(`${app.type}_${app.id}.pdf`)
         } catch (error) {
-            console.error('Error generating PDF:', error)
-            toast.error('PDF yuklashda xatolik yuz berdi. Iltimos, qaytadan urinib ko\'ring.')
+            toast.error(error instanceof Error ? error.message : 'Hujjatni yuklab bo‘lmadi')
         }
     }
 
@@ -274,18 +203,6 @@ export default function ArizalarContent() {
         }
     }
 
-    const openReceipt = async (app: Application) => {
-        try {
-            const { receipt } = await fetchArizaReceipt(app.id)
-            downloadArizaReceiptPdf(receipt, {
-                studentName: studentProfile?.full_name ?? receipt.studentName ?? '',
-                faculty: studentProfile?.faculty,
-                course: studentProfile?.course,
-            })
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Tilxatni ochib bo‘lmadi')
-        }
-    }
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -306,7 +223,7 @@ export default function ArizalarContent() {
     const getStatusIcon = (status: string) => {
         switch (status) {
             case 'draft':
-                return <Edit2 size={16} />
+                return <Clock size={16} />
             case 'submitted':
             case 'pending':
                 return <Clock size={16} />
@@ -371,80 +288,18 @@ export default function ArizalarContent() {
                 </div>
             </div>
 
-            {/* Create New Application Button */}
-            <div className={`rounded-2xl backdrop-blur-xl p-4 sm:p-6 transition-all ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <h2 className={`text-lg font-black min-w-0 break-words ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                        ✨ Yangi Ariza Yaratish
-                    </h2>
-                    <button
-                        onClick={() => setShowNewForm(!showNewForm)}
-                        className="shrink-0 px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 bg-blue-600 text-white"
-                    >
-                        <Plus size={18} /> Yangi
-                    </button>
+            {/* Create New Application */}
+            <div className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4 sm:p-5 ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
+                <div className="min-w-0">
+                    <h2 className={`text-base font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>Yangi ariza / tushuntirish</h2>
+                    <p className={`mt-0.5 text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Rasmiy hujjat tuziladi, ko‘rib chiqasiz va imzo qo‘yasiz</p>
                 </div>
-
-                {showNewForm && (
-                    <div className={`p-4 rounded-xl border-2 ${isLight ? 'border-slate-300 bg-slate-50' : 'border-slate-700 bg-slate-950/30'}`}>
-                        <div className="space-y-4">
-                            <div>
-                                <label className={`block text-sm font-semibold mb-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                                    Tur tanlang
-                                </label>
-                                <CustomSelect
-                                    value={newAppForm.type}
-                                    onChange={(val) => setNewAppForm({ ...newAppForm, type: val as 'ariza' | 'tushuntirish' })}
-                                    options={[
-                                        { value: 'ariza', label: 'Ariza' },
-                                        { value: 'tushuntirish', label: 'Tushuntirish' },
-                                    ]}
-                                    className={`px-3 py-2 rounded-lg border transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-blue-500' : 'bg-slate-800 border-slate-700 text-white focus:border-cyan-500'}`}
-                                />
-                            </div>
-
-                            <div>
-                                <label className={`block text-sm font-semibold mb-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                                    Sarlavha
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="Masalan: Turarjoyni o'zgartirish"
-                                    value={newAppForm.title}
-                                    onChange={(e) => setNewAppForm({ ...newAppForm, title: e.target.value })}
-                                    className={`w-full px-3 py-2 rounded-lg border transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 placeholder-slate-500' : 'bg-slate-800 border-slate-700 text-white focus:border-cyan-500 placeholder-slate-500'}`}
-                                />
-                            </div>
-
-                            <div>
-                                <label className={`block text-sm font-semibold mb-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                                    Sababi
-                                </label>
-                                <textarea
-                                    placeholder="Masalan: Shaxsiy sog'liq-salomatlik muammolari bo'ldi..."
-                                    value={newAppForm.reason}
-                                    onChange={(e) => setNewAppForm({ ...newAppForm, reason: e.target.value })}
-                                    rows={3}
-                                    className={`w-full px-3 py-2 rounded-lg border transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 placeholder-slate-500' : 'bg-slate-800 border-slate-700 text-white focus:border-cyan-500 placeholder-slate-500'}`}
-                                />
-                            </div>
-
-                            <button
-                                onClick={generateWithAI}
-                                disabled={isGenerating || !newAppForm.title || !newAppForm.reason}
-                                className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${isGenerating || !newAppForm.title || !newAppForm.reason
-                                    ? isLight
-                                        ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                                        : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                                    : 'bg-linear-to-r from-purple-600 to-pink-600 text-white'
-                                    }`}
-                            >
-                                <Sparkles size={18} />
-                                {isGenerating ? 'AI yaratmoqda...' : 'AI bilan Yaratish'}
-                            </button>
-                        </div>
-                    </div>
-                )}
+                <button
+                    onClick={() => setComposerOpen(true)}
+                    className="shrink-0 flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white hover:bg-blue-700"
+                >
+                    <Plus size={16} /> Yangi ariza
+                </button>
             </div>
 
             {/* Applications List */}
@@ -475,11 +330,6 @@ export default function ArizalarContent() {
                                             <h3 className={`font-bold text-sm break-words min-w-0 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                                 {app.title}
                                             </h3>
-                                            {app.aiGenerated && (
-                                                <span className={`shrink-0 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 whitespace-nowrap ${isLight ? 'bg-purple-100 text-purple-700' : 'bg-purple-900/30 text-purple-400'}`}>
-                                                    <Sparkles size={12} /> AI
-                                                </span>
-                                            )}
                                         </div>
                                         <p className={`text-xs break-words ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                                             {app.type === 'ariza' ? '📋 Ariza' : '📝 Tushuntirish'} • 📅 {new Date(app.createdDate).toLocaleDateString('uz-UZ')}
@@ -505,53 +355,23 @@ export default function ArizalarContent() {
                                 <div className="flex gap-2 flex-wrap">
                                     {app.status === 'draft' && (
                                         <button
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                submitApp(app)
-                                            }}
+                                            onClick={(e) => { e.stopPropagation(); submitApp(app) }}
                                             className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-emerald-600 text-white"
                                         >
                                             <ShieldCheck size={12} className="inline mr-1" /> Imzolash va yuborish
                                         </button>
                                     )}
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            downloadPDF(app)
-                                        }}
-                                        className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-blue-600 text-white"
-                                    >
-                                        <Download size={12} className="inline mr-1" /> PDF
-                                    </button>
                                     {app.status !== 'draft' && (
                                         <button
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                openReceipt(app)
-                                            }}
-                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-900/30 text-emerald-300'}`}
+                                            onClick={(e) => { e.stopPropagation(); downloadDocument(app) }}
+                                            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-blue-600 text-white"
                                         >
-                                            <ShieldCheck size={12} className="inline mr-1" /> Tilxat
+                                            <Download size={12} className="inline mr-1" /> Hujjat (PDF)
                                         </button>
                                     )}
                                     {app.status === 'draft' && (
                                         <button
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                setSelectedApp(app)
-                                                setShowDetailModal(true)
-                                            }}
-                                            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-amber-400 text-slate-900"
-                                        >
-                                            <Edit2 size={12} className="inline mr-1" /> Tahrir
-                                        </button>
-                                    )}
-                                    {app.status === 'draft' && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                deleteApp(app.id)
-                                            }}
+                                            onClick={(e) => { e.stopPropagation(); deleteApp(app.id) }}
                                             className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-rose-600 text-white"
                                         >
                                             <Trash2 size={12} className="inline mr-1" /> O&apos;chirish
@@ -596,12 +416,14 @@ export default function ArizalarContent() {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                            <button
-                                onClick={() => downloadPDF(selectedApp)}
-                                className="flex-1 sm:flex-none justify-center px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 bg-blue-600 text-white"
-                            >
-                                <Download size={18} /> PDF Yuklab Olish
-                            </button>
+                            {selectedApp.status !== 'draft' && (
+                                <button
+                                    onClick={() => downloadDocument(selectedApp)}
+                                    className="flex-1 sm:flex-none justify-center px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 bg-blue-600 text-white"
+                                >
+                                    <Download size={18} /> Hujjat (PDF)
+                                </button>
+                            )}
                             <button
                                 onClick={() => setShowDetailModal(false)}
                                 className={`flex-1 sm:flex-none justify-center px-4 py-2 rounded-xl font-bold transition-all flex items-center ${isLight ? 'bg-slate-200 text-slate-900' : 'bg-slate-800 text-white'}`}
@@ -625,9 +447,10 @@ export default function ArizalarContent() {
                 isLoading={deleteModal.isLoading}
             />
 
+            {/* Legacy drafts (pre-composer) still sign via the lightweight modal. */}
             <SignArizaModal
                 open={signTarget !== null}
-                onClose={() => { setSignTarget(null); setSignReceipt(null) }}
+                onClose={() => { setSignTarget(null); setSignReceipt(null); reload() }}
                 app={signTarget ? {
                     title: signTarget.title,
                     type: signTarget.type,
@@ -638,14 +461,12 @@ export default function ArizalarContent() {
                 busy={signBusy}
                 receipt={signReceipt}
                 onSign={doSign}
-                onDownloadReceipt={signReceipt ? () => downloadArizaReceiptPdf(
-                    { ...signReceipt, title: signTarget?.title, type: signTarget?.type },
-                    {
-                        studentName: studentProfile?.full_name ?? '',
-                        faculty: studentProfile?.faculty,
-                        course: studentProfile?.course,
-                    },
-                ) : undefined}
+            />
+
+            <FormalArizaComposer
+                open={composerOpen}
+                onClose={() => setComposerOpen(false)}
+                onSubmitted={reload}
             />
         </div>
     )

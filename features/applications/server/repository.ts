@@ -8,12 +8,40 @@ export function createApplicationRepository() {
     async getStudentDetails(studentId: string) {
       const { data, error } = await supabase
         .from('users')
-        .select('id, full_name, email, faculty, direction, course')
+        .select('id, full_name, email, faculty, direction, course, room_number')
         .eq('id', studentId)
         .eq('role', 'talaba')
         .maybeSingle()
       if (error) throw error
       return data
+    },
+
+    // The dekan-configured official dormitory number, resolved via the
+    // faculty's building (dorms.ttj_name, falling back to dorms.number).
+    async ttjNumberForFaculty(faculty: string): Promise<string | null> {
+      if (!faculty) return null
+      const { data: link } = await supabase
+        .from('faculty_dorm').select('dorm_id').eq('faculty', faculty).maybeSingle()
+      if (!link?.dorm_id) return null
+      const { data: dorm } = await supabase
+        .from('dorms').select('ttj_name, number').eq('id', link.dorm_id).maybeSingle()
+      const ttj = (dorm as { ttj_name?: string | null; number?: string | null } | null)
+      return ttj?.ttj_name?.trim() || ttj?.number?.trim() || null
+    },
+
+    async dekanNameForFaculty(faculty: string): Promise<string | null> {
+      if (!faculty) return null
+      const { data, error } = await supabase
+        .from('staff')
+        .select('full_name')
+        .eq('faculty', faculty)
+        .eq('role', 'dekan')
+        .eq('status', 'active')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      if (error) throw error
+      return data?.full_name ?? null
     },
 
     async getOwnedDraft(studentId: string, id: string) {
@@ -71,7 +99,7 @@ export function createApplicationRepository() {
 
     async arizaById(id: string) {
       const { data, error } = await supabase
-        .from('arizalar').select('id, title, type, student_name, status').eq('id', id).maybeSingle()
+        .from('arizalar').select('id, title, type, text, student_name, status').eq('id', id).maybeSingle()
       if (error) throw error
       return data
     },

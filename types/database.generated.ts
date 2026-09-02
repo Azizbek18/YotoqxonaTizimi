@@ -105,7 +105,17 @@ export type ArizaSignatureRow = {
   user_agent: string | null
   verify_code: string
   signature: string
+  signature_image: string | null
   created_at: string
+}
+
+export type StudentTelegramLinkRow = {
+  student_id: string
+  token_hash: string
+  token_expires_at: string
+  chat_id: number | null
+  linked_at: string | null
+  updated_at: string
 }
 
 export type AnnouncementRow = {
@@ -247,6 +257,7 @@ export interface Database {
       tolovlar: Table<PaymentRow>
       permit_requests: Table<PermitRequestRow>
       permit_telegram_links: Table<PermitTelegramLinkRow>
+      student_telegram_links: Table<StudentTelegramLinkRow>
       push_subscriptions: Table<PushSubscriptionRow>
       attendance_sessions: Table<AttendanceSessionRow>
       attendance_records: Table<AttendanceRecordRow>

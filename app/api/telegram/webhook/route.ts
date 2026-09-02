@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { bindPermitTelegramChat, formatPermitTelegramMessage } from '@/lib/permit-telegram'
+import { bindStudentTelegramChat } from '@/lib/student-telegram'
 import { sendTelegramChatMessage } from '@/lib/telegram'
 
 type TelegramUpdate = {
@@ -38,7 +39,20 @@ export async function POST(request: Request) {
 
     const permit = await bindPermitTelegramChat(match[1], chatId)
     if (!permit) {
-      await sendTelegramChatMessage(String(chatId), '⚠️ Bu havola eskirgan yoki avval boshqa Telegram akkauntiga ulangan. Saytdagi “Ariza holatini tekshirish” sahifasidan yangi havola oling.')
+      // Not a permit link — maybe a registered student linking their account.
+      const student = await bindStudentTelegramChat(match[1], chatId)
+      if (student) {
+        await sendTelegramChatMessage(
+          String(chatId),
+          `🔔 <b>Telegram ulandi</b>\n\nHurmatli <b>${student.name.replaceAll('<', '&lt;')}</b>, endi yuborgan arizalaringiz nusxasi shu botga keladi.`,
+          {
+            parseMode: 'HTML',
+            replyMarkup: { inline_keyboard: [[{ text: 'Arizalarim', url: `${process.env.NEXT_PUBLIC_APP_URL}/talaba/arizalar` }]] },
+          },
+        )
+        return NextResponse.json({ ok: true })
+      }
+      await sendTelegramChatMessage(String(chatId), '⚠️ Bu havola eskirgan yoki avval boshqa Telegram akkauntiga ulangan. Saytdan yangi havola oling.')
       return NextResponse.json({ ok: true })
     }
 

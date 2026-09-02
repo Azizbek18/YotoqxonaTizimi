@@ -54,6 +54,7 @@ supabase/.temp/
 .agents/
 .claude/
 skills-lock.json
+.codex-remote-attachments/
 
 # local npm cache (accidental local NPM_CONFIG_CACHE target, not app code)
 .npm-cache/

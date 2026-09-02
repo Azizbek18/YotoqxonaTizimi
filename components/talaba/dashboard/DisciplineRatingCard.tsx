@@ -25,12 +25,12 @@ export default function DisciplineRatingCard({ isLight, warningCount, onShowWarn
   const critical = warningCount >= 3;
 
   return (
-    <div className={`backdrop-blur-xl border rounded-[32px] p-6 transition-all duration-300 ${
+    <div className={`backdrop-blur-xl border rounded-3xl sm:rounded-[32px] p-4 sm:p-6 transition-all duration-300 ${
       critical
         ? isLight ? 'bg-red-50 border-red-200 shadow-[0_0_30px_rgba(239,68,68,0.15)]' : 'bg-red-950/20 border-red-500/30'
         : t.surfaceBg
     }`}>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className={`text-[10px] font-black tracking-[0.2em] uppercase ${
           critical ? 'text-red-500' : isLight ? 'text-blue-600' : 'text-indigo-400'
         }`}>
@@ -63,7 +63,7 @@ export default function DisciplineRatingCard({ isLight, warningCount, onShowWarn
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <p className={`text-2xl font-black italic ${t.textStrong}`}>{warningCount} ta faol ogohlantirish</p>
+            <p className={`text-xl sm:text-2xl font-black italic ${t.textStrong}`}>{warningCount} ta faol ogohlantirish</p>
             {warningCount === 0 && (
               <motion.span
                 animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}

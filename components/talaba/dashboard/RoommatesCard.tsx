@@ -14,7 +14,7 @@ type Props = {
 export default function RoommatesCard({ isLight, roommates }: Props) {
   const t = dashboardTheme(isLight);
   return (
-    <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${t.surfaceBg}`}>
+    <div className={`backdrop-blur-xl border rounded-3xl sm:rounded-[32px] p-4 sm:p-6 ${t.surfaceBg}`}>
       <h3 className={`text-[10px] font-black tracking-[0.2em] mb-4 uppercase ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>
         Xonadoshlar ({roommates.length} kishi)
       </h3>

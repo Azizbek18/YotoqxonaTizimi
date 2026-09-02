@@ -570,7 +570,7 @@ function ArizalarContent() {
                 )}
                 {selectedReq.application_type !== 'imtiyozli' && fieldRow('JShSHIR', <span className="font-mono">{selectedReq.jshshir ?? '—'}</span>)}
                 {fieldRow('Telefon', selectedReq.phone)}
-                {selectedReq.application_type === 'imtiyozli' && (
+                {(selectedReq.application_type === 'imtiyozli' || selectedReq.relative_phone || selectedReq.study_type || selectedReq.origin_region) && (
                   <>
                     {fieldRow('Yaqin qarindoshi tel', selectedReq.relative_phone || '—')}
                     {fieldRow('Kelib chiqqan joyi', <span className="max-w-[60%] truncate inline-block align-bottom">{[selectedReq.origin_country, selectedReq.origin_region].filter(Boolean).join(', ') || '—'}</span>)}
@@ -609,13 +609,24 @@ function ArizalarContent() {
                   </button>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleViewDocument}
-                  className={`flex w-full items-center justify-center gap-2 rounded-lg border py-3 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
-                >
-                  Ruxsatnoma faylini ko‘rish <ExternalLink size={12} />
-                </button>
+                <div className="space-y-2">
+                  {(selectedReq.study_type || selectedReq.origin_region) && (
+                    <button
+                      type="button"
+                      onClick={() => window.open(`/dekan/hujjat?id=${selectedReq.id}`, '_blank', 'noopener,noreferrer')}
+                      className={`flex w-full items-center justify-center gap-2 rounded-lg py-3 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.accentSolid}`}
+                    >
+                      Tilxat va Arizani ko‘rish <ExternalLink size={12} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleViewDocument}
+                    className={`flex w-full items-center justify-center gap-2 rounded-lg border py-3 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+                  >
+                    Ruxsatnoma faylini ko‘rish <ExternalLink size={12} />
+                  </button>
+                </div>
               )}
 
               {/* Actions */}

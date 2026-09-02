@@ -12,7 +12,9 @@ import {
   isValidJshshir,
   isValidNamePart,
   isValidPassport,
+  canonicalizeFullName,
   namesLikelyMatch,
+  normalizeNameWhitespace,
   normalizeJshshir,
   normalizeForeignIdNumber,
   normalizePassport,
@@ -112,9 +114,28 @@ describe('name parts', () => {
 
   it('isValidJoinedFullName enforces the minimum part count', () => {
     expect(isValidJoinedFullName('Aliyev Vali Anvarovich')).toBe(true)
+    expect(isValidJoinedFullName("Safarova Go'zal Zafar qizi")).toBe(true)
     expect(isValidJoinedFullName('Aliyev Vali')).toBe(false)
     expect(isValidJoinedFullName('Aliyev Vali', 2)).toBe(true)
     expect(isValidJoinedFullName('Aliyev Vali 3vich')).toBe(false)
+  })
+
+  it('isValidJoinedFullName folds the exotic spacing a phone keyboard leaves in', () => {
+    // Non-breaking space, zero-width space/joiner, word joiner and the BOM,
+    // each used here as the ONLY separator between two of the F.I.Sh parts.
+    expect(isValidJoinedFullName("Safarova\u00a0Go'zal\u200bZafar qizi")).toBe(true)
+    expect(isValidJoinedFullName("Safarova Go'zal\u2060Zafar")).toBe(true)
+    expect(isValidJoinedFullName("Aliyev\u200dVali\ufeffAnvarovich")).toBe(true)
+    // A genuinely 2-part name is still rejected, exotic spacing or not.
+    expect(isValidJoinedFullName("Safarova\u00a0Go'zal")).toBe(false)
+  })
+
+  it('normalizeNameWhitespace / canonicalizeFullName strip zero-width characters from the stored name', () => {
+    expect(normalizeNameWhitespace("Safarova\u200bGo'zal\u00a0Zafar")).toBe("Safarova Go'zal Zafar")
+    expect(canonicalizeFullName("  Safarova\u200b\u200bGo'zal  Zafar qizi ")).toBe("Safarova Go'zal Zafar qizi")
+    // normalizeNameWhitespace does not trim on its own, so it is safe on
+    // every keystroke while a trailing space is still being typed.
+    expect(normalizeNameWhitespace('Safarova ')).toBe('Safarova ')
   })
 
   it('namesLikelyMatch tolerates patronymic-form differences', () => {
@@ -133,5 +154,14 @@ describe('name parts', () => {
     // Same surname, different given name + patronymic — not enough.
     expect(namesLikelyMatch('Shirazatdinov Ramazan Baxtiyarovich', 'Shirazatdinov Bekzod Anvarovich')).toBe(false)
     expect(namesLikelyMatch('Ali Karim', 'Vali Karim')).toBe(false)
+  })
+
+  it('namesLikelyMatch rejects a sibling: same surname + patronymic, different given name', () => {
+    // Both anchors (surname, given name) must line up — a shared patronymic
+    // and surname is exactly what siblings and cousins have in common.
+    expect(namesLikelyMatch('Karimov Islom Rustamovich', 'Karimov Islombek Rustamovich')).toBe(false)
+    expect(namesLikelyMatch('Karimov Islombek Rustamovich', 'Karimov Islom Rustamovich')).toBe(false)
+    // A one-character OCR slip in the given name is still tolerated.
+    expect(namesLikelyMatch('Karimov Islombek Rustamovich', 'Karimov Islombck Rustamovich')).toBe(true)
   })
 })

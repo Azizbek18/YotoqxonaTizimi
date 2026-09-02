@@ -81,16 +81,16 @@ export default function AiAssistant({ isLight }: { isLight: boolean }) {
 
   return createPortal(
     <>
-      <div className="fixed bottom-24 sm:bottom-28 right-6 z-[9999] pointer-events-auto">
+      <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] sm:bottom-28 right-3 sm:right-6 z-[9999] pointer-events-auto">
         <button
           onClick={() => setIsChatOpen(true)}
-          className={`flex items-center justify-center p-4 rounded-full border shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 group ${
+          className={`flex items-center justify-center p-3 sm:p-4 rounded-full border shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 group ${
             isLight
               ? 'bg-blue-600 border-blue-500 text-white hover:bg-blue-700 shadow-blue-500/20'
               : 'bg-gradient-to-r from-cyan-500 to-indigo-600 border-cyan-400/30 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)]'
           }`}
         >
-          <Sparkles className="size-6 animate-pulse" />
+          <Sparkles className="size-5 sm:size-6 animate-pulse" />
         </button>
       </div>
 

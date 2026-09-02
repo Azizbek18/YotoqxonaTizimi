@@ -50,4 +50,13 @@ describe('AI provider routing with Gateway', () => {
     expect(result.candidates[0].content.parts[0].text).toBe('Salom!')
     expect(gatewayGenerate).toHaveBeenCalledWith(expect.anything(), 'text')
   })
+
+  it('reports every attempted provider when all chat providers fail', async () => {
+    callGemini.mockRejectedValue(new Error('Gemini quota'))
+    gatewayGenerate.mockRejectedValue(new Error('Gateway billing'))
+
+    await expect(
+      aiChatReply({ contents: [{ parts: [{ text: 'Salom' }] }] }, 'gemini-key'),
+    ).rejects.toThrow(/Gemini: Gemini quota.*AI Gateway: Gateway billing/)
+  })
 })

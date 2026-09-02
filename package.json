@@ -19,6 +19,7 @@
     "validate:env:ci": "node scripts/validate-env.mjs",
     "verify:http": "node scripts/verify-local-http.mjs",
     "verify:remote": "node --env-file=.env.local scripts/verify-remote-end-state.mjs",
+    "smoke:ai-fallback": "node --env-file=.env.local scripts/smoke-ai-payment-fallback.mjs",
     "telegram:webhook": "node --env-file=.env.local scripts/configure-telegram-webhook.mjs",
     "telegram:test-alert": "node --env-file=.env.local scripts/test-ai-outage-alert.mjs",
     "build:production": "npm run validate:env:ci && next build",

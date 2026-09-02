@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, User, Mail, Phone, Volume2, VolumeX,
   ChevronRight, ChevronLeft, ArrowLeft, CheckCircle2, CreditCard, GraduationCap,
-  ShieldAlert, ShieldCheck, Pencil, RotateCw, BookOpen, FileText
+  ShieldAlert, ShieldCheck, Pencil, RotateCw, BookOpen, FileText, Download, Users
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -15,10 +15,11 @@ import CustomSelect from '@/components/ui/CustomSelect'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
 import TelegramPermitConnect from '@/components/TelegramPermitConnect'
 import PushNotificationCard from '@/components/pwa/PushNotificationCard'
+import ArizaTilxatDocument from '@/components/documents/ArizaTilxatDocument'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { PERMIT_FACULTIES } from '@/lib/faculties'
+import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
-import { getPassportFormatError, isValidJoinedFullName, isValidJshshir, isValidPassport, normalizeJshshir, normalizePassport } from '@/lib/permit-validation'
+import { getPassportFormatError, isValidJoinedFullName, isValidJshshir, isValidPassport, normalizeJshshir, normalizeNameWhitespace, normalizePassport, UZ_ORIGIN_REGIONS } from '@/lib/permit-validation'
 import { cyrillicToLatin } from '@/lib/transliterate'
 import { prepareAiAnalysisFile, prepareUploadFile } from '@/lib/prepare-upload'
 
@@ -73,6 +74,12 @@ export default function RuxsatnomaYuborish() {
   const [faculty, setFaculty] = useState<string>(PERMIT_FACULTIES[0].value)
   const [direction, setDirection] = useState('')
   const [course, setCourse] = useState('1')
+  // Extra facts the Ariza + Tilxat needs (studyType + home region +
+  // relative's phone) — a yo'llanma applicant now downloads a signed
+  // Ariza/Tilxat too, exactly like the imtiyozli flow.
+  const [studyType, setStudyType] = useState<'grant' | 'kontrakt' | ''>('')
+  const [originRegion, setOriginRegion] = useState('')
+  const [relativePhone, setRelativePhone] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [aiAnalysisFile, setAiAnalysisFile] = useState<File | null>(null)
   const [preparingFile, setPreparingFile] = useState(false)
@@ -84,6 +91,12 @@ export default function RuxsatnomaYuborish() {
   const [telegramLinked, setTelegramLinked] = useState(false)
   const [permitRequestId, setPermitRequestId] = useState<string | null>(null)
 
+  // Ariza + Tilxat (final step) — must be downloaded before submit, so the
+  // student actually has the paper to print, sign and hand to the dekan.
+  const [ttjName, setTtjName] = useState('')
+  const [documentDownloaded, setDocumentDownloaded] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+
   // Shown before the student can touch the form — must be acknowledged
   // every visit, since it's a warning about THIS submission's accuracy,
   // not something that only needs saying once per browser.
@@ -91,6 +104,18 @@ export default function RuxsatnomaYuborish() {
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => setHydrated(true), [])
+
+  // Dekan-configured dormitory number/name for the picked faculty — public,
+  // since the applicant isn't logged in. Empty until set; the document then
+  // shows a literal blank rather than guessing a number.
+  useEffect(() => {
+    let active = true
+    fetch(`/api/public/ttj-name?faculty=${encodeURIComponent(faculty)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (active && data?.ttjName) setTtjName(data.ttjName) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [faculty])
 
   // Set when the applicant arrived via "Tuzatib qayta yuborish" from the
   // status page after a rejection — the identity fields are prefilled and
@@ -145,16 +170,20 @@ export default function RuxsatnomaYuborish() {
         const saved = JSON.parse(prefill) as {
           passport?: string; jshshir?: string; email?: string
           fullName?: string; phone?: string; gender?: string; faculty?: string; direction?: string; course?: string
+          studyType?: string; originRegion?: string; relativePhone?: string
         }
         if (saved.passport) setPassportSeries(saved.passport)
         if (saved.jshshir) setJshshir(saved.jshshir)
         if (saved.email) setEmail(saved.email)
-        if (saved.fullName) setFullName(cyrillicToLatin(saved.fullName))
+        if (saved.fullName) setFullName(normalizeNameWhitespace(cyrillicToLatin(saved.fullName)))
         if (saved.phone) setPhone(String(saved.phone).replace(/\D/g, '').slice(-9))
         if (saved.gender === 'male' || saved.gender === 'female') setGender(saved.gender)
         if (saved.faculty && PERMIT_FACULTIES.some((f) => f.value === saved.faculty)) setFaculty(saved.faculty)
         if (saved.direction) setDirection(saved.direction)
         if (saved.course && /^[1-6]$/.test(saved.course)) setCourse(saved.course)
+        if (saved.studyType === 'grant' || saved.studyType === 'kontrakt') setStudyType(saved.studyType)
+        if (saved.originRegion && (UZ_ORIGIN_REGIONS as readonly string[]).includes(saved.originRegion)) setOriginRegion(saved.originRegion)
+        if (saved.relativePhone) setRelativePhone(String(saved.relativePhone).replace(/\D/g, '').slice(-9))
         if (editRaw) setEditMode(true)
         else setResubmitMode(true)
         setDraftLoaded(true)
@@ -164,7 +193,7 @@ export default function RuxsatnomaYuborish() {
       const draftRaw = sessionStorage.getItem('permit_draft')
       if (!draftRaw) return
       const d = JSON.parse(draftRaw) as Record<string, string>
-      if (d.fullName) setFullName(d.fullName)
+      if (d.fullName) setFullName(normalizeNameWhitespace(d.fullName))
       if (d.passportSeries) setPassportSeries(d.passportSeries)
       if (d.jshshir) setJshshir(d.jshshir)
       if (d.email) setEmail(d.email)
@@ -173,6 +202,9 @@ export default function RuxsatnomaYuborish() {
       if (d.faculty && PERMIT_FACULTIES.some((f) => f.value === d.faculty)) setFaculty(d.faculty)
       if (d.direction) setDirection(d.direction)
       if (d.course && /^[1-6]$/.test(d.course)) setCourse(d.course)
+      if (d.studyType === 'grant' || d.studyType === 'kontrakt') setStudyType(d.studyType)
+      if (d.originRegion && (UZ_ORIGIN_REGIONS as readonly string[]).includes(d.originRegion)) setOriginRegion(d.originRegion)
+      if (d.relativePhone) setRelativePhone(String(d.relativePhone).replace(/\D/g, '').slice(-9))
       // The document (step 3) can't be serialised, so never resume past it —
       // the student re-picks the file, everything else is already filled.
       const step = Number(d.formStep)
@@ -191,9 +223,10 @@ export default function RuxsatnomaYuborish() {
     try {
       sessionStorage.setItem('permit_draft', JSON.stringify({
         formStep, fullName, passportSeries, jshshir, email, phone, gender, faculty, direction, course,
+        studyType, originRegion, relativePhone,
       }))
     } catch { /* storage unavailable / full */ }
-  }, [draftLoaded, submitted, formStep, fullName, passportSeries, jshshir, email, phone, gender, faculty, direction, course])
+  }, [draftLoaded, submitted, formStep, fullName, passportSeries, jshshir, email, phone, gender, faculty, direction, course, studyType, originRegion, relativePhone])
 
   // Particle animation loop
   useEffect(() => {
@@ -249,6 +282,14 @@ export default function RuxsatnomaYuborish() {
       audioCtxRef.current = null
     }
   }, [])
+
+  // The downloaded Ariza/Tilxat is a snapshot of the data at download time.
+  // If the applicant goes back and edits any field that appears on it, the
+  // signed paper they hand the dekan would no longer match what gets
+  // submitted — so force them to download a fresh copy.
+  useEffect(() => {
+    setDocumentDownloaded(false)
+  }, [fullName, faculty, course, studyType, originRegion, phone, relativePhone])
 
   // Programmatic Sound Synthesis
   const playSound = (type: 'keypress' | 'success' | 'focus' | 'tab' | 'gender') => {
@@ -453,6 +494,10 @@ export default function RuxsatnomaYuborish() {
       showToast('error', "Telefon raqamini to'liq kiriting! (9 ta raqam)")
       return false
     }
+    if (!/^\d{9}$/.test(relativePhone.trim())) {
+      showToast('error', "Yaqin qarindoshingizning telefon raqamini to'liq kiriting! (9 ta raqam)")
+      return false
+    }
     if (!gender) {
       showToast('error', 'Jinsingizni tanlang!')
       return false
@@ -463,6 +508,14 @@ export default function RuxsatnomaYuborish() {
   const validateStep2 = () => {
     if (!direction.trim()) {
       showToast('error', 'Yo‘nalish / Guruh maydonini kiriting!')
+      return false
+    }
+    if (!studyType) {
+      showToast('error', "Ta'lim shaklini tanlang! (grant yoki to'lov-shartnoma)")
+      return false
+    }
+    if (!originRegion) {
+      showToast('error', 'Kelib chiqqan viloyatingizni tanlang!')
       return false
     }
     return true
@@ -515,6 +568,42 @@ export default function RuxsatnomaYuborish() {
         setFormStep(4)
         playSound('tab')
       }
+    } else if (formStep === 4) {
+      setFormStep(5)
+      playSound('tab')
+    }
+  }
+
+  const facultyLabel = permitFacultyLabel(faculty)
+
+  const arizaTilxatData = {
+    fullName: fullName.trim(),
+    facultyLabel,
+    course,
+    studyType,
+    originCountry: "O'zbekiston",
+    originRegion,
+    phone: phone.trim(),
+    relativePhone: relativePhone.trim() ? `+998 ${relativePhone.trim()}` : '',
+    ttjName,
+  }
+
+  const handleDownloadPdf = async () => {
+    if (downloadingPdf) return
+    setDownloadingPdf(true)
+    try {
+      const { generateArizaTilxatPdf, arizaTilxatFileName } = await import('@/lib/ariza-tilxat-pdf')
+      const doc = await generateArizaTilxatPdf(arizaTilxatData)
+      doc.save(arizaTilxatFileName(fullName))
+      setDocumentDownloaded(true)
+      playSound('success')
+      toast.success('Hujjat yuklab olindi', { icon: '📄' })
+      toast('Uni chop etib, imzo qo‘yib DEKANGA topshiring.', { duration: 7000, icon: '✍️' })
+    } catch (err) {
+      console.error(err)
+      showToast('error', 'Hujjatni yuklab bo‘lmadi. Qayta urinib ko‘ring.')
+    } finally {
+      setDownloadingPdf(false)
     }
   }
 
@@ -550,12 +639,18 @@ export default function RuxsatnomaYuborish() {
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault()
 
-    if (formStep !== 4) return
+    if (formStep !== 5) return
     // In edit mode the document is optional — the student may be fixing a
     // typo, not the file. A fresh submission always needs the file.
     const keepingExistingDoc = editMode && !file
     if (!validateStep3()) return
     if (!keepingExistingDoc && (!file || !aiAnalysisFile)) return
+    // The signed Ariza + Tilxat is what the student hands the dekan — a
+    // fresh submission must have it downloaded first (an edit may skip it).
+    if (!editMode && !documentDownloaded) {
+      showToast('error', 'Avval Ariza va Tilxatni yuklab oling — dekanga imzoga topshirishingiz kerak.')
+      return
+    }
 
     setLoading(true)
     setSubmissionStage('ai')
@@ -615,6 +710,9 @@ export default function RuxsatnomaYuborish() {
       submission.append('faculty', faculty)
       submission.append('direction', direction.trim())
       submission.append('course', String(course))
+      submission.append('studyType', studyType)
+      submission.append('originRegion', originRegion)
+      submission.append('relativePhone', `+998${relativePhone.trim()}`)
       if (aiClaim) submission.append('aiClaim', aiClaim)
 
       const submitResponse = await fetch('/api/permit-requests', {
@@ -1073,7 +1171,7 @@ export default function RuxsatnomaYuborish() {
 
                 {/* COLUMN 2: Form Wizard — spans the full width on Step 4,
                     since there's no side-column card to share space with. */}
-                <div className={`space-y-3.5 w-full ${formStep === 4 ? 'md:col-span-12' : 'md:col-span-7 md:col-start-6'}`}>
+                <div className={`space-y-3.5 w-full ${formStep >= 4 ? 'md:col-span-12' : 'md:col-span-7 md:col-start-6'}`}>
 
                   {editMode && (
                     <div className={`flex items-start gap-2.5 rounded-xl border p-3 ${
@@ -1106,7 +1204,8 @@ export default function RuxsatnomaYuborish() {
                       { step: 1, label: 'Shaxsiy' },
                       { step: 2, label: 'O‘qish' },
                       { step: 3, label: 'Hujjat' },
-                      { step: 4, label: 'Tasdiq' }
+                      { step: 4, label: 'Tekshirish' },
+                      { step: 5, label: 'Ariza' }
                     ].map((s) => {
                       const isActive = formStep === s.step
                       return (
@@ -1119,6 +1218,7 @@ export default function RuxsatnomaYuborish() {
                             else if (s.step === 2 && formStep === 1 && validateStep1()) setFormStep(2)
                             else if (s.step === 3 && formStep === 2 && validateStep1() && validateStep2()) setFormStep(3)
                             else if (s.step === 4 && formStep === 3 && validateStep1() && validateStep2() && validateStep3()) { setCardFlipped(false); setFormStep(4) }
+                            else if (s.step === 5 && formStep === 4 && validateStep1() && validateStep2() && validateStep3()) setFormStep(5)
                           }}
                           className={`flex-1 min-w-0 py-1.5 sm:py-2 px-1 text-center rounded-lg border text-[10px] sm:text-xs font-black uppercase tracking-wide sm:tracking-wider relative transition-all duration-300 z-10 ${
                             isActive
@@ -1199,7 +1299,7 @@ export default function RuxsatnomaYuborish() {
                                   playSound('focus')
                                 }}
                                 onBlur={() => setFocusedField(null)}
-                                onChange={(e) => handleInputChange(e, (v) => setFullName(cyrillicToLatin(v)), 'fullName')}
+                                onChange={(e) => handleInputChange(e, (v) => setFullName(normalizeNameWhitespace(cyrillicToLatin(v))), 'fullName')}
                                 placeholder="Familiya Ism Sharif"
                                 className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 ${
                                   isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
@@ -1293,6 +1393,44 @@ export default function RuxsatnomaYuborish() {
                               </div>
                             </div>
                           </div>
+                        </div>
+
+                        {/* Relative's phone — the Ariza asks for a close
+                            relative's number as an emergency contact. */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center ml-2">
+                            <label className={`text-[10px] sm:text-xs font-black uppercase tracking-widest block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Yaqin qarindosh telefoni</label>
+                            {relativePhone.length === 9 && (
+                              <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+                            )}
+                          </div>
+                          <div className={`cyber-border ${focusedField === 'relativePhone' ? 'focused' : ''}`}>
+                            <div className="cyber-input-inner relative flex items-center">
+                              <div className={`absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none border-r pr-2 transition-all duration-300 ${
+                                focusedField === 'relativePhone' ? 'text-indigo-400 border-indigo-500/30' : `text-slate-500 ${isLight ? 'border-slate-200' : 'border-white/10'}`
+                              }`}>
+                                <Users size={16} />
+                                <span className="text-base font-bold">+998</span>
+                              </div>
+                              <input
+                                type="tel"
+                                inputMode="numeric"
+                                value={relativePhone}
+                                maxLength={9}
+                                onFocus={() => { setFocusedField('relativePhone'); playSound('focus') }}
+                                onBlur={() => setFocusedField(null)}
+                                onChange={(e) => handleInputChange(e, (val) => setRelativePhone(val.replace(/\D/g, '').slice(0, 9)), 'phone')}
+                                placeholder="911234567"
+                                className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-28 rounded-xl text-base outline-none transition-colors duration-300 ${
+                                  isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
+                                }`}
+                                required
+                              />
+                            </div>
+                          </div>
+                          <p className={`px-2 text-[9px] leading-relaxed ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Ota-ona yoki yaqin qarindoshingizning raqami — favqulodda holatlar uchun.
+                          </p>
                         </div>
 
                         {/* Interactive 3D Gender Selector Pods */}
@@ -1488,6 +1626,62 @@ export default function RuxsatnomaYuborish() {
                               </motion.label>
                             ))}
                           </div>
+                        </div>
+
+                        {/* Ta'lim shakli — grant / to'lov-shartnoma. Fills the
+                            ( budjet ) / ( to'lov-shartnoma ) box on the Ariza. */}
+                        <div className="space-y-1">
+                          <label className={`text-[10px] sm:text-xs font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Ta&apos;lim shakli</label>
+                          <div className="flex gap-2">
+                            {([
+                              { value: 'grant', label: 'Davlat granti' },
+                              { value: 'kontrakt', label: "To'lov-shartnoma" },
+                            ] as const).map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => { setStudyType(opt.value); playSound('keypress') }}
+                                className={`flex-1 py-2.5 sm:py-3 rounded-xl border text-xs sm:text-sm font-black transition-all duration-300 ${
+                                  studyType === opt.value
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/20 ring-2 ring-indigo-500/15'
+                                    : isLight
+                                      ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                                      : 'bg-[#0f172a]/70 border-white/5 text-slate-400 hover:bg-white/5'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Kelib chiqqan viloyat — the Ariza reads
+                            "<viloyat> viloyatidan kelganligim". */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center ml-2">
+                            <label className={`text-[10px] sm:text-xs font-black uppercase tracking-widest block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Kelib chiqqan viloyat</label>
+                            {originRegion && (
+                              <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+                            )}
+                          </div>
+                          <div className={`cyber-border ${focusedField === 'originRegion' ? 'focused' : ''}`}>
+                            <div className="cyber-input-inner relative">
+                              <CustomSelect
+                                value={originRegion}
+                                onFocus={() => { setFocusedField('originRegion'); playSound('focus') }}
+                                onBlur={() => setFocusedField(null)}
+                                onChange={(val) => { setOriginRegion(val); playSound('keypress') }}
+                                placeholder="Viloyatni tanlang"
+                                options={UZ_ORIGIN_REGIONS.map((r) => ({ value: r, label: r }))}
+                                className={`w-full bg-transparent py-2.5 sm:py-3 px-4 rounded-xl text-base transition-colors duration-300 ${
+                                  isLight ? 'text-slate-900' : 'text-white'
+                                }`}
+                              />
+                            </div>
+                          </div>
+                          <p className={`px-2 text-[9px] leading-relaxed ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Doimiy yashash joyingiz — Toshkentda turar joyingiz yo&apos;qligini tasdiqlash uchun.
+                          </p>
                         </div>
                       </motion.div>
                     )}
@@ -1762,10 +1956,13 @@ export default function RuxsatnomaYuborish() {
                                 <FileText size={16} className="text-slate-500 shrink-0" />
                               </div>
 
-                              <div className="mt-4 space-y-3 flex-1">
+                              <div className="mt-4 space-y-2.5 flex-1">
                                 {cardFieldRow(Mail, 'Email', email)}
                                 {cardFieldRow(Phone, 'Telefon', phone ? `+998 ${phone}` : '')}
+                                {cardFieldRow(Users, 'Qarindosh tel', relativePhone ? `+998 ${relativePhone}` : '')}
                                 {cardFieldRow(BookOpen, "Yo'nalish", directionsForFaculty(faculty).find((d) => d.value === direction)?.label ?? direction)}
+                                {cardFieldRow(GraduationCap, "Ta'lim shakli", studyType === 'grant' ? 'Davlat granti' : studyType === 'kontrakt' ? "To'lov-shartnoma" : '')}
+                                {cardFieldRow(BookOpen, 'Viloyat', originRegion)}
                                 {cardFieldRow(Upload, 'Fayl', file?.name ?? (editMode ? 'Avvalgi hujjat saqlanadi' : ''))}
                               </div>
 
@@ -1793,6 +1990,69 @@ export default function RuxsatnomaYuborish() {
                       </motion.div>
                     )}
 
+                    {/* STEP 5: Ariza + Tilxat — download, sign, hand to dekan.
+                        Same document the imtiyozli flow generates. */}
+                    {formStep === 5 && (
+                      <motion.div
+                        initial={{ opacity: 0, x: 15 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="space-y-4"
+                      >
+                        <div className="text-center space-y-1">
+                          <h3 className={`text-sm sm:text-base font-black uppercase tracking-wide ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                            Ariza va Tilxatingiz
+                          </h3>
+                          <p className={`text-[10px] sm:text-[11px] font-medium leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                            Ma&apos;lumotlaringiz bilan to&apos;ldirilgan holda ko&apos;rsatilgan. Xato bo&apos;lsa tahrirlang; to&apos;g&apos;ri bo&apos;lsa yuklab oling.
+                          </p>
+                        </div>
+
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => { playSound('tab'); setFormStep(1) }}
+                            className="absolute top-2 right-2 z-20 flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[9px] font-black uppercase tracking-wider shadow-lg shadow-amber-500/30 ring-2 ring-white dark:ring-[#0b1120]"
+                          >
+                            <Pencil size={11} />
+                            <span>Tahrirlash</span>
+                          </button>
+                          <div className="max-h-[50vh] overflow-y-auto rounded-2xl">
+                            <ArizaTilxatDocument data={arizaTilxatData} />
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleDownloadPdf}
+                          disabled={downloadingPdf}
+                          className={`w-full flex items-center justify-center gap-2 p-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-60 ${
+                            documentDownloaded
+                              ? (isLight ? 'border border-emerald-300 bg-emerald-50 text-emerald-700' : 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300')
+                              : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/25'
+                          }`}
+                        >
+                          {downloadingPdf ? (
+                            <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          ) : documentDownloaded ? (
+                            <><CheckCircle2 size={14} /> Yuklab olindi — qayta yuklash</>
+                          ) : (
+                            <><Download size={14} /> Ariza va Tilxatni yuklab olish (PDF)</>
+                          )}
+                        </button>
+
+                        {documentDownloaded ? (
+                          <div className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-[11px] font-semibold leading-relaxed ${isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'}`}>
+                            <ShieldAlert size={14} className="shrink-0 mt-0.5" />
+                            <span>Yuklab olingan Ariza va Tilxatni <b>chop eting</b>, o&apos;zingiz imzo qo&apos;ying va <b>dekanga imzoga topshiring</b>. So&apos;ng shu yerdan yuboring.</span>
+                          </div>
+                        ) : (
+                          <p className={`text-center text-[11px] font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {editMode ? 'Ma’lumot o‘zgargan bo‘lsa, hujjatni qayta yuklab oling.' : 'Yuborishdan oldin hujjatni yuklab olishingiz shart.'}
+                          </p>
+                        )}
+                      </motion.div>
+                    )}
+
                     {/* Form Action Navigation */}
                     <div className="flex gap-4 pt-1">
                       {formStep > 1 && (
@@ -1811,19 +2071,19 @@ export default function RuxsatnomaYuborish() {
                         </button>
                       )}
 
-                      {formStep < 4 ? (
+                      {formStep < 5 ? (
                         <button
                           // Distinct key from the submit button below: without
                           // it React reuses the same <button> DOM node across
-                          // the step 3 -> 4 switch, so a tap that starts on
+                          // the step 4 -> 5 switch, so a tap that starts on
                           // "Keyingi" completes on a now-type="submit" button
-                          // and the form auto-submits before the review card.
+                          // and the form auto-submits before the Ariza step.
                           key="wizard-next"
                           type="button"
                           onClick={handleNextStep}
                           className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-95"
                         >
-                          <span>Keyingi</span> <ChevronRight size={14} />
+                          <span>{formStep === 4 ? 'Ariza va Tilxat' : 'Keyingi'}</span> <ChevronRight size={14} />
                         </button>
                       ) : (
                         <button
@@ -1831,10 +2091,10 @@ export default function RuxsatnomaYuborish() {
                           // Explicit type="button" + onClick (not a native
                           // form-submit button) — a mutated submit button
                           // would fire the form on the tap that switched to
-                          // step 4. The form's onSubmit still guards Enter.
+                          // step 5. The form's onSubmit still guards Enter.
                           type="button"
                           onClick={handleSubmit}
-                          disabled={loading}
+                          disabled={loading || (!editMode && !documentDownloaded)}
                           className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all duration-300 active:scale-95 disabled:opacity-50"
                         >
                           {loading ? (
@@ -1890,6 +2150,12 @@ export default function RuxsatnomaYuborish() {
                     ? "Arizangiz o'z o'rnida qoldi — navbatdagi joyingiz o'zgarmadi. Dekan yangilangan ma'lumotlar bilan ko'rib chiqadi."
                     : "Sizning yotoqxona ruxsatnoma yo'llanmangiz ko'rib chiqish uchun qabul qilindi. Hujjat Dekan tomonidan tasdiqlanganidan so'ng sizga xona biriktiriladi va tizimda to'liq ro'yxatdan o'tishingiz mumkin bo'ladi."}
                 </p>
+                {!editMode && (
+                  <div className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-left text-[11px] font-semibold leading-relaxed ${isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'}`}>
+                    <ShieldAlert size={14} className="shrink-0 mt-0.5" />
+                    <span>Yuklab olgan Ariza va Tilxatni chop etib, imzo qo&apos;yib <b>dekanga imzoga topshiring</b>.</span>
+                  </div>
+                )}
               </div>
 
               <div className="bg-slate-950/40 rounded-2xl p-5 text-left border border-white/5 font-sans space-y-3 shadow-inner">

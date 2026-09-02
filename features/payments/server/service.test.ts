@@ -12,7 +12,7 @@ vi.mock('@/features/app-settings/server/service', () => ({
 
 const { createPaymentService } = await import('./service')
 
-function paymentForm(transactionId = 'TRX-9A7B-4C2D') {
+function paymentForm(transactionId: string | null = 'TRX-9A7B-4C2D') {
   const form = new FormData()
   const bytes = new Uint8Array(32)
   bytes.set([0x89, 0x50, 0x4e, 0x47])
@@ -21,7 +21,7 @@ function paymentForm(transactionId = 'TRX-9A7B-4C2D') {
   form.set('year', '2026')
   form.set('months', JSON.stringify(['Sentabr']))
   form.set('validatedHash', 'signed-claim')
-  form.set('transactionId', transactionId)
+  if (transactionId !== null) form.set('transactionId', transactionId)
   return form
 }
 
@@ -36,7 +36,6 @@ function repository() {
     setReceiptPath: vi.fn(async () => undefined),
     uploadReceipt: vi.fn(async () => ({ error: null })),
     removeReceipt: vi.fn(async () => undefined),
-    flagReceiptManualReview: vi.fn(async () => ({ error: null })),
     submitBatchAtomic: vi.fn(async () => ({
       data: [{ id: 'payment-1', month: 'Sentabr', year: 2026, status: 'waiting' }],
       error: null,
@@ -72,18 +71,19 @@ describe('payment submission service', () => {
     expect(repo.submitBatchAtomic).toHaveBeenCalledWith(expect.objectContaining({
       transactionId: 'TRX-9A7B-4C2D',
       normalizedTransactionId: 'TRX9A7B4C2D',
+      aiReview: 'passed',
       months: ['Sentabr'],
       amounts: [500000],
     }))
   })
 
-  it('accepts a payment-unverified claim when the AI was down and flags it for manual review', async () => {
+  it('accepts the real client shape without a transaction id when AI was down', async () => {
     const repo = repository()
     verifyFileClaim.mockImplementation((purpose: string) => purpose === 'payment-unverified')
 
     const result = await createPaymentService(repo as never).submit(
       { id: '00000000-0000-4000-8000-000000000001', full_name: 'Test Student' },
-      paymentForm(),
+      paymentForm(null),
     )
 
     expect(result.ok).toBe(true)
@@ -93,17 +93,23 @@ describe('payment submission service', () => {
       expect.stringMatching(/^[0-9a-f]{64}$/),
       { userId: '00000000-0000-4000-8000-000000000001', amount: 500000 },
     )
-    expect(repo.submitBatchAtomic).toHaveBeenCalled()
-    expect(repo.flagReceiptManualReview).toHaveBeenCalledWith(expect.stringMatching(/^[0-9a-f]{64}$/))
+    expect(repo.submitBatchAtomic).toHaveBeenCalledWith(expect.objectContaining({
+      transactionId: '',
+      normalizedTransactionId: '',
+      aiReview: 'manual',
+    }))
   })
 
-  it('does not flag a normally AI-verified payment for manual review', async () => {
+  it('never accepts an unverified claim with a client-supplied transaction id', async () => {
     const repo = repository()
-    await createPaymentService(repo as never).submit(
+    verifyFileClaim.mockImplementation((purpose: string) => purpose === 'payment-unverified')
+
+    await expect(createPaymentService(repo as never).submit(
       { id: '00000000-0000-4000-8000-000000000001', full_name: 'Test Student' },
       paymentForm(),
-    )
-    expect(repo.flagReceiptManualReview).not.toHaveBeenCalled()
+    )).rejects.toThrow('Chek avval AI orqali tekshirilishi shart')
+    expect(repo.claimReceipt).not.toHaveBeenCalled()
+    expect(repo.submitBatchAtomic).not.toHaveBeenCalled()
   })
 
   it('rejects when neither claim verifies', async () => {
@@ -122,6 +128,19 @@ describe('payment submission service', () => {
       { id: '00000000-0000-4000-8000-000000000001', full_name: 'Test Student' },
       paymentForm('TX12345678'),
     )).rejects.toThrow('Chek tranzaksiya raqami noto‘g‘ri')
+
+    expect(repo.claimReceipt).not.toHaveBeenCalled()
+    expect(repo.submitBatchAtomic).not.toHaveBeenCalled()
+  })
+
+  it('rejects a missing transaction id unless the unverified claim is valid', async () => {
+    const repo = repository()
+    verifyFileClaim.mockReturnValue(false)
+
+    await expect(createPaymentService(repo as never).submit(
+      { id: '00000000-0000-4000-8000-000000000001', full_name: 'Test Student' },
+      paymentForm(null),
+    )).rejects.toThrow('Chek avval AI orqali tekshirilishi shart')
 
     expect(repo.claimReceipt).not.toHaveBeenCalled()
     expect(repo.submitBatchAtomic).not.toHaveBeenCalled()

@@ -5,10 +5,9 @@ import { normalizeFaculty, permitFacultyLabel } from '@/lib/faculties'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 import { getApiError } from '@/server/http/api-error'
 
-// Renders the same Ariza+Tilxat text the applicant filled in — dekan
-// reviews the document content itself, not just a raw file link, since
-// 'imtiyozli' applications have no uploaded document beyond a passport
-// photo (see /api/staff/permit-document for that).
+// Renders the same Ariza+Tilxat text the applicant filled in and downloaded
+// to sign — both 'imtiyozli' and 'yollanma' applicants produce one now, so
+// the dekan can check the signed paper against what the system generated.
 export async function GET(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
@@ -26,13 +25,16 @@ export async function GET(request: NextRequest) {
       .maybeSingle()
     if (error) throw error
     if (!permit) return NextResponse.json({ error: 'Ariza topilmadi.' }, { status: 404 })
-    if (permit.application_type !== 'imtiyozli') {
-      return NextResponse.json({ error: 'Bu ariza uchun Tilxat/Ariza hujjati mavjud emas.' }, { status: 400 })
+    // Older yo'llanma rows (submitted before the Ariza/Tilxat step existed)
+    // have no study_type/origin data — nothing to render for those.
+    if (permit.application_type === 'yollanma' && !permit.study_type && !permit.origin_region) {
+      return NextResponse.json({ error: 'Bu ariza uchun Ariza/Tilxat hujjati mavjud emas.' }, { status: 400 })
     }
 
+    const permitFacultyKey = (permit.faculty ?? '').trim().toLocaleLowerCase()
     if (
       staff.role === 'dekan'
-      && (!staff.faculty || staff.faculty.trim().toLocaleLowerCase() !== permit.faculty.trim().toLocaleLowerCase())
+      && (!staff.faculty || staff.faculty.trim().toLocaleLowerCase() !== permitFacultyKey)
     ) {
       return NextResponse.json({ error: 'Ruxsat berilmadi.' }, { status: 403 })
     }

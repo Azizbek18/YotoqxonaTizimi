@@ -218,10 +218,11 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
       : []),
     [addr, data.region, data.district]
   )
-  // MFY / qishloq stay type-able: the reference list (~9,800 MFYs) covers
+  // MFY / mahalla stays type-able: the reference list (~9,800 MFYs) covers
   // most districts but can never be 100% (mahallas are reorganised often,
-  // a handful of newly-split districts aren't in the source yet).
-  const hasMahallaOptions = mahallaOptions.length > 0
+  // a handful of newly-split districts aren't in the source yet). The
+  // qishloq / shaharcha field is always free text — there is no source list
+  // for it.
 
   // 3D Toast funksiyasi
   const show3DToast = (message: string, type: 'success' | 'error' = 'error') => {
@@ -272,7 +273,7 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
     if (!data.region) return show3DToast("Viloyatni tanlang", 'error')
     if (!data.district) return show3DToast("Tuman yoki shaharni tanlang", 'error')
     if (!data.mahalla) return show3DToast("Mahallani kiriting", 'error')
-    if (!data.qishloq) return show3DToast(hasMahallaOptions ? "Qishloqni tanlang" : "Qishloqni kiriting", 'error')
+    if (!data.qishloq) return show3DToast("Qishloqni kiriting", 'error')
     if (!data.street) return show3DToast("Ko'cha nomini kiriting", 'error')
     if (!data.houseNumber) return show3DToast("Uy raqamini kiriting", 'error')
 
@@ -346,9 +347,9 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
                   <Custom3DSelect
                     label="Qishloq / shaharcha"
                     value={data.qishloq}
-                    options={mahallaOptions}
+                    options={[]}
                     icon={MapPin}
-                    placeholder={hasMahallaOptions ? 'Tanlang yoki yozing' : 'Qishloq / shaharcha nomini yozing'}
+                    placeholder="Qishloq / shaharcha nomini yozing"
                     onChange={(v: string) => onChange({ qishloq: v })}
                     isLight={isLight}
                     allowCustom

@@ -79,11 +79,15 @@ test('yo‘llanma PDF’i AI tekshiruvi uchun JPEG ga aylantiriladi', async ({ p
   await page.getByPlaceholder('Familiya Ism Sharif').fill('TESTOV TALABA SINOV OGLI')
   await page.getByPlaceholder('misol@gmail.com').fill('test@example.com')
   await page.getByPlaceholder('901234567').fill('901234567')
+  await page.getByPlaceholder('911234567').fill('911234567')
   await page.getByRole('button', { name: 'Erkak' }).click()
   await page.getByRole('button', { name: /Keyingi/i }).click()
 
   await page.getByRole('button', { name: "Yo'nalishni tanlang" }).click()
   await page.getByRole('button', { name: 'Mexanika va matematik modellashtirish' }).click()
+  await page.getByRole('button', { name: 'Davlat granti' }).click()
+  await page.getByRole('button', { name: 'Viloyatni tanlang' }).click()
+  await page.getByRole('button', { name: 'Andijon', exact: true }).click()
   await page.getByRole('button', { name: /Keyingi/i }).click()
 
   await page.getByPlaceholder('AA1234567').fill('AA1234567')
@@ -99,5 +103,65 @@ test('yo‘llanma PDF’i AI tekshiruvi uchun JPEG ga aylantiriladi', async ({ p
   })
 
   await expect(page.getByText('yollanma.jpg')).toBeVisible({ timeout: 20_000 })
+  expect(pageErrors).toEqual([])
+})
+
+test('yo‘llanma oqimi Ariza + Tilxatni majburiy yuklab olishni talab qiladi', async ({ page }) => {
+  test.setTimeout(90_000)
+  const pageErrors: Error[] = []
+  page.on('pageerror', (error) => pageErrors.push(error))
+
+  await page.goto('/ruxsatnoma-yuborish')
+  await page.getByRole('button', { name: 'Tushundim, davom etaman' }).click()
+
+  // Step 1 — shaxsiy
+  await page.getByPlaceholder('Familiya Ism Sharif').fill('TESTOV TALABA SINOV OGLI')
+  await page.getByPlaceholder('misol@gmail.com').fill('test@example.com')
+  await page.getByPlaceholder('901234567').fill('901234567')
+  await page.getByPlaceholder('911234567').fill('911234567')
+  await page.getByRole('button', { name: 'Erkak' }).click()
+  await page.getByRole('button', { name: /Keyingi/i }).click()
+
+  // Step 2 — o‘qish + yangi maydonlar
+  await page.getByRole('button', { name: "Yo'nalishni tanlang" }).click()
+  await page.getByRole('button', { name: 'Mexanika va matematik modellashtirish' }).click()
+  await page.getByRole('button', { name: 'Davlat granti' }).click()
+  await page.getByRole('button', { name: 'Viloyatni tanlang' }).click()
+  await page.getByRole('button', { name: 'Andijon', exact: true }).click()
+  await page.getByRole('button', { name: /Keyingi/i }).click()
+
+  // Step 3 — hujjat
+  await page.getByPlaceholder('AA1234567').fill('AA1234567')
+  await page.getByPlaceholder('30102030405060').fill('12345678901234')
+  const pdf = new jsPDF({ format: 'a4' })
+  pdf.text('YO‘LLANMA / TEST PDF', 25, 35)
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'yollanma.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(pdf.output('arraybuffer')),
+  })
+  await expect(page.getByText('yollanma.jpg')).toBeVisible({ timeout: 20_000 })
+  await page.getByRole('button', { name: /Keyingi/i }).click()
+
+  // Step 4 — tekshirish card → go to the Ariza step
+  await page.getByRole('button', { name: /Ariza va Tilxat/i }).click()
+
+  // Step 5 — the Ariza + Tilxat itself renders, with the applicant's data
+  await expect(page.getByRole('heading', { name: 'A R I Z A' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'T I L X A T' })).toBeVisible()
+  // The applicant's step-2 answers landed in the document text.
+  await expect(page.getByText(/Andijon\s+viloyatidan kelganligim/).first()).toBeVisible()
+
+  // Submit is gated until the PDF is downloaded.
+  const submit = page.getByRole('button', { name: 'Tasdiqlayman, Yuborish' })
+  await expect(submit).toBeDisabled()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: /Ariza va Tilxatni yuklab olish/i }).click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toMatch(/^Ariza-Tilxat_.*\.pdf$/)
+
+  await expect(page.getByRole('button', { name: /Yuklab olindi/i })).toBeVisible()
+  await expect(submit).toBeEnabled()
   expect(pageErrors).toEqual([])
 })

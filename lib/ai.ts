@@ -20,6 +20,7 @@ type GeminiPayload = {
   generationConfig?: { responseMimeType?: string }
 }
 type GeminiResponse = { candidates: [{ content: { parts: [{ text: string }] } }] }
+type ProviderFailure = { provider: string; error: unknown }
 
 function shaped(text: string): GeminiResponse {
   return { candidates: [{ content: { parts: [{ text }] } }] }
@@ -28,6 +29,14 @@ function shaped(text: string): GeminiResponse {
 function textOf(res: unknown): string {
   const r = res as GeminiResponse
   return r?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+}
+
+function providerFailureError(failures: ProviderFailure[], fallbackMessage: string): Error {
+  if (failures.length === 0) return new Error(fallbackMessage)
+  const message = failures
+    .map(({ provider, error }) => `${provider}: ${error instanceof Error ? error.message : String(error)}`)
+    .join(' | ')
+  return new AggregateError(failures.map(({ error }) => error), message)
 }
 
 // ---- outage alert (throttled, once per warm instance per window) ----
@@ -90,7 +99,7 @@ export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string 
   const onlyImages = images.length > 0 && images.length === files.length
   const wantsJson = payload.generationConfig?.responseMimeType === 'application/json'
 
-  let providerError: unknown = null
+  const providerFailures: ProviderFailure[] = []
 
   // 1. Groq — free, images only. Most student referrals reach this function
   // as raster images (PDFs are rendered client-side). Preview Qwen models
@@ -99,7 +108,7 @@ export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string 
     try {
       return shaped(await groqAnalyzeImages(system, prompt, images, wantsJson))
     } catch (error) {
-      providerError = error
+      providerFailures.push({ provider: 'Groq', error })
       console.error('Groq vision call failed, trying Gemini:', error)
     }
   }
@@ -109,7 +118,7 @@ export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string 
     try {
       return shaped(textOf(await callGemini(payload, geminiApiKey)))
     } catch (error) {
-      providerError = providerError ?? error
+      providerFailures.push({ provider: 'Gemini', error })
       console.error('Gemini vision fallback failed, trying AI Gateway:', error)
     }
   }
@@ -119,12 +128,12 @@ export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string 
     try {
       return shaped(await gatewayGenerate(payload, 'vision'))
     } catch (error) {
-      providerError = providerError ?? error
+      providerFailures.push({ provider: 'AI Gateway', error })
       console.error('AI Gateway vision fallback failed:', error)
     }
   }
 
-  const finalError = providerError ?? new Error('Rasm tahlili uchun AI provider sozlanmagan')
+  const finalError = providerFailureError(providerFailures, 'Rasm tahlili uchun AI provider sozlanmagan')
   await alertOutage('rasm tekshiruvi', finalError)
   throw finalError
 }
@@ -141,13 +150,13 @@ export async function aiChatReply(payload: GeminiPayload, geminiApiKey: string |
     })
     .join('\n')
 
-  let providerError: unknown = null
+  const providerFailures: ProviderFailure[] = []
 
   if (groqConfigured()) {
     try {
       return shaped(await groqGenerateText(system, prompt, false))
     } catch (error) {
-      providerError = error
+      providerFailures.push({ provider: 'Groq', error })
       console.error('Groq chat call failed, trying Gemini:', error)
     }
   }
@@ -156,7 +165,7 @@ export async function aiChatReply(payload: GeminiPayload, geminiApiKey: string |
     try {
       return shaped(textOf(await callGemini(payload, geminiApiKey)))
     } catch (error) {
-      providerError = providerError ?? error
+      providerFailures.push({ provider: 'Gemini', error })
       console.error('Gemini chat fallback failed, trying AI Gateway:', error)
     }
   }
@@ -165,12 +174,12 @@ export async function aiChatReply(payload: GeminiPayload, geminiApiKey: string |
     try {
       return shaped(await gatewayGenerate(payload, 'text'))
     } catch (error) {
-      providerError = providerError ?? error
+      providerFailures.push({ provider: 'AI Gateway', error })
       console.error('AI Gateway chat fallback failed:', error)
     }
   }
 
-  const finalError = providerError ?? new Error('AI chat sozlanmagan')
+  const finalError = providerFailureError(providerFailures, 'AI chat sozlanmagan')
   await alertOutage('chat', finalError)
   throw finalError
 }

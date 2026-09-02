@@ -230,6 +230,14 @@ export default function ImtiyozliAriza() {
   const [documentDownloaded, setDocumentDownloaded] = useState(false)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
 
+  // The downloaded Ariza/Tilxat is a snapshot of the data at download time.
+  // If the applicant edits any field that appears on it, the signed paper
+  // they show the dekan would no longer match the submission — make them
+  // download a fresh copy.
+  useEffect(() => {
+    setDocumentDownloaded(false)
+  }, [lastName, firstName, middleName, noMiddleName, faculty, course, studyType, originCountry, originRegion, phone, relativePhone])
+
   const handleDownloadPdf = async () => {
     if (downloadingPdf) return
     setDownloadingPdf(true)

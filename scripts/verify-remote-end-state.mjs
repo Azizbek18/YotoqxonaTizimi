@@ -171,6 +171,7 @@ await check('atomic payment and duty RPCs are deployed and service-only', async 
     p_batch_id: '00000000-0000-0000-0000-000000000000',
     p_transaction_id: '',
     p_transaction_id_normalized: '',
+    p_ai_review: 'manual',
   }
   const dutyArgs = {
     p_creator_id: '00000000-0000-0000-0000-000000000000',

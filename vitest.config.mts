@@ -16,6 +16,12 @@ export default defineConfig({
   },
   test: {
     exclude: [...configDefaults.exclude, 'e2e/**'],
+    // The service-layer suites drive long mocked Supabase call chains; under
+    // v8 coverage instrumentation on CI runners a few of them creep past the
+    // 5s default and time out (14 flaky failures in `npm run test:coverage`,
+    // green without `--coverage`). Give every test/hook real headroom.
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],

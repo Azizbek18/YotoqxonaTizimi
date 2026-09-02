@@ -12,6 +12,7 @@ import {
   isValidJshshir,
   isValidNamePart,
   isValidPassport,
+  namesLikelyMatch,
   normalizeJshshir,
   normalizeForeignIdNumber,
   normalizePassport,
@@ -114,5 +115,23 @@ describe('name parts', () => {
     expect(isValidJoinedFullName('Aliyev Vali')).toBe(false)
     expect(isValidJoinedFullName('Aliyev Vali', 2)).toBe(true)
     expect(isValidJoinedFullName('Aliyev Vali 3vich')).toBe(false)
+  })
+
+  it('namesLikelyMatch tolerates patronymic-form differences', () => {
+    // The reported production case: form has the Russian "-ovich" patronymic,
+    // the my.gov.uz referral has the Uzbek "... o'g'li" form.
+    expect(namesLikelyMatch('Shirazatdinov Ramazan Baxtiyarovich', "Shirazatdinov Ramazan Baxtiyar o'g'li")).toBe(true)
+    expect(namesLikelyMatch("Shirazatdinov Ramazan Baxtiyar o'g'li", 'Shirazatdinov Ramazan Baxtiyarovich')).toBe(true)
+    // Referral omits the patronymic entirely.
+    expect(namesLikelyMatch('Shirazatdinov Ramazan Baxtiyarovich', 'Shirazatdinov Ramazan')).toBe(true)
+    // Cyrillic referral, Latin form.
+    expect(namesLikelyMatch('Gʻafurov Xusan Abrorovich', 'Ғафуров Хусан Аброр ўғли')).toBe(true)
+  })
+
+  it('namesLikelyMatch still rejects a genuinely different person', () => {
+    expect(namesLikelyMatch('Shirazatdinov Ramazan Baxtiyarovich', 'Qodirov Sardor Akmalovich')).toBe(false)
+    // Same surname, different given name + patronymic — not enough.
+    expect(namesLikelyMatch('Shirazatdinov Ramazan Baxtiyarovich', 'Shirazatdinov Bekzod Anvarovich')).toBe(false)
+    expect(namesLikelyMatch('Ali Karim', 'Vali Karim')).toBe(false)
   })
 })

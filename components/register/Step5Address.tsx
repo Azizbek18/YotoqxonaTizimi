@@ -1,11 +1,18 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { RegisterData } from './types'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Navigation, Home, Hash, ChevronDown, Check, Globe, ArrowRight, Sparkles, ShieldAlert } from 'lucide-react'
+import { MapPin, Navigation, Home, Hash, ChevronDown, Check, Globe, ArrowRight, Sparkles, ShieldAlert, Search, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import {
+  loadUzAddress,
+  districtsOfRegion,
+  villagesOfDistrict,
+  normalizeName,
+  type UzAddressData,
+} from '@/lib/uz-address'
 
 interface Props {
   data: RegisterData
@@ -14,40 +21,10 @@ interface Props {
   onBack: () => void
 }
 
-const FALLBACK_DISTRICTS: Record<string, string[]> = {
-  'Toshkent shahri': ["Chilonzor", "Yunusobod", "Mirobod", "Yakkasaroy", "Shayxontohur", "Olmazor", "Uchtepa", "Sergeli", "Bektemir", "Mirzo Ulug'bek", "Yashnobod"],
-  'Toshkent viloyati': ["Angren", "Bekobod", "Bo'ka", "Bo'stonliq", "Chinoz", "Ohangaron", "Oqqo'rg'on", "Parkent", "Piskent", "Quyichirchiq", "Toshkent tumani", "Yuqorichirchiq", "Zangiota"],
-  'Samarqand viloyati': ["Samarqand", "Urgut", "Kattaqo'rg'on", "Bulung'ur", "Ishtixon", "Narpay", "Oqdaryo", "Pastdarg'om", "Payariq", "Qo'shrabot"],
-}
-
-const FALLBACK_SETTLEMENTS = ['1-mahalla', '2-mahalla', 'Bog\'iston mahallasi', 'Markaziy mahalla']
-const REGION_DATA_URL = 'https://raw.githubusercontent.com/MIMAXUZ/uzbekistan-regions-data/master/JSON/regions.json'
-const DISTRICT_DATA_URL = 'https://raw.githubusercontent.com/MIMAXUZ/uzbekistan-regions-data/master/JSON/districts.json'
-const VILLAGE_DATA_URL = 'https://raw.githubusercontent.com/MIMAXUZ/uzbekistan-regions-data/master/JSON/villages.json'
-
 interface SelectOption {
   value: string
   label: string
 }
-
-interface RegionRecord {
-  id: number
-  name_uz: string
-}
-
-interface DistrictRecord {
-  id: number
-  region_id: number
-  name_uz: string
-}
-
-interface VillageRecord {
-  id: number
-  district_id: number
-  name_uz: string
-}
-
-const normalizeName = (value: string) => value.replace(/\s+/g, ' ').trim()
 
 const toOption = (value: string): SelectOption => ({
   value: normalizeName(value),
@@ -76,11 +53,35 @@ interface Custom3DSelectProps {
   placeholder?: string
   isLight: boolean
   disabled?: boolean
+  /** Show a filter box inside the dropdown (helpful for long lists). */
+  searchable?: boolean
+  /** Let the user type a value that isn't in the list (MFY / qishloq — the
+   *  reference data can never be exhaustive). */
+  allowCustom?: boolean
 }
 
-const Custom3DSelect = ({ label, value, options, onChange, icon: Icon, placeholder, isLight, disabled }: Custom3DSelectProps) => {
+const Custom3DSelect = ({ label, value, options, onChange, icon: Icon, placeholder, isLight, disabled, searchable, allowCustom }: Custom3DSelectProps) => {
   const [isOpen, setIsOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const searchRef = useRef<HTMLInputElement | null>(null)
   const displayValue = value || placeholder || 'Tanlang'
+
+  const showSearch = searchable || allowCustom
+  const q = normalizeName(query).toLowerCase()
+  const filtered = q
+    ? options.filter((o) => o.label.toLowerCase().includes(q))
+    : options
+  const exact = options.some((o) => o.label.toLowerCase() === q)
+
+  useEffect(() => {
+    if (isOpen && showSearch) {
+      setQuery('')
+      const id = window.setTimeout(() => searchRef.current?.focus(), 30)
+      return () => window.clearTimeout(id)
+    }
+  }, [isOpen, showSearch])
+
+  const pick = (v: string) => { onChange(v); setIsOpen(false) }
 
   return (
     <div className="relative space-y-1.5 flex-1 font-sans">
@@ -125,14 +126,38 @@ const Custom3DSelect = ({ label, value, options, onChange, icon: Icon, placehold
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
                 className={`absolute z-70 w-full rounded-xl shadow-2xl overflow-hidden ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0f172a] border border-white/10'}`}
               >
+                {showSearch && (
+                  <div className={`flex items-center gap-2 border-b px-3 py-2 ${isLight ? 'border-slate-100' : 'border-white/10'}`}>
+                    {allowCustom ? <Pencil size={13} className="shrink-0 text-slate-400" /> : <Search size={13} className="shrink-0 text-slate-400" />}
+                    <input
+                      ref={searchRef}
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && allowCustom && q && !exact) { e.preventDefault(); pick(normalizeName(query)) }
+                      }}
+                      placeholder={allowCustom ? 'Yozing yoki ro‘yxatdan tanlang…' : 'Qidirish…'}
+                      className={`w-full bg-transparent text-[12px] font-semibold outline-none ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-600'}`}
+                    />
+                  </div>
+                )}
                 <div className="max-h-45 overflow-y-auto p-1.5 custom-scrollbar">
-                  {options.map((opt) => {
+                  {allowCustom && q && !exact && (
+                    <button
+                      type="button"
+                      onClick={() => pick(normalizeName(query))}
+                      className={`no-shelf mb-0.5 flex w-full items-center gap-2 rounded-lg p-2.5 text-left text-[12px] font-bold ${isLight ? 'bg-sky-50 text-sky-700 hover:bg-sky-100' : 'bg-sky-600/20 text-sky-300 hover:bg-sky-600/30'}`}
+                    >
+                      <Pencil size={12} /> «{normalizeName(query)}» ni ishlatish
+                    </button>
+                  )}
+                  {filtered.map((opt) => {
                     const isActive = opt.value === value
                     return (
                       <button
                         type="button"
                         key={opt.value}
-                        onClick={() => { onChange(opt.value); setIsOpen(false) }}
+                        onClick={() => pick(opt.value)}
                         className={`
                           no-shelf w-full flex items-center justify-between p-2.5 rounded-lg text-left text-[12px] transition-all duration-300 mb-0.5 last:mb-0
                           ${isActive
@@ -146,6 +171,9 @@ const Custom3DSelect = ({ label, value, options, onChange, icon: Icon, placehold
                       </button>
                     )
                   })}
+                  {filtered.length === 0 && !(allowCustom && q) && (
+                    <p className="px-2.5 py-3 text-center text-[11px] text-slate-400">Topilmadi</p>
+                  )}
                 </div>
               </motion.div>
             </>
@@ -161,108 +189,38 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
   const [focusedField, setFocusedField] = useState<'qishloq' | 'street' | 'houseNumber' | null>(null)
-  const [regionsData, setRegionsData] = useState<RegionRecord[]>([])
-  const [districtsData, setDistrictsData] = useState<DistrictRecord[]>([])
-  const [villagesData, setVillagesData] = useState<VillageRecord[]>([])
-  const [isLoadingData, setIsLoadingData] = useState(true)
+  const [addr, setAddr] = useState<UzAddressData | null>(null)
+  const isLoadingData = addr === null
 
   useEffect(() => {
-    let isMounted = true
-
-    const loadAddressData = async () => {
-      try {
-        const [regionsResponse, districtsResponse, villagesResponse] = await Promise.all([
-          fetch(REGION_DATA_URL),
-          fetch(DISTRICT_DATA_URL),
-          fetch(VILLAGE_DATA_URL),
-        ])
-
-        if (!regionsResponse.ok || !districtsResponse.ok || !villagesResponse.ok) {
-          throw new Error('Address data fetch failed')
-        }
-
-        const [regionsJson, districtsJson, villagesJson] = await Promise.all([
-          regionsResponse.json(),
-          districtsResponse.json(),
-          villagesResponse.json(),
-        ])
-
-        if (!isMounted) return
-
-        setRegionsData((regionsJson as RegionRecord[]).map((item) => ({
-          id: item.id,
-          name_uz: normalizeName(item.name_uz),
-        })))
-        setDistrictsData((districtsJson as DistrictRecord[]).map((item) => ({
-          id: item.id,
-          region_id: item.region_id,
-          name_uz: normalizeName(item.name_uz),
-        })))
-        setVillagesData((villagesJson as VillageRecord[]).map((item) => ({
-          id: item.id,
-          district_id: item.district_id,
-          name_uz: normalizeName(item.name_uz),
-        })))
-      } catch {
-        if (!isMounted) return
-
-        setRegionsData(
-          Object.keys(FALLBACK_DISTRICTS).map((name, index) => ({
-            id: index + 1,
-            name_uz: name,
-          }))
-        )
-        setDistrictsData(
-          Object.entries(FALLBACK_DISTRICTS).flatMap(([regionName, districtNames], regionIndex) =>
-            districtNames.map((name, districtIndex) => ({
-              id: regionIndex * 100 + districtIndex + 1,
-              region_id: regionIndex + 1,
-              name_uz: regionName === 'Samarqand viloyati' && name === 'Samarqand sh.' ? 'Samarqand shahri' : name,
-            }))
-          )
-        )
-        setVillagesData([])
-      } finally {
-        if (isMounted) setIsLoadingData(false)
-      }
-    }
-
-    loadAddressData()
-
-    return () => {
-      isMounted = false
-    }
+    let alive = true
+    loadUzAddress().then((d) => { if (alive) setAddr(d) })
+    return () => { alive = false }
   }, [])
 
-  const regionOptions = useMemo(() => uniqueOptions(regionsData.map((item) => item.name_uz)), [regionsData])
+  const regionOptions = useMemo(
+    () => uniqueOptions((addr?.regions ?? []).map((r) => r.name)),
+    [addr]
+  )
 
-  const selectedRegion = regionsData.find((item) => normalizeName(item.name_uz) === data.region)
   const districtRecords = useMemo(
-    () => (selectedRegion ? districtsData.filter((item) => item.region_id === selectedRegion.id) : []),
-    [districtsData, selectedRegion]
+    () => (addr && data.region ? districtsOfRegion(addr, data.region) : []),
+    [addr, data.region]
   )
   const districtOptions = useMemo(
-    () => uniqueOptions(districtRecords.map((item) => item.name_uz)),
+    () => uniqueOptions(districtRecords.map((d) => d.name)),
     [districtRecords]
   )
 
-  const selectedDistrict = districtRecords.find((item) => normalizeName(item.name_uz) === data.district)
-  const selectedDistrictId = selectedDistrict?.id ?? null
-  const districtVillages = useMemo(
-    () => (selectedDistrictId ? villagesData.filter((item) => item.district_id === selectedDistrictId) : []),
-    [selectedDistrictId, villagesData]
-  )
   const villageOptions = useMemo(
-    () => uniqueOptions(districtVillages.map((item) => item.name_uz)),
-    [districtVillages]
+    () => (addr && data.region && data.district
+      ? uniqueOptions(villagesOfDistrict(addr, data.region, data.district).map((v) => v.name))
+      : []),
+    [addr, data.region, data.district]
   )
-  const settlementOptions = useMemo(
-    () => (villageOptions.length > 0 ? villageOptions : FALLBACK_SETTLEMENTS.map(toOption)),
-    [villageOptions]
-  )
-
+  // MFY and Qishloq are always type-able: the reference list can never be
+  // exhaustive (urban mahallas aren't in it at all).
   const hasVillageOptions = villageOptions.length > 0
-  const isVillageLoading = isLoadingData && villageOptions.length === 0
 
   // 3D Toast funksiyasi
   const show3DToast = (message: string, type: 'success' | 'error' = 'error') => {
@@ -345,10 +303,10 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
           value={data.region}
           options={regionOptions}
           icon={MapPin}
-          placeholder="Viloyat"
+          placeholder={isLoadingData ? 'Yuklanmoqda…' : 'Viloyat'}
           onChange={handleRegionChange}
           isLight={isLight}
-          disabled={isLoadingData && regionOptions.length === 0}
+          disabled={isLoadingData}
         />
 
         <AnimatePresence mode="wait">
@@ -364,55 +322,36 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
                 value={data.district}
                 options={districtOptions}
                 icon={Navigation}
-                placeholder="Tuman"
+                placeholder={isLoadingData ? 'Yuklanmoqda…' : 'Tuman'}
                 onChange={handleDistrictChange}
                 isLight={isLight}
-                disabled={isLoadingData && districtOptions.length === 0}
+                disabled={isLoadingData}
+                searchable
               />
 
               {data.district && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                   <Custom3DSelect
-                    label="MFY"
+                    label="MFY / Mahalla"
                     value={data.mahalla}
-                    options={settlementOptions}
+                    options={villageOptions}
                     icon={Home}
-                    placeholder={isLoadingData ? 'Yuklanmoqda...' : 'MFY'}
+                    placeholder="Mahallangiz nomini yozing"
                     onChange={(v: string) => onChange({ mahalla: v })}
                     isLight={isLight}
-                    disabled={isLoadingData && settlementOptions.length === 0}
+                    allowCustom
                   />
 
-                  {hasVillageOptions ? (
-                    <Custom3DSelect
-                      label="Qishloq"
-                      value={data.qishloq}
-                      options={villageOptions}
-                      icon={MapPin}
-                      placeholder={isLoadingData ? 'Yuklanmoqda...' : 'Qishloq'}
-                      onChange={(v: string) => onChange({ qishloq: v })}
-                      isLight={isLight}
-                      disabled={isLoadingData && villageOptions.length === 0}
-                    />
-                  ) : (
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block">Qishloq</label>
-                      <div className={`cyber-border ${focusedField === 'qishloq' ? 'focused' : ''}`}>
-                        <div className="cyber-input-inner relative flex items-center">
-                          <MapPin className={`absolute left-4 z-10 transition-colors ${focusedField === 'qishloq' ? 'text-sky-400' : isLight ? 'text-slate-400' : 'text-slate-600'}`} size={14} />
-                          <input
-                            className={`w-full bg-transparent p-3 pl-11 rounded-xl text-[13px] font-semibold outline-none transition-colors ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-600'}`}
-                            placeholder={isVillageLoading ? 'Yuklanmoqda...' : 'Qishloq nomi'}
-                            value={data.qishloq}
-                            onFocus={() => setFocusedField('qishloq')}
-                            onBlur={() => setFocusedField(null)}
-                            onChange={e => onChange({ qishloq: e.target.value })}
-                            disabled={isVillageLoading}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  <Custom3DSelect
+                    label="Qishloq / shaharcha"
+                    value={data.qishloq}
+                    options={villageOptions}
+                    icon={MapPin}
+                    placeholder={hasVillageOptions ? 'Tanlang yoki yozing' : 'Qishloq / shaharcha nomini yozing'}
+                    onChange={(v: string) => onChange({ qishloq: v })}
+                    isLight={isLight}
+                    allowCustom
+                  />
 
                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_100px] gap-4">
                     <div className="space-y-1.5">

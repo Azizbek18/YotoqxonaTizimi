@@ -1,7 +1,7 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
 import type { FloorRoomPlan, RoomBlockSide, RoomBlockSize, RoomFloorStatus, RoomLayoutBlock, RoomNumbering } from '../types'
-import { MAX_ROOMS_PER_FLOOR, planRoomNumbers } from '../plan'
+import { MAX_ROOMS_PER_FLOOR, compareRoomNumbers, planRoomNumbers } from '../plan'
 import { createRoomLayoutRepository, type RoomLayoutRepository } from './repository'
 
 const VALID_SIDES: RoomBlockSide[] = ['left', 'right']
@@ -80,103 +80,175 @@ function parseBlocks(value: unknown): RoomLayoutBlock[] {
 export function createRoomLayoutService(repository: RoomLayoutRepository = createRoomLayoutRepository()) {
   return {
     /**
-     * Tops up the layout from a simple "nechta xona" target per floor, so a
-     * dekan can grow the building over time instead of drawing every room
-     * in the 3D builder. A planned room number that already exists — on
-     * this floor or any other — is skipped, never touched: this only ever
-     * ADDS rooms, so it's safe to run against an empty building, a fully
-     * drawn one, or (the common case) one that already has a few rooms
-     * because students live in them. Existing rooms keep whatever side/
-     * position/size/frozen state they already have.
+     * Makes each floor hold exactly the "nechta xona" target the dekan
+     * typed — the quick alternative to drawing every room in the 3D
+     * builder. Per floor:
+     *   • short  → new rooms are appended (continuing this building's
+     *     numbering), split left/right to keep the corridor balanced;
+     *   • over   → the highest-numbered EMPTY rooms are deleted down to the
+     *     target. A room with a resident or an approved permit is never
+     *     touched — it stays even if that leaves the floor above target,
+     *     and `keptOccupied` reports how many.
+     * Frozen-but-empty rooms count as removable (freezing was the only way
+     * to "hide" an unwanted room before this existed). Safe to run against
+     * an empty building, a finished one, or a half-drawn one.
      */
     async generateFloors(faculty: string, plansValue: unknown, numberingValue: unknown) {
       const plans = parseFloorPlans(plansValue)
       const numbering: RoomNumbering = numberingValue === 'per-floor' ? 'per-floor' : 'sequential'
 
       const planned = planRoomNumbers(plans, numbering)
-      if (planned.length === 0) throw new ApiError(400, "Kamida bitta xona kiritilishi kerak")
+      const targetByFloor = new Map(plans.map((p) => [p.floor, p.rooms]))
 
       const existingRooms = await repository.listAllRooms(faculty)
       const existingNumbers = new Set(existingRooms.map((row) => row.room_number))
-      const rooms = planned.filter((room) => !existingNumbers.has(room.roomNumber))
-
-      // Every planned number is already taken — a legitimate no-op (e.g.
-      // the dekan re-runs the same target after nothing changed), not an
-      // error.
-      if (rooms.length === 0) {
-        return { success: true as const, created: 0 }
+      const roomsByFloor = new Map<number, typeof existingRooms>()
+      for (const row of existingRooms) {
+        const list = roomsByFloor.get(row.floor_number) ?? []
+        list.push(row)
+        roomsByFloor.set(row.floor_number, list)
       }
 
-      // side/position keep the 3D builder's rendering sane: new rooms
-      // continue each floor's corridor from wherever it currently ends,
-      // split left/right to keep the two sides roughly balanced overall
-      // — existing rooms on that floor keep their own side/position.
-      const existingCountByFloorSide = new Map<string, number>()
-      existingRooms.forEach((row) => {
-        const key = `${row.floor_number}:${row.side}`
-        existingCountByFloorSide.set(key, (existingCountByFloorSide.get(key) ?? 0) + 1)
-      })
-      const newCountByFloor = new Map<number, number>()
-      rooms.forEach((room) => newCountByFloor.set(room.floor, (newCountByFloor.get(room.floor) ?? 0) + 1))
+      // ---- additions: planned numbers that don't exist yet ----
+      const toAdd = planned.filter((room) => !existingNumbers.has(room.roomNumber))
 
-      const placedNew = new Map<number, number>()
-      const rows = rooms.map((room) => {
-        const indexAmongNew = placedNew.get(room.floor) ?? 0
-        placedNew.set(room.floor, indexAmongNew + 1)
-
-        const existingLeft = existingCountByFloorSide.get(`${room.floor}:left`) ?? 0
-        const existingRight = existingCountByFloorSide.get(`${room.floor}:right`) ?? 0
-        const newTotal = newCountByFloor.get(room.floor) ?? 0
-        // Balance the floor's *eventual* total (existing + new) across both
-        // sides, not just the new rooms in isolation — otherwise topping up
-        // a floor that's already lopsided keeps it lopsided.
-        const desiredLeftTotal = Math.ceil((existingLeft + existingRight + newTotal) / 2)
-        const newLeftCount = Math.min(Math.max(desiredLeftTotal - existingLeft, 0), newTotal)
-
-        const onLeft = indexAmongNew < newLeftCount
-        return {
-          floor_number: room.floor,
-          room_number: room.roomNumber,
-          side: onLeft ? 'left' : 'right',
-          position: onLeft ? existingLeft + indexAmongNew : existingRight + (indexAmongNew - newLeftCount),
-          size: 'medium',
-        }
-      })
-
-      try {
-        await repository.insertRooms(faculty, rows)
-      } catch (error) {
-        if ((error as { code?: string })?.code === '23505') {
-          throw new ApiError(409, 'Xona raqami takrorlandi — raqamlash usulini o‘zgartiring')
-        }
-        throw error
+      // ---- removals: floors that are over target ----
+      const occupied = await repository.occupiedRoomNumbers(faculty)
+      const trims: { floor: number; removed: string[]; keptOccupied: number }[] = []
+      for (const [floor, target] of targetByFloor) {
+        const current = roomsByFloor.get(floor) ?? []
+        const overBy = current.length - target
+        if (overBy <= 0) continue
+        const removable = [...current]
+          .filter((r) => !occupied.has(r.room_number))
+          .sort((a, b) => compareRoomNumbers(b.room_number, a.room_number)) // highest first
+          .slice(0, overBy)
+          .map((r) => r.room_number)
+        const keptOccupied = overBy - removable.length
+        if (removable.length > 0 || keptOccupied > 0) trims.push({ floor, removed: removable, keptOccupied })
       }
 
-      // Students already sitting in these rooms (placed before the layout
-      // existed) get their floor filled in right away.
+      if (toAdd.length === 0 && trims.every((t) => t.removed.length === 0)) {
+        return { success: true as const, created: 0, removed: 0, keptOccupied: trims.reduce((s, t) => s + t.keptOccupied, 0) }
+      }
+
       const { dormId } = await repository.scopeFor(faculty)
-      await Promise.all(
-        [...new Set(rooms.map((room) => room.floor))].map((floor) =>
-          repository.syncAssignedFloors(
-            dormId,
-            floor,
-            rooms.filter((room) => room.floor === floor).map((room) => room.roomNumber),
-          ),
-        ),
-      )
 
-      return { success: true as const, created: rows.length }
+      // ---- apply removals first (per floor, via the guarded RPC) ----
+      let removedTotal = 0
+      for (const trim of trims) {
+        if (trim.removed.length === 0) continue
+        const drop = new Set(trim.removed)
+        const kept = (roomsByFloor.get(trim.floor) ?? []).filter((r) => !drop.has(r.room_number))
+        // Re-pack positions per side so the 3D builder stays tidy.
+        const posBySide: Record<RoomBlockSide, number> = { left: 0, right: 0 }
+        const keptRows: RoomLayoutBlock[] = kept
+          .slice()
+          .sort((a, b) => compareRoomNumbers(a.room_number, b.room_number))
+          .map((r) => {
+            const side: RoomBlockSide = r.side === 'right' ? 'right' : 'left'
+            const size: RoomBlockSize = VALID_SIZES.includes(r.size as RoomBlockSize)
+              ? (r.size as RoomBlockSize)
+              : 'medium'
+            return {
+              roomNumber: r.room_number,
+              side,
+              position: posBySide[side]++,
+              size,
+              capacity: r.capacity ?? null,
+            }
+          })
+        try {
+          await repository.replaceFloor(faculty, trim.floor, keptRows)
+        } catch (error) {
+          const code = (error as { code?: string })?.code
+          if (code === 'P0003') {
+            throw new ApiError(409, "Band xonani o'chirib bo'lmadi — avval talabani boshqa xonaga ko'chiring")
+          }
+          throw error
+        }
+        removedTotal += trim.removed.length
+        // A removed room held nobody, so no assigned_floor to fix up.
+      }
+
+      // ---- apply additions ----
+      let createdTotal = 0
+      if (toAdd.length > 0) {
+        const existingCountByFloorSide = new Map<string, number>()
+        existingRooms
+          .filter((row) => !trims.some((t) => t.floor === row.floor_number && t.removed.includes(row.room_number)))
+          .forEach((row) => {
+            const key = `${row.floor_number}:${row.side}`
+            existingCountByFloorSide.set(key, (existingCountByFloorSide.get(key) ?? 0) + 1)
+          })
+        const newCountByFloor = new Map<number, number>()
+        toAdd.forEach((room) => newCountByFloor.set(room.floor, (newCountByFloor.get(room.floor) ?? 0) + 1))
+
+        const placedNew = new Map<number, number>()
+        const rows = toAdd.map((room) => {
+          const indexAmongNew = placedNew.get(room.floor) ?? 0
+          placedNew.set(room.floor, indexAmongNew + 1)
+
+          const existingLeft = existingCountByFloorSide.get(`${room.floor}:left`) ?? 0
+          const existingRight = existingCountByFloorSide.get(`${room.floor}:right`) ?? 0
+          const newTotal = newCountByFloor.get(room.floor) ?? 0
+          const desiredLeftTotal = Math.ceil((existingLeft + existingRight + newTotal) / 2)
+          const newLeftCount = Math.min(Math.max(desiredLeftTotal - existingLeft, 0), newTotal)
+
+          const onLeft = indexAmongNew < newLeftCount
+          return {
+            floor_number: room.floor,
+            room_number: room.roomNumber,
+            side: onLeft ? 'left' : 'right',
+            position: onLeft ? existingLeft + indexAmongNew : existingRight + (indexAmongNew - newLeftCount),
+            size: 'medium',
+          }
+        })
+
+        try {
+          await repository.insertRooms(faculty, rows)
+        } catch (error) {
+          if ((error as { code?: string })?.code === '23505') {
+            throw new ApiError(409, 'Xona raqami takrorlandi — raqamlash usulini o‘zgartiring')
+          }
+          throw error
+        }
+        createdTotal = rows.length
+
+        // Students already sitting in these rooms (placed before the layout
+        // existed) get their floor filled in right away.
+        await Promise.all(
+          [...new Set(toAdd.map((room) => room.floor))].map((floor) =>
+            repository.syncAssignedFloors(
+              dormId,
+              floor,
+              toAdd.filter((room) => room.floor === floor).map((room) => room.roomNumber),
+            ),
+          ),
+        )
+      }
+
+      return {
+        success: true as const,
+        created: createdTotal,
+        removed: removedTotal,
+        keptOccupied: trims.reduce((s, t) => s + t.keptOccupied, 0),
+      }
     },
 
     async listRoomFloors(faculty: string): Promise<RoomFloorStatus[]> {
       const rows = await repository.listAllRooms(faculty)
-      return rows.map((row) => ({
-        roomNumber: row.room_number,
-        floor: row.floor_number,
-        frozen: row.frozen,
-        frozenReason: row.frozen_reason,
-        capacity: row.capacity ?? null,
-      }))
+      return rows
+        .map((row) => ({
+          roomNumber: row.room_number,
+          floor: row.floor_number,
+          frozen: row.frozen,
+          frozenReason: row.frozen_reason,
+          capacity: row.capacity ?? null,
+        }))
+        // room_number is a text column, so the DB's ORDER BY gives "1,10,2";
+        // re-sort floor-then-natural so every consumer reads it in order.
+        .sort((a, b) => a.floor - b.floor || compareRoomNumbers(a.roomNumber, b.roomNumber))
     },
 
     /**

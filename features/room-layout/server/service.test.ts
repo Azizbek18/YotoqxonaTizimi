@@ -13,6 +13,7 @@ function repository(overrides: Partial<RoomLayoutRepository> = {}) {
   return {
     scopeFor: vi.fn(async () => ({ dormId: 'd1', floors: null })),
     listAllRooms: vi.fn(async () => []),
+    occupiedRoomNumbers: vi.fn(async () => new Set<string>()),
     insertRooms: vi.fn(async () => {}),
     listFloor: vi.fn(async () => []),
     replaceFloor: vi.fn(async () => {}),
@@ -20,6 +21,11 @@ function repository(overrides: Partial<RoomLayoutRepository> = {}) {
     setFrozen: vi.fn(async () => true),
     ...overrides,
   } as unknown as RoomLayoutRepository
+}
+
+// floor_room_layout row shape listAllRooms returns (position/size added for trim)
+function existingRoom(room_number: string, floor_number: number, extra: Record<string, unknown> = {}) {
+  return { room_number, floor_number, side: 'left', position: 0, size: 'medium', frozen: false, frozen_reason: null, capacity: null, ...extra }
 }
 
 describe('room layout service', () => {
@@ -74,7 +80,7 @@ describe('room layout service', () => {
         'sequential',
       )
 
-      expect(result).toEqual({ success: true, created: 3 })
+      expect(result).toEqual({ success: true, created: 3, removed: 0, keptOccupied: 0 })
       expect(repo.insertRooms).toHaveBeenCalledWith(FACULTY, [
         { floor_number: 1, room_number: '1', side: 'left', position: 0, size: 'medium' },
         { floor_number: 1, room_number: '2', side: 'left', position: 1, size: 'medium' },
@@ -82,45 +88,77 @@ describe('room layout service', () => {
       ])
     })
 
-    // The actual use case: a floor already has occupied rooms (numbered
-    // outside the plan's control) before the dekan ever opens the
-    // generator. Only the still-missing numbers get created; the existing
-    // room is never touched, resized, or duplicated.
     it('skips room numbers that already exist and leaves them untouched', async () => {
       const repo = repository({
-        listAllRooms: vi.fn(async () => [
-          { room_number: '1', floor_number: 1, side: 'left', frozen: false, frozen_reason: null, capacity: null },
-        ]),
+        listAllRooms: vi.fn(async () => [existingRoom('1', 1)]),
       } as Partial<RoomLayoutRepository>)
 
       const result = await createRoomLayoutService(repo).generateFloors(FACULTY, [{ floor: 1, rooms: 3 }], 'sequential')
 
-      expect(result).toEqual({ success: true, created: 2 })
+      expect(result).toMatchObject({ success: true, created: 2, removed: 0 })
       expect(repo.insertRooms).toHaveBeenCalledWith(FACULTY, [
         { floor_number: 1, room_number: '2', side: 'left', position: 1, size: 'medium' },
         { floor_number: 1, room_number: '3', side: 'right', position: 0, size: 'medium' },
       ])
+      expect(repo.replaceFloor).not.toHaveBeenCalled()
     })
 
-    it('is a no-op, not an error, when every planned room already exists', async () => {
+    it('is a no-op, not an error, when the floor already matches the target', async () => {
       const repo = repository({
-        listAllRooms: vi.fn(async () => [
-          { room_number: '1', floor_number: 1, side: 'left', frozen: false, frozen_reason: null, capacity: null },
-        ]),
+        listAllRooms: vi.fn(async () => [existingRoom('1', 1)]),
       } as Partial<RoomLayoutRepository>)
 
       const result = await createRoomLayoutService(repo).generateFloors(FACULTY, [{ floor: 1, rooms: 1 }], 'sequential')
 
-      expect(result).toEqual({ success: true, created: 0 })
+      expect(result).toMatchObject({ created: 0, removed: 0 })
       expect(repo.insertRooms).not.toHaveBeenCalled()
+      expect(repo.replaceFloor).not.toHaveBeenCalled()
       expect(repo.syncAssignedFloors).not.toHaveBeenCalled()
+    })
+
+    it('deletes the highest-numbered empty rooms when a floor is over target', async () => {
+      const repo = repository({
+        listAllRooms: vi.fn(async () =>
+          ['1', '2', '3', '4', '5'].map((n) => existingRoom(n, 1, { side: Number(n) % 2 ? 'left' : 'right' })),
+        ),
+      } as Partial<RoomLayoutRepository>)
+
+      const result = await createRoomLayoutService(repo).generateFloors(FACULTY, [{ floor: 1, rooms: 3 }], 'sequential')
+
+      expect(result).toEqual({ success: true, created: 0, removed: 2, keptOccupied: 0 })
+      // replace_floor_room_layout gets the KEPT rooms (1,2,3) — 4 and 5 dropped
+      const keptRows = (repo.replaceFloor as ReturnType<typeof vi.fn>).mock.calls[0][2]
+      expect(keptRows.map((r: { roomNumber: string }) => r.roomNumber)).toEqual(['1', '2', '3'])
+      expect(repo.insertRooms).not.toHaveBeenCalled()
+    })
+
+    it('never deletes an occupied room, and reports how many stayed', async () => {
+      const repo = repository({
+        listAllRooms: vi.fn(async () => ['1', '2', '3', '4', '5'].map((n) => existingRoom(n, 1))),
+        occupiedRoomNumbers: vi.fn(async () => new Set(['4', '5'])),
+      } as Partial<RoomLayoutRepository>)
+
+      const result = await createRoomLayoutService(repo).generateFloors(FACULTY, [{ floor: 1, rooms: 1 }], 'sequential')
+
+      // only 1,2,3 are empty -> 3 removed, 4 & 5 stay (keptOccupied reflects the gap to target)
+      expect(result).toEqual({ success: true, created: 0, removed: 3, keptOccupied: 1 })
+      const keptRows = (repo.replaceFloor as ReturnType<typeof vi.fn>).mock.calls[0][2]
+      expect(keptRows.map((r: { roomNumber: string }) => r.roomNumber)).toEqual(['4', '5'])
+    })
+
+    it('surfaces a P0003 from the RPC as a friendly conflict', async () => {
+      const repo = repository({
+        listAllRooms: vi.fn(async () => ['1', '2', '3'].map((n) => existingRoom(n, 1))),
+        replaceFloor: vi.fn(async () => { throw Object.assign(new Error('occupied'), { code: 'P0003' }) }),
+      } as Partial<RoomLayoutRepository>)
+
+      await expect(createRoomLayoutService(repo).generateFloors(FACULTY, [{ floor: 1, rooms: 1 }], 'sequential'))
+        .rejects.toMatchObject({ status: 409 })
     })
 
     it('skips a planned number that already exists on a different floor', async () => {
       const repo = repository({
-        listAllRooms: vi.fn(async () => [
-          { room_number: '2', floor_number: 9, side: 'left', frozen: false, frozen_reason: null, capacity: null },
-        ]),
+        listAllRooms: vi.fn(async () => [existingRoom('2', 9)]),
       } as Partial<RoomLayoutRepository>)
 
       const result = await createRoomLayoutService(repo).generateFloors(FACULTY, [{ floor: 1, rooms: 3 }], 'sequential')
@@ -143,10 +181,10 @@ describe('room layout service', () => {
       expect(repo.syncAssignedFloors).toHaveBeenCalledWith('d1', 2, ['2'])
     })
 
-    it('rejects a plan with no rooms at all', async () => {
+    it('is a no-op for an all-zero plan against an empty building', async () => {
       const repo = repository()
-      await expect(createRoomLayoutService(repo).generateFloors(FACULTY, [{ floor: 1, rooms: 0 }], 'sequential'))
-        .rejects.toBeInstanceOf(ApiError)
+      const result = await createRoomLayoutService(repo).generateFloors(FACULTY, [{ floor: 1, rooms: 0 }], 'sequential')
+      expect(result).toMatchObject({ created: 0, removed: 0 })
       expect(repo.insertRooms).not.toHaveBeenCalled()
     })
 
@@ -161,8 +199,8 @@ describe('room layout service', () => {
   it('exposes the whole-building room -> floor map, including frozen state', async () => {
     const repo = repository({
       listAllRooms: vi.fn(async () => [
-        { room_number: '101', floor_number: 1, side: 'left', frozen: false, frozen_reason: null, capacity: null },
-        { room_number: '201', floor_number: 2, side: 'left', frozen: true, frozen_reason: "Ta'mirlash ishlari", capacity: null },
+        existingRoom('101', 1),
+        existingRoom('201', 2, { frozen: true, frozen_reason: "Ta'mirlash ishlari" }),
       ]),
     } as Partial<RoomLayoutRepository>)
 

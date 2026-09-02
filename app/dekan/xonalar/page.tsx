@@ -28,6 +28,7 @@ import { setRoomFrozen, setRoomCapacity as setRoomCapacityApi } from '@/features
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { Skel } from '@/components/ui/skeletons'
 import RoomLayoutGeneratorModal from '@/components/rooms/RoomLayoutGeneratorModal'
+import { compareRoomNumbers } from '@/features/room-layout/plan'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { getRoomOccupancyTone } from '@/features/app-settings/presentation'
@@ -349,15 +350,18 @@ export default function DekanXonalarMap() {
     void handleSetCapacity(next === defaultCapacity ? null : next)
   }
 
-  // Filters
-  const filteredRooms = rooms.filter((r) => {
-    const matchesFloor = floorFilter === 'all' || r.floor === floorFilter
-    const matchesSearch =
-      r.roomNumber.includes(searchTerm) ||
-      r.occupants.some((o) => o.full_name.toLowerCase().includes(searchTerm.toLowerCase()))
+  // Filters. Sorted floor-then-natural so "10-xona" doesn't sit between
+  // "1-xona" and "2-xona" (orphan rooms are appended unsorted upstream).
+  const filteredRooms = rooms
+    .filter((r) => {
+      const matchesFloor = floorFilter === 'all' || r.floor === floorFilter
+      const matchesSearch =
+        r.roomNumber.includes(searchTerm) ||
+        r.occupants.some((o) => o.full_name.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    return matchesFloor && matchesSearch
-  })
+      return matchesFloor && matchesSearch
+    })
+    .sort((a, b) => a.floor - b.floor || compareRoomNumbers(a.roomNumber, b.roomNumber))
 
   // Assignable students for the currently selected room: name search, plus
   // gender-matched to existing occupants (an empty/mixed room allows anyone).
@@ -370,6 +374,13 @@ export default function DekanXonalarMap() {
 
   // Effective bed count for a room: its own override, else the dorm default.
   const roomBeds = (room: RoomData) => room.capacity ?? defaultCapacity
+
+  // Room numbers with a resident / approved permit — the generator uses this
+  // to know which rooms it must never delete when trimming a floor.
+  const occupiedRoomNumbers = useMemo(
+    () => new Set(Object.entries(occupantsByRoom).filter(([, o]) => o.length > 0).map(([n]) => n)),
+    [occupantsByRoom],
+  )
 
   // Calculate totals. `rooms` is already scoped to this dekan's floors
   // (useRoomFloors -> repository scopeFor). A frozen room contributes no
@@ -1018,6 +1029,7 @@ export default function DekanXonalarMap() {
         isOpen={generatorOpen}
         floorCount={floorCount}
         existingRooms={layoutRooms}
+        occupiedRoomNumbers={occupiedRoomNumbers}
         onClose={() => setGeneratorOpen(false)}
         onCreated={() => {
           void reloadRoomFloors()

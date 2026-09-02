@@ -13,26 +13,38 @@ interface Props {
   isOpen: boolean
   /** Floors declared in tizim sozlamalari (app_settings.floorCount). */
   floorCount: number
-  /** The layout as it stands right now — rooms already here are never touched. */
+  /** The layout as it stands right now. */
   existingRooms: readonly RoomFloor[]
+  /** Room numbers that hold a resident / approved permit — never deleted on trim. */
+  occupiedRoomNumbers?: ReadonlySet<string>
   onClose: () => void
   onCreated: () => void
 }
 
 const DEFAULT_ROOMS_PER_FLOOR = 30
 
+// Digits only, and no leading zeros ("016" -> "16"); '' stays '' so the
+// field can be cleared. A number input bound to a numeric state renders a
+// stale "016" after the "" -> 0 coercion, so this is text-backed instead.
+const sanitizeCount = (raw: string) => raw.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 3)
+const clampCount = (raw: string) => {
+  const n = Number(sanitizeCount(raw) || 0)
+  return String(Math.min(MAX_ROOMS_PER_FLOOR, Math.max(0, n)))
+}
+
 /**
- * Tops up the layout: the dekan says how many rooms each floor should have
- * *in total*, sees exactly which room numbers are still missing, and
- * confirms. Rooms that already exist — including ones nobody explicitly
- * drew, like a room a student was placed into before the layout existed —
- * are left completely alone; this only ever fills the gaps.
+ * Makes each floor hold exactly the room count the dekan types: appends
+ * the numbers still missing, or deletes the excess EMPTY rooms (highest
+ * number first) when a floor is over target. A room with a resident or an
+ * approved permit is never deleted — the preview shows exactly what will
+ * be added and removed before the dekan confirms.
  */
-export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingRooms, onClose, onCreated }: Props) {
+export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingRooms, occupiedRoomNumbers, onClose, onCreated }: Props) {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
-  const [counts, setCounts] = useState<Record<number, number>>({})
+  // Text-backed (not numbers) — see sanitizeCount.
+  const [counts, setCounts] = useState<Record<number, string>>({})
   const [numbering, setNumbering] = useState<RoomNumbering>('sequential')
   const [bulkValue, setBulkValue] = useState(String(DEFAULT_ROOMS_PER_FLOOR))
   const [saving, setSaving] = useState(false)
@@ -54,48 +66,71 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
   // so opening the dialog never suggests a target that's already exceeded.
   useEffect(() => {
     if (!isOpen) return
+    // Each floor starts at whatever it already has (or the default for a
+    // blank floor) — so opening the dialog never proposes a change on its own.
     setCounts(Object.fromEntries(
-      floors.map((floor) => [floor, Math.max(DEFAULT_ROOMS_PER_FLOOR, existingCountByFloor.get(floor) ?? 0)]),
+      floors.map((floor) => {
+        const existing = existingCountByFloor.get(floor) ?? 0
+        return [floor, String(existing > 0 ? existing : DEFAULT_ROOMS_PER_FLOOR)]
+      }),
     ))
     setBulkValue(String(DEFAULT_ROOMS_PER_FLOOR))
     setNumbering('sequential')
   }, [isOpen, floors, existingCountByFloor])
 
-  const plans = floors.map((floor) => ({ floor, rooms: counts[floor] ?? 0 }))
-  const preview = describeFloorFill(plans, numbering, existingRooms)
+  const plans = floors.map((floor) => ({ floor, rooms: Number(counts[floor] || 0) }))
+  const preview = describeFloorFill(plans, numbering, existingRooms, occupiedRoomNumbers)
   const totalNew = preview.reduce((sum, floor) => sum + floor.added, 0)
+  const totalRemoved = preview.reduce((sum, floor) => sum + floor.removed, 0)
+  const totalKeptOccupied = preview.reduce((sum, floor) => sum + floor.keptOccupied, 0)
   const grandTotal = preview.reduce((sum, floor) => sum + floor.total, 0)
 
   const setFloorCountValue = (floor: number, raw: string) => {
-    const parsed = Number(raw)
-    const safe = Number.isFinite(parsed) ? Math.min(MAX_ROOMS_PER_FLOOR, Math.max(0, Math.trunc(parsed))) : 0
-    setCounts((prev) => ({ ...prev, [floor]: safe }))
+    setCounts((prev) => ({ ...prev, [floor]: sanitizeCount(raw) }))
   }
 
   const applyToAll = () => {
-    const parsed = Number(bulkValue)
-    if (!Number.isFinite(parsed)) return
-    const safe = Math.min(MAX_ROOMS_PER_FLOOR, Math.max(0, Math.trunc(parsed)))
+    const safe = clampCount(bulkValue)
     setCounts(Object.fromEntries(floors.map((floor) => [floor, safe])))
   }
 
+  const noChange = totalNew === 0 && totalRemoved === 0
+
   const handleCreate = async () => {
-    if (grandTotal === 0) {
+    if (grandTotal === 0 && totalRemoved === 0) {
       toast.error('Kamida bitta xona kiritilishi kerak')
+      return
+    }
+    if (noChange) {
+      toast('Hech narsa o‘zgarmadi — sonlar hozirgidek', { icon: 'ℹ️' })
       return
     }
     setSaving(true)
     try {
-      const { created } = await generateRoomFloors(plans, numbering)
-      toast.success(created > 0 ? `${created} ta yangi xona qo'shildi` : "Yangi xona qo'shilmadi — barchasi allaqachon mavjud edi")
+      const { created, removed, keptOccupied } = await generateRoomFloors(plans, numbering)
+      const parts: string[] = []
+      if (created > 0) parts.push(`${created} ta xona qo'shildi`)
+      if (removed > 0) parts.push(`${removed} ta bo'sh xona o'chirildi`)
+      toast.success(parts.join(' · ') || 'Xona taqsimoti yangilandi')
+      if (keptOccupied > 0) {
+        toast(`${keptOccupied} ta xona bandligi sababli o'chirilmadi`, { icon: '⚠️' })
+      }
       onCreated()
       onClose()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Xonalarni qo'shib bo'lmadi")
+      toast.error(error instanceof Error ? error.message : "Xona taqsimotini o'zgartirib bo'lmadi")
     } finally {
       setSaving(false)
     }
   }
+
+  const confirmLabel = saving
+    ? 'Saqlanmoqda...'
+    : totalNew > 0 && totalRemoved > 0
+      ? `+${totalNew} · −${totalRemoved} xona`
+      : totalRemoved > 0
+        ? `${totalRemoved} ta bo'sh xona o'chirish`
+        : `${totalNew} ta yangi xona qo'shish`
 
   const labelCls = `block text-[10px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`
   const inputCls = `w-full rounded-xl border px-3 py-2 text-sm outline-none transition-all focus:border-indigo-500 ${
@@ -108,10 +143,10 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
   return (
     <ConfirmModal
       isOpen={isOpen}
-      title="Xonalarni to'ldirish"
-      description="Har bir qavatda JAMI nechta xona bo'lishi kerakligini kiriting — mavjud xonalar o'zgarmaydi, faqat yetishmaydiganlari qo'shiladi."
+      title="Xona taqsimotini sozlash"
+      description="Har bir qavatda JAMI nechta xona bo'lishi kerakligini kiriting. Yetishmayotgani qo'shiladi, ortiqcha BO'SH xonalar o'chiriladi — talabasi bor xona hech qachon o'chmaydi."
       maxWidthClass="max-w-2xl"
-      confirmText={saving ? "Qo'shilmoqda..." : `${totalNew} ta yangi xona qo'shish`}
+      confirmText={confirmLabel}
       onConfirm={handleCreate}
       onClose={onClose}
       isLoading={saving}
@@ -135,11 +170,11 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
             <label className={labelCls}>Hamma qavatga bir xil (jami)</label>
             <div className="flex gap-2">
               <input
-                type="number"
-                min={0}
-                max={MAX_ROOMS_PER_FLOOR}
+                type="text"
+                inputMode="numeric"
                 value={bulkValue}
-                onChange={(event) => setBulkValue(event.target.value)}
+                onChange={(event) => setBulkValue(sanitizeCount(event.target.value))}
+                onBlur={() => setBulkValue(clampCount(bulkValue))}
                 className={inputCls}
               />
               <button
@@ -175,11 +210,11 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
                       {floor}-qavat {existing > 0 && <span className="normal-case font-bold text-amber-500">({existing} bor)</span>}
                     </label>
                     <input
-                      type="number"
-                      min={0}
-                      max={MAX_ROOMS_PER_FLOOR}
-                      value={counts[floor] ?? 0}
+                      type="text"
+                      inputMode="numeric"
+                      value={counts[floor] ?? ''}
                       onChange={(event) => setFloorCountValue(floor, event.target.value)}
+                      onBlur={() => setCounts((prev) => ({ ...prev, [floor]: clampCount(prev[floor] ?? '') }))}
                       className={inputCls}
                     />
                   </div>
@@ -196,31 +231,42 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
             Natija
           </p>
           <div className="space-y-1.5">
-            {preview.map(({ floor, existing, added, total }) => (
-              <div key={floor} className="flex items-center justify-between gap-3 text-xs font-bold">
-                <span className={textMuted}>{floor}-qavat</span>
-                <span className={added === 0 && total === 0 ? textMuted : textStrong}>
-                  {total === 0
-                    ? "xona yo'q"
-                    : added === 0
-                      ? `${existing} ta (o'zgarishsiz)`
-                      : existing === 0
-                        ? `${added} ta yangi`
-                        : `${existing} bor + ${added} yangi = ${total} ta`}
-                </span>
-              </div>
-            ))}
+            {preview.map(({ floor, existing, added, removed, keptOccupied, total }) => {
+              const unchanged = added === 0 && removed === 0
+              return (
+                <div key={floor} className="flex items-center justify-between gap-3 text-xs font-bold">
+                  <span className={textMuted}>{floor}-qavat</span>
+                  <span className={unchanged ? textMuted : textStrong}>
+                    {total === 0 && existing === 0
+                      ? "xona yo'q"
+                      : unchanged
+                        ? `${existing} ta (o'zgarishsiz)`
+                        : [
+                            added > 0 ? `+${added}` : null,
+                            removed > 0 ? `−${removed} bo'sh` : null,
+                          ].filter(Boolean).join(' · ') + ` → ${total} ta`}
+                    {keptOccupied > 0 && (
+                      <span className={isLight ? 'text-amber-600' : 'text-amber-400'}> ({keptOccupied} band qoladi)</span>
+                    )}
+                  </span>
+                </div>
+              )
+            })}
           </div>
           <div className={`mt-3 flex items-center justify-between border-t pt-3 text-xs font-black ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
-            <span className={textMuted}>Jami yangi xona</span>
-            <span className={textStrong}>{totalNew} ta ({grandTotal} ta bo&apos;ladi)</span>
+            <span className={textMuted}>Natijada</span>
+            <span className={textStrong}>
+              {[totalNew > 0 ? `+${totalNew}` : null, totalRemoved > 0 ? `−${totalRemoved}` : null]
+                .filter(Boolean).join(' · ') || 'o‘zgarishsiz'} · jami {grandTotal} ta
+            </span>
           </div>
         </div>
 
         <p className={`text-[10px] font-bold leading-relaxed ${textMuted}`}>
-          Mavjud xonalar (talabasi bor yoki qo&apos;lda kiritilgan) hech qanday o&apos;zgarishsiz qoladi.
-          Barcha xonalar admin paneldagi &laquo;Qavat tarxi quruvchisi&raquo;da ham ko&apos;rinadi — u yerdan
-          joylashuvini o&apos;zgartirish mumkin.
+          Talabasi bor yoki yo&apos;llanma biriktirilgan xona hech qachon o&apos;chirilmaydi
+          {totalKeptOccupied > 0 && ` (${totalKeptOccupied} tasi shu sababli qoladi)`}.
+          O&apos;chirish faqat eng katta raqamli bo&apos;sh xonalardan boshlanadi. Barcha xonalar
+          &laquo;Qavat tarxi quruvchisi&raquo;da ham ko&apos;rinadi.
         </p>
       </div>
     </ConfirmModal>

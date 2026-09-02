@@ -50,7 +50,7 @@ export function createRoomLayoutRepository() {
       const scope = await scopeFor(faculty)
       let query = supabase
         .from('floor_room_layout')
-        .select('room_number, floor_number, side, frozen, frozen_reason, capacity')
+        .select('room_number, floor_number, side, position, size, frozen, frozen_reason, capacity')
         .order('floor_number', { ascending: true })
         .order('room_number', { ascending: true })
       if (scope.dormId) query = query.eq('dorm_id', scope.dormId)
@@ -74,6 +74,34 @@ export function createRoomLayoutRepository() {
       if (withDorm.length === 0) return
       const { error } = await supabase.from('floor_room_layout').insert(withDorm)
       if (error) throw error
+    },
+
+    // Room numbers in this dorm that currently hold a resident or an approved
+    // permit — the "sync floors" trim must never delete one of these (the RPC
+    // guards it too, but we want the preview/summary to be accurate first).
+    async occupiedRoomNumbers(faculty: string): Promise<Set<string>> {
+      const scope = await scopeFor(faculty)
+      const dormOr = scope.dormId ? `dorm_id.eq.${scope.dormId},dorm_id.is.null` : null
+
+      let usersQuery = supabase
+        .from('users')
+        .select('room_number')
+        .eq('role', 'talaba')
+        .not('room_number', 'is', null)
+      if (dormOr) usersQuery = usersQuery.or(dormOr)
+
+      let permitsQuery = supabase
+        .from('permit_requests')
+        .select('room_number')
+        .eq('status', 'approved')
+        .not('room_number', 'is', null)
+      if (dormOr) permitsQuery = permitsQuery.or(dormOr)
+
+      const [{ data: users }, { data: permits }] = await Promise.all([usersQuery, permitsQuery])
+      const occupied = new Set<string>()
+      for (const row of users ?? []) if (row.room_number) occupied.add(row.room_number)
+      for (const row of permits ?? []) if (row.room_number) occupied.add(row.room_number)
+      return occupied
     },
 
     async listFloor(faculty: string, floorNumber: number) {

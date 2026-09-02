@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Building2, DoorOpen, Layers3, Users,
-  Info, MousePointer2,
+  Info, MousePointer2, ArrowLeft, ArrowRight,
   Plus, Trash2, GripVertical, ChevronDown, Save, RotateCcw
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
@@ -338,6 +338,18 @@ export default function Dekan3DXonalarPage() {
       const next = orderedIds.map((id) => byId.get(id)).filter((b): b is EditableBlock => Boolean(b))
       return next.length === prev.length ? next : prev
     })
+  }
+
+  // Send a room to the other side of the corridor — only its place in the 3D
+  // layout changes, the room number / size / sig'im / muzlatilgan holat all
+  // travel with it. Appended to the end of the target column; drag to reorder.
+  const moveBlockToSide = (fromSide: RoomBlockSide, id: string) => {
+    const fromList = fromSide === 'left' ? leftBlocks : rightBlocks
+    const block = fromList.find((b) => b.id === id)
+    if (!block) return
+    const toSide: RoomBlockSide = fromSide === 'left' ? 'right' : 'left'
+    setSide(fromSide)((prev) => prev.filter((b) => b.id !== id))
+    setSide(toSide)((prev) => [...prev, block])
   }
 
   // Ommaviy sig'im: butun tomon, yoki xona raqami [from..to] oralig'idagilar.
@@ -742,9 +754,11 @@ export default function Dekan3DXonalarPage() {
                   occText={occText}
                   over={Boolean(over)}
                   defaultCapacity={defaultRoomCapacity}
+                  side={side}
                   onNumber={(v) => updateBlock(side, block.id, { roomNumber: v })}
                   onCycleSize={() => updateBlock(side, block.id, { size: SIZE_CYCLE[SIZE_RANK[block.size] % 3] })}
                   onCapacity={(c) => updateBlock(side, block.id, { capacity: c })}
+                  onMoveSide={() => moveBlockToSide(side, block.id)}
                   onRemove={() => removeBlock(side, block.id)}
                 />
               )
@@ -1064,11 +1078,12 @@ export default function Dekan3DXonalarPage() {
 }
 
 // One compact editor row (~36px): drag handle · number · size pill · capacity
-// chip · live occupancy dot · delete. Kept module-level so its useDragControls
-// hook isn't recreated on every parent render (which would kill the drag).
+// chip · live occupancy dot · move-to-other-side · delete. Kept module-level so
+// its useDragControls hook isn't recreated on every parent render (which would
+// kill the drag).
 function RoomRow({
-  block, isLight, inputBg, textMuted, toneDot, occText, over, defaultCapacity,
-  onNumber, onCycleSize, onCapacity, onRemove,
+  block, isLight, inputBg, textMuted, toneDot, occText, over, defaultCapacity, side,
+  onNumber, onCycleSize, onCapacity, onMoveSide, onRemove,
 }: {
   block: EditableBlock
   isLight: boolean
@@ -1078,9 +1093,11 @@ function RoomRow({
   occText: string
   over: boolean
   defaultCapacity: number | null
+  side: RoomBlockSide
   onNumber: (value: string) => void
   onCycleSize: () => void
   onCapacity: (capacity: number | null) => void
+  onMoveSide: () => void
   onRemove: () => void
 }) {
   const controls = useDragControls()
@@ -1176,6 +1193,19 @@ function RoomRow({
         <span className={`h-2 w-2 rounded-full ${toneDot}`} />
         <span className={`text-[9px] font-semibold tabular-nums ${over ? 'text-rose-500' : textMuted}`}>{occText}</span>
       </span>
+      {/* Send the room to the other side of the corridor — nothing about the
+          room changes, only where it sits in the 3D maket. */}
+      <button
+        type="button"
+        onClick={onMoveSide}
+        title={side === 'left' ? "O'ng tomonga o'tkazish" : "Chap tomonga o'tkazish"}
+        aria-label={side === 'left' ? "O'ng tomonga o'tkazish" : "Chap tomonga o'tkazish"}
+        className={`shrink-0 p-1 rounded-md transition-colors ${
+          isLight ? 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50' : 'text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10'
+        }`}
+      >
+        {side === 'left' ? <ArrowRight size={13} /> : <ArrowLeft size={13} />}
+      </button>
       <button
         type="button"
         onClick={onRemove}

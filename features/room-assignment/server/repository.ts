@@ -8,13 +8,19 @@ export function createRoomAssignmentRepository() {
       // Only students without a room yet are assignable here — someone
       // already housed must be removed from their current room first
       // (see clearStudentRoom) before they can show up to be placed again.
-      // status='active' excludes students who registered but haven't yet
-      // verified their email (still 'pending'), i.e. not actually approved.
+      //
+      // 'pending' (registered but email not yet verified) students are
+      // included: the dekan must be able to place them onto the user row
+      // directly. If we only listed 'active' ones, a pending student would
+      // show up ONLY as their approved permit — and a room assigned to that
+      // permit never reached the account, so the student saw no room after
+      // finally verifying (fixed end-to-end by 202609230000, this keeps the
+      // dekan assigning to a single, correct row).
       const { data, error } = await supabase
         .from('users')
-        .select('id, full_name, gender, room_number, course, direction')
+        .select('id, full_name, gender, room_number, course, direction, status')
         .eq('role', 'talaba')
-        .eq('status', 'active')
+        .in('status', ['active', 'pending'])
         .ilike('faculty', faculty)
         .is('room_number', null)
         .order('full_name', { ascending: true })
@@ -48,13 +54,43 @@ export function createRoomAssignmentRepository() {
     async listApprovedUnregisteredPermits(faculty: string) {
       const { data, error } = await supabase
         .from('permit_requests')
-        .select('id, full_name, gender, room_number, course, direction')
+        .select('id, full_name, gender, room_number, course, direction, passport_series')
         .eq('status', 'approved')
         .is('room_number', null)
         .ilike('faculty', faculty)
         .order('full_name', { ascending: true })
       if (error) throw error
-      return data ?? []
+      const permits = data ?? []
+      if (permits.length === 0) return []
+
+      // Drop permits whose person already has a users account (any status):
+      // they're covered by listFacultyStudents. Otherwise the dekan sees the
+      // same person twice, and assigning to the permit row leaves the
+      // account roomless.
+      const passports = [...new Set(permits.map((p) => p.passport_series).filter(Boolean))]
+      const accounted = new Set<string>()
+      if (passports.length > 0) {
+        const { data: accounts, error: accountsError } = await supabase
+          .from('users')
+          .select('passport_series')
+          .eq('role', 'talaba')
+          .in('passport_series', passports)
+        if (accountsError) throw accountsError
+        for (const row of accounts ?? []) {
+          if (row.passport_series) accounted.add(row.passport_series)
+        }
+      }
+
+      return permits
+        .filter((p) => !p.passport_series || !accounted.has(p.passport_series))
+        .map((p) => ({
+          id: p.id,
+          full_name: p.full_name,
+          gender: p.gender,
+          room_number: p.room_number,
+          course: p.course,
+          direction: p.direction,
+        }))
     },
     async findPermit(id: string) {
       const { data, error } = await supabase

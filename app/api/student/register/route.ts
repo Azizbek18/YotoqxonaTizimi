@@ -182,6 +182,26 @@ export async function POST(request: NextRequest) {
         )
       }
 
+      // The dekan may have reserved a room on the permit after this pending
+      // row was first created. The activation RPC also carries it over, but
+      // syncing it here keeps the account correct even before email verify
+      // (and covers a stale assigned_floor).
+      if (permit.room_number) {
+        const { data: layoutRow } = await supabase
+          .from('floor_room_layout')
+          .select('floor_number')
+          .eq('room_number', permit.room_number)
+          .maybeSingle()
+        await supabase
+          .from('users')
+          .update({
+            room_number: permit.room_number,
+            assigned_floor: layoutRow?.floor_number ?? extractFloor(permit.room_number),
+          })
+          .eq('id', existingUser.id)
+          .is('room_number', null)
+      }
+
       return NextResponse.json(
         { ok: true, requiresEmailVerification: true },
         { status: 202 },

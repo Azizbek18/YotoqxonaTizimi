@@ -94,7 +94,12 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
       ])
 
       const rows: FacultyStudentRow[] = [
-        ...students.map((row) => ({ ...row, full_name: row.full_name || 'Noma\'lum', source: 'user' as const })),
+        ...students.map((row) => ({
+          ...row,
+          full_name: row.full_name || 'Noma\'lum',
+          status: row.status === 'pending' ? 'pending' as const : 'active' as const,
+          source: 'user' as const,
+        })),
         ...permits.map((row) => ({ ...row, source: 'permit' as const })),
       ]
       rows.sort((a, b) => a.full_name.localeCompare(b.full_name, 'uz'))

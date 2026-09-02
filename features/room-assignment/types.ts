@@ -5,6 +5,9 @@ export type FacultyStudentRow = {
   room_number: string | null
   course: number | null
   direction: string | null
+  // Only set for source='user': 'active' (email verified) or 'pending'
+  // (registered, email not yet verified). Permits have no account yet.
+  status?: 'active' | 'pending'
   // 'user' — a real, already-registered account (role='talaba').
   // 'permit' — an approved yo'llanma whose person hasn't self-registered
   // yet; `id` is the permit_requests row's id, not a users id. Assigning a

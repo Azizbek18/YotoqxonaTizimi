@@ -37,7 +37,7 @@ function permit(overrides: Partial<{ id: string; faculty: string; gender: string
   }
 }
 
-function rosterRow(overrides: Partial<{ id: string; full_name: string; gender: string; room_number: string | null; course: number; direction: string }> = {}) {
+function rosterRow(overrides: Partial<{ id: string; full_name: string; gender: string; room_number: string | null; course: number; direction: string; status: string }> = {}) {
   return {
     id: 'roster-1',
     full_name: 'Roster Ism',
@@ -45,6 +45,7 @@ function rosterRow(overrides: Partial<{ id: string; full_name: string; gender: s
     room_number: null,
     course: 1,
     direction: 'CS',
+    status: 'active',
     ...overrides,
   }
 }
@@ -124,6 +125,23 @@ describe('room assignment service', () => {
       expect(result).toEqual([
         expect.objectContaining({ full_name: 'Ali', source: 'user' }),
         expect.objectContaining({ full_name: 'Vali', source: 'permit' }),
+      ])
+    })
+
+    // A registered-but-unverified student is assignable straight onto their
+    // account, tagged so the dekan UI can say "email not verified" rather
+    // than the misleading "not registered".
+    it('marks pending accounts so the dekan assigns to the user row, not the permit', async () => {
+      const repo = repository({
+        listFacultyStudents: vi.fn(async () => [
+          rosterRow({ id: 'student-3', full_name: 'Pending Person', status: 'pending' }),
+        ]),
+      })
+
+      const result = await createRoomAssignmentService(repo).listStudents('IT')
+
+      expect(result).toEqual([
+        expect.objectContaining({ full_name: 'Pending Person', source: 'user', status: 'pending' }),
       ])
     })
   })

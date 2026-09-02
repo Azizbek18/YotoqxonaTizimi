@@ -975,6 +975,11 @@ export default function DekanXonalarMap() {
                           Ro&apos;yxatdan o&apos;tmagan
                         </span>
                       )}
+                      {s.source === 'user' && s.status === 'pending' && (
+                        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ${statusChip('warning', isLight).chip}`}>
+                          Email tasdiqlanmagan
+                        </span>
+                      )}
                     </div>
                     <p className={`text-[10px] mt-0.5 ${textMuted}`}>
                       {s.direction ? `${directionLabel(s.direction)} • ` : ''}{s.course ? `${s.course}-kurs • ` : ''}

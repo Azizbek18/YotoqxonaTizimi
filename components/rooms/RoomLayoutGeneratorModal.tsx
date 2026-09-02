@@ -65,22 +65,24 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
   }, [existingRooms])
 
   // Re-seeded every time the dialog opens so a cancelled attempt doesn't
-  // leave half-edited numbers behind. Each floor starts at whichever is
-  // bigger — the usual default, or however many rooms it already has —
-  // so opening the dialog never suggests a target that's already exceeded.
+  // leave half-edited numbers behind.
+  //  - a floor that has rooms → its current count (no change proposed)
+  //  - an empty floor in a building that already has rooms → 0, so an
+  //    untouched empty floor (e.g. a declared-but-unused top floor) can't
+  //    be filled with 30 rooms by an accidental Apply
+  //  - a completely blank building → the default, to bootstrap it
   useEffect(() => {
     if (!isOpen) return
-    // Each floor starts at whatever it already has (or the default for a
-    // blank floor) — so opening the dialog never proposes a change on its own.
+    const buildingHasRooms = existingRooms.length > 0
     setCounts(Object.fromEntries(
       floors.map((floor) => {
         const existing = existingCountByFloor.get(floor) ?? 0
-        return [floor, String(existing > 0 ? existing : DEFAULT_ROOMS_PER_FLOOR)]
+        return [floor, String(existing > 0 ? existing : buildingHasRooms ? 0 : DEFAULT_ROOMS_PER_FLOOR)]
       }),
     ))
     setBulkValue(String(DEFAULT_ROOMS_PER_FLOOR))
     setNumbering('sequential')
-  }, [isOpen, floors, existingCountByFloor])
+  }, [isOpen, floors, existingCountByFloor, existingRooms.length])
 
   const plans = floors.map((floor) => ({ floor, rooms: Number(counts[floor] || 0) }))
   const preview = describeFloorFill(plans, numbering, existingRooms, occupiedRoomNumbers)

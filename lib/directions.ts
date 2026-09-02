@@ -33,6 +33,7 @@ export const FACULTY_DIRECTIONS: Record<PermitFacultyValue, readonly DirectionOp
     { value: 'kompyuter-ilmlari', label: 'Kompyuter ilmlari va dasturlash texnologiyalari' },
     { value: 'amaliy-matematika', label: 'Amaliy matematika' },
     { value: 'matematik-va-kompyuterli-modellashtirish', label: 'Matematik va kompyuterli modellashtirish' },
+    { value: 'kiberxavfsizlik', label: 'Kiberxavfsizlik' },
   ],
   fizika: [
     { value: 'tibbiyot-fizikasi', label: 'Tibbiyot fizikasi' },
@@ -146,7 +147,6 @@ const LEGACY_DIRECTIONS: readonly DirectionOption[] = [
   { value: 'differensial-tenglamalar', label: 'Differensial tenglamalar' },
   { value: 'dasturiy-injiniring', label: 'Dasturiy injiniring' },
   { value: 'kompyuter-tarmoqlari', label: 'Kompyuter tarmoqlari' },
-  { value: 'kiberxavfsizlik', label: 'Kiberxavfsizlik' },
   { value: 'raqamli-forensika', label: 'Raqamli forensika' },
   // Retired physics / chemistry / biology / history programmes
   { value: 'nazariy-fizika', label: 'Nazariy fizika' },

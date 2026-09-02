@@ -32,12 +32,16 @@ const clampCount = (raw: string) => {
   return String(Math.min(MAX_ROOMS_PER_FLOOR, Math.max(0, n)))
 }
 
+const rangeText = (r: [number, number] | null) =>
+  r ? (r[0] === r[1] ? String(r[0]) : `${r[0]}–${r[1]}`) : '—'
+
 /**
- * Makes each floor hold exactly the room count the dekan types: appends
- * the numbers still missing, or deletes the excess EMPTY rooms (highest
- * number first) when a floor is over target. A room with a resident or an
- * approved permit is never deleted — the preview shows exactly what will
- * be added and removed before the dekan confirms.
+ * Lays the whole building out to match the room counts the dekan types.
+ * "Ketma-ket" makes the numbers one contiguous run in floor order
+ * (1-qavat 1..c1, 2-qavat next..., …); "qavat bo'yicha" makes each floor
+ * N01.. . Only empty rooms move / are created / are dropped — an occupied
+ * room keeps its exact number. The preview shows every floor's old → new
+ * range and refuses upfront if a resident's room can't keep its number.
  */
 export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingRooms, occupiedRoomNumbers, onClose, onCreated }: Props) {
   const theme = useThemeStore((state) => state.theme)
@@ -80,10 +84,12 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
 
   const plans = floors.map((floor) => ({ floor, rooms: Number(counts[floor] || 0) }))
   const preview = describeFloorFill(plans, numbering, existingRooms, occupiedRoomNumbers)
-  const totalNew = preview.reduce((sum, floor) => sum + floor.added, 0)
-  const totalRemoved = preview.reduce((sum, floor) => sum + floor.removed, 0)
-  const totalKeptOccupied = preview.reduce((sum, floor) => sum + floor.keptOccupied, 0)
-  const grandTotal = preview.reduce((sum, floor) => sum + floor.total, 0)
+  const totalAdded = preview.reduce((s, f) => s + f.added, 0)
+  const totalRemoved = preview.reduce((s, f) => s + f.removed, 0)
+  const totalRenumbered = preview.reduce((s, f) => s + f.renumbered, 0)
+  const grandTotal = preview.reduce((s, f) => s + f.target, 0)
+  const conflicts = preview.flatMap((f) => f.conflicts)
+  const noChange = totalAdded === 0 && totalRemoved === 0 && totalRenumbered === 0
 
   const setFloorCountValue = (floor: number, raw: string) => {
     setCounts((prev) => ({ ...prev, [floor]: sanitizeCount(raw) }))
@@ -94,10 +100,14 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
     setCounts(Object.fromEntries(floors.map((floor) => [floor, safe])))
   }
 
-  const noChange = totalNew === 0 && totalRemoved === 0
-
   const handleCreate = async () => {
-    if (grandTotal === 0 && totalRemoved === 0) {
+    if (conflicts.length > 0) {
+      toast.error(
+        `Band xona ${conflicts.map((n) => `#${n}`).join(', ')} bu raqamlashga sig'maydi — o'sha qavat sonini oshiring yoki talabani ko'chiring`,
+      )
+      return
+    }
+    if (grandTotal === 0) {
       toast.error('Kamida bitta xona kiritilishi kerak')
       return
     }
@@ -107,14 +117,12 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
     }
     setSaving(true)
     try {
-      const { created, removed, keptOccupied } = await generateRoomFloors(plans, numbering)
+      const { created, removed, renumbered } = await generateRoomFloors(plans, numbering)
       const parts: string[] = []
       if (created > 0) parts.push(`${created} ta xona qo'shildi`)
-      if (removed > 0) parts.push(`${removed} ta bo'sh xona o'chirildi`)
+      if (removed > 0) parts.push(`${removed} ta o'chirildi`)
+      if (renumbered > 0) parts.push(`${renumbered} ta qayta raqamlandi`)
       toast.success(parts.join(' · ') || 'Xona taqsimoti yangilandi')
-      if (keptOccupied > 0) {
-        toast(`${keptOccupied} ta xona bandligi sababli o'chirilmadi`, { icon: '⚠️' })
-      }
       onCreated()
       onClose()
     } catch (error) {
@@ -126,11 +134,11 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
 
   const confirmLabel = saving
     ? 'Saqlanmoqda...'
-    : totalNew > 0 && totalRemoved > 0
-      ? `+${totalNew} · −${totalRemoved} xona`
-      : totalRemoved > 0
-        ? `${totalRemoved} ta bo'sh xona o'chirish`
-        : `${totalNew} ta yangi xona qo'shish`
+    : conflicts.length > 0
+      ? 'Band xona to‘sqinlik qilyapti'
+      : noChange
+        ? 'O‘zgarishsiz'
+        : 'O‘zgarishlarni qo‘llash'
 
   const labelCls = `block text-[10px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`
   const inputCls = `w-full rounded-xl border px-3 py-2 text-sm outline-none transition-all focus:border-indigo-500 ${
@@ -144,7 +152,7 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
     <ConfirmModal
       isOpen={isOpen}
       title="Xona taqsimotini sozlash"
-      description="Har bir qavatda JAMI nechta xona bo'lishi kerakligini kiriting. Yetishmayotgani qo'shiladi, ortiqcha BO'SH xonalar o'chiriladi — talabasi bor xona hech qachon o'chmaydi."
+      description="Har bir qavatda JAMI nechta xona bo'lishi kerakligini kiriting. Bino shu sonlarga qarab qayta raqamlanadi — talabasi bor xona o'z raqamida qoladi, faqat bo'sh xonalar ko'chadi."
       maxWidthClass="max-w-2xl"
       confirmText={confirmLabel}
       onConfirm={handleCreate}
@@ -224,29 +232,33 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
           )}
         </div>
 
-        {/* Exact outcome, from the same helper the server uses — what is
-            shown here is literally what gets created. */}
+        {/* Exact outcome, from the same helper the server (apply_building_layout) uses. */}
         <div className={`rounded-2xl border p-4 ${panelCls}`}>
           <p className={`mb-3 text-[10px] font-black uppercase tracking-wider ${textMuted}`}>
-            Natija
+            Natija — xona raqamlari
           </p>
           <div className="space-y-1.5">
-            {preview.map(({ floor, existing, added, removed, keptOccupied, total }) => {
-              const unchanged = added === 0 && removed === 0
+            {preview.map((f) => {
+              const changed = f.added > 0 || f.removed > 0 || f.renumbered > 0
+              const delta = [
+                f.added > 0 ? `+${f.added}` : null,
+                f.removed > 0 ? `−${f.removed}` : null,
+                f.renumbered > 0 ? `${f.renumbered}↻` : null,
+              ].filter(Boolean).join(' ')
               return (
-                <div key={floor} className="flex items-center justify-between gap-3 text-xs font-bold">
-                  <span className={textMuted}>{floor}-qavat</span>
-                  <span className={unchanged ? textMuted : textStrong}>
-                    {total === 0 && existing === 0
+                <div key={f.floor} className="flex items-start justify-between gap-3 text-xs font-bold">
+                  <span className={textMuted}>{f.floor}-qavat</span>
+                  <span className={`text-right ${changed ? textStrong : textMuted}`}>
+                    {f.target === 0
                       ? "xona yo'q"
-                      : unchanged
-                        ? `${existing} ta (o'zgarishsiz)`
-                        : [
-                            added > 0 ? `+${added}` : null,
-                            removed > 0 ? `−${removed} bo'sh` : null,
-                          ].filter(Boolean).join(' · ') + ` → ${total} ta`}
-                    {keptOccupied > 0 && (
-                      <span className={isLight ? 'text-amber-600' : 'text-amber-400'}> ({keptOccupied} band qoladi)</span>
+                      : changed
+                        ? <>{f.fromRange && `${rangeText(f.fromRange)} → `}{rangeText(f.toRange)}
+                            <span className={`font-medium ${textMuted}`}> · {delta}</span></>
+                        : `${rangeText(f.toRange)} (${f.target} ta)`}
+                    {f.conflicts.length > 0 && (
+                      <span className={`block font-medium ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>
+                        ⚠ band xona #{f.conflicts.join(', #')} sig&apos;maydi
+                      </span>
                     )}
                   </span>
                 </div>
@@ -254,19 +266,21 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
             })}
           </div>
           <div className={`mt-3 flex items-center justify-between border-t pt-3 text-xs font-black ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
-            <span className={textMuted}>Natijada</span>
+            <span className={textMuted}>Jami</span>
             <span className={textStrong}>
-              {[totalNew > 0 ? `+${totalNew}` : null, totalRemoved > 0 ? `−${totalRemoved}` : null]
-                .filter(Boolean).join(' · ') || 'o‘zgarishsiz'} · jami {grandTotal} ta
+              {[
+                totalAdded > 0 ? `+${totalAdded} yangi` : null,
+                totalRemoved > 0 ? `−${totalRemoved}` : null,
+                totalRenumbered > 0 ? `${totalRenumbered} qayta raqamlanadi` : null,
+              ].filter(Boolean).join(' · ') || 'o‘zgarishsiz'} · {grandTotal} ta xona
             </span>
           </div>
         </div>
 
         <p className={`text-[10px] font-bold leading-relaxed ${textMuted}`}>
-          Talabasi bor yoki yo&apos;llanma biriktirilgan xona hech qachon o&apos;chirilmaydi
-          {totalKeptOccupied > 0 && ` (${totalKeptOccupied} tasi shu sababli qoladi)`}.
-          O&apos;chirish faqat eng katta raqamli bo&apos;sh xonalardan boshlanadi. Barcha xonalar
-          &laquo;Qavat tarxi quruvchisi&raquo;da ham ko&apos;rinadi.
+          Talabasi bor xona hech qachon o&apos;chmaydi va raqami o&apos;zgarmaydi — raqamlash uning
+          atrofidan oqib o&apos;tadi. Agar band xona qavatning yangi oralig&apos;iga sig&apos;masa,
+          amal bajarilmaydi. Barcha xonalar &laquo;Qavat tarxi quruvchisi&raquo;da ham ko&apos;rinadi.
         </p>
       </div>
     </ConfirmModal>

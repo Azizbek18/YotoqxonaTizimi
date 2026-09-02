@@ -45,26 +45,33 @@ export function planRoomNumbers(plans: FloorRoomPlan[], numbering: RoomNumbering
 
 export type FloorFillSummary = {
   floor: number
-  /** Rooms already in the layout on this floor, before this plan. */
+  /** Rooms currently on this floor. */
   existing: number
-  /** Rooms this plan would newly create on this floor. */
+  /** Rooms this floor ends up with. */
+  target: number
+  /** Brand-new rooms created on this floor. */
   added: number
-  /** Empty rooms this plan would delete on this floor (floor is over target). */
+  /** Empty rooms deleted from this floor. */
   removed: number
-  /** Rooms over target that stay because they're occupied. */
-  keptOccupied: number
-  /** What the floor ends up with: existing + added − removed. */
-  total: number
+  /** Empty rooms that keep their spot but get a new number. */
+  renumbered: number
+  /** Current [min, max] room number on this floor (numeric rooms only). */
+  fromRange: [number, number] | null
+  /** New [min, max] room number for this floor. */
+  toRange: [number, number] | null
+  /** Occupied room numbers that can't keep their number → the op is refused. */
+  conflicts: string[]
 }
 
 /**
- * Same numbering as planRoomNumbers, but aware of the rooms the building
- * already has — so the generator can top up a partial floor OR trim an
- * over-built one. A planned number that's already taken (any floor) is
- * skipped; when a floor is over its target, its highest-numbered EMPTY
- * rooms are marked for removal (occupied ones never are). This summarises
- * exactly what the confirm button will do, so the preview can't promise
- * something the server won't.
+ * Predicts, floor by floor, exactly what `apply_building_layout` (migration
+ * 20260902080254) will do: the building is renumbered to match the per-floor
+ * targets — contiguous 1..N for 'sequential', N01.. for 'per-floor'. Only
+ * EMPTY rooms move / are created / are dropped; an occupied room keeps its
+ * exact number and the sequence flows around it. `conflicts` lists occupied
+ * rooms that can't keep their number (outside the floor's new range, or the
+ * floor now has fewer rooms than residents) — the server refuses the whole
+ * op when any floor has one, so the preview surfaces it before the click.
  */
 export function describeFloorFill(
   plans: FloorRoomPlan[],
@@ -72,7 +79,6 @@ export function describeFloorFill(
   existingRooms: readonly RoomFloor[],
   occupiedRoomNumbers: ReadonlySet<string> = new Set(),
 ): FloorFillSummary[] {
-  const existingNumbers = new Set(existingRooms.map((room) => room.roomNumber))
   const roomsByFloor = new Map<number, string[]>()
   existingRooms.forEach((room) => {
     const list = roomsByFloor.get(room.floor) ?? []
@@ -80,29 +86,45 @@ export function describeFloorFill(
     roomsByFloor.set(room.floor, list)
   })
 
-  const addedByFloor = new Map<number, number>()
-  planRoomNumbers(plans, numbering).forEach((room) => {
-    if (!existingNumbers.has(room.roomNumber)) {
-      addedByFloor.set(room.floor, (addedByFloor.get(room.floor) ?? 0) + 1)
-    }
-  })
-
+  let offset = 0
   return [...plans]
     .sort((a, b) => a.floor - b.floor)
     .map(({ floor, rooms: target }) => {
+      const lo = numbering === 'per-floor' ? floor * 100 + 1 : offset + 1
+      const hi = lo + target - 1
+      if (numbering !== 'per-floor') offset += target
+
       const current = roomsByFloor.get(floor) ?? []
-      const existing = current.length
-      const added = addedByFloor.get(floor) ?? 0
+      const currentNums = current.map(Number).filter((n) => Number.isFinite(n))
+      const occupiedHere = current.filter((n) => occupiedRoomNumbers.has(n))
 
-      let removed = 0
-      let keptOccupied = 0
-      const overBy = existing - target
-      if (overBy > 0) {
-        const removableEmpty = current.filter((n) => !occupiedRoomNumbers.has(n)).length
-        removed = Math.min(overBy, removableEmpty)
-        keptOccupied = overBy - removed
+      const conflicts = occupiedHere.filter((n) => {
+        const v = Number(n)
+        return !Number.isFinite(v) || v < lo || v > hi || occupiedHere.length > target
+      })
+
+      // Mirror the RPC's assignment: occupied rooms in range are pinned, the
+      // remaining target numbers go to empty rooms oldest-first, leftovers
+      // are new, surplus empty rooms are dropped.
+      const pinned = new Set(occupiedHere.map(Number).filter((v) => v >= lo && v <= hi))
+      const availTargets: number[] = []
+      for (let n = lo; n <= hi; n++) if (!pinned.has(n)) availTargets.push(n)
+      const movable = current.filter((n) => !occupiedRoomNumbers.has(n)).sort(compareRoomNumbers)
+
+      let renumbered = 0
+      const zip = Math.min(movable.length, availTargets.length)
+      for (let i = 0; i < zip; i++) if (Number(movable[i]) !== availTargets[i]) renumbered++
+
+      return {
+        floor,
+        existing: current.length,
+        target,
+        added: Math.max(0, availTargets.length - movable.length),
+        removed: Math.max(0, movable.length - availTargets.length),
+        renumbered,
+        fromRange: currentNums.length ? [Math.min(...currentNums), Math.max(...currentNums)] : null,
+        toRange: target > 0 ? [lo, hi] : null,
+        conflicts,
       }
-
-      return { floor, existing, added, removed, keptOccupied, total: existing + added - removed }
     })
 }

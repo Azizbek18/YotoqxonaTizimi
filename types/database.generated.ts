@@ -400,6 +400,10 @@ export interface Database {
         Args: { p_faculty: string; p_floor_number: number; p_rows: Json }
         Returns: void
       }
+      apply_building_layout: {
+        Args: { p_faculty: string; p_numbering: string; p_floors: Json }
+        Returns: { created: number; removed: number; renumbered: number }
+      }
       claim_receipt_transaction: {
         Args: { p_receipt_hash: string; p_transaction_id: string | null; p_transaction_id_normalized: string }
         Returns: { stored_transaction_id_normalized: string; is_conflict: boolean }[]

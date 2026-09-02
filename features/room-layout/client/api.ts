@@ -34,7 +34,7 @@ export function bulkSetRoomCapacity(roomNumbers: string[], capacity: number | nu
 }
 
 export function generateRoomFloors(floors: FloorRoomPlan[], numbering: RoomNumbering) {
-  return requestJson<{ success: true; created: number; removed: number; keptOccupied: number }>('/api/room-floors/generate', {
+  return requestJson<{ success: true; created: number; removed: number; renumbered: number }>('/api/room-floors/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ floors, numbering }),

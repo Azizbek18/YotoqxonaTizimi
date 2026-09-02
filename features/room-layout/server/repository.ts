@@ -118,6 +118,28 @@ export function createRoomLayoutRepository() {
       return data ?? []
     },
 
+    // Renumbers the whole building to match a "nechta xona per qavat" target
+    // (migration 20260902080254). Occupied rooms are pinned at their current
+    // number; only empty rooms move / are added / are removed. Raises P0003
+    // (with a room list) if a resident's room can't keep its number.
+    async applyBuildingLayout(
+      faculty: string,
+      numbering: 'sequential' | 'per-floor',
+      plans: { floor: number; rooms: number }[],
+    ): Promise<{ created: number; removed: number; renumbered: number }> {
+      const { data, error } = await supabase.rpc('apply_building_layout', {
+        p_faculty: faculty,
+        p_numbering: numbering,
+        p_floors: plans,
+      })
+      if (error) throw error
+      return (data ?? { created: 0, removed: 0, renumbered: 0 }) as {
+        created: number
+        removed: number
+        renumbered: number
+      }
+    },
+
     async replaceFloor(faculty: string, floorNumber: number, blocks: RoomLayoutBlock[]) {
       const rows = blocks.map((block) => ({
         roomNumber: block.roomNumber,

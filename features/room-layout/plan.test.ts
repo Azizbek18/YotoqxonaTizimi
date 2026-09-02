@@ -55,49 +55,58 @@ describe('compareRoomNumbers', () => {
 
 describe('describeFloorFill', () => {
   const summary = (floor: number, over: Partial<ReturnType<typeof describeFloorFill>[number]> = {}) => ({
-    floor, existing: 0, added: 0, removed: 0, keptOccupied: 0, total: 0, ...over,
+    floor, existing: 0, target: 0, added: 0, removed: 0, renumbered: 0,
+    fromRange: null, toRange: null, conflicts: [], ...over,
   })
+  const rooms = (nums: number[], floor: number) => nums.map((n) => ({ roomNumber: String(n), floor }))
 
   it('summarises each floor as all-new when the building is empty', () => {
     expect(describeFloorFill(twoFloors, 'sequential', [])).toEqual([
-      summary(1, { added: 3, total: 3 }),
-      summary(2, { added: 2, total: 2 }),
+      summary(1, { target: 3, added: 3, toRange: [1, 3] }),
+      summary(2, { target: 2, added: 2, toRange: [4, 5] }),
     ])
+  })
+
+  it('per-floor numbering starts each floor at N01', () => {
+    expect(describeFloorFill(twoFloors, 'per-floor', []).map((f) => f.toRange)).toEqual([[101, 103], [201, 202]])
   })
 
   it('marks empty floors', () => {
     expect(describeFloorFill([{ floor: 1, rooms: 0 }], 'sequential', [])).toEqual([summary(1)])
   })
 
-  it('only counts rooms that do not already exist as added', () => {
-    const existing = [{ roomNumber: '1', floor: 1 }, { roomNumber: '3', floor: 1 }]
-    expect(describeFloorFill(twoFloors, 'sequential', existing)).toEqual([
-      summary(1, { existing: 2, added: 1, total: 3 }),
-      summary(2, { added: 2, total: 2 }),
-    ])
+  // The scenario the user hit: floor 1 shrank to 16, so floor 2 must be
+  // renumbered from 31-60 to 17-55 (not "no change").
+  it('renumbers a later floor when an earlier one shrinks, and adds the shortfall', () => {
+    const existing = [...rooms(range(1, 16), 1), ...rooms(range(31, 60), 2)]
+    const [f1, f2] = describeFloorFill([{ floor: 1, rooms: 16 }, { floor: 2, rooms: 39 }], 'sequential', existing)
+    expect(f1).toMatchObject({ target: 16, added: 0, removed: 0, renumbered: 0, toRange: [1, 16] })
+    expect(f2).toMatchObject({ target: 39, added: 9, removed: 0, renumbered: 30, fromRange: [31, 60], toRange: [17, 55] })
   })
 
-  it('treats a room number as taken even if it currently sits on a different floor', () => {
-    const existing = [{ roomNumber: '4', floor: 5 }]
-    expect(describeFloorFill(twoFloors, 'sequential', existing)).toEqual([
-      summary(1, { added: 3, total: 3 }),
-      summary(2, { added: 1, total: 1 }),
-    ])
-  })
-
-  it('marks the excess empty rooms for removal when a floor is over target', () => {
-    const existing = ['1', '2', '3', '4', '5'].map((roomNumber) => ({ roomNumber, floor: 1 }))
+  it('drops the excess empty rooms when a floor is over target', () => {
+    const existing = rooms(range(1, 5), 1)
     expect(describeFloorFill([{ floor: 1, rooms: 3 }], 'sequential', existing)).toEqual([
-      summary(1, { existing: 5, removed: 2, total: 3 }),
+      summary(1, { existing: 5, target: 3, removed: 2, renumbered: 0, fromRange: [1, 5], toRange: [1, 3] }),
     ])
   })
 
-  it('never removes an occupied room, even when the floor stays over target', () => {
-    const existing = ['1', '2', '3', '4', '5'].map((roomNumber) => ({ roomNumber, floor: 1 }))
-    const occupied = new Set(['3', '4', '5'])
-    // target 1, but only 1 & 2 are empty → 2 removed, 3/4/5 stay → floor lands at 3
-    expect(describeFloorFill([{ floor: 1, rooms: 1 }], 'sequential', existing, occupied)).toEqual([
-      summary(1, { existing: 5, removed: 2, keptOccupied: 2, total: 3 }),
-    ])
+  it('pins an occupied room in range and never renumbers it', () => {
+    const existing = rooms(range(1, 5), 1)
+    const occ = new Set(['3'])
+    const [f] = describeFloorFill([{ floor: 1, rooms: 4 }], 'sequential', existing, occ)
+    // #3 pinned; empty 1,2,4,5 -> targets 1,2,4 (one dropped: #5)
+    expect(f).toMatchObject({ target: 4, removed: 1, renumbered: 0, conflicts: [] })
+  })
+
+  it('flags an occupied room that falls outside the new range as a conflict', () => {
+    const existing = rooms(range(1, 5), 1)
+    const occ = new Set(['5'])
+    const [f] = describeFloorFill([{ floor: 1, rooms: 3 }], 'sequential', existing, occ)
+    expect(f.conflicts).toEqual(['5'])
   })
 })
+
+function range(lo: number, hi: number) {
+  return Array.from({ length: hi - lo + 1 }, (_, i) => lo + i)
+}

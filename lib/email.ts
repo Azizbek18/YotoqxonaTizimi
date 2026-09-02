@@ -97,6 +97,20 @@ function appUrl(path: string) {
   return base ? `${base}${path}` : path
 }
 
+/** Foydalanuvchi "barcha boshqa qurilmalardan chiqish"ni bosgach. */
+export async function sendSessionsRevokedEmail(to: string, fullName: string, count: number) {
+  await sendMail({
+    to,
+    subject: 'Xavfsizlik: boshqa qurilmalar chiqarildi',
+    heading: `${fullName || 'Hurmatli foydalanuvchi'}, hisobingiz himoyalandi`,
+    paragraphs: [
+      `Hisobingizdan ${count} ta boshqa qurilma tizimdan chiqarildi. Endi faqat joriy qurilmangiz kirgan holatda.`,
+      'Agar bu amalni siz bajarmagan bo‘lsangiz yoki hisobingiz xavf ostida deb hisoblasangiz, parolingizni darhol o‘zgartiring.',
+    ],
+    cta: { label: 'Parolni o‘zgartirish', url: appUrl('/talaba/profil') },
+  })
+}
+
 /**
  * Talaba arizani elektron imzolagach — vaqti belgilangan tashqi nusxa.
  * Bu xat "men yozmaganman" bahsida dalil bo'ladi.

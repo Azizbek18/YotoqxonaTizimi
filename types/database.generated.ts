@@ -412,6 +412,25 @@ export interface Database {
         Args: { p_student_id: string; p_title: string; p_text: string; p_level: string }
         Returns: { warning_id: string; new_warning_count: number }[]
       }
+      list_user_sessions: {
+        Args: { p_user_id: string }
+        Returns: {
+          id: string
+          created_at: string
+          refreshed_at: string | null
+          user_agent: string | null
+          ip: string | null
+          not_after: string | null
+        }[]
+      }
+      revoke_user_session: {
+        Args: { p_user_id: string; p_session_id: string }
+        Returns: boolean
+      }
+      revoke_other_user_sessions: {
+        Args: { p_user_id: string; p_keep_session_id: string | null }
+        Returns: number
+      }
       finalize_payment_analysis: {
         Args: {
           p_payment_id: string

@@ -22,6 +22,23 @@ async function getUserWithRetry(
   }
 }
 
+/**
+ * The `session_id` claim of the caller's access token, when it arrived as a
+ * Bearer token. Used to mark "this device" in the session list — the token
+ * itself is verified separately by getRequestUser(), this only reads a claim.
+ */
+export function getRequestSessionId(request?: Request | NextRequest): string | null {
+  const authHeader = request?.headers.get('authorization')
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  if (!token) return null
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64').toString('utf8'))
+    return typeof payload.session_id === 'string' ? payload.session_id : null
+  } catch {
+    return null
+  }
+}
+
 export async function getRequestUser(request?: Request | NextRequest): Promise<User | null> {
   const authHeader = request?.headers.get('authorization')
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null

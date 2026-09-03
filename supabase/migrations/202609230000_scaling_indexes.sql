@@ -3,7 +3,10 @@
 -- ==========================================================
 -- Faqat indeks qo'shadi — sxema/xulq o'zgarmaydi, hammasi IF NOT EXISTS.
 -- (Kelib chiqishi: perf/scaling-phase-1 branch'idagi 202608310000, hozirgi
---  main sxemasiga moslab qayta yozildi.)
+--  main sxemasiga moslab qayta yozildi. Avval 20260902171500 nomi bilan
+--  edi — prod'da bo'lmasa ham `db push` uni "eski" deb tashlab ketardi
+--  (undan keyingi 2026090X migratsiyalar allaqachon qo'llangan), shuning
+--  uchun hammasidan keyin turishi uchun qayta raqamlandi.)
 --
 -- Muammo: `users` da deyarli har qator role='talaba' — `users_role_idx`
 -- amalda tanlovsiz. Quyidagilar har talaba dashboard/profil ochilishida

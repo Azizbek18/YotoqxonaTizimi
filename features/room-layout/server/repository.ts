@@ -50,7 +50,7 @@ export function createRoomLayoutRepository() {
       const scope = await scopeFor(faculty)
       let query = supabase
         .from('floor_room_layout')
-        .select('room_number, floor_number, side, position, size, frozen, frozen_reason, capacity')
+        .select('room_number, floor_number, side, position, size, frozen, frozen_reason, capacity, gender')
         .order('floor_number', { ascending: true })
         .order('room_number', { ascending: true })
       if (scope.dormId) query = query.eq('dorm_id', scope.dormId)
@@ -178,6 +178,33 @@ export function createRoomLayoutRepository() {
       let query = supabase
         .from('floor_room_layout')
         .update({ capacity })
+        .in('room_number', roomNumbers)
+      if (scope.dormId) query = query.eq('dorm_id', scope.dormId)
+      const { data, error } = await query.select('room_number')
+      if (error) throw error
+      return data?.length ?? 0
+    },
+
+    // Declared room gender (null = undeclared). Scoped to this dorm's rows —
+    // mirrors setCapacity / setFrozen. Enforced inside assign_*_room_atomic.
+    async setGender(faculty: string, roomNumber: string, gender: 'male' | 'female' | null) {
+      const scope = await scopeFor(faculty)
+      let query = supabase
+        .from('floor_room_layout')
+        .update({ gender })
+        .eq('room_number', roomNumber)
+      if (scope.dormId) query = query.eq('dorm_id', scope.dormId)
+      const { data, error } = await query.select('room_number').maybeSingle()
+      if (error) throw error
+      return Boolean(data)
+    },
+
+    async bulkSetGender(faculty: string, roomNumbers: string[], gender: 'male' | 'female' | null) {
+      if (roomNumbers.length === 0) return 0
+      const scope = await scopeFor(faculty)
+      let query = supabase
+        .from('floor_room_layout')
+        .update({ gender })
         .in('room_number', roomNumbers)
       if (scope.dormId) query = query.eq('dorm_id', scope.dormId)
       const { data, error } = await query.select('room_number')

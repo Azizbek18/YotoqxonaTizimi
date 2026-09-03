@@ -33,6 +33,25 @@ export function bulkSetRoomCapacity(roomNumbers: string[], capacity: number | nu
   })
 }
 
+type RoomGender = 'male' | 'female' | null
+
+/** Declared room gender; `gender: null` clears the reservation (any gender). */
+export function setRoomGender(roomNumber: string, gender: RoomGender) {
+  return requestJson<{ success: true; roomNumber: string; gender: RoomGender }>('/api/room-floors/gender', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomNumber, gender }),
+  })
+}
+
+export function bulkSetRoomGender(roomNumbers: string[], gender: RoomGender) {
+  return requestJson<{ success: true; changed: number; gender: RoomGender }>('/api/room-floors/gender', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomNumbers, gender }),
+  })
+}
+
 export function generateRoomFloors(floors: FloorRoomPlan[], numbering: RoomNumbering) {
   return requestJson<{ success: true; created: number; removed: number; renumbered: number }>('/api/room-floors/generate', {
     method: 'POST',

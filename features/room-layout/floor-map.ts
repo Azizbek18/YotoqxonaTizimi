@@ -22,6 +22,14 @@ export function buildRoomCapacityMap(rooms: RoomFloorStatus[]) {
 }
 
 /**
+ * Room number -> its declared gender ('male' / 'female' / null = undeclared).
+ * Every room is kept so `.has()` distinguishes "undeclared" from "unknown".
+ */
+export function buildRoomGenderMap(rooms: RoomFloorStatus[]) {
+  return new Map(rooms.map((room) => [normalizeRoomNumber(room.roomNumber), room.gender]))
+}
+
+/**
  * Groups a floor's rooms by effective capacity for the settings summary,
  * e.g. [{ capacity: 4, count: 26 }, { capacity: 2, count: 2 }] renders as
  * "26×4 · 2×2". `defaultCapacity` fills in for rooms with no override; pass

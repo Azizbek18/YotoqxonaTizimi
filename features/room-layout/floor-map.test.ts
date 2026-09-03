@@ -3,7 +3,7 @@ import { buildRoomCapacityMap, buildRoomFloorMap, getRoomCapacityBreakdown, reso
 import type { RoomFloorStatus } from './types'
 
 const room = (roomNumber: string, floor: number, capacity: number | null): RoomFloorStatus => ({
-  roomNumber, floor, capacity, frozen: false, frozenReason: null,
+  roomNumber, floor, capacity, frozen: false, frozenReason: null, gender: null,
 })
 
 describe('resolveFloor', () => {

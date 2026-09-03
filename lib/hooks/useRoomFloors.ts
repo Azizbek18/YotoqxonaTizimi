@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchRoomFloors } from '@/features/room-layout/client/api'
-import { buildRoomCapacityMap, buildRoomFloorMap, resolveFloor } from '@/features/room-layout/floor-map'
+import { buildRoomCapacityMap, buildRoomFloorMap, buildRoomGenderMap, resolveFloor } from '@/features/room-layout/floor-map'
 import type { RoomFloorStatus } from '@/features/room-layout/types'
 
 export interface RoomFloors {
@@ -18,6 +18,8 @@ export interface RoomFloors {
   capacityOf: (roomNumber?: string | null) => number | null | undefined
   /** Effective bed count for a room: its override, else `fallback`. */
   effectiveCapacity: (roomNumber: string | null | undefined, fallback: number | null) => number | null
+  /** Declared room gender; null = undeclared, undefined = unknown room. */
+  genderOf: (roomNumber?: string | null) => 'male' | 'female' | null | undefined
   loaded: boolean
   /** Re-fetches the map, e.g. right after rooms are created. */
   reload: () => Promise<void>
@@ -67,6 +69,7 @@ export function useRoomFloors(): RoomFloors {
 
   const map = useMemo(() => buildRoomFloorMap(rooms), [rooms])
   const capacityMap = useMemo(() => buildRoomCapacityMap(rooms), [rooms])
+  const genderMap = useMemo(() => buildRoomGenderMap(rooms), [rooms])
   const floors = useMemo(
     () => [...new Set(rooms.map((room) => room.floor))].sort((a, b) => a - b),
     [rooms],
@@ -87,6 +90,10 @@ export function useRoomFloors(): RoomFloors {
     },
     [capacityMap],
   )
+  const genderOf = useCallback(
+    (roomNumber?: string | null) => (roomNumber ? genderMap.get(roomNumber.trim()) : undefined),
+    [genderMap],
+  )
 
-  return { rooms, floors, map, floorOf, capacityOf, effectiveCapacity, loaded, reload }
+  return { rooms, floors, map, floorOf, capacityOf, effectiveCapacity, genderOf, loaded, reload }
 }

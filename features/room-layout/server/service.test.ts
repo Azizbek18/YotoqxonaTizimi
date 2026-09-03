@@ -20,13 +20,17 @@ function repository(overrides: Partial<RoomLayoutRepository> = {}) {
     replaceFloor: vi.fn(async () => {}),
     syncAssignedFloors: vi.fn(async () => {}),
     setFrozen: vi.fn(async () => true),
+    setCapacity: vi.fn(async () => true),
+    bulkSetCapacity: vi.fn(async () => 0),
+    setGender: vi.fn(async () => true),
+    bulkSetGender: vi.fn(async () => 0),
     ...overrides,
   } as unknown as RoomLayoutRepository
 }
 
 // floor_room_layout row shape listAllRooms returns (position/size added for trim)
 function existingRoom(room_number: string, floor_number: number, extra: Record<string, unknown> = {}) {
-  return { room_number, floor_number, side: 'left', position: 0, size: 'medium', frozen: false, frozen_reason: null, capacity: null, ...extra }
+  return { room_number, floor_number, side: 'left', position: 0, size: 'medium', frozen: false, frozen_reason: null, capacity: null, gender: null, ...extra }
 }
 
 describe('room layout service', () => {
@@ -142,17 +146,17 @@ describe('room layout service', () => {
     })
   })
 
-  it('exposes the whole-building room -> floor map, including frozen state', async () => {
+  it('exposes the whole-building room -> floor map, including frozen + declared gender', async () => {
     const repo = repository({
       listAllRooms: vi.fn(async () => [
-        existingRoom('101', 1),
+        existingRoom('101', 1, { gender: 'female' }),
         existingRoom('201', 2, { frozen: true, frozen_reason: "Ta'mirlash ishlari" }),
       ]),
     } as Partial<RoomLayoutRepository>)
 
     await expect(createRoomLayoutService(repo).listRoomFloors(FACULTY)).resolves.toEqual([
-      { roomNumber: '101', floor: 1, frozen: false, frozenReason: null, capacity: null },
-      { roomNumber: '201', floor: 2, frozen: true, frozenReason: "Ta'mirlash ishlari", capacity: null },
+      { roomNumber: '101', floor: 1, frozen: false, frozenReason: null, capacity: null, gender: 'female' },
+      { roomNumber: '201', floor: 2, frozen: true, frozenReason: "Ta'mirlash ishlari", capacity: null, gender: null },
     ])
     expect(repo.listAllRooms).toHaveBeenCalledWith(FACULTY)
   })
@@ -194,6 +198,53 @@ describe('room layout service', () => {
       await expect(createRoomLayoutService(repo).setFrozen(FACULTY, '101', 'yes', null))
         .rejects.toBeInstanceOf(ApiError)
       expect(repo.setFrozen).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('setGender', () => {
+    it('reserves a room for one gender', async () => {
+      const repo = repository()
+      const result = await createRoomLayoutService(repo).setGender(FACULTY, '101', 'female')
+
+      expect(repo.setGender).toHaveBeenCalledWith(FACULTY, '101', 'female')
+      expect(result).toEqual({ success: true, roomNumber: '101', gender: 'female' })
+    })
+
+    it("clears the reservation on null / '' and tolerates the Uzbek word", async () => {
+      const repo = repository()
+      await createRoomLayoutService(repo).setGender(FACULTY, '101', null)
+      expect(repo.setGender).toHaveBeenLastCalledWith(FACULTY, '101', null)
+
+      await createRoomLayoutService(repo).setGender(FACULTY, '101', 'Erkak')
+      expect(repo.setGender).toHaveBeenLastCalledWith(FACULTY, '101', 'male')
+    })
+
+    it('rejects a nonsense gender value', async () => {
+      const repo = repository()
+      await expect(createRoomLayoutService(repo).setGender(FACULTY, '101', 'banana'))
+        .rejects.toBeInstanceOf(ApiError)
+      expect(repo.setGender).not.toHaveBeenCalled()
+    })
+
+    it('rejects an unknown room', async () => {
+      const repo = repository({ setGender: vi.fn(async () => false) } as Partial<RoomLayoutRepository>)
+      await expect(createRoomLayoutService(repo).setGender(FACULTY, '999', 'male'))
+        .rejects.toMatchObject({ status: 404 })
+    })
+
+    it('bulk: de-dupes, caps at 500, reports how many changed', async () => {
+      const repo = repository({ bulkSetGender: vi.fn(async () => 3) } as Partial<RoomLayoutRepository>)
+      const result = await createRoomLayoutService(repo).bulkSetGender(FACULTY, ['1', '1', '2', '3'], 'male')
+
+      expect(repo.bulkSetGender).toHaveBeenCalledWith(FACULTY, ['1', '2', '3'], 'male')
+      expect(result).toEqual({ success: true, changed: 3, gender: 'male' })
+    })
+
+    it('bulk: rejects an empty selection', async () => {
+      const repo = repository()
+      await expect(createRoomLayoutService(repo).bulkSetGender(FACULTY, [], 'male'))
+        .rejects.toBeInstanceOf(ApiError)
+      expect(repo.bulkSetGender).not.toHaveBeenCalled()
     })
   })
 })

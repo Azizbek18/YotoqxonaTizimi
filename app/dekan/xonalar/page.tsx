@@ -17,14 +17,23 @@ import {
   Minus,
   RotateCcw,
   Snowflake,
-  Unlock
+  Unlock,
+  Venus,
+  Mars,
+  MousePointerSquareDashed,
+  Check
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { fetchAssignableStudents, assignStudentRoom } from '@/features/room-assignment/client/api'
 import type { FacultyStudentRow } from '@/features/room-assignment/types'
-import { setRoomFrozen, setRoomCapacity as setRoomCapacityApi } from '@/features/room-layout/client/api'
+import {
+  setRoomFrozen,
+  setRoomCapacity as setRoomCapacityApi,
+  setRoomGender as setRoomGenderApi,
+  bulkSetRoomGender as bulkSetRoomGenderApi,
+} from '@/features/room-layout/client/api'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { Skel } from '@/components/ui/skeletons'
 import RoomLayoutGeneratorModal from '@/components/rooms/RoomLayoutGeneratorModal'
@@ -55,7 +64,13 @@ interface RoomData {
   roomNumber: string
   occupants: Occupant[]
   floor: number
-  gender: string | null // 'male', 'female', or 'mixed' (warning)
+  gender: string | null // derived from occupants: 'male', 'female', or 'mixed' (warning)
+  /**
+   * Gender the dekan reserved this room for, set before anyone is placed
+   * (floor_room_layout.gender). null = undeclared. Drives the card wash and
+   * blocks a mismatched assignment inside the assign RPCs.
+   */
+  declaredGender: 'male' | 'female' | null
   frozen: boolean
   frozenReason: string | null
   /** Per-room bed-count override; null = inherit the dorm default. */
@@ -212,9 +227,9 @@ export default function DekanXonalarMap() {
       return 'mixed'
     }
 
-    const fromLayout: RoomData[] = layoutRooms.map(({ roomNumber, floor, frozen, frozenReason, capacity }) => {
+    const fromLayout: RoomData[] = layoutRooms.map(({ roomNumber, floor, frozen, frozenReason, capacity, gender }) => {
       const occupants = occupantsByRoom[roomNumber] ?? []
-      return { roomNumber, occupants, floor, gender: roomGender(occupants), frozen, frozenReason, capacity, inLayout: true }
+      return { roomNumber, occupants, floor, gender: roomGender(occupants), declaredGender: gender, frozen, frozenReason, capacity, inLayout: true }
     })
 
     // A room can hold students and still be absent from the layout (placed
@@ -229,6 +244,7 @@ export default function DekanXonalarMap() {
         occupants,
         floor: floorOf(roomNumber) ?? 0,
         gender: roomGender(occupants),
+        declaredGender: null,
         frozen: false,
         frozenReason: null,
         capacity: null,
@@ -338,6 +354,86 @@ export default function DekanXonalarMap() {
     }
   }
 
+  // Declared room gender — the dekan reserves a room for boys/girls before
+  // anyone lives in it. null clears the reservation. Enforced for real
+  // inside assign_*_room_atomic (a mismatched student is refused).
+  const [savingGender, setSavingGender] = useState(false)
+  const handleSetGender = async (gender: 'male' | 'female' | null) => {
+    if (!selectedRoom || !selectedRoom.inLayout || savingGender) return
+    setSavingGender(true)
+    try {
+      await setRoomGenderApi(selectedRoom.roomNumber, gender)
+      setSelectedRoom((room) => (room ? { ...room, declaredGender: gender } : room))
+      await reloadRoomFloors()
+      toast.success(
+        gender === null
+          ? 'Xona jinsi belgilanmadi'
+          : gender === 'female'
+            ? `${selectedRoom.roomNumber}-xona qizlar xonasi deb belgilandi`
+            : `${selectedRoom.roomNumber}-xona o'g'il bolalar xonasi deb belgilandi`,
+      )
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Xona jinsini o'zgartirib bo'lmadi")
+    } finally {
+      setSavingGender(false)
+    }
+  }
+
+  // Multi-select bulk mode: pick several rooms on the map, then stamp them
+  // all girls / boys at once (mirrors the capacity bulk in the builder).
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedRoomNumbers, setSelectedRoomNumbers] = useState<Set<string>>(new Set())
+  const [savingBulkGender, setSavingBulkGender] = useState(false)
+
+  const toggleRoomSelection = (roomNumber: string) => {
+    setSelectedRoomNumbers((prev) => {
+      const next = new Set(prev)
+      if (next.has(roomNumber)) next.delete(roomNumber)
+      else next.add(roomNumber)
+      return next
+    })
+  }
+
+  const exitSelectMode = () => {
+    setSelectMode(false)
+    setSelectedRoomNumbers(new Set())
+  }
+
+  const handleBulkSetGender = async (gender: 'male' | 'female' | null) => {
+    const roomNumbers = [...selectedRoomNumbers].filter((n) =>
+      rooms.some((r) => r.roomNumber === n && r.inLayout),
+    )
+    if (roomNumbers.length === 0 || savingBulkGender) return
+    setSavingBulkGender(true)
+    try {
+      const { changed } = await bulkSetRoomGenderApi(roomNumbers, gender)
+      await reloadRoomFloors()
+      toast.success(
+        gender === null
+          ? `${changed} ta xona jinsi belgilanmadi`
+          : gender === 'female'
+            ? `${changed} ta xona qizlar xonasi deb belgilandi`
+            : `${changed} ta xona o'g'il bolalar xonasi deb belgilandi`,
+      )
+      exitSelectMode()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Xonalar jinsini o'zgartirib bo'lmadi")
+    } finally {
+      setSavingBulkGender(false)
+    }
+  }
+
+  // Effective gender for the card wash: the dekan's declaration wins; if the
+  // room isn't declared yet it falls back to what the occupants imply.
+  const roomWashGender = (room: RoomData): 'male' | 'female' | null =>
+    room.declaredGender ?? (room.gender === 'male' || room.gender === 'female' ? room.gender : null)
+
+  // A real conflict: occupants are mixed, or a declared room already holds
+  // someone of the other gender.
+  const roomGenderConflict = (room: RoomData): boolean =>
+    room.gender === 'mixed'
+    || Boolean(room.declaredGender && (room.gender === 'male' || room.gender === 'female') && room.declaredGender !== room.gender)
+
   const CAPACITY_MIN = 1
   const CAPACITY_MAX = 12
   const stepCapacity = (delta: number) => {
@@ -364,12 +460,16 @@ export default function DekanXonalarMap() {
     .sort((a, b) => a.floor - b.floor || compareRoomNumbers(a.roomNumber, b.roomNumber))
 
   // Assignable students for the currently selected room: name search, plus
-  // gender-matched to existing occupants (an empty/mixed room allows anyone).
+  // gender-matched to the room's declared gender (or, if undeclared, to the
+  // existing occupants). An undeclared, empty/mixed room allows anyone.
+  const selectedRoomGenderLock = selectedRoom
+    ? selectedRoom.declaredGender ?? (selectedRoom.gender === 'mixed' ? null : selectedRoom.gender)
+    : null
   const assignableStudents = students
     .filter((s) => s.full_name.toLowerCase().includes(assignSearch.toLowerCase()))
     .filter((s) => {
-      if (!selectedRoom?.gender || selectedRoom.gender === 'mixed') return true
-      return normalizeGender(s.gender) === selectedRoom.gender
+      if (!selectedRoomGenderLock) return true
+      return normalizeGender(s.gender) === selectedRoomGenderLock
     })
 
   // Effective bed count for a room: its own override, else the dorm default.
@@ -482,13 +582,28 @@ export default function DekanXonalarMap() {
             ))}
           </div>
 
-          <button
-            onClick={() => setGeneratorOpen(true)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
-          >
-            <Plus size={13} /> Xona qo&apos;shish
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                selectMode ? ui.accentSolid : ui.btnGhost
+              }`}
+            >
+              <MousePointerSquareDashed size={13} /> {selectMode ? 'Tanlashni tugatish' : 'Xonalarni tanlash'}
+            </button>
+            <button
+              onClick={() => setGeneratorOpen(true)}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+            >
+              <Plus size={13} /> Xona qo&apos;shish
+            </button>
+          </div>
         </div>
+        {selectMode && (
+          <p className={`text-[10px] font-medium ${textMuted}`}>
+            Xonalarni bosib belgilang, so&apos;ng pastdagi paneldan jinsni tanlang.
+          </p>
+        )}
       </div>
 
       {/* 3. Main Occupancy Grid and Side Detail panel */}
@@ -496,10 +611,10 @@ export default function DekanXonalarMap() {
         {/* Rooms Grid (Left) */}
         <div className={`lg:col-span-8 p-5 rounded-2xl border ${surfaceBg}`}>
           <div className={`flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4 pb-4 border-b text-[10px] font-medium ${ui.border} ${textMuted}`}>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" /> O&apos;g&apos;il bolalar</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-pink-500" /> Qiz bolalar</span>
-            <span className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`} /> Bo&apos;sh joy</span>
-            <span className="flex items-center gap-1.5"><AlertTriangle size={11} className={isLight ? 'text-rose-500' : 'text-rose-400'} /> Gender aralashuvi</span>
+            <span className="flex items-center gap-1.5"><span className={`h-3 w-3 rounded border ${isLight ? 'bg-emerald-100 border-emerald-300' : 'bg-emerald-500/15 border-emerald-500/40'}`} /> O&apos;g&apos;il bolalar xonasi</span>
+            <span className="flex items-center gap-1.5"><span className={`h-3 w-3 rounded border ${isLight ? 'bg-pink-100 border-pink-300' : 'bg-pink-500/15 border-pink-500/40'}`} /> Qizlar xonasi</span>
+            <span className="flex items-center gap-1.5"><span className={`h-3 w-3 rounded border ${ui.border}`} /> Belgilanmagan</span>
+            <span className="flex items-center gap-1.5"><AlertTriangle size={11} className={isLight ? 'text-amber-500' : 'text-amber-400'} /> Jins nomuvofiqligi</span>
             <span className="flex items-center gap-1.5"><Snowflake size={11} className={isLight ? 'text-cyan-500' : 'text-cyan-400'} /> Muzlatilgan (ta&apos;mirlash)</span>
           </div>
           {loading || !floorsLoaded ? (
@@ -565,47 +680,62 @@ export default function DekanXonalarMap() {
               {filteredRooms.map((room) => {
                 const count = room.occupants.length
                 const isSelected = selectedRoom?.roomNumber === room.roomNumber
+                const isMultiPicked = selectMode && selectedRoomNumbers.has(room.roomNumber)
+                const conflict = roomGenderConflict(room)
+                const washGender = roomWashGender(room)
 
-                // Gender wash first — blue for boys, pink for girls — so the
-                // grid reads as boy/girl at a glance. A frozen room (ice
-                // cyan) or a mixed-gender room (rose error) overrides that
-                // wash; selection is shown with a ring so it keeps its
-                // gender colour.
+                // Card wash by gender so the grid reads as boy/girl at a
+                // glance — green = o'g'il xona, pink = qiz xona. A frozen
+                // room (cyan) or a gender conflict (amber) overrides it;
+                // selection is a ring so the wash colour stays visible.
                 let roomBorderColor = ui.border
                 let roomBgColor = ''
 
-                if (room.gender === 'male' || room.gender === 'female') {
-                  const accent = genderAccent(room.gender)
-                  roomBgColor = isLight ? accent.badgeBgLight : accent.badgeBg
-                  roomBorderColor = isLight ? accent.borderLight : accent.border
+                if (washGender === 'female') {
+                  roomBgColor = isLight ? 'bg-pink-100/70' : 'bg-pink-500/10'
+                  roomBorderColor = isLight ? 'border-pink-200' : 'border-pink-500/30'
+                } else if (washGender === 'male') {
+                  roomBgColor = isLight ? 'bg-emerald-100/70' : 'bg-emerald-500/10'
+                  roomBorderColor = isLight ? 'border-emerald-200' : 'border-emerald-500/30'
                 }
 
-                if (room.gender === 'mixed') {
+                if (conflict) {
                   roomBgColor = ''
-                  roomBorderColor = isLight ? 'border-rose-300 bg-rose-50' : 'border-rose-500/40 bg-rose-500/10'
+                  roomBorderColor = isLight ? 'border-amber-300 bg-amber-50' : 'border-amber-500/40 bg-amber-500/10'
                 } else if (room.frozen) {
                   roomBgColor = ''
                   roomBorderColor = isLight ? 'border-cyan-300 bg-cyan-50' : 'border-cyan-500/40 bg-cyan-500/10'
                 }
 
-                const roomRing = isSelected
-                  ? (isLight ? 'ring-2 ring-indigo-500 ring-offset-1' : 'ring-2 ring-indigo-400 ring-offset-1 ring-offset-slate-900')
-                  : ''
+                const roomRing = isMultiPicked
+                  ? (isLight ? 'ring-2 ring-indigo-600 ring-offset-1' : 'ring-2 ring-indigo-400 ring-offset-1 ring-offset-slate-900')
+                  : isSelected
+                    ? (isLight ? 'ring-2 ring-indigo-500 ring-offset-1' : 'ring-2 ring-indigo-400 ring-offset-1 ring-offset-slate-900')
+                    : ''
 
                 return (
                   <div
                     key={room.roomNumber}
-                    onClick={() => selectRoom(room)}
-                    className={`p-3 rounded-xl border cursor-pointer transition-colors text-center flex flex-col justify-between h-24 hover:border-indigo-400/60 ${roomBorderColor} ${roomBgColor} ${roomRing} ${room.frozen ? 'opacity-75' : ''}`}
+                    onClick={() => (selectMode ? toggleRoomSelection(room.roomNumber) : selectRoom(room))}
+                    className={`relative p-3 rounded-xl border cursor-pointer transition-colors text-center flex flex-col justify-between h-24 hover:border-indigo-400/60 ${roomBorderColor} ${roomBgColor} ${roomRing} ${room.frozen ? 'opacity-75' : ''}`}
                   >
+                    {isMultiPicked && (
+                      <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-white">
+                        <Check size={10} strokeWidth={3} />
+                      </span>
+                    )}
                     <div className="flex items-center justify-between">
                       <span className={`text-[10px] font-bold uppercase tracking-wider ${textMuted}`}>
                         {room.floor > 0 ? `Q-${room.floor}` : 'Q-?'}
                       </span>
-                      {room.gender === 'mixed' ? (
-                        <AlertTriangle size={12} className={isLight ? 'text-rose-500' : 'text-rose-400'} />
+                      {conflict ? (
+                        <AlertTriangle size={12} className={isLight ? 'text-amber-500' : 'text-amber-400'} />
                       ) : room.frozen ? (
                         <Snowflake size={12} className={isLight ? 'text-cyan-500' : 'text-cyan-400'} />
+                      ) : washGender === 'female' ? (
+                        <Venus size={12} className={isLight ? 'text-pink-500' : 'text-pink-400'} />
+                      ) : washGender === 'male' ? (
+                        <Mars size={12} className={isLight ? 'text-emerald-600' : 'text-emerald-400'} />
                       ) : null}
                     </div>
 
@@ -614,7 +744,9 @@ export default function DekanXonalarMap() {
                       <p className={`text-[9px] font-medium ${textMuted}`}>
                         {room.frozen
                           ? "Muzlatilgan"
-                          : `${count} / ${roomBeds(room)} o'rin${room.capacity != null ? ' •' : ''}`}
+                          : count === 0 && room.declaredGender
+                            ? (room.declaredGender === 'female' ? 'Qizlar xonasi' : "O'g'il bolalar xonasi")
+                            : `${count} / ${roomBeds(room)} o'rin${room.capacity != null ? ' •' : ''}`}
                       </p>
                     </div>
 
@@ -724,6 +856,74 @@ export default function DekanXonalarMap() {
                   >
                     <Snowflake size={14} /> Xonani muzlatish (ta&apos;mirlash)
                   </button>
+                )}
+
+                {/* Declared room gender — set it before anyone is placed so
+                    the building can be planned. A choice that clashes with a
+                    student already in the room is disabled. */}
+                {selectedRoom.inLayout && (() => {
+                  const occGenders = new Set(
+                    selectedRoom.occupants.map((o) => normalizeGender(o.gender)).filter(Boolean),
+                  )
+                  const opts: { value: 'male' | 'female' | null; label: string; icon: typeof Venus }[] = [
+                    { value: 'male', label: "O'g'il bolalar", icon: Mars },
+                    { value: 'female', label: 'Qizlar', icon: Venus },
+                    { value: null, label: 'Belgilanmagan', icon: X },
+                  ]
+                  return (
+                    <div className={`rounded-xl border overflow-hidden ${ui.inset}`}>
+                      <div className={`flex items-center gap-3 p-3 border-b ${ui.border}`}>
+                        <Users2 size={16} className={`shrink-0 ${ui.accentText}`} />
+                        <p className={`flex-1 text-[10px] font-bold uppercase tracking-wider ${textStrong}`}>
+                          Xona jinsi
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5 p-2">
+                        {opts.map((opt) => {
+                          const active = (selectedRoom.declaredGender ?? null) === opt.value
+                          const clashes = opt.value !== null && occGenders.size > 0 && !occGenders.has(opt.value)
+                          return (
+                            <button
+                              key={String(opt.value)}
+                              type="button"
+                              disabled={savingGender || clashes}
+                              onClick={() => handleSetGender(opt.value)}
+                              title={clashes ? 'Xonada boshqa jinsdagi talaba bor' : undefined}
+                              className={`flex flex-col items-center gap-1 rounded-lg px-1.5 py-2 text-[9px] font-bold uppercase tracking-wider transition-colors disabled:opacity-40 ${
+                                active
+                                  ? opt.value === 'female'
+                                    ? (isLight ? 'bg-pink-100 text-pink-700' : 'bg-pink-500/20 text-pink-300')
+                                    : opt.value === 'male'
+                                      ? (isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-500/20 text-emerald-300')
+                                      : ui.accentSoft
+                                  : `${ui.muted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`
+                              }`}
+                            >
+                              <opt.icon size={14} />
+                              {opt.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Declared-gender conflict — a student of the other gender is
+                    already in a room the dekan reserved. */}
+                {roomGenderConflict(selectedRoom) && selectedRoom.gender !== 'mixed' && selectedRoom.declaredGender && (
+                  <div className={`p-3 rounded-lg border text-[10px] flex items-start gap-2 ${
+                    isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+                  }`}>
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold uppercase">Jins nomuvofiqligi</p>
+                      <p className="mt-0.5 leading-tight">
+                        Xona {selectedRoom.declaredGender === 'female' ? 'qizlar' : "o'g'il bolalar"} uchun belgilangan,
+                        lekin ichida boshqa jinsdagi talaba bor. Talabani ko&apos;chiring yoki belgini o&apos;zgartiring.
+                      </p>
+                    </div>
+                  </div>
                 )}
 
                 {/* Mixed Gender Error message */}
@@ -922,6 +1122,56 @@ export default function DekanXonalarMap() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Multi-select bulk gender bar */}
+      <AnimatePresence>
+        {selectMode && selectedRoomNumbers.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+          >
+            <div className={`flex w-full max-w-lg flex-wrap items-center gap-2 rounded-2xl border p-2.5 shadow-xl ${surfaceBg}`}>
+              <span className={`px-1.5 text-[11px] font-bold ${textStrong}`}>
+                {selectedRoomNumbers.size} ta xona
+              </span>
+              <button
+                onClick={() => handleBulkSetGender('male')}
+                disabled={savingBulkGender}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${
+                  isLight ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+                }`}
+              >
+                <Mars size={13} /> O&apos;g&apos;il bolalar
+              </button>
+              <button
+                onClick={() => handleBulkSetGender('female')}
+                disabled={savingBulkGender}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${
+                  isLight ? 'bg-pink-100 text-pink-700 hover:bg-pink-200' : 'bg-pink-500/15 text-pink-300 hover:bg-pink-500/25'
+                }`}
+              >
+                <Venus size={13} /> Qizlar
+              </button>
+              <button
+                onClick={() => handleBulkSetGender(null)}
+                disabled={savingBulkGender}
+                className={`rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.btnGhost}`}
+              >
+                Tozalash
+              </button>
+              <button
+                onClick={exitSelectMode}
+                className={`rounded-lg p-2 ${textMuted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`}
+                aria-label="Bekor qilish"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Assign Student Modal */}
       <ConfirmModal

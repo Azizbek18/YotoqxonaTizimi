@@ -8,18 +8,44 @@ function isNetworkError(error: unknown) {
 }
 
 // A transient network blip talking to Supabase Auth (e.g. `TypeError: fetch
-// failed`) is not the same thing as "not logged in", but supabase-js's
-// getUser() surfaces both the same way. Retry once so a momentary hiccup
-// doesn't get misreported to the caller as an authentication failure.
-async function getUserWithRetry(
-  call: () => ReturnType<ReturnType<typeof createClient>['auth']['getUser']>,
-) {
+// failed`) is not the same thing as "not logged in", but supabase-js surfaces
+// both the same way. Retry once so a momentary hiccup doesn't get misreported
+// to the caller as an authentication failure.
+async function withRetry<T>(call: () => Promise<T>): Promise<T> {
   try {
     return await call()
   } catch (error) {
     if (!isNetworkError(error)) throw error
     return call()
   }
+}
+
+type AccessTokenClaims = {
+  sub?: string
+  email?: string
+  phone?: string
+  role?: string
+  aud?: string | string[]
+  iat?: number
+  app_metadata?: Record<string, unknown>
+  user_metadata?: Record<string, unknown>
+}
+
+// Downstream code only reads `.id` and `.email`; the rest is filled in from the
+// verified claims so the shape still satisfies `User` for the type checker.
+function claimsToUser(claims: AccessTokenClaims): User | null {
+  if (!claims.sub) return null
+  const createdAt = claims.iat ? new Date(claims.iat * 1000).toISOString() : ''
+  return {
+    id: claims.sub,
+    aud: (Array.isArray(claims.aud) ? claims.aud[0] : claims.aud) ?? 'authenticated',
+    role: claims.role ?? 'authenticated',
+    email: claims.email,
+    phone: claims.phone,
+    app_metadata: (claims.app_metadata ?? {}) as User['app_metadata'],
+    user_metadata: (claims.user_metadata ?? {}) as User['user_metadata'],
+    created_at: createdAt,
+  } as User
 }
 
 /**
@@ -39,6 +65,22 @@ export function getRequestSessionId(request?: Request | NextRequest): string | n
   }
 }
 
+/**
+ * Verifies the caller's access token and returns the user, or null when the
+ * request is unauthenticated / the token is invalid or expired.
+ *
+ * Uses `auth.getClaims()`, which verifies the JWT signature locally against the
+ * project's JWKS when asymmetric signing keys are enabled — no round-trip to
+ * Supabase Auth, no `auth.users` / `auth.sessions` reads per request. While the
+ * project still signs with the legacy symmetric (HS256) secret, getClaims()
+ * transparently falls back to a network `getUser()` call, so behaviour is
+ * identical to before until asymmetric keys are turned on in the dashboard.
+ *
+ * A revoked session is not detected here until the token expires (access tokens
+ * are short-lived); the privileged guards (`requireActiveStudent` /
+ * `requireActiveStaff`) re-check the user's row in `public.users` / `public.staff`
+ * on every call, so status and blacklist changes still take effect immediately.
+ */
 export async function getRequestUser(request?: Request | NextRequest): Promise<User | null> {
   const authHeader = request?.headers.get('authorization')
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
@@ -49,23 +91,17 @@ export async function getRequestUser(request?: Request | NextRequest): Promise<U
     if (!url || !anonKey) return null
 
     const supabase = createClient(url, anonKey)
-    const {
-      data: { user },
-      error,
-    } = await getUserWithRetry(() => supabase.auth.getUser(token))
-
-    return error ? null : user
+    const { data, error } = await withRetry(() => supabase.auth.getClaims(token))
+    if (error || !data?.claims) return null
+    return claimsToUser(data.claims as AccessTokenClaims)
   }
 
   // Never authorize from getSession(): it only reads the locally stored JWT
-  // and does not revalidate it with Supabase Auth. getUser() verifies the
-  // cookie-backed access token before privileged service-role queries run.
+  // without revalidating it. getClaims() verifies the cookie-backed access
+  // token (locally via JWKS, or via getUser() on the legacy secret) before
+  // privileged service-role queries run.
   const supabase = await createServerSupabaseClient()
-  const {
-    data: { user },
-    error,
-  } = await getUserWithRetry(() => supabase.auth.getUser())
-
-  if (error) return null
-  return user ?? null
+  const { data, error } = await withRetry(() => supabase.auth.getClaims())
+  if (error || !data?.claims) return null
+  return claimsToUser(data.claims as AccessTokenClaims)
 }

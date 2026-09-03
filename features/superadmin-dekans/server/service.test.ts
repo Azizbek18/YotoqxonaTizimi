@@ -83,6 +83,23 @@ describe('superadmin dekan overview', () => {
     expect(result.faculties.find((row) => row.faculty === 'amit')?.stats.freeBeds).toBe(1)
     expect(result.faculties.find((row) => row.faculty === 'biologiya')?.stats.freeBeds).toBe(2)
   })
+
+  it('does not double-count a permit whose applicant has already registered', async () => {
+    const result = await createSuperadminDekanService(repository({
+      dekans: [], educators: [], facultyDorms: [], dorms: [],
+      students: [
+        { faculty: 'amit', status: 'active', room_number: '5', passport_series: 'PP9', jshshir: 'JJ9' },
+      ],
+      permits: [
+        // Same person's spent permit — still 'approved', still points at room 5.
+        { faculty: 'amit', status: 'approved', room_number: '5', passport_series: 'PP9', jshshir: 'JJ9' },
+      ],
+      rooms: [{ faculty: 'amit', room_number: '5', frozen: false, capacity: 4 }],
+    })).getOverview()
+
+    // Room 5 holds one person, not two.
+    expect(result.faculties.find((row) => row.faculty === 'amit')?.stats.freeBeds).toBe(3)
+  })
 })
 
 function lifecycleRepository(overrides: Partial<SuperadminDekanRepository> = {}) {

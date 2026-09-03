@@ -227,6 +227,26 @@ describe('permit admin service — overview', () => {
     expect(dashboard.frozenRoomCount).toBe(1)
   })
 
+  it('does not double-count a permit whose applicant has already registered', async () => {
+    // Same person: a `users` row (registered) AND their still-'approved'
+    // permit, both pointing at room 5. The permit must not count again.
+    const load = vi.fn(async () => ({
+      permits: [permit({ id: 'p1', faculty: 'fizika', status: 'approved', room_number: '5', passport_series: 'PP9', jshshir: 'JJ9' })],
+      users: [{
+        id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Aziz',
+        passport_series: 'PP9', jshshir: 'JJ9', phone_number: '+998', gender: 'male',
+        direction: 'astronomiya', course: 2, room_number: '5', warning_count: 0, blacklisted: false,
+      }],
+    }))
+    const deps = capacityDeps([{ room_number: '5', frozen: false, capacity: 4 }], 4)
+
+    const { dashboard, approvedPermitsWithRooms } = await createPermitAdminService(repository({ load }), deps).overview('fizika')
+
+    expect(approvedPermitsWithRooms).toHaveLength(0)
+    expect(dashboard.totalOccupiedBeds).toBe(1) // the user, once
+    expect(dashboard.freeBeds).toBe(3)          // 4 - 1
+  })
+
   it('rejects a dekan with no faculty', async () => {
     await expect(createPermitAdminService(repository(), capacityDeps()).overview(null)).rejects.toMatchObject({ status: 403 })
   })

@@ -5,6 +5,7 @@ import { writeAuditLog } from '@/lib/audit-log'
 import { createRoomLayoutRepository } from '@/features/room-layout/server/repository'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 import { summariseBeds } from '@/lib/room-capacity'
+import { computeFloorBalance } from '@/lib/floor-balance'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import type { DekanOverview } from '../types'
 import { createPermitAdminRepository, type PermitAdminRepository } from './repository'
@@ -42,7 +43,7 @@ async function notifyTelegramWithoutBreakingDecision(request: Awaited<ReturnType
 // Only what overview() needs for its bed-capacity maths — kept narrow so
 // the service test can stub it without a Supabase client.
 type CapacityDeps = {
-  roomLayout?: { listAllRooms: (faculty: string) => Promise<Array<{ room_number: string; frozen: boolean; capacity: number | null }>> }
+  roomLayout?: { listAllRooms: (faculty: string) => Promise<Array<{ room_number: string; frozen: boolean; capacity: number | null; floor_number: number; gender: 'male' | 'female' | null }>> }
   appSettings?: { get: (faculty: string) => Promise<{ defaultRoomCapacity: number }> }
 }
 
@@ -109,6 +110,59 @@ export function createPermitAdminService(
 
       const { availableBeds, freeBeds, frozenRoomCount } = summariseBeds(scopedRooms, defaultCapacity, occByRoom)
 
+      // ---- per-floor course-year balance ----
+      // Every floor should mirror the faculty's overall course mix, scaled
+      // to its bed count (see lib/floor-balance). Target pool = all this
+      // faculty's students + its approved-not-yet-registered permits.
+      const roomToFloor = new Map<string, number>()
+      const floorCap = new Map<number, number>()
+      const floorGenders = new Map<number, Set<'male' | 'female'>>()
+      for (const room of scopedRooms) {
+        roomToFloor.set(room.room_number, room.floor_number)
+        if (!room.frozen) {
+          floorCap.set(room.floor_number, (floorCap.get(room.floor_number) ?? 0) + (room.capacity ?? defaultCapacity))
+        }
+        if (room.gender === 'male' || room.gender === 'female') {
+          const set = floorGenders.get(room.floor_number) ?? new Set<'male' | 'female'>()
+          set.add(room.gender)
+          floorGenders.set(room.floor_number, set)
+        }
+      }
+
+      const totalToHouse: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
+      for (const user of students) {
+        if (user.course && totalToHouse[user.course] !== undefined) totalToHouse[user.course]++
+      }
+      for (const permit of permits) {
+        if (permit.status !== 'approved') continue
+        if (userByPassport.has(permit.passport_series) || (permit.jshshir && userByJshshir.has(permit.jshshir))) continue
+        if (permit.course && totalToHouse[permit.course] !== undefined) totalToHouse[permit.course]++
+      }
+
+      const placedForBalance: { floor: number; course: number | null }[] = []
+      for (const user of studentsWithRooms) {
+        const fl = roomToFloor.get(user.room_number ?? '')
+        if (fl != null) placedForBalance.push({ floor: fl, course: user.course })
+      }
+      for (const permit of approvedPermitsWithRooms) {
+        const fl = roomToFloor.get(permit.room_number ?? '')
+        if (fl != null) placedForBalance.push({ floor: fl, course: permit.course })
+      }
+
+      const genderByFloor: Record<number, 'male' | 'female' | null> = {}
+      for (const [floor, set] of floorGenders) {
+        genderByFloor[floor] = set.size === 1 ? [...set][0] : null
+      }
+
+      const floorBalance = {
+        ...computeFloorBalance({
+          floors: [...floorCap.entries()].map(([floor, capacity]) => ({ floor, capacity })),
+          placed: placedForBalance,
+          totalToHouse,
+        }),
+        genderByFloor,
+      }
+
       const courses: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
       const faculties: Record<string, number> = Object.create(null)
       const addDistribution = (course: number | null, targetFaculty: string | null) => {
@@ -136,6 +190,7 @@ export function createPermitAdminService(
           frozenRoomCount,
           courseDistribution: Object.entries(courses).map(([course, talabalar]) => ({ course: `${course}-kurs`, talabalar })),
           facultyDistribution: Object.entries(faculties).map(([name, talabalar]) => ({ name, talabalar })),
+          floorBalance,
           recentRequests: permits.filter((permit) => permit.status === 'pending').slice(0, 5),
         },
       }

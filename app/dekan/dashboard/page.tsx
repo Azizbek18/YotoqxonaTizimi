@@ -32,6 +32,8 @@ import { permitFacultyLabel } from '@/lib/faculties'
 import { directionLabel } from '@/lib/directions'
 import { dekanUI, dekanChart, statusChip } from '@/lib/dekan-ui'
 import { Skel, SkelStatGrid, SkelList } from '@/components/dekan/Skeletons'
+import FloorBalanceCard from '@/components/dekan/FloorBalanceCard'
+import type { DekanFloorBalance } from '@/features/permits/types'
 
 interface DashboardStats {
   pendingCount: number
@@ -78,6 +80,7 @@ export default function DekanDashboard() {
   const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([])
   const [courseDistribution, setCourseDistribution] = useState<{ course: string; talabalar: number }[]>([])
   const [facultyDistribution, setFacultyDistribution] = useState<{ name: string; talabalar: number }[]>([])
+  const [floorBalance, setFloorBalance] = useState<DekanFloorBalance | undefined>(undefined)
   const { faculty: dekanFaculty, effectiveFaculty, role: dekanRole, scope: saScope, resolved: facultyResolved } = useDekanScope()
   const isGlobal = dekanRole === 'admin' && (!saScope || saScope === '*')
 
@@ -87,6 +90,7 @@ export default function DekanDashboard() {
       const { dashboard } = await fetchDekanOverview()
       setCourseDistribution(dashboard.courseDistribution)
       setFacultyDistribution(dashboard.facultyDistribution)
+      setFloorBalance(dashboard.floorBalance)
       setRecentRequests(dashboard.recentRequests)
       setStats({
         pendingCount: dashboard.pendingCount,
@@ -337,6 +341,11 @@ export default function DekanDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Per-floor course balance — not shown in the cross-faculty (superadmin) view */}
+      {!isGlobal && floorBalance && (
+        <FloorBalanceCard balance={floorBalance} isLight={isLight} />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent pending */}

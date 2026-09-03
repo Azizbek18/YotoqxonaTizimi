@@ -39,6 +39,8 @@ import { Skel } from '@/components/ui/skeletons'
 import RoomLayoutGeneratorModal from '@/components/rooms/RoomLayoutGeneratorModal'
 import { compareRoomNumbers } from '@/features/room-layout/plan'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
+import { computeFloorBalance, checkFloorPlacement } from '@/lib/floor-balance'
+import FloorBalanceCard from '@/components/dekan/FloorBalanceCard'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { getRoomOccupancyTone } from '@/features/app-settings/presentation'
 import { permitFacultyLabel } from '@/lib/faculties'
@@ -263,8 +265,19 @@ export default function DekanXonalarMap() {
     })
   }, [rooms])
 
-  const handleAssignStudent = async (studentId: string, source: 'user' | 'permit') => {
+  // Set when a placement would skew the floor's course mix — the modal below
+  // reads it, and its confirm button calls performAssign() to go ahead anyway.
+  const [balanceWarn, setBalanceWarn] = useState<{
+    studentId: string
+    source: 'user' | 'permit'
+    course: number
+    floor: number
+    suggestion: { course: number; gap: number; available: number } | null
+  } | null>(null)
+
+  const performAssign = async (studentId: string, source: 'user' | 'permit') => {
     if (!selectedRoom) return
+    setBalanceWarn(null)
     setAssigningId(studentId)
     try {
       await assignStudentRoom({ studentId, roomNumber: selectedRoom.roomNumber, source })
@@ -281,6 +294,23 @@ export default function DekanXonalarMap() {
     } finally {
       setAssigningId(null)
     }
+  }
+
+  const handleAssignStudent = (studentId: string, source: 'user' | 'permit') => {
+    if (!selectedRoom) return
+    const course = students.find((s) => s.id === studentId)?.course ?? null
+    const floor = selectedRoom.floor
+    if (course && floor > 0) {
+      const floorGender = floorBalance.genderByFloor[floor] ?? selectedRoom.declaredGender ?? null
+      const check = checkFloorPlacement(floorBalance, floor, course, {
+        availableByCourse: roomlessCountByCourse(floorGender),
+      })
+      if (check?.wouldOverfill) {
+        setBalanceWarn({ studentId, source, course, floor, suggestion: check.suggestion })
+        return
+      }
+    }
+    void performAssign(studentId, source)
   }
 
   // A room's occupants list mixes real residents ('registered') with
@@ -474,6 +504,58 @@ export default function DekanXonalarMap() {
 
   // Effective bed count for a room: its own override, else the dorm default.
   const roomBeds = (room: RoomData) => room.capacity ?? defaultCapacity
+
+  // ---- live per-floor course balance ----
+  // Recomputed from the same data the map already holds, so it stays current
+  // as the dekan places students (the dashboard payload would go stale). Plain
+  // const — the React compiler memoises it; a manual useMemo here trips
+  // react-hooks/preserve-manual-memoization.
+  const floorBalance = (() => {
+    const floorCap = new Map<number, number>()
+    const floorGenders = new Map<number, Set<'male' | 'female'>>()
+    for (const r of layoutRooms) {
+      if (!r.frozen) floorCap.set(r.floor, (floorCap.get(r.floor) ?? 0) + (r.capacity ?? defaultCapacity))
+      if (r.gender === 'male' || r.gender === 'female') {
+        const set = floorGenders.get(r.floor) ?? new Set<'male' | 'female'>()
+        set.add(r.gender)
+        floorGenders.set(r.floor, set)
+      }
+    }
+    const placed: { floor: number; course: number | null }[] = []
+    for (const [roomNumber, occs] of Object.entries(occupantsByRoom)) {
+      const fl = floorOf(roomNumber)
+      if (fl == null) continue
+      for (const o of occs) placed.push({ floor: fl, course: o.course || null })
+    }
+    const totalToHouse: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
+    for (const p of placed) if (p.course && totalToHouse[p.course] !== undefined) totalToHouse[p.course]++
+    for (const s of students) if (s.course && totalToHouse[s.course] !== undefined) totalToHouse[s.course]++
+
+    const genderByFloor: Record<number, 'male' | 'female' | null> = {}
+    for (const [f, set] of floorGenders) genderByFloor[f] = set.size === 1 ? [...set][0] : null
+
+    return {
+      ...computeFloorBalance({
+        floors: [...floorCap.entries()].map(([floor, capacity]) => ({ floor, capacity })),
+        placed,
+        totalToHouse,
+      }),
+      genderByFloor,
+    }
+  })()
+
+  // Roomless students still to place, counted by course for one gender (or
+  // all). Feeds the "place a 4th-year" suggestion so it only names a course
+  // there's actually someone available for. Cheap + only needed on a click.
+  const roomlessCountByCourse = (gender: 'male' | 'female' | null) => {
+    const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
+    for (const s of students) {
+      if (!s.course || counts[s.course] === undefined) continue
+      if (gender && normalizeGender(s.gender) !== gender) continue
+      counts[s.course] += 1
+    }
+    return counts
+  }
 
   // Room numbers with a resident / approved permit — the generator uses this
   // to know which rooms it must never delete when trimming a floor.
@@ -939,6 +1021,12 @@ export default function DekanXonalarMap() {
                   </div>
                 )}
 
+                {/* This floor's course balance — so the dekan sees the mix
+                    they're adding to before picking a student. */}
+                {selectedRoom.floor > 0 && floorBalance.floors.some((f) => f.floor === selectedRoom.floor) && (
+                  <FloorBalanceCard balance={floorBalance} isLight={isLight} onlyFloor={selectedRoom.floor} />
+                )}
+
                 {/* Occupants list */}
                 <div className="space-y-3">
                   {selectedRoom.occupants.length === 0 ? (
@@ -1207,7 +1295,10 @@ export default function DekanXonalarMap() {
           </div>
 
           <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1 custom-scrollbar">
-            {assignableStudents.map((s) => (
+            {assignableStudents.map((s) => {
+              const floorRow = selectedRoom ? floorBalance.floors.find((f) => f.floor === selectedRoom.floor) : undefined
+              const courseOver = Boolean(s.course && floorRow?.statusByCourse[s.course] === 'over')
+              return (
               <button
                 key={s.id}
                 type="button"
@@ -1225,6 +1316,11 @@ export default function DekanXonalarMap() {
                           Ro&apos;yxatdan o&apos;tmagan
                         </span>
                       )}
+                      {courseOver && (
+                        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ${statusChip('warning', isLight).chip}`}>
+                          Bu qavatда ko&apos;p
+                        </span>
+                      )}
                     </div>
                     <p className={`text-[10px] mt-0.5 ${textMuted}`}>
                       {s.direction ? `${directionLabel(s.direction)} • ` : ''}{s.course ? `${s.course}-kurs • ` : ''}
@@ -1238,13 +1334,45 @@ export default function DekanXonalarMap() {
                   <UserPlus size={16} className={`shrink-0 ${ui.accentText}`} />
                 )}
               </button>
-            ))}
+              )
+            })}
 
             {assignableStudents.length === 0 && (
               <p className={`py-6 text-center text-xs font-medium ${ui.faint}`}>Talaba topilmadi</p>
             )}
           </div>
         </div>
+      </ConfirmModal>
+
+      {/* Floor course-balance warning */}
+      <ConfirmModal
+        isOpen={!!balanceWarn}
+        title={balanceWarn ? `${balanceWarn.floor}-qavat muvozanati` : 'Qavat muvozanati'}
+        confirmText={assigningId ? 'Joylashtirilmoqda...' : 'Baribir joylashtirish'}
+        onConfirm={() => balanceWarn && performAssign(balanceWarn.studentId, balanceWarn.source)}
+        onClose={() => setBalanceWarn(null)}
+        isLoading={!!assigningId}
+      >
+        {balanceWarn && (() => {
+          const row = floorBalance.floors.find((f) => f.floor === balanceWarn.floor)
+          const c = balanceWarn.course
+          return (
+            <div className={`space-y-2 text-[11px] leading-relaxed ${textMuted}`}>
+              <p>
+                <span className="font-bold">{balanceWarn.floor}-qavatда {c}-kurs talabalar yetarli</span>
+                {row ? ` (${row.byCourse[c]} ta, ideal ${row.targetByCourse[c]} ta).` : '.'}
+              </p>
+              {balanceWarn.suggestion ? (
+                <p className={isLight ? 'text-indigo-700' : 'text-indigo-300'}>
+                  Bu qavatga <span className="font-bold">{balanceWarn.suggestion.course}-kurs</span> kerak —
+                  {' '}{balanceWarn.suggestion.gap} ta kam. Roʻyxatда {balanceWarn.suggestion.available} ta mos talaba bor.
+                </p>
+              ) : (
+                <p>Iloji boʻlsa boshqa kurs talabasini yoki boshqa qavatni tanlang.</p>
+              )}
+            </div>
+          )
+        })()}
       </ConfirmModal>
 
       {/* Freeze room modal */}

@@ -1,6 +1,7 @@
 'use client'
 
-import { AlertTriangle, ArrowDown, Check, Layers } from 'lucide-react'
+import Link from 'next/link'
+import { AlertTriangle, ArrowDown, ArrowRight, Check, Layers } from 'lucide-react'
 import { dekanUI, dekanChart, statusChip } from '@/lib/dekan-ui'
 import { COURSES, type FloorBalanceRow } from '@/lib/floor-balance'
 import type { DekanFloorBalance } from '@/features/permits/types'
@@ -136,6 +137,15 @@ export default function FloorBalanceCard({
           ))}
         </div>
       )}
+
+      <div className="mt-3 flex justify-end">
+        <Link
+          href="/dekan/xonalar"
+          className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${ui.accentText}`}
+        >
+          Xonalar xaritasida joylashtirish <ArrowRight size={10} />
+        </Link>
+      </div>
     </div>
   )
 }

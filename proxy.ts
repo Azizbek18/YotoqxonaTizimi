@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { findRoleByUserId, type AppRole } from '@/lib/auth-tables'
+import { findRoleByUserId, getClaimsIdentity, type AppRole } from '@/lib/auth-tables'
 import type { Database } from '@/types/database.generated'
 
 const ROLE_HOME: Record<Exclude<AppRole, null>, string> = {
@@ -112,11 +112,18 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  let session = null
+  let session: { user: { id: string; email: string | null } } | null = null
   let userRole = null
   try {
-    const { data, error } = await supabase.auth.getUser()
-    session = !error && data.user ? { user: data.user } : null
+    // getClaims() verifies the access token locally against the cached JWKS
+    // (asymmetric signing keys) and refreshes a near-expiry session first —
+    // it replaces a per-navigation getUser() round-trip to GoTrue. This is a
+    // routing guard, not the security boundary: the /api routes and the
+    // page-level `requireActive*` guards still re-check the live DB row, so a
+    // just-logged-out user being briefly routed to a page is harmless (every
+    // request that page makes 401s).
+    const identity = await getClaimsIdentity(supabase)
+    session = identity ? { user: identity } : null
 
     // Agar sessiya bo'lsa, foydalanuvchi rolini olish (RLS infinite recursion oldini olish uchun service role orqali)
     if (session?.user?.id) {

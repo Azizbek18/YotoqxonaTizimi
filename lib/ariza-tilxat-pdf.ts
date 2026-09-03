@@ -137,6 +137,22 @@ function centerTitle(c: Cursor, title: string) {
   c.y += 9
 }
 
+// Draw a hand-drawn signature PNG sitting on the baseline `y`, its left edge
+// at `x`, scaled to fit `maxW`×`maxH` mm WITHOUT distortion (the canvas is
+// wide; forcing it into a fixed box squashed it to an unreadable smear).
+function stampSignature(c: Cursor, image: string, x: number, baselineY: number, maxW: number, maxH: number) {
+  try {
+    const props = c.doc.getImageProperties(image)
+    const ratio = props.width && props.height ? props.width / props.height : 3
+    let w = maxW
+    let h = w / ratio
+    if (h > maxH) { h = maxH; w = h * ratio }
+    c.doc.addImage(image, 'PNG', x, baselineY - h - 0.5, w, h)
+  } catch {
+    /* a malformed data URL must not abort the whole document */
+  }
+}
+
 function signatureRow(c: Cursor, sig?: { image?: string; name?: string }) {
   c.y += 8
   c.doc.setFont(FONT, 'normal')
@@ -144,13 +160,7 @@ function signatureRow(c: Cursor, sig?: { image?: string; name?: string }) {
   // The signed copy stamps the hand-drawn signature just above the left rule
   // and prints the typed F.I.Sh. on the right rule; the draft / on-screen
   // preview leaves both as blank underlines.
-  if (sig?.image) {
-    try {
-      c.doc.addImage(sig.image, 'PNG', c.left, c.y - 11, 42, 12)
-    } catch {
-      /* a malformed data URL must not abort the whole document */
-    }
-  }
+  if (sig?.image) stampSignature(c, sig.image, c.left + 2, c.y, 55, 16)
   c.doc.text('______________________', c.left, c.y)
   if (sig?.name) {
     c.doc.setFontSize(11)
@@ -170,11 +180,7 @@ function signatureRow(c: Cursor, sig?: { image?: string; name?: string }) {
 // Only drawn on the final signed copy.
 function dekanSignatureBlock(c: Cursor, image: string, name: string, x: number) {
   c.doc.setFont(FONT, 'normal')
-  try {
-    c.doc.addImage(image, 'PNG', x, c.y - 10, 40, 12)
-  } catch {
-    /* ignore a bad image */
-  }
+  stampSignature(c, image, x + 2, c.y, 50, 14)
   c.doc.setFontSize(10.5)
   c.doc.text('_______________________', x, c.y)
   c.y += 4

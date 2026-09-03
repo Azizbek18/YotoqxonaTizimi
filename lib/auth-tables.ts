@@ -7,6 +7,31 @@ type Identity = {
   email?: string | null
 }
 
+/**
+ * The caller's identity taken from their verified access-token claims.
+ *
+ * `auth.getClaims()` verifies the JWT signature locally against the project's
+ * cached JWKS when asymmetric signing keys are enabled (the default for new
+ * projects, and the case here) — no GoTrue round-trip per request — and
+ * refreshes a near-expiry session first, which is why it is a safe drop-in
+ * for `getUser()` in the Proxy. It transparently falls back to a network
+ * `getUser()` call only while a project still signs with the legacy symmetric
+ * secret.
+ *
+ * Identity only. A server-side logout / ban is not seen here until the access
+ * token expires, so callers that gate access must still re-check the live
+ * `staff` / `users` row (which `findRoleByIdentity` and the `requireActive*`
+ * guards already do).
+ */
+export async function getClaimsIdentity(
+  supabase: SupabaseClient
+): Promise<{ id: string; email: string | null } | null> {
+  const { data, error } = await supabase.auth.getClaims()
+  const claims = !error && data?.claims ? data.claims : null
+  if (!claims?.sub) return null
+  return { id: claims.sub, email: typeof claims.email === 'string' ? claims.email : null }
+}
+
 // Finds a `staff` row matching either `id` or `email` using two safe,
 // parameterized lookups instead of interpolating user-controlled values into
 // a single `.or()` filter string (PostgREST's or() mini-language treats

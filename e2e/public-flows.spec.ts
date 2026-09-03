@@ -153,11 +153,12 @@ test('yo‘llanma oqimi Ariza + Tilxatni imzolashni talab qiladi (yuklab olish y
   await expect(page.getByText('yollanma.jpg')).toBeVisible({ timeout: 20_000 })
   await page.getByRole('button', { name: /Keyingi/i }).click()
 
-  // Step 4 — tekshirish card → go to the signature step
-  await page.getByRole('button', { name: /Imzoga o‘tish/i }).click()
+  // Step 4 — tekshirish card → go to the signature step. (`.` for the okina
+  // so the match survives ' vs ‘.)
+  await page.getByRole('button', { name: /Imzoga o.tish/i }).click()
 
   // Step 5 — signature. Opening the collapsible preview shows the document.
-  await page.getByText(/Hujjat matnini ko‘rish/i).click()
+  await page.getByText(/Hujjat matnini ko.rish/i).click()
   await expect(page.getByRole('heading', { name: 'A R I Z A' })).toBeVisible()
   await expect(page.getByText(/Andijon\s+viloyatidan kelganligim/).first()).toBeVisible()
 
@@ -166,15 +167,19 @@ test('yo‘llanma oqimi Ariza + Tilxatni imzolashni talab qiladi (yuklab olish y
   await expect(submit).toBeDisabled()
   await expect(page.getByRole('button', { name: /yuklab olish/i })).toHaveCount(0)
 
-  // Draw on the signature canvas.
-  const canvas = page.locator('canvas')
-  const box = await canvas.boundingBox()
-  if (!box) throw new Error('signature canvas has no box')
-  await page.mouse.move(box.x + 20, box.y + 40)
+  // Draw on the signature canvas (the only <canvas> on the page). SignaturePad
+  // listens on pointer events and only emits on pointerup after ≥2 moves —
+  // canvas-relative hovers dispatch clean pointermove events.
+  const canvas = page.locator('canvas').first()
+  await expect(canvas).toBeVisible()
+  await canvas.hover({ position: { x: 20, y: 30 } })
   await page.mouse.down()
-  await page.mouse.move(box.x + 90, box.y + 90, { steps: 8 })
-  await page.mouse.move(box.x + 150, box.y + 40, { steps: 8 })
+  for (const p of [{ x: 60, y: 70 }, { x: 110, y: 30 }, { x: 160, y: 80 }, { x: 210, y: 40 }]) {
+    await canvas.hover({ position: p })
+    await page.waitForTimeout(20)
+  }
   await page.mouse.up()
+  await expect(page.getByText(/Shu yerga imzo qo/i)).toBeHidden()
 
   await page.getByRole('checkbox').check()
   await expect(submit).toBeEnabled()

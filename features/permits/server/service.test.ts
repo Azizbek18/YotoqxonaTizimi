@@ -177,10 +177,16 @@ describe('permit admin service — overview', () => {
   beforeEach(() => vi.clearAllMocks())
 
   const capacityDeps = (
-    rooms: Array<{ room_number: string; frozen: boolean; capacity: number | null }> = [],
+    rooms: Array<{ room_number: string; frozen: boolean; capacity: number | null; floor_number?: number; gender?: 'male' | 'female' | null }> = [],
     defaultRoomCapacity = 4,
   ) => ({
-    roomLayout: { listAllRooms: vi.fn(async () => rooms) },
+    roomLayout: {
+      listAllRooms: vi.fn(async () => rooms.map((r) => ({
+        ...r,
+        floor_number: r.floor_number ?? 1,
+        gender: (r.gender ?? null) as 'male' | 'female' | null,
+      }))),
+    },
     appSettings: { get: vi.fn(async () => ({ defaultRoomCapacity })) },
   })
 
@@ -245,6 +251,37 @@ describe('permit admin service — overview', () => {
     expect(approvedPermitsWithRooms).toHaveLength(0)
     expect(dashboard.totalOccupiedBeds).toBe(1) // the user, once
     expect(dashboard.freeBeds).toBe(3)          // 4 - 1
+  })
+
+  it('builds per-floor course balance: proportional targets + placed counts by floor', async () => {
+    const load = vi.fn(async () => ({
+      // 3 students to house, all course 1; one already placed on floor 2.
+      permits: [
+        permit({ id: 'pa', faculty: 'fizika', status: 'approved', course: 1, room_number: '21', passport_series: 'A', jshshir: 'A' }),
+        permit({ id: 'pb', faculty: 'fizika', status: 'approved', course: 1, room_number: null, passport_series: 'B', jshshir: 'B' }),
+      ],
+      users: [{
+        id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'X', course: 1,
+        passport_series: 'C', jshshir: 'C', phone_number: '+998', gender: 'male', direction: 'd', room_number: '11', warning_count: 0, blacklisted: false,
+      }],
+    }))
+    const deps = capacityDeps([
+      { room_number: '11', frozen: false, capacity: 10, floor_number: 1 },
+      { room_number: '21', frozen: false, capacity: 30, floor_number: 2 },
+    ], 4)
+
+    const { dashboard } = await createPermitAdminService(repository({ load }), deps).overview('fizika')
+
+    expect(dashboard.floorBalance).toBeDefined()
+    const fb = dashboard.floorBalance!
+    expect(fb.totalToHouse[1]).toBe(3)     // u1 + pa + pb
+    expect(fb.totalCapacity).toBe(40)
+    const f1 = fb.floors.find((f) => f.floor === 1)!
+    const f2 = fb.floors.find((f) => f.floor === 2)!
+    expect(f1.byCourse[1]).toBe(1)          // u1 in room 11
+    expect(f2.byCourse[1]).toBe(1)          // permit pa in room 21
+    expect(f2.targetByCourse[1]).toBe(2)    // 30/40 * 3 -> 2.25 -> round 2
+    expect(f1.targetByCourse[1]).toBe(1)    // 10/40 * 3 -> 0.75 -> round 1
   })
 
   it('rejects a dekan with no faculty', async () => {

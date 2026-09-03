@@ -93,6 +93,17 @@ export const dekanChart = {
     boxShadow: '0 8px 24px -8px rgba(79,70,229,0.25)',
   }),
   series: ['#4f46e5', '#7c3aed', '#a5b4fc', '#64748b', '#94a3b8'],
+  /**
+   * Course-year ramp (1→4). Sequential single hue, monotonic in lightness —
+   * courses are ordered, so a floor stacked with one course reads as one
+   * shade. Segments are separated by a 2px surface gap + direct labels, not
+   * by hue contrast. Dark mode runs the ramp brighter so every step shows on
+   * the slate surface.
+   */
+  courseRamp: (isLight: boolean) =>
+    isLight
+      ? ['#c7d2fe', '#818cf8', '#4f46e5', '#3730a3']
+      : ['#3730a3', '#4f46e5', '#818cf8', '#c7d2fe'],
 }
 
 export type DekanStatusTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral'

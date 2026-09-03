@@ -1,4 +1,10 @@
 import type { PermitRequestRow } from '@/types/database.generated'
+import type { FloorBalance } from '@/lib/floor-balance'
+
+/** Per-floor course balance plus each floor's declared gender (for the "place a 4th-year" nudge). */
+export type DekanFloorBalance = FloorBalance & {
+  genderByFloor: Record<number, 'male' | 'female' | null>
+}
 
 export type EnrichedPermitRequest = PermitRequestRow & {
   warning_count: number
@@ -53,6 +59,8 @@ export type DekanOverview = {
     frozenRoomCount: number
     courseDistribution: { course: string; talabalar: number }[]
     facultyDistribution: { name: string; talabalar: number }[]
+    /** Per-floor course-year balance. Absent on the superadmin cross-faculty overview. */
+    floorBalance?: DekanFloorBalance
     recentRequests: PermitRequestRow[]
   }
 }

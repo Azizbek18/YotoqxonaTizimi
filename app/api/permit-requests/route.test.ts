@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
+import { SIGNATURE_PNG as PNG } from '../../../test/fixtures/signature-png'
 
 const checkRateLimit = vi.fn()
 const classifyPermitResubmission = vi.fn()
@@ -18,8 +19,6 @@ vi.mock('@/lib/permit-documents', async () => {
   const actual = await vi.importActual<typeof import('@/lib/permit-documents')>('@/lib/permit-documents')
   return { ...actual, saveStudentSignature }
 })
-
-const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 
 const { POST } = await import('./route')
 

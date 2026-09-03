@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { arizaTilxatFileName, generateArizaTilxatPdf, normalizePdfText, renderArizaTilxatPdfBytes } from './ariza-tilxat-pdf'
-
-const PNG_1PX = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+import { SIGNATURE_PNG as PNG_1PX } from '../test/fixtures/signature-png'
 
 const DATA = {
   fullName: "Gʻafurov Xusan Abrorovich",

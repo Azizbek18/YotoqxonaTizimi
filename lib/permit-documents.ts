@@ -16,6 +16,10 @@ import { renderArizaTilxatPdfBytes, arizaTilxatFileName } from '@/lib/ariza-tilx
 // written exactly once, so re-running the room assignment is a no-op.
 
 const MAX_SIGNATURE_BYTES = 260_000
+// A trimmed PNG of a genuine hand-drawn signature is a few KB at minimum; a
+// blank / 1-dot canvas is a couple hundred bytes. Reject those so the wizard
+// keeps asking rather than storing an invisible "signature".
+const MIN_SIGNATURE_BYTES = 900
 const DATA_URL_PNG = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/
 
 export type DeliveryOutcome =
@@ -31,7 +35,8 @@ export function isValidSignatureDataUrl(value: unknown): value is string {
   const match = value.match(DATA_URL_PNG)
   if (!match) return false
   // base64 length * 3/4 ≈ decoded bytes
-  return Math.floor((match[1].length * 3) / 4) <= MAX_SIGNATURE_BYTES
+  const bytes = Math.floor((match[1].length * 3) / 4)
+  return bytes >= MIN_SIGNATURE_BYTES && bytes <= MAX_SIGNATURE_BYTES
 }
 
 type Supabase = ReturnType<typeof getServiceSupabase>

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createPermitDocumentDelivery, isValidSignatureDataUrl, type DeliveryDeps } from './permit-documents'
+import { SIGNATURE_PNG as PNG } from '../test/fixtures/signature-png'
 
 // A tiny chainable stub for the supabase query builder. Each `.from(table)`
 // call pulls its canned result from `tables[table]` (an array — shift one per
@@ -50,8 +51,6 @@ function makeSupabase(config: {
   }
 }
 
-const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-
 function baseDeps(over: Partial<DeliveryDeps> & { supabaseConfig?: Parameters<typeof makeSupabase>[0] } = {}): DeliveryDeps {
   const { supabaseConfig, ...rest } = over
   return {
@@ -77,11 +76,13 @@ const docRow = (over: Record<string, unknown> = {}) => ({
 const staffRow = { id: 's1', full_name: 'Dekan Aliyev', signature_image: PNG }
 
 describe('isValidSignatureDataUrl', () => {
-  it('accepts a small PNG data URL', () => expect(isValidSignatureDataUrl(PNG)).toBe(true))
-  it('rejects a jpeg / plain string / oversize', () => {
+  it('accepts a real hand-drawn PNG data URL', () => expect(isValidSignatureDataUrl(PNG)).toBe(true))
+  it('rejects a jpeg / plain string / oversize / blank-canvas-tiny', () => {
     expect(isValidSignatureDataUrl('data:image/jpeg;base64,abcd')).toBe(false)
     expect(isValidSignatureDataUrl('hello')).toBe(false)
     expect(isValidSignatureDataUrl(`data:image/png;base64,${'A'.repeat(400_000)}`)).toBe(false)
+    // a 1×1 / empty-canvas PNG is a couple hundred bytes — not a signature
+    expect(isValidSignatureDataUrl('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==')).toBe(false)
   })
 })
 

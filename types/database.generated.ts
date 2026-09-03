@@ -317,6 +317,9 @@ export interface Database {
         frozen_reason: string | null
         // NULL = inherit dorms.default_room_capacity (migration 202609180000).
         capacity: number | null
+        // Declared gender the dekan reserved the room for, before anyone is
+        // placed (migration 202609240000). NULL = undeclared (any gender).
+        gender: 'male' | 'female' | null
         created_at: string
       }>
       // Since P2 (202609150000) app_settings holds only the two fee amounts,

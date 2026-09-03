@@ -34,6 +34,12 @@ export type RoomFloorStatus = RoomFloor & {
   frozenReason: string | null
   /** Per-room bed count override; null = inherit dorms.default_room_capacity. */
   capacity: number | null
+  /**
+   * Gender the dekan has reserved this room for, set from the Xonalar
+   * xaritasi before anyone is placed. null = undeclared (any gender).
+   * Enforced inside the assign_*_room_atomic RPCs.
+   */
+  gender: 'male' | 'female' | null
 }
 
 /** How many rooms each floor should get when generating a layout from scratch. */

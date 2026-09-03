@@ -1,5 +1,6 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
+import { normalizeGender } from '@/lib/gender'
 import type { FloorRoomPlan, RoomBlockSide, RoomBlockSize, RoomFloorStatus, RoomLayoutBlock, RoomNumbering } from '../types'
 import { MAX_ROOMS_PER_FLOOR, compareRoomNumbers } from '../plan'
 import { createRoomLayoutRepository, type RoomLayoutRepository } from './repository'
@@ -18,6 +19,15 @@ function parseCapacity(value: unknown, label: string): number | null {
     throw new ApiError(400, `${label} noto'g'ri (1–${MAX_ROOM_CAPACITY})`)
   }
   return n
+}
+
+// null / undefined / '' -> null (undeclared, any gender allowed). Anything
+// else must resolve to 'male' / 'female' via the shared normaliser.
+function parseGender(value: unknown): 'male' | 'female' | null {
+  if (value === null || value === undefined || value === '') return null
+  const normalized = normalizeGender(typeof value === 'string' ? value : String(value))
+  if (!normalized) throw new ApiError(400, "Xona jinsi noto'g'ri")
+  return normalized
 }
 
 function parseFloorNumber(value: unknown) {
@@ -145,6 +155,7 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
           frozen: row.frozen,
           frozenReason: row.frozen_reason,
           capacity: row.capacity ?? null,
+          gender: normalizeGender((row as { gender?: string | null }).gender),
         }))
         // room_number is a text column, so the DB's ORDER BY gives "1,10,2";
         // re-sort floor-then-natural so every consumer reads it in order.
@@ -181,6 +192,39 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
 
       const changed = await repository.bulkSetCapacity(faculty, roomNumbers, capacity)
       return { success: true as const, changed, capacity }
+    },
+
+    /**
+     * Declared room gender — the dekan reserves a room for boys/girls before
+     * anyone is placed. `genderValue` of null/'' clears it (any gender).
+     * Enforced for real inside the assign_*_room_atomic RPCs (a student whose
+     * gender differs from a declared room's gender is refused).
+     */
+    async setGender(faculty: string, roomNumberValue: unknown, genderValue: unknown) {
+      const roomNumber = typeof roomNumberValue === 'string' ? roomNumberValue.trim().slice(0, 20) : ''
+      if (!roomNumber) throw new ApiError(400, "Xona raqami kiritilmagan")
+      const gender = parseGender(genderValue)
+
+      const updated = await repository.setGender(faculty, roomNumber, gender)
+      if (!updated) throw new ApiError(404, "Bunday xona xonalar sxemasida topilmadi")
+      return { success: true as const, roomNumber, gender }
+    },
+
+    async bulkSetGender(faculty: string, roomNumbersValue: unknown, genderValue: unknown) {
+      if (!Array.isArray(roomNumbersValue)) throw new ApiError(400, "So'rov noto'g'ri")
+      const roomNumbers = [
+        ...new Set(
+          roomNumbersValue
+            .map((value) => (typeof value === 'string' ? value.trim().slice(0, 20) : ''))
+            .filter(Boolean),
+        ),
+      ]
+      if (roomNumbers.length === 0) throw new ApiError(400, "Xonalar tanlanmagan")
+      if (roomNumbers.length > 500) throw new ApiError(400, "Bir vaqtda 500 tagacha xona")
+      const gender = parseGender(genderValue)
+
+      const changed = await repository.bulkSetGender(faculty, roomNumbers, gender)
+      return { success: true as const, changed, gender }
     },
 
     /**

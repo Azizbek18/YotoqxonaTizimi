@@ -13,6 +13,13 @@ vi.mock('@/lib/audit-log', () => ({ writeAuditLog: vi.fn() }))
 vi.mock('@/lib/permit-resubmission', () => ({ classifyPermitResubmission }))
 vi.mock('@/lib/permit-telegram', () => ({ issuePermitTelegramLinkSafely: vi.fn(async () => null) }))
 vi.mock('@/lib/dekan-telegram', () => ({ notifyDekanNewPermit: vi.fn() }))
+const saveStudentSignature = vi.fn(async () => {})
+vi.mock('@/lib/permit-documents', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/permit-documents')>('@/lib/permit-documents')
+  return { ...actual, saveStudentSignature }
+})
+
+const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 
 const { POST } = await import('./route')
 
@@ -32,6 +39,7 @@ function baseFields(overrides: Record<string, string> = {}) {
     studyType: 'grant',
     originRegion: 'Andijon',
     relativePhone: '+998911234567',
+    studentSignature: PNG,
     ...overrides,
   }
   return fields
@@ -114,5 +122,20 @@ describe('POST /api/permit-requests — Ariza/Tilxat maydonlari', () => {
     const body = await response.json()
     expect(response.status).toBe(400)
     expect(body.error).toMatch(/Yo.?llanma fayli topilmadi/i)
+  })
+
+  it('imzosiz yangi ariza 400 qaytaradi', async () => {
+    classifyPermitResubmission.mockResolvedValue({ action: 'insert' })
+    const fields = baseFields()
+    delete fields.studentSignature
+    const response = await POST(request(fields))
+    expect(response.status).toBe(400)
+    expect((await response.json()).error).toMatch(/imzolang/i)
+  })
+
+  it("noto'g'ri formatdagi imzo 400 qaytaradi", async () => {
+    const response = await POST(request(baseFields({ studentSignature: 'data:image/jpeg;base64,zzz' })))
+    expect(response.status).toBe(400)
+    expect((await response.json()).error).toMatch(/Imzo tasviri/i)
   })
 })

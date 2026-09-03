@@ -280,12 +280,19 @@ export default function DekanXonalarMap() {
     setBalanceWarn(null)
     setAssigningId(studentId)
     try {
-      await assignStudentRoom({ studentId, roomNumber: selectedRoom.roomNumber, source })
+      const res = await assignStudentRoom({ studentId, roomNumber: selectedRoom.roomNumber, source })
       toast.success(
         source === 'permit'
           ? "Xona biriktirildi — talaba ro'yxatdan o'tganda shu xonaga joylashadi"
           : 'Talaba xonaga joylashtirildi',
       )
+      if (res.documentDelivery === 'deferred_no_dekan_signature') {
+        toast.error('Elektron imzoingiz yo‘q — Ariza va Tilxat yuborilmadi. Sozlamalar → Elektron imzo bo‘limida imzo qo‘ying.', { duration: 8000 })
+      } else if (res.documentDelivery === 'deferred_no_channel') {
+        toast('Ariza va Tilxat tayyor, ammo talabaning Telegram/email manzili topilmadi — keyinroq qayta yuboriladi.', { icon: '📭', duration: 7000 })
+      } else if (res.documentDelivery === 'delivered') {
+        toast.success('Imzolangan Ariza va Tilxat talabaga yuborildi', { icon: '📄' })
+      }
       setAssignModalOpen(false)
       setAssignSearch('')
       await Promise.all([fetchRoomsData(), loadStudents()])

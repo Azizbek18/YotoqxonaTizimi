@@ -20,6 +20,8 @@ interface MailInput {
   /** Har bir element alohida paragraf. HTML emas — oddiy matn. */
   paragraphs: string[]
   cta?: { label: string; url: string }
+  /** Resend biriktirmalari — `content` base64 kodlangan fayl. */
+  attachments?: { filename: string; content: string }[]
 }
 
 function escapeHtml(value: string) {
@@ -65,9 +67,15 @@ function renderText({ heading, paragraphs, cta }: Omit<MailInput, 'to' | 'subjec
   return parts.join('\n')
 }
 
-export async function sendMail({ to, subject, heading, paragraphs, cta }: MailInput) {
+// Returns whether Resend accepted the message. Existing callers ignore the
+// value (fire-and-forget); the permit-document delivery uses it to decide
+// whether to fall back to Telegram. `ok: false` also covers "not configured"
+// so an unconfigured environment falls through to the other channel.
+export async function sendMail({
+  to, subject, heading, paragraphs, cta, attachments,
+}: MailInput): Promise<{ ok: boolean }> {
   const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey || !to) return
+  if (!apiKey || !to) return { ok: false }
 
   try {
     const response = await fetch(RESEND_ENDPOINT, {
@@ -82,13 +90,17 @@ export async function sendMail({ to, subject, heading, paragraphs, cta }: MailIn
         subject,
         html: renderHtml({ heading, paragraphs, cta }),
         text: renderText({ heading, paragraphs, cta }),
+        ...(attachments?.length ? { attachments } : {}),
       }),
     })
     if (!response.ok) {
       console.error('Resend sendMail error:', response.status, await response.text())
+      return { ok: false }
     }
+    return { ok: true }
   } catch (error) {
     console.error('Resend sendMail failed:', error)
+    return { ok: false }
   }
 }
 
@@ -242,6 +254,30 @@ export async function sendStudentBlacklistEmail(
       'Xona avtomatik qaytarilmaydi — joylashish uchun fakultet dekanatiga murojaat qiling.',
     ],
     cta: { label: 'Shaxsiy kabinet', url: appUrl('/talaba/dashboard') },
+  })
+}
+
+/**
+ * Xona biriktirilgach — imzolangan Ariza va Tilxat PDF biriktirma sifatida.
+ * Telegram ulanmagan arizachilar uchun birlamchi kanal. Resend qabul
+ * qildimi — shu qiymatni qaytaradi (qabul qilmasa, chaqiruvchi Telegramga
+ * o'tadi).
+ */
+export async function sendPermitDocumentsEmail(
+  to: string,
+  fullName: string,
+  pdfBase64: string,
+  filename: string,
+): Promise<{ ok: boolean }> {
+  return sendMail({
+    to,
+    subject: 'Imzolangan Ariza va Tilxat',
+    heading: `${fullName}, imzolangan hujjatlaringiz tayyor`,
+    paragraphs: [
+      'Fakultet dekani yotoqxona arizangizni tasdiqladi va sizga xona biriktirdi.',
+      'Imzolangan Ariza va Tilxat (dekan va sizning elektron imzolaringiz bilan) ushbu xatga biriktirilgan. Uni saqlab qo‘ying — yotoqxonaga ko‘chib o‘tishda kerak bo‘ladi.',
+    ],
+    attachments: [{ filename, content: pdfBase64 }],
   })
 }
 

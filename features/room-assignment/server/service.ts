@@ -2,6 +2,7 @@ import 'server-only'
 import { ApiError } from '@/server/http/api-error'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 import { sendRoomAssignedEmail } from '@/lib/email'
+import { deliverPermitDocumentsSafely } from '@/lib/permit-documents'
 import { sendPushForPermit, sendPushForUser, sendPushWithoutBreaking } from '@/lib/push-notifications'
 import type { FacultyStudentRow } from '../types'
 import { createRoomAssignmentRepository, type RoomAssignmentRepository } from './repository'
@@ -38,11 +39,14 @@ function throwForRoomError(error: unknown): never {
 // and they have no account yet to receive a personalized "your room is X"
 // notice at — app/api/student/register/route.ts picks up the room the
 // moment they actually do register.
+type Signer = { id: string; fullName: string } | null
+
 async function assignPermitRoom(
   repository: RoomAssignmentRepository,
   faculty: string,
   permitId: string,
   roomNumber: string,
+  signer: Signer,
 ) {
   const permit = await repository.findPermit(permitId)
   if (!permit) throw new ApiError(404, "Yo'llanma topilmadi")
@@ -75,7 +79,13 @@ async function assignPermitRoom(
     url: '/ruxsatnoma-tekshirish',
     tag: `room-permit-${permitId}`,
   }))
-  return { success: true as const }
+  // Approved + a room now assigned -> generate and send the signed Ariza +
+  // Tilxat. Best-effort: a delivery hiccup must not fail the assignment.
+  const documentDelivery = await deliverPermitDocumentsSafely(
+    permitId,
+    signer ? { id: signer.id, fullName: signer.fullName } : undefined,
+  )
+  return { success: true as const, documentDelivery }
 }
 
 export function createRoomAssignmentService(repository: RoomAssignmentRepository = createRoomAssignmentRepository()) {
@@ -101,7 +111,7 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
       return rows
     },
 
-    async assignRoom(facultyValue: string | null, value: unknown) {
+    async assignRoom(facultyValue: string | null, value: unknown, signer: Signer = null) {
       const faculty = facultyValue?.trim()
       if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, "So'rov noto'g'ri")
@@ -112,7 +122,7 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
       const roomNumber = typeof input.roomNumber === 'string' ? input.roomNumber.trim().slice(0, 20) : ''
       const source = input.source === 'permit' ? 'permit' as const : 'user' as const
 
-      if (source === 'permit') return assignPermitRoom(repository, faculty, studentId, roomNumber)
+      if (source === 'permit') return assignPermitRoom(repository, faculty, studentId, roomNumber, signer)
 
       const student = await repository.findStudent(studentId)
       if (!student) throw new ApiError(404, 'Talaba topilmadi')
@@ -151,7 +161,17 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
         url: '/talaba/dashboard',
         tag: `room-user-${studentId}`,
       }))
-      return { success: true as const }
+      // This student may have come in through an approved yo'llanma — if so,
+      // now that they have a room, send their signed Ariza + Tilxat.
+      let documentDelivery
+      const permitId = await repository.findApprovedPermitIdForStudent(student)
+      if (permitId) {
+        documentDelivery = await deliverPermitDocumentsSafely(
+          permitId,
+          signer ? { id: signer.id, fullName: signer.fullName } : undefined,
+        )
+      }
+      return { success: true as const, documentDelivery }
     },
   }
 }

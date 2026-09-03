@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, User, Mail, Phone, ArrowLeft, CheckCircle2, CreditCard,
-  ShieldAlert, ShieldCheck, Pencil, ChevronRight, ChevronLeft, Download, FileText, Globe2
+  ShieldAlert, ShieldCheck, Pencil, ChevronRight, ChevronLeft, FileText, Globe2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -15,6 +15,7 @@ import DeveloperContactLink from '@/components/DeveloperContactLink'
 import TelegramPermitConnect from '@/components/TelegramPermitConnect'
 import PushNotificationCard from '@/components/pwa/PushNotificationCard'
 import ArizaTilxatDocument from '@/components/documents/ArizaTilxatDocument'
+import SignaturePad from '@/components/applications/SignaturePad'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
@@ -227,45 +228,15 @@ export default function ImtiyozliAriza() {
 
   const facultyLabel = permitFacultyLabel(faculty)
 
-  const [documentDownloaded, setDocumentDownloaded] = useState(false)
-  const [downloadingPdf, setDownloadingPdf] = useState(false)
-
-  // The downloaded Ariza/Tilxat is a snapshot of the data at download time.
-  // If the applicant edits any field that appears on it, the signed paper
-  // they show the dekan would no longer match the submission — make them
-  // download a fresh copy.
-  useEffect(() => {
-    setDocumentDownloaded(false)
-  }, [lastName, firstName, middleName, noMiddleName, faculty, course, studyType, originCountry, originRegion, phone, relativePhone])
-
-  const handleDownloadPdf = async () => {
-    if (downloadingPdf) return
-    setDownloadingPdf(true)
-    try {
-      const { generateArizaTilxatPdf, arizaTilxatFileName } = await import('@/lib/ariza-tilxat-pdf')
-      const doc = await generateArizaTilxatPdf({
-        fullName, facultyLabel, course, studyType,
-        originCountry: originCountry.trim(), originRegion: originRegion.trim(),
-        phone: phone.replace(/\D/g, ''), relativePhone: relativePhone.trim(), ttjName,
-      })
-      doc.save(arizaTilxatFileName(fullName))
-      setDocumentDownloaded(true)
-      toast.success('Hujjat yuklab olindi', { icon: '📄' })
-      toast('Uni chop etib, imzo qo‘yish uchun DEKANGA ko‘rsating.', { duration: 7000, icon: '✍️' })
-    } catch (err) {
-      console.error(err)
-      toast.error('Hujjatni yuklab bo‘lmadi. Qayta urinib ko‘ring.')
-    } finally {
-      setDownloadingPdf(false)
-    }
-  }
+  const [signatureImage, setSignatureImage] = useState<string | null>(null)
+  const [attested, setAttested] = useState(false)
 
   const handleSubmit = async () => {
     // In edit mode the passport photo already on file may be kept.
     if (!validateStep1() || !validateStep2() || !validateStep3()) return
     if (!editMode && !passportPhoto) return
-    if (!editMode && !documentDownloaded) {
-      toast.error('Avval Ariza va Tilxatni yuklab oling — dekanga imzoga topshirishingiz kerak.')
+    if (!editMode && (!signatureImage || !attested)) {
+      toast.error('Ariza va Tilxatni imzolang va tasdiqlang.')
       return
     }
 
@@ -290,6 +261,7 @@ export default function ImtiyozliAriza() {
       submission.append('studyType', studyType)
       submission.append('originCountry', originCountry.trim())
       submission.append('originRegion', originRegion.trim())
+      if (signatureImage) submission.append('studentSignature', signatureImage)
 
       const response = await fetch('/api/imtiyozli-requests', { method: 'POST', body: submission })
       const result = await response.json()
@@ -345,7 +317,7 @@ export default function ImtiyozliAriza() {
           <div className="space-y-2">
             <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-emerald-400">Muvaffaqiyatli yuborildi!</h2>
             <p className={`text-xs leading-relaxed font-sans ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-              Arizangiz va tilxatingiz ko&apos;rib chiqish uchun qabul qilindi. Dekan tasdiqlagach, sizga xona biriktiriladi va ro&apos;yxatdan o&apos;tishingiz mumkin bo&apos;ladi.
+              Arizangiz va tilxatingiz imzoingiz bilan qabul qilindi. Dekan xona biriktirgach, imzolangan Ariza va Tilxat Telegram yoki emailingizga avtomatik yuboriladi — hech narsa chop etish shart emas.
             </p>
           </div>
           <TelegramPermitConnect url={telegramLink} linked={telegramLinked} isLight={isLight} />
@@ -697,7 +669,7 @@ export default function ImtiyozliAriza() {
                     <ChevronLeft size={18} />
                   </button>
                   <button type="button" onClick={handleNextStep} className="flex-1 flex items-center justify-center gap-1.5 p-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:brightness-110 text-white font-black uppercase tracking-widest text-xs transition-all active:scale-95">
-                    <span>Hujjatni ko&apos;rish</span> <ChevronRight size={14} />
+                    <span>Imzoga o&apos;tish</span> <ChevronRight size={14} />
                   </button>
                 </div>
               </motion.div>
@@ -706,53 +678,48 @@ export default function ImtiyozliAriza() {
             {formStep === 4 && (
               <motion.div key="s4" initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                 <div className="text-center space-y-1">
-                  <h3 className={`text-sm font-black uppercase tracking-wide ${isLight ? 'text-slate-900' : 'text-white'}`}>Hujjatlaringizni tekshiring</h3>
+                  <h3 className={`text-sm font-black uppercase tracking-wide ${isLight ? 'text-slate-900' : 'text-white'}`}>Ariza va Tilxatni imzolang</h3>
                   <p className={`text-[10px] sm:text-[11px] font-medium leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                    Ariza va Tilxat quyida to&apos;ldirilgan holda ko&apos;rsatilgan. Xato bo&apos;lsa tahrirlang, to&apos;g&apos;ri bo&apos;lsa yuklab oling va yuboring.
+                    Hujjatlar ma&apos;lumotlaringiz bilan avtomatik tayyorlanadi. Bu yerda faqat imzo qo&apos;yasiz. Dekan xona biriktirgach, imzolangan Ariza va Tilxat Telegram yoki emailingizga yuboriladi.
                   </p>
                 </div>
 
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setFormStep(1)}
-                    className="absolute top-2 right-2 z-20 flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[9px] font-black uppercase tracking-wider shadow-lg shadow-amber-500/30 ring-2 ring-white dark:ring-[#0b1120]"
-                  >
-                    <Pencil size={11} />
-                    <span>Tahrirlash</span>
-                  </button>
-                  <div className="max-h-[50vh] overflow-y-auto rounded-2xl">
+                <details className={`rounded-xl border ${isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.03]'}`}>
+                  <summary className={`flex cursor-pointer items-center justify-between gap-2 px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>
+                    <span className="flex items-center gap-1.5"><FileText size={13} /> Hujjat matnini ko&apos;rish</span>
+                    <span className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); setFormStep(1) }}
+                        className="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white"
+                      >
+                        <Pencil size={10} /> Tahrirlash
+                      </button>
+                      <ChevronRight size={13} />
+                    </span>
+                  </summary>
+                  <div className="max-h-[46vh] overflow-y-auto border-t border-slate-200/60 dark:border-white/10">
                     {renderDocuments()}
                   </div>
+                </details>
+
+                <div className={`rounded-2xl border p-3.5 ${isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.03]'}`}>
+                  <p className={`mb-2 text-[10px] font-black uppercase tracking-widest ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Imzoingiz</p>
+                  <SignaturePad isLight={isLight} height={170} onChange={setSignatureImage} />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleDownloadPdf}
-                  disabled={downloadingPdf}
-                  className={`w-full flex items-center justify-center gap-2 p-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-60 ${
-                    documentDownloaded
-                      ? (isLight ? 'border border-emerald-300 bg-emerald-50 text-emerald-700' : 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300')
-                      : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25'
-                  }`}
-                >
-                  {downloadingPdf ? (
-                    <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  ) : documentDownloaded ? (
-                    <><CheckCircle2 size={14} /> Yuklab olindi — qayta yuklash</>
-                  ) : (
-                    <><Download size={14} /> Ariza va Tilxatni yuklab olish (PDF)</>
-                  )}
-                </button>
+                <label className={`flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 text-[11px] font-semibold leading-relaxed ${
+                  attested
+                    ? (isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200')
+                    : (isLight ? 'border-slate-200 text-slate-600' : 'border-white/10 text-slate-300')
+                }`}>
+                  <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600" />
+                  <span>Ariza va Tilxatdagi ma&apos;lumotlar to&apos;g&apos;ri. Elektron imzomni tasdiqlayman.</span>
+                </label>
 
-                {documentDownloaded ? (
-                  <div className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-[11px] font-semibold leading-relaxed ${isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'}`}>
-                    <ShieldAlert size={14} className="shrink-0 mt-0.5" />
-                    <span>Yuklab olingan Ariza va Tilxatni <b>chop eting</b>, o‘zingiz imzo qo‘ying va <b>dekanga imzoga topshiring</b>. Keyin bu yerdan yuboring.</span>
-                  </div>
-                ) : (
+                {!editMode && (!signatureImage || !attested) && (
                   <p className={`text-center text-[11px] font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                    Yuborishdan oldin hujjatni 100% yuklab olishingiz shart.
+                    Yuborish uchun imzo qo&apos;ying va tasdiqlang.
                   </p>
                 )}
 
@@ -764,8 +731,7 @@ export default function ImtiyozliAriza() {
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={loading || (!editMode && !documentDownloaded)}
-                    title={editMode || documentDownloaded ? undefined : 'Avval hujjatni yuklab oling'}
+                    disabled={loading || (!editMode && (!signatureImage || !attested))}
                     className="flex-1 flex items-center justify-center gap-2 p-3.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 hover:brightness-110 text-white font-black uppercase tracking-widest text-xs transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {loading ? (

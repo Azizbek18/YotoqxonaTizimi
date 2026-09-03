@@ -68,6 +68,7 @@ export type StaffRow = {
   assigned_floor: number | null
   assigned_gender: string | null
   created_by: string | null
+  signature_image: string | null
   created_at: string
   updated_at: string
 }
@@ -196,6 +197,26 @@ export type PermitTelegramLinkRow = {
   updated_at: string
 }
 
+export type PermitDocumentRow = {
+  permit_request_id: string
+  student_signature: string
+  student_signed_at: string
+  student_ip: string | null
+  student_user_agent: string | null
+  dekan_staff_id: string | null
+  dekan_name: string | null
+  dekan_signature: string | null
+  ariza_no: string | null
+  assigned_floor: number | null
+  assigned_room: string | null
+  pdf_path: string | null
+  delivered_at: string | null
+  delivery_channel: string | null
+  delivery_error: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type PushSubscriptionRow = {
   id: number
   endpoint: string
@@ -257,6 +278,7 @@ export interface Database {
       tolovlar: Table<PaymentRow>
       permit_requests: Table<PermitRequestRow>
       permit_telegram_links: Table<PermitTelegramLinkRow>
+      permit_documents: Table<PermitDocumentRow>
       student_telegram_links: Table<StudentTelegramLinkRow>
       push_subscriptions: Table<PushSubscriptionRow>
       attendance_sessions: Table<AttendanceSessionRow>

@@ -23,6 +23,7 @@ import { classifyPermitResubmission } from '@/lib/permit-resubmission'
 import { getApiError } from '@/server/http/api-error'
 import { issuePermitTelegramLinkSafely } from '@/lib/permit-telegram'
 import { notifyDekanNewPermit } from '@/lib/dekan-telegram'
+import { saveStudentSignature, isValidSignatureDataUrl } from '@/lib/permit-documents'
 
 // Foreign and privileged (imtiyozli) students don't get a my.gov.uz
 // "yo'llanma" at all — they submit a filled Ariza + Tilxat instead (built
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
     const studyType = value(form, 'studyType', 20)
     const originCountry = value(form, 'originCountry', 120)
     const originRegion = value(form, 'originRegion', 120)
+    const studentSignature = String(form.get('studentSignature') ?? '')
 
     if (!isValidForeignIdNumber(idNumber)) {
       return NextResponse.json({ error: 'Pasport/ID hujjat raqami noto‘g‘ri kiritildi.' }, { status: 400 })
@@ -104,8 +106,25 @@ export async function POST(request: NextRequest) {
     if (!originCountry || !originRegion) {
       return NextResponse.json({ error: 'Qaysi davlat/viloyatdan kelganingizni kiriting.' }, { status: 400 })
     }
+    if (studentSignature && !isValidSignatureDataUrl(studentSignature)) {
+      return NextResponse.json({ error: 'Imzo tasviri noto‘g‘ri. Qaytadan imzo qo‘ying.' }, { status: 400 })
+    }
 
     const supabase = getServiceSupabase()
+
+    const persistSignature = async (permitRequestId: string) => {
+      if (!studentSignature) return
+      try {
+        await saveStudentSignature({
+          permitRequestId,
+          signatureDataUrl: studentSignature,
+          ip: getClientIp(request),
+          userAgent: request.headers.get('user-agent'),
+        })
+      } catch (error) {
+        console.error('saveStudentSignature failed:', error)
+      }
+    }
 
     // jshshir is always NULL for imtiyozli — the identity anchor is the
     // (foreign) ID number. Classify first: a rejected (reopen) or still-
@@ -115,6 +134,9 @@ export async function POST(request: NextRequest) {
     )
     if (outcome.action === 'conflict') {
       return NextResponse.json({ error: outcome.message }, { status: 409 })
+    }
+    if (outcome.action !== 'edit_pending' && !studentSignature) {
+      return NextResponse.json({ error: 'Ariza va Tilxatni imzolang.' }, { status: 400 })
     }
     const canKeepExistingDoc =
       (outcome.action === 'edit_pending' || outcome.action === 'reopen') && Boolean(outcome.oldPermitPath)
@@ -185,6 +207,7 @@ export async function POST(request: NextRequest) {
       if (newDocPath && outcome.oldPermitPath && outcome.oldPermitPath !== newDocPath) {
         await supabase.storage.from('permits').remove([outcome.oldPermitPath])
       }
+      await persistSignature(edited.id)
       await writeAuditLog({ eventType: 'imtiyozli_request.edited', status: 'success', ipAddress: getClientIp(request), targetRole: 'talaba', details: { faculty } })
       return NextResponse.json({ ok: true, edited: true, permitRequestId: edited.id }, { status: 200 })
     }
@@ -218,6 +241,7 @@ export async function POST(request: NextRequest) {
         targetRole: 'talaba',
         details: { faculty },
       })
+      await persistSignature(reopened.id)
       const telegram = await issuePermitTelegramLinkSafely(reopened.id)
       await notifyDekanNewPermit({ fullName, faculty, direction, course, applicationType: 'imtiyozli', resubmitted: true })
       return NextResponse.json({ ok: true, resubmitted: true, telegram, permitRequestId: reopened.id }, { status: 200 })
@@ -246,6 +270,7 @@ export async function POST(request: NextRequest) {
       targetRole: 'talaba',
       details: { faculty },
     })
+    await persistSignature(inserted.id)
     const telegram = await issuePermitTelegramLinkSafely(inserted.id)
     await notifyDekanNewPermit({ fullName, faculty, direction, course, applicationType: 'imtiyozli' })
     return NextResponse.json({ ok: true, telegram, permitRequestId: inserted.id }, { status: 201 })

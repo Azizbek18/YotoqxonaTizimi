@@ -26,6 +26,7 @@ import { classifyPermitResubmission } from '@/lib/permit-resubmission'
 import { getApiError } from '@/server/http/api-error'
 import { issuePermitTelegramLinkSafely } from '@/lib/permit-telegram'
 import { notifyDekanNewPermit } from '@/lib/dekan-telegram'
+import { saveStudentSignature, isValidSignatureDataUrl } from '@/lib/permit-documents'
 
 function value(form: FormData, name: string, maxLength = 200) {
   return String(form.get(name) ?? '').trim().slice(0, maxLength)
@@ -77,6 +78,10 @@ export async function POST(request: NextRequest) {
     const studyType = value(form, 'studyType', 20)
     const originRegion = value(form, 'originRegion', 120)
     const relativePhone = value(form, 'relativePhone', 32)
+    // The applicant's hand-drawn signature — captured at submit, embedded
+    // into the signed Ariza + Tilxat only after a room is assigned. Never
+    // downloaded here.
+    const studentSignature = String(form.get('studentSignature') ?? '')
 
     if (!isValidPassport(passport) || !isValidJshshir(jshshir)) {
       return NextResponse.json({ error: 'Pasport yoki JShSHIR formati noto‘g‘ri.' }, { status: 400 })
@@ -110,8 +115,27 @@ export async function POST(request: NextRequest) {
     if (!isPlausibleInternationalPhone(relativePhone)) {
       return NextResponse.json({ error: 'Yaqin qarindoshning telefon raqami noto‘g‘ri.' }, { status: 400 })
     }
+    if (studentSignature && !isValidSignatureDataUrl(studentSignature)) {
+      return NextResponse.json({ error: 'Imzo tasviri noto‘g‘ri. Qaytadan imzo qo‘ying.' }, { status: 400 })
+    }
 
     const supabase = getServiceSupabase()
+
+    // Best-effort: a signature-save failure must not fail an otherwise-good
+    // submission (mirrors issuePermitTelegramLinkSafely).
+    const persistSignature = async (permitRequestId: string) => {
+      if (!studentSignature) return
+      try {
+        await saveStudentSignature({
+          permitRequestId,
+          signatureDataUrl: studentSignature,
+          ip: getClientIp(request),
+          userAgent: request.headers.get('user-agent'),
+        })
+      } catch (error) {
+        console.error('saveStudentSignature failed:', error)
+      }
+    }
 
     // Classify first — it decides whether a fresh document is even required.
     // A rejected applicant (reopen) or a still-pending one editing a typo
@@ -123,6 +147,12 @@ export async function POST(request: NextRequest) {
     )
     if (outcome.action === 'conflict') {
       return NextResponse.json({ error: outcome.message }, { status: 409 })
+    }
+    // A fresh application (or a rejected one being redone) must carry a
+    // signature; an in-place typo fix on a still-pending row keeps the
+    // one already on file.
+    if (outcome.action !== 'edit_pending' && !studentSignature) {
+      return NextResponse.json({ error: 'Ariza va Tilxatni imzolang.' }, { status: 400 })
     }
     const canKeepExistingDoc =
       (outcome.action === 'edit_pending' || outcome.action === 'reopen') && Boolean(outcome.oldPermitPath)
@@ -217,6 +247,7 @@ export async function POST(request: NextRequest) {
       if (newDocPath && outcome.oldPermitPath && outcome.oldPermitPath !== newDocPath) {
         await supabase.storage.from('permits').remove([outcome.oldPermitPath])
       }
+      await persistSignature(edited.id)
       await writeAuditLog({
         eventType: 'permit_request.edited',
         status: 'success',
@@ -256,6 +287,7 @@ export async function POST(request: NextRequest) {
         targetRole: 'talaba',
         details: { faculty },
       })
+      await persistSignature(reopened.id)
       const telegram = await issuePermitTelegramLinkSafely(reopened.id)
       await notifyDekanNewPermit({ fullName, faculty, direction, course, applicationType: 'yollanma', resubmitted: true })
       return NextResponse.json({ ok: true, resubmitted: true, telegram, permitRequestId: reopened.id }, { status: 200 })
@@ -286,6 +318,7 @@ export async function POST(request: NextRequest) {
       targetRole: 'talaba',
       details: { faculty },
     })
+    await persistSignature(inserted.id)
     const telegram = await issuePermitTelegramLinkSafely(inserted.id)
     await notifyDekanNewPermit({ fullName, faculty, direction, course, applicationType: 'yollanma' })
     return NextResponse.json({ ok: true, telegram, permitRequestId: inserted.id }, { status: 201 })

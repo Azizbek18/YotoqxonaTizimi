@@ -116,7 +116,7 @@ test('yo‘llanma PDF’i AI tekshiruvi uchun JPEG ga aylantiriladi', async ({ p
   expect(pageErrors).toEqual([])
 })
 
-test('yo‘llanma oqimi Ariza + Tilxatni majburiy yuklab olishni talab qiladi', async ({ page }) => {
+test('yo‘llanma oqimi Ariza + Tilxatni imzolashni talab qiladi (yuklab olish yo‘q)', async ({ page }) => {
   test.setTimeout(90_000)
   const pageErrors: Error[] = []
   page.on('pageerror', (error) => pageErrors.push(error))
@@ -153,25 +153,35 @@ test('yo‘llanma oqimi Ariza + Tilxatni majburiy yuklab olishni talab qiladi', 
   await expect(page.getByText('yollanma.jpg')).toBeVisible({ timeout: 20_000 })
   await page.getByRole('button', { name: /Keyingi/i }).click()
 
-  // Step 4 — tekshirish card → go to the Ariza step
-  await page.getByRole('button', { name: /Ariza va Tilxat/i }).click()
+  // Step 4 — tekshirish card → go to the signature step. (`.` for the okina
+  // so the match survives ' vs ‘.)
+  await page.getByRole('button', { name: /Imzoga o.tish/i }).click()
 
-  // Step 5 — the Ariza + Tilxat itself renders, with the applicant's data
+  // Step 5 — signature. Opening the collapsible preview shows the document.
+  await page.getByText(/Hujjat matnini ko.rish/i).click()
   await expect(page.getByRole('heading', { name: 'A R I Z A' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'T I L X A T' })).toBeVisible()
-  // The applicant's step-2 answers landed in the document text.
   await expect(page.getByText(/Andijon\s+viloyatidan kelganligim/).first()).toBeVisible()
 
-  // Submit is gated until the PDF is downloaded.
+  // Submit is gated until the applicant signs + attests. There is NO download button.
   const submit = page.getByRole('button', { name: 'Tasdiqlayman, Yuborish' })
   await expect(submit).toBeDisabled()
+  await expect(page.getByRole('button', { name: /yuklab olish/i })).toHaveCount(0)
 
-  const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('button', { name: /Ariza va Tilxatni yuklab olish/i }).click()
-  const download = await downloadPromise
-  expect(download.suggestedFilename()).toMatch(/^Ariza-Tilxat_.*\.pdf$/)
+  // Draw on the signature canvas (the only <canvas> on the page). SignaturePad
+  // listens on pointer events and only emits on pointerup after ≥2 moves —
+  // canvas-relative hovers dispatch clean pointermove events.
+  const canvas = page.locator('canvas').first()
+  await expect(canvas).toBeVisible()
+  await canvas.hover({ position: { x: 20, y: 30 } })
+  await page.mouse.down()
+  for (const p of [{ x: 60, y: 70 }, { x: 110, y: 30 }, { x: 160, y: 80 }, { x: 210, y: 40 }]) {
+    await canvas.hover({ position: p })
+    await page.waitForTimeout(20)
+  }
+  await page.mouse.up()
+  await expect(page.getByText(/Shu yerga imzo qo/i)).toBeHidden()
 
-  await expect(page.getByRole('button', { name: /Yuklab olindi/i })).toBeVisible()
+  await page.getByRole('checkbox').check()
   await expect(submit).toBeEnabled()
   expect(pageErrors).toEqual([])
 })

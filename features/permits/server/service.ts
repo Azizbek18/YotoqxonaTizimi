@@ -78,8 +78,16 @@ export function createPermitAdminService(
         room_number: user.room_number,
         warning_count: user.warning_count,
       }))
+      // Once the applicant has registered, their `users` row is the truth
+      // about where they live — the permit keeps `status='approved'` + its
+      // room_number (register never clears it), so counting both would
+      // double-book the bed. Drop permits whose person already has an
+      // account (matched on passport / JSHSHIR, both unique). Mirrors the
+      // NOT EXISTS guard in assign_*_room_atomic (migration 202609250000).
       const approvedPermitsWithRooms = permits.filter(
-        (permit) => permit.status === 'approved' && permit.room_number,
+        (permit) => permit.status === 'approved' && permit.room_number
+          && !userByPassport.has(permit.passport_series)
+          && !(permit.jshshir && userByJshshir.has(permit.jshshir)),
       )
 
       // Real bed capacity for THIS dekan's scope — the rooms on their own

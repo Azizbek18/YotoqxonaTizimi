@@ -4,8 +4,8 @@ import { fetchAllSupabaseRows } from '@/lib/server-supabase-pagination'
 
 type DekanRow = { id: string; full_name: string; email: string; phone_number: string | null; faculty: string | null; status: string | null; created_at: string }
 type EducatorRow = { faculty: string | null; status: string | null }
-type StudentRow = { faculty: string | null; status: string | null; room_number: string | null }
-type PermitRow = { faculty: string | null; status: string | null; room_number: string | null }
+type StudentRow = { faculty: string | null; status: string | null; room_number: string | null; passport_series: string | null; jshshir: string | null }
+type PermitRow = { faculty: string | null; status: string | null; room_number: string | null; passport_series: string | null; jshshir: string | null }
 type FacultyDormRow = { faculty: string; dorm_id: string }
 type DormRow = { id: string; number: string; name: string; default_room_capacity: number }
 type RoomRow = { faculty: string | null; room_number: string; frozen: boolean; capacity: number | null }
@@ -29,12 +29,12 @@ export function createSuperadminDekanRepository() {
           .range(from, to)),
         fetchAllSupabaseRows<StudentRow>((from, to) => supabase
           .from('users')
-          .select('faculty, status, room_number')
+          .select('faculty, status, room_number, passport_series, jshshir')
           .eq('role', 'talaba')
           .range(from, to)),
         fetchAllSupabaseRows<PermitRow>((from, to) => supabase
           .from('permit_requests')
-          .select('faculty, status, room_number')
+          .select('faculty, status, room_number, passport_series, jshshir')
           .range(from, to)),
         fetchAllSupabaseRows<FacultyDormRow>((from, to) => supabase
           .from('faculty_dorm')

@@ -54,8 +54,22 @@ export function createSuperadminDekanService(
         occupancy.set(roomNumber, (occupancy.get(roomNumber) ?? 0) + 1)
         occupancyByFaculty.set(faculty, occupancy)
       }
+      // A student who registered from an approved permit has a `users` row
+      // AND a still-'approved' permit row (register never clears it) — count
+      // them once. Match on passport / JSHSHIR (both unique per person),
+      // mirroring assign_*_room_atomic (migration 202609250000).
+      const registeredKeys = new Set<string>()
+      for (const s of students) {
+        if (s.passport_series) registeredKeys.add(`p:${s.passport_series}`)
+        if (s.jshshir) registeredKeys.add(`j:${s.jshshir}`)
+      }
       students.forEach((s) => bumpRoom(s.faculty, s.room_number))
-      permits.forEach((p) => { if (p.status === 'approved') bumpRoom(p.faculty, p.room_number) })
+      permits.forEach((p) => {
+        if (p.status !== 'approved') return
+        if ((p.passport_series && registeredKeys.has(`p:${p.passport_series}`))
+          || (p.jshshir && registeredKeys.has(`j:${p.jshshir}`))) return
+        bumpRoom(p.faculty, p.room_number)
+      })
 
       const roomsByFaculty = new Map<string, typeof rooms>()
       for (const room of rooms) {

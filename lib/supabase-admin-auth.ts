@@ -56,3 +56,30 @@ export async function createAuthUserSafely(
 export async function deleteAuthUserSafely(id: string) {
   return withKidRetry(() => getServiceSupabase().auth.admin.deleteUser(id))
 }
+
+// Set a new password on an existing Auth user (and re-confirm the email so a
+// password sign-in works immediately). Used when a student who already started
+// registration (pending row + Auth account) comes back through the wizard and
+// picks a fresh password. Raw REST for the same reason as createAuthUserSafely.
+export async function updateAuthUserPasswordSafely(
+  id: string,
+  password: string,
+): Promise<{ error: { message?: string } | null }> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) throw new Error('NEXT_PUBLIC_SUPABASE_URL yoki SUPABASE_SERVICE_ROLE_KEY topilmadi')
+
+  return withKidRetry(async () => {
+    const response = await fetch(`${url}/auth/v1/admin/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ password, email_confirm: true }),
+      cache: 'no-store',
+    })
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      return { error: { message: body.msg || body.error_description || body.error || "Parolni yangilab bo'lmadi" } }
+    }
+    return { error: null }
+  })
+}

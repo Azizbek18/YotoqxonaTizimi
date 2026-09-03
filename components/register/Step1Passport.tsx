@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Fingerprint, MapPin, CreditCard, Sparkles, ArrowRight, ShieldAlert, Info, Calendar as CalendarIcon } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { stepLabel } from './constants'
 import {
     getForeignIdFormatError,
     getPassportFormatError,
@@ -20,9 +21,11 @@ interface Props {
     onChange: (data: Partial<RegisterData>) => void
     onNext: () => void
     requiresJshshir?: boolean
+    stepNumber?: number
+    totalSteps?: number
 }
 
-export default function Step1Passport({ data, onChange, onNext, requiresJshshir = true }: Props) {
+export default function Step1Passport({ data, onChange, onNext, requiresJshshir = true, stepNumber = 1, totalSteps = 8 }: Props) {
     // Har bir maydon uchun alohida focus holati
     const [focusedField, setFocusedField] = useState<'series' | 'jshshir' | 'place' | 'date' | null>(null)
     const theme = useThemeStore((state) => state.theme)
@@ -88,7 +91,7 @@ export default function Step1Passport({ data, onChange, onNext, requiresJshshir 
                 </div>
                 <div>
                     <h2 className="text-[14px] font-bold text-white uppercase tracking-tight">Identifikatsiya</h2>
-                    <p className="text-[9px] text-sky-400/80 font-black uppercase tracking-widest">Qadam 01 / 09</p>
+                    <p className="text-[9px] text-sky-400/80 font-black uppercase tracking-widest">{stepLabel(stepNumber, totalSteps)}</p>
                 </div>
             </div>
 

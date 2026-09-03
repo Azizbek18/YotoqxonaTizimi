@@ -4,278 +4,164 @@ import React, { useState } from 'react'
 import { RegisterData } from './types'
 import toast from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, UserCircle, Users, ArrowRight, Sparkles, ShieldAlert, Phone } from 'lucide-react'
+import { User, ArrowRight, ShieldAlert, Phone, BadgeCheck } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import CustomSelect from '@/components/ui/CustomSelect'
-import { getNamePartError } from '@/lib/permit-validation'
-import { cyrillicToLatin } from '@/lib/transliterate'
+import { stepLabel } from './constants'
 
 interface Props {
   data: RegisterData
   onChange: (d: Partial<RegisterData>) => void
   onNext: () => void
   onBack: () => void
-  /** Foreign (imtiyozli) applicants may have no patronymic. */
-  requiresMiddleName?: boolean
+  stepNumber?: number
+  totalSteps?: number
 }
 
-export default function Step2Name({ data, onChange, onNext, onBack, requiresMiddleName = true }: Props) {
-  const theme = useThemeStore((state) => state.theme)
-  const isLight = theme === 'light'
-  const [focusedField, setFocusedField] = useState<'lastName' | 'firstName' | 'middleName' | 'phone' | null>(null)
-  // Keep this in the parent form state. A component-local checkbox resets
-  // when the student changes steps and the final submit then loses the
-  // explicit "no patronymic" choice.
-  const noMiddleName = data.noMiddleName
-  const middleNameOptional = !requiresMiddleName
+// F.I.Sh tasdiqlangan arizadan keladi — bu yerda faqat ko'rsatiladi. Talaba
+// tug'ilgan sana va telefonini kiritadi (telefon ham prefilled, tasdiqlanadi).
+export default function Step2Name({ data, onChange, onNext, onBack, stepNumber = 2, totalSteps = 8 }: Props) {
+  const isLight = useThemeStore((state) => state.theme) === 'light'
+  const [focusedPhone, setFocusedPhone] = useState(false)
 
-  const show3DToast = (message: string, type: 'success' | 'error' = 'error') => {
+  const fullName = [data.lastName, data.firstName, data.noMiddleName ? '' : data.middleName]
+    .filter(Boolean)
+    .join(' ')
+
+  const show3DToast = (message: string) => {
     toast.custom((t) => (
       <AnimatePresence>
         {t.visible && (
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
+            exit={{ opacity: 0, scale: 0.8, filter: 'blur(10px)' }}
             className="relative z-9999 w-[92vw] max-w-100 mx-auto"
           >
-            <div className={`absolute -inset-1 rounded-2xl blur-md opacity-30 ${type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+            <div className="absolute -inset-1 rounded-2xl blur-md opacity-30 bg-rose-500" />
             <div className={`relative backdrop-blur-2xl border p-4 rounded-2xl flex items-center gap-3 ${isLight ? 'bg-white/95 border-slate-200' : 'bg-[#1e293b]/95 border-white/10'}`}>
-              <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border ${type === 'success' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'}`}>
-                {type === 'success' ? <Sparkles size={20} /> : <ShieldAlert size={20} />}
+              <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border bg-rose-500/20 text-rose-400 border-rose-500/30">
+                <ShieldAlert size={20} />
               </div>
-              <div className="flex-1">
-                <p className={`text-[9px] font-black uppercase tracking-widest ${type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {type === 'success' ? 'Muvaffaqiyatli' : 'Xatolik aniqlandi'}
-                </p>
-                <p className={`text-[12px] font-medium leading-tight ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>{message}</p>
-              </div>
+              <p className={`text-[12px] font-medium leading-tight ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>{message}</p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    ), { duration: 3000, position: 'top-center' });
+    ), { duration: 3000, position: 'top-center' })
   }
 
   const validate = () => {
-    const { lastName, firstName, middleName, phone, birthDate } = data
-    const phoneRegex = /^\d{9}$/;
-
-    // Patronymic: always checked for yo'llanma; for a foreign applicant only
-    // when they left the opt-out unticked AND actually typed something.
-    const checkMiddleName = requiresMiddleName || (!noMiddleName && Boolean(middleName.trim()))
-    const nameError = getNamePartError(lastName, 'Familiya')
-      || getNamePartError(firstName, 'Ism')
-      || (checkMiddleName ? getNamePartError(middleName, 'Otasining ismi') : null)
-    if (nameError) return show3DToast(nameError)
-
-    if (!birthDate || birthDate.includes('undefined')) return show3DToast('Tug‘ilgan sanangizni tanlang')
-    // Telefon raqami validatsiyasi
-    if (!phone) return show3DToast("Telefon raqamingizni kiriting")
-    if (!phoneRegex.test(phone)) return show3DToast("Telefon raqami 9 ta raqam bo'lishi shart")
-
-    show3DToast("Ma'lumotlar saqlandi!", 'success')
-    setTimeout(() => onNext(), 1200)
+    if (!data.birthDate || data.birthDate.includes('undefined')) return show3DToast('Tug‘ilgan sanangizni tanlang')
+    if (!/^\d{9}$/.test(data.phone)) return show3DToast("Telefon raqami 9 ta raqam bo'lishi shart")
+    onNext()
   }
 
-  const glassInput = `
-    w-full bg-transparent p-3.5 rounded-xl outline-none text-white
-    placeholder:text-slate-600 transition-colors duration-300 font-sans
-    text-[13px] pl-12
-  `
-
-  const labelClass = "text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block"
-
-  const dateSelectCls = "bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl p-3.5 rounded-xl text-[13px] pl-3 text-center transition-all duration-500 hover:border-white/20 relative"
+  const glassInput = 'w-full bg-transparent p-3.5 rounded-xl outline-none placeholder:text-slate-600 transition-colors duration-300 font-sans text-[13px]'
+  const labelClass = 'text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block'
+  const dateSelectCls = `${isLight ? 'bg-white border border-slate-200' : 'bg-white/[0.02] border border-white/[0.08]'} backdrop-blur-xl p-3.5 rounded-xl text-[13px] pl-3 text-center transition-all duration-500 relative`
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-4 font-sans px-1"
-    >
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 font-sans px-1">
       {/* Header */}
-      <div className="flex items-center gap-3 bg-white/3 p-2.5 rounded-2xl border border-white/5">
+      <div className={`flex items-center gap-3 p-2.5 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-white/3 border-white/5'}`}>
         <div className="p-2 bg-linear-to-br from-indigo-500/20 to-purple-500/20 rounded-xl border border-indigo-500/20 text-indigo-400">
           <User size={18} />
         </div>
         <div>
-          <h2 className="text-[14px] font-bold text-white uppercase tracking-tight">Shaxsiy ma&apos;lumotlar</h2>
-          <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">Qadam 02 / 09</p>
+          <h2 className={`text-[14px] font-bold uppercase tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Shaxsiy ma&apos;lumotlar</h2>
+          <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">{stepLabel(stepNumber, totalSteps)}</p>
         </div>
       </div>
 
+      {/* Read-only F.I.Sh from the approved application */}
+      <div className={`rounded-2xl border px-4 py-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/[0.02] border-white/8'}`}>
+        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-emerald-500">
+          <BadgeCheck size={12} /> Arizangizdagi F.I.Sh
+        </div>
+        <p className={`mt-1 text-[15px] font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{fullName || '—'}</p>
+      </div>
+
       <div className="grid gap-4">
-        {/* Familiya */}
-        <div className="space-y-1.5 group">
-          <label className={labelClass}>Familiya</label>
-          <div className={`cyber-border ${focusedField === 'lastName' ? 'focused' : ''}`}>
-            <div className="cyber-input-inner relative flex items-center">
-              <Users className={`absolute left-4 z-10 transition-colors ${focusedField === 'lastName' ? 'text-indigo-400' : 'text-slate-500'}`} size={16} />
-              <input
-                type="text"
-                className={glassInput}
-                placeholder="Mo‘minov"
-                value={data.lastName || ''}
-                onFocus={() => setFocusedField('lastName')}
-                onBlur={() => setFocusedField(null)}
-                onChange={e => onChange({ lastName: cyrillicToLatin(e.target.value) })}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Ism va Otasining ismi */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5 group">
-            <label className={labelClass}>Ism</label>
-            <div className={`cyber-border ${focusedField === 'firstName' ? 'focused' : ''}`}>
-              <div className="cyber-input-inner relative flex items-center">
-                <UserCircle className={`absolute left-4 z-10 transition-colors ${focusedField === 'firstName' ? 'text-indigo-400' : 'text-slate-500'}`} size={16} />
-                <input
-                  type="text"
-                  className={glassInput}
-                  placeholder="Azizbek"
-                  value={data.firstName || ''}
-                  onFocus={() => setFocusedField('firstName')}
-                  onBlur={() => setFocusedField(null)}
-                  onChange={e => onChange({ firstName: cyrillicToLatin(e.target.value) })}
-                />
-              </div>
-            </div>
-          </div>
-          <div className="space-y-1.5 group">
-            <label className={labelClass}>
-              Otasining ismi{middleNameOptional && <span className="text-slate-500 normal-case"> (ixtiyoriy)</span>}
-            </label>
-            <div className={`cyber-border ${focusedField === 'middleName' ? 'focused' : ''}`}>
-              <div className="cyber-input-inner relative flex items-center">
-                <Sparkles className={`absolute left-4 z-10 transition-colors ${focusedField === 'middleName' ? 'text-indigo-400' : 'text-slate-500'}`} size={16} />
-                <input
-                  type="text"
-                  className={`${glassInput} disabled:opacity-40`}
-                  placeholder={noMiddleName ? '—' : 'Otasining ismi'}
-                  disabled={noMiddleName}
-                  value={noMiddleName ? '' : (data.middleName || '')}
-                  onFocus={() => setFocusedField('middleName')}
-                  onBlur={() => setFocusedField(null)}
-                  onChange={e => onChange({ middleName: cyrillicToLatin(e.target.value) })}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {middleNameOptional && (
-          <label className={`flex items-center gap-2 -mt-1 ml-1 text-[11px] font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-            <input
-              type="checkbox"
-              checked={noMiddleName}
-              onChange={e => {
-                const checked = e.target.checked
-                onChange(checked
-                  ? { noMiddleName: true, middleName: '' }
-                  : { noMiddleName: false })
-              }}
-            />
-            Hujjatimda otasining ismi yo&lsquo;q (xorijiy pasport)
-          </label>
-        )}
-
-        {/* Tug'ilgan sana - 3D Interaktiv Element */}
-        <div className="space-y-1.5 group">
+        {/* Tug'ilgan sana */}
+        <div className="space-y-1.5">
           <label className={labelClass}>Tug&apos;ilgan sana</label>
           <div className="grid grid-cols-3 gap-2">
-            {/* Kun */}
-            <div className="relative group/date">
-              <div className="absolute -inset-0.5 bg-linear-to-b from-indigo-500/20 to-transparent rounded-xl blur opacity-0 group-hover/date:opacity-100 transition duration-500" />
-              <CustomSelect
-                className={dateSelectCls}
-                menuClassName="text-center"
-                placeholder="Kun"
-                value={data.birthDate?.split('-')[2] || ''}
-                onChange={val => {
-                  const parts = (data.birthDate || '2000-01-01').split('-');
-                  onChange({ birthDate: `${parts[0]}-${parts[1]}-${val}` });
-                }}
-                options={Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }))}
-              />
-            </div>
-
-            {/* Oy */}
-            <div className="relative group/date">
-              <div className="absolute -inset-0.5 bg-linear-to-b from-purple-500/20 to-transparent rounded-xl blur opacity-0 group-hover/date:opacity-100 transition duration-500" />
-              <CustomSelect
-                className={dateSelectCls}
-                menuClassName="text-center"
-                placeholder="Oy"
-                value={data.birthDate?.split('-')[1] || ''}
-                onChange={val => {
-                  const parts = (data.birthDate || '2000-01-01').split('-');
-                  onChange({ birthDate: `${parts[0]}-${val}-${parts[2]}` });
-                }}
-                options={["Yan", "Fev", "Mar", "Apr", "May", "Iyun", "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek"].map((m, i) => ({
-                  value: (i + 1).toString().padStart(2, '0'),
-                  label: m,
-                }))}
-              />
-            </div>
-
-            {/* Yil */}
-            <div className="relative group/date">
-              <div className="absolute -inset-0.5 bg-linear-to-b from-blue-500/20 to-transparent rounded-xl blur opacity-0 group-hover/date:opacity-100 transition duration-500" />
-              <CustomSelect
-                className={dateSelectCls}
-                menuClassName="text-center"
-                placeholder="Yil"
-                value={data.birthDate?.split('-')[0] || ''}
-                onChange={val => {
-                  const parts = (data.birthDate || '2000-01-01').split('-');
-                  onChange({ birthDate: `${val}-${parts[1]}-${parts[2]}` });
-                }}
-                options={Array.from({ length: 50 }, (_, i) => {
-                  const year = new Date().getFullYear() - 10 - i;
-                  return { value: String(year), label: String(year) }
-                })}
-              />
-            </div>
+            <CustomSelect
+              className={dateSelectCls}
+              menuClassName="text-center"
+              placeholder="Kun"
+              value={data.birthDate?.split('-')[2] || ''}
+              onChange={(val) => {
+                const parts = (data.birthDate || '2000-01-01').split('-')
+                onChange({ birthDate: `${parts[0]}-${parts[1]}-${val}` })
+              }}
+              options={Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }))}
+            />
+            <CustomSelect
+              className={dateSelectCls}
+              menuClassName="text-center"
+              placeholder="Oy"
+              value={data.birthDate?.split('-')[1] || ''}
+              onChange={(val) => {
+                const parts = (data.birthDate || '2000-01-01').split('-')
+                onChange({ birthDate: `${parts[0]}-${val}-${parts[2]}` })
+              }}
+              options={['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun', 'Iyul', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'].map((m, i) => ({
+                value: (i + 1).toString().padStart(2, '0'),
+                label: m,
+              }))}
+            />
+            <CustomSelect
+              className={dateSelectCls}
+              menuClassName="text-center"
+              placeholder="Yil"
+              value={data.birthDate?.split('-')[0] || ''}
+              onChange={(val) => {
+                const parts = (data.birthDate || '2000-01-01').split('-')
+                onChange({ birthDate: `${val}-${parts[1]}-${parts[2]}` })
+              }}
+              options={Array.from({ length: 50 }, (_, i) => {
+                const year = new Date().getFullYear() - 10 - i
+                return { value: String(year), label: String(year) }
+              })}
+            />
           </div>
         </div>
 
-        {/* Talaba telefon raqami - YANGI ELEMENT */}
-        <div className="space-y-1.5 group">
+        {/* Telefon */}
+        <div className="space-y-1.5">
           <label className={labelClass}>Telefon raqamingiz</label>
-          <div className={`cyber-border ${focusedField === 'phone' ? 'focused' : ''}`}>
+          <div className={`cyber-border ${focusedPhone ? 'focused' : ''}`}>
             <div className="cyber-input-inner relative flex items-center">
               <div className="absolute left-4 z-10 flex items-center gap-1.5 pointer-events-none border-r border-white/10 pr-2">
-                <Phone size={14} className={`transition-colors ${focusedField === 'phone' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                <Phone size={14} className={`transition-colors ${focusedPhone ? 'text-indigo-400' : 'text-slate-500'}`} />
                 <span className="text-[12px] font-bold text-slate-400">+998</span>
               </div>
               <input
                 type="tel"
-                className={`${glassInput} pl-20`}
+                className={`${glassInput} pl-20 ${isLight ? 'text-slate-900' : 'text-white'}`}
                 placeholder="912461050"
                 maxLength={9}
                 value={data.phone || ''}
-                onFocus={() => setFocusedField('phone')}
-                onBlur={() => setFocusedField(null)}
-                onChange={e => onChange({ phone: e.target.value.replace(/\D/g, '') })}
+                onFocus={() => setFocusedPhone(true)}
+                onBlur={() => setFocusedPhone(false)}
+                onChange={(e) => onChange({ phone: e.target.value.replace(/\D/g, '') })}
               />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Navigation Buttons */}
+      {/* Navigation */}
       <div className="flex items-center gap-3 pt-2">
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={onBack}
-          className={`h-12 w-12 flex items-center justify-center rounded-xl border transition-all shadow-inner text-lg ${isLight ? 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200 hover:text-slate-900' : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'}`}
+          className={`h-12 w-12 flex items-center justify-center rounded-xl border transition-all text-lg ${isLight ? 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200 hover:text-slate-900' : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'}`}
         >
           ←
         </motion.button>
-
         <motion.button
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}

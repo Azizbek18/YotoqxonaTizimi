@@ -1,151 +1,116 @@
 'use client'
 
-import React, { useState } from 'react'
-import { RegisterData } from './types'
-import { motion, AnimatePresence } from 'framer-motion'
-import { DoorOpen, Hash, Sparkles, ShieldAlert, ArrowRight, KeyRound } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { motion } from 'framer-motion'
+import { ArrowRight, DoorOpen, GraduationCap, Globe2, Info } from 'lucide-react'
+import type { RegisterData } from './types'
+import { stepLabel, studyTypeLabel } from './constants'
+import { directionLabel } from '@/lib/directions'
 import { useThemeStore } from '@/lib/stores/theme-store'
 
 interface Props {
   data: RegisterData
-  onChange: (d: Partial<RegisterData>) => void
   onNext: () => void
   onBack: () => void
+  applicationType?: 'yollanma' | 'imtiyozli'
+  stepNumber?: number
+  totalSteps?: number
 }
 
-export default function Step8Room({ data, onChange, onNext, onBack }: Props) {
-  const theme = useThemeStore((state) => state.theme)
-  const isLight = theme === 'light'
-  const [focused, setFocused] = useState(false)
+function SummaryRow({ label, value, isLight }: { label: string; value: string; isLight: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-3 py-1.5">
+      <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>{label}</span>
+      <span className={`text-right text-[12px] font-semibold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>{value || '—'}</span>
+    </div>
+  )
+}
 
-  const show3DToast = (message: string, type: 'success' | 'error' = 'error') => {
-    toast.custom((t) => (
-      <AnimatePresence>
-        {t.visible && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9, rotateX: -15 }}
-            animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
-            exit={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
-            className="relative z-[9999] w-[90vw] max-w-[350px] mx-auto"
-          >
-            <div className={`absolute -inset-1 rounded-2xl blur-md opacity-30 ${type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-            <div className={`relative backdrop-blur-2xl border p-3.5 rounded-2xl flex items-center gap-3 shadow-2xl ${isLight ? 'bg-white/95 border-slate-200' : 'bg-[#1e293b]/95 border-white/10'}`}>
-              <div className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center border ${type === 'success' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'}`}>
-                {type === 'success' ? <Sparkles size={18} /> : <ShieldAlert size={18} />}
-              </div>
-              <p className={`text-[11px] font-medium leading-tight ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>{message}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    ));
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    if (/^\d*$/.test(val)) {
-      onChange({ room_number: val });
-    }
-  };
-
-  const handleValidate = () => {
-    if (!data.room_number) return show3DToast("Xona raqamini kiriting", 'error')
-    if (data.room_number.length > 5 || parseInt(data.room_number) === 0) {
-      return show3DToast("Xona raqami xato", 'error')
-    }
-    onNext()
-  }
+// Read-only. Xona dekan tomonidan biriktiriladi — talaba tanlamaydi.
+// Fakultet / yo'nalish / kurs / ta'lim shakli ham arizadan keladi.
+export default function Step8Room({
+  data,
+  onNext,
+  onBack,
+  applicationType = 'yollanma',
+  stepNumber = 7,
+  totalSteps = 8,
+}: Props) {
+  const isLight = useThemeStore((s) => s.theme) === 'light'
+  const hasRoom = Boolean(data.room_number)
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-5 font-sans w-full max-w-full overflow-hidden"
-    >
-      {/* Header - Yilchamroq */}
-      <div className={`flex items-center gap-3 p-2.5 rounded-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-white/[0.03] border-white/[0.05]'}`}>
-        <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-amber-50 border-amber-100 text-amber-600' : 'bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-amber-500/20 text-amber-400'}`}>
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-5 font-sans">
+      {/* Header */}
+      <div className={`flex items-center gap-3 rounded-2xl border p-2.5 ${isLight ? 'bg-white border-slate-200' : 'bg-white/[0.03] border-white/[0.05]'}`}>
+        <div className={`rounded-xl border p-2.5 ${isLight ? 'bg-amber-50 border-amber-100 text-amber-600' : 'bg-linear-to-br from-amber-500/20 to-orange-500/20 border-amber-500/20 text-amber-400'}`}>
           <DoorOpen size={20} />
         </div>
         <div>
-          <h2 className={`text-[14px] font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Turar joy</h2>
-          <p className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-amber-600/80' : 'text-amber-400/80'}`}>Qadam 08 / 09</p>
+          <h2 className={`text-[14px] font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Turar joy va ta&apos;lim</h2>
+          <p className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-amber-600/80' : 'text-amber-400/80'}`}>
+            {stepLabel(stepNumber, totalSteps)}
+          </p>
         </div>
       </div>
 
-      {/* 3D Room Card - Responsive bo'ldi */}
-      <div className="relative group" style={{ perspective: '1000px' }}>
-        <motion.div
-          animate={{ rotateY: [0, 3, -3, 0], rotateX: [0, -2, 2, 0] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-          className={`relative w-full rounded-[24px] p-5 sm:p-7 border overflow-hidden ${isLight ? 'bg-white/95 border-slate-200 shadow-sm' : 'bg-[#1e293b]/40 backdrop-blur-3xl border-white/10 shadow-2xl'}`}
-        >
-          {/* Gradients */}
-          <div className={`absolute top-0 right-0 w-24 h-24 blur-[40px] rounded-full ${isLight ? 'bg-amber-200/10' : 'bg-amber-500/10'}`} />
-
-          <div className="flex justify-between items-start mb-6 sm:mb-8">
-            <div className="space-y-1">
-              <p className={`text-[9px] font-black uppercase tracking-widest ${isLight ? 'text-amber-600' : 'text-amber-400'}`}>Smart Access</p>
-              <div className={`h-0.5 w-10 rounded-full ${isLight ? 'bg-amber-600' : 'bg-amber-500'}`} />
-            </div>
-            <KeyRound className={`${isLight ? 'text-amber-300' : 'text-amber-400/30'}`} size={18} />
+      {/* Room card */}
+      <div className={`rounded-[22px] border p-5 sm:p-6 ${isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#1e293b]/40 border-white/10'}`}>
+        {hasRoom ? (
+          <div className="text-center">
+            <p className={`text-[9px] font-black uppercase tracking-widest ${isLight ? 'text-amber-600' : 'text-amber-400'}`}>Sizga biriktirilgan xona</p>
+            <p className={`mt-2 text-4xl font-black tracking-widest ${isLight ? 'text-slate-900' : 'text-white'}`}>{data.room_number}</p>
+            <p className={`mt-3 text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Bu xona dekan tomonidan biriktirilgan.</p>
           </div>
-
-          <div className="space-y-3">
-            <label className={`text-[10px] font-bold uppercase tracking-widest block ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Xona raqami</label>
-            <div className={`cyber-border ${focused ? 'focused' : ''}`}>
-              <div className="cyber-input-inner relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-                  <Hash className={`transition-colors ${focused ? 'text-amber-400' : isLight ? 'text-amber-600/40' : 'text-amber-500/40'}`} size={20} />
-                </div>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={data.room_number || ''}
-                  onFocus={() => setFocused(true)}
-                  onBlur={() => setFocused(false)}
-                  onChange={handleInputChange}
-                  placeholder="000"
-                  className={`w-full bg-transparent text-2xl sm:text-3xl font-black tracking-widest pl-12 pr-4 py-4 rounded-2xl outline-none transition-colors ${isLight ? 'text-slate-900 placeholder:text-slate-300' : 'text-white placeholder:text-white/5'}`}
-                />
-              </div>
-            </div>
+        ) : (
+          <div className="flex items-start gap-3">
+            <Info size={16} className={`mt-0.5 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
+            <p className={`text-[12px] leading-relaxed font-medium ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+              Xona hali biriktirilmagan. Dekan biriktirgach, u hisobingizga avtomatik qo&apos;shiladi va Telegram yoki emailingizga xabar beriladi.
+            </p>
           </div>
-
-          <div className="mt-6 flex items-center gap-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <p className={`text-[9px] font-bold uppercase ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Tizim faol</p>
-          </div>
-        </motion.div>
+        )}
       </div>
 
-      {/* Navigation - Pastki qismga yopishib qolmasligi uchun */}
-      <div className="flex items-center gap-3 pt-2">
+      {/* Study / origin summary (from the approved application) */}
+      <div className={`rounded-2xl border px-4 py-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/[0.02] border-white/8'}`}>
+        <div className={`mb-1 flex items-center gap-2 text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+          <GraduationCap size={12} /> Arizadagi ma&apos;lumotlar
+        </div>
+        <SummaryRow isLight={isLight} label="Fakultet" value={data.faculty} />
+        <SummaryRow isLight={isLight} label="Yo'nalish" value={data.direction ? directionLabel(data.direction) : ''} />
+        <SummaryRow isLight={isLight} label="Kurs" value={data.course ? `${data.course}-kurs` : ''} />
+        <SummaryRow isLight={isLight} label="Ta'lim shakli" value={studyTypeLabel(data.study_type)} />
+        {applicationType === 'imtiyozli' && (
+          <>
+            <div className={`my-1.5 flex items-center gap-2 text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+              <Globe2 size={12} /> Kelib chiqish
+            </div>
+            <SummaryRow isLight={isLight} label="Davlat" value={data.originCountry} />
+            <SummaryRow isLight={isLight} label="Hudud" value={data.originRegion} />
+          </>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <div className="flex items-center gap-3 pt-1">
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={onBack}
-          className={`h-12 w-12 flex-shrink-0 flex items-center justify-center rounded-xl border ${isLight ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-white/[0.03] border-white/[0.08] text-slate-400'}`}
+          className={`h-12 w-12 shrink-0 rounded-xl border ${isLight ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-white/[0.03] border-white/[0.08] text-slate-400'}`}
         >
           ←
         </motion.button>
-
         <motion.button
           whileTap={{ scale: 0.98 }}
-          onClick={handleValidate}
-          className={`flex-1 relative h-12 overflow-hidden group rounded-xl ${isLight ? 'bg-linear-to-r from-sky-500 to-indigo-500' : 'bg-linear-to-r from-amber-600 to-orange-600'}`}
+          onClick={onNext}
+          className={`relative h-12 flex-1 overflow-hidden rounded-xl ${isLight ? 'bg-linear-to-r from-sky-500 to-indigo-500' : 'bg-linear-to-r from-amber-600 to-orange-600'}`}
         >
-          <div className={`relative h-full flex items-center justify-center gap-2 ${isLight ? 'bg-white/90 rounded-xl' : ''}`}>
-            <span className={`font-bold text-[11px] tracking-widest uppercase ${isLight ? 'text-slate-900' : 'text-white'}`}>Tasdiqlash</span>
+          <div className={`flex h-full items-center justify-center gap-2 ${isLight ? 'rounded-xl bg-white/90' : ''}`}>
+            <span className={`text-[11px] font-bold uppercase tracking-widest ${isLight ? 'text-slate-900' : 'text-white'}`}>Davom etish</span>
             <ArrowRight className={isLight ? 'text-blue-600' : 'text-white'} size={16} />
           </div>
         </motion.button>
       </div>
-
-      <style jsx>{`
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-      `}</style>
     </motion.div>
   )
 }

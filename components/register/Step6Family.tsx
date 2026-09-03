@@ -6,15 +6,18 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { User, Briefcase, Phone, ArrowRight, Users, Sparkles, ShieldAlert } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { stepLabel } from './constants'
 
 interface Props {
   data: RegisterData
   onChange: (d: Partial<RegisterData>) => void
   onNext: () => void
   onBack: () => void
+  stepNumber?: number
+  totalSteps?: number
 }
 
-export default function Step6Family({ data, onChange, onNext, onBack }: Props) {
+export default function Step6Family({ data, onChange, onNext, onBack, stepNumber = 5, totalSteps = 8 }: Props) {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
@@ -106,7 +109,7 @@ export default function Step6Family({ data, onChange, onNext, onBack }: Props) {
         </div>
         <div>
           <h2 className={`text-[14px] font-bold uppercase tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Oila ma&apos;lumotlari</h2>
-          <p className={`text-[9px] font-black uppercase tracking-widest ${isLight ? 'text-sky-600/80' : 'text-sky-400/80'}`}>Qadam 06 / 09</p>
+          <p className={`text-[9px] font-black uppercase tracking-widest ${isLight ? 'text-sky-600/80' : 'text-sky-400/80'}`}>{stepLabel(stepNumber, totalSteps)}</p>
         </div>
       </div>
 

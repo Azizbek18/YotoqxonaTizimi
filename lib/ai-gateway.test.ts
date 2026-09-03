@@ -40,7 +40,7 @@ describe('AI Gateway adapter', () => {
       })],
       providerOptions: {
         gateway: expect.objectContaining({
-          models: ['amazon/nova-lite', 'openai/gpt-5-nano', 'google/gemini-2.5-flash-lite'],
+          models: ['amazon/nova-lite', 'openai/gpt-5-nano', 'google/gemini-3.6-flash-lite'],
         }),
       },
     }))

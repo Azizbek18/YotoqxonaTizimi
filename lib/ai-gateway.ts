@@ -13,7 +13,7 @@ export type GatewayCompatiblePayload = {
 const DEFAULT_TEXT_MODEL = 'alibaba/qwen3.7-flash'
 const DEFAULT_TEXT_FALLBACKS = ['amazon/nova-micro', 'openai/gpt-oss-20b']
 const DEFAULT_VISION_MODEL = 'alibaba/qwen3.7-flash'
-const DEFAULT_VISION_FALLBACKS = ['amazon/nova-lite', 'openai/gpt-5-nano', 'google/gemini-2.5-flash-lite']
+const DEFAULT_VISION_FALLBACKS = ['amazon/nova-lite', 'openai/gpt-5-nano', 'google/gemini-3.6-flash-lite']
 
 function modelList(value: string | undefined, fallback: string[]) {
   const parsed = (value ?? '').split(',').map((item) => item.trim()).filter(Boolean)

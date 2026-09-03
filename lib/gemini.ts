@@ -3,9 +3,11 @@ import 'server-only'
 const REQUEST_TIMEOUT_MS = 15_000
 
 // `gemini-flash-latest` is Google's rolling alias for the current Flash model,
-// so the app follows model upgrades without a redeploy; `gemini-2.5-flash` is
-// the pinned fallback if the alias ever resolves to something unavailable.
-const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-2.5-flash']
+// so the app follows model upgrades without a redeploy; the second entry is a
+// pinned fallback for when the alias ever resolves to something unavailable.
+// `gemini-2.5-flash` was retired by Google ("no longer available to new users",
+// 404 with a pointer to gemini-3.6-flash) — 2026-09-03.
+const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.6-flash']
 
 export async function callGemini(payload: unknown, apiKey: string) {
   let lastError: unknown = null

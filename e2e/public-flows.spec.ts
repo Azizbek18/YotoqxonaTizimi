@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test'
 import { jsPDF } from 'jspdf'
 
+// CI runs the app against a placeholder Supabase URL, so any assertion that
+// needs a real query to answer (vs. an auth guard that rejects before the DB)
+// is skipped there. Matches the RUN_AUTHENTICATED_RESPONSIVE_E2E gate in
+// student-responsive.spec.ts.
+const hasRealSupabase = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL)
+  && !process.env.NEXT_PUBLIC_SUPABASE_URL!.includes('example.supabase.co')
+
 test('login sahifasi ochiladi', async ({ page }) => {
   await page.goto('/login')
   await expect(page).toHaveURL(/\/login$/)
@@ -51,20 +58,23 @@ test('ariza imzosini tekshirish sahifasi ochiladi', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Ariza imzosini tekshirish/i })).toBeVisible()
 })
 
-test('ariza imzo API: noma’lum kod va sessiyasiz kirish', async ({ request }, testInfo) => {
-  // Public verify endpoint answers, but never confirms a bogus code.
+test('ariza imzo API: imzolash va staff dalili sessiyasiz yopiq', async ({ request }) => {
+  // Auth guards reject before any DB query, so these hold with or without a
+  // real Supabase.
+  const submit = await request.patch('/api/student/applications', { data: { id: 'x' } })
+  expect(submit.status()).toBe(401)
+  const staff = await request.get('/api/staff/ariza-signature?arizaId=x')
+  expect([401, 403]).toContain(staff.status())
+})
+
+test('ariza imzo verify: noma’lum kodni hech qachon tasdiqlamaydi', async ({ request }, testInfo) => {
+  test.skip(!hasRealSupabase, 'Public verify endpoint queries ariza_signatures — needs a real Supabase')
   const testIp = testInfo.project.name === 'mobile-chrome' ? '198.51.100.202' : '198.51.100.201'
   const verify = await request.get('/api/ariza-signature/verify?code=YT-ZZZZ-ZZZZ', {
     headers: { 'x-forwarded-for': testIp },
   })
   expect(verify.status()).toBe(200)
   expect((await verify.json()).valid).toBe(false)
-
-  // Signing an application and reading staff evidence both need a session.
-  const submit = await request.patch('/api/student/applications', { data: { id: 'x' } })
-  expect(submit.status()).toBe(401)
-  const staff = await request.get('/api/staff/ariza-signature?arizaId=x')
-  expect([401, 403]).toContain(staff.status())
 })
 
 test('yo‘llanma PDF’i AI tekshiruvi uchun JPEG ga aylantiriladi', async ({ page }) => {

@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { MapPin, Navigation, Home, Hash, ChevronDown, Check, Globe, ArrowRight, Sparkles, ShieldAlert, Search, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { stepLabel } from './constants'
 import {
   loadUzAddress,
   districtsOfRegion,
@@ -19,6 +20,8 @@ interface Props {
   onChange: (d: Partial<RegisterData>) => void
   onNext: () => void
   onBack: () => void
+  stepNumber?: number
+  totalSteps?: number
 }
 
 interface SelectOption {
@@ -184,7 +187,7 @@ const Custom3DSelect = ({ label, value, options, onChange, icon: Icon, placehold
   )
 }
 
-export default function Step5Address({ data, onChange, onNext, onBack }: Props) {
+export default function Step5Address({ data, onChange, onNext, onBack, stepNumber = 4, totalSteps = 8 }: Props) {
 
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
@@ -294,7 +297,7 @@ export default function Step5Address({ data, onChange, onNext, onBack }: Props) 
           </div>
           <div className="min-w-0">
             <h2 className={`text-[14px] font-bold truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>Yashash manzili</h2>
-            <p className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-sky-600/80' : 'text-sky-400/80'}`}>Qadam 05 / 07</p>
+            <p className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-sky-600/80' : 'text-sky-400/80'}`}>{stepLabel(stepNumber, totalSteps)}</p>
           </div>
         </div>
       </div>

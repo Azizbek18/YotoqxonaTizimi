@@ -1,155 +1,159 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, AlertTriangle, FileSignature } from 'lucide-react'
+import { CheckCircle, AlertTriangle, FileSignature, Loader2, SearchX } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { appFont as baloo2 } from '@/lib/app-font'
+import { supabase } from '@/lib/supabase'
+import { getPasswordPolicyError } from '@/lib/password-policy'
 
 import StepProgress from '@/components/register/StepProgress'
-import Step1Passport from '@/components/register/Step1Passport'
-import Step2Name from '@/components/register/Step2Name'
-import Step3Gender from '@/components/register/Step3Gender'
-import Step4Study from '@/components/register/Step4Study'
-import Step5Address from '@/components/register/Step5Address'
-import Step6Family from '@/components/register/Step6Family'
-import Step7Date from '@/components/register/Step7Date'
-import Step8Room from '@/components/register/Step8Room'      // Yangi qo'shildi
-import Step9Password from '@/components/register/Step9Password'
+import { buildSteps, type ApplicationType, type WizardStepProps } from '@/components/register/wizardSteps'
 import { initialData, RegisterData } from '@/components/register/types'
 
-const TOTAL = 9 // Jami qadamlar 9 taga yetdi
+type PermitState = 'loading' | 'loaded' | 'missing'
 
 export default function RegisterPage() {
   const router = useRouter()
-  const [step, setStep] = useState(1)
+  const [stepIndex, setStepIndex] = useState(0)
   const [data, setData] = useState<RegisterData>(initialData)
   const [loading, setLoading] = useState(false)
-  const [applicationType, setApplicationType] = useState<'yollanma' | 'imtiyozli'>('yollanma')
+  const [applicationType, setApplicationType] = useState<ApplicationType>('yollanma')
+  const [permitState, setPermitState] = useState<PermitState>('loading')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
-  // The approved applicant's Ariza + Tilxat, rebuilt from the permit row so
-  // they can reprint the signed paper here if they lost the copy they
-  // downloaded when submitting. Null until the approved permit loads (and
-  // stays null for old permits that predate the Ariza/Tilxat step).
-  // Just a flag now: the signed Ariza + Tilxat is no longer downloaded here —
-  // it is generated server-side and delivered (Telegram/email) once the dekan
-  // assigns a room. We only show an informational note for new-style permits.
+  // Both flows generate a signed Ariza + Tilxat that is delivered
+  // automatically once the dekan assigns a room — nothing to download here.
   const [hasArizaTilxat, setHasArizaTilxat] = useState(false)
+
+  const steps = useMemo(() => buildSteps(applicationType), [applicationType])
+
+  // Keep the index in range if the step list shrinks (yollanma -> imtiyozli
+  // drops the address step after the permit loads).
+  useEffect(() => {
+    setStepIndex((i) => Math.min(i, steps.length - 1))
+  }, [steps.length])
 
   useEffect(() => {
     const restoreId = window.setTimeout(() => {
       const passportSeries = sessionStorage.getItem('student_permit_passport') ?? ''
       const jshshir = sessionStorage.getItem('student_permit_jshshir') ?? ''
       const email = sessionStorage.getItem('student_permit_email') ?? ''
-      const restoredType = sessionStorage.getItem('student_permit_type') === 'imtiyozli' ? 'imtiyozli' : 'yollanma'
+      const restoredType: ApplicationType =
+        sessionStorage.getItem('student_permit_type') === 'imtiyozli' ? 'imtiyozli' : 'yollanma'
       setApplicationType(restoredType)
-      if (passportSeries || jshshir || email) {
-        setData((current) => ({ ...current, passportSeries, jshshir, email }))
-      }
 
-      // Everything below was already typed once, in the yo'llanma form —
-      // pull the approved permit back via the same lookup the status-check
-      // page uses, and prefill the rest of the wizard from it so the
-      // student never retypes F.I.Sh, phone, fakultet, yo'nalish or kurs.
-      // Also matters functionally: /api/student/register rejects a
-      // faculty/name mismatch against the permit, so prefilling avoids a
-      // silent rejection from a student picking something different here.
-      // An imtiyozli (foreign) applicant has no JShSHIR, so when one isn't
-      // in this tab's storage — a closed tab loses it — look them up as
-      // imtiyozli rather than falling back to a yo'llanma the wizard would
-      // then wrongly demand a JShSHIR and patronymic for.
-      const lookupType: 'yollanma' | 'imtiyozli' =
-        restoredType === 'imtiyozli' || !jshshir ? 'imtiyozli' : 'yollanma'
-      if (passportSeries && email) {
-        fetch('/api/permit-requests/status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ passportSeries, jshshir, email, applicationType: lookupType }),
+      if (!passportSeries || !email) {
+        setPermitState('missing')
+        return
+      }
+      setData((current) => ({ ...current, passportSeries, jshshir, email }))
+
+      // Pull the approved permit and prefill the wizard so the student never
+      // retypes F.I.Sh / phone / fakultet / yo'nalish / kurs. An imtiyozli
+      // (foreign) applicant has no JShSHIR, so look them up as imtiyozli
+      // whenever one isn't in this tab's storage.
+      const lookupType: ApplicationType = restoredType === 'imtiyozli' || !jshshir ? 'imtiyozli' : 'yollanma'
+      fetch('/api/permit-requests/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passportSeries, jshshir, email, applicationType: lookupType }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((payload) => {
+          const permit = payload?.data
+          if (!permit || permit.status !== 'approved') {
+            setPermitState('missing')
+            return
+          }
+
+          if (permit.application_type === 'imtiyozli' || permit.application_type === 'yollanma') {
+            setApplicationType(permit.application_type)
+          }
+          const isForeign = permit.application_type === 'imtiyozli'
+
+          const nameParts = String(permit.full_name ?? '').trim().split(/\s+/).filter(Boolean)
+          const [lastName = '', firstName = '', ...rest] = nameParts
+          const middleName = rest.join(' ')
+          const phone = String(permit.phone ?? '').replace(/\D/g, '').slice(-9)
+
+          setData((current) => ({
+            ...current,
+            lastName: lastName || current.lastName,
+            firstName: firstName || current.firstName,
+            middleName: current.noMiddleName ? '' : (middleName || current.middleName),
+            noMiddleName: current.noMiddleName || (isForeign && !middleName),
+            phone: phone || current.phone,
+            gender: permit.gender === 'male' || permit.gender === 'female' ? permit.gender : current.gender,
+            faculty: permit.faculty || current.faculty,
+            direction: permit.direction || current.direction,
+            course: permit.course ? String(permit.course) : current.course,
+            room_number: permit.room_number || current.room_number,
+            study_type: permit.study_type || current.study_type,
+            // Foreign applicants: origin from the permit, shown read-only; the
+            // UZ address step is filtered out for them.
+            originCountry: isForeign ? (permit.origin_country || '') : current.originCountry,
+            originRegion: isForeign ? (permit.origin_region || '') : current.originRegion,
+          }))
+
+          if (permit.study_type || permit.origin_region) setHasArizaTilxat(true)
+          setPermitState('loaded')
         })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((payload) => {
-            const permit = payload?.data
-            if (!permit || permit.status !== 'approved') return
-
-            // The permit row is the source of truth for the application
-            // type — trust it over the (losable) sessionStorage hint.
-            if (permit.application_type === 'imtiyozli' || permit.application_type === 'yollanma') {
-              setApplicationType(permit.application_type)
-            }
-
-            const nameParts = String(permit.full_name ?? '').trim().split(/\s+/).filter(Boolean)
-            const [lastName = '', firstName = '', ...rest] = nameParts
-            const middleName = rest.join(' ')
-            const phone = String(permit.phone ?? '').replace(/\D/g, '').slice(-9)
-
-            setData((current) => ({
-              ...current,
-              lastName: lastName || current.lastName,
-              firstName: firstName || current.firstName,
-              middleName: current.noMiddleName ? '' : (middleName || current.middleName),
-              noMiddleName: current.noMiddleName
-                || (permit.application_type === 'imtiyozli' && !middleName),
-              phone: phone || current.phone,
-              gender: (permit.gender === 'male' || permit.gender === 'female') ? permit.gender : current.gender,
-              faculty: permit.faculty || current.faculty,
-              direction: permit.direction || current.direction,
-              course: permit.course ? String(permit.course) : current.course,
-              room_number: permit.room_number || current.room_number,
-            }))
-
-            // Both flows generate an Ariza + Tilxat; new-style permits (with
-            // study/origin data) get the "it will be delivered automatically"
-            // note. Old permits predate the Ariza/Tilxat step — nothing to say.
-            if (permit.study_type || permit.origin_region) {
-              setHasArizaTilxat(true)
-            }
-          })
-          .catch(() => {
-            // Prefill is a convenience, not a requirement — the student can
-            // still fill every step by hand if this lookup fails.
-          })
-      }
+        .catch(() => setPermitState('missing'))
     }, 0)
     return () => window.clearTimeout(restoreId)
   }, [])
 
   function update(partial: Partial<RegisterData>) {
-    setData(prev => ({ ...prev, ...partial }))
+    setData((prev) => ({ ...prev, ...partial }))
   }
-  function next() { setStep(s => Math.min(s + 1, TOTAL)) }
-  function back() { setStep(s => Math.max(s - 1, 1)) }
+  function next() {
+    setStepIndex((s) => Math.min(s + 1, steps.length - 1))
+  }
+  function back() {
+    setStepIndex((s) => Math.max(s - 1, 0))
+  }
 
   const show3DToast = (type: 'success' | 'error', message: string) => {
-    toast.custom((t) => (
-      <AnimatePresence>
-        {t.visible && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="flex items-center gap-3 p-4 rounded-xl bg-[#0b1120]/95 backdrop-blur-xl border border-white/10 shadow-2xl max-w-70 w-full"
-          >
-            <div className={`flex items-center justify-center p-2 rounded-lg ${type === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-              {type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
-            </div>
-            <div className="flex-1">
-              <p className={`text-[9px] font-black uppercase tracking-wider ${type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {type === 'success' ? 'Muvaffaqiyat' : 'Xatolik'}
-              </p>
-              <p className="text-[11px] font-medium text-slate-200 mt-0.5">{message}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    ), { duration: 4000 });
-  };
+    toast.custom(
+      (t) => (
+        <AnimatePresence>
+          {t.visible && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="flex items-center gap-3 p-4 rounded-xl bg-[#0b1120]/95 backdrop-blur-xl border border-white/10 shadow-2xl max-w-70 w-full"
+            >
+              <div className={`flex items-center justify-center p-2 rounded-lg ${type === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                {type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
+              </div>
+              <div className="flex-1">
+                <p className={`text-[9px] font-black uppercase tracking-wider ${type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {type === 'success' ? 'Muvaffaqiyat' : 'Xatolik'}
+                </p>
+                <p className="text-[11px] font-medium text-slate-200 mt-0.5">{message}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      ),
+      { duration: 4000 },
+    )
+  }
 
   async function handleSubmit() {
+    const pwErr = getPasswordPolicyError(password)
+    if (pwErr) return show3DToast('error', pwErr)
+    if (password !== confirmPassword) return show3DToast('error', 'Parollar bir-biriga mos kelmadi')
+
     setLoading(true)
     try {
       const userEmail = data.email.trim().toLowerCase()
@@ -159,54 +163,85 @@ export default function RegisterPage() {
       const response = await fetch('/api/student/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, email: userEmail, passportSeries: passportSeriesClean, jshshir: jshshirClean, applicationType }),
+        body: JSON.stringify({
+          ...data,
+          password,
+          email: userEmail,
+          passportSeries: passportSeriesClean,
+          jshshir: jshshirClean,
+          applicationType,
+        }),
       })
-      const result = await response.json()
+      const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.error || "Ro'yxatdan o'tishda xatolik")
 
-      // Xat serverdan yuboriladi, brauzerdan emas: brauzerdagi PKCE oqimi
-      // code verifier'ni shu brauzerda qoldiradi va xat boshqa qurilmada
-      // ochilsa havola ishlamaydi. Batafsil: app/api/auth/recovery/route.ts
-      const emailResponse = await fetch('/api/auth/recovery', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: userEmail }),
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password,
       })
-      if (!emailResponse.ok) {
-        throw new Error("Akkaunt tayyorlandi, ammo tasdiqlash emailini yuborib bo'lmadi. Birozdan keyin qayta urinib ko'ring.")
+      if (signInError || !authData.session) {
+        show3DToast('success', 'Akkaunt yaratildi. Iltimos, tizimga kiring.')
+        setTimeout(() => router.push('/login?student=1'), 2200)
+        return
       }
 
-      show3DToast('success', "Tasdiqlash havolasi emailingizga yuborildi!")
+      let activated = false
+      try {
+        const roleRes = await fetch('/api/auth/resolve-role', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${authData.session.access_token}` },
+        })
+        const roleJson = await roleRes.json().catch(() => null)
+        activated = Boolean(roleRes.ok && roleJson?.ok && roleJson.role === 'talaba')
+      } catch {
+        // fall through to the login fallback below
+      }
 
-      setTimeout(() => router.push('/login?verification=sent'), 2500)
-
+      if (activated) {
+        show3DToast('success', 'Xush kelibsiz!')
+        setTimeout(() => router.push('/talaba/dashboard'), 1200)
+      } else {
+        await supabase.auth.signOut()
+        show3DToast('error', "Akkaunt yaratildi, ammo faollashtirib bo'lmadi. Tizimga qayta kiring.")
+        setTimeout(() => router.push('/login?student=1'), 2200)
+      }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Noma\'lum xatolik'
-      show3DToast('error', errorMessage)
-      console.error("Xatolik tafsiloti:", err)
+      show3DToast('error', err instanceof Error ? err.message : "Noma'lum xatolik")
     } finally {
       setLoading(false)
     }
   }
-  const stepProps = { data, onChange: update, onNext: next, onBack: back }
+
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
+  const stepProps: WizardStepProps = {
+    data,
+    onChange: update,
+    onNext: next,
+    onBack: back,
+    stepNumber: stepIndex + 1,
+    totalSteps: steps.length,
+    applicationType,
+    password,
+    confirmPassword,
+    onPasswordChange: setPassword,
+    onConfirmPasswordChange: setConfirmPassword,
+    onSubmit: handleSubmit,
+    loading,
+  }
+
   return (
-    <main className={`baloo-scope min-h-screen flex items-center justify-center p-2 sm:p-6 overflow-hidden relative ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'}`} style={{ fontFamily: baloo2.style.fontFamily }}>
-      {/* Every step component (Step1Passport..Step9Password) uses a
-          `font-sans` wrapper and plain <h2> headings, both of which resolve
-          through the global --app-font-sans / --app-font-display custom
-          properties. Overriding those two variables here — instead of
-          editing all 9 step files — cascades Baloo 2 through the whole
-          registration flow for free, since CSS custom properties inherit. */}
+    <main
+      className={`baloo-scope min-h-screen flex items-center justify-center p-2 sm:p-6 overflow-hidden relative ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'}`}
+      style={{ fontFamily: baloo2.style.fontFamily }}
+    >
       <style dangerouslySetInnerHTML={{ __html: `
         .baloo-scope {
           --app-font-sans: ${baloo2.style.fontFamily};
           --app-font-display: ${baloo2.style.fontFamily};
         }
       `}} />
-      {/* Theme Toggle */}
       <div className="absolute top-4 right-4 z-20">
         <ThemeToggle />
       </div>
@@ -218,63 +253,77 @@ export default function RegisterPage() {
 
       <div className="relative z-10 w-full max-w-[320px] sm:max-w-md my-2">
         <div className={`flex flex-col max-h-[94vh] rounded-3xl sm:rounded-4xl border backdrop-blur-3xl shadow-2xl overflow-hidden ${isLight ? 'bg-white/90 border-slate-200' : 'bg-[#111827]/80 border-white/10'}`}>
-
           <div className={`p-4 sm:pt-8 sm:pb-4 pb-2 shrink-0 border-b ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5'}`}>
             <div className="flex gap-2.5 mb-4">
               <Link href="/login" className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-xl border transition-colors ${isLight ? 'text-slate-500 hover:text-slate-700 bg-white border-slate-200' : 'text-slate-400 bg-white/5 border-white/10'}`}>Kirish</Link>
               <button type="button" className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-xl border text-white bg-blue-600 ${isLight ? 'border-blue-700' : 'border-blue-500'}`}>Ro&apos;yxatdan o&apos;tish</button>
             </div>
 
-            <div className="w-full overflow-x-auto no-scrollbar py-2">
-              <div className="min-w-max px-2">
-                <StepProgress current={step} total={TOTAL} />
-              </div>
-            </div>
-          </div>
-
-          <div className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 sm:px-8 py-2 ${isLight ? '' : ''}`}>
-            {hasArizaTilxat && (
-              <div className={`mt-3 flex items-start gap-3 rounded-2xl border p-3 ${
-                isLight ? 'border-emerald-200 bg-emerald-50' : 'border-emerald-500/25 bg-emerald-500/10'
-              }`}>
-                <div className={`shrink-0 mt-0.5 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>
-                  <FileSignature size={16} />
+            {permitState === 'loaded' && (
+              <div className="w-full overflow-x-auto no-scrollbar py-2">
+                <div className="min-w-max px-2">
+                  <StepProgress current={stepIndex + 1} total={steps.length} />
                 </div>
-                <p className={`min-w-0 flex-1 text-[11px] leading-relaxed font-medium ${isLight ? 'text-emerald-800' : 'text-emerald-200'}`}>
-                  Imzolangan <span className="font-bold">Ariza va Tilxat</span> siz uchun avtomatik tayyorlangan.
-                  Dekan xona biriktirgach, u Telegram yoki emailingizga yuboriladi — hech narsa chop etish shart emas.
-                </p>
               </div>
             )}
-            <div className="min-h-70 flex flex-col justify-start py-4">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={step}
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.15 }}
+          </div>
+
+          <div className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 sm:px-8 py-2`}>
+            {permitState === 'loading' && (
+              <div className="min-h-70 flex flex-col items-center justify-center gap-3 text-center">
+                <Loader2 className={`animate-spin ${isLight ? 'text-blue-500' : 'text-blue-400'}`} size={28} />
+                <p className={`text-xs font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Arizangiz tekshirilmoqda…</p>
+              </div>
+            )}
+
+            {permitState === 'missing' && (
+              <div className="min-h-70 flex flex-col items-center justify-center gap-4 text-center py-6">
+                <div className={`p-3 rounded-2xl ${isLight ? 'bg-amber-100 text-amber-600' : 'bg-amber-500/10 text-amber-400'}`}>
+                  <SearchX size={26} />
+                </div>
+                <div>
+                  <h2 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Tasdiqlangan ariza topilmadi</h2>
+                  <p className={`mt-1 text-[11px] leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Ro&apos;yxatdan o&apos;tish uchun avval yo&apos;llanma / imtiyozli arizangiz tasdiqlangan bo&apos;lishi kerak. Holatni tekshirishdan qayta o&apos;ting.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push('/ruxsatnoma-tekshirish')}
+                  className="h-11 px-5 rounded-xl bg-blue-600 text-white text-[11px] font-bold uppercase tracking-wider hover:bg-blue-700 transition-colors"
                 >
-                  {step === 1 && <Step1Passport {...stepProps} requiresJshshir={applicationType === 'yollanma'} />}
-                  {step === 2 && <Step2Name {...stepProps} requiresMiddleName={applicationType === 'yollanma'} />}
-                  {step === 3 && <Step3Gender {...stepProps} />}
-                  {step === 4 && <Step4Study {...stepProps} />}
-                  {step === 5 && <Step5Address {...stepProps} />}
-                  {step === 6 && <Step6Family {...stepProps} />}
-                  {step === 7 && <Step7Date {...stepProps} />}
-                  {step === 8 && <Step8Room {...stepProps} />}
-                  {step === 9 && (
-                    <Step9Password
-                      data={data}
-                      onChange={update}
-                      onBack={back}
-                      onSubmit={handleSubmit}
-                      loading={loading}
-                    />
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
+                  Holatni tekshirish
+                </button>
+              </div>
+            )}
+
+            {permitState === 'loaded' && (
+              <>
+                {hasArizaTilxat && (
+                  <div className={`mt-3 flex items-start gap-3 rounded-2xl border p-3 ${isLight ? 'border-emerald-200 bg-emerald-50' : 'border-emerald-500/25 bg-emerald-500/10'}`}>
+                    <div className={`shrink-0 mt-0.5 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>
+                      <FileSignature size={16} />
+                    </div>
+                    <p className={`min-w-0 flex-1 text-[11px] leading-relaxed font-medium ${isLight ? 'text-emerald-800' : 'text-emerald-200'}`}>
+                      Imzolangan <span className="font-bold">Ariza va Tilxat</span> siz uchun avtomatik tayyorlangan. Dekan xona biriktirgach, u Telegram yoki emailingizga yuboriladi — hech narsa chop etish shart emas.
+                    </p>
+                  </div>
+                )}
+                <div className="min-h-70 flex flex-col justify-start py-4">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={steps[stepIndex]?.id ?? stepIndex}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      {steps[stepIndex]?.render(stepProps)}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="p-4 sm:p-8 pt-2 shrink-0">

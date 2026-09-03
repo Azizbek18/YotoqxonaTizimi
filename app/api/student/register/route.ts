@@ -1,7 +1,7 @@
-import { randomBytes } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+import { getPasswordPolicyError } from '@/lib/password-policy'
 import {
   buildFullName,
   getNamePartError,
@@ -17,7 +17,7 @@ import {
 import { cyrillicToLatin } from '@/lib/transliterate'
 import { writeAuditLog } from '@/lib/audit-log'
 import { extractFloor } from '@/lib/floor'
-import { createAuthUserSafely, deleteAuthUserSafely } from '@/lib/supabase-admin-auth'
+import { createAuthUserSafely, deleteAuthUserSafely, updateAuthUserPasswordSafely } from '@/lib/supabase-admin-auth'
 
 function text(body: Record<string, unknown>, key: string, maxLength = 200) {
   return String(body[key] ?? '').trim().slice(0, maxLength)
@@ -116,10 +116,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // The student now picks their own password in the wizard (no email-link
+    // step). Same policy the /update-password flow enforces.
+    const password = String(body.password ?? '')
+    const passwordError = getPasswordPolicyError(password)
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 })
+    }
+
     const supabase = getServiceSupabase()
     let permitQuery = supabase
       .from('permit_requests')
-      .select('email, full_name, gender, faculty, direction, course, room_number, status')
+      .select('email, full_name, gender, faculty, direction, course, room_number, status, origin_country, origin_region, study_type, application_type')
       .eq('passport_series', passport)
       .eq('email', email)
       .eq('application_type', applicationType)
@@ -182,18 +190,20 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      return NextResponse.json(
-        { ok: true, requiresEmailVerification: true },
-        { status: 202 },
-      )
+      // They already started registering (pending row + Auth account) and are
+      // coming back through the wizard. The approved-permit match above already
+      // authorized this; set the fresh password so the auto-login works.
+      const { error: pwError } = await updateAuthUserPasswordSafely(existingUser.id, password)
+      if (pwError) {
+        console.error('Pending student password update failed:', pwError)
+        return NextResponse.json({ error: 'Akkauntni yangilab bo‘lmadi.' }, { status: 409 })
+      }
+      return NextResponse.json({ ok: true }, { status: 200 })
     }
 
-    // The requester never chooses a usable password before proving control of
-    // the approved email. This random password is not returned or logged.
-    const inaccessiblePassword = randomBytes(48).toString('base64url')
     const { data: authData, error: authError } = await createAuthUserSafely(
       email,
-      inaccessiblePassword,
+      password,
       { role: 'talaba', registration_pending: true },
     )
     if (authError || !authData.user) {
@@ -213,14 +223,19 @@ export async function POST(request: NextRequest) {
       assignedFloor = layoutRow?.floor_number ?? extractFloor(permit.room_number)
     }
 
+    // Foreign (imtiyozli) students don't enter a UZ address — origin comes from
+    // the permit. Domestic students fill region/district/mahalla in the wizard.
+    const isForeign = applicationType === 'imtiyozli'
+
     const { error: insertError } = await supabase.from('users').insert({
       id: authData.user.id,
       email,
       full_name: fullName,
       middle_name: middleName || null,
-      region: text(body, 'region', 120) || null,
-      district: text(body, 'district', 120) || null,
-      mahalla: text(body, 'mahalla', 160) || null,
+      region: isForeign ? (permit.origin_region || null) : (text(body, 'region', 120) || null),
+      district: isForeign ? null : (text(body, 'district', 120) || null),
+      mahalla: isForeign ? null : (text(body, 'mahalla', 160) || null),
+      country: isForeign ? (permit.origin_country || null) : null,
       passport_series: passport,
       jshshir: applicationType === 'imtiyozli' ? null : jshshir,
       passport_date: passportDate,
@@ -229,7 +244,7 @@ export async function POST(request: NextRequest) {
       direction: permit.direction,
       course: permit.course,
       nationality: text(body, 'nationality', 80) || null,
-      study_type: text(body, 'study_type', 40) || null,
+      study_type: permit.study_type ?? (text(body, 'study_type', 40) || null),
       gender: permit.gender,
       phone_number: phone,
       father_full_name: cyrillicToLatin(text(body, 'father_full_name', 160)) || null,
@@ -260,12 +275,9 @@ export async function POST(request: NextRequest) {
       ipAddress: ip,
       actorUserId: authData.user.id,
       targetRole: 'talaba',
-      details: { stage: 'pending_email_verification' },
+      details: { stage: 'pending_auto_login' },
     })
-    return NextResponse.json(
-      { ok: true, requiresEmailVerification: true },
-      { status: 202 },
-    )
+    return NextResponse.json({ ok: true }, { status: 200 })
   } catch (error) {
     console.error('Student registration failed:', error)
     return NextResponse.json(

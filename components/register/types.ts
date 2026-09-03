@@ -19,13 +19,16 @@ export interface RegisterData {
   direction: string
   course: string
   study_type: string,
-  // Step 5
+  // Step 5 — yollanma (O'zbekiston fuqarosi) manzili
   region: string
   district: string
   mahalla: string
   qishloq: string
   street: string
   houseNumber: string
+  // Imtiyozli (xorijiy) — arizadan ko'chiriladi, faqat ko'rsatish uchun
+  originCountry: string
+  originRegion: string
   // Step 6
   father_full_name: string;
   father_workplace: string;
@@ -64,6 +67,8 @@ export const initialData: RegisterData = {
   qishloq: '',
   street: '',
   houseNumber: '',
+  originCountry: '',
+  originRegion: '',
   father_full_name: '',
   father_workplace: '',
   father_phone: '',

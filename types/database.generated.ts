@@ -32,6 +32,7 @@ export type UserRow = {
   region: string | null
   district: string | null
   mahalla: string | null
+  country: string | null
   study_type: string | null
   entry_date: string | null
   passport_series: string | null

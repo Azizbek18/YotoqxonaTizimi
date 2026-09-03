@@ -18,6 +18,7 @@ import type { DekanDorm } from '@/features/dorms/types'
 import DormFloorsCard from '@/components/dekan/DormFloorsCard'
 import FloorManagerCard from '@/components/dekan/FloorManagerCard'
 import AttendanceSettingsCard from '@/components/dekan/AttendanceSettingsCard'
+import DekanSignatureCard from '@/components/dekan/DekanSignatureCard'
 import { dekanUI } from '@/lib/dekan-ui'
 import { SkelForm } from '@/components/ui/skeletons'
 
@@ -327,6 +328,8 @@ export default function DekanSozlamalarPage() {
                             )}
                           </div>
                         ))}
+
+                        <DekanSignatureCard isLight={isLight} delay={0.075} />
 
                         {renderSection(ShieldAlert, 'Fayl va ogohlantirish chegaralari', 0.08, (
                             <>{limitFields.map((field) => renderNumberRow(field, 'sm:w-24'))}</>

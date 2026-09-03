@@ -137,17 +137,59 @@ function centerTitle(c: Cursor, title: string) {
   c.y += 9
 }
 
-function signatureRow(c: Cursor) {
+function signatureRow(c: Cursor, sig?: { image?: string; name?: string }) {
   c.y += 8
   c.doc.setFont(FONT, 'normal')
   c.doc.setFontSize(12)
+  // The signed copy stamps the hand-drawn signature just above the left rule
+  // and prints the typed F.I.Sh. on the right rule; the draft / on-screen
+  // preview leaves both as blank underlines.
+  if (sig?.image) {
+    try {
+      c.doc.addImage(sig.image, 'PNG', c.left, c.y - 11, 42, 12)
+    } catch {
+      /* a malformed data URL must not abort the whole document */
+    }
+  }
   c.doc.text('______________________', c.left, c.y)
-  c.doc.text('______________________', c.right, c.y, { align: 'right' })
+  if (sig?.name) {
+    c.doc.setFontSize(11)
+    c.doc.text(normalizePdfText(sig.name), c.right, c.y - 1.5, { align: 'right' })
+    c.doc.setFontSize(12)
+  } else {
+    c.doc.text('______________________', c.right, c.y, { align: 'right' })
+  }
   c.y += 4.5
   c.doc.setFontSize(9)
   c.doc.text('(imzo)', c.left + 14, c.y)
   c.doc.text('(F.I.Sh.)', c.right - 14, c.y, { align: 'right' })
   c.y += 7
+}
+
+// The dekanat's approval mark: signature above a rule, name + role beneath.
+// Only drawn on the final signed copy.
+function dekanSignatureBlock(c: Cursor, image: string, name: string, x: number) {
+  c.doc.setFont(FONT, 'normal')
+  try {
+    c.doc.addImage(image, 'PNG', x, c.y - 10, 40, 12)
+  } catch {
+    /* ignore a bad image */
+  }
+  c.doc.setFontSize(10.5)
+  c.doc.text('_______________________', x, c.y)
+  c.y += 4
+  c.doc.setFontSize(9)
+  c.doc.text(normalizePdfText(`Dekan: ${name}`), x, c.y)
+  c.y += 6
+}
+
+function formatSignedDate(iso?: string): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dd}.${mm}.${d.getFullYear()}`
 }
 
 // The address-to block. The .docx puts it in a left-indented (≈72.5 mm),
@@ -183,6 +225,17 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
   const year = new Date().getFullYear()
   const g = (mm: number) => mm * s // scale a vertical gap
 
+  // Signed-copy extras — all absent on the draft / on-screen preview.
+  const studentSig = data.fullName.trim() && data.studentSignature
+    ? { image: data.studentSignature, name: data.fullName }
+    : undefined
+  const signedDate = formatSignedDate(data.signedDate)
+  const arizaNo = normalizePdfText(data.arizaNo ?? '').trim()
+  const assignedFloor = String(data.assignedFloor ?? '').trim()
+  const assignedRoom = normalizePdfText(data.assignedRoom ?? '').trim()
+  const dekanName = normalizePdfText(data.dekanName ?? '').trim()
+  const hasDekanSig = Boolean(data.dekanSignature && dekanName)
+
   // ---------- Page 1: ARIZA ----------
   const p1 = makeCursor(doc)
   header(p1, faculty, course, name)
@@ -202,12 +255,12 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
     `Pasportim va ijtimoiy mezonlarga muvofiqligimni tasdiqlovchi hujjatlar nusxalarini ilova qilmoqdaman. Ushbu ariza va unga ilova qilinayotgan hujjatlarda ko'rsatilgan barcha ma'lumotlarning haqiqiyligiga shaxsan o'zim javobgarman. Agar men tomonimdan talabalar turar joyi ichki tartib qoidalari buzilsa, u holda menga Nizomda belgilangan tartibda chora ko'rilishiga roziman.`,
     { firstLineIndent: FIRST_LINE_INDENT, align: 'justify', size: bodySize, gap: g(3) })
 
-  signatureRow(p1)
+  signatureRow(p1, studentSig)
   doc.setFont(FONT, 'normal'); doc.setFontSize(11)
   doc.text(normalizePdfText(`Talaba tel: ${phone ? `+998 ${phone}` : '__________________'}`), p1.left, p1.y)
   p1.y += g(5)
   doc.text(normalizePdfText(`Yaqin qarindoshi tel: ${relativePhone || '__________________'}`), p1.left, p1.y)
-  doc.text('_____________', p1.right, p1.y, { align: 'right' })
+  doc.text(signedDate ?? '_____________', p1.right, p1.y, { align: 'right' })
   p1.y += 3.5
   doc.setFontSize(9); doc.text('Sana', p1.right - 4, p1.y, { align: 'right' })
   p1.y += g(6)
@@ -220,9 +273,17 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
 
   p1.y += g(4)
   doc.setFont(FONT, 'normal'); doc.setFontSize(10.5)
-  doc.text('Ariza № _________', p1.right - 58, p1.y)
+  const boxX = p1.right - 58
+  doc.text(normalizePdfText(`Ariza № ${arizaNo || '_________'}`), boxX, p1.y)
   p1.y += 5
-  doc.text('Berildi _____ qavat _____ xona', p1.right - 58, p1.y)
+  doc.text(
+    normalizePdfText(`Berildi ${assignedFloor || '_____'} qavat ${assignedRoom || '_____'} xona`),
+    boxX, p1.y,
+  )
+  if (hasDekanSig) {
+    p1.y += g(9)
+    dekanSignatureBlock(p1, data.dekanSignature!, dekanName, boxX)
+  }
   const p1End = p1.y
 
   // ---------- Page 2: TILXAT ----------
@@ -246,10 +307,14 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
     `Agar men ushbu qoidalarga amal qilmasam yoki boshqa tarzda bo'yin tovlasam Nizomda belgilangan tartibda menga chora ko'rilishi xaqida ogohlantirildim.`,
     { firstLineIndent: FIRST_LINE_INDENT, align: 'justify', size: bodySize, gap: g(2) })
 
-  signatureRow(p2)
-  doc.setFontSize(11); doc.text('_____________', p2.right, p2.y, { align: 'right' })
+  signatureRow(p2, studentSig)
+  doc.setFontSize(11); doc.text(signedDate ?? '_____________', p2.right, p2.y, { align: 'right' })
   p2.y += 3.5
   doc.setFontSize(9); doc.text('Sana', p2.right - 4, p2.y, { align: 'right' })
+  if (hasDekanSig) {
+    p2.y += g(11)
+    dekanSignatureBlock(p2, data.dekanSignature!, dekanName, p2.left)
+  }
 
   return { p1: p1End, p2: p2.y }
 }
@@ -271,4 +336,16 @@ export async function generateArizaTilxatPdf(data: ArizaTilxatData): Promise<Doc
   }
   ;(doc as Doc & { __fit?: unknown }).__fit = { ...fit, scale }
   return doc
+}
+
+/**
+ * Server-side: the same document as `generateArizaTilxatPdf`, returned as raw
+ * bytes instead of triggering a browser download. jsPDF runs headless under
+ * Node (font VFS + PNG embedding are pure JS), so this is what the automatic
+ * post-room-assignment delivery uses to attach the signed Ariza + Tilxat to a
+ * Telegram message / email.
+ */
+export async function renderArizaTilxatPdfBytes(data: ArizaTilxatData): Promise<Uint8Array> {
+  const doc = await generateArizaTilxatPdf(data)
+  return new Uint8Array(doc.output('arraybuffer'))
 }

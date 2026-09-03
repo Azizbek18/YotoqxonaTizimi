@@ -37,6 +37,23 @@ export interface ArizaTilxatData {
    *  until set, in which case the blank stays a literal blank line rather
    *  than silently guessing a number. */
   ttjName?: string
+
+  // ---- Filled in only for the final, signed copy (server-side delivery) ----
+  // The on-screen preview and the submit-time draft leave all of these unset,
+  // so the signature/date lines render as blank underlines exactly as before.
+  /** Applicant's hand-drawn signature, PNG data URL. */
+  studentSignature?: string
+  /** Dekan's hand-drawn signature, PNG data URL (staff.signature_image). */
+  dekanSignature?: string
+  /** Dekan's full name, printed under their signature. */
+  dekanName?: string
+  /** Dekanat registration number, e.g. "YT-2026-0042". */
+  arizaNo?: string
+  /** Assigned floor / room, printed into the "Berildi ___ qavat ___ xona" box. */
+  assignedFloor?: number | string
+  assignedRoom?: string
+  /** ISO date the applicant signed — fills the "Sana" lines. */
+  signedDate?: string
 }
 
 export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData }) {

@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, User, Mail, Phone, Volume2, VolumeX,
   ChevronRight, ChevronLeft, ArrowLeft, CheckCircle2, CreditCard, GraduationCap,
-  ShieldAlert, ShieldCheck, Pencil, RotateCw, BookOpen, FileText, Download, Users
+  ShieldAlert, ShieldCheck, Pencil, RotateCw, BookOpen, FileText, ChevronDown, Users
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -16,6 +16,7 @@ import DeveloperContactLink from '@/components/DeveloperContactLink'
 import TelegramPermitConnect from '@/components/TelegramPermitConnect'
 import PushNotificationCard from '@/components/pwa/PushNotificationCard'
 import ArizaTilxatDocument from '@/components/documents/ArizaTilxatDocument'
+import SignaturePad from '@/components/applications/SignaturePad'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
@@ -91,11 +92,12 @@ export default function RuxsatnomaYuborish() {
   const [telegramLinked, setTelegramLinked] = useState(false)
   const [permitRequestId, setPermitRequestId] = useState<string | null>(null)
 
-  // Ariza + Tilxat (final step) — must be downloaded before submit, so the
-  // student actually has the paper to print, sign and hand to the dekan.
+  // Ariza + Tilxat (final step) — the applicant no longer downloads anything.
+  // They draw one signature; the fully-signed PDF is generated server-side
+  // and delivered (Telegram/email) once the dekan assigns a room.
   const [ttjName, setTtjName] = useState('')
-  const [documentDownloaded, setDocumentDownloaded] = useState(false)
-  const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [signatureImage, setSignatureImage] = useState<string | null>(null)
+  const [attested, setAttested] = useState(false)
 
   // Shown before the student can touch the form — must be acknowledged
   // every visit, since it's a warning about THIS submission's accuracy,
@@ -283,13 +285,6 @@ export default function RuxsatnomaYuborish() {
     }
   }, [])
 
-  // The downloaded Ariza/Tilxat is a snapshot of the data at download time.
-  // If the applicant goes back and edits any field that appears on it, the
-  // signed paper they hand the dekan would no longer match what gets
-  // submitted — so force them to download a fresh copy.
-  useEffect(() => {
-    setDocumentDownloaded(false)
-  }, [fullName, faculty, course, studyType, originRegion, phone, relativePhone])
 
   // Programmatic Sound Synthesis
   const playSound = (type: 'keypress' | 'success' | 'focus' | 'tab' | 'gender') => {
@@ -588,25 +583,6 @@ export default function RuxsatnomaYuborish() {
     ttjName,
   }
 
-  const handleDownloadPdf = async () => {
-    if (downloadingPdf) return
-    setDownloadingPdf(true)
-    try {
-      const { generateArizaTilxatPdf, arizaTilxatFileName } = await import('@/lib/ariza-tilxat-pdf')
-      const doc = await generateArizaTilxatPdf(arizaTilxatData)
-      doc.save(arizaTilxatFileName(fullName))
-      setDocumentDownloaded(true)
-      playSound('success')
-      toast.success('Hujjat yuklab olindi', { icon: '📄' })
-      toast('Uni chop etib, imzo qo‘yib DEKANGA topshiring.', { duration: 7000, icon: '✍️' })
-    } catch (err) {
-      console.error(err)
-      showToast('error', 'Hujjatni yuklab bo‘lmadi. Qayta urinib ko‘ring.')
-    } finally {
-      setDownloadingPdf(false)
-    }
-  }
-
   const handlePrevStep = () => {
     if (formStep > 1) {
       setFormStep(formStep - 1)
@@ -645,10 +621,10 @@ export default function RuxsatnomaYuborish() {
     const keepingExistingDoc = editMode && !file
     if (!validateStep3()) return
     if (!keepingExistingDoc && (!file || !aiAnalysisFile)) return
-    // The signed Ariza + Tilxat is what the student hands the dekan — a
-    // fresh submission must have it downloaded first (an edit may skip it).
-    if (!editMode && !documentDownloaded) {
-      showToast('error', 'Avval Ariza va Tilxatni yuklab oling — dekanga imzoga topshirishingiz kerak.')
+    // The applicant signs once, here — no download. A fresh submission must
+    // carry a drawn signature + attestation (an edit may keep the old one).
+    if (!editMode && (!signatureImage || !attested)) {
+      showToast('error', 'Ariza va Tilxatni imzolang va tasdiqlang.')
       return
     }
 
@@ -713,6 +689,7 @@ export default function RuxsatnomaYuborish() {
       submission.append('studyType', studyType)
       submission.append('originRegion', originRegion)
       submission.append('relativePhone', `+998${relativePhone.trim()}`)
+      if (signatureImage) submission.append('studentSignature', signatureImage)
       if (aiClaim) submission.append('aiClaim', aiClaim)
 
       const submitResponse = await fetch('/api/permit-requests', {
@@ -1205,7 +1182,7 @@ export default function RuxsatnomaYuborish() {
                       { step: 2, label: 'O‘qish' },
                       { step: 3, label: 'Hujjat' },
                       { step: 4, label: 'Tekshirish' },
-                      { step: 5, label: 'Ariza' }
+                      { step: 5, label: 'Imzo' }
                     ].map((s) => {
                       const isActive = formStep === s.step
                       return (
@@ -1990,8 +1967,9 @@ export default function RuxsatnomaYuborish() {
                       </motion.div>
                     )}
 
-                    {/* STEP 5: Ariza + Tilxat — download, sign, hand to dekan.
-                        Same document the imtiyozli flow generates. */}
+                    {/* STEP 5: Imzo — the applicant draws one signature. No
+                        download: the fully-signed Ariza + Tilxat is generated
+                        server-side and delivered once a room is assigned. */}
                     {formStep === 5 && (
                       <motion.div
                         initial={{ opacity: 0, x: 15 }}
@@ -2000,54 +1978,56 @@ export default function RuxsatnomaYuborish() {
                       >
                         <div className="text-center space-y-1">
                           <h3 className={`text-sm sm:text-base font-black uppercase tracking-wide ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                            Ariza va Tilxatingiz
+                            Ariza va Tilxatni imzolang
                           </h3>
                           <p className={`text-[10px] sm:text-[11px] font-medium leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                            Ma&apos;lumotlaringiz bilan to&apos;ldirilgan holda ko&apos;rsatilgan. Xato bo&apos;lsa tahrirlang; to&apos;g&apos;ri bo&apos;lsa yuklab oling.
+                            Hujjatlar ma&apos;lumotlaringiz bilan avtomatik tayyorlanadi. Bu yerda faqat imzo qo&apos;yasiz — chop etish, yuklab olish shart emas. Dekan xona biriktirgach, imzolangan Ariza va Tilxat Telegram yoki emailingizga yuboriladi.
                           </p>
                         </div>
 
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={() => { playSound('tab'); setFormStep(1) }}
-                            className="absolute top-2 right-2 z-20 flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[9px] font-black uppercase tracking-wider shadow-lg shadow-amber-500/30 ring-2 ring-white dark:ring-[#0b1120]"
-                          >
-                            <Pencil size={11} />
-                            <span>Tahrirlash</span>
-                          </button>
-                          <div className="max-h-[50vh] overflow-y-auto rounded-2xl">
+                        <details className={`rounded-xl border ${isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.03]'}`}>
+                          <summary className={`flex cursor-pointer items-center justify-between gap-2 px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>
+                            <span className="flex items-center gap-1.5"><FileText size={13} /> Hujjat matnini ko&apos;rish</span>
+                            <span className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); playSound('tab'); setFormStep(1) }}
+                                className="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white"
+                              >
+                                <Pencil size={10} /> Tahrirlash
+                              </button>
+                              <ChevronDown size={13} />
+                            </span>
+                          </summary>
+                          <div className="max-h-[46vh] overflow-y-auto border-t border-slate-200/60 dark:border-white/10">
                             <ArizaTilxatDocument data={arizaTilxatData} />
                           </div>
+                        </details>
+
+                        <div className={`rounded-2xl border p-3.5 ${isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.03]'}`}>
+                          <p className={`mb-2 text-[10px] font-black uppercase tracking-widest ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                            Imzoingiz
+                          </p>
+                          <SignaturePad isLight={isLight} height={170} onChange={setSignatureImage} />
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={handleDownloadPdf}
-                          disabled={downloadingPdf}
-                          className={`w-full flex items-center justify-center gap-2 p-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-60 ${
-                            documentDownloaded
-                              ? (isLight ? 'border border-emerald-300 bg-emerald-50 text-emerald-700' : 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300')
-                              : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/25'
-                          }`}
-                        >
-                          {downloadingPdf ? (
-                            <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                          ) : documentDownloaded ? (
-                            <><CheckCircle2 size={14} /> Yuklab olindi — qayta yuklash</>
-                          ) : (
-                            <><Download size={14} /> Ariza va Tilxatni yuklab olish (PDF)</>
-                          )}
-                        </button>
+                        <label className={`flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 text-[11px] font-semibold leading-relaxed ${
+                          attested
+                            ? (isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200')
+                            : (isLight ? 'border-slate-200 text-slate-600' : 'border-white/10 text-slate-300')
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={attested}
+                            onChange={(e) => setAttested(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600"
+                          />
+                          <span>Ariza va Tilxatdagi ma&apos;lumotlar to&apos;g&apos;ri. Elektron imzomni tasdiqlayman.</span>
+                        </label>
 
-                        {documentDownloaded ? (
-                          <div className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-[11px] font-semibold leading-relaxed ${isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'}`}>
-                            <ShieldAlert size={14} className="shrink-0 mt-0.5" />
-                            <span>Yuklab olingan Ariza va Tilxatni <b>chop eting</b>, o&apos;zingiz imzo qo&apos;ying va <b>dekanga imzoga topshiring</b>. So&apos;ng shu yerdan yuboring.</span>
-                          </div>
-                        ) : (
+                        {!editMode && (!signatureImage || !attested) && (
                           <p className={`text-center text-[11px] font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                            {editMode ? 'Ma’lumot o‘zgargan bo‘lsa, hujjatni qayta yuklab oling.' : 'Yuborishdan oldin hujjatni yuklab olishingiz shart.'}
+                            Yuborish uchun imzo qo&apos;ying va tasdiqlang.
                           </p>
                         )}
                       </motion.div>
@@ -2083,7 +2063,7 @@ export default function RuxsatnomaYuborish() {
                           onClick={handleNextStep}
                           className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-95"
                         >
-                          <span>{formStep === 4 ? 'Ariza va Tilxat' : 'Keyingi'}</span> <ChevronRight size={14} />
+                          <span>{formStep === 4 ? 'Imzoga o‘tish' : 'Keyingi'}</span> <ChevronRight size={14} />
                         </button>
                       ) : (
                         <button
@@ -2094,7 +2074,7 @@ export default function RuxsatnomaYuborish() {
                           // step 5. The form's onSubmit still guards Enter.
                           type="button"
                           onClick={handleSubmit}
-                          disabled={loading || (!editMode && !documentDownloaded)}
+                          disabled={loading || (!editMode && (!signatureImage || !attested))}
                           className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all duration-300 active:scale-95 disabled:opacity-50"
                         >
                           {loading ? (
@@ -2151,9 +2131,9 @@ export default function RuxsatnomaYuborish() {
                     : "Sizning yotoqxona ruxsatnoma yo'llanmangiz ko'rib chiqish uchun qabul qilindi. Hujjat Dekan tomonidan tasdiqlanganidan so'ng sizga xona biriktiriladi va tizimda to'liq ro'yxatdan o'tishingiz mumkin bo'ladi."}
                 </p>
                 {!editMode && (
-                  <div className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-left text-[11px] font-semibold leading-relaxed ${isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'}`}>
-                    <ShieldAlert size={14} className="shrink-0 mt-0.5" />
-                    <span>Yuklab olgan Ariza va Tilxatni chop etib, imzo qo&apos;yib <b>dekanga imzoga topshiring</b>.</span>
+                  <div className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-left text-[11px] font-semibold leading-relaxed ${isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'}`}>
+                    <ShieldCheck size={14} className="shrink-0 mt-0.5" />
+                    <span>Imzoingiz qabul qilindi. Dekan xona biriktirgach, imzolangan Ariza va Tilxat Telegram yoki emailingizga <b>avtomatik yuboriladi</b> — hech narsa chop etish shart emas.</span>
                   </div>
                 )}
               </div>

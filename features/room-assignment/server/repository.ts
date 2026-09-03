@@ -24,11 +24,28 @@ export function createRoomAssignmentRepository() {
     async findStudent(id: string) {
       const { data, error } = await supabase
         .from('users')
-        .select('id, faculty, gender, room_number, role, email, full_name')
+        .select('id, faculty, gender, room_number, role, email, full_name, passport_series, jshshir')
         .eq('id', id)
         .maybeSingle()
       if (error) throw error
       return data
+    },
+    // The approved permit a registered student came from — so the signed
+    // Ariza + Tilxat can be generated even when the room is assigned after
+    // registration (the permit row then has no room_number of its own).
+    async findApprovedPermitIdForStudent(keys: { passport_series?: string | null; jshshir?: string | null }) {
+      const orParts: string[] = []
+      if (keys.passport_series) orParts.push(`passport_series.eq.${keys.passport_series}`)
+      if (keys.jshshir) orParts.push(`jshshir.eq.${keys.jshshir}`)
+      if (!orParts.length) return null
+      const { data, error } = await supabase
+        .from('permit_requests')
+        .select('id')
+        .eq('status', 'approved')
+        .or(orParts.join(','))
+        .maybeSingle()
+      if (error) throw error
+      return data?.id ?? null
     },
     async clearStudentRoom(id: string) {
       // is_floor_captain is meaningless without a floor — a captaincy has to

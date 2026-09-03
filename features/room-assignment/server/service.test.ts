@@ -10,9 +10,12 @@ vi.mock('@/features/app-settings/server/service', () => ({
 const sendRoomAssignedEmail = vi.fn(async () => {})
 vi.mock('@/lib/email', () => ({ sendRoomAssignedEmail }))
 
+const deliverPermitDocumentsSafely = vi.fn(async () => 'delivered' as const)
+vi.mock('@/lib/permit-documents', () => ({ deliverPermitDocumentsSafely }))
+
 const { createRoomAssignmentService } = await import('./service')
 
-function student(overrides: Partial<{ id: string; faculty: string; gender: string | null; room_number: string | null; role: string; email: string; full_name: string }> = {}) {
+function student(overrides: Partial<{ id: string; faculty: string; gender: string | null; room_number: string | null; role: string; email: string; full_name: string; passport_series: string | null; jshshir: string | null }> = {}) {
   return {
     id: 'student-1',
     faculty: 'IT',
@@ -21,6 +24,8 @@ function student(overrides: Partial<{ id: string; faculty: string; gender: strin
     role: 'talaba',
     email: 'student@example.com',
     full_name: 'Talaba Ism',
+    passport_series: 'AA1234567',
+    jshshir: '12345678901234',
     ...overrides,
   }
 }
@@ -57,6 +62,7 @@ function repository(overrides: Partial<RoomAssignmentRepository> = {}) {
     assignRoomAtomic: vi.fn(async () => true),
     listApprovedUnregisteredPermits: vi.fn(async () => []),
     findPermit: vi.fn(async () => permit()),
+    findApprovedPermitIdForStudent: vi.fn(async () => null),
     clearPermitRoom: vi.fn(async () => {}),
     assignPermitRoomAtomic: vi.fn(async () => true),
     ...overrides,
@@ -132,11 +138,23 @@ describe('room assignment service', () => {
     it("reserves a room on an approved permit without sending an email (nobody's registered yet)", async () => {
       const repo = repository()
       const result = await createRoomAssignmentService(repo)
-        .assignRoom('IT', { studentId: 'permit-1', roomNumber: '101', source: 'permit' })
+        .assignRoom('IT', { studentId: 'permit-1', roomNumber: '101', source: 'permit' }, { id: 'dekan-1', fullName: 'Dekan' })
 
-      expect(result).toEqual({ success: true })
+      expect(result).toEqual({ success: true, documentDelivery: 'delivered' })
       expect(repo.assignPermitRoomAtomic).toHaveBeenCalledWith('permit-1', '101', 4)
       expect(sendRoomAssignedEmail).not.toHaveBeenCalled()
+      // The signed Ariza + Tilxat is generated + sent now that the room exists.
+      expect(deliverPermitDocumentsSafely).toHaveBeenCalledWith('permit-1', { id: 'dekan-1', fullName: 'Dekan' })
+    })
+
+    it('a document-delivery failure does not fail the room assignment', async () => {
+      deliverPermitDocumentsSafely.mockResolvedValueOnce('error' as never)
+      const repo = repository()
+      const result = await createRoomAssignmentService(repo)
+        .assignRoom('IT', { studentId: 'permit-1', roomNumber: '101', source: 'permit' })
+
+      expect(result).toEqual({ success: true, documentDelivery: 'error' })
+      expect(repo.assignPermitRoomAtomic).toHaveBeenCalled()
     })
 
     it('rejects a permit that is not approved', async () => {

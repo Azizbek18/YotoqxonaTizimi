@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { bindPermitTelegramChat, formatPermitTelegramMessage } from '@/lib/permit-telegram'
 import { bindStudentTelegramChat } from '@/lib/student-telegram'
 import { sendTelegramChatMessage } from '@/lib/telegram'
+import { deliverPermitDocumentsSafely } from '@/lib/permit-documents'
 
 type TelegramUpdate = {
   message?: {
@@ -69,6 +70,12 @@ export async function POST(request: Request) {
       .update({ last_notified_status: permit.status, updated_at: new Date().toISOString() })
       .eq('permit_request_id', permit.id)
     if (markError) throw markError
+
+    // If a room was already assigned before the applicant linked the bot,
+    // their signed Ariza + Tilxat is still waiting — send it now via Telegram.
+    if (permit.status === 'approved') {
+      void deliverPermitDocumentsSafely(permit.id)
+    }
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('Telegram webhook failed:', error)

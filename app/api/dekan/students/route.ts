@@ -27,7 +27,11 @@ export async function PATCH(request: NextRequest) {
     if (!throttle.allowed) {
       return NextResponse.json({ error: "Juda ko'p urinish. Keyinroq urinib ko'ring." }, { status: 429 })
     }
-    const result = await createRoomAssignmentService().assignRoom(staff.faculty, await request.json())
+    const result = await createRoomAssignmentService().assignRoom(
+      staff.faculty,
+      await request.json(),
+      { id: staff.id, fullName: staff.full_name },
+    )
     return NextResponse.json(result)
   } catch (error) {
     return errorResponse(error)

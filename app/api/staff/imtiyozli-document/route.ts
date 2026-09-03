@@ -42,6 +42,15 @@ export async function GET(request: NextRequest) {
     // The dorm building number is the permit faculty's own setting.
     const settings = await createAppSettingsService().get(normalizeFaculty(permit.faculty) ?? undefined)
 
+    // If the applicant has signed and the document has been (or is being)
+    // generated, hand back the signature layer too so the dekan sees the
+    // real, signed copy rather than a blank template.
+    const { data: doc } = await supabase
+      .from('permit_documents')
+      .select('student_signature, student_signed_at, dekan_signature, dekan_name, ariza_no, assigned_floor, assigned_room')
+      .eq('permit_request_id', id)
+      .maybeSingle()
+
     return NextResponse.json({
       data: {
         fullName: permit.full_name,
@@ -53,6 +62,17 @@ export async function GET(request: NextRequest) {
         phone: (permit.phone ?? '').replace(/^\+998/, '').trim(),
         relativePhone: permit.relative_phone ?? '',
         ttjName: settings.ttjName,
+        ...(doc
+          ? {
+              studentSignature: doc.student_signature,
+              signedDate: doc.student_signed_at,
+              dekanSignature: doc.dekan_signature ?? undefined,
+              dekanName: doc.dekan_name ?? undefined,
+              arizaNo: doc.ariza_no ?? undefined,
+              assignedFloor: doc.assigned_floor ?? undefined,
+              assignedRoom: doc.assigned_room ?? undefined,
+            }
+          : {}),
       },
     })
   } catch (error) {

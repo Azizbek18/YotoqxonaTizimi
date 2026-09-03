@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { arizaTilxatFileName, generateArizaTilxatPdf, normalizePdfText } from './ariza-tilxat-pdf'
+import { arizaTilxatFileName, generateArizaTilxatPdf, normalizePdfText, renderArizaTilxatPdfBytes } from './ariza-tilxat-pdf'
+
+const PNG_1PX = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 
 const DATA = {
   fullName: "Gʻafurov Xusan Abrorovich",
@@ -37,6 +39,23 @@ describe('ariza-tilxat pdf', () => {
   it('leaves the by-hand and dekanat fields blank', async () => {
     const doc = await generateArizaTilxatPdf({ ...DATA, phone: '', relativePhone: '', ttjName: '' })
     expect(doc.getNumberOfPages()).toBe(2)
+  })
+
+  it('renders signed bytes server-side with both signatures embedded', async () => {
+    const bytes = await renderArizaTilxatPdfBytes({
+      ...DATA,
+      studentSignature: PNG_1PX,
+      dekanSignature: PNG_1PX,
+      dekanName: 'Aliyev Vali',
+      arizaNo: 'YT-2026-0042',
+      assignedFloor: 3,
+      assignedRoom: '305',
+      signedDate: '2026-09-01T10:00:00Z',
+    })
+    expect(bytes).toBeInstanceOf(Uint8Array)
+    // "%PDF" magic bytes
+    expect(Array.from(bytes.slice(0, 4))).toEqual([0x25, 0x50, 0x44, 0x46])
+    expect(bytes.length).toBeGreaterThan(3000)
   })
 
   it('stays 2 pages and fits the sheet even with a long name + long faculty', async () => {

@@ -69,6 +69,20 @@ function fmtSignedDate(iso?: string): string | null {
   return `${dd}.${mm}.${d.getFullYear()}`
 }
 
+// The address-to block. The .docx runs all three lines in one column
+// indented ~72.5 mm from the left and flush to the right margin, so every
+// line must share the same right (and implied left) edge — a single
+// right-aligned column, not three independently-wrapping paragraphs.
+function AddressHeader({ facultyLabel, course, name }: { facultyLabel: string; course: string | number; name: string }) {
+  return (
+    <div className="ml-auto w-[74%] text-right text-[11px] leading-snug sm:w-[60%] sm:text-sm">
+      <p>{UNIVERSITY_HEADER}</p>
+      <p className="mt-3">{facultyLabel} fakulteti</p>
+      <p>Bakalavriat kunduzgi ta&apos;lim yo&apos;nalishi {course}-kurs talabasi {name || '_______________________'}</p>
+    </div>
+  )
+}
+
 // One signature slot: the real drawn signature (or a typed name) sitting on a
 // baseline rule, with its caption beneath. Falls back to the classic blank
 // underline on the pre-sign preview so that view is unchanged.
@@ -104,9 +118,7 @@ export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData })
     <div className="space-y-6">
       {/* ARIZA */}
       <div className="bg-white text-black rounded-2xl sm:rounded-3xl border border-slate-300 p-5 sm:p-10 shadow-xl print-page" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
-        <p className="text-right text-[11px] sm:text-sm leading-snug max-w-[75%] ml-auto">{UNIVERSITY_HEADER}</p>
-        <p className="text-right text-[11px] sm:text-sm mt-3">{facultyLabel} fakulteti</p>
-        <p className="text-right text-[11px] sm:text-sm">Bakalavriat kunduzgi ta&apos;lim yo&apos;nalishi {course}-kurs talabasi {fullName || '_______________________'}</p>
+        <AddressHeader facultyLabel={facultyLabel} course={course} name={fullName} />
 
         <h2 className="text-center font-bold tracking-[0.3em] text-sm sm:text-lg mt-6 mb-6">A R I Z A</h2>
 
@@ -173,9 +185,7 @@ export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData })
 
       {/* TILXAT */}
       <div className="bg-white text-black rounded-2xl sm:rounded-3xl border border-slate-300 p-5 sm:p-10 shadow-xl print-page" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
-        <p className="text-right text-[11px] sm:text-sm leading-snug max-w-[75%] ml-auto">{UNIVERSITY_HEADER}</p>
-        <p className="text-right text-[11px] sm:text-sm mt-3">{facultyLabel} fakulteti</p>
-        <p className="text-right text-[11px] sm:text-sm">Bakalavriat kunduzgi ta&apos;lim yo&apos;nalishi {course}-kurs talabasi {fullName || '_______________________'}</p>
+        <AddressHeader facultyLabel={facultyLabel} course={course} name={fullName} />
 
         <h2 className="text-center font-bold tracking-[0.3em] text-sm sm:text-lg mt-6 mb-6">T I L X A T</h2>
 

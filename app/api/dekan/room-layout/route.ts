@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
     const faculty = requirePickedFaculty(staff)
 
     const floor = request.nextUrl.searchParams.get('floor')
-    const blocks = await createRoomLayoutService().getFloor(faculty, floor)
+    const dormId = request.nextUrl.searchParams.get('dormId') ?? undefined
+    const blocks = await createRoomLayoutService().getFloor(faculty, floor, dormId)
     return NextResponse.json({ blocks })
   } catch (error) {
     return errorResponse(error)
@@ -33,7 +34,8 @@ export async function PUT(request: NextRequest) {
     const faculty = requirePickedFaculty(staff)
 
     const body = await request.json()
-    const result = await createRoomLayoutService().saveFloor(faculty, body?.floorNumber, body?.blocks)
+    const dormId = typeof body?.dormId === 'string' ? body.dormId : undefined
+    const result = await createRoomLayoutService().saveFloor(faculty, body?.floorNumber, body?.blocks, dormId)
     return NextResponse.json(result)
   } catch (error) {
     return errorResponse(error)

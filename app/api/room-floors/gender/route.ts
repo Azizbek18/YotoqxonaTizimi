@@ -14,11 +14,12 @@ export async function PATCH(request: NextRequest) {
     const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
     const faculty = requirePickedFaculty(staff)
     const body = await request.json()
+    const dormId = typeof body?.dormId === 'string' ? body.dormId : undefined
 
     const service = createRoomLayoutService()
     const result = Array.isArray(body?.roomNumbers)
-      ? await service.bulkSetGender(faculty, body.roomNumbers, body?.gender)
-      : await service.setGender(faculty, body?.roomNumber, body?.gender)
+      ? await service.bulkSetGender(faculty, body.roomNumbers, body?.gender, dormId)
+      : await service.setGender(faculty, body?.roomNumber, body?.gender, dormId)
 
     return NextResponse.json(result)
   } catch (error) {

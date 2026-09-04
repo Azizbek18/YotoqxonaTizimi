@@ -13,7 +13,10 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireUser(request)
     const faculty = await resolveCallerFaculty(user.id)
-    const rooms = await createRoomLayoutService().listRoomFloors(faculty)
+    // Omitted resolves to the faculty's primary building, unchanged — only
+    // the room-layout editor ever names a specific one of several.
+    const dormId = request.nextUrl.searchParams.get('dormId') ?? undefined
+    const rooms = await createRoomLayoutService().listRoomFloors(faculty, dormId)
     return NextResponse.json({ rooms })
   } catch (error) {
     console.error('Room floors GET error:', error)

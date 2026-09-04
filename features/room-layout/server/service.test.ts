@@ -248,3 +248,68 @@ describe('room layout service', () => {
     })
   })
 })
+
+// A faculty with a second building (many-to-many, 202609300000 +
+// 202609300002 dormId-override RPCs) — every method takes an optional
+// trailing dormId; every test above (which never passes one) proves the
+// omitted case forwards NOTHING extra to the repository, byte-identical to
+// before this parameter existed.
+describe('room layout service — a specific building (dormId)', () => {
+  const DORM2 = 'd2-uuid'
+
+  it('setFrozen forwards dormId to the repository only when given', async () => {
+    const repo = repository()
+    await createRoomLayoutService(repo).setFrozen(FACULTY, '101', true, 'sabab', DORM2)
+    expect(repo.setFrozen).toHaveBeenCalledWith(FACULTY, '101', true, 'sabab', DORM2)
+  })
+
+  it('setCapacity / bulkSetCapacity / setGender / bulkSetGender forward dormId', async () => {
+    const repo = repository()
+    const service = createRoomLayoutService(repo)
+
+    await service.setCapacity(FACULTY, '101', 3, DORM2)
+    expect(repo.setCapacity).toHaveBeenCalledWith(FACULTY, '101', 3, DORM2)
+
+    await service.bulkSetCapacity(FACULTY, ['101', '102'], 2, DORM2)
+    expect(repo.bulkSetCapacity).toHaveBeenCalledWith(FACULTY, ['101', '102'], 2, DORM2)
+
+    await service.setGender(FACULTY, '101', 'female', DORM2)
+    expect(repo.setGender).toHaveBeenCalledWith(FACULTY, '101', 'female', DORM2)
+
+    await service.bulkSetGender(FACULTY, ['101'], 'male', DORM2)
+    expect(repo.bulkSetGender).toHaveBeenCalledWith(FACULTY, ['101'], 'male', DORM2)
+  })
+
+  it('getFloor / saveFloor forward dormId to listFloor / replaceFloor', async () => {
+    const repo = repository()
+    const service = createRoomLayoutService(repo)
+
+    await service.getFloor(FACULTY, 2, DORM2)
+    expect(repo.listFloor).toHaveBeenCalledWith(FACULTY, 2, DORM2)
+
+    await service.saveFloor(FACULTY, 2, [block('101')], DORM2)
+    expect(repo.replaceFloor).toHaveBeenCalledWith(FACULTY, 2, expect.any(Array), DORM2)
+  })
+
+  it('saveFloor resolves the resident-floor sync against the SAME building it just saved, not primary', async () => {
+    const repo = repository({
+      scopeFor: vi.fn(async (faculty: string, dormId?: string) => ({ dormId: dormId ?? 'd1', floors: null })),
+    } as Partial<RoomLayoutRepository>)
+    await createRoomLayoutService(repo).saveFloor(FACULTY, 2, [block('101')], DORM2)
+    expect(repo.scopeFor).toHaveBeenCalledWith(FACULTY, DORM2)
+    expect(repo.syncAssignedFloors).toHaveBeenCalledWith(DORM2, 2, ['101'])
+  })
+
+  it('generateFloors forwards dormId to listAllRooms and applyBuildingLayout', async () => {
+    const repo = repository()
+    await createRoomLayoutService(repo).generateFloors(FACULTY, [{ floor: 1, rooms: 3 }], 'sequential', DORM2)
+    expect(repo.listAllRooms).toHaveBeenCalledWith(FACULTY, DORM2)
+    expect(repo.applyBuildingLayout).toHaveBeenCalledWith(FACULTY, 'sequential', [{ floor: 1, rooms: 3 }], DORM2)
+  })
+
+  it('listRoomFloors forwards dormId to listAllRooms', async () => {
+    const repo = repository()
+    await createRoomLayoutService(repo).listRoomFloors(FACULTY, DORM2)
+    expect(repo.listAllRooms).toHaveBeenCalledWith(FACULTY, DORM2)
+  })
+})

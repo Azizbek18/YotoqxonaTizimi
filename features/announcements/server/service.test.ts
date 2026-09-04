@@ -220,7 +220,17 @@ describe('updateAuthored / removeAuthored', () => {
     )
 
     await service.updateAuthored('  AMIT  ', { id: 'e1', title: 'Yangi sarlavha' })
-    expect(updateByFaculty).toHaveBeenCalledWith('e1', 'AMIT', expect.objectContaining({ title: 'Yangi sarlavha' }))
+    expect(updateByFaculty).toHaveBeenCalledWith('e1', 'AMIT', expect.objectContaining({ title: 'Yangi sarlavha' }), undefined)
+  })
+
+  it('pins a tarbiyachi’s edit to their own authored row', async () => {
+    const updateByFaculty = vi.fn(async () => ({ id: 'e1', title: 'Yangi' }))
+    const service = createAnnouncementService(
+      fakeRepository({ updateByFaculty } as unknown as Partial<AnnouncementRepository>),
+    )
+
+    await service.updateAuthored('amit', { id: 'e1', title: 'Yangi sarlavha' }, 'staff-7')
+    expect(updateByFaculty).toHaveBeenCalledWith('e1', 'amit', expect.objectContaining({ title: 'Yangi sarlavha' }), 'staff-7')
   })
 
   it('rejects a dekan with no faculty assigned', async () => {

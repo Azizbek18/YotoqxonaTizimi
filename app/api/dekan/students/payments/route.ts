@@ -7,7 +7,7 @@ import { getApiError } from '@/server/http/api-error'
 // but approving/rejecting a receipt stays with the admin (/api/tarbiyachi/payments).
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
     const payments = await createFacultyStudentsService().listPayments(staff.faculty)
     return NextResponse.json({ payments })
   } catch (error) {

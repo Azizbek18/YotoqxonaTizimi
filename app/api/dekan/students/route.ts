@@ -12,7 +12,9 @@ function errorResponse(error: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
+    // A tarbiyachi reads this list (room map + student directory) but the
+    // PATCH below — assigning a room — stays dekan/admin.
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
     const students = await createRoomAssignmentService().listStudents(staff.faculty)
     return NextResponse.json({ students })
   } catch (error) {

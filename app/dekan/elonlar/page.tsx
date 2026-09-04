@@ -24,6 +24,7 @@ import CustomSelect from '@/components/ui/CustomSelect'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useDekanScope } from '@/lib/hooks/useDekanScope'
+import { useStaffPanel } from '@/lib/hooks/useStaffPanel'
 import {
   createDekanAnnouncement,
   deleteDekanAnnouncement,
@@ -64,7 +65,12 @@ export default function DekanAnnouncementsPage() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
   const ui = dekanUI(isLight)
-  const { faculty: dekanFaculty } = useDekanScope()
+  const { id: myStaffId, faculty: dekanFaculty } = useDekanScope()
+  // In the tarbiyachi panel a colleague's announcement is read-only —
+  // only its author (or a dekan) sees the edit / hide / delete controls.
+  const { canManageAnyAnnouncement } = useStaffPanel()
+  const canManage = (item: AuthoredAnnouncement) =>
+    canManageAnyAnnouncement || (!!myStaffId && item.created_by === myStaffId)
 
   const [announcements, setAnnouncements] = useState<AuthoredAnnouncement[]>([])
   const [loading, setLoading] = useState(true)
@@ -357,6 +363,7 @@ export default function DekanAnnouncementsPage() {
                       {item.is_published ? formatDate(item.published_at ?? item.created_at) : formatDate(item.created_at)}
                     </span>
 
+                    {canManage(item) ? (
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => void togglePublished(item)}
@@ -380,6 +387,9 @@ export default function DekanAnnouncementsPage() {
                         <Trash2 size={14} />
                       </button>
                     </div>
+                    ) : (
+                      <span className={`text-[10px] font-medium ${ui.faint}`}>Boshqa xodim e&apos;loni</span>
+                    )}
                   </div>
                 </motion.div>
               )

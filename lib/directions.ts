@@ -128,6 +128,7 @@ export const FACULTY_DIRECTIONS: Record<PermitFacultyValue, readonly DirectionOp
     { value: 'sport-erkin-kurash', label: 'Sport faoliyati (erkin kurash)' },
     { value: 'sport-kurash', label: 'Sport faoliyati (kurash)' },
     { value: 'sport-dzyudo', label: 'Sport faoliyati (dzyudo)' },
+    { value: 'sport-basketbol', label: 'Sport faoliyati (basketbol)' },
     { value: 'sport-menejment', label: 'Menejment (sport tadbirlarini tashkil etish va boshqarish)' },
     { value: 'sport-tadbirlari', label: 'Sport tadbirlarini tashkil etish va boshqarish' },
   ],

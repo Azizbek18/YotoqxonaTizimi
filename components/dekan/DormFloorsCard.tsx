@@ -1,14 +1,16 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Building2, Check, Loader2, Plus, X } from 'lucide-react'
+import { Building2, Check, Loader2, Plus, Star, Unlink, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { dekanUI } from '@/lib/dekan-ui'
 import { permitFacultyLabel } from '@/lib/faculties'
 import {
   resolveFloorClaim,
+  setPrimaryDorm,
   setUpDorm,
+  unlinkDorm,
   withdrawFloorClaims,
 } from '@/features/dorms/client/api'
 import type { DekanDorm, DormFloorState } from '@/features/dorms/types'
@@ -28,9 +30,17 @@ const STATE_META: Record<
 export default function DormFloorsCard({
   dorm,
   onChange,
+  onDormsChange,
+  showBuildingControls = false,
 }: {
   dorm: DekanDorm
   onChange: (dorm: DekanDorm) => void
+  /** Only needed when `showBuildingControls` — "make primary" / "unlink"
+   *  touch every one of the faculty's buildings, not just this card's. */
+  onDormsChange?: (dorms: DekanDorm[]) => void
+  /** Show the "asosiy qilib belgilash" / "bog'lanishni uzish" row — only
+   *  meaningful once the faculty holds more than one building. */
+  showBuildingControls?: boolean
 }) {
   const isLight = useThemeStore((s) => s.theme === 'light')
   const ui = dekanUI(isLight)
@@ -39,6 +49,7 @@ export default function DormFloorsCard({
   const [picked, setPicked] = useState<Set<number>>(new Set())
   const [busyFloor, setBusyFloor] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  const [buildingBusy, setBuildingBusy] = useState(false)
 
   const mineFloors = useMemo(
     () => dorm.floors.filter((f) => f.state === 'mine' || f.state === 'mine_pending').map((f) => f.floor),
@@ -63,6 +74,12 @@ export default function DormFloorsCard({
       const res = await setUpDorm({
         number: dorm.number,
         floors: [...new Set([...mineFloors, ...picked])].sort((a, b) => a - b),
+        // Re-claiming floors in a building we ALREADY hold: for the primary
+        // card this must stay the plain (non-additional) path — additional
+        // would upsert is_primary:false onto our only primary row. For a
+        // secondary building it must be additional, or setUp would read it
+        // as "move to this dorm" and try to unlink the real primary.
+        additional: !dorm.isPrimary,
       })
       if (res.dorm) onChange(res.dorm)
       toast.success(
@@ -82,7 +99,7 @@ export default function DormFloorsCard({
   const withdraw = async (floor: number) => {
     setBusyFloor(floor)
     try {
-      const { dorm: next } = await withdrawFloorClaims([floor])
+      const { dorm: next } = await withdrawFloorClaims([floor], dorm.dormId)
       if (next) onChange(next)
       toast.success(`${floor}-qavat taklifi bekor qilindi`)
     } catch (e) {
@@ -95,7 +112,7 @@ export default function DormFloorsCard({
   const resolve = async (floor: number, accept: boolean) => {
     setBusyFloor(floor)
     try {
-      const { dorm: next } = await resolveFloorClaim(floor, accept)
+      const { dorm: next } = await resolveFloorClaim(floor, accept, dorm.dormId)
       if (next) onChange(next)
       toast.success(accept ? `${floor}-qavat tasdiqlandi` : `${floor}-qavat rad etildi`)
     } catch (e) {
@@ -105,21 +122,74 @@ export default function DormFloorsCard({
     }
   }
 
+  const makePrimary = async () => {
+    setBuildingBusy(true)
+    try {
+      const { dorms } = await setPrimaryDorm(dorm.dormId)
+      onDormsChange?.(dorms)
+      toast.success(`${dorm.number}-yotoqxona asosiy qilib belgilandi`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Bajarib bo'lmadi")
+    } finally {
+      setBuildingBusy(false)
+    }
+  }
+
+  const unlink = async () => {
+    setBuildingBusy(true)
+    try {
+      const { dorms } = await unlinkDorm(dorm.dormId)
+      onDormsChange?.(dorms)
+      toast.success(`${dorm.number}-yotoqxona bilan bog‘lanish uzildi`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Bajarib bo'lmadi")
+    } finally {
+      setBuildingBusy(false)
+    }
+  }
+
   return (
     <div className={`rounded-2xl border p-5 ${ui.card}`}>
-      <div className="flex items-start gap-3">
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${ui.accentTile}`}>
-          <Building2 size={18} strokeWidth={2.2} />
-        </span>
-        <div className="min-w-0">
-          <h3 className={`text-sm font-bold tracking-tight ${ui.strong}`}>Yotoqxona va qavatlar</h3>
-          <p className={`mt-0.5 text-[11px] ${ui.muted}`}>
-            {dorm.number}-yotoqxona
-            {dorm.coFaculties.length > 0 && (
-              <> &middot; birga: {dorm.coFaculties.map((f) => permitFacultyLabel(f) || f).join(', ')}</>
-            )}
-          </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${ui.accentTile}`}>
+            <Building2 size={18} strokeWidth={2.2} />
+          </span>
+          <div className="min-w-0">
+            <h3 className={`flex items-center gap-1.5 text-sm font-bold tracking-tight ${ui.strong}`}>
+              {dorm.number}-yotoqxona
+              {dorm.isPrimary && showBuildingControls && (
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${isLight ? 'bg-indigo-50 text-indigo-700' : 'bg-indigo-500/15 text-indigo-300'}`}>
+                  <Star size={9} className="fill-current" /> Asosiy
+                </span>
+              )}
+            </h3>
+            <p className={`mt-0.5 text-[11px] ${ui.muted}`}>
+              Yotoqxona va qavatlar
+              {dorm.coFaculties.length > 0 && (
+                <> &middot; birga: {dorm.coFaculties.map((f) => permitFacultyLabel(f) || f).join(', ')}</>
+              )}
+            </p>
+          </div>
         </div>
+        {showBuildingControls && !dorm.isPrimary && (
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <button
+              onClick={makePrimary}
+              disabled={buildingBusy}
+              className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.btnGhost}`}
+            >
+              <Star size={11} /> Asosiy qilish
+            </button>
+            <button
+              onClick={unlink}
+              disabled={buildingBusy}
+              className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${isLight ? 'border-rose-200 text-rose-600 hover:bg-rose-50' : 'border-rose-500/25 text-rose-400 hover:bg-rose-500/10'}`}
+            >
+              <Unlink size={11} /> Uzish
+            </button>
+          </div>
+        )}
       </div>
 
       {/* incoming claims */}

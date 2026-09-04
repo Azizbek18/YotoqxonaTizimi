@@ -126,3 +126,96 @@ describe('createDormService.resolve', () => {
     await expect(createDormService(fakeRepo({}, rows)).resolve(amit, 1, true)).rejects.toThrow(/taklif yo/)
   })
 })
+
+// A faculty with a second building (202609300000 many-to-many + the
+// 202609300001 RPC fix) — the `additional` setup path, multi-dorm listing,
+// and switching/unlinking. All of this is additive; every test above must
+// keep passing unchanged (single-dorm faculties never hit these branches).
+describe('createDormService — a faculty with more than one building', () => {
+  it('setUp({additional:true}) links a second building WITHOUT touching the first', async () => {
+    const repo = fakeRepo({
+      facultyDormId: vi.fn(async () => 'd1'), // already has a primary
+      findDormByNumber: vi.fn(async () => ({ id: 'd2', number: '9', name: '', floor_count: 5 })),
+    })
+    await createDormService(repo).setUp(amit, { number: '9', floors: [1], additional: true })
+    expect(repo.linkFaculty).toHaveBeenCalledWith('amit', 'd2', { primary: false })
+    expect(repo.unlinkFaculty).not.toHaveBeenCalled()
+    expect(repo.withdrawFloors).not.toHaveBeenCalled()
+    // additional never repoints the dekan's own "current building" pointer
+    expect(repo.setStaffDorm).not.toHaveBeenCalled()
+  })
+
+  it('setUp({additional:true}) links as PRIMARY when it is the faculty\'s first dorm', async () => {
+    const repo = fakeRepo({
+      facultyDormId: vi.fn(async () => null),
+      findDormByNumber: vi.fn(async () => ({ id: 'd1', number: '3', name: '', floor_count: 5 })),
+    })
+    await createDormService(repo).setUp(amit, { number: '3', floors: [], additional: true })
+    expect(repo.linkFaculty).toHaveBeenCalledWith('amit', 'd1', { primary: true })
+  })
+
+  it('listDekanDorms returns every linked building, primary-first, tagged isPrimary', async () => {
+    const repo = fakeRepo({
+      facultyDormIds: vi.fn(async () => ['d1', 'd2']),
+      facultyDormId: vi.fn(async () => 'd1'),
+      getDorm: vi.fn(async (id: string) =>
+        id === 'd1' ? DORM : { ...DORM, id: 'd2', number: '9' },
+      ),
+    })
+    const dorms = await createDormService(repo).listDekanDorms(amit)
+    expect(dorms.map((d) => [d.dormId, d.isPrimary])).toEqual([
+      ['d1', true],
+      ['d2', false],
+    ])
+  })
+
+  it('resolve/withdraw/patchOwnDorm reject a dormId the faculty does not hold', async () => {
+    const repo = fakeRepo({ facultyDormIds: vi.fn(async () => ['d1']) })
+    const service = createDormService(repo)
+    await expect(service.resolve(amit, 1, true, 'not-mine')).rejects.toThrow(/tegishli emas/)
+    await expect(service.withdraw(amit, [1], 'not-mine')).rejects.toThrow(/tegishli emas/)
+    await expect(service.patchOwnDorm(amit, {}, 'not-mine')).rejects.toThrow(/tegishli emas/)
+  })
+
+  it('setPrimary promotes a held building via the demote-then-promote RPC path', async () => {
+    const repo = fakeRepo({
+      facultyDormIds: vi.fn(async () => ['d1', 'd2']),
+      facultyDormId: vi.fn(async () => 'd1'),
+      getDorm: vi.fn(async (id: string) => ({ ...DORM, id, number: id })),
+    })
+    await createDormService(repo).setPrimary(amit, 'd2')
+    expect(repo.linkFaculty).toHaveBeenCalledWith('amit', 'd2', { primary: true })
+  })
+
+  it('unlinkDorm refuses the faculty\'s only building', async () => {
+    const repo = fakeRepo({ facultyDormIds: vi.fn(async () => ['d1']) })
+    await expect(createDormService(repo).unlinkDorm(amit, 'd1')).rejects.toThrow(/yagona/)
+  })
+
+  it('unlinkDorm refuses the primary building', async () => {
+    const repo = fakeRepo({ facultyDormIds: vi.fn(async () => ['d1', 'd2']), facultyDormId: vi.fn(async () => 'd1') })
+    await expect(createDormService(repo).unlinkDorm(amit, 'd1')).rejects.toThrow(/Asosiy/)
+  })
+
+  it('unlinkDorm refuses a building that still has residents', async () => {
+    const repo = fakeRepo({
+      facultyDormIds: vi.fn(async () => ['d1', 'd2']),
+      facultyDormId: vi.fn(async () => 'd1'),
+      facultyResidentCount: vi.fn(async () => 2),
+    })
+    await expect(createDormService(repo).unlinkDorm(amit, 'd2')).rejects.toThrow(/talabalar bor/)
+    expect(repo.facultyResidentCount).toHaveBeenCalledWith('amit', 'd2')
+  })
+
+  it('unlinkDorm drops a clear, non-primary, non-last building', async () => {
+    const repo = fakeRepo({
+      facultyDormIds: vi.fn(async () => ['d1', 'd2']),
+      facultyDormId: vi.fn(async () => 'd1'),
+      facultyResidentCount: vi.fn(async () => 0),
+      getDorm: vi.fn(async (id: string) => ({ ...DORM, id, number: id })),
+    })
+    await createDormService(repo).unlinkDorm(amit, 'd2')
+    expect(repo.withdrawFloors).toHaveBeenCalledWith('d2', 'amit', [])
+    expect(repo.unlinkFaculty).toHaveBeenCalledWith('amit', 'd2')
+  })
+})

@@ -16,6 +16,7 @@ import type { AppSettings } from '@/features/app-settings/types'
 import { fetchDekanDorm } from '@/features/dorms/client/api'
 import type { DekanDorm } from '@/features/dorms/types'
 import DormFloorsCard from '@/components/dekan/DormFloorsCard'
+import AddDormCard from '@/components/dekan/AddDormCard'
 import FloorManagerCard from '@/components/dekan/FloorManagerCard'
 import AttendanceSettingsCard from '@/components/dekan/AttendanceSettingsCard'
 import DekanSignatureCard from '@/components/dekan/DekanSignatureCard'
@@ -38,7 +39,7 @@ export default function DekanSozlamalarPage() {
 
     const [settings, setSettings] = useState<AppSettings | null>(null)
     const [savedSettings, setSavedSettings] = useState<AppSettings | null>(null)
-    const [dorm, setDorm] = useState<DekanDorm | null>(null)
+    const [dorms, setDorms] = useState<DekanDorm[]>([])
     const [loading, setLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
     const [saving, setSaving] = useState(false)
@@ -71,8 +72,15 @@ export default function DekanSozlamalarPage() {
 
     useEffect(() => {
         fetchDekanDorm()
-            .then(({ dorm }) => setDorm(dorm))
-            .catch(() => setDorm(null))
+            .then(({ dorms }) => setDorms(dorms))
+            .catch(() => setDorms([]))
+    }, [])
+
+    // Replace one dorm entry in place (by dormId) — used by the per-building
+    // cards' onChange (floor claims / attendance settings only touch their
+    // own building).
+    const updateOneDorm = useCallback((next: DekanDorm) => {
+        setDorms((prev) => prev.map((d) => (d.dormId === next.dormId ? next : d)))
     }, [])
 
     useEffect(() => {
@@ -213,15 +221,25 @@ export default function DekanSozlamalarPage() {
             ) : (
                 <>
                     <div className="space-y-6">
-                        {dorm && (
-                            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-                                <DormFloorsCard dorm={dorm} onChange={setDorm} />
-                            </motion.div>
-                        )}
+                        {dorms.map((d, i) => (
+                            <div key={d.dormId} className="space-y-6">
+                                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                                    <DormFloorsCard
+                                        dorm={d}
+                                        onChange={updateOneDorm}
+                                        onDormsChange={setDorms}
+                                        showBuildingControls={dorms.length > 1}
+                                    />
+                                </motion.div>
+                                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 + 0.03 }}>
+                                    <AttendanceSettingsCard dorm={d} onChange={updateOneDorm} />
+                                </motion.div>
+                            </div>
+                        ))}
 
-                        {dorm && (
-                            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}>
-                                <AttendanceSettingsCard dorm={dorm} onChange={setDorm} />
+                        {dorms.length > 0 && (
+                            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: dorms.length * 0.03 }}>
+                                <AddDormCard onAdded={(d) => setDorms((prev) => [...prev, d])} />
                             </motion.div>
                         )}
 

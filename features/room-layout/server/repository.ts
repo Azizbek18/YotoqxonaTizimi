@@ -81,21 +81,20 @@ export function createRoomLayoutRepository() {
     // guards it too, but we want the preview/summary to be accurate first).
     async occupiedRoomNumbers(faculty: string): Promise<Set<string>> {
       const scope = await scopeFor(faculty)
-      const dormOr = scope.dormId ? `dorm_id.eq.${scope.dormId},dorm_id.is.null` : null
 
       let usersQuery = supabase
         .from('users')
         .select('room_number')
         .eq('role', 'talaba')
         .not('room_number', 'is', null)
-      if (dormOr) usersQuery = usersQuery.or(dormOr)
+      if (scope.dormId) usersQuery = usersQuery.eq('dorm_id', scope.dormId)
 
       let permitsQuery = supabase
         .from('permit_requests')
         .select('room_number')
         .eq('status', 'approved')
         .not('room_number', 'is', null)
-      if (dormOr) permitsQuery = permitsQuery.or(dormOr)
+      if (scope.dormId) permitsQuery = permitsQuery.eq('dorm_id', scope.dormId)
 
       const [{ data: users }, { data: permits }] = await Promise.all([usersQuery, permitsQuery])
       const occupied = new Set<string>()
@@ -225,8 +224,9 @@ export function createRoomLayoutRepository() {
     },
 
     // Denormalised users.assigned_floor follows the physical floor. Scoped
-    // to this dorm's rows (room numbers are only unique per dorm now); a
-    // legacy resident with no dorm_id yet is still updated.
+    // strictly to this dorm's residents — room numbers are only unique per
+    // dorm, so a NULL-/other-dorm resident in the same-numbered room must not
+    // have their floor stomped by this dorm's layout save.
     async syncAssignedFloors(dormId: string | null, floorNumber: number, roomNumbers: string[]) {
       if (roomNumbers.length === 0) return
       let query = supabase
@@ -234,7 +234,7 @@ export function createRoomLayoutRepository() {
         .update({ assigned_floor: floorNumber })
         .eq('role', 'talaba')
         .in('room_number', roomNumbers)
-      if (dormId) query = query.or(`dorm_id.eq.${dormId},dorm_id.is.null`)
+      if (dormId) query = query.eq('dorm_id', dormId)
       const { error } = await query
       if (error) throw error
     },

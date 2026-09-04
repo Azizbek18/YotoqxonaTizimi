@@ -17,6 +17,7 @@ import {
 import { cyrillicToLatin } from '@/lib/transliterate'
 import { writeAuditLog } from '@/lib/audit-log'
 import { extractFloor } from '@/lib/floor'
+import { createDormRepository } from '@/features/dorms/server/repository'
 import { createAuthUserSafely, deleteAuthUserSafely, updateAuthUserPasswordSafely } from '@/lib/supabase-admin-auth'
 
 function text(body: Record<string, unknown>, key: string, maxLength = 200) {
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
     const supabase = getServiceSupabase()
     let permitQuery = supabase
       .from('permit_requests')
-      .select('email, full_name, gender, faculty, direction, course, room_number, status, origin_country, origin_region, study_type, application_type')
+      .select('email, full_name, gender, faculty, direction, course, room_number, dorm_id, status, origin_country, origin_region, study_type, application_type')
       .eq('passport_series', passport)
       .eq('email', email)
       .eq('application_type', applicationType)
@@ -213,13 +214,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // The permit carries the dorm the dekan assigned into. Fall back to the
+    // faculty's dorm if an old permit predates the dorm column — a roomed
+    // student must always end up with a dorm_id (enforce_dorm_id_when_roomed).
+    let dormId: string | null = permit.dorm_id ?? null
     let assignedFloor: number | null = null
     if (permit.room_number) {
-      const { data: layoutRow } = await supabase
+      if (!dormId) {
+        dormId = await createDormRepository().facultyDormId(permit.faculty)
+      }
+      let layoutQuery = supabase
         .from('floor_room_layout')
         .select('floor_number')
         .eq('room_number', permit.room_number)
-        .maybeSingle()
+      if (dormId) layoutQuery = layoutQuery.eq('dorm_id', dormId)
+      const { data: layoutRow } = await layoutQuery.maybeSingle()
       assignedFloor = layoutRow?.floor_number ?? extractFloor(permit.room_number)
     }
 
@@ -254,6 +263,7 @@ export async function POST(request: NextRequest) {
       mother_workplace: text(body, 'mother_workplace', 200) || null,
       mother_phone: text(body, 'mother_phone', 32) || null,
       room_number: permit.room_number,
+      dorm_id: permit.room_number ? dormId : null,
       assigned_floor: assignedFloor,
       entry_date: entryDate,
       role: 'talaba',

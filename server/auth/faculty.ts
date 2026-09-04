@@ -107,6 +107,7 @@ export async function staffDormFaculties(
       .from('faculty_dorm')
       .select('dorm_id')
       .eq('faculty', fallback)
+      .eq('is_primary', true)
       .maybeSingle()
     dormId = link?.dorm_id ?? null
   }

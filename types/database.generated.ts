@@ -389,6 +389,7 @@ export interface Database {
       faculty_dorm: Table<{
         faculty: string
         dorm_id: string
+        is_primary: boolean
         created_at: string
       }>
       dorm_floor: Table<{
@@ -500,6 +501,11 @@ export interface Database {
       dorm_withdraw_floors: {
         Args: { p_dorm_id: string; p_faculty: string; p_floors: number[] }
         Returns: Json
+      }
+      // Flip which of a faculty's dorms is primary (migration 202609300000).
+      set_primary_dorm: {
+        Args: { p_faculty: string; p_dorm_id: string }
+        Returns: void
       }
       submit_payment_batch_atomic: {
         Args: {

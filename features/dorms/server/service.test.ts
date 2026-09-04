@@ -11,10 +11,12 @@ const DORM: DormDetailRow = {
 function fakeRepo(overrides: Partial<DormRepository> = {}, floors: DormFloorRow[] = []) {
   return {
     facultyDormId: vi.fn(async () => 'd1'),
+    facultyDormIds: vi.fn(async () => ['d1']),
     getDorm: vi.fn(async () => DORM),
     findDormByNumber: vi.fn(async () => DORM),
     createDorm: vi.fn(async () => DORM),
     linkFaculty: vi.fn(async () => undefined),
+    unlinkFaculty: vi.fn(async () => undefined),
     setStaffDorm: vi.fn(async () => undefined),
     listFloors: vi.fn(async () => floors),
     facultyResidentCount: vi.fn(async () => 0),
@@ -81,6 +83,17 @@ describe('createDormService.setUp', () => {
       facultyResidentCount: vi.fn(async () => 3),
     })
     await expect(createDormService(repo).setUp(amit, { number: '9', floors: [1] })).rejects.toThrow(/superadmin/i)
+  })
+
+  it('drops the old link when a resident-free faculty moves buildings', async () => {
+    const repo = fakeRepo({
+      facultyDormId: vi.fn(async () => 'd-old'),
+      facultyResidentCount: vi.fn(async () => 0),
+    })
+    await createDormService(repo).setUp(amit, { number: '9', floors: [1] })
+    expect(repo.withdrawFloors).toHaveBeenCalledWith('d-old', 'amit', [])
+    expect(repo.unlinkFaculty).toHaveBeenCalledWith('amit', 'd-old')
+    expect(repo.linkFaculty).toHaveBeenCalledWith('amit', 'd1')
   })
 
   it('rejects a bad dorm number', async () => {

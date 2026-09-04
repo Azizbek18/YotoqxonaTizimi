@@ -78,6 +78,7 @@ export function createAppSettingsRepository() {
       .from('faculty_dorm')
       .select('dorm_id')
       .eq('faculty', faculty)
+      .eq('is_primary', true)
       .maybeSingle()
     if (error) throw error
     return data?.dorm_id ?? null

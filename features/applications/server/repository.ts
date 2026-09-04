@@ -21,7 +21,7 @@ export function createApplicationRepository() {
     async ttjNumberForFaculty(faculty: string): Promise<string | null> {
       if (!faculty) return null
       const { data: link } = await supabase
-        .from('faculty_dorm').select('dorm_id').eq('faculty', faculty).maybeSingle()
+        .from('faculty_dorm').select('dorm_id').eq('faculty', faculty).eq('is_primary', true).maybeSingle()
       if (!link?.dorm_id) return null
       const { data: dorm } = await supabase
         .from('dorms').select('ttj_name, number').eq('id', link.dorm_id).maybeSingle()

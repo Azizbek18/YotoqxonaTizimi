@@ -184,6 +184,7 @@ export function createDormService(repository: DormRepository = createDormReposit
           )
         }
         await repository.withdrawFloors(currentDormId, staff.faculty, [])
+        await repository.unlinkFaculty(staff.faculty, currentDormId)
       }
 
       await repository.linkFaculty(staff.faculty, dorm.id)

@@ -50,6 +50,11 @@ export type DekanDorm = {
   /** Floors another faculty proposed that I must confirm or reject. */
   incoming: IncomingClaim[]
   attendance: DormAttendanceConfig
+  /** Whether this is my faculty's primary building — the one every
+   *  "which dorm?" lookup that can't name one resolves to (many-to-many,
+   *  202609300000). A faculty with one building always has isPrimary: true
+   *  here; this only matters once a second building exists. */
+  isPrimary: boolean
 }
 
 /** What the onboarding floor-picker needs before the dekan commits. */
@@ -97,4 +102,10 @@ export type DormSetupInput = {
   /** Floors this dekan claims. Empty = claim every floor (auto-confirms
    *  only if the faculty is alone in the building). */
   floors: number[]
+  /** True: claim this building ALONGSIDE the faculty's existing one(s) —
+   *  never unlinks anything. False/omitted: the original single-dorm
+   *  behaviour (first-time setup links this as primary; naming a different
+   *  building than the current one MOVES to it, refused once residents
+   *  exist). */
+  additional?: boolean
 }

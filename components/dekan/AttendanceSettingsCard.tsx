@@ -64,14 +64,17 @@ export default function AttendanceSettingsCard({
     if (error) { toast.error(error); return }
     setSaving(true)
     try {
-      const { dorm: updated } = await saveDormAttendanceSettings({
-        latitude: latNum,
-        longitude: lngNum,
-        checkinRadiusM: radiusNum,
-        attendanceEnabled: enabled,
-        attendanceOpenTime: openTime,
-        attendanceCloseTime: closeTime,
-      })
+      const { dorm: updated } = await saveDormAttendanceSettings(
+        {
+          latitude: latNum,
+          longitude: lngNum,
+          checkinRadiusM: radiusNum,
+          attendanceEnabled: enabled,
+          attendanceOpenTime: openTime,
+          attendanceCloseTime: closeTime,
+        },
+        dorm.dormId,
+      )
       if (updated) onChange(updated)
       toast.success('Yo‘qlama sozlamalari saqlandi')
     } catch (err) {

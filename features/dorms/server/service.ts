@@ -29,7 +29,7 @@ function parseSetup(input: unknown): DormSetupInput {
     throw new ApiError(400, 'Xona sig‘imi noto‘g‘ri')
   }
 
-  return { number, floors, floorCount, roomCapacity }
+  return { number, floors, floorCount, roomCapacity, additional: Boolean(s.additional) }
 }
 
 function floorState(
@@ -48,8 +48,28 @@ function floorState(
 }
 
 export function createDormService(repository: DormRepository = createDormRepository()) {
-  async function buildDekanDorm(staff: DekanStaffCtx): Promise<DekanDorm | null> {
-    const dormId = await repository.facultyDormId(staff.faculty)
+  // Resolve which dorm a call operates on: an explicit `dormId` (only if the
+  // faculty actually holds it — never trust a caller-supplied id blindly),
+  // else the faculty's primary. Every dekan.dorm entry point that used to
+  // hard-resolve `facultyDormId` now goes through this, so a faculty with
+  // one building behaves exactly as before.
+  async function resolveDormId(staff: DekanStaffCtx, dormId?: string): Promise<string | null> {
+    if (!dormId) return repository.facultyDormId(staff.faculty)
+    const mine = await repository.facultyDormIds(staff.faculty)
+    if (!mine.includes(dormId)) throw new ApiError(403, 'Bu yotoqxona sizga tegishli emas')
+    return dormId
+  }
+
+  // Builds the DekanDorm DTO for an ALREADY-TRUSTED dormId (the caller
+  // either resolved it via resolveDormId already, or just linked/fetched it
+  // itself in this same request) — no ownership check here, so it never
+  // races its own just-completed write. `dormIdOverride` omitted resolves
+  // primary, same as before.
+  async function buildDekanDorm(staff: DekanStaffCtx, dormIdOverride?: string): Promise<DekanDorm | null> {
+    const [dormId, primaryId] = await Promise.all([
+      dormIdOverride ? Promise.resolve<string | null>(dormIdOverride) : repository.facultyDormId(staff.faculty),
+      repository.facultyDormId(staff.faculty),
+    ])
     if (!dormId) return null
     const dorm = await repository.getDorm(dormId)
     if (!dorm) return null
@@ -93,6 +113,7 @@ export function createDormService(repository: DormRepository = createDormReposit
       floors,
       coFaculties,
       incoming,
+      isPrimary: dormId === primaryId,
       attendance: {
         latitude: dorm.latitude,
         longitude: dorm.longitude,
@@ -105,9 +126,21 @@ export function createDormService(repository: DormRepository = createDormReposit
   }
 
   const service = {
-    /** The dekan's dorm + per-floor state, or null if not set up yet. */
-    getDekanDorm(staff: DekanStaffCtx) {
-      return buildDekanDorm(staff)
+    /** The dekan's dorm + per-floor state, or null if not set up yet.
+     *  `dormId` picks a specific building (must be one of the faculty's own);
+     *  omitted resolves to primary — unchanged single-dorm behaviour. */
+    async getDekanDorm(staff: DekanStaffCtx, dormId?: string) {
+      return buildDekanDorm(staff, await resolveDormId(staff, dormId) ?? undefined)
+    },
+
+    /** Every building this faculty holds, primary first — for the "manage
+     *  more than one building" view. A single-dorm faculty gets a 1-item
+     *  array with isPrimary: true, so this is a strict superset of
+     *  getDekanDorm's info. */
+    async listDekanDorms(staff: DekanStaffCtx): Promise<DekanDorm[]> {
+      const ids = await repository.facultyDormIds(staff.faculty)
+      const dorms = await Promise.all(ids.map((id) => buildDekanDorm(staff, id)))
+      return dorms.filter((d): d is DekanDorm => d !== null)
     },
 
     /** Preview a dorm by number so the onboarding picker can show which
@@ -174,38 +207,49 @@ export function createDormService(repository: DormRepository = createDormReposit
         })
       }
 
-      if (currentDormId && currentDormId !== dorm.id) {
-        // Moving buildings is a superadmin operation once residents exist.
-        const residents = await repository.facultyResidentCount(staff.faculty)
-        if (residents > 0) {
-          throw new ApiError(
-            409,
-            "Fakultetда xonaga joylashgan talabalar bor — yotoqxonani almashtirish uchun superadminga murojaat qiling.",
-          )
+      if (parsed.additional) {
+        // Claim an ADDITIONAL building alongside the faculty's existing
+        // one(s) — never unlinks anything. Non-primary, unless this happens
+        // to be the faculty's very first dorm (no primary set yet, so
+        // "additional" degrades to the normal first-time setup).
+        // `linkFaculty` upserts, so re-running this on a dorm the faculty
+        // already holds is a harmless no-op that just adjusts floors below.
+        await repository.linkFaculty(staff.faculty, dorm.id, { primary: !currentDormId })
+      } else {
+        if (currentDormId && currentDormId !== dorm.id) {
+          // Moving the PRIMARY building is a superadmin operation once
+          // residents exist.
+          const residents = await repository.facultyResidentCount(staff.faculty)
+          if (residents > 0) {
+            throw new ApiError(
+              409,
+              "Fakultetда xonaga joylashgan talabalar bor — yotoqxonani almashtirish uchun superadminga murojaat qiling.",
+            )
+          }
+          await repository.withdrawFloors(currentDormId, staff.faculty, [])
+          await repository.unlinkFaculty(staff.faculty, currentDormId)
         }
-        await repository.withdrawFloors(currentDormId, staff.faculty, [])
-        await repository.unlinkFaculty(staff.faculty, currentDormId)
+        await repository.linkFaculty(staff.faculty, dorm.id)
+        await repository.setStaffDorm(staff.id, dorm.id)
       }
-
-      await repository.linkFaculty(staff.faculty, dorm.id)
-      await repository.setStaffDorm(staff.id, dorm.id)
 
       const floors = parsed.floors.length
         ? parsed.floors.filter((f) => f <= dorm!.floor_count)
         : Array.from({ length: dorm.floor_count }, (_, i) => i + 1)
 
       const result = await repository.claimFloors(dorm.id, staff.faculty, floors, staff.id)
-      const state = await buildDekanDorm(staff)
+      const state = await buildDekanDorm(staff, dorm.id)
       return { ...result, dorm: state }
     },
 
-    /** The co-dekan confirms or rejects an incoming floor claim. */
-    async resolve(staff: DekanStaffCtx, floor: number, accept: boolean) {
+    /** The co-dekan confirms or rejects an incoming floor claim. `dormId`
+     *  picks which of the faculty's buildings; omitted resolves to primary. */
+    async resolve(staff: DekanStaffCtx, floor: number, accept: boolean, dormId?: string) {
       if (!Number.isInteger(floor) || floor < 1) throw new ApiError(400, 'Qavat noto‘g‘ri')
-      const dormId = await repository.facultyDormId(staff.faculty)
-      if (!dormId) throw new ApiError(400, 'Sizga yotoqxona biriktirilmagan')
+      const resolvedDormId = await resolveDormId(staff, dormId)
+      if (!resolvedDormId) throw new ApiError(400, 'Sizga yotoqxona biriktirilmagan')
 
-      const rows = await repository.listFloors(dormId)
+      const rows = await repository.listFloors(resolvedDormId)
       const row = rows.find((r) => r.floor_number === floor)
       if (!row || !row.pending_faculty || row.pending_faculty === staff.faculty) {
         throw new ApiError(404, 'Bu qavatда kutilayotgan taklif yo‘q')
@@ -214,20 +258,50 @@ export function createDormService(repository: DormRepository = createDormReposit
         throw new ApiError(403, 'Bu taklifni tasdiqlash sizga tegishli emas')
       }
 
-      const outcome = await repository.resolveFloor(dormId, floor, staff.id, accept)
-      const state = await buildDekanDorm(staff)
+      const outcome = await repository.resolveFloor(resolvedDormId, floor, staff.id, accept)
+      const state = await buildDekanDorm(staff, resolvedDormId)
       return { ...outcome, dorm: state }
     },
 
-    /** The proposer cancels their own pending claim(s). */
-    async withdraw(staff: DekanStaffCtx, floors: number[]) {
-      const dormId = await repository.facultyDormId(staff.faculty)
-      if (!dormId) throw new ApiError(400, 'Sizga yotoqxona biriktirilmagan')
+    /** The proposer cancels their own pending claim(s) in one building. */
+    async withdraw(staff: DekanStaffCtx, floors: number[], dormId?: string) {
+      const resolvedDormId = await resolveDormId(staff, dormId)
+      if (!resolvedDormId) throw new ApiError(400, 'Sizga yotoqxona biriktirilmagan')
       const clean = Array.isArray(floors)
         ? floors.map(Number).filter((n) => Number.isInteger(n) && n >= 1)
         : []
-      await repository.withdrawFloors(dormId, staff.faculty, clean)
-      return buildDekanDorm(staff)
+      await repository.withdrawFloors(resolvedDormId, staff.faculty, clean)
+      return buildDekanDorm(staff, resolvedDormId)
+    },
+
+    /** Make one of the faculty's already-linked buildings the primary —
+     *  the one every faculty-only lookup (register, no-dormId room RPCs,
+     *  app-settings) resolves to. */
+    async setPrimary(staff: DekanStaffCtx, dormId: string) {
+      const resolvedDormId = await resolveDormId(staff, dormId) // throws 403 if not ours
+      await repository.linkFaculty(staff.faculty, resolvedDormId!, { primary: true })
+      return service.listDekanDorms(staff)
+    },
+
+    /** Drop a faculty↔building link entirely — only once it's empty and not
+     *  the faculty's last (or primary) one. */
+    async unlinkDorm(staff: DekanStaffCtx, dormId: string) {
+      const resolvedDormId = await resolveDormId(staff, dormId) // throws 403 if not ours
+      const mine = await repository.facultyDormIds(staff.faculty)
+      if (mine.length <= 1) {
+        throw new ApiError(409, 'Fakultetning yagona yotoqxonasi — avval boshqasini bog‘lang')
+      }
+      const primaryId = await repository.facultyDormId(staff.faculty)
+      if (resolvedDormId === primaryId) {
+        throw new ApiError(409, 'Asosiy yotoqxonani uzib bo‘lmaydi — avval boshqasini asosiy qiling')
+      }
+      const residents = await repository.facultyResidentCount(staff.faculty, resolvedDormId!)
+      if (residents > 0) {
+        throw new ApiError(409, 'Bu yotoqxonada hali talabalar bor — avval ularni ko‘chiring')
+      }
+      await repository.withdrawFloors(resolvedDormId!, staff.faculty, [])
+      await repository.unlinkFaculty(staff.faculty, resolvedDormId!)
+      return service.listDekanDorms(staff)
     },
 
     // ---- superadmin ----
@@ -365,12 +439,13 @@ export function createDormService(repository: DormRepository = createDormReposit
       await repository.patchDorm(dormId, patch)
     },
 
-    /** The dekan edits their own building's yo'qlama config from Sozlamalar. */
-    async patchOwnDorm(staff: DekanStaffCtx, input: unknown) {
-      const dormId = await repository.facultyDormId(staff.faculty)
-      if (!dormId) throw new ApiError(400, 'Sizga yotoqxona biriktirilmagan')
-      await service.patchSettings(dormId, input)
-      return buildDekanDorm(staff)
+    /** The dekan edits one of their buildings' yo'qlama config from
+     *  Sozlamalar. `dormId` omitted resolves to primary. */
+    async patchOwnDorm(staff: DekanStaffCtx, input: unknown, dormId?: string) {
+      const resolvedDormId = await resolveDormId(staff, dormId)
+      if (!resolvedDormId) throw new ApiError(400, 'Sizga yotoqxona biriktirilmagan')
+      await service.patchSettings(resolvedDormId, input)
+      return buildDekanDorm(staff, resolvedDormId)
     },
 
     async reassignFloor(dormId: string, floor: number, faculty: string | null) {

@@ -129,13 +129,18 @@ export function createDormRepository() {
       return (data as DormFloorRow[]) ?? []
     },
 
-    async facultyResidentCount(faculty: string): Promise<number> {
-      const { count, error } = await supabase
+    // Residents this faculty has placed — across every building it holds by
+    // default, or scoped to one `dormId` (used to check a single building is
+    // clear before unlinking it, as opposed to "is it safe to move at all").
+    async facultyResidentCount(faculty: string, dormId?: string): Promise<number> {
+      let query = supabase
         .from('users')
         .select('id', { count: 'exact', head: true })
         .eq('role', 'talaba')
         .eq('faculty', faculty)
         .not('room_number', 'is', null)
+      if (dormId) query = query.eq('dorm_id', dormId)
+      const { count, error } = await query
       if (error) throw error
       return count ?? 0
     },

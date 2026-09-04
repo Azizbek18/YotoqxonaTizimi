@@ -29,4 +29,16 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-      - run: npm audit --omit=dev --audit-level=high
+      - name: npm audit (retry on registry errors)
+        run: |
+          for attempt in 1 2 3 4; do
+            out=$(npm audit --omit=dev --audit-level=high 2>&1) && exit 0
+            echo "$out"
+            if ! echo "$out" | grep -qiE 'audit endpoint returned an error|Service Unavailable|Gateway Time-?out|Error code 5[0-9][0-9]|Internal Server Error|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up'; then
+              echo "::error::npm audit found high-severity vulnerabilities"
+              exit 1
+            fi
+            echo "::warning::npm audit registry unreachable (attempt $attempt) — retrying in $((attempt * 20))s"
+            sleep $((attempt * 20))
+          done
+          echo "::warning::npm audit skipped — registry unreachable after 4 attempts"

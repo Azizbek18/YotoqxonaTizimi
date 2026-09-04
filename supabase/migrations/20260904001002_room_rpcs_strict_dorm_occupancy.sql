@@ -3,7 +3,7 @@
 -- ==========================================================
 -- Ilgari occupancy subquerylari `(dorm_id = v_dorm_id OR dorm_id IS NULL)` edi —
 -- NULL-dorm talaba "23-xonada" har yotoqxonada band hisoblanardi va jinsi har
--- yotoqxonaning 23-xonasini qulflab qo'yardi. 202609290000 backfill'idan keyin
+-- yotoqxonaning 23-xonasini qulflab qo'yardi. 20260904000836 backfill'idan keyin
 -- xonasi bor NULL-dorm talaba qolmaydi, shuning uchun `OR ... IS NULL` ni
 -- olib tashlaymiz — hisob endi faqat berilgan yotoqxona ichida.
 --

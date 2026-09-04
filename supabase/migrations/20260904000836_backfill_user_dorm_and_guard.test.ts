@@ -2,11 +2,11 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const sql = readFileSync(
-  new URL('./202609290000_backfill_user_dorm_and_guard.sql', import.meta.url),
+  new URL('./20260904000836_backfill_user_dorm_and_guard.sql', import.meta.url),
   'utf8',
 )
 
-describe('202609290000_backfill_user_dorm_and_guard', () => {
+describe('20260904000836_backfill_user_dorm_and_guard', () => {
   it('backfills users.dorm_id from the matching permit then from faculty_dorm', () => {
     expect(sql).toContain('UPDATE public.users u')
     expect(sql).toContain('FROM public.permit_requests pr')

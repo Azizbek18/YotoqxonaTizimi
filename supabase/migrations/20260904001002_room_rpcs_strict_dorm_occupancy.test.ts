@@ -2,11 +2,11 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const sql = readFileSync(
-  new URL('./202609290001_room_rpcs_strict_dorm_occupancy.sql', import.meta.url),
+  new URL('./20260904001002_room_rpcs_strict_dorm_occupancy.sql', import.meta.url),
   'utf8',
 )
 
-describe('202609290001_room_rpcs_strict_dorm_occupancy', () => {
+describe('20260904001002_room_rpcs_strict_dorm_occupancy', () => {
   it('re-emits all four room functions', () => {
     for (const fn of [
       'assign_student_room_atomic',

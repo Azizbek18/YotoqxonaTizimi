@@ -39,6 +39,7 @@ import { Skel } from '@/components/ui/skeletons'
 import RoomLayoutGeneratorModal from '@/components/rooms/RoomLayoutGeneratorModal'
 import { compareRoomNumbers } from '@/features/room-layout/plan'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
+import { useStaffPanel } from '@/lib/hooks/useStaffPanel'
 import { computeFloorBalance, checkFloorPlacement } from '@/lib/floor-balance'
 import FloorBalanceCard from '@/components/dekan/FloorBalanceCard'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
@@ -87,6 +88,9 @@ export default function DekanXonalarMap() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
   const ui = dekanUI(isLight)
+  // The tarbiyachi panel renders this same map view-only — every
+  // assign / freeze / capacity / gender / generate control is hidden.
+  const { readOnly } = useStaffPanel()
 
   // Styling tokens
   const surfaceBg = ui.card
@@ -671,6 +675,7 @@ export default function DekanXonalarMap() {
             ))}
           </div>
 
+          {!readOnly && (
           <div className="flex shrink-0 items-center gap-2">
             <button
               onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
@@ -687,6 +692,7 @@ export default function DekanXonalarMap() {
               <Plus size={13} /> Xona qo&apos;shish
             </button>
           </div>
+          )}
         </div>
         {selectMode && (
           <p className={`text-[10px] font-medium ${textMuted}`}>
@@ -724,12 +730,14 @@ export default function DekanXonalarMap() {
                 yaratganingiz adminda ham ko&apos;rinadi.
               </p>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                {!readOnly && (
                 <button
                   onClick={() => setGeneratorOpen(true)}
                   className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.accentSolid}`}
                 >
                   <Plus size={14} /> O&apos;zingiz kiriting
                 </button>
+                )}
                 <button
                   onClick={() => { void reloadRoomFloors(); void fetchRoomsData() }}
                   className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.btnGhost}`}
@@ -752,16 +760,19 @@ export default function DekanXonalarMap() {
                       Xonalar tarxi kiritilmagan
                     </p>
                     <p className={`mt-1 text-[10px] leading-relaxed ${isLight ? 'text-amber-800' : 'text-amber-200'}`}>
-                      Quyida faqat talabasi bor {rooms.length} ta xona ko&apos;rsatilmoqda. Barcha xonalar
-                      ko&apos;rinishi va yangi talaba joylashtira olishingiz uchun tarx kiritilishi kerak.
+                      {readOnly
+                        ? `Quyida faqat talabasi bor ${rooms.length} ta xona ko'rsatilmoqda. To'liq xarita uchun dekan qavat tarxini kiritishi kerak.`
+                        : `Quyida faqat talabasi bor ${rooms.length} ta xona ko'rsatilmoqda. Barcha xonalar ko'rinishi va yangi talaba joylashtira olishingiz uchun tarx kiritilishi kerak.`}
                     </p>
                   </div>
+                  {!readOnly && (
                   <button
                     onClick={() => setGeneratorOpen(true)}
                     className={`flex shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.accentSolid}`}
                   >
                     <Plus size={14} /> O&apos;zingiz kiriting
                   </button>
+                  )}
                 </div>
               )}
 
@@ -899,7 +910,7 @@ export default function DekanXonalarMap() {
                 </div>
 
                 <div className="flex-1 min-h-0 space-y-4 overflow-y-auto custom-scrollbar pt-4 -mr-1 pr-1">
-                {selectedRoom.gender === 'mixed' || selectedRoom.frozen ? null : selectedRoom.occupants.length >= roomBeds(selectedRoom) ? (
+                {readOnly ? null : selectedRoom.gender === 'mixed' || selectedRoom.frozen ? null : selectedRoom.occupants.length >= roomBeds(selectedRoom) ? (
                   <div className={`p-2.5 rounded-lg text-center text-[10px] font-medium ${ui.inset} ${textMuted}`}>
                     Xona to&apos;la — yangi talaba joylashtirib bo&apos;lmaydi
                   </div>
@@ -922,6 +933,7 @@ export default function DekanXonalarMap() {
                         {selectedRoom.frozenReason || "Ta'mirlash tufayli vaqtincha yopilgan."} Yangi talaba
                         joylashtirib bo&apos;lmaydi — mavjud talabalar o&apos;z joyida qoladi.
                       </p>
+                      {!readOnly && (
                       <button
                         onClick={handleUnfreezeRoom}
                         disabled={freezingRoom}
@@ -929,6 +941,7 @@ export default function DekanXonalarMap() {
                       >
                         <Unlock size={12} /> {freezingRoom ? 'Bajarilmoqda...' : 'Muzlatishni bekor qilish'}
                       </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -938,7 +951,7 @@ export default function DekanXonalarMap() {
                     regardless of capacity/gender: a full or mixed room can still need
                     to go into repair. Orphan rooms (not in floor_room_layout) can't be
                     frozen from here — see the RoomData.inLayout comment. */}
-                {selectedRoom.inLayout && !selectedRoom.frozen && (
+                {!readOnly && selectedRoom.inLayout && !selectedRoom.frozen && (
                   <button
                     onClick={() => setFreezeModalOpen(true)}
                     className={`flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.btnGhost}`}
@@ -950,7 +963,7 @@ export default function DekanXonalarMap() {
                 {/* Declared room gender — set it before anyone is placed so
                     the building can be planned. A choice that clashes with a
                     student already in the room is disabled. */}
-                {selectedRoom.inLayout && (() => {
+                {!readOnly && selectedRoom.inLayout && (() => {
                   const occGenders = new Set(
                     selectedRoom.occupants.map((o) => normalizeGender(o.gender)).filter(Boolean),
                   )
@@ -1081,7 +1094,7 @@ export default function DekanXonalarMap() {
                           ) : null}
                         </div>
 
-                        {occ.id && (
+                        {!readOnly && occ.id && (
                           confirmRemoveId === occ.id ? (
                             <div className={`mt-1 flex items-center gap-2 rounded-lg border px-2.5 py-2 ${ui.dangerSoft}`}>
                               <AlertTriangle size={12} className="shrink-0" />
@@ -1144,6 +1157,11 @@ export default function DekanXonalarMap() {
                             <p className={`flex-1 text-[10px] font-bold uppercase tracking-wider ${textStrong}`}>
                               Xona sig&apos;imi
                             </p>
+                            {readOnly ? (
+                              <span className={`shrink-0 text-lg font-black tabular-nums ${isOverride ? ui.accentText : textStrong}`}>
+                                {beds} ta
+                              </span>
+                            ) : (
                             <div className="shrink-0 flex items-center gap-1.5">
                               <button
                                 type="button"
@@ -1167,12 +1185,13 @@ export default function DekanXonalarMap() {
                                 <Plus size={13} />
                               </button>
                             </div>
+                            )}
                           </div>
                           <div className="mt-2 flex items-center justify-between gap-2 pl-7">
                             <span className={`text-[10px] ${textMuted}`}>
                               {isOverride ? `Istisno · bino standarti ${defaultCapacity} ta` : 'Bino standarti bo’yicha'}
                             </span>
-                            {isOverride && (
+                            {isOverride && !readOnly && (
                               <button
                                 type="button"
                                 disabled={savingCapacity}
@@ -1220,7 +1239,7 @@ export default function DekanXonalarMap() {
 
       {/* Multi-select bulk gender bar */}
       <AnimatePresence>
-        {selectMode && selectedRoomNumbers.size > 0 && (
+        {!readOnly && selectMode && selectedRoomNumbers.size > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1270,7 +1289,7 @@ export default function DekanXonalarMap() {
 
       {/* Assign Student Modal */}
       <ConfirmModal
-        isOpen={assignModalOpen && !!selectedRoom}
+        isOpen={assignModalOpen && !!selectedRoom && !readOnly}
         title="Talaba joylashtirish"
         description={selectedRoom ? `${selectedRoom.roomNumber}-xonaga talaba tanlang` : undefined}
         onClose={() => {
@@ -1384,7 +1403,7 @@ export default function DekanXonalarMap() {
 
       {/* Freeze room modal */}
       <ConfirmModal
-        isOpen={freezeModalOpen && !!selectedRoom}
+        isOpen={freezeModalOpen && !!selectedRoom && !readOnly}
         title={selectedRoom ? `${selectedRoom.roomNumber}-xonani muzlatish` : 'Xonani muzlatish'}
         description="Ta'mirlash davomida bu xonaga yangi talaba joylashtirib bo'lmaydi. Xonadagi mavjud talabalar joyida qoladi."
         confirmText={freezingRoom ? 'Saqlanmoqda...' : 'Xonani muzlatish'}
@@ -1411,7 +1430,7 @@ export default function DekanXonalarMap() {
       </ConfirmModal>
 
       <RoomLayoutGeneratorModal
-        isOpen={generatorOpen}
+        isOpen={generatorOpen && !readOnly}
         floorCount={floorCount}
         existingRooms={layoutRooms}
         occupiedRoomNumbers={occupiedRoomNumbers}

@@ -57,6 +57,7 @@ import {
 } from '@/features/faculty-students/domain/payment-summary'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
+import { useStaffPanel } from '@/lib/hooks/useStaffPanel'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { directionLabel, directionsForFaculty, normalizeDirection } from '@/lib/directions'
 import { GENDER_OPTIONS, genderAccent, genderLabel, normalizeGender } from '@/lib/gender'
@@ -166,6 +167,9 @@ export default function DekanStudentsPage() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
   const ui = dekanUI(isLight)
+  // View-only in the tarbiyachi panel — edit / warning / blacklist /
+  // delete controls are hidden; every read-only detail tab stays.
+  const { readOnly } = useStaffPanel()
 
   const { floorOf } = useRoomFloors()
 
@@ -996,6 +1000,7 @@ export default function DekanStudentsPage() {
                   </div>
                 </div>
 
+                {!readOnly && (
                 <div className="flex w-full shrink-0 flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
                   <button
                     onClick={openEditModal}
@@ -1029,6 +1034,7 @@ export default function DekanStudentsPage() {
                     <Trash2 size={14} />
                   </button>
                 </div>
+                )}
               </div>
 
               {/* Details body */}

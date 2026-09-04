@@ -57,6 +57,27 @@ describe('ariza-tilxat pdf', () => {
     expect(bytes.length).toBeGreaterThan(3000)
   })
 
+  it('keeps the signed copy on two sheets without collapsing to the shrink floor', async () => {
+    // The stamped signatures add vertical space; the fit pass must absorb it
+    // without pushing either page off the sheet or hitting the 0.82 floor
+    // (which would mean the content genuinely overflows).
+    const doc = await generateArizaTilxatPdf({
+      ...DATA,
+      studentSignature: PNG_1PX,
+      dekanSignature: PNG_1PX,
+      dekanName: 'Aliyev Vali',
+      arizaNo: 'YT-2026-0042',
+      assignedFloor: 3,
+      assignedRoom: '305',
+      signedDate: '2026-09-01T10:00:00Z',
+    })
+    expect(doc.getNumberOfPages()).toBe(2)
+    const fit = (doc as unknown as { __fit: { p1: number; p2: number; scale: number } }).__fit
+    expect(fit.p1).toBeLessThan(277)
+    expect(fit.p2).toBeLessThan(277)
+    expect(fit.scale).toBeGreaterThan(0.83)
+  })
+
   it('stays 2 pages and fits the sheet even with a long name + long faculty', async () => {
     const doc = await generateArizaTilxatPdf({
       ...DATA,

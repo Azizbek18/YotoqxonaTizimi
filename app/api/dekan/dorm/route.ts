@@ -6,14 +6,19 @@ import { getApiError } from '@/server/http/api-error'
 
 // The dekan's view of their dorm and its floor partition. `admin` is
 // accepted for the transition (retired role, rides the dekan panel).
-async function dekanCtx(request: NextRequest): Promise<DekanStaffCtx> {
-  const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
+async function dekanCtx(
+  request: NextRequest,
+  roles: Parameters<typeof requireActiveStaff>[1] = ['dekan', 'admin'],
+): Promise<DekanStaffCtx> {
+  const { staff } = await requireActiveStaff(request, roles)
   return { id: staff.id, faculty: requirePickedFaculty(staff) }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const staff = await dekanCtx(request)
+    // A tarbiyachi views their building + floor partition read-only;
+    // setting the dorm up and resolving floor claims stays dekan/admin.
+    const staff = await dekanCtx(request, ['dekan', 'admin', 'tarbiyachi'])
     const number = request.nextUrl.searchParams.get('number')
     if (number !== null) {
       return NextResponse.json({ preview: await createDormService().preview(staff, number) })

@@ -147,7 +147,7 @@ export function createAnnouncementService(repository: AnnouncementRepository = c
       })) as AuthoredAnnouncement
     },
 
-    async updateAuthored(facultyValue: string | null, value: unknown) {
+    async updateAuthored(facultyValue: string | null, value: unknown, restrictToAuthorId?: string) {
       const faculty = facultyValue?.trim()
       if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, "So'rov noto'g'ri")
@@ -168,17 +168,17 @@ export function createAnnouncementService(repository: AnnouncementRepository = c
       }
       if (Object.keys(updates).length === 0) throw new ApiError(400, "Yangilash uchun ma'lumot yo'q")
 
-      const updated = await repository.updateByFaculty(id, faculty, updates)
+      const updated = await repository.updateByFaculty(id, faculty, updates, restrictToAuthorId)
       if (!updated) throw new ApiError(404, "E'lon topilmadi")
       return updated as AuthoredAnnouncement
     },
 
-    async removeAuthored(facultyValue: string | null, idValue: string | null) {
+    async removeAuthored(facultyValue: string | null, idValue: string | null, restrictToAuthorId?: string) {
       const faculty = facultyValue?.trim()
       if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
       const id = (idValue ?? '').trim()
       if (!id) throw new ApiError(400, "E'lon tanlanmagan")
-      const deleted = await repository.deleteByFaculty(id, faculty)
+      const deleted = await repository.deleteByFaculty(id, faculty, restrictToAuthorId)
       if (!deleted) throw new ApiError(404, "E'lon topilmadi")
       return { ok: true as const }
     },

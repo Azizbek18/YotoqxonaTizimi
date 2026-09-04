@@ -27,6 +27,14 @@ function summarise(records: Pick<AttendanceRecordRow, 'state'>[]): AttendanceSum
   return s
 }
 
+/** A plain resident may only read the open-session summary + self-check in;
+ *  the roster and the session list are staff/sardor surfaces. */
+function assertMarkerActor(actor: AttendanceActor): void {
+  if (actor.role === 'talaba') {
+    throw new ApiError(403, 'Bu amal uchun ruxsat yo‘q', 'FORBIDDEN')
+  }
+}
+
 function sessionMatchesActor(session: AttendanceSessionRow, actor: AttendanceActor): boolean {
   if (session.dorm_id !== actor.dormId) return false
   if (actor.role !== 'sardor') return true
@@ -101,6 +109,7 @@ export function createAttendanceService(
   return {
     /** Open sessions the actor can see/act on right now. */
     async activeSessions(actor: AttendanceActor) {
+      assertMarkerActor(actor)
       const sessions = (await repo.openSessions(actor.dormId)).filter((s) => sessionMatchesActor(s, actor))
       return sessions.map((s) => ({
         id: s.id,
@@ -140,6 +149,7 @@ export function createAttendanceService(
     },
 
     async roster(actor: AttendanceActor, sessionId: string): Promise<RosterView> {
+      assertMarkerActor(actor)
       const session = await repo.sessionById(sessionId)
       if (!session || !sessionMatchesActor(session, actor)) {
         throw new ApiError(404, 'Yo‘qlama sessiyasi topilmadi')

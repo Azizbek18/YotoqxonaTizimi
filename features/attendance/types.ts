@@ -1,6 +1,6 @@
 export type AttendanceState = 'present' | 'absent' | 'excused' | 'unmarked'
 export type AttendanceReason = 'unexcused' | 'excused'
-export type AttendanceActorRole = 'sardor' | 'tarbiyachi' | 'dekan'
+export type AttendanceActorRole = 'sardor' | 'tarbiyachi' | 'dekan' | 'talaba'
 
 export type AttendanceActor = {
   userId: string

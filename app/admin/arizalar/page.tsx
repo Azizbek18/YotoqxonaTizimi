@@ -9,6 +9,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
+import { useStaffPanel } from '@/lib/hooks/useStaffPanel'
 import { adminUI, adminStatusChip, type AdminStatusTone } from '@/lib/admin-ui'
 import ArizaSignatureBadge from '@/components/applications/ArizaSignatureBadge'
 
@@ -61,6 +62,9 @@ export default function AdminArizalar() {
   const isLight = theme === 'light'
 
   const ui = adminUI(isLight)
+  // In the tarbiyachi panel: approve/reject only — no severity edits, no
+  // re-opening a decided ariza, no delete.
+  const { isTarbiyachi, canDeleteArizalar } = useStaffPanel()
   const cardBg = ui.inset
   const textMuted = ui.muted
   const textStrong = ui.strong
@@ -258,13 +262,14 @@ export default function AdminArizalar() {
             onClick={() => {
               setStatusModal({ isOpen: true, request: row })
               setNewStatus(row.level)
-              setNewRealStatus(row.status || 'pending')
+              setNewRealStatus(isTarbiyachi ? 'approved' : (row.status || 'pending'))
             }}
             className={`no-shelf rounded-xl border p-2.5 transition-all active:scale-95 ${isLight ? 'border-slate-200 bg-slate-50 text-slate-500 hover:text-indigo-600 hover:border-indigo-300' : 'border-white/5 bg-white/5 text-slate-400 hover:text-indigo-300'}`}
-            title="Holat o'zgartirish"
+            title={isTarbiyachi ? 'Ko‘rib chiqish' : "Holat o'zgartirish"}
           >
             <Edit2 size={15} />
           </button>
+          {canDeleteArizalar && (
           <button
             onClick={() => handleDelete(row.id)}
             className={`no-shelf rounded-xl border p-2.5 transition-all active:scale-95 ${isLight ? 'border-slate-200 bg-slate-50 text-rose-500 hover:bg-rose-50 hover:border-rose-300' : 'border-white/5 bg-white/5 text-rose-400 hover:bg-rose-400/10'}`}
@@ -272,6 +277,7 @@ export default function AdminArizalar() {
           >
             <Trash2 size={15} />
           </button>
+          )}
         </div>
       ),
     },
@@ -484,6 +490,7 @@ export default function AdminArizalar() {
         isLoading={isUpdating}
       >
         <div className="space-y-4">
+          {!isTarbiyachi && (
           <div>
             <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>Yangi daraja:</label>
             <CustomSelect
@@ -497,13 +504,14 @@ export default function AdminArizalar() {
               className={`rounded-xl border px-4 py-2.5 text-sm ${inputBg}`}
             />
           </div>
+          )}
           <div>
             <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>Yangi holat:</label>
             <CustomSelect
               value={newRealStatus}
               onChange={(val) => setNewRealStatus(val)}
               options={[
-                { value: 'pending', label: 'Kutilmoqda' },
+                ...(isTarbiyachi ? [] : [{ value: 'pending', label: 'Kutilmoqda' }]),
                 { value: 'approved', label: 'Tasdiqlangan' },
                 { value: 'rejected', label: 'Rad etilgan' },
               ]}

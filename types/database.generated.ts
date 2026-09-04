@@ -70,6 +70,7 @@ export type StaffRow = {
   assigned_gender: string | null
   created_by: string | null
   signature_image: string | null
+  telegram_chat_id: string | null
   created_at: string
   updated_at: string
 }

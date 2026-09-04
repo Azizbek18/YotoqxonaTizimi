@@ -11,7 +11,11 @@ function errorResponse(error: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
+    // The dashboard / room map / 3D viewer all read this overview. A
+    // tarbiyachi gets the same faculty-scoped snapshot (no superadmin
+    // global branch — that only fires for role 'admin'); the PATCH that
+    // decides a permit stays dekan/admin.
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
     const service = createPermitAdminService()
     return NextResponse.json(
       staff.superadminGlobal ? await service.overviewGlobal() : await service.overview(staff.faculty),

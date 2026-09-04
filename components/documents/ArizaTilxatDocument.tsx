@@ -2,8 +2,12 @@
 // (app/imtiyozli-ariza) and the dekan's read-only viewer
 // (app/dekan/hujjat), so both sides see exactly the same document. Content
 // is reconstructed from "++TTJ larga joylashtirish ariza va tilxat.docx"
-// (UzMU's official template) with the applicant's data filling the blanks —
-// the signature/date lines stay blank on purpose, never auto-filled.
+// (UzMU's official template) with the applicant's data filling the blanks.
+// Signature / date / Ariza № / room render as blank underlines on the
+// applicant's pre-sign preview and show real values once they exist: the
+// applicant's drawn signature + name + date as soon as they sign (so the
+// dekan's viewer sees the signed copy, not a blank form), and the dekan's
+// signature + Ariza № + room once a room is assigned.
 
 const UNIVERSITY_HEADER = "Mirzo Ulug'bek nomidagi O'zbekiston Milliy universiteti Birinchi prorektori — Yoshlar masalalari va ma'naviy-ma'rifiy ishlar bo'yicha prorektor T.N.Xojiyevga"
 
@@ -38,9 +42,9 @@ export interface ArizaTilxatData {
    *  than silently guessing a number. */
   ttjName?: string
 
-  // ---- Filled in only for the final, signed copy (server-side delivery) ----
-  // The on-screen preview and the submit-time draft leave all of these unset,
-  // so the signature/date lines render as blank underlines exactly as before.
+  // ---- Present once the applicant has signed / the dekan has acted ----
+  // The applicant's own pre-sign preview leaves all of these unset, so the
+  // signature / date lines render as blank underlines exactly as before.
   /** Applicant's hand-drawn signature, PNG data URL. */
   studentSignature?: string
   /** Dekan's hand-drawn signature, PNG data URL (staff.signature_image). */
@@ -56,9 +60,45 @@ export interface ArizaTilxatData {
   signedDate?: string
 }
 
+function fmtSignedDate(iso?: string): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dd}.${mm}.${d.getFullYear()}`
+}
+
+// One signature slot: the real drawn signature (or a typed name) sitting on a
+// baseline rule, with its caption beneath. Falls back to the classic blank
+// underline on the pre-sign preview so that view is unchanged.
+function SignSlot({ image, text, caption }: { image?: string; text?: string; caption: string }) {
+  const filled = Boolean(image || text)
+  return (
+    <div className="text-center">
+      {filled ? (
+        <div className="relative mx-auto flex h-12 w-[200px] max-w-full items-end justify-center border-b border-black">
+          {image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={image} alt={caption} className="max-h-11 max-w-full object-contain" />
+          ) : (
+            <span className="pb-0.5 leading-none">{text}</span>
+          )}
+        </div>
+      ) : (
+        <p>_____________________________</p>
+      )}
+      <p className="text-[9px] sm:text-xs mt-1">{caption}</p>
+    </div>
+  )
+}
+
 export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData }) {
   const { fullName, facultyLabel, course, studyType, originCountry, originRegion, phone, relativePhone, ttjName } = data
   const ttjBlank = ttjName?.trim() || '_____'
+  const signedDate = fmtSignedDate(data.signedDate)
+  const signerName = data.studentSignature ? (fullName || '') : ''
+  const hasDekanSig = Boolean(data.dekanSignature && data.dekanName)
 
   return (
     <div className="space-y-6">
@@ -89,17 +129,11 @@ export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData })
           shaxsan o&apos;zim javobgarman. Agar men tomonimdan talabalar turar joyi ichki tartib qoidalari buzilsa, u holda menga Nizomda belgilangan tartibda chora ko&apos;rilishiga roziman.
         </p>
 
-        {/* Signature block — deliberately left blank (no auto-fill): a real
-            signature/date is added by hand later, not generated here. */}
+        {/* Signature block — the applicant's real drawn signature + typed name
+            once they've signed; blank underlines on the pre-sign preview. */}
         <div className="flex justify-between items-end mt-10 text-[11px] sm:text-sm">
-          <div className="text-center">
-            <p>_____________________________</p>
-            <p className="text-[9px] sm:text-xs mt-1">(imzo)</p>
-          </div>
-          <div className="text-center">
-            <p>_____________________________</p>
-            <p className="text-[9px] sm:text-xs mt-1">(F.I.Sh.)</p>
-          </div>
+          <SignSlot image={data.studentSignature} caption="(imzo)" />
+          <SignSlot text={signerName} caption="(F.I.Sh.)" />
         </div>
         <div className="flex justify-between items-end mt-6 text-[11px] sm:text-sm">
           <p>Talaba tel: {phone ? `+998 ${phone}` : '_____________________'}</p>
@@ -107,7 +141,7 @@ export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData })
         <div className="flex justify-between items-end mt-1 text-[11px] sm:text-sm">
           <p>Yaqin qarindoshi tel: {relativePhone || '_____________________'}</p>
           <div className="text-center">
-            <p>_____________________</p>
+            <p>{signedDate || '_____________________'}</p>
             <p className="text-[9px] sm:text-xs mt-1">Sana</p>
           </div>
         </div>
@@ -120,9 +154,20 @@ export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData })
             oila farzandi, onasi &quot;Ayollar daftari&quot;ga kiritilgan oila farzandi bo&apos;lganlar talab etiladi.</p>
         </div>
 
-        <div className="flex justify-end gap-8 mt-6 text-[10px] sm:text-xs">
-          <p>Ariza № _________</p>
-          <p>Berildi _____ qavat _____ xona</p>
+        <div className="mt-6 flex flex-col items-end gap-3 text-[10px] sm:text-xs">
+          <div className="flex gap-8">
+            <p>Ariza № {data.arizaNo || '_________'}</p>
+            <p>Berildi {data.assignedFloor ?? '_____'} qavat {data.assignedRoom || '_____'} xona</p>
+          </div>
+          {hasDekanSig && (
+            <div className="text-center">
+              <div className="relative mx-auto flex h-12 w-[200px] max-w-full items-end justify-center border-b border-black">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={data.dekanSignature} alt="Dekan imzosi" className="max-h-11 max-w-full object-contain" />
+              </div>
+              <p className="mt-1">Dekan: {data.dekanName}</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -149,21 +194,24 @@ export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData })
         </p>
 
         <div className="flex justify-between items-end mt-10 text-[11px] sm:text-sm">
-          <div className="text-center">
-            <p>_____________________________</p>
-            <p className="text-[9px] sm:text-xs mt-1">(imzo)</p>
-          </div>
-          <div className="text-center">
-            <p>_____________________________</p>
-            <p className="text-[9px] sm:text-xs mt-1">(F.I.Sh.)</p>
-          </div>
+          <SignSlot image={data.studentSignature} caption="(imzo)" />
+          <SignSlot text={signerName} caption="(F.I.Sh.)" />
         </div>
         <div className="flex justify-end mt-6 text-[11px] sm:text-sm">
           <div className="text-center">
-            <p>_____________________</p>
+            <p>{signedDate || '_____________________'}</p>
             <p className="text-[9px] sm:text-xs mt-1">Sana</p>
           </div>
         </div>
+        {hasDekanSig && (
+          <div className="mt-8 text-center w-[200px] max-w-full">
+            <div className="relative flex h-12 items-end justify-center border-b border-black">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={data.dekanSignature} alt="Dekan imzosi" className="max-h-11 max-w-full object-contain" />
+            </div>
+            <p className="mt-1 text-[10px] sm:text-xs">Dekan: {data.dekanName}</p>
+          </div>
+        )}
       </div>
     </div>
   )

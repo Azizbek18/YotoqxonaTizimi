@@ -61,8 +61,11 @@ const LINE_FACTOR = 1.15
 // Line advance in mm for a given point size (72pt = 1in = 25.4mm).
 const mmLineHeight = (pt: number) => (pt * LINE_FACTOR * 25.4) / 72
 
-// Margins match the UzMU .docx (pgMar): left 30, right 15, top/bottom 20 mm.
-const MARGIN = { left: 30, right: 15, top: 20, bottom: 20 }
+// The UzMU .docx (pgMar) is left 30 / right 15 mm — asymmetric, for binding.
+// In the delivered PDF we want the page visually balanced, so left and right
+// are equalised while keeping the .docx's 165 mm content width (so every line
+// wraps and every page fills exactly as before, just re-centred).
+const MARGIN = { left: 22.5, right: 22.5, top: 20, bottom: 20 }
 // The .docx indents every body paragraph by firstLine=567 twips ≈ 10 mm, and
 // the address block by left=4111 twips ≈ 72.5 mm.
 const FIRST_LINE_INDENT = 10
@@ -123,7 +126,14 @@ function textBlock(
   }
 
   const lines = c.doc.splitTextToSize(body, width) as string[]
-  c.doc.text(lines, x, c.y, { align, maxWidth: width, lineHeightFactor: LINE_FACTOR })
+  if (align === 'right') {
+    // jsPDF mis-aligns a right/justified multi-line array when `maxWidth` is
+    // also passed (it re-centres). Place each pre-wrapped line by hand so the
+    // right edge sits exactly on `x`.
+    lines.forEach((ln, i) => c.doc.text(ln, x, c.y + i * lh, { align: 'right' }))
+  } else {
+    c.doc.text(lines, x, c.y, { align, maxWidth: width, lineHeightFactor: LINE_FACTOR })
+  }
   c.y += lines.length * lh + (opts.gap ?? 1.5)
 }
 
@@ -154,13 +164,16 @@ function stampSignature(c: Cursor, image: string, x: number, baselineY: number, 
 }
 
 function signatureRow(c: Cursor, sig?: { image?: string; name?: string }) {
-  c.y += 8
+  // The stamped signature sits ABOVE the rule — reserve enough headroom that
+  // it never lands on the paragraph above it (a hand signature is wide and
+  // short, so 12 mm tall is plenty and keeps the page from over-shrinking).
+  c.y += sig?.image ? 15 : 8
   c.doc.setFont(FONT, 'normal')
   c.doc.setFontSize(12)
   // The signed copy stamps the hand-drawn signature just above the left rule
   // and prints the typed F.I.Sh. on the right rule; the draft / on-screen
   // preview leaves both as blank underlines.
-  if (sig?.image) stampSignature(c, sig.image, c.left + 2, c.y, 55, 16)
+  if (sig?.image) stampSignature(c, sig.image, c.left + 2, c.y, 52, 11)
   c.doc.text('______________________', c.left, c.y)
   if (sig?.name) {
     c.doc.setFontSize(11)
@@ -180,7 +193,9 @@ function signatureRow(c: Cursor, sig?: { image?: string; name?: string }) {
 // Only drawn on the final signed copy.
 function dekanSignatureBlock(c: Cursor, image: string, name: string, x: number) {
   c.doc.setFont(FONT, 'normal')
-  stampSignature(c, image, x + 2, c.y, 50, 14)
+  // Clear room for the stamped signature, which sits above the rule.
+  c.y += 11
+  stampSignature(c, image, x + 2, c.y, 46, 11)
   c.doc.setFontSize(10.5)
   c.doc.text('_______________________', x, c.y)
   c.y += 4
@@ -198,20 +213,21 @@ function formatSignedDate(iso?: string): string | null {
   return `${dd}.${mm}.${d.getFullYear()}`
 }
 
-// The address-to block. The .docx puts it in a left-indented (≈72.5 mm),
-// justified column that runs to the right margin — so we anchor it at that
-// same left edge, justify it, and let long lines wrap inside the column.
-// 11 pt bold matches the template's default size + <w:b/>.
+// The address-to block. The .docx runs it in a column indented ≈72.5 mm from
+// the left margin. jsPDF's 'justify' leaves a short 2–3 line block like this
+// ragged, so we right-align it instead — a clean flush-right edge that reads
+// as "bir tekis" and matches the on-screen ArizaTilxatDocument preview. Long
+// lines wrap naturally inside the column. 11 pt bold matches the template.
 function header(c: Cursor, faculty: string, course: string, name: string) {
-  const x = c.left + HEADER_INDENT
-  const width = c.right - x
+  const width = c.right - (c.left + HEADER_INDENT)
   // The applicant line is "...talabasi <F.I.Sh.>dan" — the ablative "-dan"
   // ("kimdan") is what makes the address block read correctly. Skip it when
   // the name is still a blank underline (dekan-side preview).
   const applicant = name.startsWith('_') ? name : `${name}dan`
-  textBlock(c, UNIVERSITY_HEADER, { size: 11, style: 'bold', align: 'justify', x, width, gap: 1.5 })
-  textBlock(c, `${faculty} fakulteti`, { size: 11, style: 'bold', align: 'justify', x, width, gap: 0.5 })
-  textBlock(c, `Bakalavriat kunduzgi ta'lim yo'nalishi ${course}-kurs talabasi ${applicant}`, { size: 11, style: 'bold', align: 'justify', x, width, gap: 2 })
+  const base = { size: 11, style: 'bold' as const, align: 'right' as const, width }
+  textBlock(c, UNIVERSITY_HEADER, { ...base, gap: 1.5 })
+  textBlock(c, `${faculty} fakulteti`, { ...base, gap: 0.5 })
+  textBlock(c, `Bakalavriat kunduzgi ta'lim yo'nalishi ${course}-kurs talabasi ${applicant}`, { ...base, gap: 2 })
 }
 
 // Draw both pages at a given vertical scale (1 = default). Returns how far
@@ -287,7 +303,7 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
     boxX, p1.y,
   )
   if (hasDekanSig) {
-    p1.y += g(9)
+    p1.y += g(6)
     dekanSignatureBlock(p1, data.dekanSignature!, dekanName, boxX)
   }
   const p1End = p1.y
@@ -318,7 +334,7 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
   p2.y += 3.5
   doc.setFontSize(9); doc.text('Sana', p2.right - 4, p2.y, { align: 'right' })
   if (hasDekanSig) {
-    p2.y += g(11)
+    p2.y += g(6)
     dekanSignatureBlock(p2, data.dekanSignature!, dekanName, p2.left)
   }
 

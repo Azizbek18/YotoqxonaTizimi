@@ -35,7 +35,7 @@ export function createAttendanceRepository() {
   return {
     async dormIdForFaculty(faculty: string): Promise<string | null> {
       const { data, error } = await supabase
-        .from('faculty_dorm').select('dorm_id').eq('faculty', faculty).maybeSingle()
+        .from('faculty_dorm').select('dorm_id').eq('faculty', faculty).eq('is_primary', true).maybeSingle()
       if (error) throw error
       return data?.dorm_id ?? null
     },

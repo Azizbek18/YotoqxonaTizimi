@@ -17,6 +17,7 @@ export function createRoomLayoutRepository() {
       .from('faculty_dorm')
       .select('dorm_id')
       .eq('faculty', faculty)
+      .eq('is_primary', true)
       .maybeSingle()
 
     let dormId = link?.dorm_id ?? null
@@ -25,6 +26,7 @@ export function createRoomLayoutRepository() {
         .from('faculty_dorm')
         .select('dorm_id')
         .eq('faculty', PRIMARY_FACULTY)
+        .eq('is_primary', true)
         .maybeSingle()
       dormId = fb?.dorm_id ?? null
     }

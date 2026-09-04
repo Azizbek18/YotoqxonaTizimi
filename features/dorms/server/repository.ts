@@ -21,14 +21,29 @@ export function createDormRepository() {
   const supabase = getServiceSupabase()
 
   return {
+    // The faculty's primary dorm — the one every "which dorm?" lookup that
+    // can't name a building resolves to. A faculty always has exactly one.
     async facultyDormId(faculty: string): Promise<string | null> {
       const { data, error } = await supabase
         .from('faculty_dorm')
         .select('dorm_id')
         .eq('faculty', faculty)
+        .eq('is_primary', true)
         .maybeSingle()
       if (error) throw error
       return data?.dorm_id ?? null
+    },
+
+    // Every dorm this faculty is housed in, primary first. Callers that let
+    // the dekan pick a building validate the pick against this list.
+    async facultyDormIds(faculty: string): Promise<string[]> {
+      const { data, error } = await supabase
+        .from('faculty_dorm')
+        .select('dorm_id, is_primary')
+        .eq('faculty', faculty)
+        .order('is_primary', { ascending: false })
+      if (error) throw error
+      return (data ?? []).map((r) => r.dorm_id as string)
     },
 
     async getDorm(dormId: string): Promise<DormDetailRow | null> {
@@ -67,10 +82,36 @@ export function createDormRepository() {
       return data as DormRow
     },
 
-    async linkFaculty(faculty: string, dormId: string): Promise<void> {
+    // Bind a faculty to a dorm. `primary` (default true) also makes it *the*
+    // primary — demoting whichever dorm held that flag before.
+    async linkFaculty(
+      faculty: string,
+      dormId: string,
+      opts: { primary?: boolean } = {},
+    ): Promise<void> {
+      const primary = opts.primary ?? true
       const { error } = await supabase
         .from('faculty_dorm')
-        .upsert({ faculty, dorm_id: dormId }, { onConflict: 'faculty' })
+        .upsert({ faculty, dorm_id: dormId, is_primary: primary }, { onConflict: 'faculty,dorm_id' })
+      if (error) throw error
+      if (primary) {
+        const { error: rpcError } = await supabase.rpc('set_primary_dorm', {
+          p_faculty: faculty,
+          p_dorm_id: dormId,
+        })
+        if (rpcError) throw rpcError
+      }
+    },
+
+    // Drop a faculty↔dorm link entirely (used when a resident-free faculty
+    // moves buildings). Never leaves a faculty with zero links — the caller
+    // links the new dorm first.
+    async unlinkFaculty(faculty: string, dormId: string): Promise<void> {
+      const { error } = await supabase
+        .from('faculty_dorm')
+        .delete()
+        .eq('faculty', faculty)
+        .eq('dorm_id', dormId)
       if (error) throw error
     },
 
@@ -149,7 +190,7 @@ export function createDormRepository() {
     },
 
     async listFacultyDorm() {
-      const { data, error } = await supabase.from('faculty_dorm').select('faculty, dorm_id')
+      const { data, error } = await supabase.from('faculty_dorm').select('faculty, dorm_id, is_primary')
       if (error) throw error
       return data ?? []
     },

@@ -46,6 +46,27 @@ export async function resolveAttendanceActor(request: Request): Promise<Attendan
     }
   }
 
+  // A plain resident (not a floor captain): read-only. The dashboard banner
+  // and the /talaba/yoqlama check-in screen gate their UI on
+  // /api/attendance/summary, so this branch is what makes the "Men
+  // yotoqxonadaman" button appear at all for an ordinary student. Marking
+  // still runs through /api/attendance/checkin (requireActiveStudent).
+  if (student?.role === 'talaba' && student.status === 'active') {
+    const faculty = normalizeFaculty(student.faculty)
+    if (!faculty) throw new ApiError(403, 'Fakultet biriktirilmagan')
+    const dormId = await repo.dormIdForFaculty(faculty)
+    if (!dormId) throw new ApiError(409, 'Yotoqxona hali sozlanmagan', 'DORM_NOT_SET')
+    return {
+      userId: user.id,
+      role: 'talaba',
+      dormId,
+      faculties: [faculty],
+      floor: null,
+      gender: null,
+      canWrite: false,
+    }
+  }
+
   const { data: staff } = await supabase
     .from('staff')
     .select('role, status, faculty, dorm_id, assigned_gender')

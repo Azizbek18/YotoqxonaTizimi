@@ -321,7 +321,7 @@ export default function AdminTolovlarPage() {
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all shrink-0 whitespace-nowrap ${
                   isActive
-                    ? isLight ? 'bg-white text-indigo-700 shadow-[0_2px_0_0_#c7d2fe] border border-indigo-200' : 'bg-slate-800 text-indigo-300 border border-indigo-500/25'
+                    ? 'bg-indigo-600 text-white border border-indigo-600 shadow-[0_2px_0_0_#3730a3]'
                     : isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >

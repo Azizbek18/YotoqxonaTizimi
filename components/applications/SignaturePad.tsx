@@ -41,7 +41,7 @@ export default function SignaturePad({
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
-    ctx.lineWidth = 2.6
+    ctx.lineWidth = 3
     ctx.strokeStyle = inkRef.current
   }, [])
 
@@ -231,8 +231,14 @@ export default function SignaturePad({
   )
 }
 
-// Crop transparent margins so the PNG is just the strokes, then return a
-// data URL. Falls back to the full canvas if it somehow reads as empty.
+// Crop transparent margins so the PNG is just the strokes, re-ink every stroke
+// to solid black, and firm up the anti-aliased edges — then return a data URL.
+// Two reasons for the re-ink: (1) dark mode draws the stroke in near-white
+// (#e2e8f0), which is all but invisible once stamped on the white Ariza/Tilxat
+// PDF; (2) even in light mode the thin, anti-aliased line washes out to grey
+// when jsPDF downscales it into its ~55 mm box. Forcing pure black + an alpha
+// gamma (<1) makes it read jet-black on paper regardless of the on-screen
+// theme. Falls back to the full / un-inked canvas if the pixels can't be read.
 function trimCanvas(canvas: HTMLCanvasElement): string {
   const ctx = canvas.getContext('2d')
   if (!ctx) return canvas.toDataURL('image/png')
@@ -263,6 +269,22 @@ function trimCanvas(canvas: HTMLCanvasElement): string {
   const out = document.createElement('canvas')
   out.width = w
   out.height = h
-  out.getContext('2d')!.drawImage(canvas, left, top, w, h, 0, 0, w, h)
+  const octx = out.getContext('2d')!
+  octx.drawImage(canvas, left, top, w, h, 0, 0, w, h)
+  try {
+    const od = octx.getImageData(0, 0, w, h)
+    const p = od.data
+    for (let i = 0; i < p.length; i += 4) {
+      const a = p[i + 3]
+      if (a === 0) continue
+      p[i] = 0; p[i + 1] = 0; p[i + 2] = 0
+      // gamma 0.55: leaves the fully-opaque core at 255, lifts the soft edge
+      // pixels (e.g. a=96 → ~150, a=160 → ~200) so the line stays dense.
+      p[i + 3] = Math.min(255, Math.round(255 * Math.pow(a / 255, 0.55)))
+    }
+    octx.putImageData(od, 0, 0)
+  } catch {
+    /* keep the cropped-but-un-inked strokes */
+  }
   return out.toDataURL('image/png')
 }

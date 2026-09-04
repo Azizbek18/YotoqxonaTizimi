@@ -78,7 +78,8 @@ const APPROVED_FOREIGN_PERMIT = {
     faculty: 'AMIT',
     direction: 'Axborot tizimlari',
     course: 1,
-    room_number: null,
+    room_number: '12',
+    dorm_id: 'dorm-amit-1',
     status: 'approved',
     origin_country: 'Turkmaniston',
     origin_region: 'Dashoguz',
@@ -137,6 +138,8 @@ describe('POST /api/student/register', () => {
       jshshir: null,
       study_type: 'grant',
       status: 'pending',
+      room_number: '12',
+      dorm_id: 'dorm-amit-1',
     })
   })
 

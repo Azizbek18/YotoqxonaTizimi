@@ -10,6 +10,13 @@ const VALID_SIZES: RoomBlockSize[] = ['small', 'medium', 'large']
 
 export const MAX_ROOM_CAPACITY = 20
 
+// Forward an optional dormId (targets one of the faculty's several
+// buildings, 202609300000) as a real trailing arg only when present, so a
+// call made without one has the EXACT same shape as before this parameter
+// existed — every repository call site below stays byte-identical, and its
+// tests, when dormId is omitted (the vast majority of callers today).
+const withDorm = (dormId?: string) => (dormId ? [dormId] as const : [] as const)
+
 // null / undefined / '' -> null (inherit the dorm default). Any other value
 // must be a whole number in [1, MAX_ROOM_CAPACITY].
 function parseCapacity(value: unknown, label: string): number | null {
@@ -102,14 +109,14 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
      * operation is refused and the offending room numbers are reported.
      * See migration 20260902080254 (apply_building_layout).
      */
-    async generateFloors(faculty: string, plansValue: unknown, numberingValue: unknown) {
+    async generateFloors(faculty: string, plansValue: unknown, numberingValue: unknown, dormId?: string) {
       const plans = parseFloorPlans(plansValue)
       const numbering: RoomNumbering = numberingValue === 'per-floor' ? 'per-floor' : 'sequential'
 
       // Any floor that has rooms but isn't in the dekan's plan still has to
       // be part of the sequential run (so its numbers don't collide) — carry
       // it at its current count so nothing on it changes.
-      const existingRooms = await repository.listAllRooms(faculty)
+      const existingRooms = await repository.listAllRooms(faculty, ...withDorm(dormId))
       const countByFloor = new Map<number, number>()
       for (const row of existingRooms) {
         countByFloor.set(row.floor_number, (countByFloor.get(row.floor_number) ?? 0) + 1)
@@ -127,7 +134,7 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
       }
 
       try {
-        const result = await repository.applyBuildingLayout(faculty, numbering, fullPlans)
+        const result = await repository.applyBuildingLayout(faculty, numbering, fullPlans, ...withDorm(dormId))
         return { success: true as const, ...result }
       } catch (error) {
         const code = (error as { code?: string })?.code
@@ -146,8 +153,8 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
       }
     },
 
-    async listRoomFloors(faculty: string): Promise<RoomFloorStatus[]> {
-      const rows = await repository.listAllRooms(faculty)
+    async listRoomFloors(faculty: string, dormId?: string): Promise<RoomFloorStatus[]> {
+      const rows = await repository.listAllRooms(faculty, ...withDorm(dormId))
       return rows
         .map((row) => ({
           roomNumber: row.room_number,
@@ -167,17 +174,17 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
      * room goes back to inheriting dorms.default_room_capacity. Enforced for
      * real inside the assign_*_room_atomic RPCs (COALESCE(capacity, default)).
      */
-    async setCapacity(faculty: string, roomNumberValue: unknown, capacityValue: unknown) {
+    async setCapacity(faculty: string, roomNumberValue: unknown, capacityValue: unknown, dormId?: string) {
       const roomNumber = typeof roomNumberValue === 'string' ? roomNumberValue.trim().slice(0, 20) : ''
       if (!roomNumber) throw new ApiError(400, "Xona raqami kiritilmagan")
       const capacity = parseCapacity(capacityValue, "Xona sig'imi")
 
-      const updated = await repository.setCapacity(faculty, roomNumber, capacity)
+      const updated = await repository.setCapacity(faculty, roomNumber, capacity, ...withDorm(dormId))
       if (!updated) throw new ApiError(404, "Bunday xona xonalar sxemasida topilmadi")
       return { success: true as const, roomNumber, capacity }
     },
 
-    async bulkSetCapacity(faculty: string, roomNumbersValue: unknown, capacityValue: unknown) {
+    async bulkSetCapacity(faculty: string, roomNumbersValue: unknown, capacityValue: unknown, dormId?: string) {
       if (!Array.isArray(roomNumbersValue)) throw new ApiError(400, "So'rov noto'g'ri")
       const roomNumbers = [
         ...new Set(
@@ -190,7 +197,7 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
       if (roomNumbers.length > 500) throw new ApiError(400, "Bir vaqtda 500 tagacha xona")
       const capacity = parseCapacity(capacityValue, "Xona sig'imi")
 
-      const changed = await repository.bulkSetCapacity(faculty, roomNumbers, capacity)
+      const changed = await repository.bulkSetCapacity(faculty, roomNumbers, capacity, ...withDorm(dormId))
       return { success: true as const, changed, capacity }
     },
 
@@ -200,17 +207,17 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
      * Enforced for real inside the assign_*_room_atomic RPCs (a student whose
      * gender differs from a declared room's gender is refused).
      */
-    async setGender(faculty: string, roomNumberValue: unknown, genderValue: unknown) {
+    async setGender(faculty: string, roomNumberValue: unknown, genderValue: unknown, dormId?: string) {
       const roomNumber = typeof roomNumberValue === 'string' ? roomNumberValue.trim().slice(0, 20) : ''
       if (!roomNumber) throw new ApiError(400, "Xona raqami kiritilmagan")
       const gender = parseGender(genderValue)
 
-      const updated = await repository.setGender(faculty, roomNumber, gender)
+      const updated = await repository.setGender(faculty, roomNumber, gender, ...withDorm(dormId))
       if (!updated) throw new ApiError(404, "Bunday xona xonalar sxemasida topilmadi")
       return { success: true as const, roomNumber, gender }
     },
 
-    async bulkSetGender(faculty: string, roomNumbersValue: unknown, genderValue: unknown) {
+    async bulkSetGender(faculty: string, roomNumbersValue: unknown, genderValue: unknown, dormId?: string) {
       if (!Array.isArray(roomNumbersValue)) throw new ApiError(400, "So'rov noto'g'ri")
       const roomNumbers = [
         ...new Set(
@@ -223,7 +230,7 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
       if (roomNumbers.length > 500) throw new ApiError(400, "Bir vaqtda 500 tagacha xona")
       const gender = parseGender(genderValue)
 
-      const changed = await repository.bulkSetGender(faculty, roomNumbers, gender)
+      const changed = await repository.bulkSetGender(faculty, roomNumbers, gender, ...withDorm(dormId))
       return { success: true as const, changed, gender }
     },
 
@@ -234,7 +241,7 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
      * students from being moved in while it's frozen (enforced again inside
      * assign_student_room_atomic itself, not just here).
      */
-    async setFrozen(faculty: string, roomNumberValue: unknown, frozenValue: unknown, reasonValue: unknown) {
+    async setFrozen(faculty: string, roomNumberValue: unknown, frozenValue: unknown, reasonValue: unknown, dormId?: string) {
       const roomNumber = typeof roomNumberValue === 'string' ? roomNumberValue.trim().slice(0, 20) : ''
       if (!roomNumber) throw new ApiError(400, "Xona raqami kiritilmagan")
       if (typeof frozenValue !== 'boolean') throw new ApiError(400, "So'rov noto'g'ri")
@@ -244,15 +251,15 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
       // this room would silently inherit whatever was typed last time.
       const storedReason = frozenValue ? (reason || null) : null
 
-      const updated = await repository.setFrozen(faculty, roomNumber, frozenValue, storedReason)
+      const updated = await repository.setFrozen(faculty, roomNumber, frozenValue, storedReason, ...withDorm(dormId))
       if (!updated) throw new ApiError(404, "Bunday xona xonalar sxemasida topilmadi")
 
       return { success: true as const, roomNumber, frozen: frozenValue }
     },
 
-    async getFloor(faculty: string, floorValue: unknown) {
+    async getFloor(faculty: string, floorValue: unknown, dormId?: string) {
       const floorNumber = parseFloorNumber(floorValue)
-      const rows = await repository.listFloor(faculty, floorNumber)
+      const rows = await repository.listFloor(faculty, floorNumber, ...withDorm(dormId))
       return rows.map((row) => ({
         roomNumber: row.room_number,
         side: row.side as RoomBlockSide,
@@ -265,12 +272,12 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
       }))
     },
 
-    async saveFloor(faculty: string, floorValue: unknown, blocksValue: unknown) {
+    async saveFloor(faculty: string, floorValue: unknown, blocksValue: unknown, dormId?: string) {
       const floorNumber = parseFloorNumber(floorValue)
       const blocks = parseBlocks(blocksValue)
 
       try {
-        await repository.replaceFloor(faculty, floorNumber, blocks)
+        await repository.replaceFloor(faculty, floorNumber, blocks, ...withDorm(dormId))
       } catch (error) {
         const code = (error as { code?: string })?.code
         if (code === '23505') {
@@ -292,8 +299,8 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
       // committed at this point, so telling the admin "saqlanmadi" would be
       // a lie and re-saving is the correct recovery.
       try {
-        const { dormId } = await repository.scopeFor(faculty)
-        await repository.syncAssignedFloors(dormId, floorNumber, blocks.map((block) => block.roomNumber))
+        const scope = await repository.scopeFor(faculty, dormId)
+        await repository.syncAssignedFloors(scope.dormId, floorNumber, blocks.map((block) => block.roomNumber))
       } catch (error) {
         console.error('assigned_floor sync failed after layout save:', error)
         throw new ApiError(

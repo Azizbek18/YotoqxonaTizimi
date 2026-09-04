@@ -13,7 +13,8 @@ export async function PATCH(request: NextRequest) {
     const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
     const faculty = requirePickedFaculty(staff)
     const body = await request.json()
-    const result = await createRoomLayoutService().setFrozen(faculty, body?.roomNumber, body?.frozen, body?.reason)
+    const dormId = typeof body?.dormId === 'string' ? body.dormId : undefined
+    const result = await createRoomLayoutService().setFrozen(faculty, body?.roomNumber, body?.frozen, body?.reason, dormId)
     return NextResponse.json(result)
   } catch (error) {
     console.error('Room freeze PATCH error:', error)

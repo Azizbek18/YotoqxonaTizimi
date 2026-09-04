@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
     const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
     const faculty = requirePickedFaculty(staff)
     const body = await request.json()
-    const result = await createRoomLayoutService().generateFloors(faculty, body?.floors, body?.numbering)
+    const dormId = typeof body?.dormId === 'string' ? body.dormId : undefined
+    const result = await createRoomLayoutService().generateFloors(faculty, body?.floors, body?.numbering, dormId)
     return NextResponse.json(result)
   } catch (error) {
     console.error('Room floors generate error:', error)

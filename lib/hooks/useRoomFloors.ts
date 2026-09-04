@@ -33,25 +33,32 @@ export interface RoomFloors {
  * quruvchisi is reflected everywhere without touching the students' stored
  * `assigned_floor`. Until the fetch resolves, `floorOf` still answers using
  * the old room-number guess so nothing renders blank mid-load.
+ *
+ * `dormId` targets one specific one of the faculty's buildings
+ * (many-to-many, 202609300000) — only the room-layout editor, which lets the
+ * dekan pick a building, ever passes one; every other caller omits it and
+ * keeps resolving the faculty's primary building, unchanged. Passing a
+ * different `dormId` across renders re-fetches for the new building.
  */
-export function useRoomFloors(): RoomFloors {
+export function useRoomFloors(dormId?: string): RoomFloors {
   const [rooms, setRooms] = useState<RoomFloorStatus[]>([])
   const [loaded, setLoaded] = useState(false)
 
   const reload = useCallback(async () => {
     try {
-      setRooms(await fetchRoomFloors())
+      setRooms(await fetchRoomFloors(dormId))
     } catch (error) {
       console.error('Qavat ma\'lumotini yuklashda xato:', error)
     } finally {
       setLoaded(true)
     }
-  }, [])
+  }, [dormId])
 
   useEffect(() => {
     let cancelled = false
+    setLoaded(false)
 
-    fetchRoomFloors()
+    fetchRoomFloors(dormId)
       .then((result) => {
         if (!cancelled) setRooms(result)
       })
@@ -65,7 +72,7 @@ export function useRoomFloors(): RoomFloors {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [dormId])
 
   const map = useMemo(() => buildRoomFloorMap(rooms), [rooms])
   const capacityMap = useMemo(() => buildRoomCapacityMap(rooms), [rooms])

@@ -194,4 +194,29 @@ describe('room assignment service', () => {
         .rejects.toMatchObject({ status: 409 })
     })
   })
+
+  // A faculty with a second building (many-to-many, 202609300000 +
+  // 202609300003 dormId-override RPCs) — the dekan picks which building the
+  // room belongs to. Every test above (which never passes a dormId) proves
+  // the omitted case forwards nothing extra to the repository.
+  describe('a specific building (dormId)', () => {
+    it('forwards dormId to assignRoomAtomic when given', async () => {
+      const repo = repository()
+      await createRoomAssignmentService(repo).assignRoom('IT', { studentId: 'student-1', roomNumber: '101', dormId: 'd2' })
+      expect(repo.assignRoomAtomic).toHaveBeenCalledWith('student-1', '101', 4, 'd2')
+    })
+
+    it('forwards dormId to assignPermitRoomAtomic when given', async () => {
+      const repo = repository()
+      await createRoomAssignmentService(repo)
+        .assignRoom('IT', { studentId: 'permit-1', roomNumber: '101', source: 'permit', dormId: 'd2' })
+      expect(repo.assignPermitRoomAtomic).toHaveBeenCalledWith('permit-1', '101', 4, 'd2')
+    })
+
+    it('ignores a non-string dormId rather than forwarding garbage', async () => {
+      const repo = repository()
+      await createRoomAssignmentService(repo).assignRoom('IT', { studentId: 'student-1', roomNumber: '101', dormId: 42 })
+      expect(repo.assignRoomAtomic).toHaveBeenCalledWith('student-1', '101', 4)
+    })
+  })
 })

@@ -11,6 +11,12 @@ function sameFaculty(value: string | null | undefined, faculty: string) {
   return (value ?? '').trim().toLocaleLowerCase() === faculty.trim().toLocaleLowerCase()
 }
 
+// Forward an optional dormId (targets one of the faculty's several
+// buildings, 202609300000) as a real trailing arg only when present, so a
+// call made without one has the EXACT same shape as before this parameter
+// existed — keeps every existing repository-call assertion untouched.
+const withDorm = (dormId?: string) => (dormId ? [dormId] as const : [] as const)
+
 // Both assignRoomAtomic and assignPermitRoomAtomic raise the same error
 // codes for the same reasons (P0002 room missing, P0004 frozen, P0001
 // generic capacity/gender) — one mapping for both callers.
@@ -47,6 +53,7 @@ async function assignPermitRoom(
   permitId: string,
   roomNumber: string,
   signer: Signer,
+  dormId?: string,
 ) {
   const permit = await repository.findPermit(permitId)
   if (!permit) throw new ApiError(404, "Yo'llanma topilmadi")
@@ -65,7 +72,7 @@ async function assignPermitRoom(
   // Room capacity is the permit faculty's own dorm setting.
   const { defaultRoomCapacity } = await createAppSettingsService().get(faculty)
   try {
-    const assigned = await repository.assignPermitRoomAtomic(permitId, roomNumber, defaultRoomCapacity)
+    const assigned = await repository.assignPermitRoomAtomic(permitId, roomNumber, defaultRoomCapacity, ...withDorm(dormId))
     if (!assigned) {
       throw new ApiError(409, "Bu xonada bo'sh joy yo'q yoki xonada boshqa jinsdagi talaba(lar) bor")
     }
@@ -121,8 +128,12 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
       if (!studentId) throw new ApiError(400, "Talaba tanlanmagan")
       const roomNumber = typeof input.roomNumber === 'string' ? input.roomNumber.trim().slice(0, 20) : ''
       const source = input.source === 'permit' ? 'permit' as const : 'user' as const
+      // Which of the faculty's buildings the room belongs to (many-to-many,
+      // 202609300000) — omitted keeps the RPC's own prior fallback (the
+      // student/permit's existing dorm_id, else the faculty's primary).
+      const dormId = typeof input.dormId === 'string' ? input.dormId : undefined
 
-      if (source === 'permit') return assignPermitRoom(repository, faculty, studentId, roomNumber, signer)
+      if (source === 'permit') return assignPermitRoom(repository, faculty, studentId, roomNumber, signer, dormId)
 
       const student = await repository.findStudent(studentId)
       if (!student) throw new ApiError(404, 'Talaba topilmadi')
@@ -144,7 +155,7 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
       // first would leave a window where the room could be deleted from
       // floor_room_layout between the check and the actual assignment.
       try {
-        const assigned = await repository.assignRoomAtomic(studentId, roomNumber, defaultRoomCapacity)
+        const assigned = await repository.assignRoomAtomic(studentId, roomNumber, defaultRoomCapacity, ...withDorm(dormId))
         if (!assigned) {
           throw new ApiError(409, "Bu xonada bo'sh joy yo'q yoki xonada boshqa jinsdagi talaba(lar) bor")
         }

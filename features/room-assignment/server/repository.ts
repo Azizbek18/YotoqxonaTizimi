@@ -91,12 +91,16 @@ export function createRoomAssignmentRepository() {
       if (error) throw error
     },
     // Same shape as assignRoomAtomic below, targeting the permit-side RPC
-    // (see 202608270000_permit_room_preassignment.sql) instead.
-    async assignPermitRoomAtomic(permitId: string, roomNumber: string, maxCapacity: number) {
+    // (see 202608270000_permit_room_preassignment.sql) instead. `dormId`
+    // (202609300003) picks a specific one of the faculty's buildings — the
+    // RPC re-validates it belongs to the faculty; omitted keeps the prior
+    // resolution (the permit's own dorm_id, else the faculty's primary).
+    async assignPermitRoomAtomic(permitId: string, roomNumber: string, maxCapacity: number, dormId?: string) {
       const { error } = await supabase.rpc('assign_permit_room_atomic', {
         p_permit_id: permitId,
         p_room_number: roomNumber,
         p_max_capacity: maxCapacity,
+        p_dorm_id: dormId ?? null,
       })
       if (error) {
         if (error.code === 'P0001') return false
@@ -107,12 +111,14 @@ export function createRoomAssignmentRepository() {
     // Atomically checks room capacity/gender and assigns the student inside a
     // single DB transaction (see assign_student_room_atomic in the DB
     // migration) so two concurrent dekan assignments to the same room
-    // can't both pass a read-then-write capacity/gender check.
-    async assignRoomAtomic(studentId: string, roomNumber: string, maxCapacity: number) {
+    // can't both pass a read-then-write capacity/gender check. `dormId` as
+    // above.
+    async assignRoomAtomic(studentId: string, roomNumber: string, maxCapacity: number, dormId?: string) {
       const { error } = await supabase.rpc('assign_student_room_atomic', {
         p_student_id: studentId,
         p_room_number: roomNumber,
         p_max_capacity: maxCapacity,
+        p_dorm_id: dormId ?? null,
       })
       if (error) {
         if (error.code === 'P0001') return false

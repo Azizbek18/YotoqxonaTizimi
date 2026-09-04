@@ -20,6 +20,7 @@ import type { RoomBlockSide, RoomBlockSize, RoomLayoutBlock } from '@/features/r
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { getFreePlaces, getRoomOccupancyTone, type RoomOccupancyTone } from '@/features/app-settings/presentation'
 import { dekanUI } from '@/lib/dekan-ui'
+import { useStaffPanel } from '@/lib/hooks/useStaffPanel'
 
 interface StudentInfo {
   id: string
@@ -187,6 +188,9 @@ export default function Dekan3DXonalarPage() {
   const scopedFontFamily = useScopedFontFamily()
 
   const ui = dekanUI(isLight)
+  // The tarbiyachi panel renders this same 3D floor view without the
+  // block editor or Save — a pure viewer.
+  const { readOnly } = useStaffPanel()
   const surfaceBg = ui.card
   const cardBg = ui.inset
   const textMuted = ui.muted
@@ -775,10 +779,12 @@ export default function Dekan3DXonalarPage() {
       <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${textStrong}`}>
-            Qavat tarxi quruvchisi
+            {readOnly ? '3D xonalar' : 'Qavat tarxi quruvchisi'}
           </h1>
           <p className={`mt-1 max-w-3xl text-xs sm:text-sm leading-6 ${textMuted}`}>
-            Har bir qavat uchun xonalarni chap va o&apos;ng tomonga, xohlagan tartibda va o&apos;lchamda qo&apos;shing — natija pastda jonli 3D maketda ko&apos;rinadi.
+            {readOnly
+              ? "Har bir qavatning xonalari va ularning bandligi jonli 3D maketda ko'rinadi. Qavatni tanlab, xonani bosib tafsilotlarini ko'ring."
+              : "Har bir qavat uchun xonalarni chap va o'ng tomonga, xohlagan tartibda va o'lchamda qo'shing — natija pastda jonli 3D maketda ko'rinadi."}
           </p>
         </div>
 
@@ -860,7 +866,8 @@ export default function Dekan3DXonalarPage() {
         </div>
       ) : (
         <>
-          {/* Editor */}
+          {/* Editor — hidden in the tarbiyachi (view-only) panel */}
+          {!readOnly && (
           <div className={`backdrop-blur-xl border rounded-2xl p-6 ${surfaceBg}`}>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <div className="min-w-0">
@@ -908,6 +915,7 @@ export default function Dekan3DXonalarPage() {
               {renderColumn('right', rightBlocks)}
             </div>
           </div>
+          )}
 
           {/* 3D Preview */}
           <motion.div
@@ -942,7 +950,9 @@ export default function Dekan3DXonalarPage() {
             {positionedRooms.rooms.length === 0 ? (
               <div className="h-[420px] flex flex-col items-center justify-center text-center px-6">
                 <Building2 className={`h-10 w-10 mb-3 ${textMuted}`} />
-                <p className={`text-sm font-bold ${textMuted}`}>Hali xona qo&apos;shilmagan — yuqoridan xona qo&apos;shing.</p>
+                <p className={`text-sm font-bold ${textMuted}`}>
+                  {readOnly ? "Bu qavat uchun tarx hali kiritilmagan." : "Hali xona qo'shilmagan — yuqoridan xona qo'shing."}
+                </p>
               </div>
             ) : (
               <canvas ref={canvasRef} className="w-full h-[420px] block outline-none cursor-grab active:cursor-grabbing" />

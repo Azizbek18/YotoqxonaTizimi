@@ -8,7 +8,9 @@ import { getApiError } from '@/server/http/api-error'
 // authority here, exactly like /api/dekan/elonlar and /api/dekan/students.
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
+    // Read-only for a tarbiyachi (their Sozlamalar shows the dorm/fee/
+    // attendance config); the PUT stays dekan/admin.
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
     return NextResponse.json(await createAppSettingsService().get(requirePickedFaculty(staff)))
   } catch (error) {
     console.error('Dekan settings GET error:', error)

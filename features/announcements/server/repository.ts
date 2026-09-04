@@ -94,27 +94,30 @@ export function createAnnouncementRepository() {
       if (error) throw error
       return data
     },
-    async updateByFaculty(id: string, faculty: string, updates: Partial<AnnouncementRow>) {
-      const { data, error } = await supabase
+    // `authorId`, when given, additionally pins the row to its creator — a
+    // tarbiyachi may only touch announcements they authored, while a dekan
+    // (no `authorId`) manages every faculty announcement.
+    async updateByFaculty(id: string, faculty: string, updates: Partial<AnnouncementRow>, authorId?: string) {
+      let query = supabase
         .from('elonlar')
         .update(updates)
         .eq('id', id)
         .eq('audience', 'faculty')
         .ilike('faculty', faculty)
-        .select(AUTHORED_COLUMNS)
-        .maybeSingle()
+      if (authorId) query = query.eq('created_by', authorId)
+      const { data, error } = await query.select(AUTHORED_COLUMNS).maybeSingle()
       if (error) throw error
       return data
     },
-    async deleteByFaculty(id: string, faculty: string) {
-      const { data, error } = await supabase
+    async deleteByFaculty(id: string, faculty: string, authorId?: string) {
+      let query = supabase
         .from('elonlar')
         .delete()
         .eq('id', id)
         .eq('audience', 'faculty')
         .ilike('faculty', faculty)
-        .select('id')
-        .maybeSingle()
+      if (authorId) query = query.eq('created_by', authorId)
+      const { data, error } = await query.select('id').maybeSingle()
       if (error) throw error
       return data
     },

@@ -261,42 +261,38 @@ export default function AdminTolovlarPage() {
   return (
     <div className="space-y-8 pb-12">
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className={`flex items-center gap-3 text-2xl sm:text-3xl font-extrabold tracking-tight ${textStrong}`}>
-            <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${ui.accentTile}`}>
-              <CreditCard size={24} strokeWidth={2.4} />
-            </span>
-            Kvitansiyalar <span className={ui.accentText}>Nazorati</span>
-          </h1>
-          <p className={`mt-2 text-sm ${textMuted}`}>
-            Talabalar tomonidan yuborilgan to&apos;lov kvitansiyalarini tekshirish, tasdiqlash va rad etish boshqaruvi.
-          </p>
+      {/* Hero — matches the rest of the tarbiyachi/dekan panel */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 p-6 sm:p-7">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="relative flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-white">
+            <CreditCard size={22} strokeWidth={2.3} />
+          </span>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Kvitansiyalar nazorati</h1>
+            <p className="mt-0.5 text-xs sm:text-sm text-indigo-100">
+              To&apos;lov cheklarini tekshiring, tasdiqlang yoki rad eting
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Stats Cards Deck */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-6">
-        {[
-          { label: 'Kutilmoqda', count: countWaiting, icon: Clock, hint: 'Tasdiqlash kutilayotgan cheklar', tone: 'text-amber-500' },
-          { label: 'Tasdiqlangan', count: countApproved, icon: Check, hint: 'Qabul qilingan oylar', tone: 'text-emerald-500' },
-          { label: 'Rad etilgan', count: countRejected, icon: X, hint: 'Xatolik sababli qaytarilganlar', tone: 'text-rose-500' },
-        ].map((card) => {
-          const Icon = card.icon
-          return (
-            <div key={card.label} className={`relative p-3 sm:p-5 rounded-2xl sm:rounded-3xl border ${surfaceBg}`}>
-              <div className="flex items-center justify-between mb-2 sm:mb-4">
-                <span className={`text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider truncate ${textMuted}`}>{card.label}</span>
-                <div className={`hidden sm:flex p-2 rounded-xl shrink-0 ${isLight ? 'bg-slate-100' : 'bg-slate-800'} ${card.tone}`}>
-                  <Icon size={16} />
-                </div>
+        <div className="relative mt-5 grid grid-cols-3 gap-3">
+          {[
+            { label: 'Kutilmoqda', count: countWaiting, icon: Clock },
+            { label: 'Tasdiqlangan', count: countApproved, icon: Check },
+            { label: 'Rad etilgan', count: countRejected, icon: X },
+          ].map((card) => {
+            const Icon = card.icon
+            return (
+              <div key={card.label} className="rounded-2xl bg-white/10 p-3 backdrop-blur-sm">
+                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-100">
+                  <Icon size={12} /> {card.label}
+                </p>
+                <p className="mt-1 text-2xl font-bold text-white">{card.count}</p>
               </div>
-              <p className={`text-lg sm:text-3xl font-extrabold tracking-tight ${textStrong}`}>{card.count} ta</p>
-              <p className="hidden sm:block text-[10px] text-slate-400 mt-2">{card.hint}</p>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
       {/* Filter and Search Bar */}

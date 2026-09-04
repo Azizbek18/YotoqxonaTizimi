@@ -10,9 +10,17 @@ function errorResponse(error: unknown, fallback: string) {
   return NextResponse.json(response.body, { status: response.status })
 }
 
+// A tarbiyachi may write faculty announcements too, but only manage
+// (edit / unpublish / delete) the ones they authored — a dekan manages
+// every faculty announcement. `authorGuard` is the creator id to pin
+// writes to, or undefined for a dekan/admin.
+function authorGuard(staff: { role: string; id: string }) {
+  return staff.role === 'tarbiyachi' ? staff.id : undefined
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
     const elonlar = await createAnnouncementService().listAuthored(staff.faculty)
     return NextResponse.json({ elonlar })
   } catch (error) {
@@ -22,7 +30,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
     const throttle = await checkRateLimit(`dekan-elon:${staff.id}`, 20, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: "Juda ko'p urinish. Keyinroq urinib ko'ring." }, { status: 429 })
@@ -37,9 +45,9 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
     const body = await request.json().catch(() => null)
-    const elon = await createAnnouncementService().updateAuthored(staff.faculty, body)
+    const elon = await createAnnouncementService().updateAuthored(staff.faculty, body, authorGuard(staff))
     return NextResponse.json({ elon })
   } catch (error) {
     return errorResponse(error, "E'lonni yangilab bo'lmadi")
@@ -48,10 +56,11 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
     const result = await createAnnouncementService().removeAuthored(
       staff.faculty,
       request.nextUrl.searchParams.get('id'),
+      authorGuard(staff),
     )
     return NextResponse.json(result)
   } catch (error) {

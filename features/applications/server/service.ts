@@ -2,6 +2,7 @@ import 'server-only'
 import { ApiError } from '@/server/http/api-error'
 import { sendTelegramAdminMessage } from '@/lib/telegram'
 import { sendStudentTelegram } from '@/lib/student-telegram'
+import { notifyDormStaffNewAriza } from '@/lib/staff-telegram'
 import { sendArizaSignedEmail } from '@/lib/email'
 import { cyrillicToLatin } from '@/lib/transliterate'
 import { permitFacultyLabel } from '@/lib/faculties'
@@ -134,6 +135,15 @@ export function createApplicationService(repository: ApplicationRepository = cre
       await repository.deleteSignatureByAriza(ariza.id)
       throw new ApiError(409, 'Ariza allaqachon ko\'rib chiqilgan yoki yuborilgan.')
     }
+
+    // Heads-up to the dorm's staff (tarbiyachi / dekan) who opted in with a
+    // personal Telegram chat — best-effort, never blocks the submission.
+    void notifyDormStaffNewAriza({
+      studentName: ariza.student_name ?? profileName,
+      faculty: ariza.faculty,
+      kind: (ariza.type === 'tushuntirish' ? 'tushuntirish' : 'ariza'),
+      title: ariza.title,
+    })
 
     // Timestamped out-of-band copies — both channels when available.
     const notice = { title: ariza.title ?? '', type: ariza.type ?? 'ariza', verifyCode, signedAt }

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useDekanScope } from '@/lib/hooks/useDekanScope'
+import { useStaffPanel } from '@/lib/hooks/useStaffPanel'
 import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { directionLabel } from '@/lib/directions'
@@ -82,6 +83,7 @@ export default function DekanDashboard() {
   const [facultyDistribution, setFacultyDistribution] = useState<{ name: string; talabalar: number }[]>([])
   const [floorBalance, setFloorBalance] = useState<DekanFloorBalance | undefined>(undefined)
   const { faculty: dekanFaculty, effectiveFaculty, role: dekanRole, scope: saScope, resolved: facultyResolved } = useDekanScope()
+  const { base, isTarbiyachi } = useStaffPanel()
   const isGlobal = dekanRole === 'admin' && (!saScope || saScope === '*')
 
   const loadData = async (faculty: string | null) => {
@@ -135,30 +137,33 @@ export default function DekanDashboard() {
       value: stats.pendingCount,
       icon: FileText,
       description: "Ko'rib chiqilishi kerak bo'lgan yo'llanmalar",
-      link: '/dekan/arizalar',
+      link: `${base}/arizalar`,
+      // Permit metrics — the tarbiyachi panel has no Yo'llanmalar section.
+      permitOnly: true,
     },
     {
       title: 'Faol talabalar',
       value: stats.activeStudentsCount,
       icon: Users,
       description: "Tizimda ro'yxatdan o'tganlar",
-      link: '/dekan/xonalar',
+      link: `${base}/xonalar`,
     },
     {
       title: 'Bo‘sh o‘rinlar',
       value: stats.freeBeds,
       icon: Home,
       description: `${occupancyRate}% bandlik · ${occupiedInAvailable}/${totalBedsCapacity} band${stats.frozenRoomCount > 0 ? ` · ${stats.frozenRoomCount} muzlatilgan` : ''}`,
-      link: '/dekan/xonalar',
+      link: `${base}/xonalar`,
     },
     {
       title: 'Tasdiqlangan yo‘llanmalar',
       value: stats.approvedCount + stats.registeredCount,
       icon: CheckCircle,
       description: 'Tasdiqlangan jami arizalar',
-      link: '/dekan/arizalar',
+      link: `${base}/arizalar`,
+      permitOnly: true,
     },
-  ]
+  ].filter((card) => !(isTarbiyachi && card.permitOnly))
 
   if (stats.loading) {
     return (
@@ -196,7 +201,9 @@ export default function DekanDashboard() {
                 : effectiveFaculty ? `${permitFacultyLabel(effectiveFaculty)} fakulteti` : 'Yotoqxona boshqaruvi'}
             </h1>
             <p className="mt-1.5 max-w-xl text-xs sm:text-sm leading-relaxed text-indigo-100">
-              Yo&apos;llanmalar ko&apos;rib chiqilishi, talabalar oqimi va xonalar taqsimotini shu yerdan boshqaring.
+              {isTarbiyachi
+                ? "Talabalar oqimi, xonalar bandligi va yotoqxona holatini shu yerdan kuzating."
+                : "Yo'llanmalar ko'rib chiqilishi, talabalar oqimi va xonalar taqsimotini shu yerdan boshqaring."}
             </p>
           </div>
           <button
@@ -214,13 +221,13 @@ export default function DekanDashboard() {
         }`}>
           <AlertTriangle size={16} className="shrink-0 mt-0.5" />
           <span>
-            Hisobingizga fakultet biriktirilmagan, shuning uchun sizga tegishli yo&apos;llanmalar soni ko&apos;rsatilmayapti. Administratorga murojaat qiling.
+            Hisobingizga fakultet biriktirilmagan, shuning uchun ko&apos;rsatkichlar to&apos;liq ko&apos;rsatilmayapti. Administratorga murojaat qiling.
           </span>
         </div>
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${isTarbiyachi ? 'lg:grid-cols-2' : 'lg:grid-cols-4'}`}>
         {statCards.map((card, idx) => (
           <motion.div
             key={idx}
@@ -335,7 +342,7 @@ export default function DekanDashboard() {
             </ResponsiveContainer>
           </div>
           <div className="flex justify-end mt-2">
-            <Link href="/dekan/xonalar" className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${ui.accentText}`}>
+            <Link href={`${base}/xonalar`} className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${ui.accentText}`}>
               Barcha talabalarni ko&apos;rish <ArrowRight size={10} />
             </Link>
           </div>
@@ -348,7 +355,8 @@ export default function DekanDashboard() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent pending */}
+        {/* Recent pending — permit queue, hidden in the tarbiyachi panel */}
+        {!isTarbiyachi && (
         <div className={`rounded-2xl border p-5 lg:col-span-2 flex flex-col justify-between ${ui.card}`}>
           <div>
             <div className="flex items-center justify-between gap-3">
@@ -406,9 +414,10 @@ export default function DekanDashboard() {
             </Link>
           </div>
         </div>
+        )}
 
         {/* Faculty distribution */}
-        <div className={`rounded-2xl border p-5 lg:col-span-1 flex flex-col justify-between ${ui.card}`}>
+        <div className={`rounded-2xl border p-5 flex flex-col justify-between ${ui.card} ${isTarbiyachi ? 'lg:col-span-3' : 'lg:col-span-1'}`}>
           <div>
             <h3 className={`text-sm font-bold ${ui.strong}`}>Fakultetlar bo‘yicha</h3>
             <p className={`text-[10px] font-medium mt-0.5 ${ui.muted}`}>Joylashtirilgan talabalar soni</p>

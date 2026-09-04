@@ -30,6 +30,7 @@ export type AuthoredAnnouncement = {
   audience: string
   faculty: string | null
   is_published: boolean
+  created_by: string | null
   created_at: string
   updated_at: string
   published_at: string | null

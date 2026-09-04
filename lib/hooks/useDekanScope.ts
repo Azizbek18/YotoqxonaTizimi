@@ -5,6 +5,10 @@ import { supabase } from '@/lib/supabase'
 import { GLOBAL_SCOPE, readSuperadminScope } from '@/lib/superadmin-scope'
 
 export interface DekanScope {
+  /** The signed-in staff member's auth user id (=== their `staff.id`).
+   *  Used to tell apart announcements this staff member authored from a
+   *  colleague's. */
+  id: string | null
   /** The signed-in staff member's own bound `staff.faculty`. */
   faculty: string | null
   /** The faculty currently being acted on: the picked scope for a
@@ -31,6 +35,7 @@ export interface DekanScope {
  * their own auth.getUser()+staff lookup on every poll tick.
  */
 export function useDekanScope(): DekanScope {
+  const [id, setId] = useState<string | null>(null)
   const [faculty, setFaculty] = useState<string | null>(null)
   const [role, setRole] = useState<string | null>(null)
   const [fullName, setFullName] = useState<string | null>(null)
@@ -48,6 +53,7 @@ export function useDekanScope(): DekanScope {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
+        if (!cancelled) setId(user.id)
 
         const { data: staffRow } = await supabase
           .from('staff')
@@ -75,5 +81,5 @@ export function useDekanScope(): DekanScope {
 
   const effectiveFaculty = role === 'admin' && scope && scope !== GLOBAL_SCOPE ? scope : faculty
 
-  return { faculty, effectiveFaculty, fullName, role, scope, resolved }
+  return { id, faculty, effectiveFaculty, fullName, role, scope, resolved }
 }

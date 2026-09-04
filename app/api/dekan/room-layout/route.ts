@@ -5,9 +5,9 @@ import { createRoomLayoutService } from '@/features/room-layout/server/service'
 import { getApiError } from '@/server/http/api-error'
 
 // The 3D floor-plan builder (block-by-block room editor + Three.js
-// preview) moved here from /api/admin/room-layout — dekan now owns it
-// exclusively, admin and tarbiyachi no longer have this capability. Scoped
-// to the dekan's own faculty building.
+// preview) moved here from /api/admin/room-layout. Editing (PUT) is
+// dekan-only; the GET is also read by the tarbiyachi panel's view-only 3D
+// viewer. Scoped to the caller's own faculty building.
 function errorResponse(error: unknown) {
   console.error('Room layout API error:', error)
   const response = getApiError(error, "So'rovni bajarib bo'lmadi")
@@ -16,7 +16,7 @@ function errorResponse(error: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
     const faculty = requirePickedFaculty(staff)
 
     const floor = request.nextUrl.searchParams.get('floor')

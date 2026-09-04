@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { requireActiveStaff } from '@/server/auth/guards'
-import { staffFacultyOrPrimary } from '@/server/auth/faculty'
+import { requireStaffFaculty, staffFacultyOrPrimary } from '@/server/auth/faculty'
 import { getApiError } from '@/server/http/api-error'
 
 type ApplicationLevel = 'info' | 'warning' | 'critical'
+
+// A dekan/admin falls back to the primary building when unscoped (the
+// admin -> dekan transition); a tarbiyachi must have a real faculty — the
+// silent 'amit' fallback would otherwise leak the primary building's
+// applications to a legacy null-faculty tarbiyachi.
+function resolveArizaFaculty(staff: { role: string; faculty: string | null }) {
+  return staff.role === 'tarbiyachi'
+    ? requireStaffFaculty(staff.faculty)
+    : staffFacultyOrPrimary(staff.faculty)
+}
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ ok: false, error: message }, { status })
@@ -21,8 +31,8 @@ function errorResponse(error: unknown, fallback: string) {
 // admin (the primary building). Everything is scoped to that faculty.
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
-    const faculty = staffFacultyOrPrimary(staff.faculty)
+    const { staff } = await requireActiveStaff(request, ['admin', 'dekan', 'tarbiyachi'])
+    const faculty = resolveArizaFaculty(staff)
 
     const { data: requests, error } = await getServiceSupabase()
       .from('arizalar')
@@ -52,8 +62,9 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
-    const faculty = staffFacultyOrPrimary(staff.faculty)
+    const { staff } = await requireActiveStaff(request, ['admin', 'dekan', 'tarbiyachi'])
+    const faculty = resolveArizaFaculty(staff)
+    const isTarbiyachi = staff.role === 'tarbiyachi'
 
     const body = await request.json()
     const id = typeof body.id === 'string' ? body.id : ''
@@ -68,8 +79,15 @@ export async function PATCH(request: NextRequest) {
       return jsonError("Status faqat 'pending', 'approved' yoki 'rejected' bo'lishi mumkin", 400)
     }
 
+    // A tarbiyachi only decides pending applications one way or the other —
+    // no severity-only edits, and no re-opening an already-decided one
+    // (same restriction as /api/staff/arizalar).
+    if (isTarbiyachi && (status !== 'approved' && status !== 'rejected')) {
+      return jsonError("Tarbiyachi arizani faqat tasdiqlashi yoki rad etishi mumkin", 403)
+    }
+
     const updateFields: { level?: ApplicationLevel; status?: string; response_date?: string | null } = {}
-    if (level !== undefined) updateFields.level = level
+    if (level !== undefined && !isTarbiyachi) updateFields.level = level
     if (status !== undefined) {
       updateFields.status = status
       // Reverting to 'pending' clears any prior decision's response_date too.
@@ -78,16 +96,18 @@ export async function PATCH(request: NextRequest) {
 
     if (Object.keys(updateFields).length === 0) return jsonError("Yangilash uchun ma'lumot yo'q", 400)
 
-    const { data, error } = await getServiceSupabase()
+    let query = getServiceSupabase()
       .from('arizalar')
       .update(updateFields)
       .eq('id', id)
       .eq('faculty', faculty)
-      .select('id')
-      .maybeSingle()
+    // A tarbiyachi may only act on a still-pending application.
+    if (isTarbiyachi) query = query.eq('status', 'pending')
+
+    const { data, error } = await query.select('id').maybeSingle()
 
     if (error) throw error
-    if (!data) return jsonError('Ariza topilmadi', 404)
+    if (!data) return jsonError(isTarbiyachi ? "Bu ariza allaqachon ko'rib chiqilgan" : 'Ariza topilmadi', isTarbiyachi ? 409 : 404)
 
     return NextResponse.json({ ok: true })
   } catch (error) {

@@ -67,6 +67,16 @@ export function saveDormAttendanceSettings(
   })
 }
 
+export type GeocodeResult = { name: string; lat: number; lng: number }
+
+/** Free-text place search for the yo'qlama location picker (OSM Nominatim,
+ *  proxied server-side — see app/api/dekan/geocode). */
+export function geocodePlace(query: string) {
+  return apiRequest<{ results: GeocodeResult[] }>(
+    `/api/dekan/geocode?q=${encodeURIComponent(query.trim())}`,
+  )
+}
+
 /** Make one of the faculty's already-linked buildings the primary. */
 export function setPrimaryDorm(dormId: string) {
   return apiRequest<{ dorms: DekanDorm[] }>('/api/dekan/dorm', {

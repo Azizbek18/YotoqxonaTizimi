@@ -7,6 +7,7 @@ import { dekanUI } from '@/lib/dekan-ui'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { saveDormAttendanceSettings } from '@/features/dorms/client/api'
 import type { DekanDorm } from '@/features/dorms/types'
+import DormLocationPicker from './DormLocationPicker'
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 
@@ -98,32 +99,45 @@ export default function AttendanceSettingsCard({
 
       <div className="p-4 sm:p-6 space-y-5">
         <p className={`text-xs leading-relaxed ${ui.muted}`}>
-          Talaba &laquo;Yotoqxonadaman&raquo; tugmasini bosganda tizim uning joylashuvini shu koordinata bilan
-          solishtiradi. Belgilangan radius ichida bo&apos;lsa — <span className={ui.strong}>hozir</span>, bo&apos;lmasa —
-          <span className={ui.strong}> yo&apos;q</span> deb belgilanadi. Koordinatani Google Maps&apos;dan oling:
-          kerakli nuqtani bosib turing → pastda chiqqan ikkita raqamni ko&apos;chiring.
+          Talaba &laquo;Yotoqxonadaman&raquo; tugmasini bosganda tizim uning joylashuvini shu nuqta bilan
+          solishtiradi. Belgilangan radius (ko&apos;k doira) ichida bo&apos;lsa — <span className={ui.strong}>hozir</span>,
+          bo&apos;lmasa — <span className={ui.strong}>yo&apos;q</span>. Xaritadan yotoqxona binosini qidiring yoki
+          ustiga bosib nuqtani qo&apos;ying — pin&apos;ni sudrab ham aniqlashtirsa bo&apos;ladi.
         </p>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${ui.muted}`}>Kenglik (latitude)</label>
-            <input
-              type="text" inputMode="decimal" value={lat}
-              onChange={(e) => setLat(e.target.value)}
-              placeholder="41.311081"
-              className={`${inputCls} w-full`}
-            />
+        <DormLocationPicker
+          isLight={isLight}
+          lat={latNum}
+          lng={lngNum}
+          radiusM={Number.isFinite(radiusNum) ? radiusNum : 1000}
+          onChange={(la, ln) => { setLat(String(la)); setLng(String(ln)) }}
+        />
+
+        <details className="group">
+          <summary className={`cursor-pointer text-[11px] font-semibold ${ui.muted} hover:${ui.strong}`}>
+            Koordinatani qo&apos;lda kiritish
+          </summary>
+          <div className="mt-2 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${ui.muted}`}>Kenglik (latitude)</label>
+              <input
+                type="text" inputMode="decimal" value={lat}
+                onChange={(e) => setLat(e.target.value)}
+                placeholder="41.311081"
+                className={`${inputCls} w-full`}
+              />
+            </div>
+            <div>
+              <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${ui.muted}`}>Uzunlik (longitude)</label>
+              <input
+                type="text" inputMode="decimal" value={lng}
+                onChange={(e) => setLng(e.target.value)}
+                placeholder="69.240562"
+                className={`${inputCls} w-full`}
+              />
+            </div>
           </div>
-          <div>
-            <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${ui.muted}`}>Uzunlik (longitude)</label>
-            <input
-              type="text" inputMode="decimal" value={lng}
-              onChange={(e) => setLng(e.target.value)}
-              placeholder="69.240562"
-              className={`${inputCls} w-full`}
-            />
-          </div>
-        </div>
+        </details>
 
         <div className={`flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-5 border-b ${ui.border}`}>
           <div className="flex-1 min-w-0">

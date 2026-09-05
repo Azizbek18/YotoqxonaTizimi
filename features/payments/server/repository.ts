@@ -104,7 +104,7 @@ export function createPaymentRepository() {
       studentName: string
       months: string[]
       amounts: number[]
-      year: number
+      years: number[]
       receiptUrl: string
       receiptHash: string
       batchId: string
@@ -117,7 +117,7 @@ export function createPaymentRepository() {
         p_student_name: input.studentName,
         p_months: input.months,
         p_amounts: input.amounts,
-        p_year: input.year,
+        p_years: input.years,
         p_receipt_url: input.receiptUrl,
         p_receipt_hash: input.receiptHash,
         p_batch_id: input.batchId,

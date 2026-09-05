@@ -37,7 +37,20 @@ export function getTashkentYear(date = new Date()): number {
   }).format(date))
 }
 
+function getTashkentMonth(date = new Date()): number {
+  return Number(new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tashkent',
+    month: 'numeric',
+  }).format(date))
+}
+
+// The dorm billing year is Sentabr(9) -> Iyun(6), not the calendar year — so
+// "this academic year" during, say, Mart 2027 is the one that started
+// Sentabr 2026, not 2027. Returns the START year of the CURRENT academic
+// year, and the one before/after it, for a 3-tab selector.
 export function getPaymentYears(date = new Date()): [number, number, number] {
-  const currentYear = getTashkentYear(date)
-  return [currentYear - 1, currentYear, currentYear + 1]
+  const calendarYear = getTashkentYear(date)
+  const month = getTashkentMonth(date)
+  const academicYearStart = month >= 9 ? calendarYear : calendarYear - 1
+  return [academicYearStart - 1, academicYearStart, academicYearStart + 1]
 }

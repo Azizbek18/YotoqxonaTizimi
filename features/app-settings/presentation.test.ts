@@ -34,6 +34,17 @@ describe('app settings presentation helpers', () => {
   it('builds the year selector from the current Tashkent year', () => {
     const utcNewYearBoundary = new Date('2026-12-31T20:00:00.000Z')
     expect(getTashkentYear(utcNewYearBoundary)).toBe(2027)
-    expect(getPaymentYears(utcNewYearBoundary)).toEqual([2026, 2027, 2028])
+    // It's Tashkent Yanvar 2027 here — still inside the academic year that
+    // started Sentabr 2026, so the middle tab must stay 2026, not jump to
+    // 2027 just because the calendar flipped.
+    expect(getPaymentYears(utcNewYearBoundary)).toEqual([2025, 2026, 2027])
+  })
+
+  it('rolls the academic year over once Sentabr arrives', () => {
+    const septemberStart = new Date('2026-09-01T00:00:00.000Z') // Tashkent 05:00, still Sentabr
+    expect(getPaymentYears(septemberStart)).toEqual([2025, 2026, 2027])
+
+    const augustEnd = new Date('2026-08-31T18:00:00.000Z') // Tashkent 23:00, still Avgust
+    expect(getPaymentYears(augustEnd)).toEqual([2024, 2025, 2026])
   })
 })

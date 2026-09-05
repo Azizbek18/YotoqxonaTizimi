@@ -13,10 +13,31 @@ export class PaymentValidationError extends Error {
   }
 }
 
-export const PAYMENT_MONTHS = new Set([
-  'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr', 'Yanvar',
-  'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
-])
+// The dorm billing year runs Sentabr -> Iyun (no charge over the Iyul/Avgust
+// summer break) — NOT the calendar-year Yanvar -> Dekabr order. This is the
+// single source of truth for that order so the student's chek-yuklash page
+// can share it instead of keeping its own copy: it used to hardcode a
+// separate Yanvar-first, 12-month list that both started the picker on the
+// wrong month and let Iyul/Avgust be selected even though they'd always be
+// rejected here.
+export const PAYMENT_MONTHS_ORDER = [
+  'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
+  'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+] as const
+
+export type PaymentMonth = typeof PAYMENT_MONTHS_ORDER[number]
+
+export const PAYMENT_MONTHS = new Set<string>(PAYMENT_MONTHS_ORDER)
+
+// Sentabr-Dekabr fall in the academic year's start calendar year; Yanvar-Iyun
+// roll over into the next one (an academic year that "starts" in 2026 pays
+// Yanvar..Iyun 2027). Index 4 is Yanvar — the rollover point.
+const PAYMENT_MONTH_ROLLOVER_INDEX = 4
+
+export function calendarYearForPaymentMonth(month: string, academicYearStart: number): number {
+  const idx = PAYMENT_MONTHS_ORDER.indexOf(month as PaymentMonth)
+  return idx >= PAYMENT_MONTH_ROLLOVER_INDEX ? academicYearStart + 1 : academicYearStart
+}
 
 export function normalizePaymentTransactionId(value: unknown): string {
   return typeof value === 'string'

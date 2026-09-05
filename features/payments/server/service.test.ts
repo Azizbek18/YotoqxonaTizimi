@@ -12,14 +12,14 @@ vi.mock('@/features/app-settings/server/service', () => ({
 
 const { createPaymentService } = await import('./service')
 
-function paymentForm(transactionId: string | null = 'TRX-9A7B-4C2D') {
+function paymentForm(transactionId: string | null = 'TRX-9A7B-4C2D', months: string[] = ['Sentabr']) {
   const form = new FormData()
   const bytes = new Uint8Array(32)
   bytes.set([0x89, 0x50, 0x4e, 0x47])
   form.set('file', new File([bytes], 'receipt.png', { type: 'image/png' }))
-  form.set('amount', '500000')
-  form.set('year', '2026')
-  form.set('months', JSON.stringify(['Sentabr']))
+  form.set('amount', String(500000 * months.length))
+  form.set('academicYearStart', '2026')
+  form.set('months', JSON.stringify(months))
   form.set('validatedHash', 'signed-claim')
   if (transactionId !== null) form.set('transactionId', transactionId)
   return form
@@ -74,6 +74,25 @@ describe('payment submission service', () => {
       aiReview: 'passed',
       months: ['Sentabr'],
       amounts: [500000],
+      years: [2026],
+    }))
+  })
+
+  it('rolls Yanvar..Iyun over into the next calendar year, even mid-batch across the Dekabr boundary', async () => {
+    const repo = repository()
+    const result = await createPaymentService(repo as never).submit(
+      { id: '00000000-0000-4000-8000-000000000001', full_name: 'Test Student' },
+      paymentForm('TRX-9A7B-4C2D', ['Dekabr', 'Yanvar']),
+    )
+
+    expect(result.ok).toBe(true)
+    expect(repo.submitBatchAtomic).toHaveBeenCalledWith(expect.objectContaining({
+      months: ['Dekabr', 'Yanvar'],
+      // Academic year picked = 2026 (its Sentabr start) -> Dekabr stays 2026,
+      // Yanvar rolls to 2027. This is the exact case the student flagged:
+      // selecting across the Dekabr/Yanvar boundary must not corrupt either
+      // month's stored year.
+      years: [2026, 2027],
     }))
   })
 

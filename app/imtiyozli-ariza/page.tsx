@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, User, Mail, Phone, ArrowLeft, CheckCircle2, CreditCard,
-  ShieldAlert, ShieldCheck, Pencil, ChevronRight, ChevronLeft, FileText, Globe2
+  ShieldAlert, ShieldCheck, Pencil, PenLine, ChevronRight, ChevronLeft, FileText, Globe2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -15,7 +15,7 @@ import DeveloperContactLink from '@/components/DeveloperContactLink'
 import TelegramPermitConnect from '@/components/TelegramPermitConnect'
 import PushNotificationCard from '@/components/pwa/PushNotificationCard'
 import ArizaTilxatDocument from '@/components/documents/ArizaTilxatDocument'
-import SignaturePad from '@/components/applications/SignaturePad'
+import SignatureCaptureModal from '@/components/applications/SignatureCaptureModal'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
@@ -230,6 +230,9 @@ export default function ImtiyozliAriza() {
 
   const [signatureImage, setSignatureImage] = useState<string | null>(null)
   const [attested, setAttested] = useState(false)
+  // Signing happens in a fixed modal, not inline on the wizard step — see
+  // the same note in app/ruxsatnoma-yuborish/page.tsx.
+  const [signModalOpen, setSignModalOpen] = useState(false)
 
   const handleSubmit = async () => {
     // In edit mode the passport photo already on file may be kept.
@@ -705,17 +708,37 @@ export default function ImtiyozliAriza() {
 
                 <div className={`rounded-2xl border p-3.5 ${isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.03]'}`}>
                   <p className={`mb-2 text-[10px] font-black uppercase tracking-widest ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Imzoingiz</p>
-                  <SignaturePad isLight={isLight} height={170} onChange={setSignatureImage} />
+                  {signatureImage && attested ? (
+                    <div className="space-y-2.5">
+                      <div className={`rounded-xl border p-2.5 ${isLight ? 'border-emerald-200 bg-emerald-50' : 'border-emerald-500/25 bg-emerald-500/10'}`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={signatureImage} alt="Imzoingiz" className="mx-auto h-16 object-contain" />
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className={`text-[11px] font-semibold ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
+                          ✓ Imzo qabul qilindi va tasdiqlangan
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSignModalOpen(true)}
+                          className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider ${
+                            isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                          }`}
+                        >
+                          <Pencil size={11} /> Tahrirlash
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setSignModalOpen(true)}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:brightness-110 py-3 text-xs font-black uppercase tracking-widest text-white transition-all duration-300 active:scale-95"
+                    >
+                      <PenLine size={14} /> Imzo qo&apos;yish
+                    </button>
+                  )}
                 </div>
-
-                <label className={`flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 text-[11px] font-semibold leading-relaxed ${
-                  attested
-                    ? (isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200')
-                    : (isLight ? 'border-slate-200 text-slate-600' : 'border-white/10 text-slate-300')
-                }`}>
-                  <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600" />
-                  <span>Ariza va Tilxatdagi ma&apos;lumotlar to&apos;g&apos;ri. Elektron imzomni tasdiqlayman.</span>
-                </label>
 
                 {!editMode && (!signatureImage || !attested) && (
                   <p className={`text-center text-[11px] font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -772,6 +795,21 @@ export default function ImtiyozliAriza() {
         }
       `}} />
       <DeveloperContactLink />
+
+      <SignatureCaptureModal
+        open={signModalOpen}
+        onClose={() => setSignModalOpen(false)}
+        onConfirm={(signature) => {
+          setSignatureImage(signature)
+          setAttested(true)
+          setSignModalOpen(false)
+        }}
+        isLight={isLight}
+        title="Ariza va Tilxatni imzolang"
+        description="Bu yerda faqat imzo qo‘yasiz. Dekan xona biriktirgach, imzolangan Ariza va Tilxat Telegram yoki emailingizga yuboriladi."
+        attestLabel="Ariza va Tilxatdagi ma'lumotlar to'g'ri. Elektron imzomni tasdiqlayman."
+        confirmLabel="Imzoni tasdiqlash"
+      />
     </div>
   )
 }

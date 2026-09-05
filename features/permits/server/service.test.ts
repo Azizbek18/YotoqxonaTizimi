@@ -196,7 +196,7 @@ describe('permit admin service — overview', () => {
       users: [{
         id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Aziz',
         passport_series: 'AB1', jshshir: 'J1', phone_number: '+998', gender: 'male',
-        direction: 'astronomiya', course: 2, room_number: '12', warning_count: 0, blacklisted: false,
+        direction: 'astronomiya', course: 2, room_number: '12', dorm_id: null, warning_count: 0, blacklisted: false,
       }],
     }))
     const overview = await createPermitAdminService(repository({ load }), capacityDeps()).overview('fizika')
@@ -209,6 +209,24 @@ describe('permit admin service — overview', () => {
     expect(overview.dashboard.totalOccupiedBeds).toBe(2)
   })
 
+  // A faculty with a second building (many-to-many, 202609300000) can have
+  // two same-numbered rooms in different dorms — a caller grouping
+  // usersWithRooms by bare room_number would merge their occupants. This
+  // just needs dorm_id to survive the mapping so that caller can key on
+  // `${dorm_id}:${room_number}` instead.
+  it('carries dorm_id through so callers can disambiguate same-numbered rooms across buildings', async () => {
+    const load = vi.fn(async () => ({
+      permits: [],
+      users: [{
+        id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Aziz',
+        passport_series: 'AB1', jshshir: 'J1', phone_number: '+998', gender: 'male',
+        direction: 'astronomiya', course: 2, room_number: '101', dorm_id: 'dorm-b', warning_count: 0, blacklisted: false,
+      }],
+    }))
+    const overview = await createPermitAdminService(repository({ load }), capacityDeps()).overview('fizika')
+    expect(overview.usersWithRooms[0].dorm_id).toBe('dorm-b')
+  })
+
   it('bed capacity: frozen rooms give no free places, per-room overrides applied', async () => {
     // room 12 holds 2 (student + permit) with an override cap of 3 -> 1 free.
     // room 20 is default 4, empty -> 4 free. room 30 is frozen -> 0, excluded.
@@ -217,7 +235,7 @@ describe('permit admin service — overview', () => {
       users: [{
         id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Aziz',
         passport_series: 'AB1', jshshir: 'J1', phone_number: '+998', gender: 'male',
-        direction: 'astronomiya', course: 2, room_number: '12', warning_count: 0, blacklisted: false,
+        direction: 'astronomiya', course: 2, room_number: '12', dorm_id: null, warning_count: 0, blacklisted: false,
       }],
     }))
     const deps = capacityDeps([
@@ -241,7 +259,7 @@ describe('permit admin service — overview', () => {
       users: [{
         id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Aziz',
         passport_series: 'PP9', jshshir: 'JJ9', phone_number: '+998', gender: 'male',
-        direction: 'astronomiya', course: 2, room_number: '5', warning_count: 0, blacklisted: false,
+        direction: 'astronomiya', course: 2, room_number: '5', dorm_id: null, warning_count: 0, blacklisted: false,
       }],
     }))
     const deps = capacityDeps([{ room_number: '5', frozen: false, capacity: 4 }], 4)
@@ -262,7 +280,7 @@ describe('permit admin service — overview', () => {
       ],
       users: [{
         id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'X', course: 1,
-        passport_series: 'C', jshshir: 'C', phone_number: '+998', gender: 'male', direction: 'd', room_number: '11', warning_count: 0, blacklisted: false,
+        passport_series: 'C', jshshir: 'C', phone_number: '+998', gender: 'male', direction: 'd', room_number: '11', dorm_id: null, warning_count: 0, blacklisted: false,
       }],
     }))
     const deps = capacityDeps([

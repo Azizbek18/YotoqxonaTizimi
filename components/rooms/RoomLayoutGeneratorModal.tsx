@@ -17,6 +17,9 @@ interface Props {
   existingRooms: readonly RoomFloor[]
   /** Room numbers that hold a resident / approved permit — never deleted on trim. */
   occupiedRoomNumbers?: ReadonlySet<string>
+  /** Which of the faculty's buildings to generate into (many-to-many,
+   *  202609300000); omitted resolves to primary, unchanged. */
+  dormId?: string
   onClose: () => void
   onCreated: () => void
 }
@@ -43,7 +46,7 @@ const rangeText = (r: [number, number] | null) =>
  * room keeps its exact number. The preview shows every floor's old → new
  * range and refuses upfront if a resident's room can't keep its number.
  */
-export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingRooms, occupiedRoomNumbers, onClose, onCreated }: Props) {
+export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingRooms, occupiedRoomNumbers, dormId, onClose, onCreated }: Props) {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
@@ -119,7 +122,7 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
     }
     setSaving(true)
     try {
-      const { created, removed, renumbered } = await generateRoomFloors(plans, numbering)
+      const { created, removed, renumbered } = await generateRoomFloors(plans, numbering, dormId)
       const parts: string[] = []
       if (created > 0) parts.push(`${created} ta xona qo'shildi`)
       if (removed > 0) parts.push(`${removed} ta o'chirildi`)

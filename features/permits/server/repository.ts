@@ -19,7 +19,7 @@ export function createPermitAdminRepository() {
           .order('created_at', { ascending: false }),
         supabase
           .from('users')
-          .select('id, full_name, passport_series, jshshir, phone_number, gender, faculty, direction, course, room_number, warning_count, blacklisted, role, status')
+          .select('id, full_name, passport_series, jshshir, phone_number, gender, faculty, direction, course, room_number, dorm_id, warning_count, blacklisted, role, status')
           .eq('role', 'talaba')
           .ilike('faculty', faculty),
       ])

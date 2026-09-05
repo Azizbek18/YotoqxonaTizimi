@@ -28,6 +28,8 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { fetchAssignableStudents, assignStudentRoom } from '@/features/room-assignment/client/api'
 import type { FacultyStudentRow } from '@/features/room-assignment/types'
+import { fetchDekanDorm } from '@/features/dorms/client/api'
+import type { DekanDorm } from '@/features/dorms/types'
 import {
   setRoomFrozen,
   setRoomCapacity as setRoomCapacityApi,
@@ -101,7 +103,14 @@ export default function DekanXonalarMap() {
   // quruvchisi), not something to infer from the room number — this page used
   // to invent rooms 1..150 and slice them into floors of 30, which silently
   // disagreed with the real building.
-  const { rooms: layoutRooms, floors, floorOf, loaded: floorsLoaded, reload: reloadRoomFloors } = useRoomFloors()
+  // Every building this faculty holds (many-to-many, 202609300000), and
+  // which one this page is currently pointed at — undefined = primary, the
+  // same default every dormId-optional call below already resolves to.
+  const [dorms, setDorms] = useState<DekanDorm[]>([])
+  const [activeDormId, setActiveDormId] = useState<string | undefined>(undefined)
+  const primaryDormId = dorms.find((d) => d.isPrimary)?.dormId
+
+  const { rooms: layoutRooms, floors, floorOf, loaded: floorsLoaded, reload: reloadRoomFloors } = useRoomFloors(activeDormId)
 
   // State
   const [occupantsByRoom, setOccupantsByRoom] = useState<Record<string, Occupant[]>>({})
@@ -155,8 +164,17 @@ export default function DekanXonalarMap() {
       // Map to combined occupants list
       const occupantsMap: Record<string, Occupant[]> = {}
 
+      // Room numbers are only unique per building (many-to-many, 202609300000),
+      // so when a faculty holds several buildings we must only fold in rows
+      // from the one currently being viewed. A row's dorm_id is null for
+      // legacy data written before the multi-dorm migration — treat those as
+      // belonging to the primary building.
+      const viewingDormId = activeDormId ?? primaryDormId
+      const belongsToView = (rowDormId: string | null | undefined) => (rowDormId ?? primaryDormId) === viewingDormId
+
       users?.forEach((u) => {
         if (!u.room_number) return
+        if (!belongsToView(u.dorm_id)) return
         const occupant: Occupant = {
           // Every occupant here is the dekan's own faculty — the overview API
           // is faculty-scoped at the source. `|| ''` is just a null guard.
@@ -180,6 +198,7 @@ export default function DekanXonalarMap() {
 
       permits?.forEach((p) => {
         if (!p.room_number) return
+        if (!belongsToView(p.dorm_id)) return
         const occupant: Occupant = {
           id: p.id || '',
           full_name: p.full_name,
@@ -214,7 +233,6 @@ export default function DekanXonalarMap() {
   }
 
   useEffect(() => {
-    fetchRoomsData()
     loadStudents()
     fetchAppSettings()
       .then((settings) => {
@@ -222,7 +240,17 @@ export default function DekanXonalarMap() {
         setFloorCount(settings.floorCount)
       })
       .catch((err) => console.error('Xona sozlamalarini yuklashda xato:', err))
+    fetchDekanDorm()
+      .then((result) => setDorms(result.dorms))
+      .catch((err) => console.error('Yotoqxonalar ro\'yxatini yuklashda xato:', err))
   }, [])
+
+  // Re-pull occupants whenever the viewed building changes (including the
+  // initial mount, where activeDormId is still undefined = primary).
+  useEffect(() => {
+    fetchRoomsData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDormId])
 
   const rooms = useMemo<RoomData[]>(() => {
     const roomGender = (occupants: Occupant[]): string | null => {
@@ -284,7 +312,7 @@ export default function DekanXonalarMap() {
     setBalanceWarn(null)
     setAssigningId(studentId)
     try {
-      const res = await assignStudentRoom({ studentId, roomNumber: selectedRoom.roomNumber, source })
+      const res = await assignStudentRoom({ studentId, roomNumber: selectedRoom.roomNumber, source, dormId: activeDormId })
       toast.success(
         source === 'permit'
           ? "Xona biriktirildi — talaba ro'yxatdan o'tganda shu xonaga joylashadi"
@@ -332,7 +360,7 @@ export default function DekanXonalarMap() {
     setRemovingId(occ.id)
     try {
       const source = occ.status === 'approved' ? 'permit' : 'user'
-      await assignStudentRoom({ studentId: occ.id, roomNumber: null, source })
+      await assignStudentRoom({ studentId: occ.id, roomNumber: null, source, dormId: activeDormId })
       toast.success(`${occ.full_name} xonadan chiqarildi`)
       setConfirmRemoveId(null)
       await Promise.all([fetchRoomsData(), loadStudents()])
@@ -347,7 +375,7 @@ export default function DekanXonalarMap() {
     if (!selectedRoom) return
     setFreezingRoom(true)
     try {
-      await setRoomFrozen(selectedRoom.roomNumber, true, freezeReason)
+      await setRoomFrozen(selectedRoom.roomNumber, true, freezeReason, activeDormId)
       toast.success(`${selectedRoom.roomNumber}-xona muzlatildi`)
       setFreezeModalOpen(false)
       setFreezeReason('')
@@ -363,7 +391,7 @@ export default function DekanXonalarMap() {
     if (!selectedRoom) return
     setFreezingRoom(true)
     try {
-      await setRoomFrozen(selectedRoom.roomNumber, false)
+      await setRoomFrozen(selectedRoom.roomNumber, false, undefined, activeDormId)
       toast.success(`${selectedRoom.roomNumber}-xona qayta ochildi`)
       await Promise.all([reloadRoomFloors(), fetchRoomsData()])
     } catch (err) {
@@ -380,7 +408,7 @@ export default function DekanXonalarMap() {
     if (!selectedRoom || !selectedRoom.inLayout) return
     setSavingCapacity(true)
     try {
-      await setRoomCapacityApi(selectedRoom.roomNumber, capacity)
+      await setRoomCapacityApi(selectedRoom.roomNumber, capacity, activeDormId)
       setSelectedRoom((room) => (room ? { ...room, capacity } : room))
       await reloadRoomFloors()
       toast.success(
@@ -403,7 +431,7 @@ export default function DekanXonalarMap() {
     if (!selectedRoom || !selectedRoom.inLayout || savingGender) return
     setSavingGender(true)
     try {
-      await setRoomGenderApi(selectedRoom.roomNumber, gender)
+      await setRoomGenderApi(selectedRoom.roomNumber, gender, activeDormId)
       setSelectedRoom((room) => (room ? { ...room, declaredGender: gender } : room))
       await reloadRoomFloors()
       toast.success(
@@ -447,7 +475,7 @@ export default function DekanXonalarMap() {
     if (roomNumbers.length === 0 || savingBulkGender) return
     setSavingBulkGender(true)
     try {
-      const { changed } = await bulkSetRoomGenderApi(roomNumbers, gender)
+      const { changed } = await bulkSetRoomGenderApi(roomNumbers, gender, activeDormId)
       await reloadRoomFloors()
       toast.success(
         gender === null
@@ -590,6 +618,29 @@ export default function DekanXonalarMap() {
 
   return (
     <div className="space-y-6">
+      {/* 0. Building switcher — only shown once the faculty actually holds
+          more than one dorm (many-to-many, 202609300000). */}
+      {dorms.length > 1 && (
+        <div className={`flex flex-wrap gap-1 rounded-xl p-1 w-fit ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'}`}>
+          {dorms.map((d) => {
+            const isActive = (activeDormId ?? primaryDormId) === d.dormId
+            return (
+              <button
+                key={d.dormId}
+                onClick={() => setActiveDormId(d.dormId === primaryDormId ? undefined : d.dormId)}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                  isActive
+                    ? 'bg-indigo-600 text-white'
+                    : `${ui.muted} ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-200'}`
+                }`}
+              >
+                {d.number}-yotoqxona{d.isPrimary ? ' (asosiy)' : ''}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* 1. Header Overview Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
@@ -1434,6 +1485,7 @@ export default function DekanXonalarMap() {
         floorCount={floorCount}
         existingRooms={layoutRooms}
         occupiedRoomNumbers={occupiedRoomNumbers}
+        dormId={activeDormId}
         onClose={() => setGeneratorOpen(false)}
         onCreated={() => {
           void reloadRoomFloors()

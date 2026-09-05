@@ -70,11 +70,19 @@ function parseUpdate(input: unknown): AppSettingsUpdate {
   return row as AppSettingsUpdate
 }
 
+// Forwards an optional trailing dormId arg only when given, so an omitted
+// call keeps the exact prior argument count (and existing
+// `toHaveBeenCalledWith` assertions) — same pattern used by
+// features/room-layout and features/room-assignment.
+const withDorm = (dormId?: string) => (dormId ? [dormId] as const : [] as const)
+
 export function createAppSettingsService(repository: AppSettingsRepository = createAppSettingsRepository()) {
   return {
     // faculty omitted -> the primary building's settings (transition default).
-    get(faculty?: string): Promise<AppSettings> {
-      return repository.get(faculty)
+    // dormId (202609300000) names a SPECIFIC one of that faculty's buildings
+    // — omitted keeps resolving to the faculty's primary, unchanged.
+    get(faculty?: string, dormId?: string): Promise<AppSettings> {
+      return repository.get(faculty, ...withDorm(dormId))
     },
 
     // Superadmin: every faculty's effective monthly / yearly fees.
@@ -82,7 +90,7 @@ export function createAppSettingsService(repository: AppSettingsRepository = cre
       return repository.listFacultyFees()
     },
 
-    async update(input: unknown, faculty?: string): Promise<AppSettings> {
+    async update(input: unknown, faculty?: string, dormId?: string): Promise<AppSettings> {
       const row = parseUpdate(input)
 
       // yearlyContractFee must stay a whole multiple of monthlyFee — the
@@ -92,6 +100,8 @@ export function createAppSettingsService(repository: AppSettingsRepository = cre
       // "fully paid" means. Merge against the current row so a partial
       // update (changing only one of the two fields) is still checked
       // against the other's actual current value, not a stale default.
+      // (The fee pair is per-faculty, not per-dorm, so this read never
+      // needs dormId.)
       if ('monthly_fee' in row || 'yearly_contract_fee' in row) {
         const current = await repository.get(faculty)
         const monthlyFee = 'monthly_fee' in row ? Number(row.monthly_fee) : current.monthlyFee
@@ -101,7 +111,7 @@ export function createAppSettingsService(repository: AppSettingsRepository = cre
         }
       }
 
-      return repository.update(row, faculty)
+      return repository.update(row, faculty, ...withDorm(dormId))
     },
   }
 }

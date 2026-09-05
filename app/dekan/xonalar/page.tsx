@@ -44,7 +44,7 @@ import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { useStaffPanel } from '@/lib/hooks/useStaffPanel'
 import { computeFloorBalance, checkFloorPlacement } from '@/lib/floor-balance'
 import FloorBalanceCard from '@/components/dekan/FloorBalanceCard'
-import { fetchAppSettings } from '@/features/app-settings/client/api'
+import { fetchDekanSettings } from '@/features/app-settings/client/api'
 import { getRoomOccupancyTone } from '@/features/app-settings/presentation'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { directionLabel } from '@/lib/directions'
@@ -239,14 +239,17 @@ export default function DekanXonalarMap() {
 
   useEffect(() => {
     loadStudents()
-    fetchAppSettings()
-      .then((settings) => {
-        setDefaultCapacity(settings.defaultRoomCapacity)
-        setFloorCount(settings.floorCount)
-      })
-      .catch((err) => console.error('Xona sozlamalarini yuklashda xato:', err))
     fetchDekanDorm()
-      .then((result) => setDorms(result.dorms))
+      .then((result) => {
+        setDorms(result.dorms)
+        // Deep link from Sozlamalar's per-building "Xonalar xaritasi" button
+        // (?dormId=...) — only honored if it's actually one of this
+        // faculty's buildings; otherwise the usual primary default applies.
+        const wanted = new URLSearchParams(window.location.search).get('dormId')
+        if (wanted && result.dorms.some((d) => d.dormId === wanted)) {
+          setActiveDormId(wanted)
+        }
+      })
       .catch((err) => console.error('Yotoqxonalar ro\'yxatini yuklashda xato:', err))
       .finally(() => setDormsLoaded(true))
   }, [])
@@ -261,6 +264,20 @@ export default function DekanXonalarMap() {
     fetchRoomsData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDormId, primaryDormId, dormsLoaded])
+
+  // Default capacity / floor count are the BUILDING's, not the faculty's —
+  // re-fetched whenever the viewed building changes, same reason as the
+  // occupant re-fetch above (a switch to a non-primary building must not
+  // keep showing the primary's numbers).
+  useEffect(() => {
+    if (!dormsLoaded) return
+    fetchDekanSettings(activeDormId)
+      .then((settings) => {
+        setDefaultCapacity(settings.defaultRoomCapacity)
+        setFloorCount(settings.floorCount)
+      })
+      .catch((err) => console.error('Xona sozlamalarini yuklashda xato:', err))
+  }, [activeDormId, dormsLoaded])
 
   const rooms = useMemo<RoomData[]>(() => {
     const roomGender = (occupants: Occupant[]): string | null => {

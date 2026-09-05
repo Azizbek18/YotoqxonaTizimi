@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Wallet, Boxes, Phone, ShieldAlert, Globe2, Send } from 'lucide-react'
+import { Wallet, Phone, ShieldAlert, Globe2, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import {
-    fetchAppSettings,
+    fetchDekanSettings,
     updateAppSettings,
     fetchDekanTelegramChat,
     updateDekanTelegramChat,
@@ -17,14 +16,14 @@ import { fetchDekanDorm } from '@/features/dorms/client/api'
 import type { DekanDorm } from '@/features/dorms/types'
 import DormFloorsCard from '@/components/dekan/DormFloorsCard'
 import AddDormCard from '@/components/dekan/AddDormCard'
-import FloorManagerCard from '@/components/dekan/FloorManagerCard'
+import DormRoomSettingsCard from '@/components/dekan/DormRoomSettingsCard'
 import AttendanceSettingsCard from '@/components/dekan/AttendanceSettingsCard'
 import DekanSignatureCard from '@/components/dekan/DekanSignatureCard'
 import { dekanUI } from '@/lib/dekan-ui'
 import { SkelForm } from '@/components/ui/skeletons'
 
 type NumberField = {
-    key: 'monthlyFee' | 'yearlyContractFee' | 'defaultRoomCapacity' | 'floorCount' | 'maxUploadSizeMb' | 'warningThreshold'
+    key: 'monthlyFee' | 'yearlyContractFee' | 'maxUploadSizeMb' | 'warningThreshold'
     label: string
     description: string
     suffix: string
@@ -34,8 +33,6 @@ export default function DekanSozlamalarPage() {
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
     const ui = dekanUI(isLight)
-
-    const { rooms: layoutRooms, loaded: layoutLoaded, reload: reloadRoomFloors } = useRoomFloors()
 
     const [settings, setSettings] = useState<AppSettings | null>(null)
     const [savedSettings, setSavedSettings] = useState<AppSettings | null>(null)
@@ -52,7 +49,9 @@ export default function DekanSozlamalarPage() {
         setLoading(true)
         setLoadError(null)
         try {
-            const data = await fetchAppSettings()
+            // Dekan/tarbiyachi-scoped — resolves to THIS caller's own faculty,
+            // not always the primary one a bare fetchAppSettings() falls back to.
+            const data = await fetchDekanSettings()
             setSettings(data)
             setSavedSettings(data)
         } catch (error) {
@@ -130,10 +129,6 @@ export default function DekanSozlamalarPage() {
     const paymentFields: NumberField[] = [
         { key: 'monthlyFee', label: 'Oylik to\'lov summasi', description: 'Talabalar har oy to\'lashi kerak bo\'lgan summa', suffix: "so'm" },
         { key: 'yearlyContractFee', label: 'Yillik shartnoma summasi', description: 'To\'lovlar sahifasida umumiy shartnoma miqdori sifatida ko\'rsatiladi', suffix: "so'm" },
-    ]
-
-    const roomFields: NumberField[] = [
-        { key: 'defaultRoomCapacity', label: 'Xonaning standart sig\'imi', description: 'Istisno belgilanmagan barcha xonalar shu qiymatni oladi. 2/3 o\'rinli istisno xonalarni «3D Xonalar» yoki «Xonalar xaritasi»da alohida belgilaysiz.', suffix: 'kishi' },
     ]
 
     const limitFields: NumberField[] = [
@@ -231,6 +226,13 @@ export default function DekanSozlamalarPage() {
                                         showBuildingControls={dorms.length > 1}
                                     />
                                 </motion.div>
+                                {/* One "Xona va qavat sozlamalari" per building — floor
+                                    count, default capacity and the room layout are all
+                                    per-dorm, so a faculty's 2nd+ building needs its own
+                                    card, not a single primary-only one. */}
+                                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 + 0.015 }}>
+                                    <DormRoomSettingsCard dorm={d} />
+                                </motion.div>
                                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 + 0.03 }}>
                                     <AttendanceSettingsCard dorm={d} onChange={updateOneDorm} />
                                 </motion.div>
@@ -245,24 +247,6 @@ export default function DekanSozlamalarPage() {
 
                         {renderSection(Wallet, "To'lov sozlamalari", 0, (
                             <>{paymentFields.map((field) => renderNumberRow(field, 'sm:w-36'))}</>
-                        ))}
-
-                        {renderSection(Boxes, 'Xona va qavat sozlamalari', 0.04, (
-                          <>
-                            {roomFields.map((field) => renderNumberRow(field, 'sm:w-24'))}
-
-                            <FloorManagerCard
-                                floorCount={settings.floorCount}
-                                defaultCapacity={settings.defaultRoomCapacity}
-                                rooms={layoutRooms}
-                                roomsLoaded={layoutLoaded}
-                                onFloorCountSaved={(floorCount) => {
-                                    setSettings((prev) => (prev ? { ...prev, floorCount } : prev))
-                                    setSavedSettings((prev) => (prev ? { ...prev, floorCount } : prev))
-                                }}
-                                onRoomsChanged={() => { void reloadRoomFloors() }}
-                            />
-                          </>
                         ))}
 
                         {renderSection(Globe2, 'Xorijlik/imtiyozli talabalar arizasi', 0.06, (

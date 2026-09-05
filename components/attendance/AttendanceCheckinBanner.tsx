@@ -29,6 +29,11 @@ export default function AttendanceCheckinBanner({ isLight }: { isLight: boolean 
   return (
     <Link
       href="/talaba/yoqlama"
+      // Opts out of the global talaba-ui "button shelf" CSS (app/talaba/layout.tsx)
+      // — that rule repaints ANY colored <a class="bg-emerald-...">  as a
+      // branded purple/cyan CTA button, which clobbered this plain info
+      // banner's soft emerald background with the wrong gradient + white text.
+      data-student-button="plain"
       className={`flex items-center gap-3 rounded-2xl border p-4 transition ${
         isLight
           ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100'

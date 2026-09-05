@@ -4,19 +4,21 @@ import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { PenLine, ShieldAlert } from 'lucide-react'
 import toast from 'react-hot-toast'
-import SignaturePad from '@/components/applications/SignaturePad'
+import SignatureCaptureModal from '@/components/applications/SignatureCaptureModal'
 import { dekanUI } from '@/lib/dekan-ui'
 
 // The dekan draws their electronic signature once. It is auto-stamped onto
 // every generated Ariza + Tilxat, alongside the applicant's own signature —
 // no per-approval drawing. Without it, documents queue up undelivered.
+// Drawing happens in a fixed modal (SignatureCaptureModal), not inline on
+// this card — an inline canvas on a long Sozlamalar page could shift out
+// from under the finger as the rest of the page reflows mid-stroke.
 export default function DekanSignatureCard({ isLight, delay = 0.09 }: { isLight: boolean; delay?: number }) {
   const ui = dekanUI(isLight)
   const [saved, setSaved] = useState<string | null>(null)
-  const [draft, setDraft] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [editing, setEditing] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -33,20 +35,18 @@ export default function DekanSignatureCard({ isLight, delay = 0.09 }: { isLight:
 
   useEffect(() => { void load() }, [load])
 
-  const handleSave = async () => {
-    if (!draft) return
+  const handleSave = async (signature: string) => {
     setSaving(true)
     try {
       const res = await fetch('/api/dekan/signature', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ signatureImage: draft }),
+        body: JSON.stringify({ signatureImage: signature }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Imzoni saqlab bo'lmadi")
-      setSaved(draft)
-      setDraft(null)
-      setEditing(false)
+      setSaved(signature)
+      setModalOpen(false)
       toast.success('Imzo saqlandi — hujjatlarga avtomatik qo‘yiladi')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Xatolik')
@@ -78,7 +78,7 @@ export default function DekanSignatureCard({ isLight, delay = 0.09 }: { isLight:
 
         {loading ? (
           <div className={`h-24 animate-pulse rounded-xl ${ui.inset}`} />
-        ) : saved && !editing ? (
+        ) : saved ? (
           <div className="space-y-3">
             <div className={`rounded-xl border p-3 ${ui.inset}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -87,7 +87,7 @@ export default function DekanSignatureCard({ isLight, delay = 0.09 }: { isLight:
             <p className={`text-[11px] ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}>✓ Imzo saqlangan</p>
             <button
               type="button"
-              onClick={() => { setEditing(true); setDraft(null) }}
+              onClick={() => setModalOpen(true)}
               className={`rounded-lg border px-4 py-2 text-xs font-bold uppercase tracking-wider ${ui.btnGhost}`}
             >
               Qayta chizish
@@ -95,38 +95,33 @@ export default function DekanSignatureCard({ isLight, delay = 0.09 }: { isLight:
           </div>
         ) : (
           <div className="space-y-3">
-            {!saved && (
-              <div className={`flex items-start gap-3 rounded-xl border p-3 ${isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'}`}>
-                <ShieldAlert size={16} className={`mt-0.5 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
-                <p className={`text-xs font-medium ${isLight ? 'text-amber-800' : 'text-amber-200'}`}>
-                  Imzo saqlanmagan — xona biriktirilgan arizalarning Ariza va Tilxat hujjatlari
-                  siz imzo qo‘ymaguningizcha talabaga yuborilmaydi.
-                </p>
-              </div>
-            )}
-            <SignaturePad isLight={isLight} height={180} onChange={setDraft} />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={!draft || saving}
-                className={`rounded-lg px-5 py-2.5 text-xs font-bold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed ${ui.accentSolid}`}
-              >
-                {saving ? 'Saqlanmoqda...' : 'Imzoni saqlash'}
-              </button>
-              {saved && (
-                <button
-                  type="button"
-                  onClick={() => { setEditing(false); setDraft(null) }}
-                  className={`rounded-lg border px-4 py-2.5 text-xs font-bold uppercase tracking-wider ${ui.btnGhost}`}
-                >
-                  Bekor qilish
-                </button>
-              )}
+            <div className={`flex items-start gap-3 rounded-xl border p-3 ${isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'}`}>
+              <ShieldAlert size={16} className={`mt-0.5 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
+              <p className={`text-xs font-medium ${isLight ? 'text-amber-800' : 'text-amber-200'}`}>
+                Imzo saqlanmagan — xona biriktirilgan arizalarning Ariza va Tilxat hujjatlari
+                siz imzo qo‘ymaguningizcha talabaga yuborilmaydi.
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className={`rounded-lg px-5 py-2.5 text-xs font-bold uppercase tracking-wider ${ui.accentSolid}`}
+            >
+              Imzo qo‘yish
+            </button>
           </div>
         )}
       </div>
+
+      <SignatureCaptureModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onConfirm={handleSave}
+        isLight={isLight}
+        title="Elektron imzo"
+        confirmLabel={saving ? 'Saqlanmoqda...' : 'Imzoni saqlash'}
+        busy={saving}
+      />
     </motion.section>
   )
 }

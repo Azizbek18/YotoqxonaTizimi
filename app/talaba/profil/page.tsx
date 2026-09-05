@@ -442,13 +442,10 @@ export default function StudentProfile() {
 
   const handleEditOpen = () => {
     if (profile) {
-      setEditForm({
-        full_name: profile.full_name,
-        phone: profile.phone,
-        faculty: profile.faculty,
-        group: profile.group,
-        room_number: profile.room_number,
-      })
+      // Self-service edit only lets a student correct their own group code
+      // — name/phone/faculty/room are staff-verified or set by room
+      // assignment, not something to change from here.
+      setEditForm({ group: profile.group })
       setShowEditModal(true)
     }
   }
@@ -459,15 +456,11 @@ export default function StudentProfile() {
     setSavingEdit(true)
     try {
       const data = await updateStudentProfile({
-        full_name: editForm.full_name,
-        phone: editForm.phone,
         group: editForm.group == null ? undefined : String(editForm.group),
       })
 
       setProfile((current) => current ? {
         ...current,
-        full_name: data.data.full_name ?? current.full_name,
-        phone: data.data.phone_number ?? current.phone,
         group: data.data.group ?? current.group,
       } : current)
       setShowEditModal(false)
@@ -1220,11 +1213,7 @@ export default function StudentProfile() {
 
                 <div className="space-y-4">
                   {[
-                    { key: 'full_name', label: "To'liq ism", placeholder: "Ism va familiya", icon: <Award size={15} /> },
-                    { key: 'phone', label: 'Telefon raqam', placeholder: '+998 90 123 45 67', icon: <Phone size={15} /> },
-                    { key: 'faculty', label: 'Fakultet', placeholder: 'Dasturiy Injiniring', icon: <GraduationCap size={15} /> },
                     { key: 'group', label: 'Guruh raqami', placeholder: '412', icon: <Shield size={15} /> },
-                    { key: 'room_number', label: 'Xona raqami', placeholder: '204-xona', icon: <Home size={15} /> },
                   ].map(({ key, label, placeholder, icon }, idx) => (
                     <motion.div
                       key={key}

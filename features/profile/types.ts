@@ -28,8 +28,10 @@ export type StudentProfilePayload = {
   floorCaptain: FloorCaptain | null
 }
 
+// Self-service edit is deliberately narrow: a student may only correct
+// their own group code. Name/phone/faculty/room live elsewhere (staff-
+// verified data, or set by room assignment) — letting a student change
+// them from their own profile was never intended and has been removed.
 export type StudentProfileUpdate = {
-  full_name?: string
-  phone?: string
   group?: string
 }

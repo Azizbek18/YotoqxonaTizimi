@@ -28,6 +28,7 @@ export default function FloorManagerCard({
   roomsLoaded,
   onFloorCountSaved,
   onRoomsChanged,
+  dormId,
 }: {
   floorCount: number
   defaultCapacity: number
@@ -35,6 +36,10 @@ export default function FloorManagerCard({
   roomsLoaded: boolean
   onFloorCountSaved: (floorCount: number) => void
   onRoomsChanged: () => void
+  /** Which of the faculty's buildings (many-to-many, 202609300000) this
+   *  card manages — omitted resolves to the primary, matching every
+   *  dormId-optional call below. */
+  dormId?: string
 }) {
   const isLight = useThemeStore((state) => state.theme === 'light')
   const ui = dekanUI(isLight)
@@ -73,7 +78,7 @@ export default function FloorManagerCard({
     if (next < 1 || next > MAX_FLOORS || next === floorCount) return
     setBusy(true)
     try {
-      const updated = await updateAppSettings({ floorCount: next })
+      const updated = await updateAppSettings({ floorCount: next }, dormId)
       onFloorCountSaved(updated.floorCount)
       toast.success(
         next > floorCount ? `${next}-qavat qo'shildi` : `Qavatlar soni: ${next}`,
@@ -168,7 +173,7 @@ export default function FloorManagerCard({
                   </span>
                 )}
                 <Link
-                  href={`/dekan/3d-xonalar?floor=${floor}`}
+                  href={`/dekan/3d-xonalar?floor=${floor}${dormId ? `&dormId=${dormId}` : ''}`}
                   className={`ml-auto shrink-0 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
                     empty ? ui.accentSolid : ui.btnGhost
                   }`}
@@ -192,7 +197,7 @@ export default function FloorManagerCard({
           Xonalarni ommaviy yaratish
         </button>
         <Link
-          href="/dekan/xonalar"
+          href={`/dekan/xonalar${dormId ? `?dormId=${dormId}` : ''}`}
           className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${ui.accentSolid}`}
         >
           Xonalar xaritasi
@@ -204,6 +209,7 @@ export default function FloorManagerCard({
         isOpen={generatorOpen}
         floorCount={floorCount}
         existingRooms={rooms}
+        dormId={dormId}
         onClose={() => setGeneratorOpen(false)}
         onCreated={() => {
           setGeneratorOpen(false)

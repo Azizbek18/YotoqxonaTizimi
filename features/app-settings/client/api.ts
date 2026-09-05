@@ -7,11 +7,20 @@ export function fetchAppSettings() {
   return apiRequest<AppSettings>('/api/settings')
 }
 
-export function updateAppSettings(input: Partial<AppSettings>) {
+// Dekan/tarbiyachi-scoped read — resolves to the CALLER's own faculty (not
+// always the primary one /api/settings falls back to), and, when the
+// faculty holds more than one building (202609300000), an explicit dormId
+// names which one; omitted keeps resolving to the primary.
+export function fetchDekanSettings(dormId?: string) {
+  const qs = dormId ? `?dormId=${encodeURIComponent(dormId)}` : ''
+  return apiRequest<AppSettings>(`/api/dekan/settings${qs}`)
+}
+
+export function updateAppSettings(input: Partial<AppSettings>, dormId?: string) {
   return apiRequest<AppSettings>('/api/dekan/settings', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
+    body: JSON.stringify(dormId ? { ...input, dormId } : input),
   })
 }
 

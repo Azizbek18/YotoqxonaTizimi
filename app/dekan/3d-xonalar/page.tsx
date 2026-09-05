@@ -17,7 +17,9 @@ import * as THREE from 'three'
 import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { fetchFloorLayout, saveFloorLayout } from '@/features/room-layout/client/api'
 import type { RoomBlockSide, RoomBlockSize, RoomLayoutBlock } from '@/features/room-layout/types'
-import { fetchAppSettings } from '@/features/app-settings/client/api'
+import { fetchDekanDorm } from '@/features/dorms/client/api'
+import type { DekanDorm } from '@/features/dorms/types'
+import { fetchDekanSettings } from '@/features/app-settings/client/api'
 import { getFreePlaces, getRoomOccupancyTone, type RoomOccupancyTone } from '@/features/app-settings/presentation'
 import { dekanUI } from '@/lib/dekan-ui'
 import { useStaffPanel } from '@/lib/hooks/useStaffPanel'
@@ -143,6 +145,15 @@ export default function Dekan3DXonalarPage() {
   const [selectedRoomNumber, setSelectedRoomNumber] = useState<string | null>(null)
   const [hoveredRoom, setHoveredRoom] = useState<{ roomNumber: string; clientX: number; clientY: number } | null>(null)
 
+  // Every building this faculty holds (many-to-many, 202609300000), and
+  // which one this page is currently pointed at — undefined = primary.
+  // dormsLoaded stays separate from an empty `dorms` array so occupancy
+  // isn't filtered before the primary dorm has actually resolved.
+  const [dorms, setDorms] = useState<DekanDorm[]>([])
+  const [dormsLoaded, setDormsLoaded] = useState(false)
+  const [activeDormId, setActiveDormId] = useState<string | undefined>(undefined)
+  const primaryDormId = dorms.find((d) => d.isPrimary)?.dormId
+
   const [activeFloor, setActiveFloor] = useState<number>(1)
   // null (not a guessed default) while settings are loading or unavailable —
   // a wrong guess would silently hide real floors above it from the tab list.
@@ -163,6 +174,8 @@ export default function Dekan3DXonalarPage() {
   // Floor the dekan wants to switch to while the current one has unsaved
   // edits — drives the "discard changes?" confirm modal.
   const [pendingFloor, setPendingFloor] = useState<number | null>(null)
+  // Same, but for switching to a different building's floor tarxi.
+  const [pendingDormId, setPendingDormId] = useState<string | null>(null)
   // Which column's "ommaviy sig'im" panel is open; range bounds for it.
   const [capPanelSide, setCapPanelSide] = useState<RoomBlockSide | null>(null)
   const [capRange, setCapRange] = useState<{ from: string; to: string }>({ from: '', to: '' })
@@ -202,6 +215,14 @@ export default function Dekan3DXonalarPage() {
       const { usersWithRooms, approvedPermitsWithRooms } = await fetchDekanOverview()
       const occupancyMap = new Map<string, { count: number, students: StudentInfo[] }>()
 
+      // Room numbers are only unique per building (many-to-many,
+      // 202609300000) — without this, two buildings sharing a room number
+      // would merge their occupants under one snapshot. A row's dorm_id is
+      // null for legacy data written before the multi-dorm migration —
+      // treated as belonging to the primary building.
+      const viewingDormId = activeDormId ?? primaryDormId
+      const belongsToView = (rowDormId: string | null | undefined) => (rowDormId ?? primaryDormId) === viewingDormId
+
       const addOccupant = (roomNumber: string | null, id: string | null, name: string | null) => {
         if (!roomNumber) return
         const existing = occupancyMap.get(roomNumber) || { count: 0, students: [] }
@@ -211,11 +232,11 @@ export default function Dekan3DXonalarPage() {
         })
       }
 
-      usersWithRooms?.forEach((u) => addOccupant(u.room_number, u.id, u.full_name))
+      usersWithRooms?.forEach((u) => { if (belongsToView(u.dorm_id)) addOccupant(u.room_number, u.id, u.full_name) })
       // Approved-but-not-yet-registered permits occupy a bed too — counted
       // the same way dekan/xonalar counts them, so capacity/occupancy here
       // matches what that page shows.
-      approvedPermitsWithRooms?.forEach((p) => addOccupant(p.room_number, p.id, p.full_name))
+      approvedPermitsWithRooms?.forEach((p) => { if (belongsToView(p.dorm_id)) addOccupant(p.room_number, p.id, p.full_name) })
 
       setRoomSnapshots(
         Array.from(occupancyMap.entries()).map(([roomNumber, info]) => ({
@@ -228,13 +249,13 @@ export default function Dekan3DXonalarPage() {
       console.error('Xona bandligini yuklashda xato:', error)
       toast.error('Bandlik ma\'lumotlarini yuklashda xatolik yuz berdi')
     }
-  }, [])
+  }, [activeDormId, primaryDormId])
 
   const loadFloorLayout = async (floor: number) => {
     setLoading(true)
     setSelectedRoomNumber(null)
     try {
-      const blocks = await fetchFloorLayout(floor)
+      const blocks = await fetchFloorLayout(floor, activeDormId)
       const toEditable = (b: (typeof blocks)[number]): EditableBlock => ({
         id: makeId(),
         roomNumber: b.roomNumber,
@@ -259,14 +280,18 @@ export default function Dekan3DXonalarPage() {
   }
 
   useEffect(() => {
+    // Wait for the dorm request to resolve first — otherwise this runs once
+    // with primaryDormId still undefined (silently dropping every row that
+    // carries a real dorm_id), then again once it arrives.
+    if (!dormsLoaded) return
     const loadId = window.setTimeout(() => void loadRoomOccupancy(), 0)
     return () => window.clearTimeout(loadId)
-  }, [loadRoomOccupancy])
+  }, [loadRoomOccupancy, dormsLoaded])
 
   const loadSettings = useCallback(async () => {
     setSettingsStatus('loading')
     try {
-      const settings = await fetchAppSettings()
+      const settings = await fetchDekanSettings(activeDormId)
       setFloorCount(settings.floorCount)
       setDefaultRoomCapacity(settings.defaultRoomCapacity)
       setSettingsStatus('ready')
@@ -276,14 +301,32 @@ export default function Dekan3DXonalarPage() {
       setSettingsStatus('error')
       toast.error("Xona va qavat sozlamalarini yuklab bo'lmadi")
     }
+  }, [activeDormId])
+
+  // Gated on dormsLoaded so a ?dormId= deep link (read below) is applied
+  // BEFORE the first settings/layout fetch, not fetched-then-refetched.
+  useEffect(() => {
+    if (!dormsLoaded) return
+    void loadSettings()
+  }, [loadSettings, dormsLoaded])
+
+  // Every building this faculty holds, and honor a deep link from the
+  // Sozlamalar qavat menejeri: /dekan/3d-xonalar?floor=3&dormId=...
+  useEffect(() => {
+    fetchDekanDorm()
+      .then((result) => {
+        setDorms(result.dorms)
+        const wanted = new URLSearchParams(window.location.search).get('dormId')
+        if (wanted && result.dorms.some((d) => d.dormId === wanted)) {
+          setActiveDormId(wanted)
+        }
+      })
+      .catch((err) => console.error('Yotoqxonalar ro\'yxatini yuklashda xato:', err))
+      .finally(() => setDormsLoaded(true))
   }, [])
 
-  useEffect(() => {
-    void loadSettings()
-  }, [loadSettings])
-
-  // Deep link from the Sozlamalar qavat menejeri: /dekan/3d-xonalar?floor=3.
-  // Read once on mount (client-only, so no Suspense boundary needed).
+  // ?floor= is read once on mount (client-only, so no Suspense boundary
+  // needed) — independent of the dorm resolution above.
   useEffect(() => {
     const raw = new URLSearchParams(window.location.search).get('floor')
     const floor = raw ? parseInt(raw, 10) : NaN
@@ -291,8 +334,10 @@ export default function Dekan3DXonalarPage() {
   }, [])
 
   useEffect(() => {
+    if (!dormsLoaded) return
     void loadFloorLayout(activeFloor)
-  }, [activeFloor])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFloor, activeDormId, dormsLoaded])
 
   // Warn before the browser tab is closed/refreshed with unsaved edits —
   // switching floors is guarded separately (see the floor tab buttons).
@@ -396,7 +441,7 @@ export default function Dekan3DXonalarPage() {
 
     setSaving(true)
     try {
-      await saveFloorLayout(activeFloor, combined)
+      await saveFloorLayout(activeFloor, combined, activeDormId)
       setLastSavedSnapshot(snapshotBlocks(leftBlocks, rightBlocks))
       toast.success(`${activeFloor}-qavat tarxi saqlandi`)
     } catch (error) {
@@ -811,6 +856,34 @@ export default function Dekan3DXonalarPage() {
         </div>
       </div>
 
+      {/* Building switcher — only shown once the faculty actually holds more
+          than one dorm (many-to-many, 202609300000). */}
+      {dorms.length > 1 && (
+        <div className={`flex flex-wrap gap-1 rounded-xl p-1 w-fit ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'}`}>
+          {dorms.map((d) => {
+            const isActive = (activeDormId ?? primaryDormId) === d.dormId
+            return (
+              <button
+                key={d.dormId}
+                type="button"
+                onClick={() => {
+                  if (isActive) return
+                  if (isDirty) { setPendingDormId(d.dormId); return }
+                  setActiveDormId(d.dormId)
+                }}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                  isActive
+                    ? 'bg-indigo-600 text-white'
+                    : `${textMuted} ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-200'}`
+                }`}
+              >
+                {d.number}-yotoqxona{d.isPrimary ? ' (asosiy)' : ''}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* Floor Selection Tabs */}
       <div className={`flex gap-1 p-1 rounded-xl ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'} w-full overflow-x-auto no-scrollbar sm:w-fit`}>
         {floors.map((fl) => {
@@ -1080,6 +1153,25 @@ export default function Dekan3DXonalarPage() {
       >
         <p className={textMuted}>
           Boshqa qavatga o&apos;tsangiz, bu qavatdagi o&apos;zgarishlar saqlanmaydi va yo&apos;qoladi.
+          Avval <span className="font-bold">Saqlash</span> tugmasini bosing yoki o&apos;zgarishlarni bekor qiling.
+        </p>
+      </ConfirmModal>
+
+      <ConfirmModal
+        isOpen={pendingDormId !== null}
+        title="Saqlanmagan o'zgarishlar"
+        description={`${activeFloor}-qavat tarxida saqlanmagan o'zgarishlar bor.`}
+        confirmText="Binoni almashtirish"
+        cancelText="Bu qavatda qolish"
+        confirmVariant="danger"
+        onClose={() => setPendingDormId(null)}
+        onConfirm={() => {
+          if (pendingDormId !== null) setActiveDormId(pendingDormId)
+          setPendingDormId(null)
+        }}
+      >
+        <p className={textMuted}>
+          Boshqa binoga o&apos;tsangiz, bu qavatdagi o&apos;zgarishlar saqlanmaydi va yo&apos;qoladi.
           Avval <span className="font-bold">Saqlash</span> tugmasini bosing yoki o&apos;zgarishlarni bekor qiling.
         </p>
       </ConfirmModal>

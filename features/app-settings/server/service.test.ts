@@ -62,6 +62,25 @@ describe('createAppSettingsService', () => {
     expect(repository.get).toHaveBeenCalledWith(undefined)
   })
 
+  // A faculty can hold several buildings (202609300000) — dormId names
+  // which one. Omitted must keep the exact prior call shape (no stray
+  // explicit `undefined`), so existing assertions above stay valid.
+  it('threads an explicit dormId through get() as a 3rd arg', async () => {
+    const repository = fakeRepository()
+    await createAppSettingsService(repository).get('fizika', 'dorm-2')
+    expect(repository.get).toHaveBeenCalledWith('fizika', 'dorm-2')
+  })
+
+  it('threads an explicit dormId through update() as a 3rd arg', async () => {
+    const repository = fakeRepository()
+    await createAppSettingsService(repository).update({ floorCount: 6 }, 'fizika', 'dorm-2')
+    expect(repository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ floor_count: 6 }),
+      'fizika',
+      'dorm-2',
+    )
+  })
+
   it('exposes the cross-faculty fee list', async () => {
     const rows = [{ faculty: 'amit', facultyLabel: 'AMIT', monthlyFee: 300000, yearlyContractFee: 3000000, configured: true }]
     const repository = fakeRepository({ listFacultyFees: vi.fn(async () => rows) })

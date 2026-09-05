@@ -84,11 +84,31 @@ export function createAppSettingsRepository() {
     return data?.dorm_id ?? null
   }
 
+  // Validates an EXPLICIT dormId belongs to the faculty (any of its
+  // buildings, not just primary — a faculty holding several buildings,
+  // 202609300000, must be able to name a non-primary one here). Same
+  // defense-in-depth pattern as room-layout/room-assignment: a foreign
+  // dormId is rejected outright (403), never silently substituted.
+  async function validateOwnDormId(faculty: string, dormId: string): Promise<string> {
+    const { data, error } = await supabase
+      .from('faculty_dorm')
+      .select('dorm_id')
+      .eq('faculty', faculty)
+      .eq('dorm_id', dormId)
+      .maybeSingle()
+    if (error) throw error
+    if (!data) throw new ApiError(403, 'Bu yotoqxona sizning fakultetingizga tegishli emas')
+    return data.dorm_id
+  }
+
   // For reads only: fall back to the primary building while a faculty is
   // still being set up (matches the fee fallback and PRIMARY_FACULTY).
   // `ownDorm` says whether the id is the faculty's own — the TTJ building
   // number must never be borrowed from another building (see getDormSettings).
-  async function resolveDormIdForRead(faculty: string): Promise<{ dormId: string | null; ownDorm: boolean }> {
+  // An explicit dormId (a specific building the dekan is looking at, e.g. a
+  // non-primary one) takes priority over that fallback chain entirely.
+  async function resolveDormIdForRead(faculty: string, dormId?: string): Promise<{ dormId: string | null; ownDorm: boolean }> {
+    if (dormId) return { dormId: await validateOwnDormId(faculty, dormId), ownDorm: true }
     const own = await ownDormId(faculty)
     if (own) return { dormId: own, ownDorm: true }
     if (faculty !== PRIMARY_FACULTY) return { dormId: await ownDormId(PRIMARY_FACULTY), ownDorm: false }
@@ -115,14 +135,14 @@ export function createAppSettingsRepository() {
     return { ...FEE_DEFAULTS }
   }
 
-  async function getDormSettings(faculty: string) {
+  async function getDormSettings(faculty: string, dormId?: string) {
     try {
-      const { dormId, ownDorm } = await resolveDormIdForRead(faculty)
-      if (dormId) {
+      const { dormId: resolvedDormId, ownDorm } = await resolveDormIdForRead(faculty, dormId)
+      if (resolvedDormId) {
         const { data, error } = await supabase
           .from('dorms')
           .select(DORM_COLUMNS)
-          .eq('id', dormId)
+          .eq('id', resolvedDormId)
           .maybeSingle()
         if (error) throw error
         if (data) {
@@ -164,8 +184,8 @@ export function createAppSettingsRepository() {
     }
   }
 
-  async function get(faculty: string = PRIMARY_FACULTY): Promise<AppSettings> {
-    const [fees, dormSettings] = await Promise.all([getFees(faculty), getDormSettings(faculty)])
+  async function get(faculty: string = PRIMARY_FACULTY, dormId?: string): Promise<AppSettings> {
+    const [fees, dormSettings] = await Promise.all([getFees(faculty), getDormSettings(faculty, dormId)])
     return { ...dormSettings, ...fees }
   }
 
@@ -201,7 +221,7 @@ export function createAppSettingsRepository() {
     get,
     listFacultyFees,
 
-    async update(row: AppSettingsUpdate, faculty: string = PRIMARY_FACULTY): Promise<AppSettings> {
+    async update(row: AppSettingsUpdate, faculty: string = PRIMARY_FACULTY, dormId?: string): Promise<AppSettings> {
       const source = row as Record<string, unknown>
       const feeRow: Record<string, unknown> = {}
       const dormRow: Record<string, unknown> = {}
@@ -222,8 +242,12 @@ export function createAppSettingsRepository() {
       }
 
       if (Object.keys(dormRow).length > 0) {
-        const dormId = await ownDormId(faculty)
-        if (!dormId) throw new Error(`Fakultetга yotoqxona biriktirilmagan: ${faculty}`)
+        // An explicit dormId (editing a SPECIFIC one of the faculty's
+        // buildings, 202609300000) takes priority; omitted keeps writing to
+        // the faculty's primary building, byte-identical to before this
+        // parameter existed.
+        const targetDormId = dormId ? await validateOwnDormId(faculty, dormId) : await ownDormId(faculty)
+        if (!targetDormId) throw new Error(`Fakultetга yotoqxona biriktirilmagan: ${faculty}`)
 
         // Can't shrink the building below a floor a faculty has claimed —
         // that floor's dorm_floor row (and any rooms on it) would be
@@ -233,7 +257,7 @@ export function createAppSettingsRepository() {
           const { data: claimed } = await supabase
             .from('dorm_floor')
             .select('floor_number')
-            .eq('dorm_id', dormId)
+            .eq('dorm_id', targetDormId)
             .gt('floor_number', nextCount)
             .order('floor_number', { ascending: false })
             .limit(1)
@@ -248,11 +272,11 @@ export function createAppSettingsRepository() {
         const { error } = await supabase
           .from('dorms')
           .update({ ...dormRow, updated_at: new Date().toISOString() })
-          .eq('id', dormId)
+          .eq('id', targetDormId)
         if (error) throw error
       }
 
-      return get(faculty)
+      return get(faculty, dormId)
     },
   }
 }

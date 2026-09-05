@@ -117,7 +117,7 @@ export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData })
   return (
     <div className="space-y-6">
       {/* ARIZA */}
-      <div className="bg-white text-black rounded-2xl sm:rounded-3xl border border-slate-300 p-5 sm:p-10 shadow-xl print-page" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+      <div className="bg-white text-black rounded-2xl sm:rounded-3xl border border-slate-300 p-5 sm:p-10 shadow-xl outline-none [overflow-wrap:anywhere] print-page" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
         <AddressHeader facultyLabel={facultyLabel} course={course} name={fullName} />
 
         <h2 className="text-center font-bold tracking-[0.3em] text-sm sm:text-lg mt-6 mb-6">A R I Z A</h2>
@@ -184,7 +184,7 @@ export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData })
       </div>
 
       {/* TILXAT */}
-      <div className="bg-white text-black rounded-2xl sm:rounded-3xl border border-slate-300 p-5 sm:p-10 shadow-xl print-page" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+      <div className="bg-white text-black rounded-2xl sm:rounded-3xl border border-slate-300 p-5 sm:p-10 shadow-xl outline-none [overflow-wrap:anywhere] print-page" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
         <AddressHeader facultyLabel={facultyLabel} course={course} name={fullName} />
 
         <h2 className="text-center font-bold tracking-[0.3em] text-sm sm:text-lg mt-6 mb-6">T I L X A T</h2>

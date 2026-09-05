@@ -197,7 +197,7 @@ export default function FormalArizaComposer({
               {step === 'preview' && (
                 <div className="space-y-3">
                   <p className={`text-xs ${muted}`}>Quyidagi hujjat yuboriladi. Xato bo‘lsa &laquo;Tahrirlash&raquo;ni bosing.</p>
-                  <div className={`rounded-2xl p-2 ${isLight ? 'bg-slate-100' : 'bg-black/30'}`}>
+                  <div className={`overflow-x-auto rounded-2xl p-2 ${isLight ? 'bg-slate-100' : 'bg-black/30'}`}>
                     <StudentArizaDocument data={compose} />
                   </div>
                 </div>
@@ -218,20 +218,24 @@ export default function FormalArizaComposer({
               )}
 
               {step === 'done' && receipt && (
-                <div className="space-y-4 text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
+                <div className="flex min-h-full flex-col items-center justify-center space-y-4 py-6 text-center">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
                     <CheckCircle2 size={30} />
                   </div>
                   <div>
                     <p className="text-lg font-black">Imzolandi va dekanatga yuborildi</p>
                     <p className={`text-xs ${muted}`}>Nusxa emailingizga{' '}va Telegramingizga (ulangan bo‘lsa) yuborildi</p>
                   </div>
-                  <div className={`rounded-2xl border p-4 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-white/[0.03]'}`}>
+                  <div className={`rounded-2xl border p-4 outline-none ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-white/[0.03]'}`}>
                     <p className={`text-[11px] font-bold uppercase tracking-wider ${muted}`}>Tekshiruv kodi</p>
                     <p className="mt-1 font-mono text-2xl font-black tracking-widest">{receipt.verifyCode}</p>
                     <button
+                      type="button"
+                      data-student-button="plain"
                       onClick={async () => { try { await navigator.clipboard.writeText(receipt.verifyCode); toast.success('Nusxalandi') } catch { /* */ } }}
-                      className={`mt-1 inline-flex items-center gap-1 text-[11px] font-bold ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}
+                      className={`no-shelf mt-2 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-bold ${
+                        isLight ? 'border-slate-200 bg-white text-emerald-700 hover:bg-slate-50' : 'border-white/10 bg-white/5 text-emerald-400 hover:bg-white/10'
+                      }`}
                     >
                       <Copy size={12} /> Nusxalash
                     </button>

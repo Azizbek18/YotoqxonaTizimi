@@ -26,10 +26,15 @@ export default function StudentArizaDocument({ data }: { data: StudentArizaDocDa
 
   return (
     <div
-      className="mx-auto max-w-[820px] rounded-2xl border border-slate-300 bg-white p-6 text-black shadow-xl sm:p-10"
+      // outline-none opts the sheet out of globals.css's chunky "shelf card"
+      // treatment (div[rounded][border]) — a document reads as flat paper, not
+      // a raised 3D plaque. [overflow-wrap:anywhere] on the text so a pasted
+      // URL or an unbroken run of characters wraps instead of pushing the
+      // whole sheet past the screen edge.
+      className="mx-auto w-full max-w-[820px] rounded-2xl border border-slate-300 bg-white p-4 text-black shadow-xl outline-none sm:p-10"
       style={{ fontFamily: '"Times New Roman", Times, serif' }}
     >
-      <div className="ml-auto max-w-[78%] space-y-1 text-right text-[11px] leading-snug sm:text-sm">
+      <div className="ml-auto max-w-[80%] space-y-1 text-right text-[11px] leading-snug [overflow-wrap:anywhere] sm:text-sm">
         <p>{recipientLine(data.recipient, { facultyLabel: data.facultyLabel, dekanName: data.dekanName })}</p>
         <p>{applicantLine(data)}</p>
       </div>
@@ -38,7 +43,7 @@ export default function StudentArizaDocument({ data }: { data: StudentArizaDocDa
         {arizaHeadingText(data.kind)}
       </h2>
 
-      <div className="space-y-3 text-justify text-[11px] leading-relaxed sm:text-sm">
+      <div className="space-y-3 text-justify text-[11px] leading-relaxed [overflow-wrap:anywhere] sm:text-sm">
         {body.split('\n\n').map((para, i) => (
           <p key={i} className="indent-8">{para}</p>
         ))}
@@ -62,7 +67,7 @@ export default function StudentArizaDocument({ data }: { data: StudentArizaDocDa
       </div>
 
       {data.verifyCode && (
-        <div className="mt-8 border-t border-dashed border-slate-400 pt-3 text-[9px] leading-relaxed text-slate-600 sm:text-[11px]">
+        <div className="mt-8 border-t border-dashed border-slate-400 pt-3 text-[9px] leading-relaxed text-slate-600 [overflow-wrap:anywhere] sm:text-[11px]">
           <p>
             Elektron imzolangan hujjat. Tekshiruv kodi: <span className="font-bold">{data.verifyCode}</span>
           </p>

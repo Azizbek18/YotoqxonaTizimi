@@ -167,6 +167,10 @@ test('yo‘llanma oqimi Ariza + Tilxatni imzolashni talab qiladi (yuklab olish y
   await expect(submit).toBeDisabled()
   await expect(page.getByRole('button', { name: /yuklab olish/i })).toHaveCount(0)
 
+  // Signing happens in a fixed, non-scrolling modal (SignatureCaptureModal) —
+  // opened from a button, not inline on the page.
+  await page.getByRole('button', { name: /Imzo qo.yish/i }).click()
+
   // Draw on the signature canvas (the only <canvas> on the page). SignaturePad
   // listens on pointer events and only emits on pointerup after ≥2 moves —
   // canvas-relative hovers dispatch clean pointermove events.
@@ -182,6 +186,8 @@ test('yo‘llanma oqimi Ariza + Tilxatni imzolashni talab qiladi (yuklab olish y
   await expect(page.getByText(/Shu yerga imzo qo/i)).toBeHidden()
 
   await page.getByRole('checkbox').check()
+  await page.getByRole('button', { name: 'Imzoni tasdiqlash' }).click()
+
   await expect(submit).toBeEnabled()
   expect(pageErrors).toEqual([])
 })

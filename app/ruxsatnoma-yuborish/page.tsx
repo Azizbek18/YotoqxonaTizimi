@@ -2139,7 +2139,7 @@ export default function RuxsatnomaYuborish() {
                   title="Ariza va Tilxatni imzolang"
                   description="Bu yerda faqat imzo qo‘yasiz — chop etish, yuklab olish shart emas. Dekan xona biriktirgach, imzolangan Ariza va Tilxat Telegram yoki emailingizga yuboriladi."
                   attestLabel="Ariza va Tilxatdagi ma'lumotlar to'g'ri. Elektron imzomni tasdiqlayman."
-                  confirmLabel="Tasdiqlayman"
+                  confirmLabel="Imzoni tasdiqlash"
                 />
 
 

@@ -77,6 +77,7 @@ export function createPermitAdminService(
         direction: user.direction,
         course: user.course,
         room_number: user.room_number,
+        dorm_id: user.dorm_id ?? null,
         warning_count: user.warning_count,
       }))
       // Once the applicant has registered, their `users` row is the truth

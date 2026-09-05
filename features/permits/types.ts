@@ -22,6 +22,10 @@ export type PermitRoomUser = {
   direction: string | null
   course: number | null
   room_number: string | null
+  /** Which of the faculty's buildings this room is in (many-to-many,
+   *  202609300000) — a room number is only unique per dorm, so any
+   *  room_number-keyed grouping across buildings must key on this too. */
+  dorm_id: string | null
   warning_count: number | null
 }
 

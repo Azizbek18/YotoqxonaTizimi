@@ -35,11 +35,7 @@ export function createProfileService(repository: ProfileRepository = createProfi
 
     async update(studentId: string, input: StudentProfileUpdate) {
       const updates: Partial<UserRow> = {}
-      const fullName = optionalText(input.full_name, 160)
-      const phone = optionalText(input.phone, 32)
       const group = optionalText(input.group, 40)
-      if (fullName !== undefined) updates.full_name = fullName
-      if (phone !== undefined) updates.phone_number = phone
       if (group !== undefined) updates.group = group
       if (Object.keys(updates).length === 0) {
         throw new ApiError(400, 'Yangilash uchun ruxsat etilgan ma’lumot topilmadi')

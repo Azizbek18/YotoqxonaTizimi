@@ -89,9 +89,17 @@ export default function ArizalarContent() {
         };
     }, [showDetailModal]);
 
-    const reload = React.useCallback(async () => {
+    // `silent` skips the loading flag — used for refreshing the list behind
+    // an already-open modal (e.g. right after a submit succeeds). Without
+    // it, setLoading(true) makes this component's early `if (loading)
+    // return <Skeleton />` swap out the ENTIRE tree, including the portal-
+    // rendered composer/sign modals — unmounting them mid-flow. The
+    // composer would then remount fresh (back on its first "write" step)
+    // the moment loading finished, right after the student had just signed
+    // and submitted — looking exactly like the ariza got bounced back.
+    const reload = React.useCallback(async (silent = false) => {
         try {
-            setLoading(true)
+            if (!silent) setLoading(true)
             const currentUser = await getSafeUser()
             if (!currentUser) return
             const [profilePayload, applicationPayload] = await Promise.all([
@@ -119,7 +127,7 @@ export default function ArizalarContent() {
         } catch (error) {
             console.error('Data loading error:', error)
         } finally {
-            setLoading(false)
+            if (!silent) setLoading(false)
         }
     }, [])
 
@@ -450,7 +458,7 @@ export default function ArizalarContent() {
             {/* Legacy drafts (pre-composer) still sign via the lightweight modal. */}
             <SignArizaModal
                 open={signTarget !== null}
-                onClose={() => { setSignTarget(null); setSignReceipt(null); reload() }}
+                onClose={() => { setSignTarget(null); setSignReceipt(null); reload(true) }}
                 app={signTarget ? {
                     title: signTarget.title,
                     type: signTarget.type,
@@ -466,7 +474,7 @@ export default function ArizalarContent() {
             <FormalArizaComposer
                 open={composerOpen}
                 onClose={() => setComposerOpen(false)}
-                onSubmitted={reload}
+                onSubmitted={() => reload(true)}
             />
         </div>
     )

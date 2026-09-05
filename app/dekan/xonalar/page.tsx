@@ -107,6 +107,10 @@ export default function DekanXonalarMap() {
   // which one this page is currently pointed at — undefined = primary, the
   // same default every dormId-optional call below already resolves to.
   const [dorms, setDorms] = useState<DekanDorm[]>([])
+  // An empty array means either "still loading" or "this faculty has no
+  // dorm". Keep those states separate: occupants must not be filtered until
+  // the primary dorm has actually been resolved.
+  const [dormsLoaded, setDormsLoaded] = useState(false)
   const [activeDormId, setActiveDormId] = useState<string | undefined>(undefined)
   const primaryDormId = dorms.find((d) => d.isPrimary)?.dormId
 
@@ -227,6 +231,7 @@ export default function DekanXonalarMap() {
       setOccupantsByRoom(occupantsMap)
     } catch (err) {
       console.error(err)
+      toast.error("Xonalardagi talabalarni yuklab bo'lmadi")
     } finally {
       setLoading(false)
     }
@@ -243,14 +248,19 @@ export default function DekanXonalarMap() {
     fetchDekanDorm()
       .then((result) => setDorms(result.dorms))
       .catch((err) => console.error('Yotoqxonalar ro\'yxatini yuklashda xato:', err))
+      .finally(() => setDormsLoaded(true))
   }, [])
 
-  // Re-pull occupants whenever the viewed building changes (including the
-  // initial mount, where activeDormId is still undefined = primary).
+  // Wait until the dorm request has resolved before the first occupant
+  // fetch. Previously this ran on mount while primaryDormId was undefined,
+  // so every modern row carrying a dorm_id was filtered out. Since
+  // activeDormId stayed undefined after the primary dorm arrived, the data
+  // was never fetched again and tarbiyachi saw empty rooms.
   useEffect(() => {
+    if (!dormsLoaded) return
     fetchRoomsData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDormId])
+  }, [activeDormId, primaryDormId, dormsLoaded])
 
   const rooms = useMemo<RoomData[]>(() => {
     const roomGender = (occupants: Occupant[]): string | null => {

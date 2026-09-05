@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  calendarYearForPaymentMonth,
   isSuspiciousPaymentTransactionId,
   normalizePaymentTransactionId,
   parsePaymentAmount,
+  PAYMENT_MONTHS_ORDER,
   PaymentValidationError,
   validatePaymentReview,
 } from './validation'
@@ -41,5 +43,27 @@ describe('payment submission validation', () => {
     expect(parsePaymentAmount('500000')).toBe(500000)
     expect(() => parsePaymentAmount('Infinity')).toThrowError(PaymentValidationError)
     expect(() => parsePaymentAmount('-1')).toThrowError('To‘lov summasi noto‘g‘ri')
+  })
+})
+
+describe('academic-year payment month order', () => {
+  it('starts the billing year at Sentabr, not Yanvar — and skips the summer break', () => {
+    expect(PAYMENT_MONTHS_ORDER[0]).toBe('Sentabr')
+    expect(PAYMENT_MONTHS_ORDER).not.toContain('Iyul')
+    expect(PAYMENT_MONTHS_ORDER).not.toContain('Avgust')
+    expect(PAYMENT_MONTHS_ORDER).toHaveLength(10)
+  })
+
+  it('keeps Sentabr..Dekabr in the academic year\'s own start year', () => {
+    expect(calendarYearForPaymentMonth('Sentabr', 2026)).toBe(2026)
+    expect(calendarYearForPaymentMonth('Oktabr', 2026)).toBe(2026)
+    expect(calendarYearForPaymentMonth('Noyabr', 2026)).toBe(2026)
+    expect(calendarYearForPaymentMonth('Dekabr', 2026)).toBe(2026)
+  })
+
+  it('rolls Yanvar..Iyun over into the following calendar year', () => {
+    expect(calendarYearForPaymentMonth('Yanvar', 2026)).toBe(2027)
+    expect(calendarYearForPaymentMonth('Fevral', 2026)).toBe(2027)
+    expect(calendarYearForPaymentMonth('Iyun', 2026)).toBe(2027)
   })
 })

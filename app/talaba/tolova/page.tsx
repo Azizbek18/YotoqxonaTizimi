@@ -17,6 +17,7 @@ import { TalabaTolovaSkeleton } from '@/components/talaba/skeletons'
 import { User } from '@supabase/supabase-js'
 import { fetchStudentPayments, submitStudentPayment, fetchReceiptSignedUrl } from '@/features/payments/client/api'
 import type { PaymentRecord } from '@/features/payments/types'
+import { PAYMENT_MONTHS_ORDER, calendarYearForPaymentMonth } from '@/features/payments/domain/validation'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { getPaymentStats, getPaymentYears } from '@/features/app-settings/presentation'
 
@@ -35,10 +36,18 @@ interface ValidationResult {
     claim?: string | null
 }
 
-const MONTHS = [
-    'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
-    'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'
-]
+// Academic-year order (Sentabr -> Iyun, no Iyul/Avgust summer break) — the
+// single source of truth in features/payments/domain/validation, so this
+// page can never again drift from what the server actually accepts (it used
+// to keep its own Yanvar-first, 12-month copy).
+const MONTHS: readonly string[] = PAYMENT_MONTHS_ORDER
+
+// Display helper: a month's REAL calendar year depends on where it falls in
+// the picked academic year (Sentabr..Dekabr = its start year, Yanvar..Iyun =
+// the year after) — never the bare tab value alone.
+function formatMonthYear(month: string, academicYearStart: number): string {
+    return `${month} ${calendarYearForPaymentMonth(month, academicYearStart)}`
+}
 
 export default function TolovaPage() {
     const theme = useThemeStore((state) => state.theme)
@@ -53,9 +62,13 @@ export default function TolovaPage() {
     const [newReceipt, setNewReceipt] = useState<File | null>(null)
     const [selectedMonth, setSelectedMonth] = useState<string>('')
     const [selectedMonths, setSelectedMonths] = useState<string[]>([])
+    // These are ACADEMIC year starts (the Sentabr each represents), not raw
+    // calendar years — getPaymentYears already resolves "the current one" by
+    // month, so a Mart 2027 visit still defaults to the 2026 tab (the year
+    // it started in), not 2027.
     const paymentYears = getPaymentYears()
-    const currentYear = paymentYears[1]
-    const [selectedYear, setSelectedYear] = useState<number>(currentYear)
+    const currentAcademicYearStart = paymentYears[1]
+    const [academicYearStart, setAcademicYearStart] = useState<number>(currentAcademicYearStart)
     const [amount, setAmount] = useState<number>(0)
     const [monthlyFee, setMonthlyFee] = useState<number | null>(null)
     const [yearlyContractFee, setYearlyContractFee] = useState<number | null>(null)
@@ -133,8 +146,11 @@ export default function TolovaPage() {
         init()
     }, [])
 
-    // Helper to get status of a month
-    const getMonthStatus = useCallback((monthName: string, year: number): PaymentRecord['status'] | 'unpaid' => {
+    // Helper to get status of a month — translates the tab's academic-year
+    // start into that month's REAL calendar year before matching records
+    // (Yanvar..Iyun live in academicYearStart + 1).
+    const getMonthStatus = useCallback((monthName: string, academicYearStart: number): PaymentRecord['status'] | 'unpaid' => {
+        const year = calendarYearForPaymentMonth(monthName, academicYearStart)
         const records = payments.filter(p => p.month === monthName && p.year === year)
         if (records.length === 0) return 'unpaid'
 
@@ -162,7 +178,7 @@ export default function TolovaPage() {
             return
         }
 
-        const status = getMonthStatus(m, selectedYear)
+        const status = getMonthStatus(m, academicYearStart)
         if (status === 'paid' || status === 'approved' || status === 'waiting') {
             toast(`${m} oyi uchun to'lov allaqachon ${status === 'waiting' ? 'tekshirilmoqda' : 'tasdiqlangan'}! ✅`, { icon: 'ℹ️' })
             return
@@ -172,7 +188,7 @@ export default function TolovaPage() {
 
         // Find first unpaid month index
         const firstUnpaidIdx = MONTHS.findIndex(month => {
-            const s = getMonthStatus(month, selectedYear)
+            const s = getMonthStatus(month, academicYearStart)
             return s !== 'paid' && s !== 'approved' && s !== 'waiting'
         })
 
@@ -213,7 +229,7 @@ export default function TolovaPage() {
 
             // Find the next unpaid month starting from expectedIdx
             while (expectedIdx < MONTHS.length) {
-                const s = getMonthStatus(MONTHS[expectedIdx], selectedYear)
+                const s = getMonthStatus(MONTHS[expectedIdx], academicYearStart)
                 if (s !== 'paid' && s !== 'approved' && s !== 'waiting') {
                     break
                 }
@@ -241,7 +257,7 @@ export default function TolovaPage() {
         if (monthlyFee === null || settingsStatus !== 'ready') return
         if (payments.length > 0 || !loading) {
             const firstUnpaid = MONTHS.find(m => {
-                const s = getMonthStatus(m, selectedYear)
+                const s = getMonthStatus(m, academicYearStart)
                 return s !== 'paid' && s !== 'approved' && s !== 'waiting'
             })
             if (firstUnpaid) {
@@ -254,7 +270,7 @@ export default function TolovaPage() {
                 setAmount(0)
             }
         }
-    }, [payments, selectedYear, loading, getMonthStatus, monthlyFee, settingsStatus])
+    }, [payments, academicYearStart, loading, getMonthStatus, monthlyFee, settingsStatus])
 
     // Step 1: AI Validation — check receipt before saving
     const handleUpload = async () => {
@@ -328,7 +344,7 @@ export default function TolovaPage() {
             const paymentForm = new FormData()
             paymentForm.append('file', newReceipt)
             paymentForm.append('amount', String(amount))
-            paymentForm.append('year', String(selectedYear))
+            paymentForm.append('academicYearStart', String(academicYearStart))
             paymentForm.append('months', JSON.stringify(monthsToPay))
             if (aiClaim) paymentForm.append('validatedHash', aiClaim)
             if (transactionId) paymentForm.append('transactionId', transactionId)
@@ -361,7 +377,7 @@ export default function TolovaPage() {
             // Reset file input
             const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
             if (fileInput) fileInput.value = ''
-            toast.success(`${selectedMonths.join(', ')} ${selectedYear} uchun chek muvaffaqiyatli yuklandi! ✅`)
+            toast.success(`${selectedMonths.map(m => formatMonthYear(m, academicYearStart)).join(', ')} uchun chek muvaffaqiyatli yuklandi! ✅`)
         } catch (error) {
             console.error('Upload error:', error)
             const errMsg = error instanceof Error ? error.message : String(error)
@@ -620,22 +636,22 @@ export default function TolovaPage() {
                                         {paymentYears.map((y) => (
                                             <button
                                                 key={y}
-                                                onClick={() => setSelectedYear(y)}
-                                                className={`min-w-0 px-1.5 min-[380px]:px-3 py-2 min-[420px]:py-1.5 rounded-lg text-[10px] min-[380px]:text-xs font-black transition-all ${selectedYear === y
+                                                onClick={() => setAcademicYearStart(y)}
+                                                className={`min-w-0 px-1.5 min-[380px]:px-3 py-2 min-[420px]:py-1.5 rounded-lg text-[10px] min-[380px]:text-xs font-black transition-all ${academicYearStart === y
                                                     ? isLight ? 'bg-white text-blue-600 shadow-sm' : 'bg-white/[0.08] text-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.1)] border border-cyan-400/20'
                                                     : isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
                                                     }`}
                                             >
-                                                {y}-yil
+                                                {y}/{String((y + 1) % 100).padStart(2, '0')}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
-                                {/* 12 Months Grid Layout */}
+                                {/* Academic-year Months Grid Layout (Sentabr -> Iyun) */}
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-4">
                                     {MONTHS.map((m) => {
-                                        const status = getMonthStatus(m, selectedYear)
+                                        const status = getMonthStatus(m, academicYearStart)
                                         const isSelected = selectedMonths.includes(m)
                                         return (
                                             <div
@@ -644,7 +660,9 @@ export default function TolovaPage() {
                                                 className={getMonthCardClass(m, status)}
                                             >
                                                 <div className="flex items-center justify-between">
-                                                    <span className={`text-xs font-black tracking-wide ${isSelected ? (isLight ? 'text-blue-600' : 'text-cyan-400') : ''}`}>{m}</span>
+                                                    <span className={`text-xs font-black tracking-wide ${isSelected ? (isLight ? 'text-blue-600' : 'text-cyan-400') : ''}`}>
+                                                        {m} <span className="opacity-50 font-bold">&apos;{String(calendarYearForPaymentMonth(m, academicYearStart)).slice(-2)}</span>
+                                                    </span>
                                                     <div className="shrink-0">
                                                         {getStatusIcon(status)}
                                                     </div>
@@ -691,7 +709,9 @@ export default function TolovaPage() {
                                         </h3>
                                         <div className={`max-w-full break-words px-2.5 py-1 rounded-full border text-[9px] font-black uppercase ${isLight ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
                                             }`}>
-                                            {selectedMonths.length > 0 ? selectedMonths.join(', ') : 'Belgilanmagan'} / {selectedYear}
+                                            {selectedMonths.length > 0
+                                                ? selectedMonths.map(m => formatMonthYear(m, academicYearStart)).join(', ')
+                                                : 'Belgilanmagan'}
                                         </div>
                                     </div>
 

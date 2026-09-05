@@ -7,6 +7,7 @@ import { verifyFileClaim } from '@/lib/receipt-claim'
 import { MAX_UPLOAD_SIZE_BYTES } from '@/lib/upload-limits'
 import type { SubmitPaymentResult } from '../types'
 import {
+  calendarYearForPaymentMonth,
   isSuspiciousPaymentTransactionId,
   normalizePaymentTransactionId,
   parsePaymentAmount,
@@ -83,12 +84,20 @@ export function createPaymentService(repository: PaymentRepository = createPayme
         if (error instanceof PaymentValidationError) throw new ApiError(400, error.message, error.code)
         throw error
       }
-      const year = Number(form.get('year'))
+      // The client sends which ACADEMIC year (its Sentabr start) the student
+      // picked, never a raw calendar year — the real per-month calendar year
+      // is derived here, not trusted from the client, since Yanvar..Iyun of
+      // an academic year that started in `academicYearStart` actually fall
+      // in `academicYearStart + 1`.
+      const academicYearStart = Number(form.get('academicYearStart'))
       const months = parseMonths(form.get('months'))
       const transactionId = String(form.get('transactionId') ?? '').trim()
       const normalizedTransactionId = normalizePaymentTransactionId(transactionId)
       if (!(file instanceof File)) throw new ApiError(400, 'Chek fayli topilmadi')
-      if (!Number.isInteger(year) || year < 2020 || year > 2100) throw new ApiError(400, 'To‘lov yili noto‘g‘ri')
+      if (!Number.isInteger(academicYearStart) || academicYearStart < 2020 || academicYearStart > 2100) {
+        throw new ApiError(400, 'To‘lov yili noto‘g‘ri')
+      }
+      const years = months.map((month) => calendarYearForPaymentMonth(month, academicYearStart))
       // The monthly fee is the student's own faculty's dorm setting.
       const { monthlyFee } = await createAppSettingsService().get(student.faculty ?? undefined)
       if (amount !== monthlyFee * months.length) {
@@ -168,7 +177,7 @@ export function createPaymentService(repository: PaymentRepository = createPayme
           studentName: student.full_name || 'Talaba',
           months,
           amounts,
-          year,
+          years,
           receiptUrl,
           receiptHash,
           batchId,

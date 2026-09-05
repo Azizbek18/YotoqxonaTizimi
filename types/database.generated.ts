@@ -514,12 +514,16 @@ export interface Database {
           p_student_name: string
           p_months: string[]
           p_amounts: number[]
-          p_year: number
+          // One calendar year per p_months/p_amounts entry — Sentabr..Dekabr
+          // and Yanvar..Iyun of the same academic year can differ (migration
+          // 202609300004).
+          p_years: number[]
           p_receipt_url: string
           p_receipt_hash: string
           p_batch_id: string
           p_transaction_id: string
           p_transaction_id_normalized: string
+          p_ai_review: string
         }
         Returns: {
           id: string

@@ -104,7 +104,9 @@ export default function AiAssistant({ isLight }: { isLight: boolean }) {
       data-student-button="plain"
       onClick={() => handleSendMessage(label)}
       disabled={chatLoading}
-      className={`rounded-xl font-bold transition-all border disabled:opacity-50 ${
+      // no-shelf + data-student-button="plain" keep these as flat suggestion
+      // pills, out of both the layout.tsx and globals.css button-shelf rules.
+      className={`no-shelf rounded-xl font-bold transition-all border disabled:opacity-50 ${
         big ? 'px-3.5 py-2.5 text-xs' : 'px-3 py-1.5 text-[10px] uppercase'
       } ${
         isLight
@@ -172,7 +174,10 @@ export default function AiAssistant({ isLight }: { isLight: boolean }) {
                   key={idx}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[85%] p-3.5 rounded-2xl border leading-relaxed ${
+                  {/* outline-none opts the bubble out of globals.css's light-mode
+                      "shelf card" rule (div[rounded-*][border]) — chat bubbles
+                      must read flat, not as raised 3D plaques. */}
+                  <div className={`max-w-[85%] p-3.5 rounded-2xl border leading-relaxed outline-none ${
                     msg.role === 'user'
                       ? isLight
                         ? 'bg-blue-600 border-blue-600 text-white rounded-br-md'
@@ -201,7 +206,7 @@ export default function AiAssistant({ isLight }: { isLight: boolean }) {
 
               {chatLoading && (
                 <div className="flex justify-start">
-                  <div className={`p-3.5 rounded-2xl border rounded-bl-md flex items-center gap-2 ${
+                  <div className={`p-3.5 rounded-2xl border rounded-bl-md outline-none flex items-center gap-2 ${
                     isLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/10'
                   }`}>
                     <div className="flex gap-1">

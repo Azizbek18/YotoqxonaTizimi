@@ -343,6 +343,7 @@ export default function TalabaDashboard() {
         {/* ================= LEFT COLUMN ================= */}
         <div className="lg:col-span-4 space-y-6 sm:space-y-8">
           <RoomInfoCard
+            isLight={isLight}
             roomNumberFull={roomNumberFull}
             floor={floor}
             course={course}

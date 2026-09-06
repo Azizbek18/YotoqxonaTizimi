@@ -20,6 +20,11 @@ import { createStudentApplication, fetchStudentApplications } from '@/features/a
 import SignArizaModal from '@/components/applications/SignArizaModal'
 import { useArizaSigning } from '@/lib/hooks/useArizaSigning'
 import { fetchStudentAnnouncements } from '@/features/announcements/client/api'
+import { fetchStudentStories } from '@/features/stories/client/api'
+import type { Story } from '@/features/stories/types'
+import StoriesBar from '@/components/talaba/dashboard/StoriesBar'
+import StoryViewer from '@/components/talaba/dashboard/StoryViewer'
+import { useSeenStories } from '@/components/talaba/dashboard/useSeenStories'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { supabase } from '@/lib/supabase'
 import { getSafeUser } from '@/lib/auth-session'
@@ -115,6 +120,12 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
   const [mounted, setMounted] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [roommates, setRoommates] = useState<Profile[]>([])
+
+  // Instagram-style news tray — only on the home page, above Tezkor amallar.
+  const isHome = pathname === '/talaba/dashboard'
+  const [stories, setStories] = useState<Story[]>([])
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
+  const { isSeen, markSeen } = useSeenStories()
 
   // Modal toggles
   const [isNightPermOpen, setIsNightPermOpen] = useState(false)
@@ -231,6 +242,18 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
 
     fetchUserData()
   }, [mounted, router])
+
+  useEffect(() => {
+    if (!mounted || !isHome) {
+      setStories([])
+      return
+    }
+    let active = true
+    fetchStudentStories()
+      .then((rows) => { if (active) setStories(rows) })
+      .catch(() => { if (active) setStories([]) })
+    return () => { active = false }
+  }, [mounted, isHome])
 
   const markAllAsRead = () => {
     const readIds = notifications.map(n => n.id)
@@ -370,6 +393,11 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
       {/* pt-[92px]/[104px] = fixed header's own rendered height + the original pt-6/pt-8 gap */}
       <main className="relative z-10 w-full max-w-6xl mx-auto px-3 max-[359px]:px-2 sm:px-6 pt-[80px] sm:pt-[104px] pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:pb-40">
 
+        {/* News tray (home only) — above the quick actions */}
+        {isHome && stories.length > 0 && (
+          <StoriesBar isLight={isLight} stories={stories} isSeen={isSeen} onOpen={setViewerIndex} />
+        )}
+
         {/* Quick Actions Scrollable Row */}
         <section className="mb-6 sm:mb-8">
           <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] mb-3 sm:mb-4 ml-1 ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Tezkor amallar</p>
@@ -406,6 +434,16 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Fullscreen story viewer (self-portals to body) */}
+      {viewerIndex !== null && stories.length > 0 && (
+        <StoryViewer
+          stories={stories}
+          startIndex={viewerIndex}
+          onClose={() => setViewerIndex(null)}
+          onSeen={markSeen}
+        />
+      )}
 
       {/* --- 4. FLOATING BOTTOM NAVIGATION --- */}
       <nav className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] sm:bottom-8 left-0 right-0 z-40 flex justify-center px-2 sm:px-6 pointer-events-none">

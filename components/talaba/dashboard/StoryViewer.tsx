@@ -213,10 +213,11 @@ export default function StoryViewer({ stories, startIndex, onClose, onSeen }: Pr
             </div>
             <button
               type="button"
+              data-student-button="plain"
               onClick={onClose}
               aria-label="Yopish"
               className="pointer-events-auto no-shelf rounded-full p-1.5"
-              style={{ color: WHITE }}
+              style={{ color: WHITE, background: 'none', border: 'none', boxShadow: 'none' }}
             >
               <X size={22} />
             </button>
@@ -253,9 +254,10 @@ export default function StoryViewer({ stories, startIndex, onClose, onSeen }: Pr
               href={current.link_url}
               target="_blank"
               rel="noopener noreferrer"
+              data-student-button="plain"
               onClick={(e) => e.stopPropagation()}
               className="pointer-events-auto no-shelf mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-black uppercase tracking-wider"
-              style={{ background: WHITE, color: '#0f172a' }}
+              style={{ background: WHITE, color: '#0f172a', boxShadow: 'none', borderColor: 'transparent' }}
             >
               Batafsil <ExternalLink size={12} />
             </a>

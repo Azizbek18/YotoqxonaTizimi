@@ -121,7 +121,7 @@ export default function CouncilChairPicker({
                 <div>
                   <h2 className={`text-sm font-bold ${ui.strong}`}>Talabalardan tanlash</h2>
                   <p className={`text-[11px] ${ui.muted}`}>
-                    Faqat {genderLabel(gender).toLowerCase()} talabalar ko&apos;rsatilmoqda
+                    {`Faqat ${genderLabel(gender).toLowerCase()} talabalar ko'rsatilmoqda`}
                   </p>
                 </div>
               </div>

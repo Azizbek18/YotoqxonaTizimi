@@ -35,6 +35,7 @@ import { ANNOUNCEMENT_TYPES, type AnnouncementType, type AuthoredAnnouncement } 
 import { permitFacultyLabel } from '@/lib/faculties'
 import { dekanUI, statusChip, type DekanStatusTone } from '@/lib/dekan-ui'
 import { SkelList } from '@/components/dekan/Skeletons'
+import StoryManager from '@/components/dekan/StoryManager'
 
 // Type is genuine categorisation, so it keeps a colour — but only from the
 // panel's three status tones plus neutral, never a fifth hue.
@@ -397,6 +398,9 @@ export default function DekanAnnouncementsPage() {
           </AnimatePresence>
         </div>
       )}
+
+      {/* Yangiliklar lentasi (Instagram-style stories) — pastda, alohida bo'lim */}
+      <StoryManager isLight={isLight} />
 
       {/* Create / edit modal */}
       <ConfirmModal

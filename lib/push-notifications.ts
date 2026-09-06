@@ -80,6 +80,18 @@ export async function sendPushForUser(userId: string, message: PushMessage) {
   await deliver(await rowsFor('user_id', userId), message)
 }
 
+/** Fan-out to many students at once (e.g. a faculty-wide story broadcast). */
+export async function sendPushForUsers(userIds: string[], message: PushMessage) {
+  if (userIds.length === 0) return
+  const { data, error } = await getServiceSupabase()
+    .from('push_subscriptions')
+    .select('id, endpoint, p256dh, auth')
+    .in('user_id', userIds)
+    .eq('enabled', true)
+  if (error) throw error
+  await deliver((data ?? []) as StoredSubscription[], message)
+}
+
 export async function sendPushForPermit(permitRequestId: string, message: PushMessage) {
   await deliver(await rowsFor('permit_request_id', permitRequestId), message)
 }

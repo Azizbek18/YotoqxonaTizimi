@@ -269,6 +269,21 @@ export type AttendanceRecordRow = {
   created_at: string
 }
 
+export type AnnouncementStoryRow = {
+  id: string
+  title: string
+  caption: string | null
+  type: string
+  image_path: string
+  image_url: string
+  link_url: string | null
+  faculty: string
+  created_by: string | null
+  author_name: string | null
+  created_at: string
+  expires_at: string
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -277,6 +292,7 @@ export interface Database {
       arizalar: Table<ApplicationRow>
       ariza_signatures: Table<ArizaSignatureRow>
       elonlar: Table<AnnouncementRow>
+      announcement_stories: Table<AnnouncementStoryRow>
       tolovlar: Table<PaymentRow>
       permit_requests: Table<PermitRequestRow>
       permit_telegram_links: Table<PermitTelegramLinkRow>

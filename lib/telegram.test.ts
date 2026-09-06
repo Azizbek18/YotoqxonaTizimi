@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const { sendTelegramAdminMessage } = await import('./telegram')
+const { sendTelegramAdminMessage, sendTelegramPhoto } = await import('./telegram')
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -31,5 +31,30 @@ describe('Telegram administrator messages', () => {
     await expect(sendTelegramAdminMessage('internal AI error')).resolves.toBe(true)
     const request = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(JSON.parse(String(request[1].body)).chat_id).toBe('admin-chat')
+  })
+})
+
+describe('sendTelegramPhoto', () => {
+  it('returns false without a bot token and never calls fetch', async () => {
+    vi.stubEnv('TELEGRAM_BOT_TOKEN', '')
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(sendTelegramPhoto('123', 'https://cdn/x.jpg', 'salom')).resolves.toBe(false)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('posts the photo URL + caption to the sendPhoto endpoint', async () => {
+    vi.stubEnv('TELEGRAM_BOT_TOKEN', 'bot-token')
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      sendTelegramPhoto('123', 'https://cdn/x.jpg', '<b>hi</b>', { parseMode: 'HTML' }),
+    ).resolves.toBe(true)
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toContain('/sendPhoto')
+    const body = JSON.parse(String(init.body))
+    expect(body).toMatchObject({ chat_id: '123', photo: 'https://cdn/x.jpg', caption: '<b>hi</b>', parse_mode: 'HTML' })
   })
 })

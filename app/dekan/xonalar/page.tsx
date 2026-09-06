@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
@@ -21,6 +22,7 @@ import {
   Venus,
   Mars,
   MousePointerSquareDashed,
+  ArrowUpRight,
   Check
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -92,7 +94,9 @@ export default function DekanXonalarMap() {
   const ui = dekanUI(isLight)
   // The tarbiyachi panel renders this same map view-only — every
   // assign / freeze / capacity / gender / generate control is hidden.
-  const { readOnly } = useStaffPanel()
+  // `base` ('/dekan' | '/tarbiyachi') keeps the "open student" link inside
+  // whichever panel is rendering this shared page.
+  const { readOnly, base } = useStaffPanel()
 
   // Styling tokens
   const surfaceBg = ui.card
@@ -1171,6 +1175,19 @@ export default function DekanXonalarMap() {
                             </div>
                           ) : null}
                         </div>
+
+                        {/* Jump to this student's full record in the Talabalar
+                            section. Only for real accounts ('registered') —
+                            an 'approved' occupant is an unregistered permit
+                            row, not yet a student. Shown in both panels. */}
+                        {occ.status === 'registered' && occ.id && (
+                          <Link
+                            href={`${base}/talabalar?student=${occ.id}`}
+                            className={`no-shelf mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+                          >
+                            <ArrowUpRight size={11} /> Talaba kabinetini ochish
+                          </Link>
+                        )}
 
                         {!readOnly && occ.id && (
                           confirmRemoveId === occ.id ? (

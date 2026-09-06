@@ -24,6 +24,9 @@ import FloorCaptainCard from '@/components/talaba/dashboard/FloorCaptainCard';
 import RoommatesCard from '@/components/talaba/dashboard/RoommatesCard';
 import SupportContactsCard from '@/components/talaba/dashboard/SupportContactsCard';
 import AnnouncementsBoard from '@/components/talaba/dashboard/AnnouncementsBoard';
+import StoriesBar from '@/components/talaba/dashboard/StoriesBar';
+import StoryViewer from '@/components/talaba/dashboard/StoryViewer';
+import { useSeenStories } from '@/components/talaba/dashboard/useSeenStories';
 import MyApplicationsCard from '@/components/talaba/dashboard/MyApplicationsCard';
 import DisciplineRatingCard from '@/components/talaba/dashboard/DisciplineRatingCard';
 import PaymentStatusCard from '@/components/talaba/dashboard/PaymentStatusCard';
@@ -32,6 +35,8 @@ import { useCleaningSchedule } from '@/components/talaba/dashboard/useCleaningSc
 import { fetchStudentPayments } from '@/features/payments/client/api';
 import { fetchStudentProfile } from '@/features/profile/client/api';
 import { fetchStudentAnnouncements } from '@/features/announcements/client/api';
+import { fetchStudentStories } from '@/features/stories/client/api';
+import type { Story } from '@/features/stories/types';
 import { fetchStudentApplications } from '@/features/applications/client/api';
 import { fetchAppSettings } from '@/features/app-settings/client/api';
 import { getPaymentStats } from '@/features/app-settings/presentation';
@@ -63,6 +68,9 @@ export default function TalabaDashboard() {
   // State - UI
   const [showArizalar, setShowArizalar] = useState(false);
   const [selectedElon, setSelectedElon] = useState<Elon | null>(null);
+  const [stories, setStories] = useState<Story[]>([]);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const { isSeen, markSeen } = useSeenStories();
   const [selectedAriza, setSelectedAriza] = useState<Ariza | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [elonCategory, setElonCategory] = useState<string>("Barchasi");
@@ -122,7 +130,7 @@ export default function TalabaDashboard() {
 
   // Lock body scroll when any modal is open
   useEffect(() => {
-    const isAnyModalOpen = cleaning.isModalOpen || !!selectedElon || !!selectedAriza || showArizalar || isChatModalOpen;
+    const isAnyModalOpen = cleaning.isModalOpen || !!selectedElon || !!selectedAriza || showArizalar || isChatModalOpen || viewerIndex !== null;
     if (isAnyModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -131,7 +139,7 @@ export default function TalabaDashboard() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [cleaning.isModalOpen, selectedElon, selectedAriza, showArizalar, isChatModalOpen]);
+  }, [cleaning.isModalOpen, selectedElon, selectedAriza, showArizalar, isChatModalOpen, viewerIndex]);
 
   // Fetch Profile, Roommates, Announcements, and Disciplinary Writeups
   useEffect(() => {
@@ -195,6 +203,14 @@ export default function TalabaDashboard() {
         } catch (elonError) {
           console.error("E'lonlarni yuklashda xato:", elonError);
           setElonlar([]);
+        }
+
+        // 3b. Yangiliklar lentasi (stories) — fakultet bo'yicha, 24 soatlik
+        try {
+          setStories(await fetchStudentStories());
+        } catch (storyError) {
+          console.error('Yangiliklarni yuklashda xato:', storyError);
+          setStories([]);
         }
 
         // 4. Real Arizalar / Ogohlantirishlarni Yuklash (arizalar table)
@@ -327,6 +343,13 @@ export default function TalabaDashboard() {
         onSearchChange={setSearchQuery}
       />
 
+      <StoriesBar
+        isLight={isLight}
+        stories={stories}
+        isSeen={isSeen}
+        onOpen={setViewerIndex}
+      />
+
       <RoomAssignmentBanner
         isLight={isLight}
         roomNumber={profile.room_number}
@@ -426,6 +449,15 @@ export default function TalabaDashboard() {
       />
       <WarningDetailModal ariza={selectedAriza} onClose={() => setSelectedAriza(null)} />
       <AnnouncementModal elon={selectedElon} onClose={() => setSelectedElon(null)} />
+
+      {viewerIndex !== null && stories.length > 0 && (
+        <StoryViewer
+          stories={stories}
+          startIndex={viewerIndex}
+          onClose={() => setViewerIndex(null)}
+          onSeen={markSeen}
+        />
+      )}
 
       {/* Floating AI assistant (self-contained: own state + /api/ai/chat) */}
       <AiAssistant isLight={isLight} />

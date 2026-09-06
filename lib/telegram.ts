@@ -73,6 +73,43 @@ export async function sendTelegramDocument(
 }
 
 /**
+ * Sends a photo by URL (Telegram fetches it itself — the image lives in a
+ * public storage bucket, so no download/upload round-trip here). Same
+ * "silent when unconfigured, never throws" contract as the siblings.
+ */
+export async function sendTelegramPhoto(
+  chatId: string,
+  photoUrl: string,
+  caption: string | undefined,
+  options: SendOptions = {},
+) {
+  const token = process.env.TELEGRAM_BOT_TOKEN
+  if (!token) return false
+
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        photo: photoUrl,
+        ...(caption ? { caption } : {}),
+        ...(caption && options.parseMode ? { parse_mode: options.parseMode } : {}),
+        ...(options.replyMarkup ? { reply_markup: options.replyMarkup } : {}),
+      }),
+    })
+    if (!response.ok) {
+      console.error('Telegram sendPhoto error:', response.status, await response.text())
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('Telegram sendPhoto failed:', error)
+    return false
+  }
+}
+
+/**
  * Sends operational messages only to an explicitly configured administrator.
  * TELEGRAM_CHAT_ID used to share the student bot's recipient and is
  * intentionally ignored: a student who starts the bot must never receive

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -280,6 +280,29 @@ export default function DekanStudentsPage() {
   useEffect(() => {
     refreshAll()
   }, [refreshAll])
+
+  // Deep link from the room map ("Talaba kabinetini ochish"):
+  // /…/talabalar?student=<id> auto-opens that student's detail once the list
+  // has loaded, then strips the param so a refresh/back doesn't re-trigger.
+  // Reads window.location directly (no <Suspense> boundary needed) — same
+  // pattern the room map uses for ?dormId.
+  const deepLinkConsumed = useRef(false)
+  useEffect(() => {
+    if (deepLinkConsumed.current || students.length === 0) return
+    const wanted = new URLSearchParams(window.location.search).get('student')
+    deepLinkConsumed.current = true
+    if (!wanted) return
+    const match = students.find((row) => row.id === wanted)
+    if (match) {
+      setSelectedStudent(match)
+      setActiveFolder('all')
+      setSearchTerm('')
+      setFilterRoom('')
+    } else {
+      toast.error("Bu talaba ro'yxatda topilmadi")
+    }
+    window.history.replaceState(null, '', window.location.pathname)
+  }, [students])
 
   // null while the real contract fee hasn't loaded — every debt/progress
   // figure below is measured against it, so there is nothing honest to show

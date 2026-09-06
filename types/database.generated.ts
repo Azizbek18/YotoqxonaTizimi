@@ -176,6 +176,13 @@ export type PermitRequestRow = {
   status: string | null
   room_number: string | null
   reject_reason: string | null
+  /** How many times the dekan has rejected this application. 2 → blocked. */
+  rejection_count: number
+  /** true → this passport/JSHSHIR can't submit a new application. Lifted manually by dekan/superadmin. */
+  blocked: boolean
+  blocked_at: string | null
+  /** 24h anti-spam throttle for the "final rejection" notification sent on a blocked resubmit attempt. */
+  block_notified_at: string | null
   created_at: string
   updated_at: string
   /** 'yollanma' (government referral, default) | 'imtiyozli' (foreign/privileged student — Ariza+Tilxat+passport photo). */

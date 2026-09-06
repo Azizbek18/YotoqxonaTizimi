@@ -11,6 +11,7 @@ type Row = {
   email: string
   permit_url: string
   application_type: string
+  blocked: boolean
 }
 
 const row = (over: Partial<Row> & Pick<Row, 'id'>): Row => ({
@@ -20,6 +21,7 @@ const row = (over: Partial<Row> & Pick<Row, 'id'>): Row => ({
   email: 'a@x.uz',
   permit_url: '2026/old.pdf',
   application_type: 'yollanma',
+  blocked: false,
   ...over,
 })
 
@@ -46,6 +48,13 @@ describe('classifyPermitResubmission', () => {
   it('own rejected row, no other collision → reopen it', async () => {
     const result = await classifyPermitResubmission(fakeSupabase([row({ id: 'p1', status: 'rejected' })]), yollanma)
     expect(result).toEqual({ action: 'reopen', rowId: 'p1', oldPermitPath: '2026/old.pdf' })
+  })
+
+  it('own rejected row that is blocked (rejected twice) → blocked, not reopen', async () => {
+    const result = await classifyPermitResubmission(
+      fakeSupabase([row({ id: 'p1', status: 'rejected', blocked: true })]), yollanma,
+    )
+    expect(result).toEqual({ action: 'blocked', rowId: 'p1' })
   })
 
   it('own row still pending → conflict (already under review)', async () => {

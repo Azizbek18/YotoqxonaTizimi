@@ -122,6 +122,30 @@ export function formatPermitTelegramMessage(permit: Pick<PermitRequestRow, 'full
   return `🔔 <b>Telegram xabarnomasi ulandi</b>\n\nHurmatli <b>${name}</b>, arizangiz hozir dekan ko‘rib chiqishini kutmoqda.\n\nJavob tayyor bo‘lishi bilan shu bot sizga avtomatik xabar yuboradi. Botni qayta ishga tushirishingiz shart emas.`
 }
 
+/**
+ * Blokdagi (2 marta rad etilgan) odam yana yuborishga uringanda — yakuniy
+ * javob. Best-effort: chat ulanmagan bo'lsa `false`, hech qachon throw
+ * qilmaydi. Status-throttle yo'q (bu status o'zgarishi emas) — anti-spam
+ * chaqiruvchi tomonda (block_notified_at, lib/permit-blocklist.ts).
+ */
+export async function notifyPermitBlockedTelegram(permitRequestId: string): Promise<boolean> {
+  const supabase = getServiceSupabase()
+  const [{ data: link }, { data: permit }] = await Promise.all([
+    supabase.from('permit_telegram_links').select('chat_id').eq('permit_request_id', permitRequestId).maybeSingle(),
+    supabase.from('permit_requests').select('full_name').eq('id', permitRequestId).maybeSingle(),
+  ])
+  if (link?.chat_id == null) return false
+  const name = escapeHtml(permit?.full_name ?? 'abituriyent')
+  return sendTelegramChatMessage(
+    String(link.chat_id),
+    `🚫 <b>Ariza bo‘yicha yakuniy javob</b>\n\nHurmatli <b>${name}</b>, universitet ishchi guruhi sizning yotoqxona arizangizni ko‘rib chiqib, rad etish xulosasini berdi.\n\nAriza qayta ko‘rib chiqilmaydi.`,
+    {
+      parseMode: 'HTML',
+      replyMarkup: { inline_keyboard: [[{ text: 'Ariza holatini ochish', url: `${process.env.NEXT_PUBLIC_APP_URL}/ruxsatnoma-tekshirish` }]] },
+    },
+  )
+}
+
 export async function notifyPermitTelegram(permit: PermitRequestRow) {
   const supabase = getServiceSupabase()
   const { data: link, error } = await supabase

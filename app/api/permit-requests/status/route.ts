@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const supabase = getServiceSupabase()
     let query = supabase
       .from('permit_requests')
-      .select('id, full_name, status, room_number, reject_reason, created_at, faculty, phone, gender, direction, course, application_type, relative_phone, study_type, origin_country, origin_region')
+      .select('id, full_name, status, room_number, reject_reason, blocked, created_at, faculty, phone, gender, direction, course, application_type, relative_phone, study_type, origin_country, origin_region')
       .eq('passport_series', passport)
       .eq('email', email)
       .eq('application_type', applicationType)
@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
         status: data.status,
         room_number: data.room_number,
         reject_reason: data.reject_reason,
+        blocked: Boolean(data.blocked),
         created_at: data.created_at,
         phone: data.phone,
         gender: data.gender,

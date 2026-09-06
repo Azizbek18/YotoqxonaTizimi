@@ -37,6 +37,8 @@ interface PermitRequest {
   status: 'pending' | 'approved' | 'rejected' | 'registered'
   room_number: string | null
   reject_reason: string | null
+  /** Rejected twice → blocked. No more resubmissions with this identity. */
+  blocked?: boolean
   application_type: ApplicationType
   /** Carried through for the "tahrirlash" prefill — the status endpoint
    *  already returns these so /register can prefill the signup wizard. */
@@ -472,28 +474,36 @@ function StatusCheckContent() {
                       <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-center space-y-3">
                         <XCircle className="mx-auto h-10 w-10 text-rose-400" />
                         <div className="space-y-1">
-                          <h3 className="text-xs font-black uppercase tracking-wider text-rose-400">Rad etilgan</h3>
+                          <h3 className="text-xs font-black uppercase tracking-wider text-rose-400">
+                            {result.blocked ? 'Yakuniy rad etilgan' : 'Rad etilgan'}
+                          </h3>
                           <p className={`text-[11px] leading-relaxed font-sans ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                            Arizangiz rad etildi. Sababi: <span className="font-bold text-rose-300">{result.reject_reason || "Hujjat talabga javob bermaydi."}</span>
+                            {result.blocked ? (
+                              <>Arizangiz universitet ishchi guruhi tomonidan ko&apos;rib chiqilib rad etildi. Ariza qayta ko&apos;rib chiqilmaydi — savol yoki e&apos;tiroz bo&apos;lsa, fakultet dekanatiga murojaat qiling.</>
+                            ) : (
+                              <>Arizangiz rad etildi. Sababi: <span className="font-bold text-rose-300">{result.reject_reason || "Hujjat talabga javob bermaydi."}</span></>
+                            )}
                           </p>
                         </div>
-                        <Link
-                          href={result.application_type === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'}
-                          onClick={() => {
-                            // Carry the identity so the submit form is prefilled and
-                            // the server reopens THIS rejected row instead of 409-ing.
-                            try {
-                              sessionStorage.setItem(
-                                'permit_resubmit',
-                                JSON.stringify({ passport: passportSeries, jshshir, email, applicationType: result.application_type }),
-                              )
-                            } catch { /* private mode — user just retypes */ }
-                          }}
-                          className="inline-flex items-center gap-1 text-xs font-bold text-blue-500 hover:underline"
-                        >
-                          <span>Tuzatib qayta yuborish</span>
-                          <ChevronRight size={12} />
-                        </Link>
+                        {!result.blocked && (
+                          <Link
+                            href={result.application_type === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'}
+                            onClick={() => {
+                              // Carry the identity so the submit form is prefilled and
+                              // the server reopens THIS rejected row instead of 409-ing.
+                              try {
+                                sessionStorage.setItem(
+                                  'permit_resubmit',
+                                  JSON.stringify({ passport: passportSeries, jshshir, email, applicationType: result.application_type }),
+                                )
+                              } catch { /* private mode — user just retypes */ }
+                            }}
+                            className="inline-flex items-center gap-1 text-xs font-bold text-blue-500 hover:underline"
+                          >
+                            <span>Tuzatib qayta yuborish</span>
+                            <ChevronRight size={12} />
+                          </Link>
+                        )}
                       </div>
                     )}
 

@@ -37,6 +37,9 @@ function repository(overrides: Partial<PermitAdminRepository> = {}) {
     load: vi.fn(async () => ({ permits: [], users: [] })),
     find: vi.fn(async () => permit()),
     update: vi.fn(async () => permit({ status: 'pending' })),
+    rejectPermit: vi.fn(async (id: string, reason: string, count: number, blocked: boolean) =>
+      permit({ id, status: 'rejected', reject_reason: reason, rejection_count: count, blocked })),
+    unblockPermit: vi.fn(async (id: string) => permit({ id, status: 'rejected', blocked: false, rejection_count: 0 })),
     findLinkedUser: vi.fn(async (): Promise<LinkedUser | null> => null),
     deletePendingStudent: vi.fn(async () => {}),
     cancelApproval: vi.fn(async () => permit({ status: 'pending', room_number: null })),
@@ -144,6 +147,49 @@ describe('permit admin service — approve / reject audit + email', () => {
 
     await createPermitAdminService(repo).update('IT', { id: 'permit-1', action: 'reject', reason: 'Hujjat sifatsiz' })
     expect(writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'permit.reject' }))
+  })
+})
+
+describe('permit admin service — rejection block', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('first rejection bumps the counter to 1 without blocking', async () => {
+    const repo = repository({ find: vi.fn(async () => permit({ status: 'pending', rejection_count: 0 })) })
+    await createPermitAdminService(repo).update('IT', { id: 'permit-1', action: 'reject', reason: 'Hujjat sifatsiz' })
+    expect(repo.rejectPermit).toHaveBeenCalledWith('permit-1', 'Hujjat sifatsiz', 1, false)
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: 'permit.reject', details: expect.objectContaining({ rejectionCount: 1, blocked: false }) }),
+    )
+  })
+
+  it('second rejection auto-blocks the identity', async () => {
+    const repo = repository({ find: vi.fn(async () => permit({ status: 'pending', rejection_count: 1 })) })
+    await createPermitAdminService(repo).update('IT', { id: 'permit-1', action: 'reject', reason: 'Yana sifatsiz' })
+    expect(repo.rejectPermit).toHaveBeenCalledWith('permit-1', 'Yana sifatsiz', 2, true)
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ details: expect.objectContaining({ rejectionCount: 2, blocked: true }) }),
+    )
+  })
+
+  it('unblock resets a blocked permit and audits', async () => {
+    const repo = repository({ find: vi.fn(async () => permit({ status: 'rejected', blocked: true, rejection_count: 2 })) })
+    const result = await createPermitAdminService(repo).update('IT', { id: 'permit-1', action: 'unblock' }, 'dekan-1')
+    expect(result).toMatchObject({ success: true })
+    expect(repo.unblockPermit).toHaveBeenCalledWith('permit-1')
+    expect(writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'permit.unblock', actorUserId: 'dekan-1' }))
+  })
+
+  it('unblock refuses a permit that is not blocked', async () => {
+    const repo = repository({ find: vi.fn(async () => permit({ status: 'rejected', blocked: false })) })
+    await expect(createPermitAdminService(repo).update('IT', { id: 'permit-1', action: 'unblock' }))
+      .rejects.toMatchObject({ status: 409 })
+    expect(repo.unblockPermit).not.toHaveBeenCalled()
+  })
+
+  it('unblock is a valid action (not rejected as malformed)', async () => {
+    const repo = repository({ find: vi.fn(async () => permit({ status: 'rejected', blocked: true })) })
+    await expect(createPermitAdminService(repo).update('IT', { id: 'permit-1', action: 'unblock' }))
+      .resolves.toMatchObject({ success: true })
   })
 })
 

@@ -19,8 +19,10 @@ import AddDormCard from '@/components/dekan/AddDormCard'
 import DormRoomSettingsCard from '@/components/dekan/DormRoomSettingsCard'
 import AttendanceSettingsCard from '@/components/dekan/AttendanceSettingsCard'
 import DekanSignatureCard from '@/components/dekan/DekanSignatureCard'
+import CouncilChairPicker, { type CouncilChairPick } from '@/components/dekan/CouncilChairPicker'
 import { dekanUI } from '@/lib/dekan-ui'
 import { SkelForm } from '@/components/ui/skeletons'
+import type { GenderValue } from '@/lib/gender'
 
 type NumberField = {
     key: 'monthlyFee' | 'yearlyContractFee' | 'maxUploadSizeMb' | 'warningThreshold'
@@ -44,6 +46,11 @@ export default function DekanSozlamalarPage() {
     const [telegramChat, setTelegramChat] = useState('')
     const [savedTelegramChat, setSavedTelegramChat] = useState('')
     const [telegramSaving, setTelegramSaving] = useState(false)
+
+    // Which council-chair contact row the student picker is currently open for.
+    const [councilPicker, setCouncilPicker] = useState<
+        { gender: GenderValue; nameKey: keyof AppSettings; phoneKey: keyof AppSettings } | null
+    >(null)
 
     const loadSettings = useCallback(async () => {
         setLoading(true)
@@ -136,14 +143,26 @@ export default function DekanSozlamalarPage() {
         { key: 'warningThreshold', label: 'Ogohlantirish chegarasi', description: 'Talabalar ro\'yxatida shu sondan ko\'p ogohlantirilgan talaba xavfli deb belgilanadi', suffix: 'ta' },
     ]
 
-    const contacts: Array<{ title: string; nameKey: keyof AppSettings; phoneKey: keyof AppSettings; hasName: boolean }> = [
+    const contacts: Array<{
+        title: string
+        nameKey: keyof AppSettings
+        phoneKey: keyof AppSettings
+        hasName: boolean
+        council?: GenderValue
+    }> = [
         { title: 'Tarbiyachi (Navbatchi)', nameKey: 'tarbiyachiName', phoneKey: 'tarbiyachiPhone', hasName: true },
         { title: 'Komendant', nameKey: 'komendantName', phoneKey: 'komendantPhone', hasName: true },
         { title: 'Tibbiy yordam xonasi (Shifokor)', nameKey: 'doctorName', phoneKey: 'doctorPhone', hasName: true },
-        { title: 'Talaba kengashi raisi (o\'g\'il)', nameKey: 'talabaKengashiRaisiOgilName', phoneKey: 'talabaKengashiRaisiOgilPhone', hasName: true },
-        { title: 'Talaba kengashi raisi (qiz)', nameKey: 'talabaKengashiRaisiQizName', phoneKey: 'talabaKengashiRaisiQizPhone', hasName: true },
+        { title: 'Talaba kengashi raisi (o\'g\'il)', nameKey: 'talabaKengashiRaisiOgilName', phoneKey: 'talabaKengashiRaisiOgilPhone', hasName: true, council: 'male' },
+        { title: 'Talaba kengashi raisi (qiz)', nameKey: 'talabaKengashiRaisiQizName', phoneKey: 'talabaKengashiRaisiQizPhone', hasName: true, council: 'female' },
         { title: 'Xavfsizlik bo\'limi', nameKey: 'securityPhone', phoneKey: 'securityPhone', hasName: false },
     ]
+
+    const handleCouncilPick = (pick: CouncilChairPick) => {
+        if (!councilPicker) return
+        handleChange(councilPicker.nameKey, pick.fullName as AppSettings[typeof councilPicker.nameKey])
+        handleChange(councilPicker.phoneKey, pick.phone as AppSettings[typeof councilPicker.phoneKey])
+    }
 
     const isDirty = settings !== null && savedSettings !== null
         && JSON.stringify(settings) !== JSON.stringify(savedSettings)
@@ -341,7 +360,18 @@ export default function DekanSozlamalarPage() {
                           <>
                             {contacts.map((contact) => (
                                 <div key={contact.title} className={`pb-5 border-b last:pb-0 last:border-b-0 ${ui.border}`}>
-                                    <h3 className={`text-sm font-semibold mb-3 ${ui.strong}`}>{contact.title}</h3>
+                                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                        <h3 className={`text-sm font-semibold ${ui.strong}`}>{contact.title}</h3>
+                                        {contact.council && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setCouncilPicker({ gender: contact.council!, nameKey: contact.nameKey, phoneKey: contact.phoneKey })}
+                                                className={`rounded-lg px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${ui.accentSoft}`}
+                                            >
+                                                Talabalardan tanlash
+                                            </button>
+                                        )}
+                                    </div>
                                     <div className={`grid gap-3 ${contact.hasName ? 'sm:grid-cols-2' : ''}`}>
                                         {contact.hasName && (
                                             <div>
@@ -388,6 +418,14 @@ export default function DekanSozlamalarPage() {
                             {saving ? 'Saqlanmoqda...' : 'Sozlamalarni saqlash'}
                         </button>
                     </div>
+
+                    <CouncilChairPicker
+                        open={councilPicker !== null}
+                        gender={councilPicker?.gender ?? 'male'}
+                        isLight={isLight}
+                        onClose={() => setCouncilPicker(null)}
+                        onSelect={handleCouncilPick}
+                    />
                 </>
             )}
         </div>

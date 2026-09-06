@@ -173,18 +173,28 @@ function ArizalarContent() {
         .sort((a, b) => permitFacultyLabel(a).localeCompare(permitFacultyLabel(b)))
     : []
 
-  // Filter requests
-  const filteredRequests = requests.filter((req) => {
-    const matchesStatus = req.status === statusFilter
-    const matchesFaculty = !facultyFilter || req.faculty === facultyFilter
-    const matchesSearch =
-      req.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.passport_series.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (req.jshshir?.includes(searchTerm) ?? false) ||
-      req.faculty.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter + order. The pending list is the real queue — oldest first (FIFO),
+  // exactly what the applicant sees on /ruxsatnoma-tekshirish. A resubmitted
+  // application gets a fresh created_at on reopen (see the submit routes), so
+  // it correctly lands at the BACK of the queue here. Decided statuses
+  // (rejected / approved / registered) stay newest-first — most recent
+  // decision on top.
+  const filteredRequests = requests
+    .filter((req) => {
+      const matchesStatus = req.status === statusFilter
+      const matchesFaculty = !facultyFilter || req.faculty === facultyFilter
+      const matchesSearch =
+        req.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        req.passport_series.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (req.jshshir?.includes(searchTerm) ?? false) ||
+        req.faculty.toLowerCase().includes(searchTerm.toLowerCase())
 
-    return matchesStatus && matchesFaculty && matchesSearch
-  })
+      return matchesStatus && matchesFaculty && matchesSearch
+    })
+    .sort((a, b) => {
+      const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      return statusFilter === 'pending' ? diff : -diff
+    })
 
   // Export to Excel helper — boshqa hisobot eksportlari bilan bir xil dizayn:
   // № ustuni, qalin Times New Roman sarlavha, har bir katakka ramka

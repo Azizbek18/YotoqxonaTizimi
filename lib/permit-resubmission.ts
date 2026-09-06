@@ -12,6 +12,7 @@ type MatchedRow = {
   email: string
   permit_url: string
   application_type: string
+  blocked: boolean
 }
 
 export type PermitResubmission =
@@ -19,6 +20,9 @@ export type PermitResubmission =
   | { action: 'reopen'; rowId: string; oldPermitPath: string | null }
   | { action: 'edit_pending'; rowId: string; oldPermitPath: string | null }
   | { action: 'conflict'; message: string }
+  // The identity was rejected twice and auto-blocked — the caller sends the
+  // "final rejection" notification and refuses the submission.
+  | { action: 'blocked'; rowId: string }
 
 /**
  * `permit_requests` has hard UNIQUE constraints on passport_series, jshshir
@@ -43,7 +47,7 @@ export async function classifyPermitResubmission(
   identity: { passport: string; jshshir: string | null; email: string },
   opts: { allowPendingEdit?: boolean } = {},
 ): Promise<PermitResubmission> {
-  const columns = 'id, status, passport_series, jshshir, email, permit_url, application_type'
+  const columns = 'id, status, passport_series, jshshir, email, permit_url, application_type, blocked'
   const [byPassport, byEmail, byJshshir] = await Promise.all([
     supabase.from('permit_requests').select(columns).eq('passport_series', identity.passport).maybeSingle(),
     supabase.from('permit_requests').select(columns).eq('email', identity.email).maybeSingle(),
@@ -92,6 +96,10 @@ export async function classifyPermitResubmission(
           ? 'Arizangiz allaqachon yuborilgan va ko\'rib chiqilmoqda.'
           : 'Bu ma\'lumotlar bilan ariza allaqachon tasdiqlangan — «Ariza holatini tekshirish» bo\'limiga o\'ting.',
     }
+  }
+  // Rejected twice → auto-blocked. No more resubmissions with this identity.
+  if (identityRow.blocked) {
+    return { action: 'blocked', rowId: identityRow.id }
   }
   return { action: 'reopen', rowId: identityRow.id, oldPermitPath: identityRow.permit_url || null }
 }

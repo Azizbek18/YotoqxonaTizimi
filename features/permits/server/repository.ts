@@ -43,6 +43,38 @@ export function createPermitAdminRepository() {
       if (error) throw error
       return data
     },
+    // Reject + bump the rejection counter (and block on the 2nd). Same
+    // status='pending' guard as update() so a double-submit / race is a no-op.
+    async rejectPermit(id: string, reason: string, rejectionCount: number, blocked: boolean) {
+      const { data, error } = await supabase
+        .from('permit_requests')
+        .update({
+          status: 'rejected',
+          room_number: null,
+          reject_reason: reason,
+          rejection_count: rejectionCount,
+          blocked,
+          blocked_at: blocked ? new Date().toISOString() : null,
+        })
+        .eq('id', id)
+        .eq('status', 'pending')
+        .select()
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+    // Dekan/superadmin lifts the block — a fresh cycle (counter back to 0).
+    async unblockPermit(id: string) {
+      const { data, error } = await supabase
+        .from('permit_requests')
+        .update({ blocked: false, blocked_at: null, rejection_count: 0, block_notified_at: null })
+        .eq('id', id)
+        .eq('blocked', true)
+        .select()
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
     // Any talaba account keyed to this permit's identity. Imtiyozli
     // applications have no JShSHIR, so passport_series alone must still
     // match; a government yo'llanma has both. Two plain equality queries

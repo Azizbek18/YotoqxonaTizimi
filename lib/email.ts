@@ -195,6 +195,24 @@ export async function sendPermitApprovalCancelledEmail(to: string, fullName: str
 }
 
 /**
+ * Ariza ikki marta rad etilib bloklangandan keyin, blokdagi odam yana
+ * yuborishga uringanda — yakuniy javob. Rasmiy ohang: "universitet ishchi
+ * guruhi" degan formula foydalanuvchi so'roviga ko'ra.
+ */
+export async function sendPermitBlockedEmail(to: string, fullName: string) {
+  await sendMail({
+    to,
+    subject: "Yotoqxona arizangiz bo'yicha yakuniy javob",
+    heading: `${fullName || 'Hurmatli abituriyent'}, arizangiz bo'yicha yakuniy qaror`,
+    paragraphs: [
+      "Universitet ishchi guruhi sizning yotoqxona arizangizni ko'rib chiqib, rad etish xulosasini berdi.",
+      "Ariza qayta ko'rib chiqilmaydi. Bir xil pasport seriyasi va JShSHIR bilan yangi ariza yuborib bo'lmaydi.",
+      "Qaror bo'yicha savol yoki e'tirozingiz bo'lsa, fakultet dekanatiga bevosita murojaat qiling.",
+    ],
+  })
+}
+
+/**
  * Dekan ogohlantirish yoki eslatma yuborganda. 'warning' talabaning
  * intizomiy hisobiga qo'shiladi, 'info' esa faqat xabar — xat matni ham
  * shunga qarab ohangini o'zgartiradi, chunki bu farq talaba uchun muhim.

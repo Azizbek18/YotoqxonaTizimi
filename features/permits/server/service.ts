@@ -264,7 +264,7 @@ export function createPermitAdminService(
       const input = value as Record<string, unknown>
       const id = typeof input.id === 'string' ? input.id.trim() : ''
       const action = input.action
-      if (!id || (action !== 'approve' && action !== 'reject' && action !== 'cancel')) {
+      if (!id || (action !== 'approve' && action !== 'reject' && action !== 'cancel' && action !== 'unblock')) {
         throw new ApiError(400, 'So\'rov noto\'g\'ri')
       }
       const existing = await repository.find(id)
@@ -273,6 +273,18 @@ export function createPermitAdminService(
 
       const audit = (details: Record<string, unknown> = {}) =>
         writeAuditLog({ eventType: `permit.${action}`, status: 'success', actorUserId: actorId, targetRole: 'talaba', details: { permitId: id, faculty, ...details } })
+
+      // Manual lift of an auto-block (2 rejections). Resets the counter so the
+      // applicant gets a fresh cycle. Reachable regardless of status — the
+      // blocked row is always 'rejected', so this must precede the pending
+      // guard below.
+      if (action === 'unblock') {
+        if (!existing.blocked) throw new ApiError(409, 'Bu ariza bloklanmagan')
+        const request = await repository.unblockPermit(id)
+        if (!request) throw new ApiError(409, 'Ariza holati o\'zgardi — sahifani yangilang')
+        await audit()
+        return { success: true as const, request }
+      }
 
       if (action === 'cancel') {
         // Undo an approval, back to the pending queue. An account that has
@@ -321,9 +333,15 @@ export function createPermitAdminService(
       }
       const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 2000) : ''
       if (!reason) throw new ApiError(400, 'Rad etish sababi talab qilinadi')
-      const request = await repository.update(id, { status: 'rejected', room_number: null, reject_reason: reason })
+      // 2nd rejection → auto-block this identity from resubmitting. The block
+      // is silent here (status stays 'rejected', same student notification) —
+      // the "final rejection" message only fires when they actually try again.
+      const rejectionCount = (existing.rejection_count ?? 0) + 1
+      const blockNow = rejectionCount >= 2
+      const request = await repository.rejectPermit(id, reason, rejectionCount, blockNow)
+      if (!request) throw new ApiError(409, 'Bu yo\'llanma allaqachon ko\'rib chiqilgan')
       await notifyTelegramWithoutBreakingDecision(request)
-      await audit()
+      await audit({ rejectionCount, blocked: blockNow })
       return { success: true as const, request }
     },
 

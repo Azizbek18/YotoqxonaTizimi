@@ -14,7 +14,9 @@ import {
   X,
   ExternalLink,
   ChevronRight,
-  Undo2
+  Undo2,
+  Ban,
+  ShieldOff
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -26,6 +28,7 @@ import {
   cancelPermitApproval,
   fetchDekanOverview,
   rejectPermitRequest,
+  unblockPermitRequest,
 } from '@/features/permits/client/admin-api'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { directionLabel } from '@/lib/directions'
@@ -62,6 +65,10 @@ interface PermitRequest {
   origin_country?: string | null
   origin_region?: string | null
   study_type?: string | null
+  /** Rejected twice → auto-blocked from resubmitting (2609300007). */
+  blocked?: boolean
+  rejection_count?: number
+  blocked_at?: string | null
 }
 
 const STATUS_META: Record<PermitRequest['status'], { label: string; tone: DekanStatusTone }> = {
@@ -105,6 +112,7 @@ function ArizalarContent() {
   const [approveModalOpen, setApproveModalOpen] = useState(false)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
+  const [unblockModalOpen, setUnblockModalOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [processing, setProcessing] = useState(false)
 
@@ -298,6 +306,25 @@ function ArizalarContent() {
     }
   }
 
+  // Lift the auto-block (2 rejections). Resets rejection_count → the applicant
+  // gets a fresh cycle of one submit + one resubmit.
+  const handleUnblock = async () => {
+    if (!selectedReq) return
+    setProcessing(true)
+    try {
+      await unblockPermitRequest(selectedReq.id)
+      toast.success(`${selectedReq.full_name}ning bloki yechildi — endi qaytadan ariza yubora oladi`)
+      setUnblockModalOpen(false)
+      await fetchRequests(dekanFaculty)
+      setSelectedReq(null)
+    } catch (err) {
+      console.error(err)
+      toast.error(err instanceof Error ? err.message : "Blokni yechishda xatolik yuz berdi")
+    } finally {
+      setProcessing(false)
+    }
+  }
+
   const fieldRow = (label: string, value: React.ReactNode) => (
     <div className={`flex justify-between gap-3 py-1.5 border-b ${ui.border}`}>
       <span className={ui.muted}>{label}</span>
@@ -447,6 +474,11 @@ function ArizalarContent() {
                           {req.blacklisted && (
                             <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">
                               Qora ro‘yxat
+                            </span>
+                          )}
+                          {req.blocked && (
+                            <span className="inline-flex items-center gap-0.5 rounded bg-rose-600 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">
+                              <Ban size={8} /> Bloklangan
                             </span>
                           )}
                           {req.warning_count && req.warning_count > 0 ? (
@@ -660,6 +692,27 @@ function ArizalarContent() {
                   </p>
                 </div>
               )}
+
+              {selectedReq.status === 'rejected' && selectedReq.blocked && (
+                <div className={`mt-1 rounded-xl border p-3 space-y-2.5 ${ui.dangerSoft}`}>
+                  <div className="flex items-start gap-2">
+                    <Ban size={14} className="shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase">Bloklangan</p>
+                      <p className="mt-0.5 text-[10px] leading-tight">
+                        {selectedReq.rejection_count ?? 2} marta rad etilgan. Talaba shu pasport/JSHSHIR bilan
+                        yangi ariza yubora olmaydi — urinsa, Telegram va emailga yakuniy rad xabari boradi.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setUnblockModalOpen(true)}
+                    className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.accentSolid}`}
+                  >
+                    <ShieldOff size={13} /> Blokni yechish
+                  </button>
+                </div>
+              )}
             </motion.div>
           ) : (
             <div className={`rounded-2xl border p-10 flex flex-col items-center justify-center text-center ${ui.card}`}>
@@ -729,6 +782,23 @@ function ArizalarContent() {
             required
           />
         </div>
+      </ConfirmModal>
+
+      {/* Unblock modal */}
+      <ConfirmModal
+        isOpen={unblockModalOpen && !!selectedReq}
+        title="Blokni yechish"
+        description={selectedReq ? `${selectedReq.full_name} (${selectedReq.passport_series})` : undefined}
+        onClose={() => setUnblockModalOpen(false)}
+        onConfirm={handleUnblock}
+        confirmText="Blokni yechish"
+        isLoading={processing}
+      >
+        <p>
+          Ariza bloki yechiladi va rad etishlar hisobi <strong>0</strong> ga qaytadi. Talaba yana bir marta
+          ariza yuborib, agar u ham rad etilsa — qayta yuborish imkoni bo&apos;ladi. Ikkinchi rad etishdan
+          keyin yana avtomatik blokka tushadi.
+        </p>
       </ConfirmModal>
     </div>
   )

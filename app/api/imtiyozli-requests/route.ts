@@ -20,6 +20,7 @@ import { isPermitFacultyValue } from '@/lib/faculties'
 import { writeAuditLog } from '@/lib/audit-log'
 import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
 import { classifyPermitResubmission } from '@/lib/permit-resubmission'
+import { notifyPermitBlocked } from '@/lib/permit-blocklist'
 import { getApiError } from '@/server/http/api-error'
 import { issuePermitTelegramLinkSafely } from '@/lib/permit-telegram'
 import { notifyDekanNewPermit } from '@/lib/dekan-telegram'
@@ -134,6 +135,19 @@ export async function POST(request: NextRequest) {
     )
     if (outcome.action === 'conflict') {
       return NextResponse.json({ error: outcome.message }, { status: 409 })
+    }
+    if (outcome.action === 'blocked') {
+      await notifyPermitBlocked(outcome.rowId)
+      await writeAuditLog({
+        eventType: 'permit_request.blocked_attempt',
+        status: 'denied',
+        ipAddress: getClientIp(request),
+        targetRole: 'talaba',
+        details: { faculty },
+      })
+      return NextResponse.json({
+        error: "Arizangiz universitet ishchi guruhi tomonidan ko‘rib chiqilib rad etilgan va qayta ko‘rib chiqilmaydi. Batafsil ma’lumot uchun fakultet dekanatiga murojaat qiling.",
+      }, { status: 403 })
     }
     if (outcome.action !== 'edit_pending' && !studentSignature) {
       return NextResponse.json({ error: 'Ariza va Tilxatni imzolang.' }, { status: 400 })

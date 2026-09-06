@@ -22,3 +22,8 @@ export function rejectPermitRequest(id: string, reason: string) {
 export function cancelPermitApproval(id: string) {
   return request({ method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action: 'cancel' }) })
 }
+
+/** Dekan/superadmin lifts the auto-block (2 rejections) — resets the counter. */
+export function unblockPermitRequest(id: string) {
+  return request({ method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action: 'unblock' }) })
+}

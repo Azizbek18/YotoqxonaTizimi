@@ -23,6 +23,7 @@ import { writeAuditLog } from '@/lib/audit-log'
 import { verifyFileClaim } from '@/lib/receipt-claim'
 import { MAX_UPLOAD_SIZE_BYTES, readMultipartForm } from '@/lib/upload-limits'
 import { classifyPermitResubmission } from '@/lib/permit-resubmission'
+import { notifyPermitBlocked } from '@/lib/permit-blocklist'
 import { getApiError } from '@/server/http/api-error'
 import { issuePermitTelegramLinkSafely } from '@/lib/permit-telegram'
 import { notifyDekanNewPermit } from '@/lib/dekan-telegram'
@@ -147,6 +148,21 @@ export async function POST(request: NextRequest) {
     )
     if (outcome.action === 'conflict') {
       return NextResponse.json({ error: outcome.message }, { status: 409 })
+    }
+    // Rejected twice → auto-blocked. Send the working group's final rejection
+    // (email + Telegram, throttled) and refuse. No document is processed.
+    if (outcome.action === 'blocked') {
+      await notifyPermitBlocked(outcome.rowId)
+      await writeAuditLog({
+        eventType: 'permit_request.blocked_attempt',
+        status: 'denied',
+        ipAddress: getClientIp(request),
+        targetRole: 'talaba',
+        details: { faculty },
+      })
+      return NextResponse.json({
+        error: "Arizangiz universitet ishchi guruhi tomonidan ko‘rib chiqilib rad etilgan va qayta ko‘rib chiqilmaydi. Batafsil ma’lumot uchun fakultet dekanatiga murojaat qiling.",
+      }, { status: 403 })
     }
     // A fresh application (or a rejected one being redone) must carry a
     // signature; an in-place typo fix on a still-pending row keeps the

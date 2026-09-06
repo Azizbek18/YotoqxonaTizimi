@@ -30,7 +30,9 @@ function hoursLeft(expiresAt: string) {
 
 export default function StoryManager({ isLight }: { isLight: boolean }) {
   const ui = dekanUI(isLight)
-  const { id: myStaffId, faculty } = useDekanScope()
+  // effectiveFaculty (not the bound `faculty`) is what the server scopes a
+  // story to for a superadmin acting inside one faculty — keep the label honest.
+  const { id: myStaffId, effectiveFaculty: faculty } = useDekanScope()
   const { canManageAnyAnnouncement } = useStaffPanel()
   const canDelete = (story: StaffStory) =>
     canManageAnyAnnouncement || (!!myStaffId && story.created_by === myStaffId)
@@ -156,8 +158,10 @@ export default function StoryManager({ isLight }: { isLight: boolean }) {
         <div>
           <h2 className={`text-base font-bold tracking-tight ${ui.strong}`}>Yangiliklar lentasi</h2>
           <p className={`mt-0.5 text-xs ${ui.muted}`}>
-            Rasm <span className={ui.accentText}>{facultyLabel}</span> talabalarining bosh sahifasida 24 soat
-            «story» ko&apos;rinishida turadi va Telegram bot + ilova push orqali yuboriladi.
+            Rasm{' '}
+            <span className={ui.accentText}>{facultyLabel}</span>{' '}
+            talabalarining bosh sahifasida 24 soat «story» ko&apos;rinishida turadi va Telegram bot + ilova
+            push orqali yuboriladi.
           </p>
         </div>
       </div>

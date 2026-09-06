@@ -15,6 +15,15 @@ type Props = {
   onSeen: (id: string) => void;
 };
 
+// This viewer is deliberately ALWAYS dark (Instagram-style), in both light and
+// dark app themes. globals.css light-mode retrofit force-overrides literal
+// `text-white` / `bg-black/` / `bg-neutral-*` class strings even inside
+// portals, so every colour here is an inline style or an arbitrary hex the
+// retrofit's class-string matcher can't touch.
+const WHITE = '#ffffff';
+const SCRIM_TOP = 'linear-gradient(180deg, rgba(0,0,0,0.62), rgba(0,0,0,0))';
+const SCRIM_BOTTOM = 'linear-gradient(0deg, rgba(0,0,0,0.8), rgba(0,0,0,0))';
+
 /**
  * Fullscreen Instagram-style story viewer: a segmented progress bar, 7s per
  * image with auto-advance, tap left/right to navigate, press-and-hold to
@@ -59,6 +68,13 @@ export default function StoryViewer({ stories, startIndex, onClose, onSeen }: Pr
     if (current) onSeenRef.current(current.id);
   }, [current]);
 
+  // Body scroll lock while the viewer is mounted.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   // Per-story progress timer.
   useEffect(() => {
     if (!current) return;
@@ -83,7 +99,7 @@ export default function StoryViewer({ stories, startIndex, onClose, onSeen }: Pr
     return () => cancelAnimationFrame(raf);
   }, [index, current, goNext, restartNonce]);
 
-  // Keyboard + scroll lock.
+  // Keyboard.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCloseRef.current();
@@ -98,9 +114,16 @@ export default function StoryViewer({ stories, startIndex, onClose, onSeen }: Pr
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdFired = useRef(false);
   const downY = useRef(0);
+  const downX = useRef(0);
+
+  const clearHold = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  };
 
   const onPointerDown = (e: React.PointerEvent) => {
     downY.current = e.clientY;
+    downX.current = e.clientX;
     holdFired.current = false;
     holdTimer.current = setTimeout(() => {
       holdFired.current = true;
@@ -109,12 +132,10 @@ export default function StoryViewer({ stories, startIndex, onClose, onSeen }: Pr
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
-    if (holdTimer.current) clearTimeout(holdTimer.current);
+    clearHold();
     setPaused(false);
     if (holdFired.current) return;
-
-    // Swipe down to dismiss.
-    if (e.clientY - downY.current > 90) {
+    if (e.clientY - downY.current > 80) {
       onCloseRef.current();
       return;
     }
@@ -126,64 +147,106 @@ export default function StoryViewer({ stories, startIndex, onClose, onSeen }: Pr
   if (!current) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black select-none">
-      <div className="story-card relative flex h-full w-full max-w-[440px] flex-col overflow-hidden bg-neutral-950 sm:h-[92vh] sm:rounded-2xl">
-        {/* Progress segments */}
-        <div className="absolute inset-x-0 top-0 z-20 flex gap-1 p-2.5">
-          {stories.map((s, i) => (
-            <div key={s.id} className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/30">
-              <div
-                className="h-full rounded-full bg-white"
-                style={{
-                  width: i < index ? '100%' : i === index ? `${progress * 100}%` : '0%',
-                  transition: i === index ? 'width 80ms linear' : 'none',
-                }}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Header */}
-        <div className="absolute inset-x-0 top-0 z-20 flex items-center gap-2.5 px-3 pt-7 pb-6 bg-gradient-to-b from-black/60 to-transparent">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={current.image_url} alt="" className="size-8 rounded-full object-cover ring-1 ring-white/40" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-bold text-white">{current.author_name}</p>
-            <p className="text-[10px] text-white/70">{formatElonDate(current.created_at)}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Yopish"
-            className="rounded-full p-1.5 text-white/90 transition-colors hover:bg-white/15"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Image + tap surface */}
+    <div
+      className="fixed inset-0 z-[9999] flex select-none items-center justify-center"
+      style={{ background: '#000', WebkitTapHighlightColor: 'transparent' }}
+    >
+      <div
+        className="story-card relative flex h-full w-full max-w-[460px] flex-col overflow-hidden sm:h-[94vh] sm:rounded-3xl"
+        style={{ background: '#0b0b0f' }}
+      >
+        {/* Image */}
         <div
-          className="relative flex-1 touch-none"
+          className="absolute inset-0 touch-none"
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}
-          onPointerCancel={() => {
-            if (holdTimer.current) clearTimeout(holdTimer.current);
-            setPaused(false);
-          }}
+          onPointerCancel={() => { clearHold(); setPaused(false); }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={current.image_url}
             alt={current.title}
-            className="absolute inset-0 h-full w-full object-contain"
+            className="h-full w-full"
+            style={{ objectFit: 'contain' }}
           />
         </div>
 
-        {/* Caption */}
-        <div className="absolute inset-x-0 bottom-0 z-20 space-y-2 bg-gradient-to-t from-black/75 to-transparent px-4 pb-6 pt-10">
-          <h3 className="text-sm font-black leading-tight text-white">{current.title}</h3>
+        {/* Top scrim + progress + header */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 z-20 px-3 pb-8 pt-2"
+          style={{ background: SCRIM_TOP }}
+        >
+          <div className="flex gap-1">
+            {stories.map((s, i) => (
+              <span
+                key={s.id}
+                className="h-[2.5px] flex-1 overflow-hidden rounded-full"
+                style={{ background: 'rgba(255,255,255,0.32)' }}
+              >
+                <span
+                  className="block h-full rounded-full"
+                  style={{
+                    background: WHITE,
+                    width: i < index ? '100%' : i === index ? `${progress * 100}%` : '0%',
+                    transition: i === index ? 'width 90ms linear' : 'none',
+                  }}
+                />
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-3 flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={current.image_url}
+              alt=""
+              className="h-8 w-8 shrink-0 rounded-full object-cover"
+              style={{ boxShadow: '0 0 0 1.5px rgba(255,255,255,0.5)' }}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-bold" style={{ color: WHITE }}>
+                {current.author_name}
+              </p>
+              <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                {formatElonDate(current.created_at)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Yopish"
+              className="pointer-events-auto no-shelf rounded-full p-1.5"
+              style={{ color: WHITE }}
+            >
+              <X size={22} />
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom scrim + caption */}
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-4 pb-7 pt-12"
+          style={{ background: SCRIM_BOTTOM }}
+        >
+          <h3
+            className="text-[15px] font-black leading-tight"
+            style={{
+              color: WHITE,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {current.title}
+          </h3>
           {current.caption && (
-            <p className="text-xs leading-relaxed text-white/85 line-clamp-4">{current.caption}</p>
+            <p
+              className="mt-1.5 line-clamp-4 text-xs leading-relaxed"
+              style={{ color: 'rgba(255,255,255,0.88)' }}
+            >
+              {current.caption}
+            </p>
           )}
           {current.link_url && (
             <a
@@ -191,7 +254,8 @@ export default function StoryViewer({ stories, startIndex, onClose, onSeen }: Pr
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-1.5 text-[11px] font-black uppercase tracking-wider text-slate-900"
+              className="pointer-events-auto no-shelf mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-black uppercase tracking-wider"
+              style={{ background: WHITE, color: '#0f172a' }}
             >
               Batafsil <ExternalLink size={12} />
             </a>

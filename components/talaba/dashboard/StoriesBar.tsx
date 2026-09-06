@@ -1,6 +1,5 @@
 'use client';
 
-import { dashboardTheme } from './theme';
 import type { Story } from '@/features/stories/types';
 
 type Props = {
@@ -10,10 +9,12 @@ type Props = {
   onOpen: (index: number) => void;
 };
 
-// Fixed pixel geometry — set inline so a missing/overridden utility can never
-// blow the thumbnail up (which is what broke the first version on phones).
-const CARD_W = 74;
-const CARD_H = 104;
+// Fixed pixel geometry, set inline so no missing/overridden utility can blow
+// the thumbnail up (which is what broke earlier versions on phones).
+const CARD_W = 76;
+const IMG_H = 100;
+
+const RING_ACTIVE = 'linear-gradient(145deg,#f43f5e 0%,#d946ef 45%,#fb923c 100%)';
 
 /**
  * Instagram-style story tray that sits directly under the dashboard header:
@@ -22,19 +23,31 @@ const CARD_H = 104;
  * are no active stories.
  */
 export default function StoriesBar({ isLight, stories, isSeen, onOpen }: Props) {
-  const t = dashboardTheme(isLight);
   if (stories.length === 0) return null;
+
+  const ringSeen = isLight ? '#e2e8f0' : 'rgba(255,255,255,0.16)';
+  const innerBg = isLight ? '#ffffff' : '#0b1120';
+  const titleActive = isLight ? '#0f172a' : '#f1f5f9';
+  const titleSeen = isLight ? '#94a3b8' : '#64748b';
+  const labelColor = isLight ? '#64748b' : '#94a3b8';
 
   return (
     <section
       aria-label="Yangiliklar"
-      className={`-mt-3 border-b pb-4 sm:mt-0 sm:pb-5 ${isLight ? 'border-slate-200/70' : 'border-white/10'}`}
+      className="-mt-3 border-b pb-4 sm:mt-0 sm:pb-5"
+      style={{ borderColor: isLight ? 'rgba(226,232,240,0.9)' : 'rgba(255,255,255,0.1)' }}
     >
-      <h2 className={`mb-2.5 text-[10px] font-black uppercase tracking-[0.2em] ${t.textMuted}`}>
+      <h2
+        className="mb-2.5 text-[10px] font-black uppercase tracking-[0.2em]"
+        style={{ color: labelColor }}
+      >
         Yangiliklar
       </h2>
 
-      <div className="-mx-1 flex gap-2.5 overflow-x-auto px-1 pb-1 no-scrollbar [-webkit-overflow-scrolling:touch]">
+      <div
+        className="-mx-1 flex gap-2.5 overflow-x-auto px-1 pb-1 no-scrollbar"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {stories.map((story, index) => {
           const seen = isSeen(story.id);
           return (
@@ -42,22 +55,16 @@ export default function StoriesBar({ isLight, stories, isSeen, onOpen }: Props) 
               key={story.id}
               type="button"
               onClick={() => onOpen(index)}
-              className="group flex shrink-0 flex-col items-stretch gap-1.5 focus:outline-none"
-              style={{ width: CARD_W }}
+              className="group flex shrink-0 flex-col items-stretch gap-1.5 no-shelf"
+              style={{ width: CARD_W, WebkitTapHighlightColor: 'transparent', outline: 'none' }}
             >
-              {/* gradient / muted frame */}
               <span
-                className="block rounded-2xl p-[2.5px] transition-transform duration-150 group-active:scale-95"
-                style={{
-                  background: seen
-                    ? isLight
-                      ? '#e2e8f0'
-                      : 'rgba(255,255,255,0.14)'
-                    : 'linear-gradient(140deg,#f43f5e 0%,#d946ef 48%,#f59e0b 100%)',
-                }}
+                className="block rounded-[16px] transition-transform duration-150 group-active:scale-95"
+                style={{ padding: 2.5, background: seen ? ringSeen : RING_ACTIVE }}
               >
                 <span
-                  className={`block overflow-hidden rounded-[13px] p-[2px] ${isLight ? 'bg-white' : 'bg-[#0b1120]'}`}
+                  className="block overflow-hidden rounded-[13px]"
+                  style={{ padding: 2, background: innerBg }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -65,16 +72,21 @@ export default function StoriesBar({ isLight, stories, isSeen, onOpen }: Props) 
                     alt=""
                     loading="lazy"
                     decoding="async"
-                    className="block w-full rounded-[10px] object-cover"
-                    style={{ height: CARD_H, width: '100%' }}
+                    className="block rounded-[10px]"
+                    style={{ width: '100%', height: IMG_H, objectFit: 'cover' }}
                   />
                 </span>
               </span>
 
               <span
-                className={`line-clamp-2 w-full text-center text-[9.5px] font-semibold leading-[1.2] ${
-                  seen ? t.textMuted : t.textStrong
-                }`}
+                className="w-full text-center text-[10px] font-semibold leading-[1.2]"
+                style={{
+                  color: seen ? titleSeen : titleActive,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
               >
                 {story.title}
               </span>

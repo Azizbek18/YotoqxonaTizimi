@@ -38,7 +38,7 @@ export default function StoriesBar({ isLight, stories, isSeen, onOpen }: Props) 
 
   return (
     <section
-      aria-label="Yangiliklar"
+      aria-label="Diqqat markazida"
       className="mb-6 sm:mb-8"
       style={{ borderBottom: `1px solid ${isLight ? 'rgba(226,232,240,0.9)' : 'rgba(255,255,255,0.1)'}`, paddingBottom: 16 }}
     >
@@ -46,7 +46,7 @@ export default function StoriesBar({ isLight, stories, isSeen, onOpen }: Props) 
         className="mb-2.5 ml-1 text-[9px] font-black uppercase tracking-[0.2em] sm:text-[10px]"
         style={{ color: labelColor }}
       >
-        Yangiliklar
+        Diqqat markazida
       </p>
 
       <div

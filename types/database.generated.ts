@@ -181,6 +181,10 @@ export type PermitRequestRow = {
   // Building wing ('A'/'B') for a blocked-layout dorm (migration 202609300010).
   // NULL for 'simple' dorms.
   block: string | null
+  // Floor of the reserved room in a blocked-layout dorm (migration 202609300011)
+  // — room numbers repeat per floor there, so the room key needs it. NULL for
+  // 'simple' dorms and unassigned permits.
+  assigned_floor: number | null
   reject_reason: string | null
   /** How many times the dekan has rejected this application. 2 → blocked. */
   rejection_count: number
@@ -465,17 +469,49 @@ export interface Database {
         Args: { required_roles: string[] }
         Returns: boolean
       }
+      // p_dorm_id (202609300003): target a specific one of the faculty's dorms.
+      // p_block + p_floor (202609300011): required when the resolved dorm is
+      // layout_kind='blocked' — the room key is then (dorm, block, floor, room);
+      // ignored for a 'simple' dorm.
       assign_student_room_atomic: {
-        Args: { p_student_id: string; p_room_number: string; p_max_capacity?: number }
+        Args: {
+          p_student_id: string
+          p_room_number: string
+          p_max_capacity?: number
+          p_dorm_id?: string | null
+          p_block?: string | null
+          p_floor?: number | null
+        }
         Returns: void
       }
       assign_permit_room_atomic: {
-        Args: { p_permit_id: string; p_room_number: string; p_max_capacity?: number }
+        Args: {
+          p_permit_id: string
+          p_room_number: string
+          p_max_capacity?: number
+          p_dorm_id?: string | null
+          p_block?: string | null
+          p_floor?: number | null
+        }
         Returns: void
       }
       approve_permit_room_atomic: {
         Args: { p_permit_id: string; p_room_number: string; p_max_capacity?: number }
         Returns: PermitRequestRow[]
+      }
+      // Blocked-layout dorm (202609300011). Build the fixed 12×N×9 room template;
+      // assign / clear which faculty owns a section (dorm, block, floor).
+      dorm_build_blocked_layout: {
+        Args: { p_dorm_id: string }
+        Returns: { created: number; blocks: number; floors: number; rooms_per_section: number }
+      }
+      dorm_assign_section: {
+        Args: { p_dorm_id: string; p_block: string; p_floor: number; p_faculty: string; p_staff_id: string }
+        Returns: { block: string; floor: number; faculty: string }
+      }
+      dorm_clear_section: {
+        Args: { p_dorm_id: string; p_block: string; p_floor: number }
+        Returns: { block: string; floor: number; cleared: boolean }
       }
       replace_floor_room_layout: {
         Args: { p_faculty: string; p_floor_number: number; p_rows: Json }

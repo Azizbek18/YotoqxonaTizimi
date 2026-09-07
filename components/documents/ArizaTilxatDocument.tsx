@@ -56,6 +56,9 @@ export interface ArizaTilxatData {
   /** Assigned floor / room, printed into the "Berildi ___ qavat ___ xona" box. */
   assignedFloor?: number | string
   assignedRoom?: string
+  /** Building wing for a blocked-layout dorm (7-yotoqxona) — "A" / "B".
+   *  Prefixed to the room line: "Berildi A blok, 3 qavat, 5 xona". */
+  assignedBlock?: string
   /** ISO date the applicant signed — fills the "Sana" lines. */
   signedDate?: string
 }
@@ -169,7 +172,10 @@ export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData })
         <div className="mt-6 flex flex-col items-end gap-3 text-[10px] sm:text-xs">
           <div className="flex gap-8">
             <p>Ariza № {data.arizaNo || '_________'}</p>
-            <p>Berildi {data.assignedFloor ?? '_____'} qavat {data.assignedRoom || '_____'} xona</p>
+            <p>
+              Berildi {data.assignedBlock ? `${data.assignedBlock} blok, ` : ''}
+              {data.assignedFloor ?? '_____'} qavat {data.assignedRoom || '_____'} xona
+            </p>
           </div>
           {hasDekanSig && (
             <div className="text-center">

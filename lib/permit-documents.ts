@@ -99,13 +99,19 @@ export async function saveStudentSignature(input: {
   if (error) throw error
 }
 
-async function resolveFloor(supabase: Supabase, roomNumber: string): Promise<number | null> {
-  const { data } = await supabase
+async function resolveFloor(
+  supabase: Supabase,
+  roomNumber: string,
+  dormId?: string | null,
+  block?: string | null,
+): Promise<number | null> {
+  let query = supabase
     .from('floor_room_layout')
     .select('floor_number')
     .eq('room_number', roomNumber)
-    .limit(1)
-    .maybeSingle()
+  if (dormId) query = query.eq('dorm_id', dormId)
+  if (block) query = query.eq('block', block)
+  const { data } = await query.limit(1).maybeSingle()
   return data?.floor_number ?? extractFloor(roomNumber)
 }
 
@@ -160,15 +166,20 @@ export function createPermitDocumentDelivery(deps: DeliveryDeps = defaultDeps())
 
     const { data: permit, error: permitError } = await supabase
       .from('permit_requests')
-      .select('id, full_name, email, faculty, course, study_type, origin_country, origin_region, phone, relative_phone, application_type, status, room_number, passport_series, jshshir')
+      .select('id, full_name, email, faculty, course, study_type, origin_country, origin_region, phone, relative_phone, application_type, status, room_number, block, assigned_floor, dorm_id, passport_series, jshshir')
       .eq('id', permitRequestId)
       .maybeSingle()
     if (permitError) throw permitError
     if (!permit || permit.status !== 'approved') return 'skipped_not_ready'
 
     // The room is either pre-assigned on the permit, or (student already
-    // registered) on their users row — match by passport / jshshir.
+    // registered) on their users row — match by passport / jshshir. For a
+    // blocked-layout dorm (7-yotoqxona) the room number alone isn't unique, so
+    // carry block + floor + dorm from whichever row holds the placement.
     let roomNumber = permit.room_number ?? null
+    let block = permit.block ?? null
+    let assignedFloor = permit.assigned_floor ?? null
+    let dormId = permit.dorm_id ?? null
     let registeredStudentId: string | null = null
     {
       const orParts: string[] = []
@@ -177,12 +188,17 @@ export function createPermitDocumentDelivery(deps: DeliveryDeps = defaultDeps())
       if (orParts.length) {
         const { data: user } = await supabase
           .from('users')
-          .select('id, room_number')
+          .select('id, room_number, block, assigned_floor, dorm_id')
           .or(orParts.join(','))
           .maybeSingle()
         if (user) {
           registeredStudentId = user.id
-          if (!roomNumber && user.room_number) roomNumber = user.room_number
+          if (!roomNumber && user.room_number) {
+            roomNumber = user.room_number
+            block = user.block ?? null
+            assignedFloor = user.assigned_floor ?? null
+            dormId = user.dorm_id ?? null
+          }
         }
       }
     }
@@ -209,7 +225,9 @@ export function createPermitDocumentDelivery(deps: DeliveryDeps = defaultDeps())
 
     const facultyKey = normalizeFaculty(permit.faculty) ?? undefined
     const { ttjName } = await deps.getSettings(facultyKey)
-    const floor = await resolveFloor(supabase, roomNumber)
+    // Blocked dorm: the floor is stored alongside the room (it has to be —
+    // room numbers repeat per floor). Simple dorm: look it up by room number.
+    const floor = assignedFloor ?? (block ? null : await resolveFloor(supabase, roomNumber, dormId))
     const arizaNo = await nextArizaNo(supabase, permit.faculty)
 
     const pdfBytes = await deps.renderPdf({
@@ -228,6 +246,7 @@ export function createPermitDocumentDelivery(deps: DeliveryDeps = defaultDeps())
       arizaNo,
       assignedFloor: floor ?? undefined,
       assignedRoom: roomNumber,
+      assignedBlock: block ?? undefined,
       signedDate: doc.student_signed_at,
     })
 
@@ -244,7 +263,10 @@ export function createPermitDocumentDelivery(deps: DeliveryDeps = defaultDeps())
     let channel: 'telegram' | 'email' | null = null
     let deliveryError: string | null = null
 
-    const caption = `📄 Imzolangan Ariza va Tilxat — ${arizaNo}. ${roomNumber}-xona biriktirildi.`
+    const roomLabel = block
+      ? `${block} blok ${assignedFloor ?? '?'}-qavat ${roomNumber}-xona`
+      : `${roomNumber}-xona`
+    const caption = `📄 Imzolangan Ariza va Tilxat — ${arizaNo}. ${roomLabel} biriktirildi.`
 
     if (chatId) {
       const ok = await deps.sendTelegram(chatId, { filename, bytes: pdfBytes, caption })

@@ -255,6 +255,7 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
   const arizaNo = normalizePdfText(data.arizaNo ?? '').trim()
   const assignedFloor = String(data.assignedFloor ?? '').trim()
   const assignedRoom = normalizePdfText(data.assignedRoom ?? '').trim()
+  const assignedBlock = normalizePdfText(data.assignedBlock ?? '').trim()
   const dekanName = normalizePdfText(data.dekanName ?? '').trim()
   const hasDekanSig = Boolean(data.dekanSignature && dekanName)
 
@@ -299,7 +300,9 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
   doc.text(normalizePdfText(`Ariza № ${arizaNo || '_________'}`), boxX, p1.y)
   p1.y += 5
   doc.text(
-    normalizePdfText(`Berildi ${assignedFloor || '_____'} qavat ${assignedRoom || '_____'} xona`),
+    normalizePdfText(
+      `Berildi ${assignedBlock ? `${assignedBlock} blok, ` : ''}${assignedFloor || '_____'} qavat ${assignedRoom || '_____'} xona`,
+    ),
     boxX, p1.y,
   )
   if (hasDekanSig) {

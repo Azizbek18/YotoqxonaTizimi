@@ -5,7 +5,7 @@ import { sendRoomAssignedEmail } from '@/lib/email'
 import { deliverPermitDocumentsSafely } from '@/lib/permit-documents'
 import { sendPushForPermit, sendPushForUser, sendPushWithoutBreaking } from '@/lib/push-notifications'
 import type { FacultyStudentRow } from '../types'
-import { createRoomAssignmentRepository, type RoomAssignmentRepository } from './repository'
+import { createRoomAssignmentRepository, type BlockSection, type RoomAssignmentRepository } from './repository'
 
 function sameFaculty(value: string | null | undefined, faculty: string) {
   return (value ?? '').trim().toLocaleLowerCase() === faculty.trim().toLocaleLowerCase()
@@ -16,6 +16,35 @@ function sameFaculty(value: string | null | undefined, faculty: string) {
 // call made without one has the EXACT same shape as before this parameter
 // existed — keeps every existing repository-call assertion untouched.
 const withDorm = (dormId?: string) => (dormId ? [dormId] as const : [] as const)
+
+// Same trailing-arg trick for the block+floor of a blocked-layout dorm
+// (6-yotoqxona, 202609300011). Only ever appended AFTER a dormId — a blocked
+// placement always names its building — so a call without a section keeps the
+// exact prior arity and every existing repository-call assertion holds.
+const withSection = (section?: BlockSection) => (section ? [section] as const : [] as const)
+
+// Pull an optional block ('A'/'B') + floor out of the request. Both must be
+// present and well-formed to count; a 'simple' dorm ignores them anyway, and
+// a 'blocked' dorm's RPC raises P0002 if they're missing.
+function parseSection(input: Record<string, unknown>): BlockSection | undefined {
+  const block = typeof input.block === 'string' ? input.block.trim().toUpperCase() : ''
+  if (!/^[A-Z]$/.test(block)) return undefined
+  const raw = input.floor
+  const floor = typeof raw === 'number' ? raw : typeof raw === 'string' && /^\d+$/.test(raw) ? Number(raw) : NaN
+  if (!Number.isInteger(floor) || floor < 1) return undefined
+  return { block, floor }
+}
+
+// "Is this person already in the room being assigned?" — for a simple dorm
+// the room number settles it (no section given); for a blocked dorm the
+// block + floor must also match what the person currently holds.
+function sameSection(
+  section: BlockSection | undefined,
+  current: { block?: string | null; assigned_floor?: number | null },
+): boolean {
+  if (!section) return true
+  return current.block === section.block && current.assigned_floor === section.floor
+}
 
 // Both assignRoomAtomic and assignPermitRoomAtomic raise the same error
 // codes for the same reasons (P0002 room missing, P0004 frozen, P0001
@@ -34,8 +63,9 @@ function throwForRoomError(error: unknown): never {
     throw new ApiError(409, "Ariza holati o'zgardi — sahifani yangilang")
   }
   if (code === 'P0007') {
-    // Shared dorm: the room sits on a floor another faculty has confirmed.
-    throw new ApiError(403, "Bu xona boshqa fakultetning qavatida — joylashtirib bo'lmaydi")
+    // Shared dorm: the room sits on a floor another faculty has confirmed, or
+    // (blocked dorm) on a section not assigned to this faculty / to anyone.
+    throw new ApiError(403, "Bu xona (yoki seksiya) boshqa fakultetники — joylashtirib bo'lmaydi")
   }
   throw error as Error
 }
@@ -54,6 +84,7 @@ async function assignPermitRoom(
   roomNumber: string,
   signer: Signer,
   dormId?: string,
+  section?: BlockSection,
 ) {
   const permit = await repository.findPermit(permitId)
   if (!permit) throw new ApiError(404, "Yo'llanma topilmadi")
@@ -65,14 +96,18 @@ async function assignPermitRoom(
     return { success: true as const }
   }
 
-  if (roomNumber === permit.room_number) {
+  // Already in this exact room? For a blocked dorm the number alone isn't
+  // unique — the block + floor have to match too.
+  if (roomNumber === permit.room_number && sameSection(section, permit)) {
     return { success: true as const }
   }
 
   // Room capacity is the permit faculty's own dorm setting.
   const { defaultRoomCapacity } = await createAppSettingsService().get(faculty)
   try {
-    const assigned = await repository.assignPermitRoomAtomic(permitId, roomNumber, defaultRoomCapacity, ...withDorm(dormId))
+    const assigned = await repository.assignPermitRoomAtomic(
+      permitId, roomNumber, defaultRoomCapacity, ...withDorm(dormId), ...withSection(section),
+    )
     if (!assigned) {
       throw new ApiError(409, "Bu xonada bo'sh joy yo'q yoki xonada boshqa jinsdagi talaba(lar) bor")
     }
@@ -132,8 +167,14 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
       // 202609300000) — omitted keeps the RPC's own prior fallback (the
       // student/permit's existing dorm_id, else the faculty's primary).
       const dormId = typeof input.dormId === 'string' ? input.dormId : undefined
+      // Blocked-layout dorm (6-yotoqxona): the room lives in a specific
+      // block + floor. A blocked placement always names its building too, so
+      // require dormId alongside — the trailing-arg helpers rely on that
+      // order (dormId before section).
+      const section = parseSection(input)
+      if (section && !dormId) throw new ApiError(400, 'Blokli yotoqxona uchun binoni ham tanlang')
 
-      if (source === 'permit') return assignPermitRoom(repository, faculty, studentId, roomNumber, signer, dormId)
+      if (source === 'permit') return assignPermitRoom(repository, faculty, studentId, roomNumber, signer, dormId, section)
 
       const student = await repository.findStudent(studentId)
       if (!student) throw new ApiError(404, 'Talaba topilmadi')
@@ -145,7 +186,7 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
         return { success: true as const }
       }
 
-      if (roomNumber === student.room_number) {
+      if (roomNumber === student.room_number && sameSection(section, student)) {
         return { success: true as const }
       }
 
@@ -155,7 +196,9 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
       // first would leave a window where the room could be deleted from
       // floor_room_layout between the check and the actual assignment.
       try {
-        const assigned = await repository.assignRoomAtomic(studentId, roomNumber, defaultRoomCapacity, ...withDorm(dormId))
+        const assigned = await repository.assignRoomAtomic(
+          studentId, roomNumber, defaultRoomCapacity, ...withDorm(dormId), ...withSection(section),
+        )
         if (!assigned) {
           throw new ApiError(409, "Bu xonada bo'sh joy yo'q yoki xonada boshqa jinsdagi talaba(lar) bor")
         }

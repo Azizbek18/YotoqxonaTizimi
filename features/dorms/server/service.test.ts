@@ -23,6 +23,13 @@ function fakeRepo(overrides: Partial<DormRepository> = {}, floors: DormFloorRow[
     claimFloors: vi.fn(async () => ({ confirmed: [], proposed: [] })),
     resolveFloor: vi.fn(async () => ({ floor: 1, outcome: 'confirmed', faculty: 'sport' })),
     withdrawFloors: vi.fn(async () => undefined),
+    createDormShell: vi.fn(async () => 'd-new'),
+    getDormLayout: vi.fn(async () => ({ layoutKind: 'blocked' as const, blockCount: 2, floorCount: 12 })),
+    listSections: vi.fn(async () => []),
+    sectionResidentCounts: vi.fn(async () => new Map<string, number>()),
+    buildBlockedLayout: vi.fn(async () => ({ created: 216, blocks: 2, floors: 12, rooms_per_section: 9 })),
+    assignSection: vi.fn(async () => ({ block: 'A', floor: 3, faculty: 'tarix' })),
+    clearSection: vi.fn(async () => ({ block: 'A', floor: 3, cleared: true })),
     ...overrides,
   } as unknown as DormRepository
 }
@@ -217,5 +224,84 @@ describe('createDormService — a faculty with more than one building', () => {
     await createDormService(repo).unlinkDorm(amit, 'd2')
     expect(repo.withdrawFloors).toHaveBeenCalledWith('d2', 'amit', [])
     expect(repo.unlinkFaculty).toHaveBeenCalledWith('amit', 'd2')
+  })
+})
+
+describe('createDormService — blocked-layout dorm sections', () => {
+  it('blockedGrid returns every A/B × floor cell, assigned or not', async () => {
+    const repo = fakeRepo({
+      getDormLayout: vi.fn(async () => ({ layoutKind: 'blocked' as const, blockCount: 2, floorCount: 12 })),
+      listSections: vi.fn(async () => [
+        { block: 'A', floor_number: 1, faculty: 'tarix', gender: null },
+        { block: 'B', floor_number: 1, faculty: 'amit', gender: 'male' as const },
+      ]),
+      sectionResidentCounts: vi.fn(async () => new Map([['A-1', 5]])),
+    })
+    const grid = await createDormService(repo).blockedGrid('d1')
+    expect(grid.sections).toHaveLength(24)
+    expect(grid.bedsPerSection).toBe(54)
+    expect(grid.sections.find((s) => s.block === 'A' && s.floor === 1)).toEqual({
+      block: 'A', floor: 1, faculty: 'tarix', gender: null, residentCount: 5,
+    })
+    expect(grid.sections.find((s) => s.block === 'B' && s.floor === 1)?.gender).toBe('male')
+    // an untouched cell
+    expect(grid.sections.find((s) => s.block === 'A' && s.floor === 7)).toEqual({
+      block: 'A', floor: 7, faculty: null, gender: null, residentCount: 0,
+    })
+  })
+
+  it('blockedGrid refuses a simple dorm', async () => {
+    const repo = fakeRepo({
+      getDormLayout: vi.fn(async () => ({ layoutKind: 'simple' as const, blockCount: 1, floorCount: 5 })),
+    })
+    await expect(createDormService(repo).blockedGrid('d1')).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('assignSection normalises the block, validates the faculty and forwards the staff id', async () => {
+    const repo = fakeRepo()
+    await createDormService(repo).assignSection(
+      { dormId: 'd1', block: 'a', floor: 3, faculty: 'tarix' }, 's-admin',
+    )
+    expect(repo.assignSection).toHaveBeenCalledWith('d1', 'A', 3, 'tarix', 's-admin')
+  })
+
+  it('assignSection rejects an unknown faculty', async () => {
+    await expect(
+      createDormService(fakeRepo()).assignSection({ dormId: 'd1', block: 'A', floor: 3, faculty: 'nope' }, 's'),
+    ).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('assignSection maps the RPC P0003 (other faculty still resident) to a 409', async () => {
+    const repo = fakeRepo({
+      assignSection: vi.fn(async () => { throw Object.assign(new Error('x'), { code: 'P0003' }) }),
+    })
+    await expect(
+      createDormService(repo).assignSection({ dormId: 'd1', block: 'A', floor: 3, faculty: 'tarix' }, 's'),
+    ).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('buildBlockedLayout refuses a simple dorm and passes through the created count otherwise', async () => {
+    const simple = fakeRepo({
+      getDormLayout: vi.fn(async () => ({ layoutKind: 'simple' as const, blockCount: 1, floorCount: 5 })),
+    })
+    await expect(createDormService(simple).buildBlockedLayout('d1')).rejects.toMatchObject({ status: 409 })
+
+    const blocked = fakeRepo()
+    expect(await createDormService(blocked).buildBlockedLayout('d1')).toEqual({ created: 216 })
+  })
+
+  it('create() accepts a blocked building with a block count', async () => {
+    const repo = fakeRepo({ findDormByNumber: vi.fn(async () => null) })
+    await createDormService(repo).create({ number: '6', floorCount: 12, layoutKind: 'blocked', blockCount: 2 })
+    expect(repo.createDormShell).toHaveBeenCalledWith(
+      expect.objectContaining({ number: '6', floorCount: 12, layoutKind: 'blocked', blockCount: 2 }),
+    )
+  })
+
+  it('create() rejects a blocked building with fewer than 2 blocks', async () => {
+    const repo = fakeRepo({ findDormByNumber: vi.fn(async () => null) })
+    await expect(
+      createDormService(repo).create({ number: '6', floorCount: 12, layoutKind: 'blocked', blockCount: 1 }),
+    ).rejects.toMatchObject({ status: 400 })
   })
 })

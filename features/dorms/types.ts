@@ -93,6 +93,37 @@ export type SuperadminDorm = {
   residentCount: number
 }
 
+// ---- blocked-layout dorm (6-yotoqxona) ----
+// Fixed per the hand drawing: every block, every floor has 9 rooms numbered
+// 1–9 with these bed counts. Room 1 = 4, room 5 = 8 (four bunk beds), the
+// rest = 6 (three bunk beds). One section (block+floor) = 54 beds.
+export const BLOCKED_ROOM_CAPACITIES: readonly number[] = [4, 6, 6, 6, 8, 6, 6, 6, 6]
+export const BLOCKED_BEDS_PER_SECTION = BLOCKED_ROOM_CAPACITIES.reduce((a, b) => a + b, 0)
+
+/** One section of a blocked dorm as the superadmin grid shows it. */
+export type DormSection = {
+  block: string
+  floor: number
+  /** null = not yet handed to any faculty. */
+  faculty: string | null
+  /** Whole section reserved for one gender, or null = mixed. */
+  gender: 'male' | 'female' | null
+  residentCount: number
+}
+
+/** The full A1…B12 ownership grid for a blocked building. */
+export type BlockedDormGrid = {
+  dormId: string
+  number: string
+  name: string
+  blockCount: number
+  floorCount: number
+  roomsPerSection: number
+  bedsPerSection: number
+  /** blockCount × floorCount entries; unassigned sections have faculty: null. */
+  sections: DormSection[]
+}
+
 export type DormSetupInput = {
   /** Building number the dekan types. */
   number: string

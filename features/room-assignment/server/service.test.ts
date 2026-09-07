@@ -15,12 +15,14 @@ vi.mock('@/lib/permit-documents', () => ({ deliverPermitDocumentsSafely }))
 
 const { createRoomAssignmentService } = await import('./service')
 
-function student(overrides: Partial<{ id: string; faculty: string; gender: string | null; room_number: string | null; role: string; email: string; full_name: string; passport_series: string | null; jshshir: string | null }> = {}) {
+function student(overrides: Partial<{ id: string; faculty: string; gender: string | null; room_number: string | null; block: string | null; assigned_floor: number | null; role: string; email: string; full_name: string; passport_series: string | null; jshshir: string | null }> = {}) {
   return {
     id: 'student-1',
     faculty: 'IT',
     gender: 'male',
     room_number: null,
+    block: null,
+    assigned_floor: null,
     role: 'talaba',
     email: 'student@example.com',
     full_name: 'Talaba Ism',
@@ -30,12 +32,14 @@ function student(overrides: Partial<{ id: string; faculty: string; gender: strin
   }
 }
 
-function permit(overrides: Partial<{ id: string; faculty: string; gender: string; room_number: string | null; status: string; full_name: string }> = {}) {
+function permit(overrides: Partial<{ id: string; faculty: string; gender: string; room_number: string | null; block: string | null; assigned_floor: number | null; status: string; full_name: string }> = {}) {
   return {
     id: 'permit-1',
     faculty: 'IT',
     gender: 'female',
     room_number: null,
+    block: null,
+    assigned_floor: null,
     status: 'approved',
     full_name: "Yo'llanma Ism",
     ...overrides,
@@ -217,6 +221,63 @@ describe('room assignment service', () => {
       const repo = repository()
       await createRoomAssignmentService(repo).assignRoom('IT', { studentId: 'student-1', roomNumber: '101', dormId: 42 })
       expect(repo.assignRoomAtomic).toHaveBeenCalledWith('student-1', '101', 4)
+    })
+  })
+
+  // Blocked-layout dorm (6-yotoqxona, 202609300011): the room lives in a
+  // block + floor. Passed as a trailing { block, floor } arg AFTER dormId.
+  describe('a blocked-layout dorm (block + floor)', () => {
+    it('forwards { block, floor } after dormId for a student', async () => {
+      const repo = repository()
+      await createRoomAssignmentService(repo).assignRoom('IT', {
+        studentId: 'student-1', roomNumber: '5', dormId: 'd6', block: 'a', floor: '3',
+      })
+      expect(repo.assignRoomAtomic).toHaveBeenCalledWith('student-1', '5', 4, 'd6', { block: 'A', floor: 3 })
+    })
+
+    it('forwards { block, floor } after dormId for a permit', async () => {
+      const repo = repository()
+      await createRoomAssignmentService(repo).assignRoom('IT', {
+        studentId: 'permit-1', roomNumber: '5', source: 'permit', dormId: 'd6', block: 'B', floor: 7,
+      })
+      expect(repo.assignPermitRoomAtomic).toHaveBeenCalledWith('permit-1', '5', 4, 'd6', { block: 'B', floor: 7 })
+    })
+
+    it('rejects a section without a building', async () => {
+      const repo = repository()
+      await expect(
+        createRoomAssignmentService(repo).assignRoom('IT', { studentId: 'student-1', roomNumber: '5', block: 'A', floor: 3 }),
+      ).rejects.toMatchObject({ status: 400 })
+      expect(repo.assignRoomAtomic).not.toHaveBeenCalled()
+    })
+
+    it('ignores a malformed block/floor (falls back to the simple call shape)', async () => {
+      const repo = repository()
+      await createRoomAssignmentService(repo).assignRoom('IT', {
+        studentId: 'student-1', roomNumber: '5', dormId: 'd6', block: 'AB', floor: 0,
+      })
+      expect(repo.assignRoomAtomic).toHaveBeenCalledWith('student-1', '5', 4, 'd6')
+    })
+
+    it('does not short-circuit when the number matches but the section differs', async () => {
+      const repo = repository({
+        findStudent: vi.fn(async () => student({ room_number: '5', block: 'A', assigned_floor: 3 })),
+      })
+      await createRoomAssignmentService(repo).assignRoom('IT', {
+        studentId: 'student-1', roomNumber: '5', dormId: 'd6', block: 'B', floor: 7,
+      })
+      expect(repo.assignRoomAtomic).toHaveBeenCalledWith('student-1', '5', 4, 'd6', { block: 'B', floor: 7 })
+    })
+
+    it('does short-circuit when number AND section both match', async () => {
+      const repo = repository({
+        findStudent: vi.fn(async () => student({ room_number: '5', block: 'B', assigned_floor: 7 })),
+      })
+      const res = await createRoomAssignmentService(repo).assignRoom('IT', {
+        studentId: 'student-1', roomNumber: '5', dormId: 'd6', block: 'B', floor: 7,
+      })
+      expect(res).toEqual({ success: true })
+      expect(repo.assignRoomAtomic).not.toHaveBeenCalled()
     })
   })
 })

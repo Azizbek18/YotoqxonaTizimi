@@ -14,6 +14,7 @@ import {
   saveDormSettings,
   reassignDormFloor,
 } from '@/features/dorms/client/api'
+import BlockedSectionGrid from '@/components/dekan/BlockedSectionGrid'
 import type { SuperadminDorm } from '@/features/dorms/types'
 
 const CONTACT_FIELDS: Array<[keyof SuperadminDorm, string]> = [
@@ -36,7 +37,7 @@ export default function SuperadminDormsPage() {
   const [draft, setDraft] = useState<Record<string, Partial<SuperadminDorm>>>({})
   const [busy, setBusy] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [newDorm, setNewDorm] = useState({ number: '', name: '', floorCount: 5 })
+  const [newDorm, setNewDorm] = useState({ number: '', name: '', floorCount: 5, blocked: false, blockCount: 2 })
 
   const load = useCallback(async () => {
     try {
@@ -85,10 +86,16 @@ export default function SuperadminDormsPage() {
     if (!newDorm.number.trim()) return
     setBusy(true)
     try {
-      await createDorm(newDorm)
+      await createDorm({
+        number: newDorm.number,
+        name: newDorm.name,
+        floorCount: newDorm.floorCount,
+        layoutKind: newDorm.blocked ? 'blocked' : 'simple',
+        blockCount: newDorm.blocked ? newDorm.blockCount : undefined,
+      })
       toast.success('Yotoqxona yaratildi')
       setCreating(false)
-      setNewDorm({ number: '', name: '', floorCount: 5 })
+      setNewDorm({ number: '', name: '', floorCount: 5, blocked: false, blockCount: 2 })
       await load()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Yaratib bo'lmadi")
@@ -146,10 +153,29 @@ export default function SuperadminDormsPage() {
               onChange={(e) => setNewDorm((n) => ({ ...n, floorCount: Math.max(1, Number(e.target.value) || 1) }))}
               className={`w-20 rounded-lg border px-3 py-2 text-center ${ui.input}`} />
           </label>
+          <label className="flex cursor-pointer items-center gap-2 pb-2.5 text-xs">
+            <input type="checkbox" checked={newDorm.blocked}
+              onChange={(e) => setNewDorm((n) => ({ ...n, blocked: e.target.checked }))}
+              className="h-4 w-4 rounded accent-indigo-600" />
+            <span className={`font-semibold ${ui.strong}`}>Blokli bino (A/B qanot)</span>
+          </label>
+          {newDorm.blocked && (
+            <label className="text-xs">
+              <span className={`block mb-1 font-semibold ${ui.muted}`}>Bloklar</span>
+              <input type="number" min={2} max={8} value={newDorm.blockCount}
+                onChange={(e) => setNewDorm((n) => ({ ...n, blockCount: Math.min(8, Math.max(2, Number(e.target.value) || 2)) }))}
+                className={`w-16 rounded-lg border px-3 py-2 text-center ${ui.input}`} />
+            </label>
+          )}
           <button onClick={submitNew} disabled={busy || !newDorm.number.trim()}
             className={`rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:opacity-50 ${ui.accentSolid}`}>
             Yaratish
           </button>
+          {newDorm.blocked && (
+            <p className={`w-full text-[10px] ${ui.muted}`}>
+              Har blok/qavat = 9 xona (54 o‘rin), raqamlash har qavatda 1 dan. Yaratgandan keyin seksiyalarga fakultet biriktirib, “Tarxni yaratish”ni bosing.
+            </p>
+          )}
         </div>
       )}
 
@@ -185,7 +211,10 @@ export default function SuperadminDormsPage() {
 
             {isOpen && (
               <div className={`space-y-4 border-t p-4 ${ui.border}`}>
-                {/* floor partition */}
+                {/* partition — a section grid for an A/B building, a floor list otherwise */}
+                {d.layoutKind === 'blocked' ? (
+                  <BlockedSectionGrid dormId={dorm.id} />
+                ) : (
                 <div>
                   <p className={`mb-2 text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>Qavat taqsimoti</p>
                   <div className="space-y-1.5">
@@ -211,6 +240,7 @@ export default function SuperadminDormsPage() {
                     ))}
                   </div>
                 </div>
+                )}
 
                 {/* settings */}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

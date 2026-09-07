@@ -80,6 +80,10 @@ export type SuperadminDorm = {
   address: string
   floorCount: number
   defaultRoomCapacity: number
+  /** 'simple' — floor partition via dorm_floor. 'blocked' — A/B wings, section
+   *  (block+floor) ownership via dorm_section, per-floor room numbering. */
+  layoutKind: 'simple' | 'blocked'
+  blockCount: number
   ttjName: string
   tarbiyachiName: string
   tarbiyachiPhone: string

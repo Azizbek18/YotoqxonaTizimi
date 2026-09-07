@@ -1,7 +1,7 @@
 'use client'
 
 import { apiRequest } from '@/lib/api-client'
-import type { DekanDorm, DormPreview, SuperadminDorm } from '../types'
+import type { BlockedDormGrid, DekanDorm, DormPreview, SuperadminDorm } from '../types'
 
 // `dorm` = primary (or null) for back-compat; `dorms` = every building the
 // faculty holds, primary first (many-to-many, 202609300000) — a single-dorm
@@ -100,11 +100,49 @@ export function fetchAllDorms() {
   return apiRequest<{ dorms: SuperadminDorm[] }>('/api/admin/dorms')
 }
 
-export function createDorm(input: { number: string; name?: string; floorCount: number; roomCapacity?: number }) {
+export function createDorm(input: {
+  number: string
+  name?: string
+  floorCount: number
+  roomCapacity?: number
+  /** 'blocked' → an A/B-wing building (6-yotoqxona); needs blockCount >= 2. */
+  layoutKind?: 'simple' | 'blocked'
+  blockCount?: number
+}) {
   return apiRequest<{ ok: true }>('/api/admin/dorms', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
+  })
+}
+
+// ---- blocked-layout dorm sections (6-yotoqxona), superadmin ----
+
+export function fetchDormSectionGrid(dormId: string) {
+  return apiRequest<{ grid: BlockedDormGrid }>(`/api/admin/dorms/sections?dormId=${encodeURIComponent(dormId)}`)
+}
+
+export function buildDormLayout(dormId: string) {
+  return apiRequest<{ ok: true; created: number }>('/api/admin/dorms/sections', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'buildLayout', dormId }),
+  })
+}
+
+export function assignDormSection(dormId: string, block: string, floor: number, faculty: string) {
+  return apiRequest<{ ok: true; block: string; floor: number; faculty: string }>('/api/admin/dorms/sections', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'assignSection', dormId, block, floor, faculty }),
+  })
+}
+
+export function clearDormSection(dormId: string, block: string, floor: number) {
+  return apiRequest<{ ok: true; cleared: boolean }>('/api/admin/dorms/sections', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'clearSection', dormId, block, floor }),
   })
 }
 

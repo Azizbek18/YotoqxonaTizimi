@@ -369,6 +369,8 @@ export function createDormService(repository: DormRepository = createDormReposit
           address: d.address,
           floorCount: d.floor_count,
           defaultRoomCapacity: d.default_room_capacity,
+          layoutKind: (d.layout_kind as 'simple' | 'blocked') ?? 'simple',
+          blockCount: d.block_count ?? 1,
           ttjName: d.ttj_name,
           tarbiyachiName: d.tarbiyachi_name,
           tarbiyachiPhone: d.tarbiyachi_phone,

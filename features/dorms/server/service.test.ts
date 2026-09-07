@@ -30,6 +30,9 @@ function fakeRepo(overrides: Partial<DormRepository> = {}, floors: DormFloorRow[
     buildBlockedLayout: vi.fn(async () => ({ created: 216, blocks: 2, floors: 12, rooms_per_section: 9 })),
     assignSection: vi.fn(async () => ({ block: 'A', floor: 3, faculty: 'tarix' })),
     clearSection: vi.fn(async () => ({ block: 'A', floor: 3, cleared: true })),
+    dekanBlockedSections: vi.fn(async () => []),
+    blockedDormRooms: vi.fn(async () => []),
+    blockedDormOccupants: vi.fn(async () => ({ users: [], permits: [] })),
     ...overrides,
   } as unknown as DormRepository
 }
@@ -303,5 +306,54 @@ describe('createDormService — blocked-layout dorm sections', () => {
     await expect(
       createDormService(repo).create({ number: '6', floorCount: 12, layoutKind: 'blocked', blockCount: 1 }),
     ).rejects.toMatchObject({ status: 400 })
+  })
+})
+
+describe('createDormService.blockedRoomMap', () => {
+  const dormMeta = {
+    id: 'd7', number: '7', name: 'Blok bino', block_count: 2, floor_count: 12,
+    default_room_capacity: 4, layout_kind: 'blocked' as const,
+  }
+
+  it('returns [] when the faculty owns no blocked sections', async () => {
+    expect(await createDormService(fakeRepo()).blockedRoomMap('amit')).toEqual([])
+  })
+
+  it('groups the faculty sections by building and stitches in occupants', async () => {
+    const repo = fakeRepo({
+      dekanBlockedSections: vi.fn(async () => [
+        { dorm_id: 'd7', block: 'A', floor_number: 3, gender: null as 'male' | 'female' | null, dorms: dormMeta },
+        { dorm_id: 'd7', block: 'B', floor_number: 3, gender: 'male' as 'male' | 'female' | null, dorms: dormMeta },
+      ]),
+      blockedDormRooms: vi.fn(async () => [
+        { block: 'A', floor_number: 3, room_number: '1', capacity: 4, frozen: false, gender: null as 'male' | 'female' | null },
+        { block: 'A', floor_number: 3, room_number: '5', capacity: 8, frozen: true, gender: null as 'male' | 'female' | null },
+        { block: 'B', floor_number: 3, room_number: '2', capacity: 6, frozen: false, gender: 'male' as 'male' | 'female' | null },
+      ]),
+      blockedDormOccupants: vi.fn(async () => ({
+        users: [
+          { id: 'u1', full_name: 'Ali', gender: 'male', block: 'A', assigned_floor: 3, room_number: '1', passport_series: 'AA1', jshshir: null },
+        ],
+        permits: [
+          // same person as u1 (stale permit) — must not double-count
+          { id: 'p1', full_name: 'Ali', gender: 'male', block: 'A', assigned_floor: 3, room_number: '1', passport_series: 'AA1', jshshir: null },
+          // a genuine approved-not-registered applicant
+          { id: 'p2', full_name: 'Vali', gender: 'male', block: 'B', assigned_floor: 3, room_number: '2', passport_series: 'BB2', jshshir: null },
+        ],
+      })),
+    })
+
+    const [dorm] = await createDormService(repo).blockedRoomMap('tarix')
+    expect(dorm.number).toBe('7')
+    expect(dorm.sections.map((s) => `${s.block}${s.floor}`)).toEqual(['A3', 'B3'])
+
+    const a1 = dorm.sections[0].rooms.find((r) => r.roomNumber === '1')!
+    expect(a1.occupants).toEqual([{ name: 'Ali', gender: 'male', kind: 'user' }]) // deduped
+
+    const a5 = dorm.sections[0].rooms.find((r) => r.roomNumber === '5')!
+    expect(a5).toMatchObject({ capacity: 8, frozen: true })
+
+    const b2 = dorm.sections[1].rooms.find((r) => r.roomNumber === '2')!
+    expect(b2.occupants).toEqual([{ name: 'Vali', gender: 'male', kind: 'permit' }])
   })
 })

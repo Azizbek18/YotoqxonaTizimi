@@ -8,6 +8,7 @@ import {
   FileText,
   Boxes,
   Layers3,
+  DoorClosed,
   LogOut,
   Menu,
   ChevronLeft,
@@ -89,7 +90,7 @@ export default function DekanLayout({
   // keeps only the genuinely cross-faculty views (Bosh nazorat, Yotoqxonalar,
   // Dashboard); everything operational needs one faculty to act on.
   const SINGLE_FACULTY_PATHS = [
-    '/dekan/3d-xonalar', '/dekan/xonalar', '/dekan/sozlamalar',
+    '/dekan/3d-xonalar', '/dekan/xonalar', '/dekan/blok-xonalar', '/dekan/sozlamalar',
     '/dekan/talabalar', '/dekan/murojaatlar',
     '/dekan/xodimlar', '/dekan/elonlar', '/dekan/hisobotlar',
   ]
@@ -207,6 +208,7 @@ export default function DekanLayout({
       { label: 'Dashboard', caption: op('Umumiy hisobot'), href: '/dekan/dashboard', icon: LayoutDashboard },
       { label: 'Yo‘llanmalar', caption: op('Yangi arizalar'), href: '/dekan/arizalar', icon: FileText, badge: pendingCount > 0 ? pendingCount : undefined },
       { label: 'Xonalar xaritasi', caption: op('Joylashtirish holati'), href: '/dekan/xonalar', icon: Boxes },
+      { label: 'Blok xonalari', caption: op('A/B qanotli bino'), href: '/dekan/blok-xonalar', icon: DoorClosed },
       { label: '3D Xonalar', caption: op('Qavat tarxi quruvchisi'), href: '/dekan/3d-xonalar', icon: Layers3 },
       { label: 'Talabalar', caption: isSuperadmin ? 'Fakultetlararo boshqaruv' : op('Fakultet talabalari'), href: isSuperadmin ? '/dekan/talabalar-global' : '/dekan/talabalar', icon: Users },
       // Faculty-admin tools. The page bodies are the /admin/* implementations

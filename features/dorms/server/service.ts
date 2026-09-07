@@ -4,6 +4,9 @@ import { normalizeFaculty } from '@/lib/faculties'
 import {
   BLOCKED_BEDS_PER_SECTION,
   type BlockedDormGrid,
+  type BlockedRoomMapDorm,
+  type BlockedRoomOccupant,
+  type BlockedRoomSection,
   type DekanDorm,
   type DormFloor,
   type DormFloorState,
@@ -589,6 +592,87 @@ export function createDormService(repository: DormRepository = createDormReposit
       } catch (error) {
         mapSectionRpcError(error)
       }
+    },
+
+    // ---- dekan: the blocked-dorm rooms this faculty's sections cover ----
+    async blockedRoomMap(faculty: string): Promise<BlockedRoomMapDorm[]> {
+      const sections = await repository.dekanBlockedSections(faculty)
+      if (sections.length === 0) return []
+
+      const byDorm = new Map<string, typeof sections>()
+      for (const s of sections) {
+        if (!byDorm.has(s.dorm_id)) byDorm.set(s.dorm_id, [])
+        byDorm.get(s.dorm_id)!.push(s)
+      }
+
+      const dorms: BlockedRoomMapDorm[] = []
+      for (const [dormId, secs] of byDorm) {
+        const meta = secs[0].dorms
+        const [rooms, occ] = await Promise.all([
+          repository.blockedDormRooms(dormId),
+          repository.blockedDormOccupants(dormId),
+        ])
+
+        const occByRoom = new Map<string, BlockedRoomOccupant[]>()
+        const put = (block: string, floor: number | null, room: string, o: BlockedRoomOccupant) => {
+          if (floor == null) return
+          const k = `${block}-${floor}-${room}`
+          if (!occByRoom.has(k)) occByRoom.set(k, [])
+          occByRoom.get(k)!.push(o)
+        }
+        // A registered student keeps a stale approved permit — count them once.
+        const idKeys = new Set<string>()
+        for (const u of occ.users) {
+          if (u.passport_series) idKeys.add(`p:${u.passport_series}`)
+          if (u.jshshir) idKeys.add(`j:${u.jshshir}`)
+          put(u.block!, u.assigned_floor, u.room_number!, {
+            name: u.full_name ?? 'Talaba', gender: (u.gender as 'male' | 'female' | null) ?? null, kind: 'user',
+          })
+        }
+        for (const p of occ.permits) {
+          if ((p.passport_series && idKeys.has(`p:${p.passport_series}`))
+            || (p.jshshir && idKeys.has(`j:${p.jshshir}`))) continue
+          put(p.block!, p.assigned_floor, p.room_number!, {
+            name: p.full_name ?? 'Abituriyent', gender: (p.gender as 'male' | 'female' | null) ?? null, kind: 'permit',
+          })
+        }
+
+        const roomsBySection = new Map<string, typeof rooms>()
+        for (const r of rooms) {
+          const k = `${r.block}-${r.floor_number}`
+          if (!roomsBySection.has(k)) roomsBySection.set(k, [])
+          roomsBySection.get(k)!.push(r)
+        }
+
+        const outSections: BlockedRoomSection[] = secs
+          .slice()
+          .sort((a, b) => a.block.localeCompare(b.block) || a.floor_number - b.floor_number)
+          .map((s) => ({
+            block: s.block,
+            floor: s.floor_number,
+            gender: s.gender,
+            rooms: (roomsBySection.get(`${s.block}-${s.floor_number}`) ?? [])
+              .slice()
+              .sort((a, b) => Number(a.room_number) - Number(b.room_number))
+              .map((r) => ({
+                roomNumber: r.room_number,
+                capacity: r.capacity ?? meta.default_room_capacity,
+                frozen: r.frozen,
+                gender: r.gender,
+                occupants: occByRoom.get(`${r.block}-${r.floor_number}-${r.room_number}`) ?? [],
+              })),
+          }))
+
+        dorms.push({
+          dormId,
+          number: meta.number,
+          name: meta.name,
+          blockCount: meta.block_count,
+          floorCount: meta.floor_count,
+          sections: outSections,
+        })
+      }
+      return dorms.sort((a, b) => a.number.localeCompare(b.number))
     },
   }
 

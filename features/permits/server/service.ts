@@ -10,6 +10,7 @@ import { PERMIT_FACULTIES } from '@/lib/faculties'
 import type { DekanOverview } from '../types'
 import { createPermitAdminRepository, type PermitAdminRepository } from './repository'
 import { notifyPermitTelegram } from '@/lib/permit-telegram'
+import { notifyPermitBlocked } from '@/lib/permit-blocklist'
 import { sendPushForPermit, sendPushWithoutBreaking } from '@/lib/push-notifications'
 
 function sameFaculty(value: string | null, faculty: string) {
@@ -333,14 +334,28 @@ export function createPermitAdminService(
       }
       const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 2000) : ''
       if (!reason) throw new ApiError(400, 'Rad etish sababi talab qilinadi')
-      // 2nd rejection → auto-block this identity from resubmitting. The block
-      // is silent here (status stays 'rejected', same student notification) —
-      // the "final rejection" message only fires when they actually try again.
+      // 1-marta rad etilsa — arizachi hujjatini tuzatib qayta yuborishi
+      // mumkin. 2-marta rad etilsa — shu identifikator bloklanadi (status
+      // baribir 'rejected'da qoladi, ya'ni "Rad etilgan" ro'yxatidan
+      // chiqmaydi) va arizachiga darhol YAKUNIY javob yuboriladi: endi u
+      // qayta yubora olmaydi, shuning uchun oddiy "tuzatib qayta yuboring"
+      // xabari emas, blok xabari ketishi kerak. (Blok xabari 24 soatga
+      // throttle qilinadi — resubmit urinishi bo'lsa takrorlanmaydi.)
       const rejectionCount = (existing.rejection_count ?? 0) + 1
       const blockNow = rejectionCount >= 2
       const request = await repository.rejectPermit(id, reason, rejectionCount, blockNow)
       if (!request) throw new ApiError(409, 'Bu yo\'llanma allaqachon ko\'rib chiqilgan')
-      await notifyTelegramWithoutBreakingDecision(request)
+      if (blockNow) {
+        await notifyPermitBlocked(id)
+        await sendPushWithoutBreaking(() => sendPushForPermit(id, {
+          title: 'Ariza bo‘yicha yakuniy javob',
+          body: 'Universitet ishchi guruhi arizangizni rad etdi. Ariza qayta ko‘rib chiqilmaydi.',
+          url: '/ruxsatnoma-tekshirish',
+          tag: `permit-${id}`,
+        }))
+      } else {
+        await notifyTelegramWithoutBreakingDecision(request)
+      }
       await audit({ rejectionCount, blocked: blockNow })
       return { success: true as const, request }
     },

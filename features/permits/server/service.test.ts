@@ -13,6 +13,13 @@ vi.mock('@/lib/audit-log', () => ({ writeAuditLog }))
 const notifyPermitTelegram = vi.fn(async () => true)
 vi.mock('@/lib/permit-telegram', () => ({ notifyPermitTelegram }))
 
+const notifyPermitBlocked = vi.fn(async () => {})
+vi.mock('@/lib/permit-blocklist', () => ({ notifyPermitBlocked }))
+
+const sendPushForPermit = vi.fn(async () => {})
+const sendPushWithoutBreaking = vi.fn(async (fn: () => unknown) => { await fn() })
+vi.mock('@/lib/push-notifications', () => ({ sendPushForPermit, sendPushWithoutBreaking }))
+
 const { createPermitAdminService } = await import('./service')
 
 function permit(overrides: Partial<PermitRequestRow> = {}): PermitRequestRow {
@@ -160,15 +167,23 @@ describe('permit admin service — rejection block', () => {
     expect(writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: 'permit.reject', details: expect.objectContaining({ rejectionCount: 1, blocked: false }) }),
     )
+    // First rejection: the normal "fix and resubmit" Telegram notice, no block message.
+    expect(notifyPermitTelegram).toHaveBeenCalledWith(expect.objectContaining({ id: 'permit-1', status: 'rejected' }))
+    expect(notifyPermitBlocked).not.toHaveBeenCalled()
   })
 
-  it('second rejection auto-blocks the identity', async () => {
+  it('second rejection auto-blocks the identity and sends the final-decision notice', async () => {
     const repo = repository({ find: vi.fn(async () => permit({ status: 'pending', rejection_count: 1 })) })
     await createPermitAdminService(repo).update('IT', { id: 'permit-1', action: 'reject', reason: 'Yana sifatsiz' })
     expect(repo.rejectPermit).toHaveBeenCalledWith('permit-1', 'Yana sifatsiz', 2, true)
     expect(writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ details: expect.objectContaining({ rejectionCount: 2, blocked: true }) }),
     )
+    // Second rejection: the applicant is told now that this is final — not the
+    // misleading "fix and resubmit" message they can no longer act on.
+    expect(notifyPermitBlocked).toHaveBeenCalledWith('permit-1')
+    expect(sendPushForPermit).toHaveBeenCalledWith('permit-1', expect.objectContaining({ title: expect.stringContaining('yakuniy') }))
+    expect(notifyPermitTelegram).not.toHaveBeenCalled()
   })
 
   it('unblock resets a blocked permit and audits', async () => {

@@ -4,24 +4,40 @@ import AppProviders from "@/components/providers/AppProviders";
 import PwaInstallPrompt from "@/components/pwa/PwaInstallPrompt";
 import { THEME_STORAGE_KEY } from "@/lib/theme/constants";
 import { appFont } from "@/lib/app-font";
+import { siteUrl } from "@/lib/site-url";
 import "./globals.css";
 
-const getBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return 'http://localhost:3000';
-};
+const getBaseUrl = siteUrl;
 
 const SITE_NAME = 'Meningyotoqxonam.uz'
 const SITE_TITLE = `${SITE_NAME} — Aqlli talabalar yotoqxonasi boshqaruv tizimi`
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
-  title: SITE_TITLE,
+  title: {
+    default: SITE_TITLE,
+    template: `%s — ${SITE_NAME}`,
+  },
   description: "Talabalar yotoqxonasi boshqaruvini avtomatlashtirish, arizalar yuborish, to'lovlarni amalga oshirish va navbatchilik jadvallarini real vaqt rejimida boshqarish platformasi.",
-  keywords: ["meningyotoqxonam", "yotoqxona", "talaba", "tizim", "aqlli boshqaruv", "arizalar", "navbatchilik", "yotoqxona boshqaruvi", "supabase", "nextjs", "AI yordamchi"],
+  keywords: ["meningyotoqxonam", "yotoqxona", "talaba", "tizim", "aqlli boshqaruv", "arizalar", "navbatchilik", "yotoqxona boshqaruvi", "yotoqxonaga joylashish", "my.gov.uz yo'llanma", "supabase", "nextjs", "AI yordamchi"],
   manifest: '/manifest.json',
   applicationName: SITE_NAME,
+  alternates: {
+    canonical: '/',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  verification: process.env.GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.GOOGLE_SITE_VERIFICATION }
+    : undefined,
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -77,6 +93,28 @@ export default async function RootLayout({
 }>) {
   const nonce = (await headers()).get('x-nonce') ?? undefined;
 
+  const baseUrl = getBaseUrl();
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        '@id': `${baseUrl}/#website`,
+        url: baseUrl,
+        name: SITE_NAME,
+        description: 'Talabalar yotoqxonasi boshqaruv tizimi — yo\'llanma yuborish, xonaga joylashish, to\'lovlar va navbatchilik.',
+        inLanguage: 'uz',
+      },
+      {
+        '@type': 'Organization',
+        '@id': `${baseUrl}/#organization`,
+        name: SITE_NAME,
+        url: baseUrl,
+        logo: `${baseUrl}/logo.png`,
+      },
+    ],
+  };
+
   return (
     <html
       lang="uz"
@@ -85,6 +123,12 @@ export default async function RootLayout({
     >
       <head>
         <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script
+          type="application/ld+json"
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </head>
       <body className="min-h-full flex flex-col">
         <AppProviders>

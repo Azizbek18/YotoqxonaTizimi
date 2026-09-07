@@ -17,6 +17,13 @@ export type DormFloorRow = {
   pending_at: string | null
 }
 
+export type DormSectionRow = {
+  block: string
+  floor_number: number
+  faculty: string
+  gender: 'male' | 'female' | null
+}
+
 export function createDormRepository() {
   const supabase = getServiceSupabase()
 
@@ -82,25 +89,114 @@ export function createDormRepository() {
       return data as DormRow
     },
 
-    // Bind a faculty to a dorm. `primary` (default true) also makes it *the*
-    // primary — demoting whichever dorm held that flag before.
+    // ---- blocked-layout dorms (6-yotoqxona) — 202609300010 / 202609300011 ----
+
+    async getDormLayout(
+      dormId: string,
+    ): Promise<{ layoutKind: 'simple' | 'blocked'; blockCount: number; floorCount: number } | null> {
+      const { data, error } = await supabase
+        .from('dorms')
+        .select('layout_kind, block_count, floor_count')
+        .eq('id', dormId)
+        .maybeSingle()
+      if (error) throw error
+      if (!data) return null
+      return {
+        layoutKind: (data.layout_kind as 'simple' | 'blocked') ?? 'simple',
+        blockCount: data.block_count ?? 1,
+        floorCount: data.floor_count ?? 0,
+      }
+    },
+
+    async listSections(dormId: string): Promise<DormSectionRow[]> {
+      const { data, error } = await supabase
+        .from('dorm_section')
+        .select('block, floor_number, faculty, gender')
+        .eq('dorm_id', dormId)
+      if (error) throw error
+      return (data as DormSectionRow[]) ?? []
+    },
+
+    // Residents per section, keyed `${block}-${floor}` — for the superadmin grid.
+    async sectionResidentCounts(dormId: string): Promise<Map<string, number>> {
+      const { data, error } = await supabase
+        .from('users')
+        .select('block, assigned_floor')
+        .eq('role', 'talaba')
+        .eq('dorm_id', dormId)
+        .not('block', 'is', null)
+        .not('room_number', 'is', null)
+      if (error) throw error
+      const counts = new Map<string, number>()
+      for (const row of data ?? []) {
+        if (!row.block || row.assigned_floor == null) continue
+        const key = `${row.block}-${row.assigned_floor}`
+        counts.set(key, (counts.get(key) ?? 0) + 1)
+      }
+      return counts
+    },
+
+    async buildBlockedLayout(dormId: string) {
+      const { data, error } = await supabase.rpc('dorm_build_blocked_layout', { p_dorm_id: dormId })
+      if (error) throw error
+      return (data ?? { created: 0, blocks: 0, floors: 0, rooms_per_section: 9 }) as {
+        created: number; blocks: number; floors: number; rooms_per_section: number
+      }
+    },
+
+    async assignSection(dormId: string, block: string, floor: number, faculty: string, staffId: string) {
+      const { data, error } = await supabase.rpc('dorm_assign_section', {
+        p_dorm_id: dormId,
+        p_block: block,
+        p_floor: floor,
+        p_faculty: faculty,
+        p_staff_id: staffId,
+      })
+      if (error) throw error
+      return data as { block: string; floor: number; faculty: string }
+    },
+
+    async clearSection(dormId: string, block: string, floor: number) {
+      const { data, error } = await supabase.rpc('dorm_clear_section', {
+        p_dorm_id: dormId,
+        p_block: block,
+        p_floor: floor,
+      })
+      if (error) throw error
+      return data as { block: string; floor: number; cleared: boolean }
+    },
+
+    // Bind a faculty to a dorm. Primary linking is delegated entirely to the
+    // RPC so inserting the link and switching the unique `is_primary` flag
+    // happen in one database transaction. Writing `is_primary: true` here
+    // first would collide with faculty_dorm_one_primary before the RPC could
+    // demote the old primary.
     async linkFaculty(
       faculty: string,
       dormId: string,
       opts: { primary?: boolean } = {},
     ): Promise<void> {
       const primary = opts.primary ?? true
-      const { error } = await supabase
-        .from('faculty_dorm')
-        .upsert({ faculty, dorm_id: dormId, is_primary: primary }, { onConflict: 'faculty,dorm_id' })
-      if (error) throw error
       if (primary) {
         const { error: rpcError } = await supabase.rpc('set_primary_dorm', {
           p_faculty: faculty,
           p_dorm_id: dormId,
         })
         if (rpcError) throw rpcError
+        return
       }
+
+      const { error } = await supabase
+        .from('faculty_dorm')
+        .upsert(
+          { faculty, dorm_id: dormId, is_primary: false },
+          // A repeated "additional" request for the current primary must be
+          // a no-op. Updating the conflict to false would leave the faculty
+          // with no primary at all; DO NOTHING also makes this safe against
+          // a concurrent primary switch for the same building.
+          { onConflict: 'faculty,dorm_id', ignoreDuplicates: true },
+        )
+      if (error) throw error
     },
 
     // Drop a faculty↔dorm link entirely (used when a resident-free faculty
@@ -214,7 +310,14 @@ export function createDormRepository() {
       return counts
     },
 
-    async createDormShell(input: { number: string; name: string; floorCount: number; roomCapacity: number }) {
+    async createDormShell(input: {
+      number: string
+      name: string
+      floorCount: number
+      roomCapacity: number
+      layoutKind?: 'simple' | 'blocked'
+      blockCount?: number
+    }) {
       const { data, error } = await supabase
         .from('dorms')
         .insert({
@@ -222,6 +325,8 @@ export function createDormRepository() {
           name: input.name,
           floor_count: input.floorCount,
           default_room_capacity: input.roomCapacity,
+          layout_kind: input.layoutKind ?? 'simple',
+          block_count: input.layoutKind === 'blocked' ? (input.blockCount ?? 2) : 1,
         })
         .select('id')
         .single()

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useVisiblePoll } from './useVisiblePoll'
 
 // Polls `fn` every `intervalMs` while `active` is true: once immediately
 // (non-silent), then silently on each tick. Restarts whenever `active` or
@@ -9,15 +10,7 @@ export function usePollingEffect(
   restartKey: unknown,
   intervalMs = 4000,
 ) {
-  useEffect(() => {
-    if (!active) return
-    void fn(false)
-    const interval = setInterval(() => void fn(true), intervalMs)
-    return () => clearInterval(interval)
-    // fn is an inline closure recreated every render; only active/restartKey
-    // should trigger a restart, not each new function identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, restartKey, intervalMs])
+  useVisiblePoll(fn, intervalMs, { enabled: active, restartKey })
 }
 
 // Scrolls a chat's `endRef` into view when `messageCount` grows, but only

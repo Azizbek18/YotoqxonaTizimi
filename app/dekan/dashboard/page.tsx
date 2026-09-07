@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   PieChart,
@@ -28,6 +28,7 @@ import {
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useDekanScope } from '@/lib/hooks/useDekanScope'
 import { useStaffPanel } from '@/lib/hooks/useStaffPanel'
+import { useVisiblePoll } from '@/lib/hooks/useVisiblePoll'
 import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { directionLabel } from '@/lib/directions'
@@ -112,12 +113,13 @@ export default function DekanDashboard() {
     }
   }
 
-  useEffect(() => {
-    if (!facultyResolved) return
-    loadData(dekanFaculty)
-    const interval = setInterval(() => loadData(dekanFaculty), 30000)
-    return () => clearInterval(interval)
-  }, [facultyResolved, dekanFaculty])
+  // Refreshes only while the tab is visible (and once on re-focus) — a
+  // dashboard left open in a background tab was reloading the whole overview
+  // every 30s.
+  useVisiblePoll(() => loadData(dekanFaculty), 90_000, {
+    enabled: facultyResolved,
+    restartKey: dekanFaculty,
+  })
 
   // Real capacity for this dekan's scope: their own floors, per-room
   // capacity overrides, frozen (ta'mirlash) rooms excluded.

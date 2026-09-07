@@ -23,6 +23,7 @@ import { fetchAppSettings } from '@/features/app-settings/client/api';
 import { TalabaElonlarSkeleton } from '@/components/talaba/skeletons';
 import { StaggerList, StaggerItem } from '@/components/motion/StaggerList';
 import { useReducedMotion } from '@/lib/hooks/useReducedMotion';
+import { useVisiblePoll } from '@/lib/hooks/useVisiblePoll';
 
 interface Elon {
   id: string | number;
@@ -169,41 +170,24 @@ export default function ElonlarPage() {
     };
   }, [selectedElon]);
 
-  useEffect(() => {
-    let isMounted = true;
-    let hasLoaded = false;
-
-    const loadElonlar = async () => {
-      try {
-        const result = await fetchStudentAnnouncements();
-
-        if (isMounted && Array.isArray(result.elonlar)) {
-          const mapped = result.elonlar.map((elon: DbElon) => mapDbElon(elon));
-          setElonlar(mapped);
-          setCurrentFaculty(typeof result.currentFaculty === 'string' ? result.currentFaculty : null);
-        }
-        hasLoaded = true;
-      } catch (error) {
-        console.error("E'lonlarni yuklashda xatolik:", error);
-        if (isMounted && !hasLoaded) setElonlar([]);
-      } finally {
-        if (isMounted) setLoading(false);
+  // Direct Realtime subscriptions require a broad SELECT policy on `elonlar`,
+  // which would expose faculty/floor-targeted announcements to other
+  // students. Poll the audience-filtered server API instead — but only while
+  // the tab is visible, and once more on re-focus.
+  useVisiblePoll(async (silent) => {
+    try {
+      const result = await fetchStudentAnnouncements();
+      if (Array.isArray(result.elonlar)) {
+        setElonlar(result.elonlar.map((elon: DbElon) => mapDbElon(elon)));
+        setCurrentFaculty(typeof result.currentFaculty === 'string' ? result.currentFaculty : null);
       }
-    };
-
-    void loadElonlar();
-    // Direct Realtime subscriptions require a broad SELECT policy on
-    // `elonlar`, which would expose faculty/floor-targeted announcements to
-    // other students. Poll the audience-filtered server API instead.
-    const interval = window.setInterval(() => {
-      void loadElonlar();
-    }, 30_000);
-
-    return () => {
-      isMounted = false;
-      window.clearInterval(interval);
-    };
-  }, []);
+    } catch (error) {
+      console.error("E'lonlarni yuklashda xatolik:", error);
+      if (!silent) setElonlar([]);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, 90_000);
 
   // 'system' — a superadmin's university-wide notice; shown in the general
   // (dorm) view alongside building-wide announcements.

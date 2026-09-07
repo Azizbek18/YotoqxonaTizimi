@@ -166,6 +166,65 @@ export function createDormRepository() {
       return data as { block: string; floor: number; cleared: boolean }
     },
 
+    // Every blocked-dorm section this faculty owns, each paired with its
+    // building's shape. Two round-trips (no FK metadata in the generated
+    // types for a PostgREST embed) — both tiny.
+    async dekanBlockedSections(faculty: string) {
+      const { data: sections, error } = await supabase
+        .from('dorm_section')
+        .select('dorm_id, block, floor_number, gender')
+        .eq('faculty', faculty)
+      if (error) throw error
+      const rows = (sections ?? []) as Array<{
+        dorm_id: string; block: string; floor_number: number; gender: 'male' | 'female' | null
+      }>
+      const dormIds = [...new Set(rows.map((r) => r.dorm_id))]
+      if (dormIds.length === 0) return []
+
+      const { data: dorms, error: dErr } = await supabase
+        .from('dorms')
+        .select('id, number, name, block_count, floor_count, default_room_capacity, layout_kind')
+        .in('id', dormIds)
+        .eq('layout_kind', 'blocked')
+      if (dErr) throw dErr
+      const dormById = new Map((dorms ?? []).map((d) => [d.id, d]))
+
+      return rows
+        .filter((r) => dormById.has(r.dorm_id))
+        .map((r) => ({ ...r, dorms: dormById.get(r.dorm_id)! }))
+    },
+
+    // Every block-tagged room of a dorm (the 9-per-section template).
+    async blockedDormRooms(dormId: string) {
+      const { data, error } = await supabase
+        .from('floor_room_layout')
+        .select('block, floor_number, room_number, capacity, frozen, gender')
+        .eq('dorm_id', dormId)
+        .not('block', 'is', null)
+      if (error) throw error
+      return (data ?? []) as Array<{
+        block: string; floor_number: number; room_number: string
+        capacity: number | null; frozen: boolean; gender: 'male' | 'female' | null
+      }>
+    },
+
+    // Residents + approved-not-yet-registered permits placed in a blocked dorm.
+    async blockedDormOccupants(dormId: string) {
+      const [users, permits] = await Promise.all([
+        supabase.from('users')
+          .select('id, full_name, gender, block, assigned_floor, room_number, passport_series, jshshir')
+          .eq('role', 'talaba').eq('dorm_id', dormId)
+          .not('block', 'is', null).not('room_number', 'is', null),
+        supabase.from('permit_requests')
+          .select('id, full_name, gender, block, assigned_floor, room_number, passport_series, jshshir')
+          .eq('status', 'approved').eq('dorm_id', dormId)
+          .not('block', 'is', null).not('room_number', 'is', null),
+      ])
+      if (users.error) throw users.error
+      if (permits.error) throw permits.error
+      return { users: users.data ?? [], permits: permits.data ?? [] }
+    },
+
     // Bind a faculty to a dorm. Primary linking is delegated entirely to the
     // RPC so inserting the link and switching the unique `is_primary` flag
     // happen in one database transaction. Writing `is_primary: true` here

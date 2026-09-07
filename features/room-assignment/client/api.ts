@@ -30,6 +30,10 @@ export function assignStudentRoom(input: {
   /** Which of the faculty's buildings the room belongs to (many-to-many,
    *  202609300000); omitted keeps the RPC's own prior resolution. */
   dormId?: string
+  /** Block + floor for a blocked-layout dorm (7-yotoqxona, 202609300011),
+   *  where room numbers repeat per floor. Required there, ignored elsewhere. */
+  block?: string
+  floor?: number
 }) {
   return requestJson<AssignRoomResult>('/api/dekan/students', {
     method: 'PATCH',

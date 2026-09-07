@@ -1,7 +1,7 @@
 'use client'
 
 import { apiRequest } from '@/lib/api-client'
-import type { BlockedDormGrid, DekanDorm, DormPreview, SuperadminDorm } from '../types'
+import type { BlockedDormGrid, BlockedRoomMapDorm, DekanDorm, DormPreview, SuperadminDorm } from '../types'
 
 // `dorm` = primary (or null) for back-compat; `dorms` = every building the
 // faculty holds, primary first (many-to-many, 202609300000) — a single-dorm
@@ -144,6 +144,11 @@ export function clearDormSection(dormId: string, block: string, floor: number) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'clearSection', dormId, block, floor }),
   })
+}
+
+/** Dekan: the blocked-dorm (7-yotoqxona) rooms this faculty's sections cover. */
+export function fetchBlockedRoomMap() {
+  return apiRequest<{ dorms: BlockedRoomMapDorm[] }>('/api/dekan/blok-xonalar')
 }
 
 export function saveDormSettings(dormId: string, settings: Partial<SuperadminDorm>) {

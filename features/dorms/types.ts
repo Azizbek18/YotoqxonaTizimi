@@ -115,6 +115,39 @@ export type DormSection = {
   residentCount: number
 }
 
+// ---- dekan's read + assign view of the blocked-dorm rooms they own ----
+export type BlockedRoomOccupant = {
+  name: string
+  gender: 'male' | 'female' | null
+  /** 'user' = registered resident · 'permit' = approved, room reserved, not yet registered. */
+  kind: 'user' | 'permit'
+}
+
+export type BlockedRoom = {
+  roomNumber: string
+  capacity: number
+  frozen: boolean
+  gender: 'male' | 'female' | null
+  occupants: BlockedRoomOccupant[]
+}
+
+export type BlockedRoomSection = {
+  block: string
+  floor: number
+  gender: 'male' | 'female' | null
+  rooms: BlockedRoom[]
+}
+
+export type BlockedRoomMapDorm = {
+  dormId: string
+  number: string
+  name: string
+  blockCount: number
+  floorCount: number
+  /** Only the sections this faculty owns, sorted by block then floor. */
+  sections: BlockedRoomSection[]
+}
+
 /** The full A1…B12 ownership grid for a blocked building. */
 export type BlockedDormGrid = {
   dormId: string

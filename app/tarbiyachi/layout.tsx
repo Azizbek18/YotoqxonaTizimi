@@ -29,6 +29,7 @@ import { SkelShell } from '@/components/ui/skeletons'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useDekanScope } from '@/lib/hooks/useDekanScope'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
+import { useVisiblePoll } from '@/lib/hooks/useVisiblePoll'
 import { getAuthHeaders, getSafeSession } from '@/lib/auth-session'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { dekanUI } from '@/lib/dekan-ui'
@@ -80,29 +81,22 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
     return () => window.clearTimeout(mountId)
   }, [])
 
-  useEffect(() => {
-    let active = true
-    async function loadPending() {
-      const session = await getSafeSession()
-      if (!session || !active) return
-      try {
-        const headers = await getAuthHeaders()
-        const response = await fetch('/api/staff/arizalar', { headers })
-        const result = (await response.json()) as { ok: boolean; requests?: PendingAriza[] }
-        if (active && response.ok && result.ok) {
-          setPending((result.requests ?? []).filter((r) => r.status === 'pending').slice(0, 6))
-        }
-      } catch {
-        // background poll — stay quiet on a transient failure
+  // Pending-ariza bell. Polls only while the tab is visible (an idle
+  // background tab was hitting this every 30s for nothing).
+  useVisiblePoll(async () => {
+    const session = await getSafeSession()
+    if (!session) return
+    try {
+      const headers = await getAuthHeaders()
+      const response = await fetch('/api/staff/arizalar', { headers })
+      const result = (await response.json()) as { ok: boolean; requests?: PendingAriza[] }
+      if (response.ok && result.ok) {
+        setPending((result.requests ?? []).filter((r) => r.status === 'pending').slice(0, 6))
       }
+    } catch {
+      // background poll — stay quiet on a transient failure
     }
-    void loadPending()
-    const interval = setInterval(loadPending, 30_000)
-    return () => {
-      active = false
-      clearInterval(interval)
-    }
-  }, [])
+  }, 60_000)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

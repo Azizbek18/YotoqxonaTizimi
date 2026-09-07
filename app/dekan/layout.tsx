@@ -32,6 +32,7 @@ import { SkelShell } from '@/components/ui/skeletons'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useDekanScope } from '@/lib/hooks/useDekanScope'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
+import { useVisiblePoll } from '@/lib/hooks/useVisiblePoll'
 import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { fetchDekanDorm, resolveFloorClaim } from '@/features/dorms/client/api'
@@ -99,76 +100,50 @@ export default function DekanLayout({
     return () => window.clearTimeout(mountId)
   }, [])
 
-  useEffect(() => {
-    if (!facultyResolved) return
-    let active = true
-
-    async function fetchPendingPermits() {
-      if (dekanRole === 'admin') {
-        setPendingCount(0)
-        setRecentPending([])
-        return
-      }
-      if (!dekanFaculty) {
-        setPendingCount(0)
-        setRecentPending([])
-        return
-      }
-
-      // The layout can sit open in a tab long after the session expires —
-      // the 15s poll would otherwise hit /api/dekan/overview unauthenticated
-      // forever, spamming the console with "Autentifikatsiya talab
-      // qilinadi". Check for a live session first and quietly skip the tick
-      // if there isn't one, same as admin/layout.tsx's payment poll.
-      const session = await getSafeSession()
-      if (!session || !active) return
-
-      try {
-        const { dashboard } = await fetchDekanOverview()
-        if (!active) return
-        setPendingCount(dashboard.pendingCount)
-        setRecentPending(dashboard.recentRequests.map((request) => ({
-          id: request.id,
-          full_name: request.full_name,
-          direction: request.direction,
-          created_at: request.created_at,
-        })))
-      } catch {
-        // Silently swallow unauthenticated background polling errors
-      }
+  // Pending-permit badge + "recent arizalar" bell. Polls only while the tab
+  // is visible — an idle background tab hitting /api/dekan/overview every few
+  // seconds was a large share of serverless compute. The layout can also sit
+  // open long after the session expires, so check for a live session first
+  // and quietly skip the tick if there isn't one.
+  useVisiblePoll(async () => {
+    if (dekanRole === 'admin' || !dekanFaculty) {
+      setPendingCount(0)
+      setRecentPending([])
+      return
     }
-    fetchPendingPermits()
-    const interval = setInterval(fetchPendingPermits, 15000)
-    return () => {
-      active = false
-      clearInterval(interval)
+    const session = await getSafeSession()
+    if (!session) return
+    try {
+      const { dashboard } = await fetchDekanOverview()
+      setPendingCount(dashboard.pendingCount)
+      setRecentPending(dashboard.recentRequests.map((request) => ({
+        id: request.id,
+        full_name: request.full_name,
+        direction: request.direction,
+        created_at: request.created_at,
+      })))
+    } catch {
+      // Silently swallow unauthenticated background polling errors
     }
-  }, [facultyResolved, dekanFaculty, dekanRole])
+  }, 45_000, { enabled: facultyResolved, restartKey: `${dekanFaculty}:${dekanRole}` })
 
-  // The dekan's dorm + floor partition. Polled slowly (60s) alongside the
-  // permit poll so an incoming floor claim from the co-dekan shows up in
-  // the bell without a refresh. A fetch error leaves `dekanDorm` untouched
-  // so a network blip never locks a set-up dekan into the onboarding gate.
-  useEffect(() => {
-    if (!facultyResolved || !dekanFaculty || dekanRole === 'admin') return
-    let active = true
-    async function loadDorm() {
-      const session = await getSafeSession()
-      if (!session || !active) return
-      try {
-        const { dorm } = await fetchDekanDorm()
-        if (active) setDekanDorm(dorm)
-      } catch {
-        // keep whatever we had; never gate on a transient failure
-      }
+  // The dekan's dorm + floor partition. Polled slowly (and only while
+  // visible) so an incoming floor claim from the co-dekan shows up in the
+  // bell without a manual refresh. A fetch error leaves `dekanDorm`
+  // untouched so a network blip never locks a set-up dekan into onboarding.
+  useVisiblePoll(async () => {
+    const session = await getSafeSession()
+    if (!session) return
+    try {
+      const { dorm } = await fetchDekanDorm()
+      setDekanDorm(dorm)
+    } catch {
+      // keep whatever we had; never gate on a transient failure
     }
-    void loadDorm()
-    const interval = setInterval(loadDorm, 60_000)
-    return () => {
-      active = false
-      clearInterval(interval)
-    }
-  }, [facultyResolved, dekanFaculty, dekanRole])
+  }, 180_000, {
+    enabled: facultyResolved && !!dekanFaculty && dekanRole !== 'admin',
+    restartKey: `${dekanFaculty}:${dekanRole}`,
+  })
 
   const handleResolveClaim = async (floor: number, accept: boolean) => {
     try {

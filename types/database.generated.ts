@@ -25,6 +25,9 @@ export type UserRow = {
   role: string | null
   status: string | null
   room_number: string | null
+  // Building wing ('A'/'B') for a resident of a blocked-layout dorm (migration
+  // 202609300010). NULL for every 'simple' dorm — room_number alone locates them.
+  block: string | null
   course: number | null
   group: string | null
   gender: string | null
@@ -175,6 +178,9 @@ export type PermitRequestRow = {
   permit_url: string
   status: string | null
   room_number: string | null
+  // Building wing ('A'/'B') for a blocked-layout dorm (migration 202609300010).
+  // NULL for 'simple' dorms.
+  block: string | null
   reject_reason: string | null
   /** How many times the dekan has rejected this application. 2 → blocked. */
   rejection_count: number
@@ -357,6 +363,10 @@ export interface Database {
         dorm_id: string
         floor_number: number
         room_number: string
+        // Building wing ('A'/'B') in a blocked-layout dorm (migration 202609300010).
+        // NULL for 'simple' dorms, where (dorm_id, room_number) stays unique; when
+        // set, the room key is (dorm_id, block, floor_number, room_number).
+        block: string | null
         side: string
         position: number
         size: string
@@ -387,6 +397,12 @@ export interface Database {
         address: string
         default_room_capacity: number
         floor_count: number
+        // 'simple' (dorms 1–5: floor-owned via dorm_floor, room_number unique per
+        // dorm) | 'blocked' (dorm 6: A/B wings, per-section faculty ownership via
+        // dorm_section, room numbering restarts each floor). Migration 202609300010.
+        layout_kind: 'simple' | 'blocked'
+        // Number of building wings. 1 for 'simple', >= 2 for 'blocked'.
+        block_count: number
         tarbiyachi_name: string
         tarbiyachi_phone: string
         komendant_name: string
@@ -425,6 +441,20 @@ export interface Database {
         pending_faculty: string | null
         pending_by: string | null
         pending_at: string | null
+        created_at: string
+        updated_at: string
+      }>
+      // Per-section faculty ownership for a blocked-layout dorm (migration
+      // 202609300010). One section = (dorm_id, block, floor_number), owned by
+      // exactly one faculty; a floor can hold two sections (A + B) and thus two
+      // faculties. Centrally managed — no proposal/handshake columns.
+      dorm_section: Table<{
+        dorm_id: string
+        block: string
+        floor_number: number
+        faculty: string
+        gender: 'male' | 'female' | null
+        assigned_by: string | null
         created_at: string
         updated_at: string
       }>

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const supabase = getServiceSupabase()
     const { data: permit, error } = await supabase
       .from('permit_requests')
-      .select('full_name, faculty, course, study_type, origin_country, origin_region, phone, relative_phone, application_type')
+      .select('full_name, faculty, course, study_type, origin_country, origin_region, phone, relative_phone, application_type, block, assigned_floor')
       .eq('id', id)
       .maybeSingle()
     if (error) throw error
@@ -69,7 +69,10 @@ export async function GET(request: NextRequest) {
               dekanSignature: doc.dekan_signature ?? undefined,
               dekanName: doc.dekan_name ?? undefined,
               arizaNo: doc.ariza_no ?? undefined,
-              assignedFloor: doc.assigned_floor ?? undefined,
+              // Blocked-layout dorm: block + floor live on the permit row (the
+              // document table only stores floor + room). Prefer the permit's.
+              assignedBlock: permit.block ?? undefined,
+              assignedFloor: permit.assigned_floor ?? doc.assigned_floor ?? undefined,
               assignedRoom: doc.assigned_room ?? undefined,
             }
           : {}),

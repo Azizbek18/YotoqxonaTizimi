@@ -179,4 +179,30 @@ describe('deliverPermitDocuments', () => {
     })
     expect(await createPermitDocumentDelivery(deps).deliver('p1')).toBe('deferred_no_channel')
   })
+
+  it('a blocked-dorm permit passes block + its own floor into the PDF (no floor lookup)', async () => {
+    const renderPdf = vi.fn(async () => new Uint8Array([0x25, 0x50, 0x44, 0x46]))
+    const deps = baseDeps({
+      renderPdf,
+      supabaseConfig: {
+        tables: {
+          permit_documents: [docRow()],
+          permit_requests: [permitRow({ room_number: '5', block: 'A', assigned_floor: 3, dorm_id: 'd7' })],
+          users: [null] as unknown[],
+          staff: [staffRow] as unknown[],
+          // deliberately a WRONG floor here — the permit's assigned_floor must win
+          floor_room_layout: [{ floor_number: 99 }],
+          permit_telegram_links: [{ chat_id: 555 }],
+        },
+        counts: { permit_documents: 0 },
+      },
+    })
+    expect(await createPermitDocumentDelivery(deps).deliver('p1', { id: 's1', fullName: 'Dekan Aliyev' })).toBe('delivered')
+    expect(renderPdf).toHaveBeenCalledWith(expect.objectContaining({
+      assignedBlock: 'A', assignedFloor: 3, assignedRoom: '5',
+    }))
+    expect(deps.sendTelegram).toHaveBeenCalledWith('555', expect.objectContaining({
+      caption: expect.stringContaining('A blok 3-qavat 5-xona'),
+    }))
+  })
 })

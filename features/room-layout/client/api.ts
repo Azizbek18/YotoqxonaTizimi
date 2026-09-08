@@ -70,6 +70,13 @@ export async function fetchFloorLayout(floorNumber: number, dormId?: string) {
   return result.blocks
 }
 
+/** Whole-building numeric-room count per floor — for the generator preview in a shared dorm. */
+export async function fetchBuildingFloorCounts(dormId?: string): Promise<Record<number, number>> {
+  const qs = dormId ? `&dormId=${encodeURIComponent(dormId)}` : ''
+  const result = await requestJson<{ floorCounts: Record<number, number> }>(`/api/dekan/room-layout?view=floor-counts${qs}`)
+  return result.floorCounts ?? {}
+}
+
 export function saveFloorLayout(floorNumber: number, blocks: RoomLayoutBlock[], dormId?: string) {
   return requestJson<{ success: true }>('/api/dekan/room-layout', {
     method: 'PUT',

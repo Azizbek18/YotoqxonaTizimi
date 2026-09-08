@@ -211,6 +211,28 @@ export function createRoomLayoutRepository() {
       return rows
     },
 
+    // Numeric-room count per floor for the WHOLE building (not scoped to the
+    // faculty's own floors). The generator preview needs this so sequential
+    // numbering flows past another faculty's floors exactly as
+    // apply_building_layout will. Counts only — no room data, no PII.
+    async buildingFloorCounts(faculty: string, dormId?: string): Promise<Record<number, number>> {
+      const scope = await scopeFor(faculty, dormId)
+      if (!scope.dormId) return {}
+      const { data, error } = await supabase
+        .from('floor_room_layout')
+        .select('floor_number, room_number')
+        .eq('dorm_id', scope.dormId)
+        .is('block', null)
+      if (error) throw error
+      const counts: Record<number, number> = {}
+      for (const r of data ?? []) {
+        if (/^\d+$/.test(String(r.room_number).trim())) {
+          counts[r.floor_number] = (counts[r.floor_number] ?? 0) + 1
+        }
+      }
+      return counts
+    },
+
     // Renumbers the whole building to match a "nechta xona per qavat" target
     // (migration 20260902080254). Occupied rooms are pinned at their current
     // number; only empty rooms move / are added / are removed. Raises P0003

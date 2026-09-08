@@ -112,6 +112,28 @@ describe('describeFloorFill', () => {
     expect(f.conflicts).toEqual(['5'])
   })
 
+  // Shared dorm: AMIT regenerates only floor 2, floor 1 (7 numeric rooms) is
+  // another faculty's and not in the plan — floor 2 must still start at 8, not 1.
+  it('a floor below the plan (untouched, another faculty) still shifts the start', () => {
+    const existing = [
+      ...rooms(range(1, 7), 1),
+      { roomNumber: '3a', floor: 1 },
+      ...rooms(range(10, 37), 2),
+    ]
+    const [f2] = describeFloorFill([{ floor: 2, rooms: 28 }], 'sequential', existing)
+    expect(f2).toMatchObject({ target: 28, fromRange: [10, 37], toRange: [8, 35], renumbered: 28 })
+  })
+
+  it('chains untouched and planned floors below the current one', () => {
+    // floor 1 untouched (7 numeric), floor 2 planned to 28 -> floor 3 starts at 36
+    const existing = [...rooms(range(1, 7), 1), ...rooms(range(10, 37), 2), ...rooms(range(38, 65), 3)]
+    const [f2, f3] = describeFloorFill(
+      [{ floor: 2, rooms: 28 }, { floor: 3, rooms: 28 }], 'sequential', existing,
+    )
+    expect(f2).toMatchObject({ toRange: [8, 35] })
+    expect(f3).toMatchObject({ toRange: [36, 63] })
+  })
+
   it('counts lettered rooms toward the floor total; the sequence flows by the numeric ones', () => {
     // floor 1 = 1..7 + 3a,7a  (9 rooms, target 9). floor 2 target 9.
     const existing = [

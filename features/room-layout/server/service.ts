@@ -257,6 +257,12 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
       return { success: true as const, roomNumber, frozen: frozenValue }
     },
 
+    // Whole-building numeric-room count per floor — the generator preview
+    // needs it to flow sequential numbering past another faculty's floors.
+    async buildingFloorCounts(faculty: string, dormId?: string): Promise<Record<number, number>> {
+      return repository.buildingFloorCounts(faculty, ...withDorm(dormId))
+    },
+
     async getFloor(faculty: string, floorValue: unknown, dormId?: string) {
       const floorNumber = parseFloorNumber(floorValue)
       const rows = await repository.listFloor(faculty, floorNumber, ...withDorm(dormId))

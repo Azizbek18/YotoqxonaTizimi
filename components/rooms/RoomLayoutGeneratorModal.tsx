@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
-import { generateRoomFloors } from '@/features/room-layout/client/api'
+import { generateRoomFloors, fetchBuildingFloorCounts } from '@/features/room-layout/client/api'
 import { MAX_ROOMS_PER_FLOOR, describeFloorFill } from '@/features/room-layout/plan'
 import type { RoomFloor, RoomNumbering } from '@/features/room-layout/types'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -55,6 +55,11 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
   const [numbering, setNumbering] = useState<RoomNumbering>('sequential')
   const [bulkValue, setBulkValue] = useState(String(DEFAULT_ROOMS_PER_FLOOR))
   const [saving, setSaving] = useState(false)
+  // Whole-building per-floor room counts (a shared dorm scopes `existingRooms`
+  // to this faculty's own floors, but sequential numbering flows past the
+  // others). Empty {} for a sole-faculty dorm — the preview then falls back
+  // to `existingRooms`, unchanged.
+  const [buildingFloorCounts, setBuildingFloorCounts] = useState<Record<number, number>>({})
 
   const floors = useMemo(
     () => Array.from({ length: Math.max(0, floorCount) }, (_, index) => index + 1),
@@ -87,8 +92,24 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
     setNumbering('sequential')
   }, [isOpen, floors, existingCountByFloor, existingRooms.length])
 
-  const plans = floors.map((floor) => ({ floor, rooms: Number(counts[floor] || 0) }))
-  const preview = describeFloorFill(plans, numbering, existingRooms, occupiedRoomNumbers)
+  useEffect(() => {
+    if (!isOpen) return
+    let alive = true
+    fetchBuildingFloorCounts(dormId)
+      .then((c) => { if (alive) setBuildingFloorCounts(c) })
+      .catch(() => { if (alive) setBuildingFloorCounts({}) })
+    return () => { alive = false }
+  }, [isOpen, dormId])
+
+  const buildingHasRooms = existingRooms.length > 0
+  // Only submit floors this faculty actually touches: its own floors (rooms
+  // already there) or ones it just typed a count into. A shared dorm seeds
+  // the other faculty's floors at 0 — those must not enter the plan, or the
+  // RPC rejects the whole run for a floor the dekan never meant to change.
+  const plans = floors
+    .map((floor) => ({ floor, rooms: Number(counts[floor] || 0) }))
+    .filter((p) => !buildingHasRooms || p.rooms > 0 || (existingCountByFloor.get(p.floor) ?? 0) > 0)
+  const preview = describeFloorFill(plans, numbering, existingRooms, occupiedRoomNumbers, buildingFloorCounts)
   const totalAdded = preview.reduce((s, f) => s + f.added, 0)
   const totalRemoved = preview.reduce((s, f) => s + f.removed, 0)
   const totalRenumbered = preview.reduce((s, f) => s + f.renumbered, 0)
@@ -217,18 +238,26 @@ export default function RoomLayoutGeneratorModal({ isOpen, floorCount, existingR
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {floors.map((floor) => {
                 const existing = existingCountByFloor.get(floor) ?? 0
+                // A shared dorm: this floor has rooms in the building but none
+                // that belong to us → another faculty's. Renumbering only
+                // flows past it; leave the input, don't invite an edit.
+                const foreign = existing === 0 && (buildingFloorCounts[floor] ?? 0) > 0
                 return (
                   <div key={floor} className="space-y-1.5">
                     <label className={labelCls}>
-                      {floor}-qavat {existing > 0 && <span className="normal-case font-bold text-amber-500">({existing} bor)</span>}
+                      {floor}-qavat{' '}
+                      {existing > 0 && <span className="normal-case font-bold text-amber-500">({existing} bor)</span>}
+                      {foreign && <span className={`normal-case font-bold ${textMuted}`}>(boshqa fakultet)</span>}
                     </label>
                     <input
                       type="text"
                       inputMode="numeric"
-                      value={counts[floor] ?? ''}
+                      disabled={foreign}
+                      value={foreign ? '' : (counts[floor] ?? '')}
+                      placeholder={foreign ? `${buildingFloorCounts[floor]} xona` : undefined}
                       onChange={(event) => setFloorCountValue(floor, event.target.value)}
                       onBlur={() => setCounts((prev) => ({ ...prev, [floor]: clampCount(prev[floor] ?? '') }))}
-                      className={inputCls}
+                      className={`${inputCls} ${foreign ? 'opacity-50 cursor-not-allowed' : ''}`}
                     />
                   </div>
                 )

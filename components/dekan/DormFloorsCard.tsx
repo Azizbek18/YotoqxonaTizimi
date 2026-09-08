@@ -165,10 +165,7 @@ export default function DormFloorsCard({
               )}
             </h3>
             <p className={`mt-0.5 text-[11px] ${ui.muted}`}>
-              Yotoqxona va qavatlar
-              {dorm.coFaculties.length > 0 && (
-                <> &middot; birga: {dorm.coFaculties.map((f) => permitFacultyLabel(f) || f).join(', ')}</>
-              )}
+              {dorm.coFaculties.length > 0 ? 'Sizning qavatlaringiz' : 'Yotoqxona va qavatlar'}
             </p>
           </div>
         </div>
@@ -224,14 +221,17 @@ export default function DormFloorsCard({
         </div>
       )}
 
-      {/* floor grid */}
+      {/* floor grid — in a shared building a dekan only sees their own floors,
+          never which faculty holds the rest (that's superadmin's view). */}
       <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6">
-        {dorm.floors.map((f) => {
+        {dorm.floors
+          .filter((f) => dorm.coFaculties.length === 0 || (f.state !== 'other' && f.state !== 'other_pending'))
+          .map((f) => {
           const meta = STATE_META[f.state]
           return (
             <div
               key={f.floor}
-              title={`${f.floor}-qavat — ${meta.label}${f.ownerFaculty && f.state === 'other' ? ` (${permitFacultyLabel(f.ownerFaculty)})` : ''}`}
+              title={`${f.floor}-qavat — ${meta.label}`}
               className={`flex h-14 flex-col items-center justify-center rounded-xl border text-center text-[9px] font-bold ${toneClass(meta.tone, false)}`}
             >
               <span className="text-sm">{f.floor}</span>

@@ -1,7 +1,7 @@
 'use client'
 
 import { apiRequest } from '@/lib/api-client'
-import type { BlockedDormGrid, BlockedRoomMapDorm, DekanDorm, DormPreview, SuperadminDorm } from '../types'
+import type { BlockedDormGrid, BlockedRoomMapDorm, DekanDorm, DormPreview, RoomGrantGrid, SuperadminDorm } from '../types'
 
 // `dorm` = primary (or null) for back-compat; `dorms` = every building the
 // faculty holds, primary first (many-to-many, 202609300000) — a single-dorm
@@ -149,6 +149,28 @@ export function clearDormSection(dormId: string, block: string, floor: number) {
 /** Dekan: the blocked-dorm (7-yotoqxona) rooms this faculty's sections cover. */
 export function fetchBlockedRoomMap() {
   return apiRequest<{ dorms: BlockedRoomMapDorm[] }>('/api/dekan/blok-xonalar')
+}
+
+// ---- room-level faculty grants ('simple' shared dorm), superadmin ----
+
+export function fetchRoomGrantGrid(dormId: string) {
+  return apiRequest<{ grid: RoomGrantGrid }>(`/api/admin/dorms/room-grants?dormId=${encodeURIComponent(dormId)}`)
+}
+
+export function grantRoom(dormId: string, roomNumber: string, faculty: string) {
+  return apiRequest<{ ok: true; room: string; floor: number; faculty: string }>('/api/admin/dorms/room-grants', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'grant', dormId, roomNumber, faculty }),
+  })
+}
+
+export function ungrantRoom(dormId: string, roomNumber: string) {
+  return apiRequest<{ ok: true; room: string; cleared: boolean }>('/api/admin/dorms/room-grants', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'ungrant', dormId, roomNumber }),
+  })
 }
 
 export function saveDormSettings(dormId: string, settings: Partial<SuperadminDorm>) {

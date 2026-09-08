@@ -15,6 +15,7 @@ import {
   reassignDormFloor,
 } from '@/features/dorms/client/api'
 import BlockedSectionGrid from '@/components/dekan/BlockedSectionGrid'
+import RoomGrantGrid from '@/components/dekan/RoomGrantGrid'
 import type { SuperadminDorm } from '@/features/dorms/types'
 
 const CONTACT_FIELDS: Array<[keyof SuperadminDorm, string]> = [
@@ -240,6 +241,18 @@ export default function SuperadminDormsPage() {
                     ))}
                   </div>
                 </div>
+                )}
+
+                {/* room-level faculty exceptions (simple shared dorm) */}
+                {d.layoutKind !== 'blocked' && (
+                  <details className={`rounded-xl border ${ui.border}`}>
+                    <summary className={`cursor-pointer list-none px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>
+                      Xona istisnolari <span className={ui.faint}>· bir qavatda bir necha fakultet</span>
+                    </summary>
+                    <div className="border-t px-3 py-3">
+                      <RoomGrantGrid dormId={dorm.id} />
+                    </div>
+                  </details>
                 )}
 
                 {/* settings */}

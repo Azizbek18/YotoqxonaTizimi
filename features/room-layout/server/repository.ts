@@ -8,7 +8,19 @@ import type { RoomLayoutBlock } from '../types'
 // its dorm through faculty_dorm, and — in a shared building — to just the
 // floors it has confirmed in dorm_floor. `floors === null` means "no floor
 // restriction" (the faculty is alone in the dorm, the common case).
-export type RoomScope = { dormId: string | null; floors: number[] | null }
+export type RoomScope = {
+  dormId: string | null
+  /** null = the faculty sees every floor (sole occupant / unpartitioned). */
+  floors: number[] | null
+  /** true once the building is partitioned OR has any room-level grant — the
+   *  room map read then scopes room by room instead of trusting the dorm. */
+  shared: boolean
+  /** Rooms granted to this faculty (dorm_room_grant, 202609300012) — visible
+   *  even if on another faculty's floor. */
+  grantedToMe: string[]
+  /** Rooms granted away from this faculty — hidden even if on its own floor. */
+  grantedAway: string[]
+}
 
 export function createRoomLayoutRepository() {
   const supabase = getServiceSupabase()
@@ -47,20 +59,29 @@ export function createRoomLayoutRepository() {
         resolved = fb?.dorm_id ?? null
       }
     }
-    if (!resolved) return { dormId: null, floors: null }
+    if (!resolved) return { dormId: null, floors: null, shared: false, grantedToMe: [], grantedAway: [] }
     const dorm = resolved
 
-    const { data: floorRows } = await supabase
-      .from('dorm_floor')
-      .select('floor_number, faculty')
-      .eq('dorm_id', dorm)
+    const [{ data: floorRows }, { data: grantRows }] = await Promise.all([
+      supabase.from('dorm_floor').select('floor_number, faculty').eq('dorm_id', dorm),
+      supabase.from('dorm_room_grant').select('room_number, faculty').eq('dorm_id', dorm),
+    ])
     const owners = new Set((floorRows ?? []).map((r) => r.faculty).filter(Boolean))
-    // Sole faculty (or an unpartitioned building) — see every floor.
-    if (owners.size <= 1) return { dormId: dorm, floors: null }
-    return {
-      dormId: dorm,
-      floors: (floorRows ?? []).filter((r) => r.faculty === faculty).map((r) => r.floor_number),
-    }
+    const grantedToMe = (grantRows ?? []).filter((g) => g.faculty === faculty).map((g) => g.room_number)
+    const grantedAway = (grantRows ?? []).filter((g) => g.faculty !== faculty).map((g) => g.room_number)
+    const partitioned = owners.size > 1
+    const shared = partitioned || (grantRows ?? []).length > 0
+    const iOwnBuilding = owners.size === 0 || (owners.size === 1 && owners.has(faculty))
+
+    // floors: null = every floor; [] = no floor of my own (grants only);
+    // [n,…] = the floors I hold in a partitioned building.
+    let floors: number[] | null
+    if (!shared) floors = null
+    else if (partitioned) floors = (floorRows ?? []).filter((r) => r.faculty === faculty).map((r) => r.floor_number)
+    else if (iOwnBuilding) floors = null
+    else floors = []
+
+    return { dormId: dorm, floors, shared, grantedToMe, grantedAway }
   }
 
   return {
@@ -68,20 +89,31 @@ export function createRoomLayoutRepository() {
 
     async listAllRooms(faculty: string, dormId?: string) {
       const scope = await scopeFor(faculty, dormId)
-      let query = supabase
+      if (!scope.dormId) return []
+      const { data, error } = await supabase
         .from('floor_room_layout')
         .select('room_number, floor_number, block, side, position, size, frozen, frozen_reason, capacity, gender')
+        .eq('dorm_id', scope.dormId)
         .order('floor_number', { ascending: true })
         .order('room_number', { ascending: true })
-      if (scope.dormId) query = query.eq('dorm_id', scope.dormId)
-      if (scope.floors) query = query.in('floor_number', scope.floors.length ? scope.floors : [-1])
-      const { data, error } = await query
       if (error) throw error
       // This whole feature (map + 3D builder + generator) is for 'simple'
       // dorms, where room_number is unique per building. A blocked-layout
       // dorm's rooms repeat the number per floor/wing and are managed from
       // /dekan/blok-xonalar — never surface them here.
-      return (data ?? []).filter((r) => !(r as { block?: string | null }).block)
+      let rows = (data ?? []).filter((r) => !(r as { block?: string | null }).block)
+      // Shared building: scope to what this faculty actually manages —
+      // its floors + rooms granted to it, minus rooms granted away. A dorm
+      // has ~200 rooms at most, so the filter is done in memory.
+      if (scope.shared) {
+        const away = new Set(scope.grantedAway)
+        const mine = new Set(scope.grantedToMe)
+        const floors = scope.floors ? new Set(scope.floors) : null
+        rows = rows.filter((r) =>
+          !away.has(r.room_number)
+          && (mine.has(r.room_number) || floors === null || floors.has(r.floor_number)))
+      }
+      return rows
     },
 
     async insertRooms(

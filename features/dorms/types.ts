@@ -152,6 +152,26 @@ export type BlockedRoomMapDorm = {
   sections: BlockedRoomSection[]
 }
 
+// ---- room-level faculty grants ('simple' shared dorm) ----
+export type RoomGrantCell = {
+  roomNumber: string
+  floor: number
+  /** The floor's dorm_floor owner. */
+  ownerFaculty: string | null
+  /** The faculty this room is granted to; null = follows the floor owner. */
+  faculty: string | null
+  granted: boolean
+  residentCount: number
+}
+
+export type RoomGrantGrid = {
+  dormId: string
+  number: string
+  floorCount: number
+  /** Every non-blocked room, sorted by floor then room number. */
+  cells: RoomGrantCell[]
+}
+
 /** The full A1…B12 ownership grid for a blocked building. */
 export type BlockedDormGrid = {
   dormId: string

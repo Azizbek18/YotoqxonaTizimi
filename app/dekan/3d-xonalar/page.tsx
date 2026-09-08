@@ -163,7 +163,18 @@ export default function Dekan3DXonalarPage() {
   // capacity that isn't the real one.
   const [defaultRoomCapacity, setDefaultRoomCapacity] = useState<number | null>(null)
   const [settingsStatus, setSettingsStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const floors = floorCount ? Array.from({ length: floorCount }, (_, i) => i + 1) : []
+  // In a SHARED building a dekan only builds on the floors they actually hold —
+  // never sees (or renumbers) another faculty's floors. Sole-faculty buildings
+  // keep the full 1..floorCount range.
+  const activeDorm = dorms.find((d) => (activeDormId ?? primaryDormId) === d.dormId)
+  const floors = (() => {
+    if ((activeDorm?.coFaculties.length ?? 0) > 0) {
+      return activeDorm!.floors
+        .filter((f) => f.state === 'mine' || f.state === 'mine_pending')
+        .map((f) => f.floor)
+    }
+    return floorCount ? Array.from({ length: floorCount }, (_, i) => i + 1) : []
+  })()
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -335,6 +346,13 @@ export default function Dekan3DXonalarPage() {
     const floor = raw ? parseInt(raw, 10) : NaN
     if (Number.isInteger(floor) && floor >= 1 && floor <= 50) setActiveFloor(floor)
   }, [])
+
+  // Keep the open floor inside the set this dekan may actually see — switching
+  // to a shared building where they don't hold floor 1 must land on one they do.
+  useEffect(() => {
+    if (floors.length > 0 && !floors.includes(activeFloor)) setActiveFloor(floors[0])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [floors.join(','), activeDormId])
 
   useEffect(() => {
     if (!dormsLoaded) return

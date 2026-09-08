@@ -98,16 +98,19 @@ export function describeFloorFill(
   let offset = 0
   return [...plans]
     .sort((a, b) => a.floor - b.floor)
-    .map(({ floor, rooms: target }) => {
+    .map(({ floor, rooms: planCount }) => {
+      const allOnFloor = roomsByFloor.get(floor) ?? []
+      // A lettered sub-room ("7a") counts toward the floor's total but is
+      // never renumbered — so the NUMERIC target is the plan count minus the
+      // lettered rooms already there, and the sequence flows by that.
+      const current = allOnFloor.filter(isPlainRoomNumber)
+      const lettered = allOnFloor.length - current.length
+      const target = Math.max(planCount - lettered, 0)
+
       const lo = numbering === 'per-floor' ? floor * 100 + 1 : offset + 1
       const hi = lo + target - 1
       if (numbering !== 'per-floor') offset += target
 
-      const allOnFloor = roomsByFloor.get(floor) ?? []
-      // Lettered sub-rooms ("7a") are left untouched by apply_building_layout —
-      // they don't count toward the target and are never renumbered.
-      const current = allOnFloor.filter(isPlainRoomNumber)
-      const lettered = allOnFloor.length - current.length
       const currentNums = current.map(Number).filter((n) => Number.isFinite(n))
       const occupiedHere = current.filter((n) => occupiedRoomNumbers.has(n))
 
@@ -130,8 +133,9 @@ export function describeFloorFill(
 
       return {
         floor,
-        existing: current.length + lettered,
-        target,
+        existing: allOnFloor.length,
+        // What the floor ends up with = numeric target + the lettered rooms kept.
+        target: target + lettered,
         added: Math.max(0, availTargets.length - movable.length),
         removed: Math.max(0, movable.length - availTargets.length),
         renumbered,

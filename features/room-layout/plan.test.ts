@@ -111,6 +111,21 @@ describe('describeFloorFill', () => {
     const [f] = describeFloorFill([{ floor: 1, rooms: 3 }], 'sequential', existing, occ)
     expect(f.conflicts).toEqual(['5'])
   })
+
+  it('counts lettered rooms toward the floor total; the sequence flows by the numeric ones', () => {
+    // floor 1 = 1..7 + 3a,7a  (9 rooms, target 9). floor 2 target 9.
+    const existing = [
+      ...rooms(range(1, 7), 1),
+      { roomNumber: '3a', floor: 1 }, { roomNumber: '7a', floor: 1 },
+    ]
+    const [f1, f2] = describeFloorFill(
+      [{ floor: 1, rooms: 9 }, { floor: 2, rooms: 9 }], 'sequential', existing,
+    )
+    // floor 1: 7 numeric kept + 2 lettered = 9, nothing added/renumbered
+    expect(f1).toMatchObject({ existing: 9, target: 9, added: 0, removed: 0, renumbered: 0, toRange: [1, 7] })
+    // floor 2 continues at 8 (not 10), 9 numeric rooms 8..16
+    expect(f2).toMatchObject({ target: 9, added: 9, toRange: [8, 16] })
+  })
 })
 
 function range(lo: number, hi: number) {

@@ -351,9 +351,26 @@ export default function DekanDashboard() {
         </div>
       </div>
 
-      {/* Per-floor course balance — not shown in the cross-faculty (superadmin) view */}
-      {!isGlobal && floorBalance && (
-        <FloorBalanceCard balance={floorBalance} isLight={isLight} />
+      {/* Per-floor course balance — per faculty. In the cross-faculty (superadmin)
+          view there is no single dorm to show, so point the way instead of
+          rendering nothing. */}
+      {isGlobal ? (
+        <div className={`rounded-2xl border p-5 ${ui.card}`}>
+          <div className="flex items-start gap-3">
+            <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${ui.accentTileSoft}`}>
+              <Layers size={16} />
+            </span>
+            <div>
+              <h3 className={`text-sm font-bold ${ui.strong}`}>Qavatlar boʻyicha kurs balansi</h3>
+              <p className={`mt-1 text-[11px] font-medium leading-snug ${ui.muted}`}>
+                Bu boʻlim har fakultet uchun alohida hisoblanadi. Koʻrish uchun yuqoridagi roʻyxatdan
+                fakultetni tanlang.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        floorBalance && <FloorBalanceCard balance={floorBalance} isLight={isLight} />
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

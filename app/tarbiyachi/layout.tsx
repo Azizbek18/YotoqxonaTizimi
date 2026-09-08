@@ -30,7 +30,8 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { useDekanScope } from '@/lib/hooks/useDekanScope'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
 import { useVisiblePoll } from '@/lib/hooks/useVisiblePoll'
-import { getAuthHeaders, getSafeSession } from '@/lib/auth-session'
+import { getSafeSession } from '@/lib/auth-session'
+import { apiRequest } from '@/lib/api-client'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { dekanUI } from '@/lib/dekan-ui'
 import { supabase } from '@/lib/supabase'
@@ -87,10 +88,8 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
     const session = await getSafeSession()
     if (!session) return
     try {
-      const headers = await getAuthHeaders()
-      const response = await fetch('/api/staff/arizalar', { headers })
-      const result = (await response.json()) as { ok: boolean; requests?: PendingAriza[] }
-      if (response.ok && result.ok) {
+      const result = await apiRequest<{ ok: boolean; requests?: PendingAriza[] }>('/api/staff/arizalar')
+      if (result.ok) {
         setPending((result.requests ?? []).filter((r) => r.status === 'pending').slice(0, 6))
       }
     } catch {

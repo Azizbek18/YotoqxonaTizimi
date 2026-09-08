@@ -914,13 +914,13 @@ html.theme-anim canvas {
    frosted-glass look for a solid tint and cut the decorative motion.
    Content, layout and colours are untouched.
    =================================================================== */
-@media (max-width: 768px) {
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
   /* frosted panels -> cheap near-solid. Tailwind composes backdrop-filter
      from CSS vars, so zero the vars AND the property to be sure. */
   [class*="backdrop-blur"] {
-    -webkit-backdrop-filter: blur(2px) !important;
-    backdrop-filter: blur(2px) !important;
-    --tw-backdrop-blur: blur(2px) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    --tw-backdrop-blur: blur(0px) !important;
   }
 
   /* big decorative glow orbs — nobody blurs actual content by 24px+.

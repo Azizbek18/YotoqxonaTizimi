@@ -62,6 +62,41 @@ test.describe('student mobile responsiveness', () => {
     if (userId) await service.auth.admin.deleteUser(userId)
   })
 
+  test('mobile navigation stays interactive without document reloads or nav jumps', async ({ page }, testInfo) => {
+    test.setTimeout(120_000)
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/login')
+    await page.getByPlaceholder('misol@gmail.com').fill(email)
+    await page.getByPlaceholder('••••••••').fill(password)
+    await page.getByRole('button', { name: 'Tizimga kirish' }).click()
+    await page.waitForURL('**/talaba/dashboard', { timeout: 30_000 })
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
+    const nav = page.locator('nav')
+    await expect(nav.getByRole('link', { name: 'Asosiy', exact: true })).toHaveAttribute('aria-current', 'page')
+    const initialHeight = (await nav.boundingBox())!.height
+    await page.evaluate(() => { document.documentElement.dataset.navigationProbe = 'preserved' })
+
+    for (const [label, path] of [
+      ['Qoidalar', '/talaba/qoidalar'], ["E'lonlar", '/talaba/elonlar'],
+      ['Profil', '/talaba/profil'], ['Asosiy', '/talaba/dashboard'],
+    ]) {
+      await nav.getByRole('link', { name: label, exact: true }).click()
+      await expect(page).toHaveURL(new RegExp(`${path}$`))
+      await expect(page.locator('[data-page-transition]')).toBeVisible()
+      expect(await page.locator('[data-page-transition]').evaluate((element) => Number(getComputedStyle(element).opacity))).toBeGreaterThanOrEqual(0.9)
+      await expect(nav.getByRole('link', { name: label, exact: true })).toHaveAttribute('aria-current', 'page')
+      expect(Math.abs((await nav.boundingBox())!.height - initialHeight)).toBeLessThanOrEqual(1)
+      expect(await page.evaluate(() => document.documentElement.dataset.navigationProbe)).toBe('preserved')
+    }
+
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await nav.getByRole('link', { name: 'Qoidalar', exact: true }).click()
+    await expect(page).toHaveURL(/\/talaba\/qoidalar$/)
+    await expect.poll(() => page.locator('[data-page-transition]').evaluate((element) => element.getAnimations().length)).toBe(0)
+    await page.screenshot({ path: testInfo.outputPath('mobile-navigation.png'), fullPage: true })
+  })
+
   test('dashboard and payment page fit down to 320px', async ({ page }, testInfo) => {
     test.setTimeout(120_000)
     await page.setViewportSize({ width: 320, height: 568 })

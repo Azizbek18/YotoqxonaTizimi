@@ -4,7 +4,6 @@ import { useCallback, useState, useEffect, useMemo } from 'react';
 import { MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useThemeStore } from '@/lib/stores/theme-store';
-import { getSafeUser } from '@/lib/auth-session';
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors';
 import ProfileLoadError from '@/components/talaba/ProfileLoadError';
 import { TalabaDashboardSkeleton } from '@/components/talaba/skeletons';
@@ -138,13 +137,15 @@ export default function TalabaDashboard() {
     async function fetchData() {
       try {
         setLoadingProfile(true);
-        const user = await getSafeUser();
+        // The profile API already verifies the live session. Avoid an extra
+        // Auth round-trip before requesting the same authenticated profile.
+        const profilePayload = await fetchStudentProfile();
+        const user = profilePayload.profile;
 
         let currentProfile: Profile | null = null;
 
         if (user) {
           // 1. Profil ma'lumotlarini olish
-          const profilePayload = await fetchStudentProfile();
           const profileData = profilePayload.profile;
           const profileError = !profileData;
 
@@ -171,7 +172,10 @@ export default function TalabaDashboard() {
 
         // Steps 3-5 load supplementary data (announcements, warnings, payments).
         // A failure here must never hide an already-loaded profile behind the
-        // fatal error screen, so each step is isolated in its own try/catch.
+        // fatal error screen. Start independent requests together, retaining
+        // a separate error boundary for each result.
+        await Promise.all([
+        (async () => {
 
         // 3. Real E'lonlarni Yuklash (API orqali filterlangan holda)
         try {
@@ -197,6 +201,8 @@ export default function TalabaDashboard() {
           setElonlar([]);
         }
 
+        })(),
+        (async () => {
         // 4. Real Arizalar / Ogohlantirishlarni Yuklash (arizalar table)
         try {
           if (currentProfile && currentProfile.full_name) {
@@ -222,6 +228,8 @@ export default function TalabaDashboard() {
           setArizalar([]);
         }
 
+        })(),
+        (async () => {
         // 4b. Real Murojaat va Arizalarim Statusini Yuklash (arizalar table)
         try {
           if (user) {
@@ -247,6 +255,8 @@ export default function TalabaDashboard() {
           setMyApplications([]);
         }
 
+        })(),
+        (async () => {
         // 5. Real Tolovlarni Yuklash (tolovlar table)
         try {
           if (user) {
@@ -255,6 +265,8 @@ export default function TalabaDashboard() {
         } catch (tolovCatchError) {
           console.error("To'lovlarni yuklashda xato:", tolovCatchError);
         }
+        })(),
+        ]);
 
       } catch (error) {
         console.error('Ma\'lumotlarni yuklashda xato:', error);

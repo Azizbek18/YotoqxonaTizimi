@@ -245,12 +245,15 @@ export default function DekanXonalarMap() {
     loadStudents()
     fetchDekanDorm()
       .then((result) => {
-        setDorms(result.dorms)
+        // Blocked-layout buildings (7-yotoqxona) have their own screen
+        // (/dekan/blok-xonalar); this map only handles 'simple' ones.
+        const simple = result.dorms.filter((d) => d.layoutKind !== 'blocked')
+        setDorms(simple)
         // Deep link from Sozlamalar's per-building "Xonalar xaritasi" button
         // (?dormId=...) — only honored if it's actually one of this
         // faculty's buildings; otherwise the usual primary default applies.
         const wanted = new URLSearchParams(window.location.search).get('dormId')
-        if (wanted && result.dorms.some((d) => d.dormId === wanted)) {
+        if (wanted && simple.some((d) => d.dormId === wanted)) {
           setActiveDormId(wanted)
         }
       })

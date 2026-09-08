@@ -315,9 +315,12 @@ export default function Dekan3DXonalarPage() {
   useEffect(() => {
     fetchDekanDorm()
       .then((result) => {
-        setDorms(result.dorms)
+        // A blocked-layout building's rooms are the fixed 9-per-section
+        // template (dorm_build_blocked_layout) — not drawn here.
+        const simple = result.dorms.filter((d) => d.layoutKind !== 'blocked')
+        setDorms(simple)
         const wanted = new URLSearchParams(window.location.search).get('dormId')
-        if (wanted && result.dorms.some((d) => d.dormId === wanted)) {
+        if (wanted && simple.some((d) => d.dormId === wanted)) {
           setActiveDormId(wanted)
         }
       })

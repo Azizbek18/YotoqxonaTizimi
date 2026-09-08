@@ -9,6 +9,7 @@ export type DormDetailRow = DormRow & {
   attendance_enabled: boolean
   attendance_open_time: string
   attendance_close_time: string
+  layout_kind: 'simple' | 'blocked'
 }
 export type DormFloorRow = {
   floor_number: number
@@ -56,7 +57,7 @@ export function createDormRepository() {
     async getDorm(dormId: string): Promise<DormDetailRow | null> {
       const { data, error } = await supabase
         .from('dorms')
-        .select('id, number, name, floor_count, latitude, longitude, checkin_radius_m, attendance_enabled, attendance_open_time, attendance_close_time')
+        .select('id, number, name, floor_count, latitude, longitude, checkin_radius_m, attendance_enabled, attendance_open_time, attendance_close_time, layout_kind')
         .eq('id', dormId)
         .maybeSingle()
       if (error) throw error

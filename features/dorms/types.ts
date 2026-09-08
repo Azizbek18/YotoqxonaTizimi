@@ -44,6 +44,10 @@ export type DekanDorm = {
   name: string
   floorCount: number
   faculty: string
+  /** 'blocked' buildings (A/B wings — 7-yotoqxona) aren't managed from the
+   *  floor-partition / room-map / 3D builder screens; they have their own
+   *  section grid + /dekan/blok-xonalar. */
+  layoutKind: 'simple' | 'blocked'
   floors: DormFloor[]
   /** Faculties other than mine confirmed on at least one floor. */
   coFaculties: string[]

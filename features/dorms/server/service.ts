@@ -151,6 +151,7 @@ export function createDormService(repository: DormRepository = createDormReposit
       name: dorm.name,
       floorCount: dorm.floor_count,
       faculty: staff.faculty,
+      layoutKind: dorm.layout_kind ?? 'simple',
       floors,
       coFaculties,
       incoming,

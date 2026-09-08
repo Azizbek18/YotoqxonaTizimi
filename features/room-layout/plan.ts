@@ -4,19 +4,28 @@ export const MAX_ROOMS_PER_FLOOR = 200
 
 /**
  * Orders room numbers the way a human reads them: "2" before "10", not
- * after. `floor_room_layout.room_number` is a text column, so a plain
- * `ORDER BY room_number` (or `Array.sort()`) gives "1, 10, 11, 2, 20…";
- * every list that shows rooms to a person runs through this instead.
+ * after, and a lettered sub-room ("7a") right after its base ("7") and
+ * before the next number ("8"). `floor_room_layout.room_number` is a text
+ * column, so a plain `ORDER BY room_number` (or `Array.sort()`) gives
+ * "1, 10, 11, 2, 20…"; every list that shows rooms to a person runs
+ * through this instead.
  */
 export function compareRoomNumbers(a: string, b: string): number {
-  const na = Number(a)
-  const nb = Number(b)
-  const aNumeric = a.trim() !== '' && Number.isFinite(na)
-  const bNumeric = b.trim() !== '' && Number.isFinite(nb)
-  if (aNumeric && bNumeric) return na - nb || a.localeCompare(b)
-  if (aNumeric) return -1
-  if (bNumeric) return 1
+  // Split a leading integer from whatever trails it: "7a" -> [7, "a"].
+  const pa = a.trim().match(/^(\d+)(.*)$/)
+  const pb = b.trim().match(/^(\d+)(.*)$/)
+  if (pa && pb) {
+    return (Number(pa[1]) - Number(pb[1]))
+      || pa[2].localeCompare(pb[2], undefined, { numeric: true, sensitivity: 'base' })
+  }
+  if (pa) return -1
+  if (pb) return 1
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+}
+
+/** A pure-number room ("12") vs a lettered sub-room ("7a") or free-text one. */
+export function isPlainRoomNumber(roomNumber: string): boolean {
+  return /^\d+$/.test(roomNumber.trim())
 }
 
 /**
@@ -94,7 +103,11 @@ export function describeFloorFill(
       const hi = lo + target - 1
       if (numbering !== 'per-floor') offset += target
 
-      const current = roomsByFloor.get(floor) ?? []
+      const allOnFloor = roomsByFloor.get(floor) ?? []
+      // Lettered sub-rooms ("7a") are left untouched by apply_building_layout —
+      // they don't count toward the target and are never renumbered.
+      const current = allOnFloor.filter(isPlainRoomNumber)
+      const lettered = allOnFloor.length - current.length
       const currentNums = current.map(Number).filter((n) => Number.isFinite(n))
       const occupiedHere = current.filter((n) => occupiedRoomNumbers.has(n))
 
@@ -117,7 +130,7 @@ export function describeFloorFill(
 
       return {
         floor,
-        existing: current.length,
+        existing: current.length + lettered,
         target,
         added: Math.max(0, availTargets.length - movable.length),
         removed: Math.max(0, movable.length - availTargets.length),

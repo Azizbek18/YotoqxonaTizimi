@@ -251,11 +251,18 @@ export default function Home() {
             isLight ? 'text-slate-900' : 'text-white'
           }`}
         >
-          Yotoqxonaga Joylashish <br />
+          Talabalar yotoqxonasiga <br />
           <span className="bg-gradient-to-r from-cyan-400 via-indigo-500 to-purple-500 bg-clip-text text-transparent drop-shadow-sm">
-            3 bosqichli smart
-          </span> oqimda
+            ariza va joylashish
+          </span>
         </h1>
+        <p className="max-w-2xl mx-auto mt-5 text-base leading-relaxed">
+          Yotoqxona uchun ariza yoki yo‘llanma yuboring, ko‘rib chiqish holatini tekshiring
+          va tasdiqlangandan keyin shaxsiy kabinetingizga kiring.
+        </p>
+        <Link href="/yotoqxona" className="inline-block mt-4 underline underline-offset-4 text-indigo-400">
+          Yotoqxonaga joylashish bo‘yicha yo‘riqnoma
+        </Link>
 
         {/* First thing a never-applied talaba should see — no scrolling
             past the (purely decorative) 3-step timeline required. Only

@@ -12,14 +12,48 @@ export type RoomScope = {
   dormId: string | null
   /** null = the faculty sees every floor (sole occupant / unpartitioned). */
   floors: number[] | null
-  /** true once the building is partitioned OR has any room-level grant — the
-   *  room map read then scopes room by room instead of trusting the dorm. */
+  /** true once the building is partitioned OR has any room-level grant OR the
+   *  faculty is a guest here — the room map read then scopes room by room
+   *  instead of trusting the dorm. */
   shared: boolean
   /** Rooms granted to this faculty (dorm_room_grant, 202609300012) — visible
    *  even if on another faculty's floor. */
   grantedToMe: string[]
   /** Rooms granted away from this faculty — hidden even if on its own floor. */
   grantedAway: string[]
+}
+
+/**
+ * The floor/grant scoping decision, pure so it can be reasoned about in
+ * isolation. `floorOwners` is the dorm_floor faculty per floor; `grants` is
+ * dorm_room_grant (room -> faculty). See RoomScope for the `floors` meaning.
+ */
+export function decideRoomScope(
+  faculty: string,
+  floorOwners: { floor_number: number; faculty: string | null }[],
+  grants: { room_number: string; faculty: string }[],
+): Omit<RoomScope, 'dormId'> {
+  const owners = new Set(floorOwners.map((r) => r.faculty).filter(Boolean) as string[])
+  const grantedToMe = grants.filter((g) => g.faculty === faculty).map((g) => g.room_number)
+  const grantedAway = grants.filter((g) => g.faculty !== faculty).map((g) => g.room_number)
+  const partitioned = owners.size > 1
+  const iOwnBuilding = owners.size === 0 || (owners.size === 1 && owners.has(faculty))
+  // Linked here but holds neither the building nor any floor → guest: only
+  // granted rooms, even with none (then nothing). Without this a guest with
+  // no grants falls through to `floors = null` and sees the whole dorm.
+  const isGuest = !iOwnBuilding && !owners.has(faculty)
+  const shared = partitioned || grants.length > 0 || isGuest
+
+  let floors: number[] | null
+  if (!shared) floors = null
+  else if (partitioned && owners.has(faculty)) {
+    floors = floorOwners.filter((r) => r.faculty === faculty).map((r) => r.floor_number)
+  } else if (iOwnBuilding) {
+    floors = null
+  } else {
+    floors = []
+  }
+  return { floors, shared, grantedToMe, grantedAway }
 }
 
 export function createRoomLayoutRepository() {
@@ -66,22 +100,14 @@ export function createRoomLayoutRepository() {
       supabase.from('dorm_floor').select('floor_number, faculty').eq('dorm_id', dorm),
       supabase.from('dorm_room_grant').select('room_number, faculty').eq('dorm_id', dorm),
     ])
-    const owners = new Set((floorRows ?? []).map((r) => r.faculty).filter(Boolean))
-    const grantedToMe = (grantRows ?? []).filter((g) => g.faculty === faculty).map((g) => g.room_number)
-    const grantedAway = (grantRows ?? []).filter((g) => g.faculty !== faculty).map((g) => g.room_number)
-    const partitioned = owners.size > 1
-    const shared = partitioned || (grantRows ?? []).length > 0
-    const iOwnBuilding = owners.size === 0 || (owners.size === 1 && owners.has(faculty))
-
-    // floors: null = every floor; [] = no floor of my own (grants only);
-    // [n,…] = the floors I hold in a partitioned building.
-    let floors: number[] | null
-    if (!shared) floors = null
-    else if (partitioned) floors = (floorRows ?? []).filter((r) => r.faculty === faculty).map((r) => r.floor_number)
-    else if (iOwnBuilding) floors = null
-    else floors = []
-
-    return { dormId: dorm, floors, shared, grantedToMe, grantedAway }
+    return {
+      dormId: dorm,
+      ...decideRoomScope(
+        faculty,
+        (floorRows ?? []) as { floor_number: number; faculty: string | null }[],
+        (grantRows ?? []) as { room_number: string; faculty: string }[],
+      ),
+    }
   }
 
   return {

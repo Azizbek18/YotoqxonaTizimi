@@ -462,6 +462,17 @@ export interface Database {
         created_at: string
         updated_at: string
       }>
+      // Room-level faculty exception for a 'simple' shared dorm (migration
+      // 202609300012). A grant overrides the dorm_floor owner for that one
+      // room, so a floor can be split between faculties room by room.
+      dorm_room_grant: Table<{
+        dorm_id: string
+        room_number: string
+        faculty: string
+        granted_by: string | null
+        created_at: string
+        updated_at: string
+      }>
     }
     Views: Record<string, never>
     Functions: {
@@ -512,6 +523,16 @@ export interface Database {
       dorm_clear_section: {
         Args: { p_dorm_id: string; p_block: string; p_floor: number }
         Returns: { block: string; floor: number; cleared: boolean }
+      }
+      // Room-level faculty grant for a 'simple' shared dorm (202609300012):
+      // hand one room on another faculty's floor to a faculty, or take it back.
+      dorm_grant_room: {
+        Args: { p_dorm_id: string; p_room_number: string; p_faculty: string; p_staff_id: string }
+        Returns: { room: string; floor: number; faculty: string }
+      }
+      dorm_ungrant_room: {
+        Args: { p_dorm_id: string; p_room_number: string }
+        Returns: { room: string; cleared: boolean }
       }
       replace_floor_room_layout: {
         Args: { p_faculty: string; p_floor_number: number; p_rows: Json }

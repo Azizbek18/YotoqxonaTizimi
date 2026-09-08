@@ -202,6 +202,12 @@ export default function Dekan3DXonalarPage() {
   const [previewLeft, setPreviewLeft] = useState<EditableBlock[]>([])
   const [previewRight, setPreviewRight] = useState<EditableBlock[]>([])
 
+  // Switching building triggers a floor clamp (line ~355), so two
+  // loadFloorLayout calls can be in flight at once (the old floor, then the
+  // clamped one). Without this guard the slower response wins and the tab
+  // shows another floor's rooms — e.g. AMIT opening dorm-3 saw floor 1's
+  // "1,2,3,3a…" under the "2-qavat" tab.
+  const layoutReqSeq = useRef(0)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
@@ -263,10 +269,12 @@ export default function Dekan3DXonalarPage() {
   }, [activeDormId, primaryDormId])
 
   const loadFloorLayout = async (floor: number) => {
+    const reqId = ++layoutReqSeq.current
     setLoading(true)
     setSelectedRoomNumber(null)
     try {
       const blocks = await fetchFloorLayout(floor, activeDormId)
+      if (reqId !== layoutReqSeq.current) return // a newer load has superseded this one
       const toEditable = (b: (typeof blocks)[number]): EditableBlock => ({
         id: makeId(),
         roomNumber: b.roomNumber,
@@ -280,13 +288,14 @@ export default function Dekan3DXonalarPage() {
       setRightBlocks(right)
       setLastSavedSnapshot(snapshotBlocks(left, right))
     } catch (error) {
+      if (reqId !== layoutReqSeq.current) return
       console.error('Qavat tarxini yuklashda xato:', error)
       toast.error('Qavat tarxini yuklab bo\'lmadi')
       setLeftBlocks([])
       setRightBlocks([])
       setLastSavedSnapshot(snapshotBlocks([], []))
     } finally {
-      setLoading(false)
+      if (reqId === layoutReqSeq.current) setLoading(false)
     }
   }
 
@@ -356,9 +365,12 @@ export default function Dekan3DXonalarPage() {
 
   useEffect(() => {
     if (!dormsLoaded) return
+    // activeFloor is about to be clamped into `floors` by the effect above —
+    // don't fetch (and race) a floor this dekan doesn't hold in this building.
+    if (floors.length > 0 && !floors.includes(activeFloor)) return
     void loadFloorLayout(activeFloor)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFloor, activeDormId, dormsLoaded])
+  }, [activeFloor, activeDormId, dormsLoaded, floors.join(',')])
 
   // Warn before the browser tab is closed/refreshed with unsaved edits —
   // switching floors is guarded separately (see the floor tab buttons).

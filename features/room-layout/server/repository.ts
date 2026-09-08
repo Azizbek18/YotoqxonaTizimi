@@ -191,12 +191,24 @@ export function createRoomLayoutRepository() {
         .from('floor_room_layout')
         .select('room_number, side, position, size, capacity, frozen')
         .eq('floor_number', floorNumber)
+        .is('block', null)
         .order('side', { ascending: true })
         .order('position', { ascending: true })
       if (scope.dormId) query = query.eq('dorm_id', scope.dormId)
       const { data, error } = await query
       if (error) throw error
-      return data ?? []
+      let rows = data ?? []
+      // Shared building: a dekan may only read a floor they actually hold —
+      // plus any individual rooms granted to them on it, minus rooms granted
+      // away. Without this, asking for another faculty's floor number returns
+      // its whole layout (mirrors listAllRooms' in-memory scoping).
+      if (scope.shared) {
+        const away = new Set(scope.grantedAway)
+        const mine = new Set(scope.grantedToMe)
+        const ownsFloor = scope.floors === null || scope.floors.includes(floorNumber)
+        rows = rows.filter((r) => !away.has(r.room_number) && (ownsFloor || mine.has(r.room_number)))
+      }
+      return rows
     },
 
     // Renumbers the whole building to match a "nechta xona per qavat" target

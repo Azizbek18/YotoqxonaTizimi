@@ -51,6 +51,12 @@ describe('compareRoomNumbers', () => {
   it('puts numeric rooms before non-numeric ones', () => {
     expect(['12', 'A1', '2', 'Blok-3'].sort(compareRoomNumbers)).toEqual(['2', '12', 'A1', 'Blok-3'])
   })
+
+  it('slots a lettered sub-room between its base and the next number', () => {
+    expect(['8', '3', '7a', '7', '10', '3a'].sort(compareRoomNumbers)).toEqual(
+      ['3', '3a', '7', '7a', '8', '10'],
+    )
+  })
 })
 
 describe('describeFloorFill', () => {

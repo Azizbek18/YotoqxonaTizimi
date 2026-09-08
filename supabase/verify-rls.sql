@@ -4,8 +4,8 @@
 -- Read-only. Compare the output against the "expected state" table in the
 -- Bosqich 5 migration runbook. Anything not listed there — especially a
 -- policy on public.users / staff / permit_requests / tolovlar / arizalar
--- whose USING clause is not `auth.uid() = <owner column>` — is drift and
--- must be investigated before the migration (see 202607280018 for how a
+-- whose permissive USING clause is not `auth.uid() = <owner column>` — is
+-- drift and must be investigated (see 202607280018 for how a
 -- `USING (true)` policy once reached production outside the migration files).
 
 -- Shared-dorm tenancy (P0–P5, migrations 202609130000–202609160000):
@@ -18,6 +18,13 @@
 --   four rewritten room RPCs: SET search_path = public, EXECUTE revoked from
 --   anon/authenticated. Expect queries 2/4 below to show NO new policy and
 --   NO new anon/authenticated-callable function.
+
+-- Live sessions (20260906032206): users / staff / arizalar / tolovlar each
+-- have an additional RESTRICTIVE policy requiring a live session. Storage
+-- has the same restriction except for the deliberately public avatar bucket.
+-- The private.has_active_auth_session() helper reads auth.sessions using the
+-- verified JWT subject and session_id; its schema must not be API-exposed.
+-- Behavioral tests: tests/live-auth-sessions.sql (fixtures roll back).
 
 -- 1. Every table in `public`: is RLS enabled? is it FORCED?
 SELECT
@@ -36,6 +43,7 @@ ORDER BY c.relrowsecurity, c.relname;
 SELECT
   tablename,
   policyname,
+  permissive,
   cmd,
   roles,
   qual        AS using_expr,
@@ -77,7 +85,7 @@ GROUP BY p.proname, args, p.prosecdef
 ORDER BY p.proname;
 
 -- 5. Storage buckets that are public. Only buckets the app deliberately
---    serves unauthenticated (none, currently) should be here.
+--    serves unauthenticated (avatar, currently) should be here.
 SELECT id, name, public FROM storage.buckets ORDER BY id;
 
 -- 6. Default privileges for role postgres in `public` — 202607280021 set
@@ -90,3 +98,13 @@ SELECT
 FROM pg_default_acl d
 JOIN pg_namespace n ON n.oid = d.defaclnamespace
 WHERE n.nspname = 'public';
+
+-- 7. Expect five RESTRICTIVE live-session policies (four public tables and
+--    storage.objects), with both USING and WITH CHECK present.
+SELECT schemaname, tablename, policyname, permissive, roles, qual, with_check
+FROM pg_policies
+WHERE policyname IN (
+  'Require live auth session',
+  'Require live auth session for private files'
+)
+ORDER BY schemaname, tablename;

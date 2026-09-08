@@ -199,13 +199,23 @@ export default function AddDormCard({ onAdded }: { onAdded: (dorm: DekanDorm) =>
             </div>
           </div>
 
-          <button
-            onClick={submit}
-            disabled={submitting || selected.size === 0}
-            className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.accentSolid}`}
-          >
-            {submitting ? <Loader2 size={14} className="animate-spin" /> : <>Qo&apos;shish <Check size={14} /></>}
-          </button>
+          {preview.exists && floors.length > 0 && floors.every((f) => f.taken) ? (
+            <p className={`rounded-xl border px-3.5 py-3 text-[11px] leading-relaxed ${ui.inset} ${ui.body}`}>
+              Bu binoning barcha qavatlari band. Agar sizga shu yerda{' '}
+              <span className={`font-semibold ${ui.strong}`}>faqat bir necha xona</span> kerak bo&apos;lsa,
+              qavatni butunlay olish shart emas — buni superadmin{' '}
+              <span className={`font-semibold ${ui.accentText}`}>Yotoqxonalar → {numberInput.trim()}-yotoqxona → &ldquo;Xona istisnolari&rdquo;</span>{' '}
+              bo&apos;limidan beradi.
+            </p>
+          ) : (
+            <button
+              onClick={submit}
+              disabled={submitting || selected.size === 0}
+              className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.accentSolid}`}
+            >
+              {submitting ? <Loader2 size={14} className="animate-spin" /> : <>Qo&apos;shish <Check size={14} /></>}
+            </button>
+          )}
         </div>
       )}
     </div>

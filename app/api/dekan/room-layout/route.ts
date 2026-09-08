@@ -19,8 +19,16 @@ export async function GET(request: NextRequest) {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
     const faculty = requirePickedFaculty(staff)
 
-    const floor = request.nextUrl.searchParams.get('floor')
     const dormId = request.nextUrl.searchParams.get('dormId') ?? undefined
+
+    // The generator preview asks for the whole building's per-floor room
+    // counts (so sequential numbering flows past another faculty's floors).
+    if (request.nextUrl.searchParams.get('view') === 'floor-counts') {
+      const floorCounts = await createRoomLayoutService().buildingFloorCounts(faculty, dormId)
+      return NextResponse.json({ floorCounts })
+    }
+
+    const floor = request.nextUrl.searchParams.get('floor')
     const blocks = await createRoomLayoutService().getFloor(faculty, floor, dormId)
     return NextResponse.json({ blocks })
   } catch (error) {

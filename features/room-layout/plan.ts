@@ -87,6 +87,13 @@ export function describeFloorFill(
   numbering: RoomNumbering,
   existingRooms: readonly RoomFloor[],
   occupiedRoomNumbers: ReadonlySet<string> = new Set(),
+  /**
+   * Numeric-room count per floor for the WHOLE building, when `existingRooms`
+   * is scoped to one faculty (a shared dorm). Sequential numbering flows past
+   * the other faculty's floors too, so the preview needs their real counts to
+   * match what apply_building_layout will do. Omit for a sole-faculty dorm.
+   */
+  buildingNumericCounts?: Readonly<Record<number, number>>,
 ): FloorFillSummary[] {
   const roomsByFloor = new Map<number, string[]>()
   existingRooms.forEach((room) => {
@@ -95,7 +102,31 @@ export function describeFloorFill(
     roomsByFloor.set(room.floor, list)
   })
 
-  let offset = 0
+  // The numeric target for every planned floor (plan count minus the lettered
+  // rooms already on it — those keep their slot and never renumber).
+  const plannedTarget = new Map<number, number>()
+  plans.forEach(({ floor, rooms: planCount }) => {
+    const allOnFloor = roomsByFloor.get(floor) ?? []
+    const letteredHere = allOnFloor.length - allOnFloor.filter(isPlainRoomNumber).length
+    plannedTarget.set(floor, Math.max(planCount - letteredHere, 0))
+  })
+  // Numeric rooms already sitting on a floor the plan doesn't touch —
+  // preferring the whole-building tally when we have one (shared dorm), else
+  // whatever's in `existingRooms`.
+  const numericByFloor = new Map<number, number>()
+  existingRooms.forEach((room) => {
+    if (isPlainRoomNumber(room.roomNumber)) {
+      numericByFloor.set(room.floor, (numericByFloor.get(room.floor) ?? 0) + 1)
+    }
+  })
+  const untouchedFill = (f: number) =>
+    buildingNumericCounts?.[f] ?? numericByFloor.get(f) ?? 0
+  // Sequential numbering flows across the WHOLE building: a floor's start is
+  // one past every numeric room below it — planned floors by their new target,
+  // untouched floors (another faculty's, in a shared dorm) by what they hold
+  // now. Mirrors apply_building_layout's `building` CTE (202609300016).
+  const floorFill = (f: number) => plannedTarget.get(f) ?? untouchedFill(f)
+
   return [...plans]
     .sort((a, b) => a.floor - b.floor)
     .map(({ floor, rooms: planCount }) => {
@@ -107,9 +138,11 @@ export function describeFloorFill(
       const lettered = allOnFloor.length - current.length
       const target = Math.max(planCount - lettered, 0)
 
-      const lo = numbering === 'per-floor' ? floor * 100 + 1 : offset + 1
+      let lo = numbering === 'per-floor' ? floor * 100 + 1 : 1
+      if (numbering !== 'per-floor') {
+        for (let f = 1; f < floor; f++) lo += floorFill(f)
+      }
       const hi = lo + target - 1
-      if (numbering !== 'per-floor') offset += target
 
       const currentNums = current.map(Number).filter((n) => Number.isFinite(n))
       const occupiedHere = current.filter((n) => occupiedRoomNumbers.has(n))

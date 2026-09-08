@@ -11,7 +11,7 @@ function block(roomNumber: string) {
 
 function repository(overrides: Partial<RoomLayoutRepository> = {}) {
   return {
-    scopeFor: vi.fn(async () => ({ dormId: 'd1', floors: null })),
+    scopeFor: vi.fn(async () => ({ dormId: 'd1', floors: null, shared: false, grantedToMe: [], grantedAway: [] })),
     listAllRooms: vi.fn(async () => []),
     occupiedRoomNumbers: vi.fn(async () => new Set<string>()),
     applyBuildingLayout: vi.fn(async () => ({ created: 0, removed: 0, renumbered: 0 })),
@@ -293,7 +293,7 @@ describe('room layout service — a specific building (dormId)', () => {
 
   it('saveFloor resolves the resident-floor sync against the SAME building it just saved, not primary', async () => {
     const repo = repository({
-      scopeFor: vi.fn(async (faculty: string, dormId?: string) => ({ dormId: dormId ?? 'd1', floors: null })),
+      scopeFor: vi.fn(async (faculty: string, dormId?: string) => ({ dormId: dormId ?? 'd1', floors: null, shared: false, grantedToMe: [], grantedAway: [] })),
     } as Partial<RoomLayoutRepository>)
     await createRoomLayoutService(repo).saveFloor(FACULTY, 2, [block('101')], DORM2)
     expect(repo.scopeFor).toHaveBeenCalledWith(FACULTY, DORM2)

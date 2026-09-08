@@ -13,6 +13,8 @@ import {
   type DormPreview,
   type DormSection,
   type DormSetupInput,
+  type RoomGrantCell,
+  type RoomGrantGrid,
 } from '../types'
 import { createDormRepository, type DormFloorRow, type DormRepository } from './repository'
 
@@ -42,6 +44,31 @@ function mapSectionRpcError(error: unknown): never {
     throw new ApiError(404, 'Yotoqxona topilmadi')
   }
   throw error as Error
+}
+
+// dorm_grant_room / dorm_ungrant_room: P0003 room still has a conflicting
+// resident; P0001 blocked dorm (grants don't apply); P0002 dorm/room missing.
+function mapRoomGrantRpcError(error: unknown): never {
+  const code = (error as { code?: string } | null)?.code
+  if (code === 'P0003') {
+    throw new ApiError(409, 'Bu xonada boshqa fakultetning yashovchisi bor — avval uni ko‘chiring')
+  }
+  if (code === 'P0001') {
+    throw new ApiError(409, 'Blokli yotoqxonada xona istisnolari ishlatilmaydi (seksiya jadvalidan foydalaning)')
+  }
+  if (code === 'P0002') {
+    throw new ApiError(404, 'Yotoqxona yoki xona topilmadi')
+  }
+  throw error as Error
+}
+
+function parseRoomRef(input: unknown): { dormId: string; roomNumber: string } {
+  const s = (input ?? {}) as Record<string, unknown>
+  const dormId = typeof s.dormId === 'string' ? s.dormId.trim() : ''
+  if (!dormId) throw new ApiError(400, 'Yotoqxona tanlanmagan')
+  const roomNumber = typeof s.roomNumber === 'string' ? s.roomNumber.trim().slice(0, 20) : ''
+  if (!roomNumber) throw new ApiError(400, 'Xona raqami kiritilmagan')
+  return { dormId, roomNumber }
 }
 
 export type DekanStaffCtx = { id: string; faculty: string }
@@ -674,6 +701,66 @@ export function createDormService(repository: DormRepository = createDormReposit
         })
       }
       return dorms.sort((a, b) => a.number.localeCompare(b.number))
+    },
+
+    // ---- room-level faculty grants ('simple' shared dorm), superadmin ----
+
+    /** Every non-blocked room of a dorm with its floor owner, current grant
+     *  and resident count — for the grant grid. */
+    async roomGrantGrid(dormId: string): Promise<RoomGrantGrid> {
+      const layout = await repository.getDormLayout(dormId)
+      if (!layout) throw new ApiError(404, 'Yotoqxona topilmadi')
+      if (layout.layoutKind === 'blocked') {
+        throw new ApiError(409, 'Blokli yotoqxonada xona istisnolari ishlatilmaydi')
+      }
+      const [dorm, floors, { rooms, occupants }, grants] = await Promise.all([
+        repository.getDorm(dormId),
+        repository.listFloors(dormId),
+        repository.simpleDormRoomsWithOccupancy(dormId),
+        repository.listRoomGrants(dormId),
+      ])
+      const ownerByFloor = new Map(floors.map((f) => [f.floor_number, f.faculty]))
+      const grantByRoom = new Map(grants.map((g) => [g.room_number, g.faculty]))
+      const residentsByRoom = new Map<string, number>()
+      for (const o of occupants) {
+        residentsByRoom.set(o.room_number, (residentsByRoom.get(o.room_number) ?? 0) + 1)
+      }
+
+      const cells: RoomGrantCell[] = rooms
+        .slice()
+        .sort((a, b) => a.floor_number - b.floor_number
+          || a.room_number.localeCompare(b.room_number, undefined, { numeric: true }))
+        .map((r) => ({
+          roomNumber: r.room_number,
+          floor: r.floor_number,
+          ownerFaculty: ownerByFloor.get(r.floor_number) ?? null,
+          faculty: grantByRoom.get(r.room_number) ?? null,
+          granted: grantByRoom.has(r.room_number),
+          residentCount: residentsByRoom.get(r.room_number) ?? 0,
+        }))
+
+      return { dormId, number: dorm?.number ?? '', floorCount: layout.floorCount, cells }
+    },
+
+    async grantRoom(input: unknown, staffId: string) {
+      const { dormId, roomNumber } = parseRoomRef(input)
+      const rawFaculty = ((input ?? {}) as Record<string, unknown>).faculty
+      const faculty = normalizeFaculty(typeof rawFaculty === 'string' ? rawFaculty : null)
+      if (!faculty) throw new ApiError(400, 'Fakultet noto‘g‘ri')
+      try {
+        return await repository.grantRoom(dormId, roomNumber, faculty, staffId)
+      } catch (error) {
+        mapRoomGrantRpcError(error)
+      }
+    },
+
+    async ungrantRoom(input: unknown) {
+      const { dormId, roomNumber } = parseRoomRef(input)
+      try {
+        return await repository.ungrantRoom(dormId, roomNumber)
+      } catch (error) {
+        mapRoomGrantRpcError(error)
+      }
     },
   }
 

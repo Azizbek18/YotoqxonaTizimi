@@ -34,6 +34,10 @@ function fakeRepo(overrides: Partial<DormRepository> = {}, floors: DormFloorRow[
     dekanBlockedSections: vi.fn(async () => []),
     blockedDormRooms: vi.fn(async () => []),
     blockedDormOccupants: vi.fn(async () => ({ users: [], permits: [] })),
+    listRoomGrants: vi.fn(async () => []),
+    simpleDormRoomsWithOccupancy: vi.fn(async () => ({ rooms: [], occupants: [] })),
+    grantRoom: vi.fn(async () => ({ room: '45', floor: 2, faculty: 'amit' })),
+    ungrantRoom: vi.fn(async () => ({ room: '45', cleared: true })),
     ...overrides,
   } as unknown as DormRepository
 }
@@ -356,5 +360,54 @@ describe('createDormService.blockedRoomMap', () => {
 
     const b2 = dorm.sections[1].rooms.find((r) => r.roomNumber === '2')!
     expect(b2.occupants).toEqual([{ name: 'Vali', gender: 'male', kind: 'permit' }])
+  })
+})
+
+describe('createDormService — room-level faculty grants (simple dorm)', () => {
+  it('roomGrantGrid marks granted rooms and carries the floor owner + resident count', async () => {
+    const repo = fakeRepo({
+      getDormLayout: vi.fn(async () => ({ layoutKind: 'simple' as const, blockCount: 1, floorCount: 5 })),
+      listFloors: vi.fn(async () => [
+        { floor_number: 1, faculty: 'ozbek-filologiyasi', pending_faculty: null, pending_at: null },
+        { floor_number: 2, faculty: 'ozbek-filologiyasi', pending_faculty: null, pending_at: null },
+      ]),
+      simpleDormRoomsWithOccupancy: vi.fn(async () => ({
+        rooms: [
+          { room_number: '10', floor_number: 1 },
+          { room_number: '45', floor_number: 2 },
+          { room_number: '46', floor_number: 2 },
+        ],
+        occupants: [{ room_number: '45', faculty: 'amit' }, { room_number: '45', faculty: 'amit' }],
+      })),
+      listRoomGrants: vi.fn(async () => [{ room_number: '45', faculty: 'amit' }]),
+    })
+    const grid = await createDormService(repo).roomGrantGrid('d1')
+    expect(grid.cells).toHaveLength(3)
+    const r45 = grid.cells.find((c) => c.roomNumber === '45')!
+    expect(r45).toMatchObject({ floor: 2, ownerFaculty: 'ozbek-filologiyasi', faculty: 'amit', granted: true, residentCount: 2 })
+    const r46 = grid.cells.find((c) => c.roomNumber === '46')!
+    expect(r46).toMatchObject({ faculty: null, granted: false, residentCount: 0 })
+  })
+
+  it('roomGrantGrid refuses a blocked dorm', async () => {
+    const repo = fakeRepo({ getDormLayout: vi.fn(async () => ({ layoutKind: 'blocked' as const, blockCount: 2, floorCount: 12 })) })
+    await expect(createDormService(repo).roomGrantGrid('d1')).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('grantRoom normalises the faculty and forwards the staff id', async () => {
+    const repo = fakeRepo()
+    await createDormService(repo).grantRoom({ dormId: 'd1', roomNumber: ' 45 ', faculty: 'amit' }, 's-admin')
+    expect(repo.grantRoom).toHaveBeenCalledWith('d1', '45', 'amit', 's-admin')
+  })
+
+  it('grantRoom rejects an unknown faculty and maps P0003 to 409', async () => {
+    await expect(
+      createDormService(fakeRepo()).grantRoom({ dormId: 'd1', roomNumber: '45', faculty: 'nope' }, 's'),
+    ).rejects.toMatchObject({ status: 400 })
+
+    const repo = fakeRepo({ grantRoom: vi.fn(async () => { throw Object.assign(new Error('x'), { code: 'P0003' }) }) })
+    await expect(
+      createDormService(repo).grantRoom({ dormId: 'd1', roomNumber: '45', faculty: 'amit' }, 's'),
+    ).rejects.toMatchObject({ status: 409 })
   })
 })

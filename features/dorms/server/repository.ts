@@ -226,6 +226,60 @@ export function createDormRepository() {
       return { users: users.data ?? [], permits: permits.data ?? [] }
     },
 
+    // ---- room-level faculty grants (202609300012), 'simple' dorms ----
+
+    async listRoomGrants(dormId: string) {
+      const { data, error } = await supabase
+        .from('dorm_room_grant')
+        .select('room_number, faculty')
+        .eq('dorm_id', dormId)
+      if (error) throw error
+      return (data ?? []) as Array<{ room_number: string; faculty: string }>
+    },
+
+    // Every non-blocked room of a dorm + who currently lives in it (users +
+    // approved permits), keyed by room_number — for the grant grid.
+    async simpleDormRoomsWithOccupancy(dormId: string) {
+      const [rooms, users, permits] = await Promise.all([
+        supabase.from('floor_room_layout')
+          .select('room_number, floor_number')
+          .eq('dorm_id', dormId).is('block', null),
+        supabase.from('users')
+          .select('room_number, faculty')
+          .eq('role', 'talaba').eq('dorm_id', dormId).not('room_number', 'is', null),
+        supabase.from('permit_requests')
+          .select('room_number, faculty')
+          .eq('status', 'approved').eq('dorm_id', dormId).not('room_number', 'is', null),
+      ])
+      if (rooms.error) throw rooms.error
+      if (users.error) throw users.error
+      if (permits.error) throw permits.error
+      return {
+        rooms: (rooms.data ?? []) as Array<{ room_number: string; floor_number: number }>,
+        occupants: [...(users.data ?? []), ...(permits.data ?? [])] as Array<{ room_number: string; faculty: string | null }>,
+      }
+    },
+
+    async grantRoom(dormId: string, roomNumber: string, faculty: string, staffId: string) {
+      const { data, error } = await supabase.rpc('dorm_grant_room', {
+        p_dorm_id: dormId,
+        p_room_number: roomNumber,
+        p_faculty: faculty,
+        p_staff_id: staffId,
+      })
+      if (error) throw error
+      return data as { room: string; floor: number; faculty: string }
+    },
+
+    async ungrantRoom(dormId: string, roomNumber: string) {
+      const { data, error } = await supabase.rpc('dorm_ungrant_room', {
+        p_dorm_id: dormId,
+        p_room_number: roomNumber,
+      })
+      if (error) throw error
+      return data as { room: string; cleared: boolean }
+    },
+
     // Bind a faculty to a dorm. Primary linking is delegated entirely to the
     // RPC so inserting the link and switching the unique `is_primary` flag
     // happen in one database transaction. Writing `is_primary: true` here

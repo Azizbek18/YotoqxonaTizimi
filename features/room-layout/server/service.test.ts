@@ -30,7 +30,7 @@ function repository(overrides: Partial<RoomLayoutRepository> = {}) {
 
 // floor_room_layout row shape listAllRooms returns (position/size added for trim)
 function existingRoom(room_number: string, floor_number: number, extra: Record<string, unknown> = {}) {
-  return { room_number, floor_number, side: 'left', position: 0, size: 'medium', frozen: false, frozen_reason: null, capacity: null, gender: null, ...extra }
+  return { room_number, floor_number, block: null, side: 'left', position: 0, size: 'medium', frozen: false, frozen_reason: null, capacity: null, gender: null, ...extra }
 }
 
 describe('room layout service', () => {

@@ -70,14 +70,18 @@ export function createRoomLayoutRepository() {
       const scope = await scopeFor(faculty, dormId)
       let query = supabase
         .from('floor_room_layout')
-        .select('room_number, floor_number, side, position, size, frozen, frozen_reason, capacity, gender')
+        .select('room_number, floor_number, block, side, position, size, frozen, frozen_reason, capacity, gender')
         .order('floor_number', { ascending: true })
         .order('room_number', { ascending: true })
       if (scope.dormId) query = query.eq('dorm_id', scope.dormId)
       if (scope.floors) query = query.in('floor_number', scope.floors.length ? scope.floors : [-1])
       const { data, error } = await query
       if (error) throw error
-      return data ?? []
+      // This whole feature (map + 3D builder + generator) is for 'simple'
+      // dorms, where room_number is unique per building. A blocked-layout
+      // dorm's rooms repeat the number per floor/wing and are managed from
+      // /dekan/blok-xonalar — never surface them here.
+      return (data ?? []).filter((r) => !(r as { block?: string | null }).block)
     },
 
     async insertRooms(

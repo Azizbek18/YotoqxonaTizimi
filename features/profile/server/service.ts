@@ -17,12 +17,12 @@ export function createProfileService(repository: ProfileRepository = createProfi
       const profile = await repository.findStudent(studentId)
       if (!profile) throw new ApiError(404, 'Talaba profili topilmadi')
       const roommates = profile.room_number
-        ? await repository.listRoommates(studentId, profile.room_number)
+        ? await repository.listRoommates(studentId, profile.room_number, profile)
         : []
       const floor = profile.assigned_floor
         ?? extractFloor(profile.room_number)
       const floorCaptain = floor && profile.gender
-        ? await repository.findFloorCaptain(floor, profile.gender)
+        ? await repository.findFloorCaptain(floor, profile.gender, profile)
         : null
       return {
         success: true,

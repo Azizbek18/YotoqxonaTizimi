@@ -13,8 +13,8 @@ vi.mock('@/features/staff-accounts/server/service', () => ({
 // Imported after the mocks above so the route picks up the mocked modules.
 const { GET } = await import('./route')
 
-// faculty: null -> staffFacultyOrPrimary resolves to the primary building ('amit').
-const ADMIN = { id: 'admin-1', full_name: 'Admin', email: 'admin@example.com', role: 'admin', status: 'active', faculty: null }
+// Admin has explicitly selected a faculty.
+const ADMIN = { id: 'admin-1', full_name: 'Admin', email: 'admin@example.com', role: 'admin', status: 'active', faculty: 'amit' }
 const AUTH = { user: { id: ADMIN.id }, staff: ADMIN }
 
 function getRequest() {

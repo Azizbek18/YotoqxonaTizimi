@@ -73,11 +73,11 @@ describe('GET', () => {
     expect(argsOf('in')).toContainEqual(['audience', ['all', 'faculty']])
   })
 
-  it('falls back to the primary faculty for an admin with no faculty', async () => {
+  it('rejects an admin with no faculty instead of reading AMIT announcements', async () => {
     requireActiveStaff.mockResolvedValue(AUTH(AMIT_ADMIN))
     terminal = { data: [], error: null }
-    await GET(req('GET'))
-    expect(argsOf('ilike')).toContainEqual(['faculty', 'amit'])
+    expect((await GET(req('GET'))).status).toBe(403)
+    expect(from).not.toHaveBeenCalled()
   })
 })
 

@@ -2,6 +2,7 @@ import 'server-only'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { getRequestUser } from '@/lib/server-auth'
+import { normalizeFaculty } from '@/lib/faculties'
 
 export type FloorCaptain = {
   id: string
@@ -34,5 +35,12 @@ export async function requireFloorCaptain(request: NextRequest) {
     return { error: NextResponse.json({ error: 'Siz qavat sardori emassiz' }, { status: 403 }) } as const
   }
 
-  return { caller: caller as FloorCaptain, serviceSupabase } as const
+  // A sardor's scope is one faculty's building. Missing / unrecognised
+  // faculty fails closed — never silently widens to the primary building.
+  const faculty = normalizeFaculty(caller.faculty)
+  if (!faculty) {
+    return { error: NextResponse.json({ error: 'Fakultet biriktirilmagan' }, { status: 403 }) } as const
+  }
+
+  return { caller: caller as FloorCaptain, serviceSupabase, faculty } as const
 }

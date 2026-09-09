@@ -101,8 +101,8 @@ export function createAppSettingsRepository() {
     return data.dorm_id
   }
 
-  // For reads only: fall back to the primary building while a faculty is
-  // still being set up (matches the fee fallback and PRIMARY_FACULTY).
+  // Read only a building assigned to this faculty. An unconfigured faculty
+  // must never borrow AMIT's staff contacts or settings.
   // `ownDorm` says whether the id is the faculty's own — the TTJ building
   // number must never be borrowed from another building (see getDormSettings).
   // An explicit dormId (a specific building the dekan is looking at, e.g. a
@@ -111,7 +111,6 @@ export function createAppSettingsRepository() {
     if (dormId) return { dormId: await validateOwnDormId(faculty, dormId), ownDorm: true }
     const own = await ownDormId(faculty)
     if (own) return { dormId: own, ownDorm: true }
-    if (faculty !== PRIMARY_FACULTY) return { dormId: await ownDormId(PRIMARY_FACULTY), ownDorm: false }
     return { dormId: null, ownDorm: false }
   }
 
@@ -124,14 +123,6 @@ export function createAppSettingsRepository() {
     if (error) throw error
     if (data) return toFees(data as Record<string, unknown>)
 
-    if (faculty !== PRIMARY_FACULTY) {
-      const { data: fb } = await supabase
-        .from('app_settings')
-        .select(FEE_COLUMNS)
-        .eq('faculty', PRIMARY_FACULTY)
-        .maybeSingle()
-      if (fb) return toFees(fb as Record<string, unknown>)
-    }
     return { ...FEE_DEFAULTS }
   }
 
@@ -156,6 +147,7 @@ export function createAppSettingsRepository() {
         }
       }
     } catch (error) {
+      if (error instanceof ApiError) throw error
       // Deploy window: this code can go live a few minutes before
       // `supabase db push` creates `dorms` / `faculty_dorm`. While those
       // tables are missing, read the non-fee settings from the old
@@ -178,7 +170,7 @@ export function createAppSettingsRepository() {
       return toDormSettings(row)
     }
     try {
-      return (await pick(faculty)) ?? (faculty !== PRIMARY_FACULTY ? await pick(PRIMARY_FACULTY) : null)
+      return await pick(faculty)
     } catch {
       return null
     }
@@ -190,8 +182,7 @@ export function createAppSettingsRepository() {
   }
 
   // Every faculty's effective fee pair in one query — for the superadmin
-  // fee table. A faculty with no row of its own shows the primary
-  // building's fees (or the built-in default) and `configured: false`.
+  // fee table. Missing rows show built-in defaults and `configured: false`.
   async function listFacultyFees(): Promise<FacultyFee[]> {
     const { data, error } = await supabase
       .from('app_settings')
@@ -203,10 +194,9 @@ export function createAppSettingsRepository() {
         row,
       ]),
     )
-    const primary = byFaculty.get(PRIMARY_FACULTY)
     return PERMIT_FACULTIES.map((f) => {
       const own = byFaculty.get(f.value)
-      const src = own ?? primary
+      const src = own
       return {
         faculty: f.value,
         facultyLabel: f.label,

@@ -61,7 +61,7 @@ describe('profile floor captain lookup', () => {
 
     await createProfileService(repository).getProfile('student-id')
 
-    expect(repository.findFloorCaptain).toHaveBeenCalledWith(2, 'male')
+    expect(repository.findFloorCaptain).toHaveBeenCalledWith(2, 'male', expect.objectContaining({ id: 'student-id' }))
   })
 
   it('prefers the persisted assigned floor when it exists', async () => {
@@ -69,6 +69,6 @@ describe('profile floor captain lookup', () => {
 
     await createProfileService(repository).getProfile('student-id')
 
-    expect(repository.findFloorCaptain).toHaveBeenCalledWith(5, 'male')
+    expect(repository.findFloorCaptain).toHaveBeenCalledWith(5, 'male', expect.objectContaining({ id: 'student-id' }))
   })
 })

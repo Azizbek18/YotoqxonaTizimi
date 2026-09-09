@@ -8,6 +8,10 @@ export function createCleaningScheduleService(repository: CleaningScheduleReposi
   async function room(studentId: string) {
     const { roomNumber, faculty } = await repository.getRoomAndFaculty(studentId)
     if (!roomNumber) throw new ApiError(409, 'Talabaga xona biriktirilmagan')
+    // Fail closed: the cleaning schedule is keyed by (faculty, room_number),
+    // so a faculty-less student must not read or write the primary
+    // building's schedule for a colliding room number.
+    if (!faculty) throw new ApiError(403, 'Fakultet biriktirilmagan')
     return { roomNumber, faculty }
   }
   return {

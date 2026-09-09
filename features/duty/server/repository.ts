@@ -1,14 +1,14 @@
 import 'server-only'
 import { getServiceSupabase } from '@/lib/server-supabase'
-import { normalizeFaculty, PRIMARY_FACULTY } from '@/lib/faculties'
+import { normalizeFaculty } from '@/lib/faculties'
 import type { Json } from '@/types/database.generated'
 
 export function createCleaningScheduleRepository() {
   const supabase = getServiceSupabase()
   return {
     // The student's room and their faculty (= their building — housing
-    // faculty is the academic faculty, always). Faculty-less rows fall back
-    // to the primary building.
+    // faculty is the academic faculty, always). A faculty-less row returns
+    // null here and the service fails closed — never the primary building.
     async getRoomAndFaculty(studentId: string) {
       const { data, error } = await supabase
         .from('users')
@@ -19,7 +19,7 @@ export function createCleaningScheduleRepository() {
       if (error) throw error
       return {
         roomNumber: data?.room_number ?? null,
-        faculty: normalizeFaculty(data?.faculty ?? null) ?? PRIMARY_FACULTY,
+        faculty: normalizeFaculty(data?.faculty ?? null),
       }
     },
     async getRoommates(faculty: string, roomNumber: string) {

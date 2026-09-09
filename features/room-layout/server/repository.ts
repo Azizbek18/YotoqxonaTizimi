@@ -1,6 +1,5 @@
 import 'server-only'
 import { getServiceSupabase } from '@/lib/server-supabase'
-import { PRIMARY_FACULTY } from '@/lib/faculties'
 import { ApiError } from '@/server/http/api-error'
 import type { RoomLayoutBlock } from '../types'
 
@@ -83,15 +82,6 @@ export function createRoomLayoutRepository() {
         .eq('is_primary', true)
         .maybeSingle()
       resolved = link?.dorm_id ?? null
-      if (!resolved && faculty !== PRIMARY_FACULTY) {
-        const { data: fb } = await supabase
-          .from('faculty_dorm')
-          .select('dorm_id')
-          .eq('faculty', PRIMARY_FACULTY)
-          .eq('is_primary', true)
-          .maybeSingle()
-        resolved = fb?.dorm_id ?? null
-      }
     }
     if (!resolved) return { dormId: null, floors: null, shared: false, grantedToMe: [], grantedAway: [] }
     const dorm = resolved

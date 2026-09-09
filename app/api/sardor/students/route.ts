@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireFloorCaptain } from '@/server/auth/sardor'
-import { normalizeFaculty, PRIMARY_FACULTY } from '@/lib/faculties'
 
 export async function GET(req: NextRequest) {
   try {
     const scoped = await requireFloorCaptain(req)
     if (scoped.error) return scoped.error
-    const { caller, serviceSupabase } = scoped
+    const { caller, serviceSupabase, faculty: captainFaculty } = scoped
 
     const captainFloor = caller.assigned_floor
     const captainGender = caller.gender
@@ -16,9 +15,9 @@ export async function GET(req: NextRequest) {
     }
 
     // A sardor's scope is one faculty's building: same faculty, same floor,
-    // same gender. Without the faculty filter an AMIT sardor would see
-    // another faculty's residents on the same physical floor number.
-    const captainFaculty = normalizeFaculty(caller.faculty) ?? PRIMARY_FACULTY
+    // same gender. `captainFaculty` is resolved and validated in
+    // requireFloorCaptain — a faculty-less sardor is rejected there, never
+    // widened to the primary building.
 
     // assigned_floor is kept in sync with floor_room_layout by the
     // room-assignment flow, so it's the correct source of truth (unlike

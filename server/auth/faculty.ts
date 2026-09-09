@@ -1,7 +1,7 @@
 import 'server-only'
 import { cookies } from 'next/headers'
 import { getServiceSupabase } from '@/lib/server-supabase'
-import { normalizeFaculty, PRIMARY_FACULTY } from '@/lib/faculties'
+import { normalizeFaculty } from '@/lib/faculties'
 import { ApiError } from '@/server/http/api-error'
 
 /** Superadmin (`admin` role) "acting scope" — a faculty code, or `*` = global. */
@@ -45,37 +45,34 @@ export function requireStaffFaculty(faculty: string | null | undefined): string 
 }
 
 /**
- * A staff caller's faculty, or PRIMARY_FACULTY when they have none — for
- * routes shared by dekan (faculty-scoped) and admin (no faculty, operates
- * on the primary building during the transition).
+ * Legacy export retained for existing callers. Missing faculty now fails
+ * closed instead of silently granting access to the AMIT faculty.
  */
 export function staffFacultyOrPrimary(faculty: string | null | undefined): string {
-  return normalizeFaculty(faculty ?? null) ?? PRIMARY_FACULTY
+  return requireStaffFaculty(faculty)
 }
 
 /**
  * The faculty of any authenticated caller: staff.faculty first, then
- * users.faculty. Falls back to PRIMARY_FACULTY when neither is set (e.g. an
- * admin, or a staff row with no faculty) — the single-building default
- * until every faculty's dorm data is populated (multi-faculty migration,
- * Bosqich 3).
+ * users.faculty. Missing or unrecognised assignments fail closed.
  */
 export async function resolveCallerFaculty(userId: string): Promise<string> {
   const supabase = getServiceSupabase()
 
-  const { data: staff } = await supabase.from('staff').select('faculty, role').eq('id', userId).maybeSingle()
+  const { data: staff, error: staffError } = await supabase.from('staff').select('faculty, role').eq('id', userId).maybeSingle()
+  if (staffError) throw staffError
   // A superadmin who has picked a faculty in the sidebar resolves to it;
-  // global mode falls through to their bound faculty as a harmless default
-  // (room-map style endpoints are inherently single-faculty).
+  // global mode must pick a faculty for these single-faculty endpoints.
   if (staff?.role === 'admin') {
     const scope = await readSuperadminScope()
     if (scope !== 'global') return scope.faculty
+    throw new ApiError(400, 'Avval fakultetni tanlang', 'SCOPE_REQUIRED')
   }
-  const staffFaculty = normalizeFaculty(staff?.faculty ?? null)
-  if (staffFaculty) return staffFaculty
+  if (staff) return requireStaffFaculty(staff.faculty)
 
-  const { data: student } = await supabase.from('users').select('faculty').eq('id', userId).maybeSingle()
-  return normalizeFaculty(student?.faculty ?? null) ?? PRIMARY_FACULTY
+  const { data: student, error: studentError } = await supabase.from('users').select('faculty').eq('id', userId).maybeSingle()
+  if (studentError) throw studentError
+  return requireStaffFaculty(student?.faculty)
 }
 
 /**
@@ -90,7 +87,7 @@ export async function staffDormFaculties(
   fallbackFaculty: string | null | undefined,
 ): Promise<string[]> {
   const supabase = getServiceSupabase()
-  const fallback = normalizeFaculty(fallbackFaculty ?? null) ?? PRIMARY_FACULTY
+  const fallback = requireStaffFaculty(fallbackFaculty)
 
   // Prefer the staff row's own dorm; otherwise resolve it from their
   // faculty's mapping (covers a tarbiyachi who registered before the dekan

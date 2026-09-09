@@ -43,7 +43,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^1.8.0",
     "marked": "^18.0.5",
-    "next": "16.2.12",
+    "next": "16.3.4",
     "pdfjs-dist": "^6.3.289",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -73,7 +73,7 @@
     "@types/web-push": "3.6.4",
     "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9.39.5",
-    "eslint-config-next": "16.2.12",
+    "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"

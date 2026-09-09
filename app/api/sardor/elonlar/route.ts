@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireFloorCaptain } from '@/server/auth/sardor'
-import { normalizeFaculty, PRIMARY_FACULTY } from '@/lib/faculties'
 
 const ALLOWED_TYPES = new Set(['Muhim', 'Tadbir', 'Yangilik', 'Ogohlantirish'])
 
@@ -46,7 +45,7 @@ export async function POST(request: NextRequest) {
   try {
     const scoped = await requireFloorCaptain(request)
     if (scoped.error) return scoped.error
-    const { caller, serviceSupabase } = scoped
+    const { caller, serviceSupabase, faculty } = scoped
 
     const body = await request.json()
     const title = typeof body?.title === 'string' ? body.title.trim() : ''
@@ -76,7 +75,7 @@ export async function POST(request: NextRequest) {
         audience: 'floor',
         // Stamp the sardor's own faculty so the student-facing floor feed
         // (features/announcements) only shows it inside that building.
-        faculty: normalizeFaculty(caller.faculty) ?? PRIMARY_FACULTY,
+        faculty,
         target_floor: captainFloor,
         target_gender: captainGender,
         created_by: caller.id,

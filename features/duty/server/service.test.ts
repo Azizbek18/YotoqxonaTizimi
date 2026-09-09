@@ -29,6 +29,13 @@ describe('cleaning schedule service', () => {
     await expect(createCleaningScheduleService(repo).get('student-1')).rejects.toMatchObject({ status: 409 })
   })
 
+  it('fails closed for a student with no resolvable faculty', async () => {
+    const repo = repository({ getRoomAndFaculty: vi.fn(async () => ({ roomNumber: '305' as string | null, faculty: null })) })
+    await expect(createCleaningScheduleService(repo).get('student-1')).rejects.toMatchObject({ status: 403 })
+    await expect(createCleaningScheduleService(repo).save('student-1', {})).rejects.toMatchObject({ status: 403 })
+    expect(repo.get).not.toHaveBeenCalled()
+  })
+
   it('saves with the faculty and rewrites assignee names from the roommate lookup', async () => {
     const repo = repository()
     await createCleaningScheduleService(repo).save('student-1', {

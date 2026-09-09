@@ -18,6 +18,10 @@ import {
   normalizeJshshir,
   normalizeForeignIdNumber,
   normalizePassport,
+  stripPlaceholderNameTokens,
+  splitGluedName,
+  toTitleCaseName,
+  foreignNameReconciles,
 } from './permit-validation'
 
 describe('permit validation', () => {
@@ -163,5 +167,45 @@ describe('name parts', () => {
     expect(namesLikelyMatch('Karimov Islombek Rustamovich', 'Karimov Islom Rustamovich')).toBe(false)
     // A one-character OCR slip in the given name is still tolerated.
     expect(namesLikelyMatch('Karimov Islombek Rustamovich', 'Karimov Islombck Rustamovich')).toBe(true)
+  })
+
+  it('stripPlaceholderNameTokens drops "XXX"-style padding an applicant types for a missing patronymic', () => {
+    expect(stripPlaceholderNameTokens('Ruslanova Merjen XXX')).toBe('Ruslanova Merjen')
+    expect(stripPlaceholderNameTokens('Muradov Dayanch Xxx')).toBe('Muradov Dayanch')
+    expect(stripPlaceholderNameTokens('Yusupova Nadira XXXX')).toBe('Yusupova Nadira')
+    expect(stripPlaceholderNameTokens("Aliyev Vali yo'q")).toBe('Aliyev Vali')
+    expect(stripPlaceholderNameTokens('Aliyev Vali -')).toBe('Aliyev Vali')
+    // A real name that merely contains an x is untouched.
+    expect(stripPlaceholderNameTokens('Xoliqov Max Abrorovich')).toBe('Xoliqov Max Abrorovich')
+  })
+
+  it('splitGluedName splits a camelCase-glued name but leaves an all-caps token alone', () => {
+    expect(splitGluedName('ZairovaGulnaza')).toBe('Zairova Gulnaza')
+    expect(splitGluedName('FarhatovaGulsanam')).toBe('Farhatova Gulsanam')
+    expect(splitGluedName('BABAYEVAGULZIRE')).toBe('BABAYEVAGULZIRE')
+    expect(splitGluedName('Zairova Gulnaza')).toBe('Zairova Gulnaza')
+  })
+
+  it('toTitleCaseName re-cases a screaming or whispered name, keeps a deliberate one', () => {
+    expect(toTitleCaseName('VEPAYEVA ENESH')).toBe('Vepayeva Enesh')
+    expect(toTitleCaseName('allaberdiyeva oguljan')).toBe('Allaberdiyeva Oguljan')
+    expect(toTitleCaseName('SERDAR orazgeldiyev')).toBe('Serdar Orazgeldiyev')
+    expect(toTitleCaseName('Matyakubova Zilala')).toBe('Matyakubova Zilala')
+    expect(toTitleCaseName('McLeod Ismoil')).toBe('McLeod Ismoil')
+    // A patronymic marker stays lower-case, apostrophe form preserved.
+    expect(toTitleCaseName("OLIMOV UMIDJON DONIYOR O'G'LI")).toBe("Olimov Umidjon Doniyor o'g'li")
+    expect(toTitleCaseName('Matmuradova Ogulshat Amandurdy GYZY')).toBe('Matmuradova Ogulshat Amandurdy gyzy')
+  })
+
+  it('foreignNameReconciles accepts the student-corrected spelling of a malformed permit name', () => {
+    expect(foreignNameReconciles('Babayeva Gulzire', 'BABAYEVAGULZIRE')).toBe(true)
+    expect(foreignNameReconciles('Zairova Gulnaza', 'ZairovaGulnaza')).toBe(true)
+    expect(foreignNameReconciles('Ruslanova Merjen', 'Ruslanova Merjen XXX')).toBe(true)
+    expect(foreignNameReconciles('Vepayeva Enesh', 'VEPAYEVA ENESH')).toBe(true)
+    // given/surname order swapped in the glued token
+    expect(foreignNameReconciles('Atajanova Sarvinaz', 'SarvinazAtajanova')).toBe(true)
+    // a wholly different name is still rejected
+    expect(foreignNameReconciles('Qodirov Sardor', 'BABAYEVAGULZIRE')).toBe(false)
+    expect(foreignNameReconciles('Babayeva Gulzire', 'Rejepova Marjona')).toBe(false)
   })
 })

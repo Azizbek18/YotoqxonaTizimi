@@ -62,6 +62,7 @@ const ALL_STEPS: StepDescriptor[] = [
       <Step2Name
         data={p.data} onChange={p.onChange} onNext={p.onNext} onBack={p.onBack}
         stepNumber={p.stepNumber} totalSteps={p.totalSteps}
+        applicationType={p.applicationType}
       />
     ),
   },

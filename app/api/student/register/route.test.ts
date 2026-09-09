@@ -25,7 +25,10 @@ const GOOD_PASSWORD = 'Abcdef123456!x'
 
 // A tiny chainable stub. Every terminal (`maybeSingle`) pulls its canned
 // result from `results[table]` (shift one per call).
-function makeSupabase(results: Record<string, unknown[]>, capture: { userInsert?: Record<string, unknown> } = {}) {
+function makeSupabase(
+  results: Record<string, unknown[]>,
+  capture: { userInsert?: Record<string, unknown>; permitUpdate?: Record<string, unknown> } = {},
+) {
   const builder = (table: string) => {
     const chain: Record<string, unknown> = {}
     for (const m of ['select', 'eq', 'is', 'order']) chain[m] = () => chain
@@ -33,6 +36,10 @@ function makeSupabase(results: Record<string, unknown[]>, capture: { userInsert?
     chain.insert = async (row: Record<string, unknown>) => {
       if (table === 'users') capture.userInsert = row
       return results[`${table}:insert`]?.shift() ?? { error: null }
+    }
+    chain.update = (row: Record<string, unknown>) => {
+      if (table === 'permit_requests') capture.permitUpdate = row
+      return { eq: async () => results[`${table}:update`]?.shift() ?? { error: null } }
     }
     return chain
   }
@@ -141,6 +148,33 @@ describe('POST /api/student/register', () => {
       room_number: '12',
       dorm_id: 'dorm-amit-1',
     })
+  })
+
+  it('malformed permit name: accepts the wizard-corrected F.I.Sh and writes it back onto the permit', async () => {
+    const capture: { userInsert?: Record<string, unknown>; permitUpdate?: Record<string, unknown> } = {}
+    getServiceSupabase.mockReturnValue(
+      makeSupabase(
+        {
+          permit_requests: [{
+            data: { ...APPROVED_FOREIGN_PERMIT.data, full_name: 'BABAYEVAGULZIRE' },
+            error: null,
+          }],
+          users: [{ data: null, error: null }],
+        },
+        capture,
+      ),
+    )
+
+    const response = await POST(req(foreignBody({
+      lastName: 'Babayeva', firstName: 'Gulzire', middleName: '', noMiddleName: true,
+      email: 'murat@example.com',
+    })))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({ ok: true })
+    expect(capture.userInsert).toMatchObject({ full_name: 'Babayeva Gulzire' })
+    expect(capture.permitUpdate).toEqual({ full_name: 'Babayeva Gulzire' })
   })
 
   it('re-registration: updates the pending account password', async () => {

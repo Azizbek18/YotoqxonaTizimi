@@ -13,6 +13,8 @@ import {
   isValidEmail,
   isValidForeignIdNumber,
   normalizeForeignIdNumber,
+  stripPlaceholderNameTokens,
+  toTitleCaseName,
 } from '@/lib/permit-validation'
 import { cyrillicToLatin } from '@/lib/transliterate'
 import { directionBelongsToFaculty, normalizeDirection } from '@/lib/directions'
@@ -57,12 +59,19 @@ export async function POST(request: NextRequest) {
     // empty middleName + noMiddleName='true'.
     const lastName = value(form, 'lastName', 80)
     const firstName = value(form, 'firstName', 80)
-    const middleName = value(form, 'middleName', 80)
-    const noMiddleName = String(form.get('noMiddleName') ?? '') === 'true'
+    const rawMiddleName = value(form, 'middleName', 80)
+    // An applicant with no patronymic often types "XXX" / "-" into the Sharif
+    // field instead of ticking the box. Treat that as "no patronymic" so it
+    // never reaches the stored name or the signed Ariza/Tilxat.
+    const middleIsPlaceholder = Boolean(rawMiddleName) && stripPlaceholderNameTokens(rawMiddleName) === ''
+    const noMiddleName = String(form.get('noMiddleName') ?? '') === 'true' || middleIsPlaceholder
+    const middleName = noMiddleName ? '' : rawMiddleName
     const hasNameParts = Boolean(lastName || firstName || middleName)
-    const fullName = hasNameParts
-      ? buildFullName({ lastName, firstName, middleName: noMiddleName ? '' : middleName })
-      : canonicalizeFullName(cyrillicToLatin(value(form, 'fullName', 160)))
+    const fullName = toTitleCaseName(
+      hasNameParts
+        ? buildFullName({ lastName, firstName, middleName })
+        : canonicalizeFullName(cyrillicToLatin(stripPlaceholderNameTokens(value(form, 'fullName', 160)))),
+    )
     const email = value(form, 'email', 254).toLowerCase()
     const phone = value(form, 'phone', 32)
     const relativePhone = value(form, 'relativePhone', 32)
@@ -80,7 +89,9 @@ export async function POST(request: NextRequest) {
     }
     const nameError = hasNameParts
       ? (getNamePartError(lastName, 'Familiya') || getNamePartError(firstName, 'Ism') || (noMiddleName ? null : getNamePartError(middleName, 'Otasining ismi')))
-      : (isValidJoinedFullName(fullName, noMiddleName ? 2 : 3) ? null : 'F.I.Sh to‘liq kiriting: Familiya, Ism va Otasining ismi.')
+      : (isValidJoinedFullName(fullName, noMiddleName ? 2 : 3)
+          ? null
+          : "F.I.Sh ni to‘liq kiriting: Familiya va Ism (otasining ismi bo‘lmasa «Otasining ismi yo‘q»ni belgilang).")
     if (nameError) {
       return NextResponse.json({ error: nameError }, { status: 400 })
     }

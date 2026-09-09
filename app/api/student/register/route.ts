@@ -4,6 +4,7 @@ import { checkRateLimit, getClientIp } from '@/lib/security'
 import { getPasswordPolicyError } from '@/lib/password-policy'
 import {
   buildFullName,
+  foreignNameReconciles,
   getNamePartError,
   isValidEmail,
   isValidForeignIdNumber,
@@ -13,6 +14,7 @@ import {
   normalizeForeignIdNumber,
   normalizeJshshir,
   normalizePassport,
+  toTitleCaseName,
 } from '@/lib/permit-validation'
 import { cyrillicToLatin } from '@/lib/transliterate'
 import { writeAuditLog } from '@/lib/audit-log'
@@ -62,10 +64,14 @@ export async function POST(request: NextRequest) {
       : normalizePassport(body.passportSeries)
     const jshshir = submittedJshshir
     const email = text(body, 'email', 254).toLowerCase()
-    const firstName = cyrillicToLatin(text(body, 'firstName', 80))
-    const lastName = cyrillicToLatin(text(body, 'lastName', 80))
+    // Foreign names are self-reported and arrive ALL-CAPS / all-lowercase as
+    // often as not — normalise the casing so the stored record and the signed
+    // Ariza/Tilxat read cleanly. namesLikelyMatch is case-insensitive, so this
+    // never breaks the yo'llanma referral match either.
+    const firstName = toTitleCaseName(cyrillicToLatin(text(body, 'firstName', 80)))
+    const lastName = toTitleCaseName(cyrillicToLatin(text(body, 'lastName', 80)))
     const noMiddleName = applicationType === 'imtiyozli' && body.noMiddleName === true
-    const middleName = noMiddleName ? '' : cyrillicToLatin(text(body, 'middleName', 80))
+    const middleName = noMiddleName ? '' : toTitleCaseName(cyrillicToLatin(text(body, 'middleName', 80)))
     const fullName = buildFullName({ lastName, firstName, middleName })
     const phone = text(body, 'phone', 32)
     const gender = text(body, 'gender', 16)
@@ -128,7 +134,7 @@ export async function POST(request: NextRequest) {
     const supabase = getServiceSupabase()
     let permitQuery = supabase
       .from('permit_requests')
-      .select('email, full_name, gender, faculty, direction, course, room_number, dorm_id, status, origin_country, origin_region, study_type, application_type')
+      .select('id, email, full_name, gender, faculty, direction, course, room_number, dorm_id, status, origin_country, origin_region, study_type, application_type')
       .eq('passport_series', passport)
       .eq('email', email)
       .eq('application_type', applicationType)
@@ -154,15 +160,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Imtiyozli permit names are self-reported and routinely malformed (one
+    // glued token, ALL CAPS, a trailing "XXX"). The student re-confirms the
+    // spelling in the wizard, so accept a spacing/case/placeholder-only
+    // difference — passport + email + an `approved` row stay the real anchor.
+    const nameMatches = applicationType === 'imtiyozli'
+      ? foreignNameReconciles(fullName, permit.full_name)
+      : namesLikelyMatch(fullName, permit.full_name)
     if (
       permit.email.trim().toLowerCase() !== email
       || permit.faculty.trim().toLowerCase() !== faculty.toLowerCase()
-      || !namesLikelyMatch(fullName, permit.full_name)
+      || !nameMatches
     ) {
       return NextResponse.json(
         { error: 'Ro‘yxatdan o‘tish ma’lumotlari tasdiqlangan yo‘llanma bilan mos emas.' },
         { status: 403 },
       )
+    }
+
+    // Carry the confirmed spelling back onto the permit so the signed
+    // Ariza/Tilxat and the dekan tables read cleanly. Best-effort — a failure
+    // here must not block the registration.
+    const reconcilePermitName = async () => {
+      if (applicationType !== 'imtiyozli') return
+      if (!fullName || fullName === permit.full_name) return
+      const { error: renameError } = await supabase
+        .from('permit_requests')
+        .update({ full_name: fullName })
+        .eq('id', permit.id)
+      if (renameError) console.error('Permit name writeback failed:', renameError)
     }
 
     let existingUserQuery = supabase
@@ -199,6 +225,7 @@ export async function POST(request: NextRequest) {
         console.error('Pending student password update failed:', pwError)
         return NextResponse.json({ error: 'Akkauntni yangilab bo‘lmadi.' }, { status: 409 })
       }
+      await reconcilePermitName()
       return NextResponse.json({ ok: true }, { status: 200 })
     }
 
@@ -279,6 +306,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Akkaunt yaratib bo‘lmadi.' }, { status: 409 })
     }
 
+    await reconcilePermitName()
     await writeAuditLog({
       eventType: 'student.registration',
       status: 'success',

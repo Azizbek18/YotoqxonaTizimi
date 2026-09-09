@@ -15,6 +15,8 @@ import {
   isValidUzOriginRegion,
   normalizeJshshir,
   normalizePassport,
+  stripPlaceholderNameTokens,
+  toTitleCaseName,
 } from '@/lib/permit-validation'
 import { cyrillicToLatin } from '@/lib/transliterate'
 import { directionBelongsToFaculty, normalizeDirection } from '@/lib/directions'
@@ -60,9 +62,11 @@ export async function POST(request: NextRequest) {
     const firstName = value(form, 'firstName', 80)
     const middleName = value(form, 'middleName', 80)
     const hasNameParts = Boolean(lastName || firstName || middleName)
-    const fullName = hasNameParts
-      ? buildFullName({ lastName, firstName, middleName })
-      : canonicalizeFullName(cyrillicToLatin(value(form, 'fullName', 160)))
+    const fullName = toTitleCaseName(
+      hasNameParts
+        ? buildFullName({ lastName, firstName, middleName })
+        : canonicalizeFullName(cyrillicToLatin(stripPlaceholderNameTokens(value(form, 'fullName', 160)))),
+    )
     const email = value(form, 'email', 254).toLowerCase()
     const phone = value(form, 'phone', 32)
     const gender = value(form, 'gender', 10)

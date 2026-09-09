@@ -6,6 +6,7 @@ import { siteUrl } from '@/lib/site-url';
 // routes are deliberately omitted (see app/robots.ts).
 const PUBLIC_PATHS: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
   { path: '/', priority: 1, changeFrequency: 'weekly' },
+  { path: '/yotoqxona', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/ariza-yuborish', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/ruxsatnoma-yuborish', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/imtiyozli-ariza', priority: 0.8, changeFrequency: 'monthly' },
@@ -17,11 +18,9 @@ const PUBLIC_PATHS: { path: string; priority: number; changeFrequency: MetadataR
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = siteUrl();
-  const lastModified = new Date();
 
   return PUBLIC_PATHS.map(({ path, priority, changeFrequency }) => ({
     url: `${base}${path}`,
-    lastModified,
     changeFrequency,
     priority,
   }));

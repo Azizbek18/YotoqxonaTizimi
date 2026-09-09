@@ -10,7 +10,7 @@ import "./globals.css";
 const getBaseUrl = siteUrl;
 
 const SITE_NAME = 'Meningyotoqxonam.uz'
-const SITE_TITLE = `${SITE_NAME} — Aqlli talabalar yotoqxonasi boshqaruv tizimi`
+const SITE_TITLE = `Talabalar yotoqxonasi — ariza va joylashish | ${SITE_NAME}`
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     default: SITE_TITLE,
     template: `%s — ${SITE_NAME}`,
   },
-  description: "Talabalar yotoqxonasi boshqaruvini avtomatlashtirish, arizalar yuborish, to'lovlarni amalga oshirish va navbatchilik jadvallarini real vaqt rejimida boshqarish platformasi.",
+  description: "Talabalar yotoqxonasiga joylashish: ariza va yo‘llanma yuborish, ariza holatini tekshirish hamda shaxsiy kabinet orqali yotoqxona xizmatlaridan foydalanish.",
   keywords: ["meningyotoqxonam", "yotoqxona", "talaba", "tizim", "aqlli boshqaruv", "arizalar", "navbatchilik", "yotoqxona boshqaruvi", "yotoqxonaga joylashish", "my.gov.uz yo'llanma", "supabase", "nextjs", "AI yordamchi"],
   manifest: '/manifest.json',
   applicationName: SITE_NAME,

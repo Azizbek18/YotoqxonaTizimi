@@ -15,9 +15,16 @@ describe('decideRoomScope', () => {
     expect(decideRoomScope('sport', owners, []).floors).toEqual([3, 4])
   })
 
+  it('a secondary faculty that claimed one floor of a big shared dorm sees only that floor', () => {
+    // dorm 7: AMIT is faculty_dorm.is_primary = false and has claimed floor 10
+    // of a 12-floor building — it must NOT see the other 11 floors.
+    const s = decideRoomScope('amit', floors('amit', 10), [], /* isPrimaryHere */ false)
+    expect(s).toMatchObject({ shared: true, floors: [10] })
+  })
+
   it('a GUEST (linked, owns nothing) with no grants sees NOTHING — not the whole dorm', () => {
     // the AMIT ↔ dorm-3 bug: linked via faculty_dorm, ozbek-fil owns all floors, 0 grants
-    const s = decideRoomScope('amit', floors('ozbek-filologiyasi', 1, 2, 3, 4, 5), [])
+    const s = decideRoomScope('amit', floors('ozbek-filologiyasi', 1, 2, 3, 4, 5), [], false)
     expect(s).toMatchObject({ shared: true, floors: [] })
   })
 
@@ -26,7 +33,7 @@ describe('decideRoomScope', () => {
       { room_number: '10', faculty: 'amit' },
       { room_number: '11', faculty: 'amit' },
       { room_number: '12', faculty: 'sport' },
-    ])
+    ], false)
     expect(s.floors).toEqual([])
     expect(s.grantedToMe).toEqual(['10', '11'])
     expect(s.grantedAway).toEqual(['12'])

@@ -3,6 +3,7 @@ import { callGemini } from './gemini'
 import { groqAnalyzeImages, groqConfigured, groqGenerateText } from './groq'
 import { sendTelegramAdminMessage } from './telegram'
 import { aiGatewayConfigured, gatewayGenerate } from './ai-gateway'
+import { getServiceSupabase } from './server-supabase'
 
 // Provider routing for the AI features, cheapest-reliable first:
 //   1. Groq — free (chat: production models; vision: preview Qwen, low daily
@@ -39,10 +40,36 @@ function providerFailureError(failures: ProviderFailure[], fallbackMessage: stri
   return new AggregateError(failures.map(({ error }) => error), message)
 }
 
-// ---- outage alert (throttled, once per warm instance per window) ----
+// ---- outage alert (throttled cross-instance) ----
 
 const ALERT_COOLDOWN_MS = 30 * 60_000
+// Fast local guard so a warm instance that just alerted skips the DB round-trip.
 let lastAlertAt = 0
+
+// Durable throttle: the module-level timestamp above resets on every cold start
+// and is per-lambda, so under Fluid Compute a real outage fired the Telegram
+// alert on nearly every failed request (dozens per minute). Gate on a shared
+// row in security_audit_logs instead — at most one alert per cooldown window
+// across the whole deployment. Best-effort: if the DB is unreachable we send
+// (a duplicate alert beats silence during an incident).
+async function claimOutageAlertSlot(): Promise<boolean> {
+  try {
+    const supabase = getServiceSupabase()
+    const cutoff = new Date(Date.now() - ALERT_COOLDOWN_MS).toISOString()
+    const { data, error } = await supabase
+      .from('security_audit_logs')
+      .select('id')
+      .eq('event_type', 'ai.outage_alert')
+      .gte('created_at', cutoff)
+      .limit(1)
+    if (error) return true
+    if (data && data.length > 0) return false
+    await supabase.from('security_audit_logs').insert({ event_type: 'ai.outage_alert', status: 'error' })
+    return true
+  } catch {
+    return true
+  }
+}
 
 export function describeAiFailure(message: string): string {
   if (/RESOURCE_EXHAUSTED|credits are depleted|quota|Payment Required|\(402\)/i.test(message)) {
@@ -74,6 +101,10 @@ export function aiChatConfigured() {
 async function alertOutage(where: string, error: unknown): Promise<void> {
   const now = Date.now()
   if (now - lastAlertAt < ALERT_COOLDOWN_MS) return
+  if (!(await claimOutageAlertSlot())) {
+    lastAlertAt = now
+    return
+  }
   lastAlertAt = now
   const message = error instanceof Error ? error.message : String(error)
   await sendTelegramAdminMessage(

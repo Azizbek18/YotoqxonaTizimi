@@ -13,6 +13,13 @@ const TEXT_MODELS = (process.env.GROQ_TEXT_MODEL || 'openai/gpt-oss-20b,openai/g
 const VISION_MODELS = (process.env.GROQ_VISION_MODEL || 'qwen/qwen3.6-27b,qwen/qwen3.8-27b')
   .split(',').map((s) => s.trim()).filter(Boolean)
 
+// Groq's free tier caps preview (vision) models at 1000 output tokens/minute
+// AND rejects any single request whose `max_completion_tokens` exceeds that
+// ("Request too large ... OTPM: Limit 1000, Requested 2048") — so a 2048 cap
+// made every vision call 429 outright. The verdict JSON these checks return is
+// small; keep well under the ceiling. Overridable per-deploy.
+const VISION_MAX_TOKENS = Number(process.env.GROQ_VISION_MAX_TOKENS) || 900
+
 type GroqContentPart =
   | { type: 'text'; text: string }
   | { type: 'image_url'; image_url: { url: string } }
@@ -25,6 +32,7 @@ async function groqCompletion(
   models: string[],
   messages: Array<{ role: 'system'; content: string } | { role: 'user'; content: string | GroqContentPart[] }>,
   json: boolean,
+  maxTokens = 2048,
 ): Promise<string> {
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) throw new Error('GROQ_API_KEY not configured')
@@ -41,7 +49,7 @@ async function groqCompletion(
             model,
             messages,
             temperature: json ? 0 : 0.2,
-            max_completion_tokens: 2048,
+            max_completion_tokens: maxTokens,
             ...(json ? { response_format: { type: 'json_object' } } : {}),
           }),
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -103,5 +111,5 @@ export async function groqAnalyzeImages(
   return groqCompletion(VISION_MODELS, [
     { role: 'system', content: system },
     { role: 'user', content },
-  ], json)
+  ], json, VISION_MAX_TOKENS)
 }

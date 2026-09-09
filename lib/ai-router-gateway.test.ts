@@ -12,7 +12,23 @@ vi.mock('./groq', () => ({
 }))
 const callGemini = vi.fn()
 vi.mock('./gemini', () => ({ callGemini }))
-vi.mock('./telegram', () => ({ sendTelegramAdminMessage: vi.fn() }))
+const sendTelegramAdminMessage = vi.fn()
+vi.mock('./telegram', () => ({ sendTelegramAdminMessage }))
+
+// In-memory stand-in for the security_audit_logs throttle row.
+let outageAlertRows: unknown[] = []
+vi.mock('./server-supabase', () => ({
+  getServiceSupabase: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          gte: () => ({ limit: async () => ({ data: outageAlertRows, error: null }) }),
+        }),
+      }),
+      insert: async (row: unknown) => { outageAlertRows.push(row); return { error: null } },
+    }),
+  }),
+}))
 
 const { aiChatReply, aiVisionJson } = await import('./ai')
 
@@ -20,6 +36,7 @@ describe('AI provider routing with Gateway', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     groqConfigured.mockReturnValue(false)
+    outageAlertRows = []
   })
 
   it('uses Groq first for raster vision before Gateway and Gemini', async () => {
@@ -58,5 +75,17 @@ describe('AI provider routing with Gateway', () => {
     await expect(
       aiChatReply({ contents: [{ parts: [{ text: 'Salom' }] }] }, 'gemini-key'),
     ).rejects.toThrow(/Gemini: Gemini quota.*AI Gateway: Gateway billing/)
+  })
+
+  it('a full outage records a throttle row and does not re-alert while it is fresh', async () => {
+    callGemini.mockRejectedValue(new Error('Gemini quota'))
+    gatewayGenerate.mockRejectedValue(new Error('Gateway billing'))
+
+    // Pre-seed the shared throttle row: another instance already alerted.
+    outageAlertRows = [{ event_type: 'ai.outage_alert' }]
+    await expect(
+      aiVisionJson({ contents: [{ parts: [{ inlineData: { mimeType: 'image/jpeg', data: 'AAAA' } }] }] }, 'k'),
+    ).rejects.toThrow()
+    expect(sendTelegramAdminMessage).not.toHaveBeenCalled()
   })
 })

@@ -8,12 +8,14 @@ import {
   getNamePartError,
   isValidEmail,
   isValidForeignIdNumber,
+  isPlausibleInternationalPhone,
   isValidJshshir,
   isValidPassport,
   namesLikelyMatch,
   normalizeForeignIdNumber,
   normalizeJshshir,
   normalizePassport,
+  normalizePhoneE164,
   toTitleCaseName,
 } from '@/lib/permit-validation'
 import { cyrillicToLatin } from '@/lib/transliterate'
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
     const noMiddleName = applicationType === 'imtiyozli' && body.noMiddleName === true
     const middleName = noMiddleName ? '' : toTitleCaseName(cyrillicToLatin(text(body, 'middleName', 80)))
     const fullName = buildFullName({ lastName, firstName, middleName })
-    const phone = text(body, 'phone', 32)
+    const phone = normalizePhoneE164(body.phone)
     const gender = text(body, 'gender', 16)
     const faculty = text(body, 'faculty', 160)
     const direction = text(body, 'direction', 160)
@@ -99,7 +101,7 @@ export async function POST(request: NextRequest) {
         : getNamePartError(middleName, 'Otasining ismi'))
     if (
       nameError
-      || !phone
+      || !isPlausibleInternationalPhone(phone)
       || !['male', 'female'].includes(gender)
       || !faculty
       || !direction
@@ -285,10 +287,10 @@ export async function POST(request: NextRequest) {
       phone_number: phone,
       father_full_name: cyrillicToLatin(text(body, 'father_full_name', 160)) || null,
       father_workplace: text(body, 'father_workplace', 200) || null,
-      father_phone: text(body, 'father_phone', 32) || null,
+      father_phone: normalizePhoneE164(body.father_phone) || null,
       mother_full_name: cyrillicToLatin(text(body, 'mother_full_name', 160)) || null,
       mother_workplace: text(body, 'mother_workplace', 200) || null,
-      mother_phone: text(body, 'mother_phone', 32) || null,
+      mother_phone: normalizePhoneE164(body.mother_phone) || null,
       room_number: permit.room_number,
       dorm_id: permit.room_number ? dormId : null,
       assigned_floor: assignedFloor,

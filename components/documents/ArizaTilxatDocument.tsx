@@ -9,6 +9,8 @@
 // dekan's viewer sees the signed copy, not a blank form), and the dekan's
 // signature + Ariza № + room once a room is assigned.
 
+import { formatPhoneForDisplay } from '@/lib/permit-validation'
+
 const UNIVERSITY_HEADER = "Mirzo Ulug'bek nomidagi O'zbekiston Milliy universiteti Birinchi prorektori — Yoshlar masalalari va ma'naviy-ma'rifiy ishlar bo'yicha prorektor T.N.Xojiyevga"
 
 const TILXAT_RULES = [
@@ -151,10 +153,10 @@ export default function ArizaTilxatDocument({ data }: { data: ArizaTilxatData })
           <SignSlot text={signerName} caption="(F.I.Sh.)" />
         </div>
         <div className="flex justify-between items-end mt-6 text-[11px] sm:text-sm">
-          <p>Talaba tel: {phone ? `+998 ${phone}` : '_____________________'}</p>
+          <p>Talaba tel: {formatPhoneForDisplay(phone) || '_____________________'}</p>
         </div>
         <div className="flex justify-between items-end mt-1 text-[11px] sm:text-sm">
-          <p>Yaqin qarindoshi tel: {relativePhone || '_____________________'}</p>
+          <p>Yaqin qarindoshi tel: {formatPhoneForDisplay(relativePhone) || '_____________________'}</p>
           <div className="text-center">
             <p>{signedDate || '_____________________'}</p>
             <p className="text-[9px] sm:text-xs mt-1">Sana</p>

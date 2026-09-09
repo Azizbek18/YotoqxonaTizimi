@@ -13,6 +13,7 @@ import {
   isValidEmail,
   isValidForeignIdNumber,
   normalizeForeignIdNumber,
+  normalizePhoneE164,
   stripPlaceholderNameTokens,
   toTitleCaseName,
 } from '@/lib/permit-validation'
@@ -73,8 +74,8 @@ export async function POST(request: NextRequest) {
         : canonicalizeFullName(cyrillicToLatin(stripPlaceholderNameTokens(value(form, 'fullName', 160)))),
     )
     const email = value(form, 'email', 254).toLowerCase()
-    const phone = value(form, 'phone', 32)
-    const relativePhone = value(form, 'relativePhone', 32)
+    const phone = normalizePhoneE164(value(form, 'phone', 32))
+    const relativePhone = normalizePhoneE164(value(form, 'relativePhone', 32))
     const gender = value(form, 'gender', 10)
     const faculty = value(form, 'faculty', 160).toLowerCase()
     const direction = normalizeDirection(value(form, 'direction', 200))

@@ -237,7 +237,7 @@ export function createPermitDocumentDelivery(deps: DeliveryDeps = defaultDeps())
       studyType: permit.study_type ?? '',
       originCountry: permit.origin_country ?? "O'zbekiston",
       originRegion: permit.origin_region ?? '',
-      phone: (permit.phone ?? '').replace(/^\+998\s*/, '').trim(),
+      phone: permit.phone ?? '',
       relativePhone: permit.relative_phone ?? '',
       ttjName,
       studentSignature: doc.student_signature,

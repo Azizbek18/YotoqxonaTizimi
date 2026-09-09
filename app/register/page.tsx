@@ -12,7 +12,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { appFont as baloo2 } from '@/lib/app-font'
 import { supabase } from '@/lib/supabase'
 import { getPasswordPolicyError } from '@/lib/password-policy'
-import { splitGluedName, stripPlaceholderNameTokens, toTitleCaseName } from '@/lib/permit-validation'
+import { normalizePhoneE164, splitGluedName, stripPlaceholderNameTokens, toTitleCaseName } from '@/lib/permit-validation'
 
 import StepProgress from '@/components/register/StepProgress'
 import { buildSteps, type ApplicationType, type WizardStepProps } from '@/components/register/wizardSteps'
@@ -89,7 +89,9 @@ export default function RegisterPage() {
           const nameParts = toTitleCaseName(nameSource).trim().split(/\s+/).filter(Boolean)
           const [lastName = '', firstName = '', ...rest] = nameParts
           const middleName = rest.join(' ')
-          const phone = String(permit.phone ?? '').replace(/\D/g, '').slice(-9)
+          // Keep the full international number — an imtiyozli applicant's phone
+          // may be a foreign (+993…) number, not a 9-digit UZ one.
+          const phone = normalizePhoneE164(permit.phone)
 
           setData((current) => ({
             ...current,

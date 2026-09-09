@@ -19,9 +19,9 @@ type Identity = {
  * secret.
  *
  * Identity only. A server-side logout / ban is not seen here until the access
- * token expires, so callers that gate access must still re-check the live
- * `staff` / `users` row (which `findRoleByIdentity` and the `requireActive*`
- * guards already do).
+ * token expires. Role lookups use RLS-protected `staff` / `users` rows;
+ * their restrictive policies also require a live auth session. Privileged
+ * API guards separately check the session through `getRequestUser`.
  */
 export async function getClaimsIdentity(
   supabase: SupabaseClient

@@ -2,12 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MotionConfig } from 'framer-motion'
 import { Toaster, resolveValue } from 'react-hot-toast'
 import { applyThemeToDocument, useThemeStore } from '@/lib/stores/theme-store'
 import Custom3DToast from '@/components/ui/Custom3DToast'
 import { isNativeApp } from '@/lib/platform'
+import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const theme = useThemeStore((state) => state.theme)
   // The first [theme] effect run is the hydration paint (handled by the
   // mount effect below with no animation); only later runs are real toggles.
@@ -27,6 +31,18 @@ export default function AppProviders({ children }: { children: React.ReactNode }
         },
       })
   )
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== 'SIGNED_OUT') return
+      // Also handles logout from another tab: unmount private panels and their effects.
+      queryClient.clear()
+      if (/^\/(talaba|dekan|tarbiyachi|admin)(\/|$)/.test(window.location.pathname)) {
+        router.replace('/login')
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [queryClient, router])
 
   useEffect(() => {
     // Register PWA service worker (skip inside the native Capacitor app —
@@ -72,6 +88,7 @@ export default function AppProviders({ children }: { children: React.ReactNode }
 
   return (
     <QueryClientProvider client={queryClient}>
+      <MotionConfig reducedMotion="user">
       <div id="app-shell" className="min-h-screen transition-[background,color,box-shadow,border-color] duration-500 ease-out">
         {children}
       </div>
@@ -92,6 +109,7 @@ export default function AppProviders({ children }: { children: React.ReactNode }
           return <Custom3DToast toast={t} />
         }}
       </Toaster>
+      </MotionConfig>
     </QueryClientProvider>
   )
 }

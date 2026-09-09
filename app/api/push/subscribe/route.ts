@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { getRequestUser } from '@/lib/server-auth'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
-import { normalizeForeignIdNumber } from '@/lib/permit-validation'
+import { isValidEmail, normalizeForeignIdNumber } from '@/lib/permit-validation'
+import { getSafePushEndpoint } from '@/lib/push-endpoint'
 
 type SubscribeBody = {
   endpoint?: unknown
@@ -26,14 +27,17 @@ export async function POST(request: Request) {
   let body: SubscribeBody
   try {
     body = await request.json() as SubscribeBody
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return jsonError("So‘rov formati noto‘g‘ri", 400)
+    }
   } catch {
     return jsonError("So‘rov formati noto‘g‘ri", 400)
   }
 
-  const endpoint = typeof body.endpoint === 'string' ? body.endpoint.trim() : ''
+  const endpoint = getSafePushEndpoint(body.endpoint)
   const p256dh = typeof body.keys?.p256dh === 'string' ? body.keys.p256dh.trim() : ''
   const auth = typeof body.keys?.auth === 'string' ? body.keys.auth.trim() : ''
-  if (!endpoint.startsWith('https://') || endpoint.length > 4096 || p256dh.length < 20 || p256dh.length > 512 || auth.length < 8 || auth.length > 256) {
+  if (!endpoint || p256dh.length < 20 || p256dh.length > 512 || auth.length < 8 || auth.length > 256) {
     return jsonError("Bildirishnoma obunasi noto‘g‘ri", 400)
   }
 
@@ -58,13 +62,14 @@ export async function POST(request: Request) {
     const passport = normalizeForeignIdNumber(body.permitBinding?.passport)
     const email = typeof body.permitBinding?.email === 'string' ? body.permitBinding.email.trim().toLowerCase() : ''
     if (!id || !passport || !email) return jsonError('Ariza bog‘lanishi topilmadi', 401)
+    if (!isValidEmail(email)) return jsonError('Email formati noto‘g‘ri', 400)
 
     const { data: permit, error } = await supabase
       .from('permit_requests')
       .select('id')
       .eq('id', id)
       .eq('passport_series', passport)
-      .ilike('email', email)
+      .eq('email', email)
       .maybeSingle()
     if (error) return jsonError("Arizani tekshirib bo‘lmadi", 500)
     if (!permit) return jsonError("Ariza ma’lumotlari mos kelmadi", 403)

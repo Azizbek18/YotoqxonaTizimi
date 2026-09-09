@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequestSessionId, getRequestUser } from '@/lib/server-auth'
+import { getRequestAuth } from '@/lib/server-auth'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import { listUserSessions, revokeOtherUserSessions, revokeUserSession } from '@/lib/auth-devices'
@@ -9,10 +9,10 @@ import { sendStudentTelegram } from '@/lib/student-telegram'
 // The caller's own connected devices (auth.sessions). Any authenticated
 // user — student or staff — can see and revoke their own.
 export async function GET(request: NextRequest) {
-  const user = await getRequestUser(request)
-  if (!user?.id) return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
   try {
-    const sessions = await listUserSessions(user.id, getRequestSessionId(request))
+    const auth = await getRequestAuth(request)
+    if (!auth) return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
+    const sessions = await listUserSessions(auth.user.id, auth.sessionId)
     return NextResponse.json({ sessions })
   } catch (error) {
     console.error('list sessions failed:', error)
@@ -21,18 +21,16 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getRequestUser(request)
-  if (!user?.id) return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
-
-  const throttle = await checkRateLimit(`account-sessions:${user.id}:${getClientIp(request)}`, 20, 10 * 60_000)
-  if (!throttle.allowed) {
-    return NextResponse.json({ error: 'Juda ko‘p urinish. Birozdan keyin qayta uring.' }, { status: 429 })
-  }
-
-  const body = await request.json().catch(() => ({})) as { action?: string; sessionId?: string }
-  const current = getRequestSessionId(request)
-
   try {
+    const auth = await getRequestAuth(request)
+    if (!auth) return NextResponse.json({ error: 'Autentifikatsiya talab qilinadi' }, { status: 401 })
+    const { user, sessionId: current } = auth
+    const throttle = await checkRateLimit(`account-sessions:${user.id}:${getClientIp(request)}`, 20, 10 * 60_000)
+    if (!throttle.allowed) {
+      return NextResponse.json({ error: 'Juda ko‘p urinish. Birozdan keyin qayta uring.' }, { status: 429 })
+    }
+    const body = await request.json().catch(() => ({})) as { action?: string; sessionId?: string } | null
+    if (!body) return NextResponse.json({ error: 'So‘rov formati noto‘g‘ri' }, { status: 400 })
     if (body.action === 'revoke') {
       const sessionId = String(body.sessionId ?? '')
       if (!/^[0-9a-f-]{36}$/i.test(sessionId)) {

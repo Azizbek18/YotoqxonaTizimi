@@ -2,6 +2,7 @@ import 'server-only'
 import { createClient, type User } from '@supabase/supabase-js'
 import type { NextRequest } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/server-admin'
+import { getServiceSupabase } from '@/lib/server-supabase'
 
 function isNetworkError(error: unknown) {
   return error instanceof TypeError && error.message.toLowerCase().includes('fetch failed')
@@ -22,6 +23,7 @@ async function withRetry<T>(call: () => Promise<T>): Promise<T> {
 
 type AccessTokenClaims = {
   sub?: string
+  session_id?: string
   email?: string
   phone?: string
   role?: string
@@ -48,40 +50,34 @@ function claimsToUser(claims: AccessTokenClaims): User | null {
   } as User
 }
 
-/**
- * The `session_id` claim of the caller's access token, when it arrived as a
- * Bearer token. Used to mark "this device" in the session list — the token
- * itself is verified separately by getRequestUser(), this only reads a claim.
- */
-export function getRequestSessionId(request?: Request | NextRequest): string | null {
-  const authHeader = request?.headers.get('authorization')
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
-  if (!token) return null
-  try {
-    const payload = JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64').toString('utf8'))
-    return typeof payload.session_id === 'string' ? payload.session_id : null
-  } catch {
-    return null
-  }
+export type RequestAuth = { user: User; sessionId: string }
+
+async function activeAuth(claims: AccessTokenClaims): Promise<RequestAuth | null> {
+  const user = claimsToUser(claims)
+  const sessionId = claims.session_id
+  if (!user || typeof sessionId !== 'string'
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) return null
+
+  // This existing service-role-only RPC reads auth.sessions, scopes by user,
+  // and excludes expired sessions. Filter at the DB to avoid pagination and
+  // never cache the result: a revoked JWT must fail on the next API request.
+  const { data, error } = await getServiceSupabase()
+    .rpc('list_user_sessions', { p_user_id: user.id })
+    .eq('id', sessionId)
+    .maybeSingle()
+  if (error) throw new Error('Auth session validation failed', { cause: error })
+  return data?.id === sessionId ? { user, sessionId } : null
 }
 
 /**
- * Verifies the caller's access token and returns the user, or null when the
- * request is unauthenticated / the token is invalid or expired.
+ * Returns the user and verified session ID, or null when the request is
+ * unauthenticated or the token/session is invalid, expired, or revoked.
  *
- * Uses `auth.getClaims()`, which verifies the JWT signature locally against the
- * project's JWKS when asymmetric signing keys are enabled — no round-trip to
- * Supabase Auth, no `auth.users` / `auth.sessions` reads per request. While the
- * project still signs with the legacy symmetric (HS256) secret, getClaims()
- * transparently falls back to a network `getUser()` call, so behaviour is
- * identical to before until asymmetric keys are turned on in the dashboard.
- *
- * A revoked session is not detected here until the token expires (access tokens
- * are short-lived); the privileged guards (`requireActiveStudent` /
- * `requireActiveStaff`) re-check the user's row in `public.users` / `public.staff`
- * on every call, so status and blacklist changes still take effect immediately.
+ * Verify the JWT first, then check the live session. Both Bearer and cookie
+ * requests use the verified session_id, including device-management requests.
+ * Database failures fail closed; no identity is returned without a live session.
  */
-export async function getRequestUser(request?: Request | NextRequest): Promise<User | null> {
+export async function getRequestAuth(request?: Request | NextRequest): Promise<RequestAuth | null> {
   const authHeader = request?.headers.get('authorization')
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
 
@@ -93,7 +89,7 @@ export async function getRequestUser(request?: Request | NextRequest): Promise<U
     const supabase = createClient(url, anonKey)
     const { data, error } = await withRetry(() => supabase.auth.getClaims(token))
     if (error || !data?.claims) return null
-    return claimsToUser(data.claims as AccessTokenClaims)
+    return activeAuth(data.claims as AccessTokenClaims)
   }
 
   // Never authorize from getSession(): it only reads the locally stored JWT
@@ -103,5 +99,9 @@ export async function getRequestUser(request?: Request | NextRequest): Promise<U
   const supabase = await createServerSupabaseClient()
   const { data, error } = await withRetry(() => supabase.auth.getClaims())
   if (error || !data?.claims) return null
-  return claimsToUser(data.claims as AccessTokenClaims)
+  return activeAuth(data.claims as AccessTokenClaims)
+}
+
+export async function getRequestUser(request?: Request | NextRequest): Promise<User | null> {
+  return (await getRequestAuth(request))?.user ?? null
 }

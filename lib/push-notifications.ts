@@ -1,6 +1,7 @@
 import 'server-only'
 import webpush from 'web-push'
 import { getServiceSupabase } from '@/lib/server-supabase'
+import { getSafePushEndpoint } from '@/lib/push-endpoint'
 
 export type PushMessage = {
   title: string
@@ -48,11 +49,15 @@ async function deliver(rows: StoredSubscription[], message: PushMessage) {
   })
 
   await Promise.allSettled(rows.map(async (row) => {
+    // Revalidate stored subscriptions, including those created before the
+    // subscription endpoint enforced the provider allowlist.
+    const endpoint = getSafePushEndpoint(row.endpoint)
+    if (!endpoint) return
     try {
       await webpush.sendNotification(
-        { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+        { endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
         payload,
-        { TTL: 60 * 60 * 24, urgency: 'high' },
+        { TTL: 60 * 60 * 24, urgency: 'high', timeout: 10_000 },
       )
     } catch (error) {
       const statusCode = (error as { statusCode?: number } | null)?.statusCode

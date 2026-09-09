@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { supabase } from '@/lib/supabase'
 
 /**
  * Interval polling that only runs **while the tab is visible**.
@@ -28,7 +29,8 @@ export function useVisiblePoll(
     let timer: ReturnType<typeof setTimeout> | null = null
     let disposed = false
     let running = false
-    const canRun = () => !disposed && !document.hidden && navigator.onLine !== false
+    let sessionUserId: string | null = null
+    const canRun = () => !disposed && !!sessionUserId && !document.hidden && navigator.onLine !== false
 
     const start = () => {
       if (timer === null && canRun() && !running) {
@@ -61,13 +63,26 @@ export function useVisiblePoll(
       if (canRun()) void run(false)
     }
 
-    if (runOnMount) void run(false)
-    else start()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const nextUserId = session?.user.id ?? null
+      if (sessionUserId === nextUserId) return
+      sessionUserId = nextUserId
+      stop()
+      // Leave the auth callback before invoking callers that may use getSession.
+      if (canRun()) {
+        timer = setTimeout(() => {
+          timer = null
+          if (event === 'INITIAL_SESSION' && !runOnMount) start()
+          else void run(false)
+        }, 0)
+      }
+    })
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('online', onVisibility)
     window.addEventListener('offline', onVisibility)
     return () => {
       disposed = true
+      subscription.unsubscribe()
       stop()
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('online', onVisibility)

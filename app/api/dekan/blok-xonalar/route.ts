@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireActiveStaff } from '@/server/auth/guards'
+import { requirePickedFaculty } from '@/server/auth/faculty'
 import { createDormService } from '@/features/dorms/server/service'
 import { getApiError } from '@/server/http/api-error'
 
@@ -10,7 +11,7 @@ import { getApiError } from '@/server/http/api-error'
 export async function GET(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
-    const dorms = await createDormService().blockedRoomMap(staff.faculty ?? '')
+    const dorms = await createDormService().blockedRoomMap(requirePickedFaculty(staff))
     return NextResponse.json({ dorms })
   } catch (error) {
     console.error('Dekan blok-xonalar GET error:', error)

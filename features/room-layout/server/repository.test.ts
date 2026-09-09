@@ -38,7 +38,7 @@ describe('createRoomLayoutRepository.listFloor — shared-building scoping', () 
   // ozbek-fil's layout. This is the /dekan/3d-xonalar leak.
   it('returns nothing for a floor the faculty does not own in a partitioned dorm', async () => {
     supabaseReturning((table) => {
-      if (table === 'faculty_dorm') return { dorm_id: 'dorm-3' }
+      if (table === 'faculty_dorm') return { dorm_id: 'dorm-3', is_primary: false }
       if (table === 'dorm_floor') return [
         { floor_number: 1, faculty: 'ozbek-filologiyasi' },
         { floor_number: 2, faculty: 'amit' },
@@ -55,7 +55,7 @@ describe('createRoomLayoutRepository.listFloor — shared-building scoping', () 
 
   it('returns the full layout for a floor the faculty does own', async () => {
     supabaseReturning((table) => {
-      if (table === 'faculty_dorm') return { dorm_id: 'dorm-3' }
+      if (table === 'faculty_dorm') return { dorm_id: 'dorm-3', is_primary: false }
       if (table === 'dorm_floor') return [
         { floor_number: 1, faculty: 'ozbek-filologiyasi' },
         { floor_number: 2, faculty: 'amit' },
@@ -71,7 +71,7 @@ describe('createRoomLayoutRepository.listFloor — shared-building scoping', () 
 
   it('a guest faculty sees only its granted rooms on an unowned floor', async () => {
     supabaseReturning((table) => {
-      if (table === 'faculty_dorm') return { dorm_id: 'dorm-3' }
+      if (table === 'faculty_dorm') return { dorm_id: 'dorm-3', is_primary: false }
       if (table === 'dorm_floor') return [
         { floor_number: 2, faculty: 'ozbek-filologiyasi' },
       ]
@@ -86,7 +86,7 @@ describe('createRoomLayoutRepository.listFloor — shared-building scoping', () 
 
   it('the sole faculty of an unpartitioned dorm is unaffected (sees the whole floor)', async () => {
     supabaseReturning((table) => {
-      if (table === 'faculty_dorm') return { dorm_id: 'dorm-1' }
+      if (table === 'faculty_dorm') return { dorm_id: 'dorm-1', is_primary: true }
       if (table === 'dorm_floor') return []
       if (table === 'dorm_room_grant') return []
       if (table === 'floor_room_layout') return [room('101'), room('102')]
@@ -99,7 +99,7 @@ describe('createRoomLayoutRepository.listFloor — shared-building scoping', () 
 
   it('the owner of a partitioned dorm still loses a room granted away', async () => {
     supabaseReturning((table) => {
-      if (table === 'faculty_dorm') return { dorm_id: 'dorm-3' }
+      if (table === 'faculty_dorm') return { dorm_id: 'dorm-3', is_primary: true }
       if (table === 'dorm_floor') return [{ floor_number: 2, faculty: 'ozbek-filologiyasi' }]
       if (table === 'dorm_room_grant') return [{ room_number: '11', faculty: 'amit' }]
       if (table === 'floor_room_layout') return [room('10'), room('11'), room('12')]

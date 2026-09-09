@@ -25,33 +25,41 @@ export type RoomScope = {
 /**
  * The floor/grant scoping decision, pure so it can be reasoned about in
  * isolation. `floorOwners` is the dorm_floor faculty per floor; `grants` is
- * dorm_room_grant (room -> faculty). See RoomScope for the `floors` meaning.
+ * dorm_room_grant (room -> faculty). `isPrimaryHere` is faculty_dorm.is_primary
+ * for this (faculty, dorm): only the primary faculty implicitly holds the
+ * floors nobody has claimed yet. A secondary faculty that claimed specific
+ * floors (e.g. AMIT took floor 10 of a 12-floor shared dorm) is scoped to
+ * exactly those — it must never see the whole building. See RoomScope for the
+ * `floors` meaning.
  */
 export function decideRoomScope(
   faculty: string,
   floorOwners: { floor_number: number; faculty: string | null }[],
   grants: { room_number: string; faculty: string }[],
+  isPrimaryHere = true,
 ): Omit<RoomScope, 'dormId'> {
   const owners = new Set(floorOwners.map((r) => r.faculty).filter(Boolean) as string[])
+  const myFloors = floorOwners.filter((r) => r.faculty === faculty).map((r) => r.floor_number)
   const grantedToMe = grants.filter((g) => g.faculty === faculty).map((g) => g.room_number)
   const grantedAway = grants.filter((g) => g.faculty !== faculty).map((g) => g.room_number)
+
   const partitioned = owners.size > 1
-  const iOwnBuilding = owners.size === 0 || (owners.size === 1 && owners.has(faculty))
+  // The whole building is mine only as its primary faculty with no co-owner.
+  const iOwnBuilding = isPrimaryHere && (owners.size === 0 || (owners.size === 1 && owners.has(faculty)))
+  // Claimed my own floors but don't hold the building → scoped to those floors,
+  // even if I'm (so far) the only faculty to have claimed any.
+  const scopedToMyFloors = myFloors.length > 0 && !iOwnBuilding
   // Linked here but holds neither the building nor any floor → guest: only
   // granted rooms, even with none (then nothing). Without this a guest with
   // no grants falls through to `floors = null` and sees the whole dorm.
-  const isGuest = !iOwnBuilding && !owners.has(faculty)
-  const shared = partitioned || grants.length > 0 || isGuest
+  const isGuest = !iOwnBuilding && myFloors.length === 0
+  const shared = partitioned || grants.length > 0 || isGuest || scopedToMyFloors
 
   let floors: number[] | null
-  if (!shared) floors = null
-  else if (partitioned && owners.has(faculty)) {
-    floors = floorOwners.filter((r) => r.faculty === faculty).map((r) => r.floor_number)
-  } else if (iOwnBuilding) {
-    floors = null
-  } else {
-    floors = []
-  }
+  if (scopedToMyFloors) floors = myFloors
+  else if (!shared) floors = null
+  else if (iOwnBuilding) floors = null
+  else floors = []
   return { floors, shared, grantedToMe, grantedAway }
 }
 
@@ -65,15 +73,17 @@ export function createRoomLayoutRepository() {
   // pass it — the vast majority — is unaffected).
   async function scopeFor(faculty: string, dormId?: string): Promise<RoomScope> {
     let resolved: string | null
+    let isPrimaryHere = true
     if (dormId) {
       const { data: mine } = await supabase
         .from('faculty_dorm')
-        .select('dorm_id')
+        .select('dorm_id, is_primary')
         .eq('faculty', faculty)
         .eq('dorm_id', dormId)
         .maybeSingle()
       if (!mine) throw new ApiError(403, 'Bu yotoqxona sizga tegishli emas')
       resolved = mine.dorm_id
+      isPrimaryHere = Boolean(mine.is_primary)
     } else {
       const { data: link } = await supabase
         .from('faculty_dorm')
@@ -96,6 +106,7 @@ export function createRoomLayoutRepository() {
         faculty,
         (floorRows ?? []) as { floor_number: number; faculty: string | null }[],
         (grantRows ?? []) as { room_number: string; faculty: string }[],
+        isPrimaryHere,
       ),
     }
   }

@@ -25,6 +25,7 @@ import { SkelShell } from '@/components/ui/skeletons'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { getSafeSession } from '@/lib/auth-session'
 import { fetchAdminPaymentSummary } from '@/features/payments/client/api'
+import { useVisiblePoll } from '@/lib/hooks/useVisiblePoll'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
 import { FontScopeProvider } from '@/lib/font-scope-context'
 import { appFont as baloo2 } from '@/lib/app-font'
@@ -67,35 +68,16 @@ export default function AdminLayout({
     }
   }, [])
 
-  useEffect(() => {
-    let active = true
-
-    async function fetchWaitingPayments() {
-      if (pathname.startsWith('/admin/login')) {
-        return
-      }
-
-      const session = await getSafeSession()
-      if (!session || !active) return
-
-      try {
-        const summary = await fetchAdminPaymentSummary()
-        if (active && summary) {
-          setWaitingCount(summary.waitingCount || 0)
-        }
-      } catch {
-        // Silently swallow unauthenticated background polling errors
-      }
+  useVisiblePoll(async () => {
+    const session = await getSafeSession()
+    if (!session) return
+    try {
+      const summary = await fetchAdminPaymentSummary()
+      if (summary) setWaitingCount(summary.waitingCount || 0)
+    } catch {
+      // Authentication and transient network errors are retried on the next poll.
     }
-
-    fetchWaitingPayments()
-    const interval = setInterval(fetchWaitingPayments, 15000)
-    return () => {
-      active = false
-      clearInterval(interval)
-    }
-  }, [pathname])
-
+  }, 60_000, { enabled: !pathname.startsWith('/admin/login') })
   const menuItems = useMemo(() => ([
     // First item is the way back to the faculty (dekan) panel. Harmless for
     // a system admin — /dekan/* just redirects them straight back here.

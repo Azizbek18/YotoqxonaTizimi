@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
+import Link from '@/components/navigation/NavigationLink'
+import PageTransition from '@/components/navigation/PageTransition'
 import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
@@ -103,12 +104,6 @@ const QUICK_ACTIONS = [
   { label: 'Tozalik auditi', icon: ShieldCheck, bg: 'bg-emerald-600', text: 'text-white' },
 ]
 
-const PAGE_VARIANTS = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-}
-
 export default function TalabaLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -173,11 +168,11 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
             // --- FETCH NOTIFICATIONS DATA ---
             try {
               // 1. Fetch latest announcements
-              const elonPayload = await fetchStudentAnnouncements()
+              const [elonPayload, { applications: arizalarData }] = await Promise.all([
+                fetchStudentAnnouncements(),
+                fetchStudentApplications('notifications', 5),
+              ])
               const elonData = Array.isArray(elonPayload.elonlar) ? elonPayload.elonlar.slice(0, 5) : []
-
-              // 2. Fetch student's applications / warnings
-              const { applications: arizalarData } = await fetchStudentApplications('notifications', 5)
 
               const combinedList: NotificationItem[] = []
 
@@ -417,22 +412,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
         </section>
 
         {/* Page Content with Animation */}
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={pathname}
-            variants={PAGE_VARIANTS}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{
-              type: 'spring',
-              stiffness: 260,
-              damping: 30
-            }}
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
+        <PageTransition>{children}</PageTransition>
       </main>
 
       {/* Fullscreen story viewer (self-portals to body) */}
@@ -448,8 +428,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
       {/* --- 4. FLOATING BOTTOM NAVIGATION --- */}
       <nav className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] sm:bottom-8 left-0 right-0 z-40 flex justify-center px-2 sm:px-6 pointer-events-none">
         <motion.div
-          initial={{ y: 100 }}
-          animate={{ y: 0 }}
+          initial={false}
           className={`relative flex items-center gap-0.5 sm:gap-1 w-full max-w-full sm:max-w-4xl backdrop-blur-none sm:backdrop-blur-[30px] rounded-2xl sm:rounded-4xl p-1 sm:p-2 transition-all overflow-x-auto no-scrollbar pointer-events-auto ${isLight ? 'bg-white/95 sm:bg-white/80 border border-slate-300 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'bg-slate-950/95 sm:bg-slate-950/60 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)]'}`}
         >
           {/* Inner Glossy Glow */}
@@ -458,9 +437,9 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
           {NAV.map((item) => {
             const isActive = pathname.startsWith(item.href)
             return (
-              <Link key={item.href} href={item.href} className="relative shrink-0 flex-1 min-w-0 group">
+              <Link key={item.href} href={item.href} aria-label={item.label} aria-current={isActive ? 'page' : undefined} className="relative shrink-0 flex-1 min-w-0 group">
                 <motion.div
-                  whileTap={{ scale: 0.88 }}
+                  whileTap={{ scale: 0.97 }}
                   className="flex flex-col items-center justify-center py-2 sm:py-2.5 relative z-10 px-1"
                 >
                   {/* Active Indicator (Liquid Pill) */}
@@ -486,7 +465,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                     />
                   </div>
 
-                  <span className={`text-[6px] sm:text-[9px] font-black uppercase tracking-wider sm:tracking-widest transition-all duration-300 ${isActive ? isLight ? 'text-blue-600 opacity-100' : 'text-cyan-400 opacity-100' : isLight ? 'text-slate-500 opacity-0 h-0 overflow-hidden' : 'text-slate-500 opacity-0 h-0 overflow-hidden'
+                  <span className={`h-3 text-[6px] sm:text-[9px] font-black uppercase tracking-wider sm:tracking-widest transition-opacity duration-150 ${isActive ? isLight ? 'text-blue-600 opacity-100' : 'text-cyan-400 opacity-100' : isLight ? 'text-slate-500 opacity-0 overflow-hidden' : 'text-slate-500 opacity-0 overflow-hidden'
                     }`}>
                     {item.label}
                   </span>

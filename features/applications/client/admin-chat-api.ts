@@ -1,16 +1,11 @@
 'use client'
 
-import { getAuthHeaders } from '@/lib/auth-session'
+import { apiRequest } from '@/lib/api-client'
 import type { StudentApplication } from '../types'
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    headers: { ...await getAuthHeaders(), ...init?.headers },
-    cache: 'no-store',
-  })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok || body.ok === false) throw new Error(body.error || 'Chat so\'rovini bajarib bo\'lmadi')
+  const body = await apiRequest<T & { ok?: boolean; error?: string }>(url, init, 'Chat so\'rovini bajarib bo\'lmadi')
+  if (body.ok === false) throw new Error(body.error || 'Chat so\'rovini bajarib bo\'lmadi')
   return body as T
 }
 

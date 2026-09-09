@@ -28,6 +28,7 @@ import {
   isValidEmail,
   isValidForeignIdNumber,
   normalizeForeignIdNumber,
+  stripPlaceholderNameTokens,
 } from '@/lib/permit-validation'
 import { cyrillicToLatin } from '@/lib/transliterate'
 
@@ -159,9 +160,15 @@ export default function ImtiyozliAriza() {
   }
 
   const validateStep1 = () => {
+    // "XXX" / "-" typed into the Sharif field means "no patronymic" — flip the
+    // checkbox so the generated Ariza/Tilxat never shows the placeholder.
+    if (!noMiddleName && middleName.trim() && stripPlaceholderNameTokens(middleName) === '') {
+      setNoMiddleName(true)
+      setMiddleName('')
+    }
     const nameError = getNamePartError(lastName, 'Familiya')
       || getNamePartError(firstName, 'Ism')
-      || (noMiddleName ? null : getNamePartError(middleName, 'Otasining ismi'))
+      || (noMiddleName || (middleName.trim() && stripPlaceholderNameTokens(middleName) === '') ? null : getNamePartError(middleName, 'Otasining ismi'))
     if (nameError) {
       toast.error(nameError)
       return false

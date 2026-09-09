@@ -12,6 +12,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { appFont as baloo2 } from '@/lib/app-font'
 import { supabase } from '@/lib/supabase'
 import { getPasswordPolicyError } from '@/lib/password-policy'
+import { splitGluedName, stripPlaceholderNameTokens, toTitleCaseName } from '@/lib/permit-validation'
 
 import StepProgress from '@/components/register/StepProgress'
 import { buildSteps, type ApplicationType, type WizardStepProps } from '@/components/register/wizardSteps'
@@ -79,7 +80,13 @@ export default function RegisterPage() {
           }
           const isForeign = permit.application_type === 'imtiyozli'
 
-          const nameParts = String(permit.full_name ?? '').trim().split(/\s+/).filter(Boolean)
+          // Imtiyozli permit names are self-reported and routinely malformed:
+          // "XXX" placeholder patronymics, one glued token ("ZairovaGulnaza"),
+          // ALL CAPS. Clean up as far as we safely can — the imtiyozli student
+          // then confirms/corrects the F.I.Sh in an editable Step2Name.
+          let nameSource = stripPlaceholderNameTokens(permit.full_name)
+          if (nameSource.split(/\s+/).filter(Boolean).length < 2) nameSource = splitGluedName(nameSource)
+          const nameParts = toTitleCaseName(nameSource).trim().split(/\s+/).filter(Boolean)
           const [lastName = '', firstName = '', ...rest] = nameParts
           const middleName = rest.join(' ')
           const phone = String(permit.phone ?? '').replace(/\D/g, '').slice(-9)

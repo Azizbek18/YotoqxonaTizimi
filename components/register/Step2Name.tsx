@@ -4,9 +4,11 @@ import React, { useState } from 'react'
 import { RegisterData } from './types'
 import toast from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, ArrowRight, ShieldAlert, Phone, BadgeCheck } from 'lucide-react'
+import { User, ArrowRight, ShieldAlert, Phone, BadgeCheck, PencilLine } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import CustomSelect from '@/components/ui/CustomSelect'
+import { getNamePartError } from '@/lib/permit-validation'
+import { cyrillicToLatin } from '@/lib/transliterate'
 import { stepLabel } from './constants'
 
 interface Props {
@@ -16,13 +18,18 @@ interface Props {
   onBack: () => void
   stepNumber?: number
   totalSteps?: number
+  applicationType?: 'yollanma' | 'imtiyozli'
 }
 
-// F.I.Sh tasdiqlangan arizadan keladi — bu yerda faqat ko'rsatiladi. Talaba
-// tug'ilgan sana va telefonini kiritadi (telefon ham prefilled, tasdiqlanadi).
-export default function Step2Name({ data, onChange, onNext, onBack, stepNumber = 2, totalSteps = 8 }: Props) {
+// yo'llanma: F.I.Sh comes from the my.gov.uz referral — shown read-only.
+// imtiyozli: the applicant typed their own F.I.Sh into the ariza (often
+// ALL-CAPS, glued into one token, or padded with "XXX"), so it is prefilled
+// but editable here — the student confirms/corrects it, and the server carries
+// the correction back onto the permit. Birth date + phone are always entered.
+export default function Step2Name({ data, onChange, onNext, onBack, stepNumber = 2, totalSteps = 8, applicationType = 'yollanma' }: Props) {
   const isLight = useThemeStore((state) => state.theme) === 'light'
   const [focusedPhone, setFocusedPhone] = useState(false)
+  const nameEditable = applicationType === 'imtiyozli'
 
   const fullName = [data.lastName, data.firstName, data.noMiddleName ? '' : data.middleName]
     .filter(Boolean)
@@ -52,6 +59,12 @@ export default function Step2Name({ data, onChange, onNext, onBack, stepNumber =
   }
 
   const validate = () => {
+    if (nameEditable) {
+      const nameError = getNamePartError(data.lastName, 'Familiya')
+        || getNamePartError(data.firstName, 'Ism')
+        || (data.noMiddleName || !data.middleName ? null : getNamePartError(data.middleName, 'Otasining ismi'))
+      if (nameError) return show3DToast(nameError)
+    }
     if (!data.birthDate || data.birthDate.includes('undefined')) return show3DToast('Tug‘ilgan sanangizni tanlang')
     if (!/^\d{9}$/.test(data.phone)) return show3DToast("Telefon raqami 9 ta raqam bo'lishi shart")
     onNext()
@@ -60,6 +73,7 @@ export default function Step2Name({ data, onChange, onNext, onBack, stepNumber =
   const glassInput = 'w-full bg-transparent p-3.5 rounded-xl outline-none placeholder:text-slate-600 transition-colors duration-300 font-sans text-[13px]'
   const labelClass = 'text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block'
   const dateSelectCls = `${isLight ? 'bg-white border border-slate-200' : 'bg-white/[0.02] border border-white/[0.08]'} backdrop-blur-xl p-3.5 rounded-xl text-[13px] pl-3 text-center transition-all duration-500 relative`
+  const nameInputCls = `w-full border p-3 pl-10 rounded-xl text-[13px] outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100' : 'bg-white/[0.03] border-white/12 text-white focus:border-indigo-500/50'} disabled:opacity-50`
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 font-sans px-1">
@@ -74,13 +88,81 @@ export default function Step2Name({ data, onChange, onNext, onBack, stepNumber =
         </div>
       </div>
 
-      {/* Read-only F.I.Sh from the approved application */}
-      <div className={`rounded-2xl border px-4 py-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/[0.02] border-white/8'}`}>
-        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-emerald-500">
-          <BadgeCheck size={12} /> Arizangizdagi F.I.Sh
+      {nameEditable ? (
+        /* Editable F.I.Sh — prefilled from the ariza, student confirms/corrects */
+        <div className={`rounded-2xl border px-4 py-3.5 space-y-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/[0.02] border-white/8'}`}>
+          <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-indigo-400">
+            <PencilLine size={12} /> F.I.Sh — arizadan olindi, tekshiring
+          </div>
+
+          <div className="space-y-1.5">
+            <label className={labelClass}>Familiya</label>
+            <div className="relative">
+              <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                autoComplete="family-name"
+                value={data.lastName}
+                onChange={(e) => onChange({ lastName: cyrillicToLatin(e.target.value) })}
+                placeholder="Familiya"
+                className={nameInputCls}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-1.5">
+              <label className={labelClass}>Ism</label>
+              <div className="relative">
+                <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  autoComplete="given-name"
+                  value={data.firstName}
+                  onChange={(e) => onChange({ firstName: cyrillicToLatin(e.target.value) })}
+                  placeholder="Ism"
+                  className={nameInputCls}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className={labelClass}>Otasining ismi</label>
+              <div className="relative">
+                <User size={15} className={`absolute left-3 top-1/2 -translate-y-1/2 ${data.noMiddleName ? 'text-slate-600' : 'text-slate-500'}`} />
+                <input
+                  type="text"
+                  autoComplete="additional-name"
+                  disabled={data.noMiddleName}
+                  value={data.noMiddleName ? '' : data.middleName}
+                  onChange={(e) => onChange({ middleName: cyrillicToLatin(e.target.value) })}
+                  placeholder={data.noMiddleName ? '—' : 'Sharif'}
+                  className={nameInputCls}
+                />
+              </div>
+            </div>
+          </div>
+
+          <label className={`flex items-center gap-2 ml-0.5 text-[11px] font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            <input
+              type="checkbox"
+              checked={data.noMiddleName}
+              onChange={(e) => onChange({ noMiddleName: e.target.checked, ...(e.target.checked ? { middleName: '' } : {}) })}
+            />
+            Otasining ismi yo&apos;q (xorijiy pasport)
+          </label>
+          <p className={`ml-0.5 text-[10px] leading-relaxed ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+            Ismni pasportdagidek yozing. Kirilcha yozsangiz avtomatik lotinga o&apos;giriladi.
+          </p>
         </div>
-        <p className={`mt-1 text-[15px] font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{fullName || '—'}</p>
-      </div>
+      ) : (
+        /* Read-only F.I.Sh from the approved my.gov.uz referral */
+        <div className={`rounded-2xl border px-4 py-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/[0.02] border-white/8'}`}>
+          <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-emerald-500">
+            <BadgeCheck size={12} /> Arizangizdagi F.I.Sh
+          </div>
+          <p className={`mt-1 text-[15px] font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{fullName || '—'}</p>
+        </div>
+      )}
 
       <div className="grid gap-4">
         {/* Tug'ilgan sana */}

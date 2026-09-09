@@ -116,7 +116,8 @@ function normalizeNameToken(s: string): string {
 // referral, the passport and the typed form disagree about whether to
 // include one at all. Dropped from both sides before matching.
 const PATRONYMIC_MARKERS = new Set([
-  'OGLI', 'UGLI', 'UGHLI', 'OGIL', 'QIZI', 'KIZI', 'QIZ', 'QYZY', 'UILI', 'ULI', 'ULY', 'UULU',
+  'OGLI', 'UGLI', 'UGHLI', 'OGIL', 'QIZI', 'KIZI', 'QIZ', 'QYZY', 'GYZY', 'GIZI',
+  'UILI', 'ULI', 'ULY', 'UULU',
 ])
 
 // True when one token is the other plus a short trailing bit — a patronymic
@@ -277,4 +278,71 @@ export function namesLikelyMatch(declared: string, other: string): boolean {
     ),
   ).length
   return anchorCount + extraMatches >= Math.ceil(n * 0.7)
+}
+
+// ── Imtiyozli (foreign) applicant name repair ──────────────────────────────
+// A foreign applicant types their own F.I.Sh — there is no my.gov.uz referral
+// to trust. An early version of the imtiyozli form had a single free-text
+// field, and an applicant with no patronymic often types a placeholder instead
+// of ticking "no patronymic". So a stored `full_name` is frequently glued into
+// one token ("ZairovaGulnaza"), screamed in capitals ("VEPAYEVA ENESH"), or
+// padded with "XXX". These helpers let the register wizard pre-split such a
+// name for the student to confirm, and let the server accept the correction.
+
+// "XXX" / "xxx" / "XXXX" / "---" / "..." / "yo'q" / "yoq" — carries no identity.
+const PLACEHOLDER_NAME_TOKEN_RE = /^(?:x{2,}|-+|\.+|_+|yo['ʻʼ`]?q|yoq|yuq|нет)$/iu
+
+export function stripPlaceholderNameTokens(input: unknown): string {
+  return normalizeNameWhitespace(input)
+    .trim()
+    .split(' ')
+    .filter((token) => token && !PLACEHOLDER_NAME_TOKEN_RE.test(token))
+    .join(' ')
+}
+
+// "ZairovaGulnaza" -> "Zairova Gulnaza". Splits on a lower->upper boundary
+// only, so an all-caps glued token ("BABAYEVAGULZIRE") is left as-is — there
+// is no reliable boundary and the student fixes that one in the wizard.
+export function splitGluedName(input: unknown): string {
+  return String(input ?? '').replace(/(\p{Ll})(\p{Lu})/gu, '$1 $2')
+}
+
+// "VEPAYEVA ENESH" / "vepayeva enesh" -> "Vepayeva Enesh". Only re-cases a
+// token that is wholly upper- or wholly lower-case, so a deliberately mixed
+// name ("Go'zal", "McLeod") is left alone. A patronymic marker stays lower
+// case ("Olimov Umidjon Doniyor o'g'li", "Rejepova Aygozel Rejep qizi").
+export function toTitleCaseName(input: unknown): string {
+  return normalizeNameWhitespace(input)
+    .trim()
+    .split(' ')
+    .map((token) => {
+      if (!token) return token
+      if (PATRONYMIC_MARKERS.has(normalizeNameToken(token))) return token.toLowerCase()
+      const uniformCase = token === token.toUpperCase() || token === token.toLowerCase()
+      if (!uniformCase) return token
+      const lower = token.toLowerCase()
+      return lower.charAt(0).toUpperCase() + lower.slice(1)
+    })
+    .join(' ')
+}
+
+// The student's typed F.I.Sh vs the (possibly malformed) permit name. The real
+// identity anchor is passport + email + an `approved` permit row — this only
+// stops a wholly different name. Accepts a normal lenient match OR a
+// spacing/case/placeholder-only difference ("Babayeva Gulzire" <-> "BABAYEVAGULZIRE"
+// <-> "Babayeva Gulzire XXX"), in either surname/given order.
+export function foreignNameReconciles(declared: string, permitName: string): boolean {
+  if (namesLikelyMatch(declared, permitName)) return true
+  const squash = (value: string) =>
+    cyrillicToLatin(normalizeNameWhitespace(value)).toUpperCase().replace(/[^A-Z]/g, '')
+  const d = squash(declared)
+  const p = squash(stripPlaceholderNameTokens(permitName))
+  if (d.length < 4 || p.length < 4) return false
+  if (d === p) return true
+  const tokens = cyrillicToLatin(normalizeNameWhitespace(declared)).trim().split(/\s+/)
+  if (tokens.length >= 2) {
+    const swapped = squash([tokens[1], tokens[0], ...tokens.slice(2)].join(' '))
+    if (swapped === p) return true
+  }
+  return false
 }

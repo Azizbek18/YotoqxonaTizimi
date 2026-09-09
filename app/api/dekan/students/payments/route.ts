@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createFacultyStudentsService } from '@/features/faculty-students/server/service'
 import { requireActiveStaff } from '@/server/auth/guards'
+import { requirePickedFaculty } from '@/server/auth/faculty'
 import { getApiError } from '@/server/http/api-error'
 
 // Read-only by design: the dekan sees who has paid and who is in debt,
@@ -8,7 +9,7 @@ import { getApiError } from '@/server/http/api-error'
 export async function GET(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
-    const payments = await createFacultyStudentsService().listPayments(staff.faculty)
+    const payments = await createFacultyStudentsService().listPayments(requirePickedFaculty(staff))
     return NextResponse.json({ payments })
   } catch (error) {
     console.error('Dekan payments API error:', error)

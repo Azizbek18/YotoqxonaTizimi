@@ -163,7 +163,13 @@ export default function RoomScene3D({
       pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1
       pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1
       raycaster.setFromCamera(pointer, camera)
-      return raycaster.intersectObjects(meshes)[0]?.object as THREE.Mesh | undefined
+      // Non-recursive: hit the solid room boxes only, never their wireframe
+      // (LineSegments) children — those carry no name and would blank the card.
+      const hit = raycaster.intersectObjects(meshes, false)[0]?.object
+      if (!hit) return undefined
+      let obj: THREE.Object3D | null = hit
+      while (obj && !obj.name && obj.parent) obj = obj.parent
+      return obj && obj.name ? (obj as THREE.Mesh) : undefined
     }
     const orbit = (dx: number, dy: number) => {
       roomGroup.rotation.y += dx * 0.005
@@ -318,9 +324,11 @@ export default function RoomScene3D({
 
       {/* hover tooltip — follows the cursor, portalled out so an ancestor
           transform / overflow can't clip it */}
-      {hovered && hoverRoom && typeof document !== 'undefined' && createPortal(
+      {hovered && typeof document !== 'undefined' && createPortal(
         (() => {
-          const { tone, free } = roomLine(hoverRoom)
+          const r = hoverRoom
+          const tone = r ? getRoomOccupancyTone(r.occupied, r.capacity) : 'unknown'
+          const free = r ? freePlaces(r) : null
           return (
             <div
               className={`pointer-events-none fixed z-[9999] rounded-xl border px-3 py-2 shadow-2xl backdrop-blur-xl ${
@@ -329,17 +337,19 @@ export default function RoomScene3D({
               style={{ left: hovered.clientX + 14, top: hovered.clientY + 14, fontFamily: scopedFontFamily }}
             >
               <p className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
-                Xona #{hoverRoom.roomNumber}
-                {hoverRoom.frozen && <span className={isLight ? 'text-cyan-600' : 'text-cyan-400'}> · muzlatilgan</span>}
+                Xona #{hovered.roomNumber}
+                {r?.frozen && <span className={isLight ? 'text-cyan-600' : 'text-cyan-400'}> · muzlatilgan</span>}
               </p>
-              <p className={`mt-1 flex items-center gap-1.5 text-xs font-semibold ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                <span className="h-2 w-2 rounded-full" style={{ background: hoverRoom.frozen ? '#06b6d4' : TONE_HEX[tone] }} />
-                {hoverRoom.occupied} / {hoverRoom.capacity ?? '?'} band
-                {free !== null && ` · ${free} bo‘sh`}
-              </p>
-              {hoverRoom.occupants.length > 0 && (
+              {r && (
+                <p className={`mt-1 flex items-center gap-1.5 text-xs font-semibold ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+                  <span className="h-2 w-2 rounded-full" style={{ background: r.frozen ? '#06b6d4' : TONE_HEX[tone] }} />
+                  {r.occupied} / {r.capacity ?? '?'} band
+                  {free !== null && ` · ${free} bo‘sh`}
+                </p>
+              )}
+              {r && r.occupants.length > 0 && (
                 <p className={`mt-1 max-w-[240px] text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                  {hoverRoom.occupants.join(', ')}
+                  {r.occupants.join(', ')}
                 </p>
               )}
             </div>

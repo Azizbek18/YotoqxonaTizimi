@@ -221,7 +221,14 @@ export default function BlokXonalarPage() {
               <BlockedBuilding3D
                 dorm={dorm}
                 activeKey={`${section?.block}-${section?.floor}`}
-                onSelectSection={setSectionKey}
+                onPickRoom={(block, floor, roomNumber) => {
+                  const key = `${block}-${floor}`
+                  setSectionKey(key)
+                  const room = dorm.sections
+                    .find((s) => `${s.block}-${s.floor}` === key)?.rooms
+                    .find((r) => r.roomNumber === roomNumber)
+                  if (room && !room.frozen && room.occupants.length < room.capacity) setPicking(room)
+                }}
                 isLight={isLight}
               />
             </div>

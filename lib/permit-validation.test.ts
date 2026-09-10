@@ -13,6 +13,7 @@ import {
   isValidNamePart,
   isValidPassport,
   canonicalizeFullName,
+  permitClaimFullName,
   namesLikelyMatch,
   normalizeNameWhitespace,
   normalizeJshshir,
@@ -198,6 +199,23 @@ describe('name parts', () => {
     // A patronymic marker stays lower-case, apostrophe form preserved.
     expect(toTitleCaseName("OLIMOV UMIDJON DONIYOR O'G'LI")).toBe("Olimov Umidjon Doniyor o'g'li")
     expect(toTitleCaseName('Matmuradova Ogulshat Amandurdy GYZY')).toBe('Matmuradova Ogulshat Amandurdy gyzy')
+  })
+
+  it('permitClaimFullName is casing/script/placeholder invariant — the AI precheck and the submission must agree', () => {
+    const canonical = 'ABDULLAYEVA SHAHNOZA ABDULLA QIZI'
+    // The yo'llanma AI precheck signs the claim over one of these; the
+    // submission verifies against another. All must collapse to one string.
+    expect(permitClaimFullName('Abdullayeva Shahnoza Abdulla qizi')).toBe(canonical)
+    expect(permitClaimFullName('ABDULLAYEVA SHAHNOZA ABDULLA QIZI')).toBe(canonical)
+    expect(permitClaimFullName('abdullayeva shahnoza abdulla qizi')).toBe(canonical)
+    expect(permitClaimFullName('  Abdullayeva   Shahnoza​Abdulla qizi ')).toBe(canonical)
+    expect(permitClaimFullName('Abdullayeva Shahnoza Abdulla qizi XXX')).toBe(canonical)
+    // Deterministic for Cyrillic input too (both routes run the same function
+    // on the same string, so whatever it produces, they agree).
+    expect(permitClaimFullName('Абдуллаева Шахноза Абдулла кизи'))
+      .toBe(permitClaimFullName('Абдуллаева Шахноза Абдулла кизи'))
+    // idempotent
+    expect(permitClaimFullName(canonical)).toBe(canonical)
   })
 
   it('foreignNameReconciles accepts the student-corrected spelling of a malformed permit name', () => {

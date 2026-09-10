@@ -4,10 +4,10 @@ import { aiVisionConfigured, aiVisionJson } from '@/lib/ai'
 import { checkRateLimit, getClientIp } from '@/lib/security'
 import {
   PERMIT_FILE_RULES,
-  canonicalizeFullName,
   detectPermitFileMimeType,
   normalizeJshshir,
   normalizePassport,
+  permitClaimFullName,
 } from '@/lib/permit-validation'
 import { signFileClaim } from '@/lib/receipt-claim'
 import { evaluatePermitDocument, type PermitDocumentAiResult } from '@/lib/permit-document-ai'
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     // JShSHIR, since /api/permit-requests only checks the claim proves
     // *some* file passed, not which identity it was checked for.
     const claimContext = {
-      fullName: canonicalizeFullName(declaredFullName),
+      fullName: permitClaimFullName(declaredFullName),
       passport: normalizePassport(declaredPassport),
       jshshir: normalizeJshshir(declaredJshshir),
     }

@@ -137,4 +137,36 @@ describe('POST /api/permit-requests — Ariza/Tilxat maydonlari', () => {
     expect(response.status).toBe(400)
     expect((await response.json()).error).toMatch(/Imzo tasviri/i)
   })
+
+  // Regression: the AI precheck signed the claim over one spelling of the
+  // F.I.Sh and this route verified it against a differently-normalised one
+  // (Title Case + Latin + placeholder-stripped) — so a student who typed
+  // their name in CAPS always hit "Hujjat avval AI orqali tekshirilishi shart"
+  // even though the document had passed the AI check.
+  it('claim signed over the Title-Case name accepts a CAPS-typed F.I.Sh (permitClaimFullName is casing-invariant)', async () => {
+    const { signFileClaim } = await import('@/lib/receipt-claim')
+    const { createHash } = await import('crypto')
+    const { permitClaimFullName, normalizePassport, normalizeJshshir } = await import('@/lib/permit-validation')
+
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-secret'
+    classifyPermitResubmission.mockResolvedValue({ action: 'insert' })
+
+    const pngBytes = Buffer.from(PNG.split(',')[1], 'base64')
+    const claim = signFileClaim('permit', createHash('sha256').update(pngBytes).digest('hex'), {
+      fullName: permitClaimFullName('Testov Talaba Sinov'), // precheck saw Title Case
+      passport: normalizePassport('AA1234567'),
+      jshshir: normalizeJshshir('12345678901234'),
+    })
+
+    const form = new FormData()
+    for (const [k, v] of Object.entries(baseFields({ fullName: 'TESTOV TALABA SINOV' }))) form.append(k, v)
+    form.append('file', new File([pngBytes], 'yollanma.png', { type: 'image/png' }))
+    form.append('aiClaim', claim)
+
+    const response = await POST(new NextRequest('http://localhost/api/permit-requests', { method: 'POST', body: form }))
+    const body = await response.json().catch(() => ({}))
+    // The claim verified — it now fails downstream on the mocked storage,
+    // NOT on the AI-precheck gate.
+    expect(body.error ?? '').not.toMatch(/AI orqali tekshirilishi shart/i)
+  })
 })

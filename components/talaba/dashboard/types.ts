@@ -59,6 +59,8 @@ export interface Profile {
   assigned_floor?: number;
   gender?: string;
   warning_count?: number;
+  /** Xorijiy talabalar uchun kelib chiqqan davlati; mahalliy talabada NULL. */
+  country?: string | null;
 }
 
 export interface CaptainInfo {

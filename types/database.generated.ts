@@ -301,10 +301,37 @@ export type AnnouncementStoryRow = {
   expires_at: string
 }
 
+export type ForeignStudentDocumentRow = {
+  id: string
+  student_id: string
+  doc_type: 'visa' | 'registration'
+  number: string | null
+  issued_on: string | null
+  expires_on: string
+  status: 'active' | 'renewing' | 'cancelled'
+  registration_basis: 'mehmonxona' | 'ijara' | 'qarindosh' | 'ttj' | null
+  address: string | null
+  file_path: string | null
+  note: string | null
+  verified_at: string | null
+  verified_by: string | null
+  created_by_role: 'talaba' | 'dekan' | 'admin'
+  created_at: string
+  updated_at: string
+}
+
+export type ForeignDocumentReminderRow = {
+  document_id: string
+  milestone: number
+  sent_at: string
+}
+
 export interface Database {
   public: {
     Tables: {
       users: Table<UserRow>
+      foreign_student_documents: Table<ForeignStudentDocumentRow>
+      foreign_document_reminders: Table<ForeignDocumentReminderRow>
       staff: Table<StaffRow>
       arizalar: Table<ApplicationRow>
       ariza_signatures: Table<ArizaSignatureRow>

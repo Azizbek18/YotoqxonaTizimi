@@ -87,4 +87,15 @@ if (process.env.TELEGRAM_ADMIN_CHAT_ID
   process.exit(1)
 }
 
+// Cron secrets are optional (the GitHub Actions workflow skips itself when
+// unset), but a placeholder value would let an unauthenticated caller run the
+// job — reject those explicitly.
+for (const cronSecret of ['ATTENDANCE_CRON_SECRET', 'VISA_CRON_SECRET']) {
+  const value = process.env[cronSecret]
+  if (value !== undefined && (isPlaceholderValue(value) || value.trim().length < 16)) {
+    console.error(`${cronSecret} must be a random secret of at least 16 characters when set.`)
+    process.exit(1)
+  }
+}
+
 console.log('Production environment validation passed.')

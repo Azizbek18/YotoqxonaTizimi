@@ -84,6 +84,15 @@ export async function POST(request: NextRequest) {
     const birthDate = text(body, 'birthDate', 10)
     const entryDate = text(body, 'entryDate', 10)
 
+    // A parent may be marked absent (deceased / no contact). Then that parent's
+    // workplace/phone are not required; the name is kept if given, and the
+    // workplace carries a marker so the dekan sees why it's blank.
+    const NO_PARENT_MARKER = "Vafot etgan yoki aloqa yo'q"
+    const noFather = body.noFather === true
+    const noMother = body.noMother === true
+    const fatherPhone = noFather ? '' : normalizePhoneE164(body.father_phone)
+    const motherPhone = noMother ? '' : normalizePhoneE164(body.mother_phone)
+
     if (
       !(applicationType === 'imtiyozli' ? isValidForeignIdNumber(passport) : isValidPassport(passport))
       || (applicationType === 'yollanma' && !isValidJshshir(jshshir))
@@ -121,6 +130,12 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         { error: 'Kurs yoki sana ma’lumotlari noto‘g‘ri.' },
+        { status: 400 },
+      )
+    }
+    if (!isPlausibleInternationalPhone(fatherPhone) && !isPlausibleInternationalPhone(motherPhone)) {
+      return NextResponse.json(
+        { error: 'Kamida bitta ota yoki ona telefon raqamini kiriting.' },
         { status: 400 },
       )
     }
@@ -286,11 +301,11 @@ export async function POST(request: NextRequest) {
       gender: permit.gender,
       phone_number: phone,
       father_full_name: cyrillicToLatin(text(body, 'father_full_name', 160)) || null,
-      father_workplace: text(body, 'father_workplace', 200) || null,
-      father_phone: normalizePhoneE164(body.father_phone) || null,
+      father_workplace: noFather ? NO_PARENT_MARKER : (text(body, 'father_workplace', 200) || null),
+      father_phone: fatherPhone || null,
       mother_full_name: cyrillicToLatin(text(body, 'mother_full_name', 160)) || null,
-      mother_workplace: text(body, 'mother_workplace', 200) || null,
-      mother_phone: normalizePhoneE164(body.mother_phone) || null,
+      mother_workplace: noMother ? NO_PARENT_MARKER : (text(body, 'mother_workplace', 200) || null),
+      mother_phone: motherPhone || null,
       room_number: permit.room_number,
       dorm_id: permit.room_number ? dormId : null,
       assigned_floor: assignedFloor,

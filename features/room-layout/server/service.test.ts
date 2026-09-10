@@ -131,6 +131,14 @@ describe('room layout service', () => {
         .rejects.toMatchObject({ status: 403 })
     })
 
+    it('turns a P0001 (blocked-layout building) into a 409', async () => {
+      const repo = repository({
+        applyBuildingLayout: vi.fn(async () => { throw Object.assign(new Error('blocked'), { code: 'P0001' }) }),
+      } as Partial<RoomLayoutRepository>)
+      await expect(createRoomLayoutService(repo).generateFloors(FACULTY, [{ floor: 1, rooms: 1 }], 'sequential'))
+        .rejects.toMatchObject({ status: 409 })
+    })
+
     it('is a no-op for an all-zero plan against an empty building', async () => {
       const repo = repository()
       const result = await createRoomLayoutService(repo).generateFloors(FACULTY, [{ floor: 1, rooms: 0 }], 'sequential')

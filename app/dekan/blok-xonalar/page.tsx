@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { Boxes, Building2, DoorClosed, Lock, UserPlus, X } from 'lucide-react'
+import { Boxes, Building2, ChevronDown, DoorClosed, Lock, UserPlus, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { Skel } from '@/components/dekan/Skeletons'
@@ -205,21 +205,38 @@ export default function BlokXonalarPage() {
 
       {/* building view — where your sections sit in the A/B tower */}
       {dorm && dorm.sections.length > 0 && (
-        <div className={`rounded-2xl border ${ui.card}`}>
+        <div className={`overflow-hidden rounded-2xl border ${ui.card} ${show3D ? '' : ui.hoverLift}`}>
           <button
             onClick={() => setShow3D((v) => !v)}
-            className={`flex w-full items-center justify-between px-4 py-3 text-left ${ui.btnGhost}`}
+            aria-expanded={show3D}
+            className={`group flex w-full items-center gap-3 px-3 py-3 text-left transition-colors sm:px-4 ${
+              isLight ? 'hover:bg-indigo-50/60' : 'hover:bg-indigo-500/[0.06]'
+            }`}
           >
-            <span className={`flex items-center gap-2 text-sm font-bold ${ui.strong}`}>
-              <Boxes size={15} /> 3D xonalar
-              {section && (
-                <span className={`text-[10px] font-medium ${ui.faint}`}>· {section.block}{section.floor}-seksiya · {dorm.number}-yotoqxona</span>
-              )}
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${ui.accentTileSoft}`}>
+              <Boxes size={18} strokeWidth={2.4} />
             </span>
-            <span className={`text-[10px] font-bold uppercase ${ui.faint}`}>{show3D ? 'yashirish' : 'ko‘rish'}</span>
+            <span className="min-w-0 flex-1">
+              <span className={`block text-sm font-bold leading-tight ${ui.strong}`}>3D ko‘rinish</span>
+              <span className={`mt-0.5 block truncate text-[11px] font-medium ${ui.muted}`}>
+                {section
+                  ? `${section.block}${section.floor}-seksiya · ${dorm.number}-yotoqxona · jonli maket`
+                  : 'Seksiyani tanlang'}
+              </span>
+            </span>
+            <span
+              className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.accentSoft}`}
+            >
+              {show3D ? 'Yashirish' : 'Ko‘rish'}
+              <ChevronDown
+                size={13}
+                strokeWidth={2.6}
+                className={`transition-transform duration-200 ${show3D ? 'rotate-180' : ''}`}
+              />
+            </span>
           </button>
           {show3D && section && (
-            <div className={`border-t px-3 pb-3 pt-2 ${ui.border}`}>
+            <div className={`border-t p-3 ${ui.border} ${isLight ? 'bg-slate-50/70' : 'bg-slate-900/40'}`}>
               <BlockedBuilding3D
                 key={`${section.block}-${section.floor}`}
                 section={section}

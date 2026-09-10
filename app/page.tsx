@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  Sparkles, ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw, FileText, Hand, Handshake
+  Sparkles, ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw, FileText, Hand, Handshake, BookOpen
 } from 'lucide-react';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { Skel } from '@/components/ui/skeletons';
@@ -260,8 +260,32 @@ export default function Home() {
           Yotoqxona uchun ariza yoki yo‘llanma yuboring, ko‘rib chiqish holatini tekshiring
           va tasdiqlangandan keyin shaxsiy kabinetingizga kiring.
         </p>
-        <Link href="/yotoqxona" className="inline-block mt-4 underline underline-offset-4 text-indigo-400">
-          Yotoqxonaga joylashish bo‘yicha yo‘riqnoma
+        <Link
+          href="/yotoqxona"
+          style={{ animationDelay: '0.09s' }}
+          className={`anim-in group relative mx-auto mt-5 flex w-fit max-w-full items-center gap-3 rounded-2xl border py-2 pl-2 pr-3.5 text-left transition-all duration-300 active:scale-[0.98] ${
+            isLight
+              ? 'border-indigo-200/80 bg-white/90 shadow-[0_6px_20px_-8px_rgba(79,70,229,0.25)] hover:border-indigo-300 hover:shadow-[0_10px_28px_-8px_rgba(79,70,229,0.35)]'
+              : 'border-indigo-400/20 bg-indigo-500/10 shadow-[0_6px_24px_-10px_rgba(79,70,229,0.5)] hover:bg-indigo-500/[0.16] hover:border-indigo-400/35'
+          }`}
+        >
+          <span
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/30 transition-transform duration-300 group-hover:scale-105`}
+          >
+            <BookOpen size={16} strokeWidth={2.4} />
+          </span>
+          <span className="min-w-0">
+            <span className={`block text-[9px] font-black uppercase tracking-[0.18em] ${isLight ? 'text-indigo-500/70' : 'text-indigo-300/70'} syne-font`}>
+              Yangi talabalarga
+            </span>
+            <span className={`block text-[13px] font-black leading-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>
+              Yotoqxonaga joylashish yo‘riqnomasi
+            </span>
+          </span>
+          <ArrowRight
+            size={15}
+            className={`ml-1 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5 ${isLight ? 'text-indigo-500' : 'text-indigo-300'}`}
+          />
         </Link>
 
         {/* First thing a never-applied talaba should see — no scrolling

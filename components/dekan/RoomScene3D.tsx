@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { MousePointer2, Pause, Play, X } from 'lucide-react'
+import { DoorClosed, MousePointer2, Pause, Play, Snowflake, Users, X } from 'lucide-react'
 import * as THREE from 'three'
 import { getRoomOccupancyTone } from '@/features/app-settings/presentation'
 import { useScopedFontFamily } from '@/lib/font-scope-context'
+import { dekanUI } from '@/lib/dekan-ui'
 
 /** One room already positioned on the floor slab (units = three.js world). */
 export type SceneRoom = {
@@ -40,9 +41,6 @@ interface Props {
 
 const ROOM_COLOR = { empty: 0x10b981, partial: 0xf59e0b, full: 0xef4444, unknown: 0x64748b } as const
 const FROZEN_COLOR = 0x06b6d4
-const TONE_HEX: Record<'empty' | 'partial' | 'full' | 'unknown', string> = {
-  empty: '#10b981', partial: '#f59e0b', full: '#ef4444', unknown: '#64748b',
-}
 
 type Hover = { roomNumber: string; clientX: number; clientY: number } | null
 
@@ -277,11 +275,19 @@ export default function RoomScene3D({
   const hoverRoom = hovered ? roomByNumber.get(hovered.roomNumber) : undefined
   const selectedRoom = selected ? roomByNumber.get(selected) : undefined
 
-  const roomLine = (r: SceneRoom) => {
-    const tone = getRoomOccupancyTone(r.occupied, r.capacity)
-    const free = freePlaces(r)
-    return { tone, free }
-  }
+  // Cursor-anchored placement for the hover card, flipped away from the
+  // viewport edge so it never spills off-screen.
+  const hoverPos = (() => {
+    if (!hovered || typeof window === 'undefined') return { left: 0, top: 0 }
+    const W = 268
+    const H = 340
+    const flipX = hovered.clientX > window.innerWidth - W - 24
+    const flipY = hovered.clientY > window.innerHeight - H - 24
+    return {
+      left: Math.max(8, flipX ? hovered.clientX - W - 16 : hovered.clientX + 16),
+      top: Math.max(8, Math.min(flipY ? hovered.clientY - H - 8 : hovered.clientY + 16, window.innerHeight - 120)),
+    }
+  })()
 
   return (
     <div className={`relative min-h-[420px] overflow-hidden rounded-2xl border ${
@@ -322,94 +328,28 @@ export default function RoomScene3D({
         <canvas ref={canvasRef} className="block h-[420px] w-full cursor-grab outline-none active:cursor-grabbing" />
       )}
 
-      {/* hover tooltip — follows the cursor, portalled out so an ancestor
+      {/* hover card — follows the cursor, portalled out so an ancestor
           transform / overflow can't clip it */}
       {hovered && typeof document !== 'undefined' && createPortal(
-        (() => {
-          const r = hoverRoom
-          const tone = r ? getRoomOccupancyTone(r.occupied, r.capacity) : 'unknown'
-          const free = r ? freePlaces(r) : null
-          return (
-            <div
-              className={`pointer-events-none fixed z-[9999] rounded-xl border px-3 py-2 shadow-2xl backdrop-blur-xl ${
-                isLight ? 'border-slate-200 bg-white/95' : 'border-slate-800 bg-slate-900/95'
-              }`}
-              style={{ left: hovered.clientX + 14, top: hovered.clientY + 14, fontFamily: scopedFontFamily }}
-            >
-              <p className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
-                Xona #{hovered.roomNumber}
-                {r?.frozen && <span className={isLight ? 'text-cyan-600' : 'text-cyan-400'}> · muzlatilgan</span>}
-              </p>
-              {r && (
-                <p className={`mt-1 flex items-center gap-1.5 text-xs font-semibold ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                  <span className="h-2 w-2 rounded-full" style={{ background: r.frozen ? '#06b6d4' : TONE_HEX[tone] }} />
-                  {r.occupied} / {r.capacity ?? '?'} band
-                  {free !== null && ` · ${free} bo‘sh`}
-                </p>
-              )}
-              {r && r.occupants.length > 0 && (
-                <p className={`mt-1 max-w-[240px] text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                  {r.occupants.join(', ')}
-                </p>
-              )}
-            </div>
-          )
-        })(),
+        <div
+          className="pointer-events-none fixed z-[9999]"
+          style={{ left: hoverPos.left, top: hoverPos.top, fontFamily: scopedFontFamily }}
+        >
+          <RoomInfoCard room={hoverRoom} roomNumber={hovered.roomNumber} isLight={isLight} maxNames={5} />
+        </div>,
         document.body,
       )}
 
       {/* click card — pinned in a corner, stays while you inspect the model */}
       {selected && selectedRoom && (
-        <div className={`absolute bottom-3 right-3 z-20 w-[248px] max-w-[calc(100%-1.5rem)] rounded-2xl border p-3 shadow-2xl backdrop-blur-xl ${
-          isLight ? 'border-slate-200 bg-white/95' : 'border-slate-800 bg-slate-900/95'
-        }`}>
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>Xona #{selectedRoom.roomNumber}</p>
-              {(() => {
-                const { tone, free } = roomLine(selectedRoom)
-                return (
-                  <p className={`mt-0.5 flex items-center gap-1.5 text-xs font-semibold ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                    <span className="h-2 w-2 rounded-full" style={{ background: selectedRoom.frozen ? '#06b6d4' : TONE_HEX[tone] }} />
-                    {selectedRoom.frozen
-                      ? 'Muzlatilgan'
-                      : `${selectedRoom.occupied} / ${selectedRoom.capacity ?? '?'} band${free !== null ? ` · ${free} bo‘sh` : ''}`}
-                    {selectedRoom.isCapacityOverride && !selectedRoom.frozen && (
-                      <span className={isLight ? 'text-indigo-500' : 'text-indigo-400'}> · istisno</span>
-                    )}
-                  </p>
-                )
-              })()}
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              className={`shrink-0 rounded-lg p-1 ${isLight ? 'text-slate-400 hover:bg-slate-100' : 'text-slate-500 hover:bg-white/10'}`}
-              aria-label="Yopish"
-            >
-              <X size={14} />
-            </button>
-          </div>
-
-          <div className={`mt-2 max-h-[180px] space-y-1 overflow-y-auto text-xs ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>
-            {selectedRoom.occupants.length === 0 ? (
-              <p className={isLight ? 'text-slate-400' : 'text-slate-500'}>Hech kim yo‘q — bo‘sh</p>
-            ) : (
-              selectedRoom.occupants.map((name, i) => (
-                <div
-                  key={`${name}-${i}`}
-                  className={`flex items-center gap-2 rounded-lg px-2 py-1 ${isLight ? 'bg-slate-100' : 'bg-white/[0.04]'}`}
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-indigo-500/10 text-[9px] font-bold uppercase text-indigo-500">
-                    {name.slice(0, 2)}
-                  </span>
-                  <span className="truncate">{name}</span>
-                </div>
-              ))
-            )}
-          </div>
-
-          {renderCardAction && <div className="mt-2.5">{renderCardAction(selectedRoom.roomNumber)}</div>}
+        <div className="absolute bottom-3 right-3 z-20 max-w-[calc(100%-1.5rem)]">
+          <RoomInfoCard
+            room={selectedRoom}
+            roomNumber={selected}
+            isLight={isLight}
+            onClose={() => setSelected(null)}
+            action={renderCardAction?.(selectedRoom.roomNumber)}
+          />
         </div>
       )}
 
@@ -421,6 +361,160 @@ export default function RoomScene3D({
           Aylantirish uchun sudrang, tanlash uchun xonani bosing.
         </p>
       </div>
+    </div>
+  )
+}
+
+// ── room info card ──────────────────────────────────────────────────────────
+// One presentational card, shared by the hover (cursor-anchored) and the
+// click (pinned + closeable) states so they read identically.
+
+const initials = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '—'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[1][0]).toUpperCase()
+}
+
+type RoomStatusKey = 'empty' | 'partial' | 'full' | 'frozen' | 'unknown'
+
+const roomStatus = (r: SceneRoom): { key: RoomStatusKey; label: string } => {
+  if (r.frozen) return { key: 'frozen', label: 'Muzlatilgan' }
+  if (r.capacity === null) return { key: r.occupied > 0 ? 'partial' : 'empty', label: r.occupied > 0 ? 'Band' : "Bo‘sh" }
+  if (r.occupied <= 0) return { key: 'empty', label: "Bo‘sh" }
+  if (r.occupied >= r.capacity) return { key: 'full', label: "To‘la" }
+  return { key: 'partial', label: 'Qisman' }
+}
+
+const STATUS_HEX: Record<RoomStatusKey, string> = {
+  empty: '#10b981', partial: '#f59e0b', full: '#ef4444', frozen: '#06b6d4', unknown: '#64748b',
+}
+
+function RoomInfoCard({
+  room, roomNumber, isLight, onClose, action, maxNames,
+}: {
+  room: SceneRoom | undefined
+  roomNumber: string
+  isLight: boolean
+  onClose?: () => void
+  action?: ReactNode
+  maxNames?: number
+}) {
+  const ui = dekanUI(isLight)
+  const st = room ? roomStatus(room) : null
+  const hex = st ? STATUS_HEX[st.key] : STATUS_HEX.unknown
+  const cap = room?.capacity ?? null
+  const occ = room?.occupied ?? 0
+  const free = room ? freePlaces(room) : null
+  const names = room?.occupants ?? []
+  const shown = maxNames ? names.slice(0, maxNames) : names
+  const rest = names.length - shown.length
+
+  const chipTone: Record<RoomStatusKey, string> = {
+    empty: isLight ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/15' : 'bg-emerald-500/12 text-emerald-300 ring-emerald-400/20',
+    partial: isLight ? 'bg-amber-50 text-amber-700 ring-amber-600/15' : 'bg-amber-500/12 text-amber-300 ring-amber-400/20',
+    full: isLight ? 'bg-rose-50 text-rose-700 ring-rose-600/15' : 'bg-rose-500/12 text-rose-300 ring-rose-400/20',
+    frozen: isLight ? 'bg-cyan-50 text-cyan-700 ring-cyan-600/15' : 'bg-cyan-500/12 text-cyan-300 ring-cyan-400/20',
+    unknown: isLight ? 'bg-slate-100 text-slate-600 ring-slate-500/15' : 'bg-slate-700/40 text-slate-300 ring-slate-400/20',
+  }
+
+  return (
+    <div className={`w-[268px] overflow-hidden rounded-2xl border backdrop-blur-xl ${
+      isLight
+        ? 'border-slate-200/80 bg-white/95 shadow-[0_10px_34px_-10px_rgba(79,70,229,0.30),0_2px_8px_rgba(15,23,42,0.06)]'
+        : 'border-slate-700/70 bg-slate-900/95 shadow-[0_18px_44px_-14px_rgba(0,0,0,0.65)]'
+    }`}>
+      {/* header */}
+      <div className="flex items-center gap-2.5 px-3.5 pt-3.5 pb-2.5">
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${ui.accentTileSoft}`}>
+          {st?.key === 'frozen' ? <Snowflake size={16} /> : <DoorClosed size={16} />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={`truncate text-[15px] font-bold leading-tight ${ui.strong}`}>Xona {roomNumber}</p>
+          <p className={`mt-0.5 truncate text-[11px] ${ui.faint}`}>
+            {cap !== null ? `${cap} o‘rinli` : 'sig‘im noma‘lum'}
+            {room?.isCapacityOverride && !room?.frozen ? ' · istisno sig‘im' : ''}
+          </p>
+        </div>
+        {st && (
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset ${chipTone[st.key]}`}>
+            {st.label}
+          </span>
+        )}
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className={`pointer-events-auto -mr-1 shrink-0 rounded-lg p-1 ${isLight ? 'text-slate-400 hover:bg-slate-100' : 'text-slate-500 hover:bg-white/10'}`}
+            aria-label="Yopish"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* occupancy */}
+      <div className={`mx-3.5 rounded-xl border px-3 py-2.5 ${ui.inset}`}>
+        <div className="flex items-baseline justify-between">
+          <p className={`text-sm font-bold tabular-nums ${ui.strong}`}>
+            {occ}<span className={`text-xs font-semibold ${ui.faint}`}> / {cap ?? '?'}</span>
+            <span className={`ml-1.5 text-[11px] font-semibold ${ui.muted}`}>band</span>
+          </p>
+          <p className={`text-[11px] font-semibold ${ui.muted}`}>
+            {room?.frozen ? 'muzlatilgan' : free === null ? '' : `${free} bo‘sh`}
+          </p>
+        </div>
+        {cap !== null && cap <= 16 ? (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {Array.from({ length: cap }).map((_, i) => (
+              <span
+                key={i}
+                className="h-1.5 w-4 rounded-full"
+                style={{ background: i < occ ? hex : isLight ? '#e2e8f0' : '#334155' }}
+              />
+            ))}
+          </div>
+        ) : cap !== null ? (
+          <div className={`mt-2 h-1.5 w-full overflow-hidden rounded-full ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`}>
+            <span
+              className="block h-full rounded-full"
+              style={{ width: `${Math.min(100, (occ / Math.max(cap, 1)) * 100)}%`, background: hex }}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      {/* occupants */}
+      <div className="px-3.5 pt-2.5 pb-3.5">
+        <p className={`mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest ${ui.faint}`}>
+          <Users size={11} /> Yashovchilar
+          {names.length > 0 && <span className="tabular-nums">· {names.length}</span>}
+        </p>
+        {names.length === 0 ? (
+          <p className={`rounded-lg border border-dashed px-2.5 py-2 text-center text-[11px] ${isLight ? 'border-slate-200 text-slate-400' : 'border-slate-700 text-slate-500'}`}>
+            {room?.frozen ? 'Muzlatilgan — hech kim yo‘q' : 'Xona bo‘sh'}
+          </p>
+        ) : (
+          <div className="max-h-[176px] space-y-1 overflow-y-auto">
+            {shown.map((name, i) => (
+              <div
+                key={`${name}-${i}`}
+                className={`flex items-center gap-2 rounded-lg px-1.5 py-1 ${isLight ? 'bg-slate-50' : 'bg-white/[0.03]'}`}
+              >
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${ui.accentTileSoft}`}>
+                  {initials(name)}
+                </span>
+                <span className={`truncate text-xs ${ui.body}`}>{name}</span>
+              </div>
+            ))}
+            {rest > 0 && (
+              <p className={`px-1.5 pt-0.5 text-[11px] font-semibold ${ui.faint}`}>+{rest} ta yana</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {action && <div className="border-t px-3.5 py-2.5" style={{ borderColor: isLight ? '#e2e8f0' : '#334155' }}>{action}</div>}
     </div>
   )
 }

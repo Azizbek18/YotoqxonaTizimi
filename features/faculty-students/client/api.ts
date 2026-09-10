@@ -7,6 +7,7 @@ import type {
   SendWarningResult,
   SetBlacklistInput,
   SetBlacklistResult,
+  SetFloorCaptainInput,
   StudentProfileRow,
   StudentScope,
 } from '../types'
@@ -39,9 +40,24 @@ export function setStudentBlacklist(input: SetBlacklistInput) {
   })
 }
 
-// The editable slice of a student record. Room, floor, captaincy, warning
-// count and account status are deliberately absent — those are driven by the
-// Xonalar map, the warning flow and email verification, not a free-form edit.
+// Appoint the student as the floor captain (sardor) of their own residence
+// floor, or strip that role. /api/admin/users routes is_floor_captain=true
+// through the promote_floor_captain RPC, which atomically demotes whoever
+// currently holds the same (faculty, floor, gender) slot; is_floor_captain=false
+// is a plain demote. Faculty scope is enforced server-side, and a student with
+// no assigned floor / gender (i.e. no room yet) is rejected with 400.
+export function setStudentFloorCaptain({ studentId, isCaptain }: SetFloorCaptainInput) {
+  return requestJson<{ ok: true }>('/api/admin/users', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: studentId, source: 'users', is_floor_captain: isCaptain }),
+  })
+}
+
+// The editable slice of a student record. Room, floor, warning count and
+// account status are deliberately absent — those are driven by the Xonalar
+// map, the warning flow and email verification, not a free-form edit.
+// Captaincy has its own action (setStudentFloorCaptain above), not a form field.
 // Faculty is a tenancy boundary and is rejected server-side if changed.
 export type FacultyStudentPatch = Partial<{
   full_name: string

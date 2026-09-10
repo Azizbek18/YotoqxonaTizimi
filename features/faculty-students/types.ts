@@ -108,3 +108,15 @@ export type SetBlacklistResult = {
   ok: true
   blacklisted: boolean
 }
+
+/**
+ * Appoint a student as the floor captain (sardor) of their own residence
+ * floor, or remove that role. Captaincy is bound to the student's
+ * `assigned_floor` + `gender` (set when a room is assigned), so a roomless
+ * student can't be promoted. Promoting atomically demotes whoever currently
+ * holds the same (faculty, floor, gender) slot — one floor, one captain.
+ */
+export type SetFloorCaptainInput = {
+  studentId: string
+  isCaptain: boolean
+}

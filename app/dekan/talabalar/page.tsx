@@ -40,6 +40,7 @@ import {
   fetchFacultyStudents,
   sendStudentWarning,
   setStudentBlacklist,
+  setStudentFloorCaptain,
   updateFacultyStudent,
 } from '@/features/faculty-students/client/api'
 import type {
@@ -93,8 +94,9 @@ const HUJJAT_LABELS = ['Passport seriya', 'JSHSHIR', 'Passport sanasi', 'Hudud',
 type FolderKey = 'all' | 'roomless' | 'debtor' | 'paid' | 'male' | 'female' | 'captain' | 'warned' | 'blacklisted'
 
 // Editable fields, grouped to match the read-only detail tabs. Room / floor /
-// captaincy / warnings / status are intentionally not here — see
-// FacultyStudentPatch in features/faculty-students/client/api.ts.
+// warnings / status are intentionally not here — see FacultyStudentPatch in
+// features/faculty-students/client/api.ts. Captaincy has its own action button
+// (setStudentFloorCaptain), not a form field.
 type EditTabKey = 'asosiy' | 'hujjatlar' | 'oila'
 
 const EMPTY_EDIT_FORM = {
@@ -201,6 +203,9 @@ export default function DekanStudentsPage() {
   const [blacklistModalOpen, setBlacklistModalOpen] = useState(false)
   const [blacklistReason, setBlacklistReason] = useState('')
   const [blacklistBusy, setBlacklistBusy] = useState(false)
+
+  const [captainModalOpen, setCaptainModalOpen] = useState(false)
+  const [captainBusy, setCaptainBusy] = useState(false)
 
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editTab, setEditTab] = useState<EditTabKey>('asosiy')
@@ -487,6 +492,32 @@ export default function DekanStudentsPage() {
       toast.error(error instanceof Error ? error.message : "Amalni bajarib bo'lmadi")
     } finally {
       setBlacklistBusy(false)
+    }
+  }
+
+  // Captaincy is bound to the student's own residence floor + gender — a
+  // roomless student has neither, so the server rejects the promote. The
+  // action button is only offered once those are set (or the student is
+  // already a captain, so it can be revoked).
+  const captainEligible = (student: StudentProfileRow) =>
+    Boolean(student.is_floor_captain) ||
+    Boolean(student.assigned_floor && normalizeGender(student.gender))
+
+  const handleToggleFloorCaptain = async () => {
+    if (!selectedStudent || captainBusy) return
+    const next = !selectedStudent.is_floor_captain
+    setCaptainBusy(true)
+    try {
+      await setStudentFloorCaptain({ studentId: selectedStudent.id, isCaptain: next })
+      // The RPC also demotes the previous captain of this floor/gender, so a
+      // local merge would leave that other row stale — re-fetch instead.
+      await loadStudents()
+      toast.success(next ? 'Talaba qavat sardori etib tayinlandi' : 'Sardorlik olib tashlandi')
+      setCaptainModalOpen(false)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Amalni bajarib bo'lmadi")
+    } finally {
+      setCaptainBusy(false)
     }
   }
 
@@ -1039,6 +1070,17 @@ export default function DekanStudentsPage() {
                     <AlertTriangle size={14} />
                     Ogohlantirish
                   </button>
+                  {captainEligible(selectedStudent) && (
+                    <button
+                      onClick={() => setCaptainModalOpen(true)}
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                        selectedStudent.is_floor_captain ? ui.accentSoft : ui.btnGhost
+                      }`}
+                    >
+                      <ShieldCheck size={14} />
+                      {selectedStudent.is_floor_captain ? 'Sardorlikdan olish' : 'Sardor tayinlash'}
+                    </button>
+                  )}
                   <button
                     onClick={() => { setBlacklistReason(''); setBlacklistModalOpen(true) }}
                     className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
@@ -1471,6 +1513,41 @@ export default function DekanStudentsPage() {
         </div>
       </ConfirmModal>
 
+      {/* Floor captain (sardor) appoint / revoke modal */}
+      <ConfirmModal
+        isOpen={captainModalOpen}
+        title={selectedStudent?.is_floor_captain ? 'Sardorlikdan olish' : 'Qavat sardori etib tayinlash'}
+        description={selectedStudent ? selectedStudent.full_name : undefined}
+        onClose={() => setCaptainModalOpen(false)}
+        onConfirm={handleToggleFloorCaptain}
+        confirmText={selectedStudent?.is_floor_captain ? 'Olib tashlash' : 'Tayinlash'}
+        confirmVariant={selectedStudent?.is_floor_captain ? 'danger' : 'primary'}
+        isLoading={captainBusy}
+        maxWidthClass="max-w-lg"
+      >
+        <div className="space-y-4">
+          {selectedStudent?.is_floor_captain ? (
+            <div className={`rounded-lg border p-3 text-[11px] leading-relaxed ${isLight ? 'border-indigo-200 bg-indigo-50 text-indigo-800' : 'border-indigo-500/25 bg-indigo-500/10 text-indigo-200'}`}>
+              Talaba <span className="font-black">{selectedStudent.assigned_floor}-qavat</span> sardorligidan olib
+              tashlanadi va sardor paneliga (yo&apos;qlama, qavat e&apos;lonlari) kirish huquqini yo&apos;qotadi.
+              Qavat <span className="font-black">sardorsiz qoladi</span> — kerak bo&apos;lsa boshqa talabani
+              tayinlang. Talabaning xonasi va boshqa ma&apos;lumotlari o&apos;zgarmaydi.
+            </div>
+          ) : (
+            <div className={`rounded-lg border p-3 text-[11px] leading-relaxed ${isLight ? 'border-indigo-200 bg-indigo-50 text-indigo-800' : 'border-indigo-500/25 bg-indigo-500/10 text-indigo-200'}`}>
+              <span className="font-black">{selectedStudent?.full_name}</span> o&apos;zi yashaydigan{' '}
+              <span className="font-black">
+                {selectedStudent?.assigned_floor}-qavat
+                {selectedStudent?.gender ? ` (${genderLabel(selectedStudent.gender)})` : ''}
+              </span>{' '}
+              sardori etib tayinlanadi va sardor paneliga (yo&apos;qlama, qavat e&apos;lonlari) kirish huquqini
+              oladi. Shu qavat va jins bo&apos;yicha <span className="font-black">hozirgi sardor avtomatik
+              almashtiriladi</span> — bir qavatda bitta sardor bo&apos;ladi.
+            </div>
+          )}
+        </div>
+      </ConfirmModal>
+
       {/* Edit student record modal */}
       <ConfirmModal
         isOpen={editModalOpen}
@@ -1484,9 +1561,9 @@ export default function DekanStudentsPage() {
       >
         <div className="space-y-4">
           <div className={`rounded-lg border p-3 text-[11px] leading-relaxed ${isLight ? 'border-indigo-200 bg-indigo-50 text-indigo-800' : 'border-indigo-500/25 bg-indigo-500/10 text-indigo-200'}`}>
-            Xona, qavat, sardorlik, ogohlantirishlar soni va akkaunt holati bu yerdan o&apos;zgartirilmaydi —
-            ular «Xonalar», ogohlantirish oqimi va email tasdig&apos;i orqali boshqariladi. Fakultetni ham
-            o&apos;zgartirib bo&apos;lmaydi.
+            Xona, qavat, ogohlantirishlar soni va akkaunt holati bu yerdan o&apos;zgartirilmaydi —
+            ular «Xonalar», ogohlantirish oqimi va email tasdig&apos;i orqali boshqariladi. Sardorlik
+            yuqoridagi «Sardor tayinlash» tugmasi orqali beriladi. Fakultetni ham o&apos;zgartirib bo&apos;lmaydi.
           </div>
 
           <div className={`no-scrollbar flex flex-nowrap gap-1 overflow-x-auto rounded-lg border p-1 ${ui.inset}`}>

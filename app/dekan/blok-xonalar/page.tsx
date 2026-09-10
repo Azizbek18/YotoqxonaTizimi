@@ -10,7 +10,7 @@ import { Skel } from '@/components/dekan/Skeletons'
 // three.js is only pulled in when the building view is actually opened.
 const BlockedBuilding3D = dynamic(() => import('@/components/dekan/BlockedBuilding3D'), {
   ssr: false,
-  loading: () => <Skel className="h-[320px] w-full rounded-xl" />,
+  loading: () => <Skel className="h-[420px] w-full rounded-2xl" />,
 })
 import { dekanUI, statusChip } from '@/lib/dekan-ui'
 import { fetchBlockedRoomMap } from '@/features/dorms/client/api'
@@ -211,25 +211,23 @@ export default function BlokXonalarPage() {
             className={`flex w-full items-center justify-between px-4 py-3 text-left ${ui.btnGhost}`}
           >
             <span className={`flex items-center gap-2 text-sm font-bold ${ui.strong}`}>
-              <Boxes size={15} /> Bino ko‘rinishi
-              <span className={`text-[10px] font-medium ${ui.faint}`}>· {dorm.number}-yotoqxona · {dorm.blockCount} blok · {dorm.floorCount} qavat</span>
+              <Boxes size={15} /> 3D xonalar
+              {section && (
+                <span className={`text-[10px] font-medium ${ui.faint}`}>· {section.block}{section.floor}-seksiya · {dorm.number}-yotoqxona</span>
+              )}
             </span>
             <span className={`text-[10px] font-bold uppercase ${ui.faint}`}>{show3D ? 'yashirish' : 'ko‘rish'}</span>
           </button>
-          {show3D && (
+          {show3D && section && (
             <div className={`border-t px-3 pb-3 pt-2 ${ui.border}`}>
               <BlockedBuilding3D
-                dorm={dorm}
-                activeKey={`${section?.block}-${section?.floor}`}
-                onPickRoom={(block, floor, roomNumber) => {
-                  const key = `${block}-${floor}`
-                  setSectionKey(key)
-                  const room = dorm.sections
-                    .find((s) => `${s.block}-${s.floor}` === key)?.rooms
-                    .find((r) => r.roomNumber === roomNumber)
+                key={`${section.block}-${section.floor}`}
+                section={section}
+                isLight={isLight}
+                onPickRoom={(roomNumber) => {
+                  const room = section.rooms.find((r) => r.roomNumber === roomNumber)
                   if (room && !room.frozen && room.occupants.length < room.capacity) setPicking(room)
                 }}
-                isLight={isLight}
               />
             </div>
           )}

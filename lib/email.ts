@@ -299,6 +299,43 @@ export async function sendPermitDocumentsEmail(
   })
 }
 
+/**
+ * Xorijiy talabaga viza yoki propiska muddati tugash eslatmasi. Kunlik cron
+ * chaqiradi — 30/15/10/5/3/0 kun qolganda, keyin muddat o'tgach 7 kun.
+ */
+export async function sendForeignDocReminderEmail(
+  to: string,
+  fullName: string,
+  info: { docLabel: string; expiresOn: string; daysLeft: number },
+) {
+  const when = new Date(info.expiresOn).toLocaleDateString('uz-UZ', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
+  const expired = info.daysLeft < 0
+  const lead = expired
+    ? `${info.docLabel} muddati ${Math.abs(info.daysLeft)} kun oldin — ${when} da tugagan.`
+    : info.daysLeft === 0
+      ? `${info.docLabel} muddati bugun (${when}) tugaydi.`
+      : `${info.docLabel} muddati tugashiga ${info.daysLeft} kun qoldi (${when}).`
+  await sendMail({
+    to,
+    subject: expired
+      ? `${info.docLabel} muddati o'tgan — zudlik bilan harakat qiling`
+      : `${info.docLabel} muddati tugayapti — ${info.daysLeft} kun qoldi`,
+    heading: `${fullName || 'Hurmatli talaba'}, ${info.docLabel.toLowerCase()} muddatiga e'tibor bering`,
+    paragraphs: [
+      lead,
+      expired
+        ? "Muddati o'tgan hujjat jarima va O'zbekistondan chiqarib yuborilish (deportatsiya) xavfini keltiradi. Zudlik bilan universitet xalqaro bo'limi yoki fakultet dekanatiga murojaat qiling."
+        : "Vizani yangilash yoki qaytadan ro'yxatga qo'yish uchun universitet xalqaro bo'limiga oldindan murojaat qiling — jarayon bir necha kun oladi.",
+      "Yangilangач, yangi muddatni shaxsiy kabinetingizdagi «Hujjatlarim» bo'limiga kiriting.",
+    ],
+    cta: { label: 'Hujjatlarim', url: appUrl('/talaba/hujjatlarim') },
+  })
+}
+
 /** Dekan xona biriktirgach — talabaga xona raqami xabar qilinadi. */
 export async function sendRoomAssignedEmail(to: string, fullName: string, roomNumber: string) {
   await sendMail({

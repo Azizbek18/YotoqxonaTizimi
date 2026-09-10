@@ -228,6 +228,18 @@ export function canonicalizeFullName(input: unknown): string {
   return normalizeNameWhitespace(input).trim().slice(0, 160)
 }
 
+// The single F.I.Sh string the yo'llanma AI precheck (/api/ai/yollanma-tekshiruv)
+// signs into its file claim and /api/permit-requests verifies it against.
+// BOTH routes must derive it from the raw `fullName` field the *exact* same
+// way — the claim context is compared as an opaque string, so any divergence
+// (the submission route title-cases + Latinises + strips placeholders while
+// the precheck did not) silently turns a genuine AI-approved upload into
+// "Hujjat avval AI orqali tekshirilishi shart". Uppercased so a name typed
+// in CAPS on one request and Title Case on the other still matches.
+export function permitClaimFullName(input: unknown): string {
+  return canonicalizeFullName(cyrillicToLatin(stripPlaceholderNameTokens(input))).toUpperCase()
+}
+
 // One part of a name (familiya / ism / sharif). Latin letters only — a
 // Cyrillic name is transliterated first (see normalizeNamePart), so the
 // dekan tables and exports carry one spelling. Uzbek apostrophe, hyphen,

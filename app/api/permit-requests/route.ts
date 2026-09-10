@@ -15,6 +15,7 @@ import {
   isValidUzOriginRegion,
   normalizeJshshir,
   normalizePassport,
+  permitClaimFullName,
   stripPlaceholderNameTokens,
   toTitleCaseName,
 } from '@/lib/permit-validation'
@@ -195,9 +196,18 @@ export async function POST(request: NextRequest) {
       // The AI precheck (/api/ai/yollanma-tekshiruv) and this submission are
       // two independent requests. The claim is an HMAC over this exact file's
       // hash + the identity it was checked against — it can't be forged or
-      // reused for another file / another applicant.
+      // reused for another file / another applicant. `permitClaimFullName`
+      // must be applied identically here and in the precheck (it's what the
+      // precheck signs) — deriving the name any other way silently rejects a
+      // genuine AI-approved upload with the error below.
       const fileHash = createHash('sha256').update(buffer).digest('hex')
-      const claimContext = { fullName: canonicalizeFullName(fullName), passport, jshshir }
+      const claimContext = {
+        fullName: permitClaimFullName(
+          hasNameParts ? buildFullName({ lastName, firstName, middleName }) : value(form, 'fullName', 160),
+        ),
+        passport,
+        jshshir,
+      }
       const aiClaim = form.get('aiClaim')
       if (verifyFileClaim('permit', aiClaim, fileHash, claimContext)) {
         aiReview = 'passed'

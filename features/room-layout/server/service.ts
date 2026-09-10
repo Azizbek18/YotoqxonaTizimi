@@ -149,6 +149,7 @@ export function createRoomLayoutService(repository: RoomLayoutRepository = creat
         }
         if (code === 'P0007') throw new ApiError(403, "Bu qavat boshqa fakultetga tegishli")
         if (code === 'P0002') throw new ApiError(400, "Fakultetga yotoqxona biriktirilmagan")
+        if (code === 'P0001') throw new ApiError(409, "Bu blokli bino — xonalari «Blok xonalari» bo‘limidan (seksiya jadvali) boshqariladi")
         throw error
       }
     },

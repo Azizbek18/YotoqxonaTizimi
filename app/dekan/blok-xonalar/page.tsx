@@ -1,10 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Building2, DoorClosed, Lock, UserPlus, X } from 'lucide-react'
+import dynamic from 'next/dynamic'
+import { Boxes, Building2, DoorClosed, Lock, UserPlus, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { Skel } from '@/components/dekan/Skeletons'
+
+// three.js is only pulled in when the building view is actually opened.
+const BlockedBuilding3D = dynamic(() => import('@/components/dekan/BlockedBuilding3D'), {
+  ssr: false,
+  loading: () => <Skel className="h-[320px] w-full rounded-xl" />,
+})
 import { dekanUI, statusChip } from '@/lib/dekan-ui'
 import { fetchBlockedRoomMap } from '@/features/dorms/client/api'
 import { fetchAssignableStudents, assignStudentRoom } from '@/features/room-assignment/client/api'
@@ -24,6 +31,7 @@ export default function BlokXonalarPage() {
   const [sectionKey, setSectionKey] = useState<string>('')
   const [picking, setPicking] = useState<BlockedRoom | null>(null)
   const [busy, setBusy] = useState(false)
+  const [show3D, setShow3D] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -192,6 +200,32 @@ export default function BlokXonalarPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* building view — where your sections sit in the A/B tower */}
+      {dorm && dorm.sections.length > 0 && (
+        <div className={`rounded-2xl border ${ui.card}`}>
+          <button
+            onClick={() => setShow3D((v) => !v)}
+            className={`flex w-full items-center justify-between px-4 py-3 text-left ${ui.btnGhost}`}
+          >
+            <span className={`flex items-center gap-2 text-sm font-bold ${ui.strong}`}>
+              <Boxes size={15} /> Bino ko‘rinishi
+              <span className={`text-[10px] font-medium ${ui.faint}`}>· {dorm.number}-yotoqxona · {dorm.blockCount} blok · {dorm.floorCount} qavat</span>
+            </span>
+            <span className={`text-[10px] font-bold uppercase ${ui.faint}`}>{show3D ? 'yashirish' : 'ko‘rish'}</span>
+          </button>
+          {show3D && (
+            <div className={`border-t px-3 pb-3 pt-2 ${ui.border}`}>
+              <BlockedBuilding3D
+                dorm={dorm}
+                activeKey={`${section?.block}-${section?.floor}`}
+                onSelectSection={setSectionKey}
+                isLight={isLight}
+              />
+            </div>
+          )}
         </div>
       )}
 

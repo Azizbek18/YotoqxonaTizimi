@@ -57,7 +57,7 @@ function foreignBody(over: Record<string, unknown> = {}) {
     firstName: 'Murat',
     middleName: '',
     noMiddleName: true,
-    phone: '901234567',
+    phone: '+998901234567',
     gender: 'male',
     faculty: 'AMIT',
     direction: 'Axborot tizimlari',
@@ -147,7 +147,38 @@ describe('POST /api/student/register', () => {
       status: 'pending',
       room_number: '12',
       dorm_id: 'dorm-amit-1',
+      phone_number: '+998901234567',
     })
+  })
+
+  it('keeps a foreign (+993) phone number instead of forcing +998', async () => {
+    const capture: { userInsert?: Record<string, unknown> } = {}
+    getServiceSupabase.mockReturnValue(
+      makeSupabase(
+        { permit_requests: [APPROVED_FOREIGN_PERMIT], users: [{ data: null, error: null }] },
+        capture,
+      ),
+    )
+
+    const response = await POST(req(foreignBody({
+      phone: '+99365123456', father_phone: '+99365111111', mother_phone: '99365222222',
+    })))
+
+    expect(response.status).toBe(200)
+    expect(capture.userInsert).toMatchObject({
+      phone_number: '+99365123456',
+      father_phone: '+99365111111',
+      mother_phone: '+99365222222',
+    })
+  })
+
+  it('rejects a phone that is too short', async () => {
+    getServiceSupabase.mockReturnValue(
+      makeSupabase({ permit_requests: [APPROVED_FOREIGN_PERMIT] }),
+    )
+    const response = await POST(req(foreignBody({ phone: '12345' })))
+    expect(response.status).toBe(400)
+    expect((await response.json()).error).toMatch(/shaxsiy va ta.lim/i)
   })
 
   it('malformed permit name: accepts the wizard-corrected F.I.Sh and writes it back onto the permit', async () => {

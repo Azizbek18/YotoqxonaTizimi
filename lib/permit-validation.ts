@@ -76,6 +76,60 @@ export function isPlausibleInternationalPhone(input: unknown) {
   return digits.length >= 7 && digits.length <= 15
 }
 
+// Country dial codes offered in <PhoneField>. O'zbekiston is the default; the
+// rest cover the actual foreign-student population (Turkmen, Tajik, Kazakh,
+// Kyrgyz…). "Boshqa" (empty code) lets the applicant type any code by hand.
+export const PHONE_DIAL_CODES = [
+  { code: '+998', label: "O'zbekiston" },
+  { code: '+993', label: 'Turkmaniston' },
+  { code: '+992', label: 'Tojikiston' },
+  { code: '+7', label: "Qozog'iston / Rossiya" },
+  { code: '+996', label: "Qirg'iziston" },
+  { code: '+93', label: "Afg'oniston" },
+  { code: '+994', label: 'Ozarbayjon' },
+] as const
+
+export const DEFAULT_DIAL_CODE = '+998'
+
+// Canonical E.164-ish store form: a leading "+" then digits only, no spaces or
+// punctuation. Empty input stays empty. Caps the length so a paste bomb can't
+// bloat the column.
+export function normalizePhoneE164(input: unknown): string {
+  const digits = String(input ?? '').replace(/\D/g, '').slice(0, 15)
+  return digits ? `+${digits}` : ''
+}
+
+// Split a stored phone into { dialCode, national } for <PhoneField>. Matches the
+// longest known dial code; an unrecognised "+" number keeps its first 1–4
+// digits as the code so the field still round-trips. A bare (legacy 9-digit)
+// number is treated as O'zbekiston.
+export function splitPhone(input: unknown): { dialCode: string; national: string } {
+  const raw = String(input ?? '').trim()
+  const digits = raw.replace(/\D/g, '')
+  if (!digits) return { dialCode: DEFAULT_DIAL_CODE, national: '' }
+  if (!raw.startsWith('+')) return { dialCode: DEFAULT_DIAL_CODE, national: digits }
+  const known = [...PHONE_DIAL_CODES]
+    .map((c) => c.code.slice(1))
+    .sort((a, b) => b.length - a.length)
+    .find((c) => digits.startsWith(c))
+  const codeDigits = known ?? digits.slice(0, Math.min(4, Math.max(1, digits.length - 6)))
+  return { dialCode: `+${codeDigits}`, national: digits.slice(codeDigits.length) }
+}
+
+// Human-readable phone for documents / tables. Groups the national part in
+// small chunks. A legacy bare number is shown as an O'zbekiston number so old
+// rows still read correctly.
+export function formatPhoneForDisplay(input: unknown): string {
+  const raw = String(input ?? '').trim()
+  if (!raw) return ''
+  const { dialCode, national } = raw.startsWith('+')
+    ? splitPhone(raw)
+    : { dialCode: DEFAULT_DIAL_CODE, national: raw.replace(/\D/g, '') }
+  if (!national) return dialCode
+  const grouped = national.replace(/(\d{3})(?=\d)/g, '$1 ')
+  return `${dialCode} ${grouped}`
+}
+
 export function getPassportFormatError(input: unknown): string | null {
   const value = normalizePassport(input)
   if (!value || isValidPassport(value)) return null

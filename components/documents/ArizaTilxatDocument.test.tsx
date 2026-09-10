@@ -53,4 +53,18 @@ describe('ArizaTilxatDocument', () => {
     expect(html).toContain('Berildi 3 qavat 312 xona')
     expect(html.match(/Dekan: Islomov Sardor Akmalovich/g)).toHaveLength(2)
   })
+
+  it('renders a foreign (+993) phone without forcing a +998 prefix', () => {
+    const html = renderToStaticMarkup(
+      <ArizaTilxatDocument data={{ ...BASE, phone: '+99365123456', relativePhone: '+992501234567' }} />,
+    )
+    expect(html).toContain('Talaba tel: +993 651 234 56')
+    expect(html).toContain('Yaqin qarindoshi tel: +992 501 234 567')
+    expect(html).not.toContain('+998 +993')
+  })
+
+  it('still renders a legacy bare 9-digit number as an O‘zbekiston number', () => {
+    const html = renderToStaticMarkup(<ArizaTilxatDocument data={BASE} />)
+    expect(html).toContain('Talaba tel: +998 901 234 567')
+  })
 })

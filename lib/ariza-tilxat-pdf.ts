@@ -8,6 +8,7 @@
 // on-screen preview) — same wording, same blanks.
 
 import type { ArizaTilxatData } from '@/components/documents/ArizaTilxatDocument'
+import { formatPhoneForDisplay } from './permit-validation'
 import { registerTinos } from './fonts/tinos'
 
 const FONT = 'Tinos'
@@ -240,8 +241,8 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
   const country = normalizePdfText(data.originCountry).trim() || '_______________'
   const region = normalizePdfText(data.originRegion).trim() || '_______________'
   const ttj = normalizePdfText(data.ttjName ?? '').trim() || '_____'
-  const phone = normalizePdfText(data.phone).trim()
-  const relativePhone = normalizePdfText(data.relativePhone).trim()
+  const phone = normalizePdfText(formatPhoneForDisplay(data.phone)).trim()
+  const relativePhone = normalizePdfText(formatPhoneForDisplay(data.relativePhone)).trim()
   const budget = data.studyType === 'grant' ? 'X' : '__'
   const contract = data.studyType === 'kontrakt' ? 'X' : '__'
   const year = new Date().getFullYear()
@@ -280,7 +281,7 @@ function renderPages(doc: Doc, data: ArizaTilxatData, s: number): { p1: number; 
 
   signatureRow(p1, studentSig)
   doc.setFont(FONT, 'normal'); doc.setFontSize(11)
-  doc.text(normalizePdfText(`Talaba tel: ${phone ? `+998 ${phone}` : '__________________'}`), p1.left, p1.y)
+  doc.text(normalizePdfText(`Talaba tel: ${phone || '__________________'}`), p1.left, p1.y)
   p1.y += g(5)
   doc.text(normalizePdfText(`Yaqin qarindoshi tel: ${relativePhone || '__________________'}`), p1.left, p1.y)
   doc.text(signedDate ?? '_____________', p1.right, p1.y, { align: 'right' })

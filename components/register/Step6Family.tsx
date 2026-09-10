@@ -3,9 +3,11 @@
 import React, { useState } from 'react'
 import { RegisterData } from './types'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, Briefcase, Phone, ArrowRight, Users, Sparkles, ShieldAlert } from 'lucide-react'
+import { User, Briefcase, ArrowRight, Users, Sparkles, ShieldAlert } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import PhoneField from '@/components/ui/PhoneField'
+import { isPlausibleInternationalPhone } from '@/lib/permit-validation'
 import { stepLabel } from './constants'
 
 interface Props {
@@ -51,8 +53,6 @@ export default function Step6Family({ data, onChange, onNext, onBack, stepNumber
   }
 
   const handleValidate = () => {
-    const phoneRegex = /^\d{9}$/;
-
     const isValidFullName = (name: string) => {
       if (!name) return false;
       const parts = name.trim().split(/\s+/);
@@ -68,11 +68,11 @@ export default function Step6Family({ data, onChange, onNext, onBack, stepNumber
     // 1. MAJBURIY MAYDONLAR VA F.I.O TEKSHIRUVI
     if (!isValidFullName(father_full_name)) return show3DToast('error', "Otangizning F.I.O to'liq kiriting (3 ta so'z)!");
     if (!father_workplace?.trim()) return show3DToast('error', "Otangizning ish joyini kiriting!");
-    if (!phoneRegex.test(father_phone || '')) return show3DToast('error', "Otangizning raqami noto'g'ri!");
+    if (!isPlausibleInternationalPhone(father_phone || '')) return show3DToast('error', "Otangizning telefon raqamini to'liq kiriting!");
 
     if (!isValidFullName(mother_full_name)) return show3DToast('error', "Onangizning F.I.O to'liq kiriting (3 ta so'z)!");
     if (!mother_workplace?.trim()) return show3DToast('error', "Onangizning ish joyini kiriting!");
-    if (!phoneRegex.test(mother_phone || '')) return show3DToast('error', "Onangizning raqami noto'g'ri!");
+    if (!isPlausibleInternationalPhone(mother_phone || '')) return show3DToast('error', "Onangizning telefon raqamini to'liq kiriting!");
 
     // 2. RAQAMLARNI O'ZARO TAQQOSLASH (DUPLICATE CHECK)
 
@@ -123,7 +123,10 @@ export default function Step6Family({ data, onChange, onNext, onBack, stepNumber
           <InputGroup isLight={isLight} label="F.I.O (To'liq)" icon={User} placeholder="Eshmatov Toshmat Karimov" className={glassInput} value={data.father_full_name || ''} onChange={(v: string) => onChange({ father_full_name: v })} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <InputGroup isLight={isLight} label="Ish joyi" icon={Briefcase} placeholder="Korxona yoki soha" className={glassInput} value={data.father_workplace || ''} onChange={(v: string) => onChange({ father_workplace: v })} />
-            <PhoneInput isLight={isLight} label="Telefon raqami" className={glassInput} value={data.father_phone || ''} onChange={(v: string) => onChange({ father_phone: v })} />
+            <div className="space-y-1.5 flex-1 text-left">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Telefon raqami</label>
+              <PhoneField isLight={isLight} value={data.father_phone || ''} onChange={(v) => onChange({ father_phone: v })} />
+            </div>
           </div>
         </div>
 
@@ -136,7 +139,10 @@ export default function Step6Family({ data, onChange, onNext, onBack, stepNumber
           <InputGroup isLight={isLight} label="F.I.O (To'liq)" icon={User} placeholder="Eshmatova Gulnora Karimovna" className={glassInput} value={data.mother_full_name || ''} onChange={(v: string) => onChange({ mother_full_name: v })} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <InputGroup isLight={isLight} label="Ish joyi" icon={Briefcase} placeholder="Uy bekasi yoki ish joyi" className={glassInput} value={data.mother_workplace || ''} onChange={(v: string) => onChange({ mother_workplace: v })} />
-            <PhoneInput isLight={isLight} label="Telefon raqami" className={glassInput} value={data.mother_phone || ''} onChange={(v: string) => onChange({ mother_phone: v })} />
+            <div className="space-y-1.5 flex-1 text-left">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Telefon raqami</label>
+              <PhoneField isLight={isLight} value={data.mother_phone || ''} onChange={(v) => onChange({ mother_phone: v })} />
+            </div>
           </div>
         </div>
       </div>
@@ -156,41 +162,6 @@ export default function Step6Family({ data, onChange, onNext, onBack, stepNumber
 }
 
 // Yordamchi komponentlar
-interface PhoneInputProps {
-  label: string
-  value: string
-  className?: string
-  isLight?: boolean
-  onChange: (value: string) => void
-}
-
-function PhoneInput({ label, value, className, isLight, onChange }: PhoneInputProps) {
-  const [focused, setFocused] = useState(false)
-  return (
-    <div className="space-y-1.5 flex-1 text-left">
-      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">{label}</label>
-      <div className={`cyber-border ${focused ? 'focused' : ''}`}>
-        <div className="cyber-input-inner relative flex items-center">
-          <div className={`absolute left-4 z-10 flex items-center gap-1.5 pointer-events-none border-r pr-2 ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
-            <Phone size={14} className={`transition-colors ${focused ? 'text-sky-500' : isLight ? 'text-slate-400' : 'text-slate-600'}`} />
-            <span className={`text-[12px] font-bold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>+998</span>
-          </div>
-          <input
-            className={`${className} pl-[80px]`}
-            placeholder="911234567"
-            maxLength={9}
-            type="tel"
-            value={value}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))}
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
 interface InputGroupProps {
   label: string
   icon: React.ComponentType<{ size: number; className?: string }>

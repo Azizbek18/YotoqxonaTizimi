@@ -1,13 +1,13 @@
 'use client'
 
-import React, { useState } from 'react'
 import { RegisterData } from './types'
 import toast from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, ArrowRight, ShieldAlert, Phone, BadgeCheck, PencilLine } from 'lucide-react'
+import { User, ArrowRight, ShieldAlert, BadgeCheck, PencilLine } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import CustomSelect from '@/components/ui/CustomSelect'
-import { getNamePartError } from '@/lib/permit-validation'
+import PhoneField from '@/components/ui/PhoneField'
+import { getNamePartError, isPlausibleInternationalPhone } from '@/lib/permit-validation'
 import { cyrillicToLatin } from '@/lib/transliterate'
 import { stepLabel } from './constants'
 
@@ -28,7 +28,6 @@ interface Props {
 // the correction back onto the permit. Birth date + phone are always entered.
 export default function Step2Name({ data, onChange, onNext, onBack, stepNumber = 2, totalSteps = 8, applicationType = 'yollanma' }: Props) {
   const isLight = useThemeStore((state) => state.theme) === 'light'
-  const [focusedPhone, setFocusedPhone] = useState(false)
   const nameEditable = applicationType === 'imtiyozli'
 
   const fullName = [data.lastName, data.firstName, data.noMiddleName ? '' : data.middleName]
@@ -66,11 +65,10 @@ export default function Step2Name({ data, onChange, onNext, onBack, stepNumber =
       if (nameError) return show3DToast(nameError)
     }
     if (!data.birthDate || data.birthDate.includes('undefined')) return show3DToast('Tug‘ilgan sanangizni tanlang')
-    if (!/^\d{9}$/.test(data.phone)) return show3DToast("Telefon raqami 9 ta raqam bo'lishi shart")
+    if (!isPlausibleInternationalPhone(data.phone)) return show3DToast('Telefon raqamini to‘liq kiriting')
     onNext()
   }
 
-  const glassInput = 'w-full bg-transparent p-3.5 rounded-xl outline-none placeholder:text-slate-600 transition-colors duration-300 font-sans text-[13px]'
   const labelClass = 'text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block'
   const dateSelectCls = `${isLight ? 'bg-white border border-slate-200' : 'bg-white/[0.02] border border-white/[0.08]'} backdrop-blur-xl p-3.5 rounded-xl text-[13px] pl-3 text-center transition-all duration-500 relative`
   const nameInputCls = `w-full border p-3 pl-10 rounded-xl text-[13px] outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100' : 'bg-white/[0.03] border-white/12 text-white focus:border-indigo-500/50'} disabled:opacity-50`
@@ -214,24 +212,12 @@ export default function Step2Name({ data, onChange, onNext, onBack, stepNumber =
         {/* Telefon */}
         <div className="space-y-1.5">
           <label className={labelClass}>Telefon raqamingiz</label>
-          <div className={`cyber-border ${focusedPhone ? 'focused' : ''}`}>
-            <div className="cyber-input-inner relative flex items-center">
-              <div className="absolute left-4 z-10 flex items-center gap-1.5 pointer-events-none border-r border-white/10 pr-2">
-                <Phone size={14} className={`transition-colors ${focusedPhone ? 'text-indigo-400' : 'text-slate-500'}`} />
-                <span className="text-[12px] font-bold text-slate-400">+998</span>
-              </div>
-              <input
-                type="tel"
-                className={`${glassInput} pl-20 ${isLight ? 'text-slate-900' : 'text-white'}`}
-                placeholder="912461050"
-                maxLength={9}
-                value={data.phone || ''}
-                onFocus={() => setFocusedPhone(true)}
-                onBlur={() => setFocusedPhone(false)}
-                onChange={(e) => onChange({ phone: e.target.value.replace(/\D/g, '') })}
-              />
-            </div>
-          </div>
+          <PhoneField
+            value={data.phone || ''}
+            onChange={(v) => onChange({ phone: v })}
+            isLight={isLight}
+            placeholder="90 123 45 67"
+          />
         </div>
       </div>
 

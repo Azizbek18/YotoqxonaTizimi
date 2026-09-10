@@ -22,6 +22,9 @@ import {
   splitGluedName,
   toTitleCaseName,
   foreignNameReconciles,
+  normalizePhoneE164,
+  splitPhone,
+  formatPhoneForDisplay,
 } from './permit-validation'
 
 describe('permit validation', () => {
@@ -207,5 +210,35 @@ describe('name parts', () => {
     // a wholly different name is still rejected
     expect(foreignNameReconciles('Qodirov Sardor', 'BABAYEVAGULZIRE')).toBe(false)
     expect(foreignNameReconciles('Babayeva Gulzire', 'Rejepova Marjona')).toBe(false)
+  })
+})
+
+describe('phone helpers', () => {
+  it('normalizePhoneE164 keeps a leading + and digits only', () => {
+    expect(normalizePhoneE164('+998 90 123 45 67')).toBe('+998901234567')
+    expect(normalizePhoneE164('+993 (65) 12-34-56')).toBe('+99365123456')
+    expect(normalizePhoneE164('901234567')).toBe('+901234567')
+    expect(normalizePhoneE164('')).toBe('')
+    expect(normalizePhoneE164(null)).toBe('')
+  })
+
+  it('splitPhone recognises the offered dial codes and falls back sensibly', () => {
+    expect(splitPhone('+998901234567')).toEqual({ dialCode: '+998', national: '901234567' })
+    expect(splitPhone('+99365123456')).toEqual({ dialCode: '+993', national: '65123456' })
+    expect(splitPhone('+79161234567')).toEqual({ dialCode: '+7', national: '9161234567' })
+    // legacy bare 9-digit number → treated as O'zbekiston
+    expect(splitPhone('901234567')).toEqual({ dialCode: '+998', national: '901234567' })
+    expect(splitPhone('')).toEqual({ dialCode: '+998', national: '' })
+    // an unknown code still round-trips
+    const other = splitPhone('+2099912345')
+    expect(other.dialCode.startsWith('+')).toBe(true)
+    expect(`${other.dialCode}${other.national}`.replace('+', '')).toBe('2099912345')
+  })
+
+  it('formatPhoneForDisplay groups the national part and never double-prefixes', () => {
+    expect(formatPhoneForDisplay('+998901234567')).toBe('+998 901 234 567')
+    expect(formatPhoneForDisplay('+99365123456')).toBe('+993 651 234 56')
+    expect(formatPhoneForDisplay('901234567')).toBe('+998 901 234 567')
+    expect(formatPhoneForDisplay('')).toBe('')
   })
 })

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Upload, User, Mail, Phone, ArrowLeft, CheckCircle2, CreditCard,
+  Upload, User, Mail, ArrowLeft, CheckCircle2, CreditCard,
   ShieldAlert, ShieldCheck, Pencil, PenLine, ChevronRight, ChevronLeft, FileText, Globe2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -20,6 +20,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
 import { prepareUploadFile } from '@/lib/prepare-upload'
+import PhoneField from '@/components/ui/PhoneField'
 import {
   buildFullName,
   getForeignIdFormatError,
@@ -28,6 +29,7 @@ import {
   isValidEmail,
   isValidForeignIdNumber,
   normalizeForeignIdNumber,
+  normalizePhoneE164,
   stripPlaceholderNameTokens,
 } from '@/lib/permit-validation'
 import { cyrillicToLatin } from '@/lib/transliterate'
@@ -99,7 +101,7 @@ export default function ImtiyozliAriza() {
       if (parts[1]) setFirstName(cyrillicToLatin(parts[1]))
       if (parts.length > 2) setMiddleName(cyrillicToLatin(parts.slice(2).join(' ')))
       else if (parts.length === 2) setNoMiddleName(true)
-      const phone = String(saved.phone ?? '').replace(/\D/g, '').slice(-9)
+      const phone = normalizePhoneE164(saved.phone)
       if (phone) setPhone(phone)
       if (saved.gender === 'male' || saved.gender === 'female') setGender(saved.gender)
       const fac = String(saved.faculty ?? '')
@@ -107,7 +109,7 @@ export default function ImtiyozliAriza() {
       if (saved.direction) setDirection(String(saved.direction))
       const course = String(saved.course ?? '')
       if (/^[1-6]$/.test(course)) setCourse(course)
-      if (saved.relativePhone) setRelativePhone(String(saved.relativePhone).replace(/[^\d+\s()-]/g, '').slice(0, 24))
+      if (saved.relativePhone) setRelativePhone(normalizePhoneE164(saved.relativePhone))
       if (saved.studyType === 'grant' || saved.studyType === 'kontrakt') setStudyType(saved.studyType)
       if (saved.originCountry) setOriginCountry(String(saved.originCountry).slice(0, 120))
       if (saved.originRegion) setOriginRegion(String(saved.originRegion).slice(0, 120))
@@ -177,8 +179,8 @@ export default function ImtiyozliAriza() {
       toast.error('To‘g‘ri email manzilini kiriting!')
       return false
     }
-    if (phone.replace(/\D/g, '').length !== 9) {
-      toast.error("+998 dan keyin 9 ta raqam kiriting!")
+    if (!isPlausibleInternationalPhone(phone)) {
+      toast.error("Telefon raqamingizni to‘liq kiriting!")
       return false
     }
     if (!isPlausibleInternationalPhone(relativePhone)) {
@@ -262,8 +264,8 @@ export default function ImtiyozliAriza() {
       submission.append('noMiddleName', noMiddleName ? 'true' : 'false')
       submission.append('fullName', fullName)
       submission.append('email', email.trim().toLowerCase())
-      submission.append('phone', `+998${phone.replace(/\D/g, '')}`)
-      submission.append('relativePhone', relativePhone.trim())
+      submission.append('phone', normalizePhoneE164(phone))
+      submission.append('relativePhone', normalizePhoneE164(relativePhone))
       submission.append('gender', gender)
       submission.append('faculty', faculty)
       submission.append('direction', direction)
@@ -508,36 +510,35 @@ export default function ImtiyozliAriza() {
                     </div>
                   )
                 })()}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Email</label>
-                    <div className="relative">
-                      <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                <div className="space-y-1">
+                  <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Email</label>
+                  <div className="relative">
+                    <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                     <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="talaba@example.com"
-                        className={`w-full border p-3 pl-11 rounded-xl text-sm outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200' : 'bg-slate-900/30 border-white/15 text-white focus:border-amber-500/50'}`} />
-                    </div>
-                    {email && !isValidEmail(email) && <p className="ml-2 text-[10px] font-bold text-rose-500">Email formati noto‘g‘ri.</p>}
+                      className={`w-full border p-3 pl-11 rounded-xl text-sm outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200' : 'bg-slate-900/30 border-white/15 text-white focus:border-amber-500/50'}`} />
                   </div>
-                  <div className="space-y-1">
-                    <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Telefon raqamingiz</label>
-                    <div className="relative flex items-center">
-                      <div className="absolute left-4 flex items-center gap-1.5 pointer-events-none border-r pr-2 border-slate-300 dark:border-white/10">
-                        <Phone size={14} className="text-slate-500" />
-                        <span className="text-sm font-bold text-slate-400">+998</span>
-                      </div>
-                      <input type="tel" inputMode="numeric" maxLength={9} value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))} placeholder="901234567"
-                        className={`w-full border p-3 pl-24 rounded-xl text-sm outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200' : 'bg-slate-900/30 border-white/15 text-white focus:border-amber-500/50'}`} />
-                    </div>
-                  </div>
+                  {email && !isValidEmail(email) && <p className="ml-2 text-[10px] font-bold text-rose-500">Email formati noto‘g‘ri.</p>}
+                </div>
+                <div className="space-y-1">
+                  <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Telefon raqamingiz</label>
+                  <PhoneField
+                    isLight={isLight}
+                    value={phone}
+                    onChange={setPhone}
+                    inputClassName={`w-full border p-3 pl-9 rounded-xl text-sm outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200' : 'bg-slate-900/30 border-white/15 text-white focus:border-amber-500/50'}`}
+                    selectClassName={`w-[128px] shrink-0 rounded-xl px-3 py-3 text-sm ${isLight ? 'bg-white border border-slate-300 text-slate-900' : 'bg-slate-900/30 border border-white/15 text-white'}`}
+                  />
                 </div>
                 <div className="space-y-1">
                   <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Yaqin qarindoshingizning telefon raqami</label>
-                  <div className="relative">
-                    <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input type="tel" maxLength={24} value={relativePhone} onChange={(e) => setRelativePhone(e.target.value.replace(/[^\d+\s()-]/g, '').slice(0, 24))} placeholder="+993 65 123456"
-                      className={`w-full border p-3 pl-11 rounded-xl text-sm outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200' : 'bg-slate-900/30 border-white/15 text-white focus:border-amber-500/50'}`} />
-                  </div>
-                  {relativePhone && !isPlausibleInternationalPhone(relativePhone) && <p className="ml-2 text-[10px] font-bold text-rose-500">7–15 ta raqam kiriting.</p>}
+                  <PhoneField
+                    isLight={isLight}
+                    value={relativePhone}
+                    onChange={setRelativePhone}
+                    inputClassName={`w-full border p-3 pl-9 rounded-xl text-sm outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200' : 'bg-slate-900/30 border-white/15 text-white focus:border-amber-500/50'}`}
+                    selectClassName={`w-[128px] shrink-0 rounded-xl px-3 py-3 text-sm ${isLight ? 'bg-white border border-slate-300 text-slate-900' : 'bg-slate-900/30 border border-white/15 text-white'}`}
+                  />
+                  {relativePhone && !isPlausibleInternationalPhone(relativePhone) && <p className="ml-2 text-[10px] font-bold text-rose-500">Raqamni to‘liq kiriting.</p>}
                 </div>
                 <div className="space-y-1">
                   <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Jinsi</label>

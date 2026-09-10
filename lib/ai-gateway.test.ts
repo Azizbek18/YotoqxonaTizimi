@@ -32,6 +32,7 @@ describe('AI Gateway adapter', () => {
     expect(text).toBe('{"ok":true}')
     expect(generateText).toHaveBeenCalledWith(expect.objectContaining({
       model: 'alibaba/qwen3.7-flash',
+      maxRetries: 0,
       messages: [expect.objectContaining({
         content: expect.arrayContaining([
           expect.objectContaining({ type: 'image', mediaType: 'image/jpeg' }),

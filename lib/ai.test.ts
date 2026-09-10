@@ -17,7 +17,12 @@ afterEach(() => {
 
 describe('describeAiFailure', () => {
   it('names a depleted-credits outage as a billing problem', () => {
-    expect(describeAiFailure('Gemini API error (429): {"status":"RESOURCE_EXHAUSTED"}')).toMatch(/billing|kredit/i)
+    expect(describeAiFailure('Gemini API error (429): Your prepayment credits are depleted')).toMatch(/billing|kredit/i)
+  })
+  it('does not equate an unspecified quota error with depleted money', () => {
+    const result = describeAiFailure('Gemini API error (429): {"status":"RESOURCE_EXHAUSTED"}')
+    expect(result).toMatch(/kvota/i)
+    expect(result).not.toMatch(/kredit/i)
   })
   it('hides Groq rate-limit internals from Telegram alerts', () => {
     const result = describeAiFailure('Groq API error (429): Rate limit reached for model qwen in organization org_secret')

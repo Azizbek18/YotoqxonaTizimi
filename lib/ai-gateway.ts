@@ -21,12 +21,7 @@ function modelList(value: string | undefined, fallback: string[]) {
 }
 
 export function aiGatewayConfigured() {
-  // Requires an explicit key. Every Vercel deployment also carries
-  // VERCEL_OIDC_TOKEN / VERCEL='1', so keying off those made the Gateway
-  // "configured" even with a zero-credit free-tier account — each vision
-  // request then burned a 25s timeout plus the AI SDK's 3 retries hitting
-  // an instant 429 before falling through to the next provider. Set
-  // AI_GATEWAY_API_KEY only once the Gateway actually has credit.
+  // Opt in explicitly; Vercel OIDC presence alone does not enable routing.
   return Boolean(process.env.AI_GATEWAY_API_KEY)
 }
 
@@ -84,7 +79,10 @@ export async function gatewayGenerate(payload: GatewayCompatiblePayload, mode: '
     messages: toMessages(payload),
     temperature: mode === 'vision' ? 0 : 0.2,
     maxOutputTokens: mode === 'vision' ? 2048 : 1200,
-    abortSignal: AbortSignal.timeout(25_000),
+    // Do not hide the original upstream error behind SDK retry delays.
+    // Gateway itself handles the configured model fallbacks.
+    maxRetries: 0,
+    abortSignal: AbortSignal.timeout(45_000),
     providerOptions: {
       gateway: {
         models: fallbacks,

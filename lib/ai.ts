@@ -5,11 +5,9 @@ import { sendTelegramAdminMessage } from './telegram'
 import { aiGatewayConfigured, gatewayGenerate } from './ai-gateway'
 import { getServiceSupabase } from './server-supabase'
 
-// Provider routing for the AI features, cheapest-reliable first:
-//   1. Groq — free (chat: production models; vision: preview Qwen, low daily
-//      token cap, images only)
-//   2. Gemini — paid prepaid credit, reliable OCR
-//   3. AI Gateway — only when AI_GATEWAY_API_KEY is set (i.e. it has credit)
+// Vision: AI Gateway → Groq (images only) → Gemini.
+// Chat: Groq → Gemini → AI Gateway.
+// An explicit Gateway key enables routing; it does not prove available credit.
 // Both helpers take the Gemini-shaped request the routes already build and
 // return a Gemini-shaped response, so callers only swap the function name.
 
@@ -22,6 +20,12 @@ type GeminiPayload = {
 }
 type GeminiResponse = { candidates: [{ content: { parts: [{ text: string }] } }] }
 type ProviderFailure = { provider: string; error: unknown }
+
+class AiProviderError extends AggregateError {
+  constructor(readonly failures: ProviderFailure[], message: string) {
+    super(failures.map(({ error }) => error), message)
+  }
+}
 
 function shaped(text: string): GeminiResponse {
   return { candidates: [{ content: { parts: [{ text }] } }] }
@@ -37,7 +41,7 @@ function providerFailureError(failures: ProviderFailure[], fallbackMessage: stri
   const message = failures
     .map(({ provider, error }) => `${provider}: ${error instanceof Error ? error.message : String(error)}`)
     .join(' | ')
-  return new AggregateError(failures.map(({ error }) => error), message)
+  return new AiProviderError(failures, message)
 }
 
 // ---- outage alert (throttled cross-instance) ----
@@ -72,11 +76,14 @@ async function claimOutageAlertSlot(): Promise<boolean> {
 }
 
 export function describeAiFailure(message: string): string {
-  if (/RESOURCE_EXHAUSTED|credits are depleted|quota|Payment Required|\(402\)/i.test(message)) {
-    return "AI krediti/kvotasi tugagan — Vercel AI Gateway yoki Google AI Studio balansini tekshiring."
+  if (/credits are depleted|insufficient credits|Payment Required|\(402\)/i.test(message)) {
+    return "Ushbu provayder krediti tugagan. Uning billing panelini tekshiring."
   }
-  if (/rate limit|too many requests|tokens per minute|requests per minute|\(429\)/i.test(message)) {
-    return "AI provayderining vaqtinchalik so‘rov limiti tugagan. Birozdan keyin qayta uriniladi."
+  if (/timeout|timed out|aborted/i.test(message)) {
+    return "So‘rov vaqt chegarasiga yetgan yoki bekor bo‘lgan. Bu kredit tugaganini bildirmaydi."
+  }
+  if (/RESOURCE_EXHAUSTED|quota|rate limit|too many requests|tokens per minute|requests per minute|\(429\)/i.test(message)) {
+    return "Provayderning so‘rov limiti yoki kvotasi tugagan. Panelda tiklanish vaqtini tekshiring."
   }
   if (/dunning|billing account|account.*(suspend|disabled)|payment/i.test(message)) {
     return "Gemini loyihasining to'lovi muammoli (Google Cloud billing) — hisobni to'lang / to'lov usulini tekshiring."
@@ -106,14 +113,16 @@ async function alertOutage(where: string, error: unknown): Promise<void> {
     return
   }
   lastAlertAt = now
-  const message = error instanceof Error ? error.message : String(error)
+  const message = error instanceof AiProviderError
+    ? error.failures.map(({ provider, error: cause }) => `${provider}: ${describeAiFailure(cause instanceof Error ? cause.message : String(cause))}`).join('\n')
+    : describeAiFailure(error instanceof Error ? error.message : String(error))
   await sendTelegramAdminMessage(
-    `⚠️ Sun'iy intellekt ishlamayapti (${where})\n\n${describeAiFailure(message)}\n\n` +
-      "Talaba arizalari/cheklari to'xtatilmayapti — ular \"AI tekshirmagan\" belgisi bilan qo'lda ko'rib chiqishga o'tkazilmoqda. Provayder tiklangach belgisiz davom etadi.",
+    `⚠️ Sun'iy intellekt ishlamayapti (${where})\n\n${message}\n\n` +
+      "Arizalar/cheklar \"AI tekshirmagan\" belgisi bilan qo'lda ko'rib chiqishga o'tkazilmoqda. Provayder tiklangach yangi so'rovlar AI orqali tekshiriladi; oldingi arizalarni qo'lda ko'rib chiqing.",
   )
 }
 
-// ---- vision / OCR: Groq (images) → Gemini → AI Gateway ----
+// ---- vision / OCR: funded AI Gateway → Groq (images) → Gemini ----
 
 export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string | undefined): Promise<GeminiResponse> {
   const system = payload.systemInstruction?.parts?.map((p) => p.text).filter(Boolean).join('\n\n') ?? ''
@@ -132,7 +141,17 @@ export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string 
 
   const providerFailures: ProviderFailure[] = []
 
-  // 1. Groq — free, images only. Most student referrals reach this function
+  // Use the funded gateway before spending time on exhausted free quotas.
+  if (aiGatewayConfigured()) {
+    try {
+      return shaped(await gatewayGenerate(payload, 'vision'))
+    } catch (error) {
+      providerFailures.push({ provider: 'AI Gateway', error })
+      console.error('AI Gateway vision failed, trying direct providers:', error)
+    }
+  }
+
+  // Groq fallback — images only. Most student referrals reach this function
   // as raster images (PDFs are rendered client-side). Preview Qwen models
   // with a low daily token cap, so falling through here is routine.
   if (groqConfigured() && onlyImages) {
@@ -144,23 +163,13 @@ export async function aiVisionJson(payload: GeminiPayload, geminiApiKey: string 
     }
   }
 
-  // 2. Gemini — paid prepaid credit, reliable OCR.
+  // Gemini is the final direct-provider fallback for vision.
   if (geminiApiKey) {
     try {
       return shaped(textOf(await callGemini(payload, geminiApiKey)))
     } catch (error) {
       providerFailures.push({ provider: 'Gemini', error })
-      console.error('Gemini vision fallback failed, trying AI Gateway:', error)
-    }
-  }
-
-  // 3. AI Gateway — only reached when it actually has credit.
-  if (aiGatewayConfigured()) {
-    try {
-      return shaped(await gatewayGenerate(payload, 'vision'))
-    } catch (error) {
-      providerFailures.push({ provider: 'AI Gateway', error })
-      console.error('AI Gateway vision fallback failed:', error)
+      console.error('Gemini vision fallback failed:', error)
     }
   }
 

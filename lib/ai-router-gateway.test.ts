@@ -34,21 +34,40 @@ const { aiChatReply, aiVisionJson } = await import('./ai')
 
 describe('AI provider routing with Gateway', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     groqConfigured.mockReturnValue(false)
     outageAlertRows = []
   })
 
-  it('uses Groq first for raster vision before Gateway and Gemini', async () => {
+  it('uses the funded Gateway before Groq and Gemini for vision', async () => {
     groqConfigured.mockReturnValue(true)
-    groqAnalyzeImages.mockResolvedValue('{"valid":true}')
+    gatewayGenerate.mockResolvedValue('{"valid":true}')
     const result = await aiVisionJson({
       contents: [{ parts: [{ inlineData: { mimeType: 'image/jpeg', data: 'AAAA' } }] }],
     }, 'gemini-key')
     expect(result.candidates[0].content.parts[0].text).toBe('{"valid":true}')
-    expect(groqAnalyzeImages).toHaveBeenCalled()
-    expect(gatewayGenerate).not.toHaveBeenCalled()
+    expect(groqAnalyzeImages).not.toHaveBeenCalled()
+    expect(gatewayGenerate).toHaveBeenCalledWith(expect.anything(), 'vision')
     expect(callGemini).not.toHaveBeenCalled()
+  })
+
+  it('uses Groq once Gateway fails, without calling Gateway again', async () => {
+    groqConfigured.mockReturnValue(true)
+    gatewayGenerate.mockRejectedValue(new Error('Delay was aborted'))
+    groqAnalyzeImages.mockResolvedValue('{"valid":true}')
+    const result = await aiVisionJson({ contents: [{ parts: [{ inlineData: { mimeType: 'image/png', data: 'AAAA' } }] }] }, 'k')
+    expect(result.candidates[0].content.parts[0].text).toBe('{"valid":true}')
+    expect(gatewayGenerate).toHaveBeenCalledTimes(1)
+    expect(callGemini).not.toHaveBeenCalled()
+  })
+
+  it('separates Gateway cancellation from depleted Gemini credits in alerts', async () => {
+    gatewayGenerate.mockRejectedValue(new Error('Delay was aborted'))
+    callGemini.mockRejectedValue(new Error('Your prepayment credits are depleted'))
+    await expect(aiVisionJson({ contents: [] }, 'k')).rejects.toThrow()
+    const alert = sendTelegramAdminMessage.mock.calls[0][0] as string
+    expect(alert).toMatch(/AI Gateway: So‘rov vaqt/)
+    expect(alert).toMatch(/Gemini: Ushbu provayder krediti tugagan/)
   })
 
   it('prefers Gemini over Gateway for chat when Groq is unavailable', async () => {

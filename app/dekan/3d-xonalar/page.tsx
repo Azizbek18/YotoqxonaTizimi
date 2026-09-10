@@ -1,19 +1,17 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
-import { createPortal } from 'react-dom'
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import {
-  Building2, DoorOpen, Layers3, Users,
-  Info, MousePointer2, ArrowLeft, ArrowRight,
+  DoorOpen, Layers3, Users,
+  ArrowLeft, ArrowRight,
   Plus, Trash2, GripVertical, ChevronDown, Save, RotateCcw
 } from 'lucide-react'
-import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
+import { Reorder, useDragControls } from 'framer-motion'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { Skel } from '@/components/ui/skeletons'
 import { useThemeStore } from '@/lib/stores/theme-store'
-import { useScopedFontFamily } from '@/lib/font-scope-context'
+import RoomScene3D, { type SceneRoom } from '@/components/dekan/RoomScene3D'
 import toast from 'react-hot-toast'
-import * as THREE from 'three'
 import { fetchDekanOverview } from '@/features/permits/client/admin-api'
 import { fetchFloorLayout, saveFloorLayout } from '@/features/room-layout/client/api'
 import type { RoomBlockSide, RoomBlockSize, RoomLayoutBlock } from '@/features/room-layout/types'
@@ -142,8 +140,6 @@ function layoutSide(blocks: EditableBlock[], side: RoomBlockSide): { rooms: Posi
 // room capacity is building-wide even though student identity isn't.
 export default function Dekan3DXonalarPage() {
   const [roomSnapshots, setRoomSnapshots] = useState<RoomOccupancySnapshot[]>([])
-  const [selectedRoomNumber, setSelectedRoomNumber] = useState<string | null>(null)
-  const [hoveredRoom, setHoveredRoom] = useState<{ roomNumber: string; clientX: number; clientY: number } | null>(null)
 
   // Every building this faculty holds (many-to-many, 202609300000), and
   // which one this page is currently pointed at — undefined = primary.
@@ -208,14 +204,9 @@ export default function Dekan3DXonalarPage() {
   // shows another floor's rooms — e.g. AMIT opening dorm-3 saw floor 1's
   // "1,2,3,3a…" under the "2-qavat" tab.
   const layoutReqSeq = useRef(0)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const sceneRef = useRef<THREE.Scene | null>(null)
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
-  const groupRef = useRef<THREE.Group | null>(null)
 
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
-  const scopedFontFamily = useScopedFontFamily()
 
   const ui = dekanUI(isLight)
   // The tarbiyachi panel renders this same 3D floor view without the
@@ -271,7 +262,6 @@ export default function Dekan3DXonalarPage() {
   const loadFloorLayout = async (floor: number) => {
     const reqId = ++layoutReqSeq.current
     setLoading(true)
-    setSelectedRoomNumber(null)
     try {
       const blocks = await fetchFloorLayout(floor, activeDormId)
       if (reqId !== layoutReqSeq.current) return // a newer load has superseded this one
@@ -495,186 +485,21 @@ export default function Dekan3DXonalarPage() {
     }
   }, [previewLeft, previewRight])
 
-  useEffect(() => {
-    const rooms = positionedRooms.rooms
-    if (!canvasRef.current || rooms.length === 0) {
-      if (groupRef.current) groupRef.current.clear()
-      return
-    }
-
-    const canvas = canvasRef.current
-    const width = canvas.clientWidth
-    const height = canvas.clientHeight
-
-    const scene = new THREE.Scene()
-    sceneRef.current = scene
-
-    const camera = new THREE.PerspectiveCamera(45, width / Math.max(height, 1), 0.1, 100)
-    camera.position.set(0, 5, 8)
-    camera.lookAt(0, 0, 0)
-
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
-    renderer.setSize(width, height, false)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    rendererRef.current = renderer
-
-    const resizeObserver = new ResizeObserver(() => {
-      if (!canvas || !rendererRef.current) return
-      const w = canvas.clientWidth
-      const h = canvas.clientHeight
-      camera.aspect = w / Math.max(h, 1)
-      camera.updateProjectionMatrix()
-      rendererRef.current.setSize(w, h, false)
-    })
-    if (canvas.parentElement) resizeObserver.observe(canvas.parentElement)
-
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6))
-    const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8)
-    dirLight1.position.set(5, 10, 7)
-    scene.add(dirLight1)
-    const dirLight2 = new THREE.DirectionalLight(0x6366f1, 0.4)
-    dirLight2.position.set(-5, 5, -5)
-    scene.add(dirLight2)
-
-    const roomGroup = new THREE.Group()
-    scene.add(roomGroup)
-    groupRef.current = roomGroup
-
-    const slabGeo = new THREE.BoxGeometry(positionedRooms.slabWidth, 0.15, positionedRooms.slabDepth)
-    const slabMat = new THREE.MeshStandardMaterial({
-      color: isLight ? 0xe2e8f0 : 0x111827,
-      roughness: 0.8,
-      metalness: 0.1,
-    })
-    const slabMesh = new THREE.Mesh(slabGeo, slabMat)
-    slabMesh.position.set(0, -0.075, 0)
-    roomGroup.add(slabMesh)
-
-    const slabEdges = new THREE.EdgesGeometry(slabGeo)
-    const slabLineMat = new THREE.LineBasicMaterial({ color: isLight ? 0x94a3b8 : 0x475569 })
-    slabMesh.add(new THREE.LineSegments(slabEdges, slabLineMat))
-
-    // Corridor strip down the middle, visually marking the "zal".
-    const corridorGeo = new THREE.BoxGeometry(CORRIDOR_WIDTH, 0.02, positionedRooms.slabDepth - 0.3)
-    const corridorMat = new THREE.MeshStandardMaterial({ color: isLight ? 0xcbd5e1 : 0x1e293b, roughness: 0.9 })
-    const corridorMesh = new THREE.Mesh(corridorGeo, corridorMat)
-    corridorMesh.position.set(0, 0.01, 0)
-    roomGroup.add(corridorMesh)
-
-    const meshes: THREE.Mesh[] = []
-    const disposables: { geo: THREE.BufferGeometry; mat: THREE.Material }[] = []
-
-    rooms.forEach((room) => {
+  // Positioned rooms + live occupancy, shaped for the shared <RoomScene3D>.
+  const sceneRooms: SceneRoom[] = useMemo(() =>
+    positionedRooms.rooms.map((room) => {
       const snap = roomSnapshots.find((s) => s.roomNumber === room.roomNumber)
-      const occupied = snap?.occupied ?? 0
-      const occupancyTone = getRoomOccupancyTone(occupied, room.capacity ?? defaultRoomCapacity)
-
-      // A frozen room is cyan regardless of occupancy — matches the Xonalar
-      // xaritasi and reads as "out of circulation", not empty.
-      const color = room.frozen
-        ? 0x06b6d4
-        : {
-            empty: 0x10b981,
-            partial: 0xf59e0b,
-            full: 0xef4444,
-            unknown: 0x64748b,
-          }[occupancyTone]
-
-      const geo = new THREE.BoxGeometry(room.width, room.height, room.depth)
-      const material = new THREE.MeshStandardMaterial({
-        color, roughness: 0.2, metalness: 0.1, transparent: true, opacity: room.frozen ? 0.55 : 0.85,
-      })
-      const mesh = new THREE.Mesh(geo, material)
-      mesh.position.set(room.x, room.height / 2, room.z)
-      mesh.name = room.roomNumber
-      roomGroup.add(mesh)
-      meshes.push(mesh)
-      disposables.push({ geo, mat: material })
-
-      const edges = new THREE.EdgesGeometry(geo)
-      const lineMat = new THREE.LineBasicMaterial({ color })
-      mesh.add(new THREE.LineSegments(edges, lineMat))
-      disposables.push({ geo: edges, mat: lineMat })
-    })
-
-    let isDragging = false
-    let prevMousePos = { x: 0, y: 0 }
-    const raycaster = new THREE.Raycaster()
-    const mouse = new THREE.Vector2()
-
-    const onMouseDown = (e: MouseEvent) => { isDragging = true; prevMousePos = { x: e.offsetX, y: e.offsetY } }
-    const onMouseMove = (e: MouseEvent) => {
-      if (isDragging) {
-        const deltaMove = { x: e.offsetX - prevMousePos.x, y: e.offsetY - prevMousePos.y }
-        roomGroup.rotation.y += deltaMove.x * 0.005
-        roomGroup.rotation.x += deltaMove.y * 0.005
-        roomGroup.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, roomGroup.rotation.x))
-        prevMousePos = { x: e.offsetX, y: e.offsetY }
-        setHoveredRoom(null)
-        return
+      return {
+        roomNumber: room.roomNumber,
+        x: room.x, z: room.z, width: room.width, depth: room.depth, height: room.height,
+        frozen: room.frozen,
+        capacity: room.capacity ?? defaultRoomCapacity,
+        occupied: snap?.occupied ?? 0,
+        occupants: snap?.students.map((st) => st.name) ?? [],
+        isCapacityOverride: room.capacity != null,
       }
-
-      const rect = canvas.getBoundingClientRect()
-      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
-      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
-      raycaster.setFromCamera(mouse, camera)
-      const intersects = raycaster.intersectObjects(meshes)
-      if (intersects.length > 0) {
-        const hoveredMesh = intersects[0].object as THREE.Mesh
-        canvas.style.cursor = 'pointer'
-        setHoveredRoom({ roomNumber: hoveredMesh.name, clientX: e.clientX, clientY: e.clientY })
-      } else {
-        canvas.style.cursor = 'grab'
-        setHoveredRoom(null)
-      }
-    }
-    const onMouseUp = () => { isDragging = false }
-    const onMouseLeave = () => { setHoveredRoom(null); canvas.style.cursor = 'grab' }
-    canvas.addEventListener('mousedown', onMouseDown)
-    canvas.addEventListener('mousemove', onMouseMove)
-    canvas.addEventListener('mouseleave', onMouseLeave)
-    window.addEventListener('mouseup', onMouseUp)
-
-    const onCanvasClick = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect()
-      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
-      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
-      raycaster.setFromCamera(mouse, camera)
-      const intersects = raycaster.intersectObjects(meshes)
-      if (intersects.length > 0) {
-        const clickedMesh = intersects[0].object as THREE.Mesh
-        setSelectedRoomNumber(clickedMesh.name)
-        clickedMesh.scale.set(1.08, 1.08, 1.08)
-        setTimeout(() => clickedMesh.scale.set(1, 1, 1), 150)
-      }
-    }
-    canvas.addEventListener('click', onCanvasClick)
-
-    let animationFrameId: number
-    const animate = () => {
-      animationFrameId = requestAnimationFrame(animate)
-      if (!isDragging) roomGroup.rotation.y += 0.0015
-      renderer.render(scene, camera)
-    }
-    animate()
-
-    return () => {
-      resizeObserver.disconnect()
-      cancelAnimationFrame(animationFrameId)
-      canvas.removeEventListener('mousedown', onMouseDown)
-      canvas.removeEventListener('mousemove', onMouseMove)
-      canvas.removeEventListener('mouseleave', onMouseLeave)
-      window.removeEventListener('mouseup', onMouseUp)
-      canvas.removeEventListener('click', onCanvasClick)
-      setHoveredRoom(null)
-      disposables.forEach(({ geo, mat }) => { geo.dispose(); mat.dispose() })
-      slabGeo.dispose()
-      slabMat.dispose()
-      corridorGeo.dispose()
-      corridorMat.dispose()
-      renderer.dispose()
-    }
-  }, [positionedRooms, roomSnapshots, isLight, defaultRoomCapacity])
+    }),
+  [positionedRooms, roomSnapshots, defaultRoomCapacity])
 
   const summary = useMemo(() => {
     const roomCount = positionedRooms.rooms.length
@@ -696,20 +521,6 @@ export default function Dekan3DXonalarPage() {
       freePlaces: getFreePlaces(totalBeds, occupiedPlaces),
     }
   }, [roomSnapshots, positionedRooms, defaultRoomCapacity])
-
-  const selectedRoomData = useMemo(() => {
-    if (!selectedRoomNumber) return null
-    const snap = roomSnapshots.find((s) => s.roomNumber === selectedRoomNumber)
-    const block = [...previewLeft, ...previewRight].find((b) => b.roomNumber.trim() === selectedRoomNumber)
-    return {
-      number: selectedRoomNumber,
-      occupied: snap?.occupied ?? 0,
-      capacity: block?.capacity ?? defaultRoomCapacity,
-      isCapacityOverride: block?.capacity != null,
-      frozen: block?.frozen ?? false,
-      students: snap?.students ?? []
-    }
-  }, [selectedRoomNumber, roomSnapshots, defaultRoomCapacity, previewLeft, previewRight])
 
   const quickAddBtn = isLight
     ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -1023,151 +834,16 @@ export default function Dekan3DXonalarPage() {
           </div>
           )}
 
-          {/* 3D Preview */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={`relative min-h-[420px] rounded-2xl border backdrop-blur-xl overflow-hidden ${surfaceBg}`}
-          >
-            <div className="absolute top-6 left-6 z-10 flex flex-wrap gap-3">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>Bo&apos;sh</span>
-              </div>
-              {defaultRoomCapacity === null ? (
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
-                  <div className="w-2 h-2 rounded-full bg-slate-500" />
-                  <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>Sig&apos;im noma&apos;lum</span>
-                </div>
-              ) : (
-                <>
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
-                    <div className="w-2 h-2 rounded-full bg-amber-500" />
-                    <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>Qisman</span>
-                  </div>
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${cardBg}`}>
-                    <div className="w-2 h-2 rounded-full bg-rose-500" />
-                    <span className={`text-[10px] font-bold uppercase tracking-tighter ${textStrong}`}>To&apos;la</span>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {positionedRooms.rooms.length === 0 ? (
-              <div className="h-[420px] flex flex-col items-center justify-center text-center px-6">
-                <Building2 className={`h-10 w-10 mb-3 ${textMuted}`} />
-                <p className={`text-sm font-bold ${textMuted}`}>
-                  {readOnly ? "Bu qavat uchun tarx hali kiritilmagan." : "Hali xona qo'shilmagan — yuqoridan xona qo'shing."}
-                </p>
-              </div>
-            ) : (
-              <canvas ref={canvasRef} className="w-full h-[420px] block outline-none cursor-grab active:cursor-grabbing" />
-            )}
-
-            {hoveredRoom && typeof document !== 'undefined' && createPortal(
-              (() => {
-                const snap = roomSnapshots.find((s) => s.roomNumber === hoveredRoom.roomNumber)
-                return (
-                  <div
-                    className={`pointer-events-none fixed z-[9999] rounded-xl border px-3 py-2 shadow-2xl backdrop-blur-xl ${isLight ? 'bg-white/95 border-slate-200' : 'bg-slate-900/95 border-slate-800'}`}
-                    style={{ left: hoveredRoom.clientX + 14, top: hoveredRoom.clientY + 14, fontFamily: scopedFontFamily }}
-                  >
-                    <p className={`text-xs font-bold ${textStrong}`}>Xona #{hoveredRoom.roomNumber}</p>
-                    {snap && snap.students.length > 0 ? (
-                      <p className={`mt-0.5 max-w-[220px] text-[10px] ${textMuted}`}>
-                        {snap.students.map((s) => s.name).join(', ')}
-                      </p>
-                    ) : (
-                      <p className={`mt-0.5 text-[10px] ${textMuted}`}>Bo&apos;sh</p>
-                    )}
-                  </div>
-                )
-              })(),
-              document.body
-            )}
-
-            <div className="absolute bottom-6 left-6 pointer-events-none">
-              <p className={`text-[10px] font-bold uppercase tracking-widest ${textMuted} flex items-center gap-2`}>
-                <MousePointer2 size={12} />
-                Aylantirish uchun sudrang, tanlash uchun xonani bosing.
-              </p>
-            </div>
-          </motion.div>
-
-          {/* Details Card for selected room */}
-          <AnimatePresence mode="wait">
-            {selectedRoomData && (
-              <motion.div
-                key={selectedRoomData.number}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className={`rounded-2xl border p-6 sm:p-8 backdrop-blur-2xl shadow-2xl ${surfaceBg}`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-12 h-12 shrink-0 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500">
-                      <Building2 size={24} />
-                    </div>
-                    <div className="min-w-0">
-                      <h2 className={`text-2xl font-bold tracking-tight truncate ${textStrong}`}>Xona #{selectedRoomData.number}</h2>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{activeFloor}-qavat</p>
-                    </div>
-                  </div>
-                  <div className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl border ${cardBg}`}>
-                    <Info size={16} className="text-indigo-500" />
-                    <span className={`text-[10px] font-bold uppercase tracking-widest ${textStrong}`}>Tafsilotlar</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <Detail label="Xona raqami" value={`#${selectedRoomData.number}`} icon={<MousePointer2 size={16} />} textStrong={textStrong} cardBg={cardBg} />
-                  <Detail
-                    label={selectedRoomData.isCapacityOverride ? "Bandlik holati (istisno sig'im)" : 'Bandlik holati'}
-                    value={`${selectedRoomData.occupied} / ${selectedRoomData.capacity ?? '?'}`}
-                    icon={<Users size={16} />}
-                    status={getRoomOccupancyTone(selectedRoomData.occupied, selectedRoomData.capacity)}
-                    textStrong={textStrong}
-                    cardBg={cardBg}
-                  />
-                  <Detail
-                    label="Bo'sh joylar"
-                    value={selectedRoomData.frozen
-                      ? 'Muzlatilgan'
-                      : selectedRoomData.capacity === null
-                        ? "Noma'lum"
-                        : `${getFreePlaces(selectedRoomData.capacity, selectedRoomData.occupied)} ta`}
-                    icon={<DoorOpen size={16} />}
-                    textStrong={textStrong}
-                    cardBg={cardBg}
-                  />
-
-                  {selectedRoomData.frozen && (
-                    <p className={`md:col-span-3 -mt-1 flex items-center gap-1.5 text-[11px] font-medium ${isLight ? 'text-cyan-600' : 'text-cyan-400'}`}>
-                      <MousePointer2 size={12} className="shrink-0" />
-                      Bu xona ta&apos;mirlash uchun muzlatilgan — o&apos;rinlari bo&apos;sh joy hisoblanmaydi.
-                    </p>
-                  )}
-
-                  {selectedRoomData.students.length > 0 && (
-                    <div className="md:col-span-3">
-                      <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 ${textMuted}`}>Xonadagi Talabalar Ro&apos;yxati</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {selectedRoomData.students.map((student, i) => (
-                          <div key={student.id || `${selectedRoomData.number}-${i}`} className={`p-4 rounded-2xl border flex items-center gap-3 ${cardBg}`}>
-                            <div className="w-8 h-8 shrink-0 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500 font-bold text-xs uppercase">
-                              {student.name.slice(0, 2)}
-                            </div>
-                            <p className={`text-sm font-bold truncate ${textStrong}`}>{student.name}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* 3D Preview — shared with the «Blok xonalari» maket */}
+          <RoomScene3D
+            rooms={sceneRooms}
+            slabWidth={positionedRooms.slabWidth}
+            slabDepth={positionedRooms.slabDepth}
+            corridorWidth={CORRIDOR_WIDTH}
+            isLight={isLight}
+            className={`backdrop-blur-xl ${surfaceBg}`}
+            emptyHint={readOnly ? 'Bu qavat uchun tarx hali kiritilmagan.' : "Hali xona qo'shilmagan — yuqoridan xona qo'shing."}
+          />
         </>
       )}
 
@@ -1350,24 +1026,5 @@ function RoomRow({
         <Trash2 size={13} />
       </button>
     </Reorder.Item>
-  )
-}
-
-function Detail({ label, value, icon, status, textStrong, cardBg }: { label: string; value: string; icon?: React.ReactNode; status?: RoomOccupancyTone; textStrong: string; cardBg: string }) {
-  const statusColors: Record<RoomOccupancyTone, string> = {
-    empty: 'text-emerald-600 dark:text-emerald-400',
-    partial: 'text-amber-600 dark:text-amber-400',
-    full: 'text-rose-600 dark:text-rose-400',
-    unknown: 'text-slate-500 dark:text-slate-400',
-  }
-
-  return (
-    <div className={`rounded-xl border p-5 ${cardBg}`}>
-      <div className="flex items-center gap-2 mb-3">
-        <div className="text-slate-400">{icon}</div>
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</p>
-      </div>
-      <p className={`text-2xl font-bold ${status ? statusColors[status] : textStrong}`}>{value}</p>
-    </div>
   )
 }

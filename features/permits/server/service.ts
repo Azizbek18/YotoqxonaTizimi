@@ -165,15 +165,15 @@ export function createPermitAdminService(
         genderByFloor,
       }
 
-      const courses: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
-      const faculties: Record<string, number> = Object.create(null)
-      const addDistribution = (course: number | null, targetFaculty: string | null) => {
-        if (course && courses[course] !== undefined) courses[course]++
-        if (targetFaculty) faculties[targetFaculty] = (faculties[targetFaculty] ?? 0) + 1
+      // Housed people by faculty — the same set `totalOccupiedBeds` counts
+      // (users in a room + approved permits holding a room, deduped), so the
+      // shares add up to 100%.
+      const housedByFaculty: Record<string, number> = Object.create(null)
+      const bumpFaculty = (targetFaculty: string | null) => {
+        if (targetFaculty) housedByFaculty[targetFaculty] = (housedByFaculty[targetFaculty] ?? 0) + 1
       }
-      permits.filter((permit) => permit.status === 'approved' || permit.status === 'registered')
-        .forEach((permit) => addDistribution(permit.course, permit.faculty))
-      studentsWithRooms.forEach((user) => addDistribution(user.course, user.faculty))
+      studentsWithRooms.forEach((user) => bumpFaculty(user.faculty))
+      approvedPermitsWithRooms.forEach((permit) => bumpFaculty(permit.faculty))
 
       return {
         faculty,
@@ -190,8 +190,12 @@ export function createPermitAdminService(
           availableBeds,
           freeBeds,
           frozenRoomCount,
-          courseDistribution: Object.entries(courses).map(([course, talabalar]) => ({ course: `${course}-kurs`, talabalar })),
-          facultyDistribution: Object.entries(faculties).map(([name, talabalar]) => ({ name, talabalar })),
+          // Same population as the per-floor balance below: every registered
+          // student once, plus approved permits whose holder hasn't registered
+          // yet. The old count added `registered` permits *and* the user rows
+          // they became, inflating every bar well past the real headcount.
+          courseDistribution: Object.entries(totalToHouse).map(([course, talabalar]) => ({ course: `${course}-kurs`, talabalar })),
+          facultyDistribution: Object.entries(housedByFaculty).map(([name, talabalar]) => ({ name, talabalar })),
           floorBalance,
           recentRequests: permits.filter((permit) => permit.status === 'pending').slice(0, 5),
         },

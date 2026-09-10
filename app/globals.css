@@ -262,6 +262,18 @@ html.theme-light [class*="text-stone-600"] {
   text-shadow: none !important;
 }
 
+/* Gradient hero panels (dashboard headers: dekan, tarbiyachi yo'qlama,
+   admin to'lovlar) are dark saturated indigo→violet surfaces — their
+   `text-white` headings and badges must stay white. They're <div>/<section>,
+   not button/a, so the "force white on solid buttons" carve-out below never
+   reaches them, and the block above would otherwise darken the heading to
+   #173154 (reported: dekan dashboard title unreadable in light mode). Scoped
+   to the exact hero gradient so no other surface is affected; `text-indigo-700`
+   on the nested white "Yangilash" button is untouched (not text-white). */
+html.theme-light :is(div, section, header)[class*="from-indigo-600"][class*="to-violet-700"] [class*="text-white"] {
+  color: #ffffff !important;
+}
+
 html.theme-light [class*="placeholder:text-slate-400"]::placeholder,
 html.theme-light [class*="placeholder:text-slate-500"]::placeholder,
 html.theme-light [class*="placeholder:text-slate-600"]::placeholder,

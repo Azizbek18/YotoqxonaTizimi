@@ -332,6 +332,39 @@ describe('permit admin service — overview', () => {
     expect(dashboard.freeBeds).toBe(3)          // 4 - 1
   })
 
+  it('course & faculty distributions count each person once (registered permit + its user)', async () => {
+    const load = vi.fn(async () => ({
+      permits: [
+        // p1: registered — the person below already has a `users` row.
+        permit({ id: 'p1', faculty: 'fizika', status: 'registered', course: 1, room_number: '5', passport_series: 'PP1', jshshir: 'JJ1' }),
+        // p2: approved, holder has NOT registered — counts once.
+        permit({ id: 'p2', faculty: 'fizika', status: 'approved', course: 1, room_number: '6', passport_series: 'PP2', jshshir: 'JJ2' }),
+        // p3: rejected — never counted.
+        permit({ id: 'p3', faculty: 'fizika', status: 'rejected', course: 2, passport_series: 'PP3', jshshir: 'JJ3' }),
+      ],
+      users: [{
+        id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Aziz',
+        passport_series: 'PP1', jshshir: 'JJ1', phone_number: '+998', gender: 'male',
+        direction: 'd', course: 1, room_number: '5', dorm_id: null, warning_count: 0, blacklisted: false,
+      }],
+    }))
+    const deps = capacityDeps([
+      { room_number: '5', frozen: false, capacity: 4 },
+      { room_number: '6', frozen: false, capacity: 4 },
+    ], 4)
+
+    const { dashboard } = await createPermitAdminService(repository({ load }), deps).overview('fizika')
+
+    const c1 = dashboard.courseDistribution.find((c) => c.course === '1-kurs')!
+    expect(c1.talabalar).toBe(2)   // u1 (once, not again for p1) + p2
+    expect(dashboard.courseDistribution.find((c) => c.course === '2-kurs')!.talabalar).toBe(0) // p3 rejected
+
+    // faculty distribution = housed people, matches totalOccupiedBeds
+    const facTotal = dashboard.facultyDistribution.reduce((n, f) => n + f.talabalar, 0)
+    expect(facTotal).toBe(dashboard.totalOccupiedBeds)
+    expect(dashboard.facultyDistribution.find((f) => f.name === 'fizika')!.talabalar).toBe(2) // u1 in 5 + p2 in 6
+  })
+
   it('builds per-floor course balance: proportional targets + placed counts by floor', async () => {
     const load = vi.fn(async () => ({
       // 3 students to house, all course 1; one already placed on floor 2.

@@ -33,9 +33,11 @@ export interface RegisterData {
   father_full_name: string;
   father_workplace: string;
   father_phone: string;
+  noFather: boolean;
   mother_full_name: string;
   mother_workplace: string;
   mother_phone: string;
+  noMother: boolean;
   // Step 7
   entryDate: string
   // Step 8
@@ -72,9 +74,11 @@ export const initialData: RegisterData = {
   father_full_name: '',
   father_workplace: '',
   father_phone: '',
+  noFather: false,
   mother_full_name: '',
   mother_workplace: '',
   mother_phone: '',
+  noMother: false,
   entryDate: '',
   room_number: '',
   email: '',

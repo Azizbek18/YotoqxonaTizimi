@@ -60,37 +60,39 @@ export default function Step6Family({ data, onChange, onNext, onBack, stepNumber
     };
 
     const {
-      father_full_name, father_workplace, father_phone,
-      mother_full_name, mother_workplace, mother_phone,
+      father_full_name, father_workplace, father_phone, noFather,
+      mother_full_name, mother_workplace, mother_phone, noMother,
       phone // Bu talabaning o'z raqami (oldingi qadamdan kelgan)
     } = data;
 
-    // 1. MAJBURIY MAYDONLAR VA F.I.O TEKSHIRUVI
-    if (!isValidFullName(father_full_name)) return show3DToast('error', "Otangizning F.I.O to'liq kiriting (3 ta so'z)!");
-    if (!father_workplace?.trim()) return show3DToast('error', "Otangizning ish joyini kiriting!");
-    if (!isPlausibleInternationalPhone(father_phone || '')) return show3DToast('error', "Otangizning telefon raqamini to'liq kiriting!");
+    // Kamida bitta ota-ona (yoki qonuniy vakil) bilan bog'lana olish kerak.
+    if (noFather && noMother) {
+      return show3DToast('error', "Kamida bittasi — ota yoki ona — ma'lumotini to'liq kiriting.");
+    }
 
-    if (!isValidFullName(mother_full_name)) return show3DToast('error', "Onangizning F.I.O to'liq kiriting (3 ta so'z)!");
-    if (!mother_workplace?.trim()) return show3DToast('error', "Onangizning ish joyini kiriting!");
-    if (!isPlausibleInternationalPhone(mother_phone || '')) return show3DToast('error', "Onangizning telefon raqamini to'liq kiriting!");
+    // Har bir mavjud ota-ona uchun F.I.O + ish joyi + telefon to'liq.
+    if (!noFather) {
+      if (!isValidFullName(father_full_name)) return show3DToast('error', "Otangizning F.I.O to'liq kiriting (3 ta so'z)!");
+      if (!father_workplace?.trim()) return show3DToast('error', "Otangizning ish joyini kiriting!");
+      if (!isPlausibleInternationalPhone(father_phone || '')) return show3DToast('error', "Otangizning telefon raqamini to'liq kiriting!");
+    }
+    if (!noMother) {
+      if (!isValidFullName(mother_full_name)) return show3DToast('error', "Onangizning F.I.O to'liq kiriting (3 ta so'z)!");
+      if (!mother_workplace?.trim()) return show3DToast('error', "Onangizning ish joyini kiriting!");
+      if (!isPlausibleInternationalPhone(mother_phone || '')) return show3DToast('error', "Onangizning telefon raqamini to'liq kiriting!");
+    }
 
-    // 2. RAQAMLARNI O'ZARO TAQQOSLASH (DUPLICATE CHECK)
-
-    // Ota va ona raqami bir xil bo'lmasligi kerak
-    if (father_phone === mother_phone) {
+    // Raqamlarni taqqoslash — faqat mavjud ota-onalar orasida.
+    if (!noFather && !noMother && father_phone === mother_phone) {
       return show3DToast('error', "Ota va ona raqami bir xil bo'lishi mumkin emas!");
     }
-
-    // Talaba o'z raqamini ota-onasi o'rniga yozmasligi kerak
-    if (father_phone === phone) {
+    if (!noFather && father_phone === phone) {
       return show3DToast('error', 'Otangizning raqami o‘rniga o‘z raqamingizni kiritmang!');
     }
-
-    if (mother_phone === phone) {
+    if (!noMother && mother_phone === phone) {
       return show3DToast('error', 'Onangizning raqami o‘rniga o‘z raqamingizni kiritmang!');
     }
 
-    // Hammasi joyida bo'lsa
     show3DToast('success', "Barcha ma'lumotlar tasdiqlandi");
     setTimeout(() => onNext(), 800);
   }
@@ -114,37 +116,41 @@ export default function Step6Family({ data, onChange, onNext, onBack, stepNumber
       </div>
 
       <div className="space-y-6 sm:space-y-8">
-        {/* OTA BO'LIMI */}
-        <div className={`p-5 sm:p-6 rounded-2xl border space-y-5 ${isLight ? 'bg-white/60 border-slate-200 shadow-sm' : 'bg-white/[0.01] border-white/[0.03]'}`}>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-1 h-3 bg-sky-500 rounded-full" />
-            <h3 className={`text-[10px] font-black uppercase tracking-widest text-opacity-70 ${isLight ? 'text-sky-600' : 'text-sky-400'}`}>Otasi haqida</h3>
-          </div>
-          <InputGroup isLight={isLight} label="F.I.O (To'liq)" icon={User} placeholder="Eshmatov Toshmat Karimov" className={glassInput} value={data.father_full_name || ''} onChange={(v: string) => onChange({ father_full_name: v })} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <InputGroup isLight={isLight} label="Ish joyi" icon={Briefcase} placeholder="Korxona yoki soha" className={glassInput} value={data.father_workplace || ''} onChange={(v: string) => onChange({ father_workplace: v })} />
-            <div className="space-y-1.5 flex-1 text-left">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Telefon raqami</label>
-              <PhoneField isLight={isLight} value={data.father_phone || ''} onChange={(v) => onChange({ father_phone: v })} />
-            </div>
-          </div>
-        </div>
+        <ParentSection
+          isLight={isLight}
+          glassInput={glassInput}
+          accent="sky"
+          heading="Otasi haqida"
+          absentLabel="Otam yo'q (vafot etgan yoki aloqa yo'q)"
+          namePlaceholder="Eshmatov Toshmat Karimov"
+          workplacePlaceholder="Korxona yoki soha"
+          absent={data.noFather}
+          onToggleAbsent={(v) => onChange(v ? { noFather: true, father_workplace: '', father_phone: '' } : { noFather: false })}
+          fullName={data.father_full_name || ''}
+          onFullName={(v) => onChange({ father_full_name: v })}
+          workplace={data.father_workplace || ''}
+          onWorkplace={(v) => onChange({ father_workplace: v })}
+          phone={data.father_phone || ''}
+          onPhone={(v) => onChange({ father_phone: v })}
+        />
 
-        {/* ONA BO'LIMI */}
-        <div className={`p-5 sm:p-6 rounded-2xl border space-y-5 ${isLight ? 'bg-white/60 border-slate-200 shadow-sm' : 'bg-white/[0.01] border-white/[0.03]'}`}>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-1 h-3 bg-indigo-500 rounded-full" />
-            <h3 className={`text-[10px] font-black uppercase tracking-widest text-opacity-70 ${isLight ? 'text-indigo-600' : 'text-indigo-400'}`}>Onasi haqida</h3>
-          </div>
-          <InputGroup isLight={isLight} label="F.I.O (To'liq)" icon={User} placeholder="Eshmatova Gulnora Karimovna" className={glassInput} value={data.mother_full_name || ''} onChange={(v: string) => onChange({ mother_full_name: v })} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <InputGroup isLight={isLight} label="Ish joyi" icon={Briefcase} placeholder="Uy bekasi yoki ish joyi" className={glassInput} value={data.mother_workplace || ''} onChange={(v: string) => onChange({ mother_workplace: v })} />
-            <div className="space-y-1.5 flex-1 text-left">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Telefon raqami</label>
-              <PhoneField isLight={isLight} value={data.mother_phone || ''} onChange={(v) => onChange({ mother_phone: v })} />
-            </div>
-          </div>
-        </div>
+        <ParentSection
+          isLight={isLight}
+          glassInput={glassInput}
+          accent="indigo"
+          heading="Onasi haqida"
+          absentLabel="Onam yo'q (vafot etgan yoki aloqa yo'q)"
+          namePlaceholder="Eshmatova Gulnora Karimovna"
+          workplacePlaceholder="Uy bekasi yoki ish joyi"
+          absent={data.noMother}
+          onToggleAbsent={(v) => onChange(v ? { noMother: true, mother_workplace: '', mother_phone: '' } : { noMother: false })}
+          fullName={data.mother_full_name || ''}
+          onFullName={(v) => onChange({ mother_full_name: v })}
+          workplace={data.mother_workplace || ''}
+          onWorkplace={(v) => onChange({ mother_workplace: v })}
+          phone={data.mother_phone || ''}
+          onPhone={(v) => onChange({ mother_phone: v })}
+        />
       </div>
 
       {/* NAVIGATION */}
@@ -162,6 +168,69 @@ export default function Step6Family({ data, onChange, onNext, onBack, stepNumber
 }
 
 // Yordamchi komponentlar
+interface ParentSectionProps {
+  isLight: boolean
+  glassInput: string
+  accent: 'sky' | 'indigo'
+  heading: string
+  absentLabel: string
+  namePlaceholder: string
+  workplacePlaceholder: string
+  absent: boolean
+  onToggleAbsent: (v: boolean) => void
+  fullName: string
+  onFullName: (v: string) => void
+  workplace: string
+  onWorkplace: (v: string) => void
+  phone: string
+  onPhone: (v: string) => void
+}
+
+function ParentSection(p: ParentSectionProps) {
+  const bar = p.accent === 'sky' ? 'bg-sky-500' : 'bg-indigo-500'
+  const text = p.accent === 'sky'
+    ? (p.isLight ? 'text-sky-600' : 'text-sky-400')
+    : (p.isLight ? 'text-indigo-600' : 'text-indigo-400')
+  return (
+    <div className={`p-5 sm:p-6 rounded-2xl border space-y-5 ${p.isLight ? 'bg-white/60 border-slate-200 shadow-sm' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <div className={`w-1 h-3 rounded-full ${bar}`} />
+          <h3 className={`text-[10px] font-black uppercase tracking-widest ${text}`}>{p.heading}</h3>
+        </div>
+        <label className={`flex items-center gap-1.5 text-[10px] font-semibold cursor-pointer ${p.isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+          <input type="checkbox" checked={p.absent} onChange={(e) => p.onToggleAbsent(e.target.checked)} />
+          {p.absentLabel}
+        </label>
+      </div>
+
+      <InputGroup
+        isLight={p.isLight}
+        label={p.absent ? "F.I.O (bilsangiz)" : "F.I.O (To'liq)"}
+        icon={User}
+        placeholder={p.namePlaceholder}
+        className={p.glassInput}
+        value={p.fullName}
+        onChange={p.onFullName}
+      />
+
+      {p.absent ? (
+        <p className={`text-[10px] leading-relaxed ml-1 ${p.isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+          Ish joyi va telefon so&apos;ralmaydi. Kamida bitta ota yoki ona ma&apos;lumoti to&apos;liq bo&apos;lishi kerak.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <InputGroup isLight={p.isLight} label="Ish joyi" icon={Briefcase} placeholder={p.workplacePlaceholder} className={p.glassInput} value={p.workplace} onChange={p.onWorkplace} />
+          <div className="space-y-1.5 flex-1 text-left">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Telefon raqami</label>
+            <PhoneField isLight={p.isLight} value={p.phone} onChange={p.onPhone} />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface InputGroupProps {
   label: string
   icon: React.ComponentType<{ size: number; className?: string }>

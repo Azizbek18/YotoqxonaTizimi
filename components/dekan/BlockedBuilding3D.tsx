@@ -46,13 +46,11 @@ export default function BlockedBuilding3D({ section, isLight, onPickRoom }: Prop
         const room = section.rooms.find((r) => r.roomNumber === roomNumber)
         if (!room || room.frozen) return null
         const free = Math.max(0, room.capacity - room.occupants.length)
-        if (free === 0) {
-          return <span className={`text-[11px] font-bold uppercase ${ui.faint}`}>To‘la</span>
-        }
+        if (free === 0) return null
         return (
           <button
             onClick={() => onPickRoom(roomNumber)}
-            className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-bold uppercase tracking-wider ${ui.accentSoft}`}
+            className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold uppercase tracking-wider ${ui.accentSolid}`}
           >
             <UserPlus size={12} /> Joylashtirish ({free})
           </button>

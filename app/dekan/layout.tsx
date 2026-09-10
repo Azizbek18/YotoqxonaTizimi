@@ -22,6 +22,7 @@ import {
   ClipboardList,
   Settings,
   ShieldAlert,
+  Stamp,
   UserRoundSearch,
   Wallet,
 } from 'lucide-react'
@@ -91,7 +92,7 @@ export default function DekanLayout({
   // Dashboard); everything operational needs one faculty to act on.
   const SINGLE_FACULTY_PATHS = [
     '/dekan/3d-xonalar', '/dekan/xonalar', '/dekan/blok-xonalar', '/dekan/sozlamalar',
-    '/dekan/talabalar', '/dekan/murojaatlar',
+    '/dekan/talabalar', '/dekan/murojaatlar', '/dekan/viza-nazorati',
     '/dekan/xodimlar', '/dekan/elonlar', '/dekan/hisobotlar',
   ]
   const needsFacultyPick = scopeIsGlobal && SINGLE_FACULTY_PATHS.includes(pathname)
@@ -211,6 +212,7 @@ export default function DekanLayout({
       { label: 'Blok xonalari', caption: op('A/B qanotli bino'), href: '/dekan/blok-xonalar', icon: DoorClosed },
       { label: '3D Xonalar', caption: op('Qavat tarxi quruvchisi'), href: '/dekan/3d-xonalar', icon: Layers3 },
       { label: 'Talabalar', caption: isSuperadmin ? 'Fakultetlararo boshqaruv' : op('Fakultet talabalari'), href: isSuperadmin ? '/dekan/talabalar-global' : '/dekan/talabalar', icon: Users },
+      { label: 'Viza nazorati', caption: op('Xorijiy talaba hujjatlari'), href: '/dekan/viza-nazorati', icon: Stamp },
       // Faculty-admin tools. The page bodies are the /admin/* implementations
       // (re-exported under /dekan/*), so they render inside THIS panel's chrome.
       { label: 'Arizalar', caption: op('Talaba murojaatlari'), href: '/dekan/murojaatlar', icon: ShieldAlert },

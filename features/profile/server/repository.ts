@@ -5,7 +5,7 @@ import { normalizeFaculty } from '@/lib/faculties'
 
 type HousingScope = Pick<UserRow, 'faculty' | 'dorm_id' | 'block' | 'assigned_floor'>
 
-const PROFILE_COLUMNS = 'id, full_name, middle_name, email, phone_number, faculty, direction, role, status, room_number, course, group, gender, nationality, region, district, mahalla, study_type, entry_date, passport_series, passport_date, birth_date, father_full_name, father_workplace, father_phone, mother_full_name, mother_workplace, mother_phone, avatar_url, warning_count, assigned_floor, is_floor_captain, created_at'
+const PROFILE_COLUMNS = 'id, full_name, middle_name, email, phone_number, faculty, direction, role, status, room_number, course, group, gender, nationality, region, district, mahalla, country, study_type, entry_date, passport_series, passport_date, birth_date, father_full_name, father_workplace, father_phone, mother_full_name, mother_workplace, mother_phone, avatar_url, warning_count, assigned_floor, is_floor_captain, created_at'
 const ROOMMATE_COLUMNS = 'id, full_name, email, phone_number, faculty, role, room_number, course, group, avatar_url'
 
 export function createProfileRepository() {

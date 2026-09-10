@@ -21,6 +21,7 @@ import RoomInfoCard from '@/components/talaba/dashboard/RoomInfoCard';
 import SardorPanelCard from '@/components/talaba/dashboard/SardorPanelCard';
 import FloorCaptainCard from '@/components/talaba/dashboard/FloorCaptainCard';
 import RoommatesCard from '@/components/talaba/dashboard/RoommatesCard';
+import ForeignDocsCard from '@/components/talaba/foreign-docs/ForeignDocsCard';
 import SupportContactsCard from '@/components/talaba/dashboard/SupportContactsCard';
 import AnnouncementsBoard from '@/components/talaba/dashboard/AnnouncementsBoard';
 import MyApplicationsCard from '@/components/talaba/dashboard/MyApplicationsCard';
@@ -366,6 +367,8 @@ export default function TalabaDashboard() {
             selfName={profile.full_name}
             onOpenSchedule={cleaning.openModal}
           />
+
+          {profile.country && <ForeignDocsCard isLight={isLight} />}
 
           {profile.is_floor_captain && (
             <SardorPanelCard isLight={isLight} assignedFloor={profile.assigned_floor} />

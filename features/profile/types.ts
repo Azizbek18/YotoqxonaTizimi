@@ -5,7 +5,7 @@ export type StudentProfile = Pick<
   | 'id' | 'full_name' | 'middle_name' | 'email' | 'phone_number'
   | 'faculty' | 'direction' | 'role' | 'status' | 'room_number'
   | 'course' | 'group' | 'gender' | 'nationality' | 'region'
-  | 'district' | 'mahalla' | 'study_type' | 'entry_date'
+  | 'district' | 'mahalla' | 'country' | 'study_type' | 'entry_date'
   | 'passport_series' | 'passport_date' | 'birth_date'
   | 'father_full_name' | 'father_workplace' | 'father_phone'
   | 'mother_full_name' | 'mother_workplace' | 'mother_phone'

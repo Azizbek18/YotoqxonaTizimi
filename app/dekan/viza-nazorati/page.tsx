@@ -192,7 +192,7 @@ export default function VizaNazoratiPage() {
             <Stamp size={22} className={ui.accentText} /> Viza nazorati
           </h1>
           <p className={`mt-1 text-xs sm:text-sm ${ui.muted}`}>
-            Xorijiy talabalarning viza va yashash joyida ro&apos;yxatga qo&apos;yish (propiska) muddatlari
+            Xorijiy va boshqa viloyatdan kelgan talabalarning viza / yashash joyida ro&apos;yxatga qo&apos;yish (propiska) muddatlari
           </p>
         </div>
         <button onClick={() => void load()} disabled={loading} className={`inline-flex items-center justify-center rounded-lg border p-3 disabled:opacity-50 ${ui.btnGhost}`}>
@@ -326,7 +326,7 @@ export default function VizaNazoratiPage() {
           </div>
         ) : filtered.length === 0 ? (
           <p className={`px-4 py-16 text-center text-xs font-medium ${ui.muted}`}>
-            {rows.length === 0 ? "Hali xorijiy talaba hujjati kiritilmagan" : "Tanlangan filtr bo'yicha hujjat topilmadi"}
+            {rows.length === 0 ? "Hali hujjat kiritilmagan" : "Tanlangan filtr bo'yicha hujjat topilmadi"}
           </p>
         ) : (
           <div className="overflow-x-auto">

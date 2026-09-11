@@ -75,9 +75,15 @@ function mapRow(row: ForeignStudentDocumentRow, today: string): ForeignDoc {
 async function toWriteFields(
   input: ForeignDocInput,
   faculty: string | null,
+  isForeign: boolean,
 ): Promise<DocWriteFields> {
   const docType = input.docType
   if (!DOC_TYPES.includes(docType)) throw new ApiError(400, "Hujjat turi noto'g'ri")
+  // Viza faqat chet el fuqarosiga tegishli tushuncha — O'zbekiston fuqarosi
+  // (boshqa viloyatdan bo'lsa ham) faqat propiska (registration) qo'sha oladi.
+  if (docType === 'visa' && !isForeign) {
+    throw new ApiError(403, "Viza faqat xorijiy fuqarolik uchun — O'zbekiston fuqarosiga tegishli emas")
+  }
 
   const expiresOn = String(input.expiresOn ?? '').trim()
   if (!expiresOn) throw new ApiError(400, 'Amal qilish muddatini kiriting')
@@ -146,7 +152,7 @@ export function createForeignDocsService(
     async saveForStudent(studentId: string, input: ForeignDocInput): Promise<ForeignDoc> {
       const context = await repository.findStudentContext(studentId)
       if (!context) throw new ApiError(404, 'Talaba profili topilmadi')
-      const fields = await toWriteFields(input, context.faculty)
+      const fields = await toWriteFields(input, context.faculty, Boolean(context.country))
       const today = tashkentToday()
 
       if (input.id) {
@@ -266,7 +272,7 @@ export function createForeignDocsService(
       if (normalizeFaculty(context.faculty) !== faculty) {
         throw new ApiError(403, 'Boshqa fakultet talabasiga hujjat qo‘shib bo‘lmaydi')
       }
-      const fields = await toWriteFields(input, context.faculty)
+      const fields = await toWriteFields(input, context.faculty, Boolean(context.country))
       const created = await repository.insert(studentId, fields, role)
       return mapRow(created, tashkentToday())
     },

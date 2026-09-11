@@ -14,7 +14,7 @@ type AppSettingsUpdate = Database['public']['Tables']['app_settings']['Update']
 // (~25 of them) is untouched.
 const FEE_COLUMNS = 'monthly_fee, yearly_contract_fee'
 const DORM_COLUMNS =
-  'default_room_capacity, floor_count, tarbiyachi_name, tarbiyachi_phone, komendant_name, komendant_phone, doctor_name, doctor_phone, talaba_kengashi_raisi_ogil_name, talaba_kengashi_raisi_ogil_phone, talaba_kengashi_raisi_qiz_name, talaba_kengashi_raisi_qiz_phone, security_phone, max_upload_size_mb, warning_threshold, ttj_name'
+  'default_room_capacity, floor_count, tarbiyachi_name, tarbiyachi_phone, komendant_name, komendant_phone, doctor_name, doctor_phone, talaba_kengashi_raisi_ogil_name, talaba_kengashi_raisi_ogil_phone, talaba_kengashi_raisi_qiz_name, talaba_kengashi_raisi_qiz_phone, security_phone, max_upload_size_mb, warning_threshold, ttj_name, home_regions'
 
 const FEE_DEFAULTS = { monthlyFee: 300000, yearlyContractFee: 3000000 }
 const DORM_DEFAULTS = {
@@ -33,6 +33,7 @@ const DORM_DEFAULTS = {
   securityPhone: '',
   maxUploadSizeMb: 4,
   warningThreshold: 2,
+  homeRegions: [] as string[],
 }
 
 function toFees(row: Record<string, unknown>) {
@@ -45,6 +46,13 @@ function toFees(row: Record<string, unknown>) {
 function num(value: unknown, fallback: number) {
   const n = Number(value)
   return Number.isFinite(n) ? n : fallback
+}
+
+function toRegionList(value: unknown): string[] {
+  return String(value ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
 }
 
 function toDormSettings(row: Record<string, unknown>) {
@@ -65,6 +73,7 @@ function toDormSettings(row: Record<string, unknown>) {
     maxUploadSizeMb: num(row.max_upload_size_mb, DORM_DEFAULTS.maxUploadSizeMb),
     warningThreshold: num(row.warning_threshold, DORM_DEFAULTS.warningThreshold),
     ttjName: String(row.ttj_name ?? ''),
+    homeRegions: toRegionList(row.home_regions),
   }
 }
 

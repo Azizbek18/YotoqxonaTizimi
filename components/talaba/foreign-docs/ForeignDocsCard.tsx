@@ -9,7 +9,7 @@ import { DOC_STATUS_LABELS, type DocType, type ForeignDoc } from '@/features/for
 import { bucketTone, countdownLabel, ringProgress } from '@/features/foreign-docs/domain/presentation'
 import ForeignDocModal from './ForeignDocModal'
 
-type Props = { isLight: boolean }
+type Props = { isLight: boolean; mode: 'foreign' | 'registration' }
 
 const TONE_CLASSES = {
   ok: { ring: '#10b981', text: 'text-emerald-500', chip: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25' },
@@ -140,11 +140,13 @@ function DocPanel({
 }
 
 /**
- * Xorijiy talaba dashboardidagi viza + propiska muddati kartasi. O'zi
- * ma'lumot yuklaydi; faqat `profile.country` bor talabaga ko'rinadi (chaqiruvchi
- * hal qiladi).
+ * Dashboarddagi hujjat muddati kartasi. `mode='foreign'` — chet ellik
+ * talaba, viza + propiska ikkalasi. `mode='registration'` — boshqa
+ * viloyatdan kelgan O'zbekiston fuqarosi, faqat propiska (viza paneli
+ * ko'rsatilmaydi). O'zi ma'lumot yuklaydi; kim ko'rishi kerakligini
+ * chaqiruvchi hal qiladi (features/foreign-docs/domain/eligibility.ts).
  */
-export default function ForeignDocsCard({ isLight }: Props) {
+export default function ForeignDocsCard({ isLight, mode }: Props) {
   const [docs, setDocs] = useState<ForeignDoc[] | null>(null)
   const [modal, setModal] = useState<{ type: DocType; doc: ForeignDoc | null } | null>(null)
 
@@ -190,10 +192,12 @@ export default function ForeignDocsCard({ isLight }: Props) {
     >
       <div className="mb-3 flex items-center gap-2">
         <div className={`flex size-9 items-center justify-center rounded-xl ${isLight ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/20 text-blue-300'}`}>
-          <Plane size={16} />
+          {mode === 'foreign' ? <Plane size={16} /> : <Home size={16} />}
         </div>
         <div>
-          <h3 className={`text-sm font-black uppercase tracking-wider ${isLight ? 'text-slate-900' : 'text-white'}`}>Viza va propiska</h3>
+          <h3 className={`text-sm font-black uppercase tracking-wider ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            {mode === 'foreign' ? 'Viza va propiska' : "Ro'yxatga olish (propiska)"}
+          </h3>
           <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Muddat nazorati va eslatmalar</p>
         </div>
       </div>
@@ -208,17 +212,21 @@ export default function ForeignDocsCard({ isLight }: Props) {
             <div className={`flex items-start gap-2 rounded-2xl border p-3 ${isLight ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-rose-500/25 bg-rose-500/10 text-rose-200'}`}>
               <AlertTriangle size={16} className="mt-0.5 shrink-0" />
               <p className="text-[11px] font-semibold leading-relaxed">
-                Hujjatingiz muddati o&apos;tgan. Zudlik bilan xalqaro bo&apos;lim yoki dekanatga murojaat qiling — kechikish jarima va deportatsiya xavfini keltiradi.
+                {mode === 'foreign'
+                  ? "Hujjatingiz muddati o'tgan. Zudlik bilan xalqaro bo'lim yoki dekanatga murojaat qiling — kechikish jarima va deportatsiya xavfini keltiradi."
+                  : "Ro'yxatga olish (propiska) muddatingiz o'tgan. Zudlik bilan dekanat yoki fuqarolarni ro'yxatga olish bo'limiga murojaat qiling."}
               </p>
             </div>
           )}
-          <DocPanel
-            isLight={isLight}
-            docType="visa"
-            doc={current.visa}
-            onEdit={() => setModal({ type: 'visa', doc: current.visa })}
-            onAdd={() => setModal({ type: 'visa', doc: null })}
-          />
+          {mode === 'foreign' && (
+            <DocPanel
+              isLight={isLight}
+              docType="visa"
+              doc={current.visa}
+              onEdit={() => setModal({ type: 'visa', doc: current.visa })}
+              onAdd={() => setModal({ type: 'visa', doc: null })}
+            />
+          )}
           <DocPanel
             isLight={isLight}
             docType="registration"

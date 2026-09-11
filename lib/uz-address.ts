@@ -10,15 +10,20 @@ export type UzDistrict = { id: number; regionId: number; name: string }
 export type UzMahalla = { districtId: number; name: string }
 export type UzAddressData = { regions: UzRegion[]; districts: UzDistrict[]; mahallas: UzMahalla[] }
 
+/** The 14 province/city names, nothing else — for a plain region picker
+ *  (e.g. the dekan's "mahalliy hudud" setting) that doesn't need the whole
+ *  ~390KB uz-address.json (districts + mahallas) that loadUzAddress() fetches. */
+export const UZ_REGION_NAMES = [
+  'Andijon viloyati', 'Buxoro viloyati', "Farg'ona viloyati", 'Jizzax viloyati',
+  'Namangan viloyati', 'Navoiy viloyati', 'Qashqadaryo viloyati',
+  "Qoraqalpog'iston Respublikasi", 'Samarqand viloyati', 'Sirdaryo viloyati',
+  'Surxondaryo viloyati', 'Toshkent shahri', 'Toshkent viloyati', 'Xorazm viloyati',
+]
+
 // A tiny inline fallback for the (rare) case the static file itself can't be
 // read — the student can still pick a region and type the rest.
 const FALLBACK: UzAddressData = {
-  regions: [
-    'Andijon viloyati', 'Buxoro viloyati', "Farg'ona viloyati", 'Jizzax viloyati',
-    'Namangan viloyati', 'Navoiy viloyati', 'Qashqadaryo viloyati',
-    "Qoraqalpog'iston Respublikasi", 'Samarqand viloyati', 'Sirdaryo viloyati',
-    'Surxondaryo viloyati', 'Toshkent shahri', 'Toshkent viloyati', 'Xorazm viloyati',
-  ].map((name, i) => ({ id: i + 1, name })),
+  regions: UZ_REGION_NAMES.map((name, i) => ({ id: i + 1, name })),
   districts: [],
   mahallas: [],
 }

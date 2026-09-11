@@ -448,6 +448,10 @@ export interface Database {
         max_upload_size_mb: number
         warning_threshold: number
         ttj_name: string
+        // Comma-separated "mahalliy" viloyat nomlari (migration 202609300019)
+        // — a domestic student registered outside this list also gets the
+        // propiska (foreign_student_documents 'registration') module. '' = off.
+        home_regions: string
         latitude: number | null
         longitude: number | null
         checkin_radius_m: number

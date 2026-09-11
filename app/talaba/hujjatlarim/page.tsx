@@ -14,7 +14,10 @@ import {
   type ForeignDoc,
 } from '@/features/foreign-docs/types'
 import { bucketTone, countdownLabel } from '@/features/foreign-docs/domain/presentation'
+import { resolveDocsMode } from '@/features/foreign-docs/domain/eligibility'
 import ForeignDocModal from '@/components/talaba/foreign-docs/ForeignDocModal'
+import { fetchStudentProfile } from '@/features/profile/client/api'
+import { fetchAppSettings } from '@/features/app-settings/client/api'
 
 const TONE_TEXT = {
   ok: 'text-emerald-500',
@@ -27,6 +30,10 @@ export default function HujjatlarimPage() {
   const isLight = useThemeStore((s) => s.theme) === 'light'
   const [docs, setDocs] = useState<ForeignDoc[] | null>(null)
   const [modal, setModal] = useState<{ type: DocType; doc: ForeignDoc | null } | null>(null)
+  // Chet ellik → viza + propiska. Boshqa viloyatdan kelgan O'zbekiston
+  // fuqarosi → faqat propiska. Hali aniqlanmagan bo'lsa (yuklanmoqda)
+  // "registration"ga ustunlik beramiz — Viza bo'limini keraksiz ko'rsatmaslik.
+  const [mode, setMode] = useState<'foreign' | 'registration'>('registration')
 
   const load = useCallback(async () => {
     try {
@@ -40,6 +47,18 @@ export default function HujjatlarimPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [{ profile }, settings] = await Promise.all([fetchStudentProfile(), fetchAppSettings()])
+        const resolved = resolveDocsMode({ country: profile?.country, region: profile?.region }, settings.homeRegions)
+        if (resolved) setMode(resolved)
+      } catch {
+        // Yuklanmasa ham sahifa ishlashda davom etadi — default 'registration'.
+      }
+    })()
+  }, [])
 
   const grouped = useMemo(() => {
     const byType = (type: DocType) =>
@@ -151,7 +170,10 @@ export default function HujjatlarimPage() {
       <div>
         <h1 className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Hujjatlarim</h1>
         <p className={`mt-1 text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-          Viza va yashash joyida ro&apos;yxatga qo&apos;yish (propiska) muddatlari. Muddatga 30, 15, 10, 5, 3 va 0 kun qolganda Telegram, push va email orqali eslatma olasiz.
+          {mode === 'foreign'
+            ? "Viza va yashash joyida ro'yxatga qo'yish (propiska) muddatlari."
+            : "Yashash joyida ro'yxatga qo'yish (propiska) muddati."}{' '}
+          Muddatga 30, 15, 10, 5, 3 va 0 kun qolganda Telegram, push va email orqali eslatma olasiz.
         </p>
       </div>
 
@@ -161,7 +183,7 @@ export default function HujjatlarimPage() {
         </div>
       ) : (
         <>
-          {section('visa', grouped.visa)}
+          {mode === 'foreign' && section('visa', grouped.visa)}
           {section('registration', grouped.registration)}
         </>
       )}

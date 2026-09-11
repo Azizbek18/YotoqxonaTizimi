@@ -30,4 +30,9 @@ export type AppSettings = {
   /** Official dormitory (TTJ) number/name — fills the "___-sonli talabalar
    *  turar joyi" blank in the imtiyozli Ariza/Tilxat documents. */
   ttjName: string
+  /** "Mahalliy" viloyat nomlari (uz-address regions bilan mos) — shu
+   *  ro'yxatdan tashqari viloyatdan bo'lgan O'zbekiston fuqarosi talaba ham
+   *  propiska (foreign-docs 'registration') moduliga ega bo'ladi. Bo'sh
+   *  massiv = kengaytma o'chiq. features/foreign-docs/domain/eligibility.ts. */
+  homeRegions: string[]
 }

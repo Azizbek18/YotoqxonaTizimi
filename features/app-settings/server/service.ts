@@ -31,6 +31,21 @@ function parseText(value: unknown, field: string, maxLength: number): string {
   return value.trim().slice(0, maxLength)
 }
 
+// Accepts either a string[] (the settings UI's checkbox list) or a
+// comma-separated string, dedupes, and re-joins for the single `home_regions`
+// text column. Free text on purpose — not checked against uz-address's
+// region list, so a name typed slightly differently than the picker's just
+// silently never matches a student's region instead of failing to save.
+function parseRegionList(value: unknown): string {
+  const list = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : []
+  const cleaned = [...new Set(list.map((v) => String(v).trim()).filter(Boolean))]
+  if (cleaned.length > 20) throw new ApiError(400, "Hududlar ro'yxati juda uzun")
+  for (const region of cleaned) {
+    if (region.length > 60) throw new ApiError(400, "Viloyat nomi juda uzun")
+  }
+  return cleaned.join(', ')
+}
+
 const UPDATABLE_FIELDS: Record<keyof AppSettings, { column: string; parse: (value: unknown) => unknown }> = {
   monthlyFee: { column: 'monthly_fee', parse: (v) => parseAmount(v, 'Oylik to\'lov summasi') },
   yearlyContractFee: { column: 'yearly_contract_fee', parse: (v) => parseAmount(v, 'Yillik shartnoma summasi') },
@@ -53,6 +68,9 @@ const UPDATABLE_FIELDS: Record<keyof AppSettings, { column: string; parse: (valu
   // (dekan/layout.tsx banner) rather than being blocked from saving other
   // settings just because this one isn't filled in yet.
   ttjName: { column: 'ttj_name', parse: (v) => parseText(v, 'TTJ nomi', 60) },
+  // Also allowed to be empty — see the migration comment: unset means the
+  // domestic-out-of-region propiska extension stays dormant for this dorm.
+  homeRegions: { column: 'home_regions', parse: parseRegionList },
 }
 
 function parseUpdate(input: unknown): AppSettingsUpdate {

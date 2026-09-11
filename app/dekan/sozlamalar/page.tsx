@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Wallet, Phone, ShieldAlert, Globe2, Send } from 'lucide-react'
+import { Wallet, Phone, ShieldAlert, Globe2, Send, MapPinned } from 'lucide-react'
+import { UZ_REGION_NAMES } from '@/lib/uz-address'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import {
@@ -111,6 +112,18 @@ export default function DekanSozlamalarPage() {
 
     const handleChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
         setSettings((prev) => prev ? { ...prev, [key]: value } : prev)
+    }
+
+    // Boshqa viloyatdan kelgan (lekin O'zbekiston fuqarosi) talabaga propiska
+    // moduli chiqishi uchun "mahalliy" ro'yxatdan shu viloyatni chiqarib
+    // tashlash kifoya — features/foreign-docs/domain/eligibility.ts shuni o'qiydi.
+    const toggleHomeRegion = (region: string) => {
+        if (!settings) return
+        const has = settings.homeRegions.includes(region)
+        handleChange(
+            'homeRegions',
+            has ? settings.homeRegions.filter((r) => r !== region) : [...settings.homeRegions, region],
+        )
     }
 
     const handleCancel = () => {
@@ -297,6 +310,45 @@ export default function DekanSozlamalarPage() {
                                         className={`${inputCls} w-full sm:w-48`}
                                     />
                                 </div>
+                            </div>
+                          </>
+                        ))}
+
+                        {renderSection(MapPinned, "Boshqa viloyat talabalari — propiska nazorati", 0.065, (
+                          <>
+                            <p className={`text-xs leading-relaxed ${ui.muted}`}>
+                                O&apos;zbekiston fuqarosi bo&apos;lgan, lekin ro&apos;yxatga olingan doimiy viloyati
+                                pastda belgilanmagan talabaga ham &laquo;Hujjatlarim&raquo;da propiska (vaqtinchalik
+                                ro&apos;yxatga qo&apos;yish) muddati nazorati va eslatmalari avtomatik yoqiladi —
+                                viza talab qilinmaydi. Belgilangan viloyatlar &laquo;mahalliy&raquo; hisoblanadi va
+                                bu kengaytmani ko&apos;rmaydi.
+                            </p>
+                            {settings.homeRegions.length === 0 && (
+                                <div className={`flex items-start gap-3 rounded-xl border p-4 ${isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'}`}>
+                                    <ShieldAlert size={18} className={`mt-0.5 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
+                                    <p className={`text-xs font-medium ${isLight ? 'text-amber-800' : 'text-amber-200'}`}>
+                                        Hech qaysi viloyat &laquo;mahalliy&raquo; deb belgilanmagan — shu sabab bu
+                                        kengaytma hozircha barcha talabalar uchun o&apos;chiq. Pastdan yotoqxona
+                                        joylashgan viloyat(lar)ni belgilang.
+                                    </p>
+                                </div>
+                            )}
+                            <div className="flex flex-wrap gap-2">
+                                {UZ_REGION_NAMES.map((region) => {
+                                    const active = settings.homeRegions.includes(region)
+                                    return (
+                                        <button
+                                            key={region}
+                                            type="button"
+                                            onClick={() => toggleHomeRegion(region)}
+                                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                                active ? ui.accentTile : `${ui.input} ${ui.muted}`
+                                            }`}
+                                        >
+                                            {region}
+                                        </button>
+                                    )
+                                })}
                             </div>
                           </>
                         ))}

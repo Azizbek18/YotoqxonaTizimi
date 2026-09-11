@@ -22,6 +22,7 @@ const SETTINGS: AppSettings = {
   maxUploadSizeMb: 5,
   warningThreshold: 2,
   ttjName: '',
+  homeRegions: [],
 }
 
 function fakeRepository(overrides: Partial<AppSettingsRepository> = {}) {

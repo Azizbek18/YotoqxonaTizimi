@@ -22,6 +22,7 @@ import SardorPanelCard from '@/components/talaba/dashboard/SardorPanelCard';
 import FloorCaptainCard from '@/components/talaba/dashboard/FloorCaptainCard';
 import RoommatesCard from '@/components/talaba/dashboard/RoommatesCard';
 import ForeignDocsCard from '@/components/talaba/foreign-docs/ForeignDocsCard';
+import { resolveDocsMode } from '@/features/foreign-docs/domain/eligibility';
 import SupportContactsCard from '@/components/talaba/dashboard/SupportContactsCard';
 import AnnouncementsBoard from '@/components/talaba/dashboard/AnnouncementsBoard';
 import MyApplicationsCard from '@/components/talaba/dashboard/MyApplicationsCard';
@@ -80,6 +81,9 @@ export default function TalabaDashboard() {
   const [contacts, setContacts] = useState<SupportContacts | null>(null);
   const [yearlyContractFee, setYearlyContractFee] = useState<number | null>(null);
   const [settingsStatus, setSettingsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  // "Mahalliy" viloyat(lar) — boshqa viloyatdan kelgan O'zbekiston fuqarosi
+  // talabaga propiska modulini chiqarish uchun (resolveDocsMode).
+  const [homeRegions, setHomeRegions] = useState<string[]>([]);
 
   const allResidents = useMemo(() => {
     if (!profile) return [];
@@ -95,6 +99,15 @@ export default function TalabaDashboard() {
   // All cleaning-duty schedule state + logic (see useCleaningSchedule).
   const cleaning = useCleaningSchedule(profile, allResidents);
 
+  // Chet ellik talaba → 'foreign' (viza + propiska). Boshqa viloyatdan
+  // kelgan O'zbekiston fuqarosi (dekan belgilagan "mahalliy" ro'yxatdan
+  // tashqari) → 'registration' (faqat propiska). Aks holda null — karta
+  // ko'rinmaydi.
+  const docsMode = useMemo(
+    () => resolveDocsMode({ country: profile?.country, region: profile?.region }, homeRegions),
+    [profile?.country, profile?.region, homeRegions],
+  );
+
   const loadSettings = useCallback(async () => {
     setSettingsStatus('loading');
     try {
@@ -107,10 +120,12 @@ export default function TalabaDashboard() {
         talabaKengashiRaisiQizName: settings.talabaKengashiRaisiQizName, talabaKengashiRaisiQizPhone: settings.talabaKengashiRaisiQizPhone,
       });
       setYearlyContractFee(settings.yearlyContractFee);
+      setHomeRegions(settings.homeRegions);
       setSettingsStatus('ready');
     } catch {
       setContacts(null);
       setYearlyContractFee(null);
+      setHomeRegions([]);
       setSettingsStatus('error');
       toast.error("To'lov va aloqa sozlamalarini yuklab bo'lmadi");
     }
@@ -368,7 +383,7 @@ export default function TalabaDashboard() {
             onOpenSchedule={cleaning.openModal}
           />
 
-          {profile.country && <ForeignDocsCard isLight={isLight} />}
+          {docsMode && <ForeignDocsCard mode={docsMode} isLight={isLight} />}
 
           {profile.is_floor_captain && (
             <SardorPanelCard isLight={isLight} assignedFloor={profile.assigned_floor} />

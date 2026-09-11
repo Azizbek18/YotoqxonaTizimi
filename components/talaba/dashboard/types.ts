@@ -61,6 +61,10 @@ export interface Profile {
   warning_count?: number;
   /** Xorijiy talabalar uchun kelib chiqqan davlati; mahalliy talabada NULL. */
   country?: string | null;
+  /** O'zbekiston fuqarosi talabaning doimiy ro'yxatga olingan viloyati —
+   *  propiska-kengaytmasi qaysi talaba "boshqa viloyatdan" ekanini shu bilan
+   *  aniqlaydi (features/foreign-docs/domain/eligibility.ts). */
+  region?: string | null;
 }
 
 export interface CaptainInfo {

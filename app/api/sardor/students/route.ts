@@ -3,7 +3,7 @@ import { requireFloorCaptain } from '@/server/auth/sardor'
 
 export async function GET(req: NextRequest) {
   try {
-    const scoped = await requireFloorCaptain(req)
+    const scoped = await requireFloorCaptain(req, 'students.view')
     if (scoped.error) return scoped.error
     const { caller, serviceSupabase, faculty: captainFaculty } = scoped
 

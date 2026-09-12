@@ -5,6 +5,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import { ApiError } from '@/server/http/api-error'
 import { readSuperadminScope } from './faculty'
 import { isActiveStaff, isActiveStudent, type AppRole } from './policies'
+import { can, type SardorPermission, type TarbiyachiPermission } from '@/features/permissions/types'
 
 type StudentIdentity = {
   id: string
@@ -23,6 +24,8 @@ type StaffIdentity = {
   role: string
   status: string | null
   faculty: string | null
+  /** Revoked permissions ({} = full access). See features/permissions. */
+  permissions?: unknown
   /**
    * `admin` role only: true when the superadmin is acting cross-faculty
    * (sa_scope cookie is `*` / unset). When they've picked one faculty,
@@ -77,7 +80,7 @@ export async function requireActiveStaff(
   const user = await requireUser(request)
   const { data: staff, error } = await getServiceSupabase()
     .from('staff')
-    .select('id, full_name, email, role, status, faculty')
+    .select('id, full_name, email, role, status, faculty, permissions')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -101,4 +104,32 @@ export async function requireActiveStaff(
 
 export function requireAdmin(request?: Request) {
   return requireActiveStaff(request, ['admin'])
+}
+
+/**
+ * Enforces one of the dekan-tunable permissions on an already-authenticated
+ * staff member. Only `tarbiyachi` carries them — a dekan or admin is the one
+ * handing them out, so they always pass.
+ *
+ * The permission map rides along on the row `requireActiveStaff` already
+ * fetched, so this costs no extra query.
+ */
+export function requireStaffPermission(
+  staff: { role: string; permissions?: unknown },
+  key: TarbiyachiPermission,
+) {
+  if (staff.role !== 'tarbiyachi') return
+  if (!can(staff.permissions, key)) {
+    throw new ApiError(403, 'Bu bo‘lim uchun dekan ruxsat bermagan', 'PERMISSION_REVOKED')
+  }
+}
+
+/**
+ * Same, for a floor captain (a student, not a staff row). Callers that have
+ * already loaded the captain's `users` row pass its `captain_permissions`.
+ */
+export function requireCaptainPermission(permissions: unknown, key: SardorPermission) {
+  if (!can(permissions, key)) {
+    throw new ApiError(403, 'Bu bo‘lim uchun dekan ruxsat bermagan', 'PERMISSION_REVOKED')
+  }
 }

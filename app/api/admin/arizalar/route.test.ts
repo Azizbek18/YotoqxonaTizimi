@@ -22,7 +22,7 @@ function makeChain() {
 
 const from = vi.fn(() => makeChain())
 
-vi.mock('@/server/auth/guards', () => ({ requireActiveStaff: (...a: unknown[]) => requireActiveStaff(...a) }))
+vi.mock('@/server/auth/guards', () => ({ requireStaffPermission: () => {}, requireActiveStaff: (...a: unknown[]) => requireActiveStaff(...a) }))
 vi.mock('@/lib/server-supabase', () => ({ getServiceSupabase: () => ({ from }) }))
 
 const { GET, PATCH } = await import('./route')

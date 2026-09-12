@@ -15,6 +15,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { SkelPage } from '@/components/ui/skeletons'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
+import { useMyCaptainPermissions } from '@/lib/hooks/useMyCaptainPermissions'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 
 interface Student {
@@ -79,6 +80,10 @@ export default function SardorDashboard() {
   const [activeSelectDay, setActiveSelectDay] = useState<string | null>(null)
   const [activeSelectAdmin, setActiveSelectAdmin] = useState(false)
 
+  // Dekan-tunable rights (Sozlamalar → Ruxsatlar): a revoked one closes the
+  // matching tab/action here, matching what the API already answers 403 for.
+  const { allows, permissions } = useMyCaptainPermissions()
+
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
@@ -110,35 +115,48 @@ export default function SardorDashboard() {
 
       const authHeader = await getAuthHeaders()
 
-      // Fetch students under captain scope
-      const resStudents = await fetch('/api/sardor/students', {
-        headers: authHeader
-      })
-      const resultStudents = await resStudents.json()
-      if (resStudents.ok && Array.isArray(resultStudents.students)) {
-        setStudents(resultStudents.students)
-      } else {
-        throw new Error(resultStudents.error || 'Talabalarni yuklashda xato')
-      }
-
-      // Fetch announcements sent by captain
-      const resElon = await fetch('/api/sardor/elonlar', {
-        headers: authHeader
-      })
-      const resultElon = await resElon.json()
-      if (resElon.ok && Array.isArray(resultElon.elonlar)) {
-        setElonlar(resultElon.elonlar)
-        if (resultElon.dutySchedule) {
-          setDutySchedule({
-            Dushanba: [], Seshanba: [], Chorshanba: [], Payshanba: [], Juma: [], Shanba: [], Yakshanba: [],
-            ...(resultElon.dutySchedule.schedule || {})
-          })
-          setDutyAdmins(Array.isArray(resultElon.dutySchedule.admins) ? resultElon.dutySchedule.admins : [])
-          setDutyElonId(resultElon.dutySchedule.id || null)
-        }
-      } else {
-        throw new Error(resultElon.error || "E'lonlarni yuklashda xato")
-      }
+      // Students and announcements load independently: the dekan can revoke
+      // either right on its own (Sozlamalar → Ruxsatlar), and a captain
+      // missing one must still get a working panel for the other, not a
+      // dashboard that fails to load entirely over a single 403.
+      await Promise.all([
+        (async () => {
+          try {
+            const res = await fetch('/api/sardor/students', { headers: authHeader })
+            const result = await res.json()
+            if (!res.ok) {
+              if (result?.code !== 'PERMISSION_REVOKED') throw new Error(result.error || 'Talabalarni yuklashda xato')
+              return
+            }
+            if (Array.isArray(result.students)) setStudents(result.students)
+          } catch (err) {
+            console.error(err)
+            toast.error(err instanceof Error ? err.message : 'Talabalarni yuklashda xatolik yuz berdi')
+          }
+        })(),
+        (async () => {
+          try {
+            const res = await fetch('/api/sardor/elonlar', { headers: authHeader })
+            const result = await res.json()
+            if (!res.ok) {
+              if (result?.code !== 'PERMISSION_REVOKED') throw new Error(result.error || "E'lonlarni yuklashda xato")
+              return
+            }
+            if (Array.isArray(result.elonlar)) setElonlar(result.elonlar)
+            if (result.dutySchedule) {
+              setDutySchedule({
+                Dushanba: [], Seshanba: [], Chorshanba: [], Payshanba: [], Juma: [], Shanba: [], Yakshanba: [],
+                ...(result.dutySchedule.schedule || {})
+              })
+              setDutyAdmins(Array.isArray(result.dutySchedule.admins) ? result.dutySchedule.admins : [])
+              setDutyElonId(result.dutySchedule.id || null)
+            }
+          } catch (err) {
+            console.error(err)
+            toast.error(err instanceof Error ? err.message : "E'lonlarni yuklashda xatolik yuz berdi")
+          }
+        })(),
+      ])
     } catch (err) {
       console.error(err)
       toast.error(err instanceof Error ? err.message : 'Yuklashda xatolik yuz berdi')
@@ -151,6 +169,13 @@ export default function SardorDashboard() {
     setMounted(true)
     loadDashboardData()
   }, [])
+
+  // The default tab is "Talabalar" — if the dekan has revoked that right,
+  // once we actually know (permissions !== null) hop to a tab that's there.
+  useEffect(() => {
+    if (activeTab === 'students' && !allows('students.view')) setActiveTab('elonlar')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, permissions])
 
   // Filtered Students List
   const filteredStudents = useMemo(() => {
@@ -302,39 +327,43 @@ export default function SardorDashboard() {
           globals.css forces near-white text on every `a[class*="bg-gradient"]`
           (it assumes a dark saturated CTA), which turned this pale card's
           label invisible. See light-mode note 6. */}
-      <Link
-        href="/sardor/yoqlama"
-        className={`group flex items-center gap-4 rounded-2xl border p-4 transition-all ${
-          isLight
-            ? 'border-indigo-200 bg-indigo-50 hover:border-indigo-300 hover:bg-indigo-100'
-            : 'border-indigo-500/25 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 hover:border-indigo-500/40 hover:from-indigo-500/15 hover:to-purple-500/15'
-        }`}
-      >
-        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
-          isLight ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-500/20 text-indigo-300'
-        }`}>
-          <ClipboardCheck size={22} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className={`text-sm font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Yo&apos;qlama</p>
-          <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Qavatingizdagi talabalarni belgilang — kim bor, kim yo&apos;q</p>
-        </div>
-        <ChevronRight size={18} className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${isLight ? 'text-indigo-500' : 'text-indigo-400'}`} />
-      </Link>
+      {allows('attendance.mark') && (
+        <Link
+          href="/sardor/yoqlama"
+          className={`group flex items-center gap-4 rounded-2xl border p-4 transition-all ${
+            isLight
+              ? 'border-indigo-200 bg-indigo-50 hover:border-indigo-300 hover:bg-indigo-100'
+              : 'border-indigo-500/25 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 hover:border-indigo-500/40 hover:from-indigo-500/15 hover:to-purple-500/15'
+          }`}
+        >
+          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+            isLight ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-500/20 text-indigo-300'
+          }`}>
+            <ClipboardCheck size={22} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className={`text-sm font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Yo&apos;qlama</p>
+            <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Qavatingizdagi talabalarni belgilang — kim bor, kim yo&apos;q</p>
+          </div>
+          <ChevronRight size={18} className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${isLight ? 'text-indigo-500' : 'text-indigo-400'}`} />
+        </Link>
+      )}
 
       {/* Tabs */}
       <div className="flex overflow-x-auto no-scrollbar gap-1.5 p-1.5 rounded-2xl bg-white/[0.03] border border-white/5 w-full sm:w-fit shrink-0">
-        <button
-          onClick={() => setActiveTab('students')}
-          className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'students'
-              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
-              : 'text-slate-400 hover:bg-white/5'
-          }`}
-        >
-          <Users size={14} />
-          Talabalar ({students.length})
-        </button>
+        {allows('students.view') && (
+          <button
+            onClick={() => setActiveTab('students')}
+            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'students'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
+                : 'text-slate-400 hover:bg-white/5'
+            }`}
+          >
+            <Users size={14} />
+            Talabalar ({students.length})
+          </button>
+        )}
         <button
           onClick={() => setActiveTab('elonlar')}
           className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
@@ -361,7 +390,7 @@ export default function SardorDashboard() {
 
       {/* Main Tab Panels */}
       <AnimatePresence mode="wait">
-        {activeTab === 'students' ? (
+        {activeTab === 'students' && allows('students.view') ? (
           <motion.div
             key="students"
             initial={{ opacity: 0, y: 15 }}
@@ -465,13 +494,15 @@ export default function SardorDashboard() {
                 <h3 className="text-lg font-black tracking-tight">Mening Qavatim E&apos;lonlari</h3>
                 <p className="text-xs text-slate-400 mt-0.5">Faqat sizning qavatingizdagi {genderLabel.toLowerCase()}ga ko&apos;rinadigan xabarnomalar</p>
               </div>
-              <button
-                onClick={() => setNewElonOpen(true)}
-                className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap w-full sm:w-auto"
-              >
-                <Plus size={16} />
-                Yangi E&apos;lon
-              </button>
+              {allows('floor.announcements') && (
+                <button
+                  onClick={() => setNewElonOpen(true)}
+                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap w-full sm:w-auto"
+                >
+                  <Plus size={16} />
+                  Yangi E&apos;lon
+                </button>
+              )}
             </div>
 
             {/* List of Announcements */}
@@ -507,12 +538,14 @@ export default function SardorDashboard() {
                         <p className="text-xs text-slate-400 leading-relaxed">{elon.text}</p>
                       </div>
 
-                      <button
-                        onClick={() => handleDeleteElon(elon.id)}
-                        className="p-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-all flex items-center justify-center shrink-0 self-end md:self-center"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {allows('floor.announcements') && (
+                        <button
+                          onClick={() => handleDeleteElon(elon.id)}
+                          className="p-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-all flex items-center justify-center shrink-0 self-end md:self-center"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   )
                 })}
@@ -538,14 +571,16 @@ export default function SardorDashboard() {
                 <h3 className="text-lg font-black tracking-tight">Qavat Navbatchilik Jadvali</h3>
                 <p className="text-xs text-slate-400 mt-0.5">Ushbu jadval qavatingizdagi barcha talabalar uchun hafta kunlariga navbatchilarni belgilash imkonini beradi</p>
               </div>
-              <button
-                onClick={handleSaveDuty}
-                disabled={savingDuty}
-                className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 disabled:opacity-55 whitespace-nowrap w-full sm:w-auto"
-              >
-                <ShieldCheck size={16} />
-                {savingDuty ? 'Saqlanmoqda...' : 'Jadvalni Saqlash'}
-              </button>
+              {allows('duty.schedule') && (
+                <button
+                  onClick={handleSaveDuty}
+                  disabled={savingDuty}
+                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 disabled:opacity-55 whitespace-nowrap w-full sm:w-auto"
+                >
+                  <ShieldCheck size={16} />
+                  {savingDuty ? 'Saqlanmoqda...' : 'Jadvalni Saqlash'}
+                </button>
+              )}
             </div>
 
             {/* Grid layout for Schedule and Admin assignment */}
@@ -561,15 +596,17 @@ export default function SardorDashboard() {
                       <ShieldCheck size={16} />
                       Yordamchi Adminlar
                     </h4>
-                    <button
-                      onClick={() => {
-                        setActiveSelectAdmin(true);
-                        setActiveSelectDay(null);
-                      }}
-                      className="px-2 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 transition-all flex items-center justify-center"
-                    >
-                      <Plus size={14} />
-                    </button>
+                    {allows('duty.schedule') && (
+                      <button
+                        onClick={() => {
+                          setActiveSelectAdmin(true);
+                          setActiveSelectDay(null);
+                        }}
+                        className="px-2 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 transition-all flex items-center justify-center"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    )}
                   </div>
 
                   {dutyAdmins.length > 0 ? (
@@ -580,12 +617,14 @@ export default function SardorDashboard() {
                             <p className="text-xs font-extrabold text-white">{admin.name}</p>
                             <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Xona #{admin.room}</p>
                           </div>
-                          <button
-                            onClick={() => setDutyAdmins(prev => prev.filter(a => a.id !== admin.id))}
-                            className="px-1.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-400 transition-all"
-                          >
-                            <X size={10} />
-                          </button>
+                          {allows('duty.schedule') && (
+                            <button
+                              onClick={() => setDutyAdmins(prev => prev.filter(a => a.id !== admin.id))}
+                              className="px-1.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-400 transition-all"
+                            >
+                              <X size={10} />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -633,15 +672,17 @@ export default function SardorDashboard() {
                           <div className="w-1.5 h-6 rounded-full bg-gradient-to-b from-purple-500 to-indigo-500" />
                           <h4 className="text-sm font-black text-white">{day}</h4>
                         </div>
-                        <button
-                          onClick={() => {
-                            setActiveSelectDay(day);
-                            setActiveSelectAdmin(false);
-                          }}
-                          className="px-2 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 transition-all flex items-center justify-center"
-                        >
-                          <Plus size={12} />
-                        </button>
+                        {allows('duty.schedule') && (
+                          <button
+                            onClick={() => {
+                              setActiveSelectDay(day);
+                              setActiveSelectAdmin(false);
+                            }}
+                            className="px-2 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 transition-all flex items-center justify-center"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        )}
                       </div>
 
                       <div className="relative z-10 flex-1 space-y-2 min-h-[100px]">
@@ -652,17 +693,19 @@ export default function SardorDashboard() {
                                 <p className="text-[11px] font-black text-white">{duty.name}</p>
                                 <p className="text-[9px] text-slate-500 font-semibold mt-0.5">Xona #{duty.room}</p>
                               </div>
-                              <button
-                                onClick={() => {
-                                  setDutySchedule(prev => ({
-                                    ...prev,
-                                    [day]: (prev[day] || []).filter(d => d.id !== duty.id)
-                                  }));
-                                }}
-                                className="px-1.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-400 transition-all"
-                              >
-                                <X size={9} />
-                              </button>
+                              {allows('duty.schedule') && (
+                                <button
+                                  onClick={() => {
+                                    setDutySchedule(prev => ({
+                                      ...prev,
+                                      [day]: (prev[day] || []).filter(d => d.id !== duty.id)
+                                    }));
+                                  }}
+                                  className="px-1.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-400 transition-all"
+                                >
+                                  <X size={9} />
+                                </button>
+                              )}
                             </div>
                           ))
                         ) : (

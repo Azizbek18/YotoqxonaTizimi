@@ -4,7 +4,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import { PERMIT_FILE_RULES, hasAllowedSignature } from '@/lib/permit-validation'
 import { readMultipartForm, MAX_UPLOAD_SIZE_BYTES } from '@/lib/upload-limits'
 import { checkRateLimit } from '@/lib/security'
-import { requireActiveStaff } from '@/server/auth/guards'
+import { requireActiveStaff, requireStaffPermission } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
 import { createStoryService } from '@/features/stories/server/service'
 import { broadcastStory } from '@/features/stories/server/broadcast'
@@ -30,6 +30,7 @@ function errorResponse(error: unknown, fallback: string) {
 export async function GET(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, STAFF_ROLES)
+    requireStaffPermission(staff, 'announcements.manage')
     const stories = await createStoryService().listAuthored(staff.faculty)
     return NextResponse.json({ stories })
   } catch (error) {
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, STAFF_ROLES)
+    requireStaffPermission(staff, 'announcements.manage')
     const throttle = await checkRateLimit(`staff-story:${staff.id}`, 20, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: "Juda ko'p urinish. Keyinroq urinib ko'ring." }, { status: 429 })
@@ -101,6 +103,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, STAFF_ROLES)
+    requireStaffPermission(staff, 'announcements.manage')
     const { image_path } = await createStoryService().remove(
       staff.faculty,
       request.nextUrl.searchParams.get('id'),

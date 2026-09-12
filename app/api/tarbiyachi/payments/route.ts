@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPaymentService } from '@/features/payments/server/service'
-import { requireActiveStaff } from '@/server/auth/guards'
+import { requireActiveStaff, requireStaffPermission } from '@/server/auth/guards'
 import { staffDormFaculties } from '@/server/auth/faculty'
 import { getApiError } from '@/server/http/api-error'
 
@@ -12,6 +12,7 @@ import { getApiError } from '@/server/http/api-error'
 export async function GET(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['tarbiyachi'])
+    requireStaffPermission(staff, 'payments.review')
     const faculties = await staffDormFaculties(staff.id, staff.faculty)
     const service = createPaymentService()
     if (request.nextUrl.searchParams.get('summary') === '1') {
@@ -32,6 +33,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['tarbiyachi'])
+    requireStaffPermission(staff, 'payments.review')
     const faculties = await staffDormFaculties(staff.id, staff.faculty)
     const body = await request.json().catch(() => null)
     if (!body) return NextResponse.json({ error: 'Noto‘g‘ri so‘rov' }, { status: 400 })

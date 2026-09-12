@@ -35,23 +35,28 @@ import { apiRequest } from '@/lib/api-client'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { dekanUI } from '@/lib/dekan-ui'
 import { supabase } from '@/lib/supabase'
+import { useMyPermissions } from '@/lib/hooks/useMyPermissions'
+import { can, type PermissionKey } from '@/features/permissions/types'
 
 // Mirrors the dekan panel's navigation, minus Yo'llanmalar (permits) and the
 // superadmin-only sections. Every page here is the shared dekan component
 // rendered read-only (see useStaffPanel), except Yo'qlama and To'lovlar
 // which stay genuine tarbiyachi responsibilities.
+// `permission` (optional) ties a menu entry to a right the dekan can revoke
+// in Sozlamalar → Ruxsatlar. A revoked entry is dropped from the menu
+// entirely, matching the API, which answers 403 for the same person.
 const NAV = [
   { label: 'Dashboard', caption: 'Umumiy holat', href: '/tarbiyachi/dashboard', icon: LayoutDashboard },
   { label: 'Xonalar xaritasi', caption: 'Joylashuv holati', href: '/tarbiyachi/xonalar', icon: Boxes },
   { label: '3D Xonalar', caption: 'Qavat tarxi', href: '/tarbiyachi/3d-xonalar', icon: Layers3 },
-  { label: 'Talabalar', caption: 'Yotoqxona aholisi', href: '/tarbiyachi/talabalar', icon: Users },
-  { label: 'Arizalar', caption: 'Talaba murojaatlari', href: '/tarbiyachi/arizalar', icon: ClipboardList },
-  { label: 'Yo‘qlama', caption: 'Kunlik nazorat', href: '/tarbiyachi/yoqlama', icon: ClipboardCheck },
-  { label: 'To‘lovlar', caption: 'Chek tasdiqlash', href: '/tarbiyachi/tolovlar', icon: Wallet },
-  { label: 'E‘lonlar', caption: 'Talabalarga', href: '/tarbiyachi/elonlar', icon: Megaphone },
+  { label: 'Talabalar', caption: 'Yotoqxona aholisi', href: '/tarbiyachi/talabalar', icon: Users, permission: 'students.view' },
+  { label: 'Arizalar', caption: 'Talaba murojaatlari', href: '/tarbiyachi/arizalar', icon: ClipboardList, permission: 'applications.review' },
+  { label: 'Yo‘qlama', caption: 'Kunlik nazorat', href: '/tarbiyachi/yoqlama', icon: ClipboardCheck, permission: 'attendance.manage' },
+  { label: 'To‘lovlar', caption: 'Chek tasdiqlash', href: '/tarbiyachi/tolovlar', icon: Wallet, permission: 'payments.review' },
+  { label: 'E‘lonlar', caption: 'Talabalarga', href: '/tarbiyachi/elonlar', icon: Megaphone, permission: 'announcements.manage' },
   { label: 'Hisobotlar', caption: 'Excel eksport', href: '/tarbiyachi/hisobotlar', icon: FileSpreadsheet },
   { label: 'Sozlamalar', caption: 'Tizim ma‘lumoti', href: '/tarbiyachi/sozlamalar', icon: Settings },
-] as const
+] as const satisfies readonly { label: string; caption: string; href: string; icon: unknown; permission?: PermissionKey }[]
 
 interface PendingAriza {
   id: string
@@ -112,6 +117,14 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
     [pathname],
   )
 
+  // A null map means "still loading", and `can` treats that as allowed — the
+  // menu never flickers down to a stub and back on a slow connection.
+  const { permissions } = useMyPermissions()
+  const visibleNav = useMemo(
+    () => NAV.filter((item) => !('permission' in item) || can(permissions, item.permission)),
+    [permissions],
+  )
+
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut()
@@ -155,7 +168,7 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
 
       <div className="flex-1 px-3 py-3 overflow-y-auto">
         <nav className="space-y-1">
-          {NAV.map((item) => {
+          {visibleNav.map((item) => {
             const active = pathname === item.href
             const Icon = item.icon
             return (

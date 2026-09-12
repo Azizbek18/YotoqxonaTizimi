@@ -3,6 +3,10 @@ import { requireFloorCaptain } from '@/server/auth/sardor'
 
 const ALLOWED_TYPES = new Set(['Muhim', 'Tadbir', 'Yangilik', 'Ogohlantirish'])
 
+// Ungated on purpose: this one read backs the whole sardor dashboard
+// (announcements *and* the rota). A captain who has lost both write
+// permissions should still get a panel that loads and simply offers nothing
+// to change, not a 403 wall.
 export async function GET(request: NextRequest) {
   try {
     const scoped = await requireFloorCaptain(request)
@@ -43,7 +47,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const scoped = await requireFloorCaptain(request)
+    const scoped = await requireFloorCaptain(request, 'floor.announcements')
     if (scoped.error) return scoped.error
     const { caller, serviceSupabase, faculty } = scoped
 
@@ -96,9 +100,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PATCH writes the weekly cleaning rota, which is stored as an `elonlar` row
+// under a reserved title — so it shares this endpoint with announcements but
+// is a separate permission.
 export async function PATCH(request: NextRequest) {
   try {
-    const scoped = await requireFloorCaptain(request)
+    const scoped = await requireFloorCaptain(request, 'duty.schedule')
     if (scoped.error) return scoped.error
     const { caller, serviceSupabase } = scoped
 
@@ -140,7 +147,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const scoped = await requireFloorCaptain(request)
+    const scoped = await requireFloorCaptain(request, 'floor.announcements')
     if (scoped.error) return scoped.error
     const { caller, serviceSupabase } = scoped
 

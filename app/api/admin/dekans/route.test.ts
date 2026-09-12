@@ -5,7 +5,7 @@ import { ApiError } from '@/server/http/api-error'
 const requireAdmin = vi.fn()
 const getOverview = vi.fn()
 
-vi.mock('@/server/auth/guards', () => ({
+vi.mock('@/server/auth/guards', () => ({ requireStaffPermission: () => {},
   requireAdmin: (...args: unknown[]) => requireAdmin(...args),
 }))
 vi.mock('@/features/superadmin-dekans/server/service', () => ({

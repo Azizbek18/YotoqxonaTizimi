@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   getServiceSupabase: vi.fn(),
 }))
 
-vi.mock('@/server/auth/guards', () => ({ requireActiveStaff: mocks.requireActiveStaff }))
+vi.mock('@/server/auth/guards', () => ({ requireStaffPermission: () => {}, requireActiveStaff: mocks.requireActiveStaff }))
 vi.mock('@/lib/security', () => ({ checkRateLimit: mocks.checkRateLimit }))
 vi.mock('@/lib/server-supabase', () => ({ getServiceSupabase: mocks.getServiceSupabase }))
 

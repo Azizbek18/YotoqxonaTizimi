@@ -13,7 +13,7 @@ const profileQuery = {
   maybeSingle: mocks.maybeSingle,
 }
 
-vi.mock('@/server/auth/guards', () => ({ requireActiveStudent: mocks.requireActiveStudent }))
+vi.mock('@/server/auth/guards', () => ({ requireStaffPermission: () => {}, requireActiveStudent: mocks.requireActiveStudent }))
 vi.mock('@/lib/security', () => ({ checkRateLimit: mocks.checkRateLimit }))
 vi.mock('@/lib/server-supabase', () => ({
   getServiceSupabase: () => ({ from: () => profileQuery }),

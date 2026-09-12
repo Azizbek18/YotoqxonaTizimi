@@ -20,6 +20,7 @@ import AddDormCard from '@/components/dekan/AddDormCard'
 import DormRoomSettingsCard from '@/components/dekan/DormRoomSettingsCard'
 import AttendanceSettingsCard from '@/components/dekan/AttendanceSettingsCard'
 import DekanSignatureCard from '@/components/dekan/DekanSignatureCard'
+import MemberPermissionsCard from '@/components/dekan/MemberPermissionsCard'
 import CouncilChairPicker, { type CouncilChairPick } from '@/components/dekan/CouncilChairPicker'
 import { dekanUI } from '@/lib/dekan-ui'
 import { SkelForm } from '@/components/ui/skeletons'
@@ -403,6 +404,8 @@ export default function DekanSozlamalarPage() {
                         ))}
 
                         <DekanSignatureCard isLight={isLight} delay={0.075} />
+
+                        <MemberPermissionsCard delay={0.078} />
 
                         {renderSection(ShieldAlert, 'Fayl va ogohlantirish chegaralari', 0.08, (
                             <>{limitFields.map((field) => renderNumberRow(field, 'sm:w-24'))}</>

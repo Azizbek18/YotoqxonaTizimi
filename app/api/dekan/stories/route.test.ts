@@ -15,7 +15,7 @@ vi.mock('next/server', async (orig) => ({
   ...(await orig() as object),
   after: (fn: unknown) => (typeof fn === 'function' ? (fn as () => unknown)() : undefined),
 }))
-vi.mock('@/server/auth/guards', () => ({ requireActiveStaff: (...a: unknown[]) => requireActiveStaff(...a) }))
+vi.mock('@/server/auth/guards', () => ({ requireStaffPermission: () => {}, requireActiveStaff: (...a: unknown[]) => requireActiveStaff(...a) }))
 vi.mock('@/lib/security', () => ({ checkRateLimit: (...a: unknown[]) => checkRateLimit(...a) }))
 vi.mock('@/features/stories/server/broadcast', () => ({ broadcastStory: (...a: unknown[]) => broadcastStory(...a) }))
 vi.mock('@/features/stories/server/service', () => ({

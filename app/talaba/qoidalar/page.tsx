@@ -199,7 +199,7 @@ function DisciplineGauge({ score, isLight }: { score: number; isLight: boolean }
         >
           {score}%
         </motion.span>
-        <span className={`text-[8px] font-black uppercase tracking-widest ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+        <span className={`text-[10px] font-bold uppercase tracking-widest ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
           Intizom
         </span>
       </div>
@@ -351,11 +351,11 @@ export default function QoidalarPage() {
               }`}>
                 <ShieldAlert size={16} />
               </div>
-              <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>
+              <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>
                 Intizom Tizimi
               </span>
             </div>
-            <h1 className={`text-3xl sm:text-5xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            <h1 className={`text-3xl sm:text-5xl font-extrabold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
               Yotoqxona <span className="bg-gradient-to-r from-blue-500 via-cyan-400 to-indigo-500 bg-clip-text text-transparent">Tartib Qoidalari</span>
             </h1>
             <p className={`mt-3 text-xs sm:text-sm max-w-xl font-medium leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
@@ -378,9 +378,9 @@ export default function QoidalarPage() {
                 <div className="w-full flex items-center justify-between border-b pb-4 mb-4 border-dashed border-slate-200/50 dark:border-white/5">
                   <div className="flex items-center gap-2">
                     <Award size={16} className={isLight ? 'text-blue-600' : 'text-cyan-400'} />
-                    <span className="text-[10px] font-black uppercase tracking-wider">Intizom Reytingi</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Intizom Reytingi</span>
                   </div>
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
                     isLight ? 'bg-slate-100 border-slate-200 text-slate-700' : 'bg-white/5 border-white/10 text-slate-300'
                   }`}>
                     {statusText}
@@ -390,7 +390,7 @@ export default function QoidalarPage() {
                 <DisciplineGauge score={disciplineScore} isLight={isLight} />
 
                 <div className="mt-4 space-y-2.5">
-                  <h3 className={`text-sm font-black tracking-tight ${statusColor}`}>
+                  <h3 className={`text-sm font-extrabold tracking-tight ${statusColor}`}>
                     Intizom holati: {statusText}
                   </h3>
                   <p className={`text-[11px] leading-relaxed font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
@@ -418,7 +418,7 @@ export default function QoidalarPage() {
                     <AlertTriangle size={24} className="animate-pulse" />
                   </div>
                   <div>
-                    <h3 className={`text-base font-black tracking-tight mb-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    <h3 className={`text-base font-extrabold tracking-tight mb-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                       Qoidabuzarlik va Ogohlantirishlar
                     </h3>
                     <p className={`text-xs leading-relaxed font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
@@ -457,7 +457,7 @@ export default function QoidalarPage() {
                     <Sparkles size={24} />
                   </div>
                   <div>
-                    <h3 className={`text-base font-black tracking-tight mb-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    <h3 className={`text-base font-extrabold tracking-tight mb-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                       {"Qoidalarni o'qib tasdiqlash"}
                     </h3>
                     <p className={`text-xs leading-relaxed font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
@@ -467,7 +467,7 @@ export default function QoidalarPage() {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-dashed border-slate-200 dark:border-white/5 pt-3">
-                  <span className="text-[10px] font-black uppercase tracking-wider opacity-60">
+                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">
                     Siz tomondan qabul qilingan qoidalar:
                   </span>
                   <span className={`text-xs font-black px-2.5 py-0.5 rounded-full ${
@@ -485,7 +485,7 @@ export default function QoidalarPage() {
         <div className="space-y-6">
           <div className="flex items-center gap-2 border-b border-dashed border-slate-200 dark:border-white/5 pb-3">
             <BookOpen size={18} className={isLight ? 'text-blue-600' : 'text-cyan-400'} />
-            <h2 className="text-lg font-black tracking-tight uppercase">Qoida toifalari</h2>
+            <h2 className="text-lg font-extrabold tracking-tight">Qoida toifalari</h2>
           </div>
 
           <div className="space-y-4">
@@ -536,10 +536,10 @@ export default function QoidalarPage() {
                         </div>
 
                         <div>
-                          <h3 className={`text-base sm:text-lg font-black tracking-tight mb-1 transition-colors ${isOpen ? (isLight ? 'text-slate-900' : 'text-white') : (isLight ? 'text-slate-800' : 'text-slate-200')}`}>
+                          <h3 className={`text-base sm:text-lg font-extrabold tracking-tight mb-1 transition-colors ${isOpen ? (isLight ? 'text-slate-900' : 'text-white') : (isLight ? 'text-slate-800' : 'text-slate-200')}`}>
                             {item.sarlavha}
                           </h3>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors border ${
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border ${
                             isOpen
                               ? isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-black/20 border-white/10 ' + colors.text
                               : isLight ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-white/5 border-white/10 text-slate-400'

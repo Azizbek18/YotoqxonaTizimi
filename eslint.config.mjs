@@ -20,6 +20,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vercel CLI metadata plus any detached worktrees it keeps there — linting
+    // those would double-report every finding against a stale copy of the repo.
+    ".vercel/**",
   ]),
 ]);
 

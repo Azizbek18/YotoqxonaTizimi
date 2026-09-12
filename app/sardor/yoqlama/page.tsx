@@ -100,8 +100,13 @@ export default function SardorYoqlamaPage() {
     }
   }
 
+  // text-slate-200, not -100: the light-mode override in globals.css only
+  // lists text-{slate,gray,…}-{200..700}, so an inherited -100 stayed pale and
+  // the "Yo'qlama" heading was invisible on the repainted light background.
+  // -100 can't just be added to that list — talaba/tolova and
+  // PaymentStatusCard use it as a pale ring track in light mode.
   return (
-    <div className="min-h-screen bg-[#070b13] text-slate-100">
+    <div className="min-h-screen bg-[#070b13] text-slate-200">
       <div className="mx-auto max-w-3xl px-4 py-6">
         <Link href="/sardor/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-slate-400 hover:bg-white/5">
           <ArrowLeft size={14} /> Panel

@@ -93,7 +93,7 @@ export default function HujjatlarimPage() {
             type="button"
             onClick={() => setModal({ type: doc.docType, doc })}
             data-student-button="plain"
-            className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider ${
+            className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider ${
               isLight ? 'border-slate-300 bg-white text-slate-600' : 'border-white/10 bg-slate-900 text-slate-300'
             }`}
           >
@@ -134,14 +134,14 @@ export default function HujjatlarimPage() {
     return (
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 className={`flex items-center gap-2 text-sm font-black uppercase tracking-wider ${isLight ? 'text-slate-900' : 'text-white'}`}>
+          <h2 className={`flex items-center gap-2 text-sm font-extrabold tracking-wider ${isLight ? 'text-slate-900' : 'text-white'}`}>
             <Icon size={16} className={isLight ? 'text-blue-500' : 'text-blue-300'} />
             {DOC_TYPE_LABELS[type]}
           </h2>
           <button
             type="button"
             onClick={() => setModal({ type, doc: null })}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white"
           >
             <Plus size={12} /> Qo&apos;shish
           </button>
@@ -168,7 +168,7 @@ export default function HujjatlarimPage() {
       </Link>
 
       <div>
-        <h1 className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Hujjatlarim</h1>
+        <h1 className={`text-xl font-extrabold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Hujjatlarim</h1>
         <p className={`mt-1 text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
           {mode === 'foreign'
             ? "Viza va yashash joyida ro'yxatga qo'yish (propiska) muddatlari."

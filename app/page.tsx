@@ -116,7 +116,7 @@ export default function Home() {
 
   const staffRoles = [
     {
-      title: "Dekan (Dekan)",
+      title: "Dekan",
       desc: "Yo'llanmalarni tasdiqlash, xonalarga joylashtirish, 3D qavat tarxini boshqarish va Excel jadvallarini yuklab olish.",
       color: "from-amber-500/20 to-orange-600/25 border-amber-500/30 text-amber-300",
       btnColor: "from-amber-500 to-orange-600 shadow-amber-500/20 hover:shadow-amber-500/35",

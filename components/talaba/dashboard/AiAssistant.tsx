@@ -150,7 +150,7 @@ export default function AiAssistant({ isLight }: { isLight: boolean }) {
                   <Sparkles size={18} />
                 </div>
                 <div>
-                  <h3 className={`text-sm font-black uppercase tracking-wider ${textStrong}`}>Yotoqxona AI</h3>
+                  <h3 className={`text-sm font-extrabold ${textStrong}`}>Yotoqxona AI</h3>
                   <p className={`text-[10px] ${textMuted}`}>Savollarga real vaqtda javob beradi</p>
                 </div>
               </div>
@@ -197,7 +197,7 @@ export default function AiAssistant({ isLight }: { isLight: boolean }) {
 
               {isFresh && (
                 <div className="pt-1">
-                  <p className={`mb-2.5 text-[10px] font-black uppercase tracking-wider ${textMuted}`}>Tez savollar</p>
+                  <p className={`mb-2.5 text-[10px] font-bold uppercase tracking-wider ${textMuted}`}>Tez savollar</p>
                   <div className="grid grid-cols-1 gap-2">
                     {QUICK_CHIPS.map((c) => chip(c, true))}
                   </div>

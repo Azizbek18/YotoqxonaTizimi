@@ -117,7 +117,7 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
     }
   }
 
-  const labelCls = `block text-[10px] font-black uppercase tracking-wider mb-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`
+  const labelCls = `block text-[10px] font-bold uppercase tracking-wider mb-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`
   const fieldCls = `w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-hidden focus:ring-2 transition-all ${
     isLight
       ? 'bg-slate-50 border-slate-300 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900'
@@ -146,7 +146,7 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
             <div className={`p-2 rounded-xl ${isLight ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/20 text-blue-300'}`}>
               {isVisa ? <Plane size={20} /> : <Home size={20} />}
             </div>
-            <h3 className="text-lg font-black tracking-tight">{title}</h3>
+            <h3 className="text-lg font-extrabold tracking-tight">{title}</h3>
           </div>
           <button onClick={onClose} className={`p-1.5 rounded-lg transition-colors ${isLight ? 'hover:bg-slate-100 text-slate-500' : 'hover:bg-white/10 text-slate-400'}`}>
             <X size={18} />
@@ -155,12 +155,12 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className={labelCls}>Viza raqami</label>
+            <label className={labelCls}>{isVisa ? 'Viza raqami' : "Ro'yxatga qo'yish (propiska) raqami"}</label>
             <input
               type="text"
               value={number}
               onChange={(e) => setNumber(e.target.value)}
-              placeholder="Masalan: E1234567"
+              placeholder={isVisa ? 'Masalan: E1234567' : 'Masalan: 1234567890'}
               maxLength={60}
               className={fieldCls}
             />

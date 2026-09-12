@@ -102,7 +102,7 @@ export default function ForeignDocEditModal({ isLight, doc, onClose, onSaved }: 
 
         <div className="space-y-4">
           <div>
-            <label className={label}>Viza raqami</label>
+            <label className={label}>{isVisa ? 'Viza raqami' : "Ro'yxatga qo'yish (propiska) raqami"}</label>
             <input value={number} onChange={(e) => setNumber(e.target.value)} maxLength={60} className={field} />
           </div>
 

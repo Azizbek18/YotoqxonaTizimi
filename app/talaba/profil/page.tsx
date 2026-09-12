@@ -173,10 +173,10 @@ function Timeline({ course, isLight }: { course: number; isLight: boolean }) {
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black z-10 mb-2 transition-all ${cls[s.state]}`}>
             {s.n}
           </div>
-          <p className={`text-[10px] font-black uppercase tracking-wider ${s.state === 'active' ? isLight ? 'text-blue-600' : 'text-indigo-400' : isLight ? 'text-slate-500' : 'text-slate-500'}`}>
+          <p className={`text-[10px] font-bold uppercase tracking-wider ${s.state === 'active' ? isLight ? 'text-blue-600' : 'text-indigo-400' : isLight ? 'text-slate-500' : 'text-slate-500'}`}>
             {s.n}-kurs
           </p>
-          <p className={`text-[9px] font-semibold mt-0.5 ${isLight ? 'text-slate-400' : 'text-slate-600'}`}>{s.year} - yil</p>
+          <p className={`text-[10px] font-semibold mt-0.5 ${isLight ? 'text-slate-400' : 'text-slate-600'}`}>{s.year} - yil</p>
         </div>
       ))}
     </div>
@@ -202,7 +202,7 @@ function InfoRow({ icon, label, value, bg, color }: InfoRowProps) {
         {icon}
       </div>
       <div className="min-w-0">
-        <p className="text-[8px] font-black uppercase tracking-[0.2em] mb-0.5 opacity-60" style={{ color }}>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5 opacity-60" style={{ color }}>
           {label}
         </p>
         <p className="text-xs font-bold truncate dark:text-slate-100 text-slate-800">
@@ -256,7 +256,7 @@ function RoommateCard({ roommate, isLight }: RoommateCardProps) {
           <p className="font-bold text-xs truncate dark:text-white text-slate-900">
             {roommate.full_name}
           </p>
-          <p className="text-[9px] font-semibold dark:text-slate-400 text-slate-500">
+          <p className="text-[10px] font-semibold dark:text-slate-400 text-slate-500">
             {course}-kurs · {roommate.group || '—'}
           </p>
         </div>
@@ -601,22 +601,23 @@ export default function StudentProfile() {
           className="flex justify-between items-center pb-5 border-b border-white/5"
         >
           <div>
-            <span className={`text-[9px] font-black uppercase tracking-[0.22em] px-2.5 py-1 rounded-full ${
+            <span className={`text-[10px] font-bold uppercase tracking-[0.22em] px-2.5 py-1 rounded-full ${
               isLight ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-blue-500/10 text-cyan-400 border border-blue-500/25'
             }`}>
               Profil Paneli
             </span>
-            <h1 className={`text-2xl sm:text-3xl font-black italic tracking-tight uppercase mt-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight mt-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
               Talaba kartasi
             </h1>
           </div>
 
           <button
+            data-student-button="plain"
             onClick={() => setShowLogoutConfirm(true)}
-            className={`flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${
-              isLight 
-                ? 'bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 shadow-sm' 
-                : 'bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-600 hover:text-white'
+            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[11px] font-bold tracking-tight transition-all duration-200 active:scale-95 ${
+              isLight
+                ? 'bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 shadow-sm'
+                : 'bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-500/20'
             }`}
           >
             <LogOut size={13} />
@@ -707,22 +708,22 @@ export default function StudentProfile() {
             {/* Profile Info text */}
             <div className="space-y-3">
               <div className="space-y-1">
-                <h2 className={`text-xl sm:text-2xl font-black tracking-tight uppercase italic leading-none ${textStrong}`}>
+                <h2 className={`text-xl sm:text-2xl font-extrabold tracking-tight leading-none ${textStrong}`}>
                   {fullName}
                 </h2>
-                <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>
+                <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>
                   {faculty}
                 </p>
               </div>
 
               <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 pt-1">
-                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
                   isLight ? 'bg-green-50 border-green-200 text-green-600' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                 }`}>
                   <ShieldCheck size={11} />
                   <span>Ruxsatnoma faol</span>
                 </span>
-                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
                   isLight ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-blue-500/10 border-blue-500/20 text-cyan-300'
                 }`}>
                   <Award size={11} />
@@ -734,7 +735,7 @@ export default function StudentProfile() {
 
           {/* Large dynamic role tag */}
           <div className="mt-4 md:mt-0 flex flex-col md:items-end justify-center self-center shrink-0">
-            <span className={`text-[9px] font-black uppercase tracking-widest ${textMuted} mb-1`}>Foydalanuvchi</span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${textMuted} mb-1`}>Foydalanuvchi</span>
             <div className={`px-4.5 py-2.5 rounded-2xl border text-xs font-black uppercase tracking-widest ${
               isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-white/5 border-white/5 text-gray-300'
             }`}>
@@ -767,7 +768,7 @@ export default function StudentProfile() {
               >
                 {s.val}
               </p>
-              <p className={`text-[8px] font-black uppercase tracking-[0.2em] ${textMuted}`}>
+              <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${textMuted}`}>
                 {s.label}
               </p>
             </div>
@@ -782,7 +783,7 @@ export default function StudentProfile() {
             custom={3} variants={fadeUp} initial="hidden" animate="show"
             className={`group border rounded-[28px] p-5 space-y-4 ${cardOverlay}`}
           >
-            <h3 className={`text-[9px] font-black uppercase tracking-[0.25em] flex items-center gap-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            <h3 className={`text-[10px] font-extrabold tracking-[0.25em] flex items-center gap-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               <Shield size={12} className={isLight ? 'text-blue-600' : 'text-blue-500'} />
               <span>Aloqa Tafsilotlari</span>
             </h3>
@@ -811,7 +812,7 @@ export default function StudentProfile() {
             custom={4} variants={fadeUp} initial="hidden" animate="show"
             className={`group border rounded-[28px] p-5 space-y-4 ${cardOverlay}`}
           >
-            <h3 className={`text-[9px] font-black uppercase tracking-[0.25em] flex items-center gap-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            <h3 className={`text-[10px] font-extrabold tracking-[0.25em] flex items-center gap-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               <Shield size={12} className={isLight ? 'text-emerald-600' : 'text-emerald-500'} />
               <span>O&apos;qish ma&apos;lumotlari</span>
             </h3>
@@ -842,7 +843,7 @@ export default function StudentProfile() {
           custom={5} variants={fadeUp} initial="hidden" animate="show"
           className={`border rounded-[28px] p-5 ${cardOverlay}`}
         >
-          <h3 className={`text-[9px] font-black uppercase tracking-[0.25em] flex items-center gap-1.5 mb-5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+          <h3 className={`text-[10px] font-extrabold tracking-[0.25em] flex items-center gap-1.5 mb-5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
             <span className={`block w-1.5 h-1.5 rounded-full ${isLight ? 'bg-violet-600' : 'bg-violet-500'}`} />
             <span>Ta&apos;lim olish davri</span>
           </h3>
@@ -855,7 +856,7 @@ export default function StudentProfile() {
             custom={6} variants={fadeUp} initial="hidden" animate="show"
             className={`border rounded-[28px] p-5 space-y-4 ${cardOverlay}`}
           >
-            <h3 className={`text-[9px] font-black uppercase tracking-[0.25em] flex items-center gap-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            <h3 className={`text-[10px] font-extrabold tracking-[0.25em] flex items-center gap-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               <span className={`block w-1.5 h-1.5 rounded-full ${isLight ? 'bg-emerald-600' : 'bg-emerald-500'}`} />
               <span>Xonadoshlarim ({roommates.length} kishi)</span>
             </h3>
@@ -887,7 +888,7 @@ export default function StudentProfile() {
           
           <button 
             onClick={() => setShowPasswordModal(true)}
-            className={`flex items-center justify-center gap-1.5 px-5 sm:px-6 py-4 rounded-2xl font-black uppercase text-[10px] tracking-wider transition-all duration-200 active:scale-95 ${
+            className={`flex items-center justify-center gap-1.5 px-5 sm:px-6 py-4 rounded-2xl font-bold uppercase text-[10px] tracking-wider transition-all duration-200 active:scale-95 ${
               isLight 
                 ? 'bg-violet-50 border border-violet-200 text-violet-600 hover:bg-violet-100' 
                 : 'bg-violet-500/10 border border-violet-500/25 text-violet-300 hover:bg-violet-500/20'
@@ -915,7 +916,7 @@ export default function StudentProfile() {
         >
           {/* Oxirgi Faollik */}
           <div className={`border rounded-[28px] p-5 space-y-4 ${cardOverlay}`}>
-            <h3 className={`text-[9px] font-black uppercase tracking-[0.25em] flex items-center gap-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            <h3 className={`text-[10px] font-extrabold tracking-[0.25em] flex items-center gap-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               <Activity size={12} className={isLight ? 'text-orange-600' : 'text-orange-400'} />
               <span>Oxirgi Faollik</span>
             </h3>
@@ -928,7 +929,7 @@ export default function StudentProfile() {
                   <Clock size={16} className={isLight ? 'text-green-600' : 'text-green-400'} />
                 </div>
                 <div className="min-w-0">
-                  <p className={`text-[8px] font-black uppercase tracking-[0.2em] mb-0.5 ${textMuted}`}>Oxirgi kirish</p>
+                  <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5 ${textMuted}`}>Oxirgi kirish</p>
                   <p className={`text-xs font-bold truncate ${textStrong}`}>
                     {lastLogin ? formatDate(lastLogin) : 'Ma\'lumot yo\'q'}
                   </p>
@@ -943,7 +944,7 @@ export default function StudentProfile() {
                     <Calendar size={16} className={isLight ? 'text-blue-600' : 'text-blue-400'} />
                   </div>
                   <div className="min-w-0">
-                    <p className={`text-[8px] font-black uppercase tracking-[0.2em] mb-0.5 ${textMuted}`}>Sana va Vaqt</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5 ${textMuted}`}>Sana va Vaqt</p>
                     <p className={`text-xs font-bold truncate ${textStrong}`}>
                       {formatFullDate(lastLogin)}
                     </p>
@@ -958,7 +959,7 @@ export default function StudentProfile() {
                   <ShieldCheck size={16} className={isLight ? 'text-emerald-600' : 'text-emerald-400'} />
                 </div>
                 <div className="min-w-0">
-                  <p className={`text-[8px] font-black uppercase tracking-[0.2em] mb-0.5 ${textMuted}`}>Hisob holati</p>
+                  <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5 ${textMuted}`}>Hisob holati</p>
                   <p className="text-xs font-bold text-green-500">Faol</p>
                 </div>
               </div>
@@ -967,7 +968,7 @@ export default function StudentProfile() {
 
           {/* Tizim Haqida */}
           <div className={`border rounded-[28px] p-5 space-y-4 ${cardOverlay}`}>
-            <h3 className={`text-[9px] font-black uppercase tracking-[0.25em] flex items-center gap-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            <h3 className={`text-[10px] font-extrabold tracking-[0.25em] flex items-center gap-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               <Info size={12} className={isLight ? 'text-cyan-600' : 'text-cyan-400'} />
               <span>Tizim Haqida</span>
             </h3>
@@ -981,16 +982,22 @@ export default function StudentProfile() {
                     <Sparkles size={14} className={isLight ? 'text-blue-600' : 'text-blue-400'} />
                   </div>
                   <div>
-                    <p className={`text-[8px] font-black uppercase tracking-widest ${textMuted}`}>Versiya</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Versiya</p>
                     <p className={`text-xs font-bold ${textStrong}`}>1.0.0</p>
                   </div>
                 </div>
-                <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
                   isLight ? 'bg-green-50 text-green-600' : 'bg-green-500/10 text-green-400'
                 }`}>Yangilangan</span>
               </div>
 
+              {/* Settings rows, not calls to action: opt out of the
+                  panel-wide button paint so the violet "help" and red
+                  "danger" tints these already define actually survive —
+                  deleting an account used to look exactly like opening
+                  support. */}
               <button
+                data-student-button="plain"
                 onClick={() => window.open('https://t.me/yotoqxona_support', '_blank')}
                 className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all hover:scale-[1.01] active:scale-[0.99] ${
                   isLight ? 'bg-slate-50/70 border-slate-100 hover:bg-slate-100' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04]'
@@ -1001,7 +1008,7 @@ export default function StudentProfile() {
                     <HelpCircle size={14} className={isLight ? 'text-violet-600' : 'text-violet-400'} />
                   </div>
                   <div className="text-left">
-                    <p className={`text-[8px] font-black uppercase tracking-widest ${textMuted}`}>Yordam</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Yordam</p>
                     <p className={`text-xs font-bold ${textStrong}`}>Qo&apos;llab-quvvatlash</p>
                   </div>
                 </div>
@@ -1009,6 +1016,7 @@ export default function StudentProfile() {
               </button>
 
               <button
+                data-student-button="plain"
                 onClick={() => setShowDeleteConfirm(true)}
                 className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all hover:scale-[1.01] active:scale-[0.99] ${
                   isLight ? 'bg-red-50/50 border-red-100 hover:bg-red-50' : 'bg-red-500/5 border-red-500/10 hover:bg-red-500/10'
@@ -1019,7 +1027,7 @@ export default function StudentProfile() {
                     <Trash2 size={14} className={isLight ? 'text-red-500' : 'text-red-400'} />
                   </div>
                   <div className="text-left">
-                    <p className={`text-[8px] font-black uppercase tracking-widest ${isLight ? 'text-red-400' : 'text-red-400/60'}`}>Xavfli</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest ${isLight ? 'text-red-400' : 'text-red-400/60'}`}>Xavfli</p>
                     <p className={`text-xs font-bold ${isLight ? 'text-red-600' : 'text-red-400'}`}>Hisobni o&apos;chirish</p>
                   </div>
                 </div>
@@ -1079,10 +1087,10 @@ export default function StudentProfile() {
                     <Edit2 size={18} className="text-white" />
                   </div>
                   <div>
-                    <h2 className={`text-xl sm:text-2xl font-black italic uppercase tracking-tight leading-none ${textStrong}`}>
+                    <h2 className={`text-xl sm:text-2xl font-extrabold tracking-tight leading-none ${textStrong}`}>
                       Profilni tahrirlash
                     </h2>
-                    <p className={`text-[9px] font-black uppercase tracking-[0.2em] mt-0.5 ${textMuted}`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-0.5 ${textMuted}`}>
                       Ma&apos;lumotlarni yangilang
                     </p>
                   </div>
@@ -1116,7 +1124,7 @@ export default function StudentProfile() {
                     : undefined,
                 }}
               >
-                <p className={`text-[9px] font-black uppercase tracking-[0.22em] mb-4 flex items-center gap-1.5 ${textMuted}`}>
+                <p className={`text-[10px] font-bold uppercase tracking-[0.22em] mb-4 flex items-center gap-1.5 ${textMuted}`}>
                   <Camera size={11} className={isLight ? 'text-blue-500' : 'text-cyan-400'} />
                   Profil surati
                 </p>
@@ -1162,7 +1170,7 @@ export default function StudentProfile() {
                     <button
                       onClick={handleAvatarClick}
                       disabled={uploading}
-                      className={`w-full px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 ${
+                      className={`w-full px-4 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 ${
                         isLight
                           ? 'bg-gradient-to-r from-blue-500 to-violet-500 text-white'
                           : 'bg-gradient-to-r from-blue-600/80 to-violet-600/80 text-white border border-white/10 hover:from-blue-500 hover:to-violet-500'
@@ -1176,7 +1184,7 @@ export default function StudentProfile() {
                       <button
                         onClick={handleDeleteAvatar}
                         disabled={uploading}
-                        className={`w-full px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 ${
+                        className={`w-full px-4 py-2.5 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 ${
                           isLight
                             ? 'bg-red-50 border border-red-200 text-red-600 hover:bg-red-100'
                             : 'bg-red-500/10 border border-red-500/15 text-red-400 hover:bg-red-500/20'
@@ -1206,7 +1214,7 @@ export default function StudentProfile() {
                     : undefined,
                 }}
               >
-                <p className={`text-[9px] font-black uppercase tracking-[0.22em] mb-5 flex items-center gap-1.5 ${textMuted}`}>
+                <p className={`text-[10px] font-bold uppercase tracking-[0.22em] mb-5 flex items-center gap-1.5 ${textMuted}`}>
                   <Shield size={11} className={isLight ? 'text-violet-500' : 'text-violet-400'} />
                   Shaxsiy ma&apos;lumotlar
                 </p>
@@ -1221,7 +1229,7 @@ export default function StudentProfile() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.25 + idx * 0.05 }}
                     >
-                      <label className={`flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.2em] mb-2 ${textMuted}`}>
+                      <label className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] mb-2 ${textMuted}`}>
                         <span className={`${isLight ? 'text-blue-500' : 'text-cyan-400'}`}>{icon}</span>
                         {label}
                       </label>
@@ -1304,10 +1312,10 @@ export default function StudentProfile() {
                     <Key size={18} className={isLight ? 'text-violet-600' : 'text-violet-400'} />
                   </div>
                   <div>
-                    <h2 className={`text-lg font-black italic uppercase tracking-tight ${textStrong}`}>
+                    <h2 className={`text-lg font-extrabold tracking-tight ${textStrong}`}>
                       Parolni o&apos;zgartirish
                     </h2>
-                    <p className={`text-[9px] font-bold uppercase tracking-widest ${textMuted}`}>Xavfsizlik sozlamalari</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Xavfsizlik sozlamalari</p>
                   </div>
                 </div>
                 <button 
@@ -1322,7 +1330,7 @@ export default function StudentProfile() {
               <div className="space-y-4">
                 {/* New Password */}
                 <div>
-                  <label className={`block text-[9px] font-black uppercase tracking-widest mb-1.5 ${textMuted}`}>
+                  <label className={`block text-[10px] font-bold uppercase tracking-widest mb-1.5 ${textMuted}`}>
                     Yangi parol
                   </label>
                   <div className="relative">
@@ -1368,7 +1376,7 @@ export default function StudentProfile() {
                       ))}
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: strengthColor }}>
+                      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: strengthColor }}>
                         {strengthLabel}
                       </p>
                     </div>
@@ -1386,7 +1394,7 @@ export default function StudentProfile() {
                           ) : (
                             <X size={10} className={textMuted} />
                           )}
-                          <span className={`text-[9px] font-semibold ${
+                          <span className={`text-[10px] font-semibold ${
                             passwordChecks[key as keyof typeof passwordChecks] ? 'text-green-500' : textMuted
                           }`}>{label}</span>
                         </div>
@@ -1397,7 +1405,7 @@ export default function StudentProfile() {
 
                 {/* Confirm Password */}
                 <div>
-                  <label className={`block text-[9px] font-black uppercase tracking-widest mb-1.5 ${textMuted}`}>
+                  <label className={`block text-[10px] font-bold uppercase tracking-widest mb-1.5 ${textMuted}`}>
                     Parolni tasdiqlash
                   </label>
                   <div className="relative">
@@ -1427,13 +1435,13 @@ export default function StudentProfile() {
                     </button>
                   </div>
                   {confirmNewPassword.length > 0 && newPassword !== confirmNewPassword && (
-                    <p className="text-[9px] font-bold text-red-500 mt-1 flex items-center gap-1">
+                    <p className="text-[10px] font-bold text-red-500 mt-1 flex items-center gap-1">
                       <AlertTriangle size={10} />
                       Parollar mos kelmaydi
                     </p>
                   )}
                   {confirmNewPassword.length > 0 && newPassword === confirmNewPassword && (
-                    <p className="text-[9px] font-bold text-green-500 mt-1 flex items-center gap-1">
+                    <p className="text-[10px] font-bold text-green-500 mt-1 flex items-center gap-1">
                       <Check size={10} />
                       Parollar mos keldi
                     </p>
@@ -1449,7 +1457,7 @@ export default function StudentProfile() {
                     setNewPassword('')
                     setConfirmNewPassword('')
                   }}
-                  className={`flex-1 py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${
+                  className={`flex-1 py-3.5 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all ${
                     isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-white/5 hover:bg-white/10 text-gray-300'
                   }`}
                 >
@@ -1459,7 +1467,7 @@ export default function StudentProfile() {
                 <button
                   onClick={handlePasswordChange}
                   disabled={changingPassword || !newPassword || !confirmNewPassword || newPassword !== confirmNewPassword || Boolean(getPasswordPolicyError(newPassword))}
-                  className="flex-1 py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="flex-1 py-3.5 rounded-xl font-bold uppercase text-[10px] tracking-widest bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {changingPassword ? <Loader size={14} className="animate-spin" /> : <Check size={14} />}
                   <span>{changingPassword ? 'Saqlanmoqda...' : 'Saqlash'}</span>
@@ -1494,28 +1502,31 @@ export default function StudentProfile() {
                 </div>
                 
                 <div>
-                  <h3 className={`text-lg font-black uppercase tracking-tight ${textStrong}`}>Hisobni o&apos;chirish</h3>
+                  <h3 className={`text-lg font-extrabold tracking-tight ${textStrong}`}>Hisobni o&apos;chirish</h3>
                   <p className={`text-xs mt-2 leading-relaxed ${textMuted}`}>
                     Bu amalni qaytarib bo&apos;lmaydi. Barcha ma&apos;lumotlaringiz butunlay o&apos;chiriladi. Davom etishni xohlaysizmi?
                   </p>
                 </div>
 
+                {/* Without the tiers both halves of this dialog rendered as
+                    the same indigo primary button — the irreversible action
+                    looked exactly like the way out of it. */}
                 <div className="flex gap-3 w-full pt-2">
                   <button
+                    data-btn="secondary"
                     onClick={() => setShowDeleteConfirm(false)}
-                    className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${
-                      isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-white/5 hover:bg-white/10 text-gray-300'
-                    }`}
+                    className="flex-1 py-3 rounded-xl font-bold text-xs tracking-tight transition-all"
                   >
                     Bekor qilish
                   </button>
                   <button
+                    data-btn="danger"
                     onClick={async () => {
                       setMessage({ type: 'error', text: 'Hisobni o\'chirish uchun administratorga murojaat qiling' })
                       setShowDeleteConfirm(false)
                       setTimeout(() => setMessage(null), 5000)
                     }}
-                    className="flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest bg-red-600 hover:bg-red-700 text-white transition-all"
+                    className="flex-1 py-3 rounded-xl font-bold text-xs tracking-tight transition-all"
                   >
                     O&apos;chirish
                   </button>

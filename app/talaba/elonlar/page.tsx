@@ -252,13 +252,13 @@ export default function ElonlarPage() {
           
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="space-y-2.5">
-              <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest ${
+              <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
                 isLight ? 'border-blue-100 bg-blue-50 text-blue-600' : 'border-blue-500/20 bg-blue-500/10 text-cyan-400'
               }`}>
                 <Sparkles size={12} />
                 <span>E&apos;lonlar Boshqaruvi</span>
               </div>
-              <h1 className={`text-3xl font-black italic tracking-tight sm:text-5xl uppercase ${textStrong}`}>
+              <h1 className={`text-3xl font-extrabold tracking-tight sm:text-5xl ${textStrong}`}>
                 E&apos;lonlar markazi
               </h1>
               <p className={`max-w-2xl text-xs sm:text-sm leading-relaxed ${textMuted}`}>
@@ -268,11 +268,11 @@ export default function ElonlarPage() {
 
             <div className="flex gap-3 shrink-0">
               <div className={`rounded-2xl border p-4 text-center min-w-20 ${isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/5 bg-white/5'}`}>
-                <p className={`text-[9px] font-black uppercase tracking-wider ${textMuted}`}>Jami</p>
+                <p className={`text-[10px] font-bold uppercase tracking-wider ${textMuted}`}>Jami</p>
                 <p className="mt-1 text-2xl font-black">{activeList.length}</p>
               </div>
               <div className={`rounded-2xl border p-4 text-center min-w-20 ${isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/5 bg-white/5'}`}>
-                <p className="text-[9px] font-black uppercase tracking-wider text-rose-500">Muhim</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-rose-500">Muhim</p>
                 <p className="mt-1 text-2xl font-black text-rose-500">{importantCount}</p>
               </div>
             </div>
@@ -284,32 +284,37 @@ export default function ElonlarPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             
             {/* Left Tabs (Dorm vs Faculty) */}
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-              <button
-                type="button"
-                onClick={() => switchView('dorm')}
-                className={`inline-flex shrink-0 items-center gap-2 rounded-2xl border px-5 py-3 text-xs font-black uppercase tracking-wider transition-all duration-200 ${
-                  view === 'dorm'
-                    ? 'border-blue-500 bg-blue-600 text-white'
-                    : isLight ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50' : 'border-white/5 bg-white/5 text-gray-300 hover:bg-white/10'
-                }`}
-              >
-                <Megaphone size={14} />
-                <span>Yotoqxona e&apos;lonlari</span>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => switchView('faculty')}
-                className={`inline-flex shrink-0 items-center gap-2 rounded-2xl border px-5 py-3 text-xs font-black uppercase tracking-wider transition-all duration-200 ${
-                  view === 'faculty'
-                    ? 'border-emerald-500 bg-emerald-600 text-white'
-                    : isLight ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50' : 'border-white/5 bg-white/5 text-gray-300 hover:bg-white/10'
-                }`}
-              >
-                <GraduationCap size={14} />
-                <span>{currentFaculty ?? 'Mening fakultetim'}</span>
-              </button>
+            {/* Two mutually exclusive views = a segmented control, so it
+                carries one shared track and opts out of the panel-wide
+                button paint (which made both halves look selected). */}
+            <div className={`inline-flex shrink-0 gap-1 rounded-2xl border p-1 ${
+              isLight ? 'border-slate-200 bg-slate-100/70' : 'border-white/10 bg-white/5'
+            }`}>
+              {([
+                { key: 'dorm' as const, icon: Megaphone, label: "Yotoqxona e'lonlari" },
+                { key: 'faculty' as const, icon: GraduationCap, label: currentFaculty ?? 'Mening fakultetim' },
+              ]).map((tab) => {
+                const active = view === tab.key
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    data-student-button="plain"
+                    aria-pressed={active}
+                    onClick={() => switchView(tab.key)}
+                    className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold tracking-tight transition-colors duration-200 ${
+                      active
+                        ? isLight
+                          ? 'bg-white text-indigo-700 shadow-sm'
+                          : 'bg-indigo-500/20 text-indigo-200'
+                        : isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <tab.icon size={14} className="shrink-0" />
+                    <span className="truncate">{tab.label}</span>
+                  </button>
+                )
+              })}
             </div>
 
             {/* Right side Search & Filter badges */}
@@ -327,17 +332,24 @@ export default function ElonlarPage() {
                 />
               </div>
 
-              {/* Filter pills */}
-              <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+              {/* Filter pills — wrap rather than scroll: the row hid
+                  "Ogohlantirish" past its right edge with no scrollbar
+                  (no-scrollbar) and no fade to hint at it, so the filter was
+                  unreachable unless you guessed it was there. */}
+              <div className="flex flex-wrap gap-1.5 pb-1">
                 {FILTERS.map((item) => (
                   <button
                     type="button"
                     key={item}
+                    data-student-button="plain"
+                    aria-pressed={filter === item}
                     onClick={() => setFilter(item)}
-                    className={`shrink-0 rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-wider transition-all ${
-                      filter === item 
-                        ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-950' 
-                        : isLight ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' : 'border-white/5 bg-white/5 text-gray-300 hover:bg-white/10'
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-bold tracking-tight transition-colors ${
+                      filter === item
+                        ? isLight
+                          ? 'border-indigo-600 bg-indigo-600 text-white'
+                          : 'border-indigo-400 bg-indigo-500 text-white'
+                        : isLight ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
                     }`}
                   >
                     {item}
@@ -383,11 +395,11 @@ export default function ElonlarPage() {
                     <div className="space-y-2.5 w-full">
                       <div className="flex justify-between items-center gap-2">
                         <div className="flex items-center gap-2">
-                          <span className={`rounded-md border px-2.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${styles.badge}`}>
+                          <span className={`rounded-md border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${styles.badge}`}>
                             {elon.type}
                           </span>
                           {elon.is_from_captain && (
-                            <span className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-purple-400">
+                            <span className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-purple-400">
                               🌟 Qavat Sardori
                             </span>
                           )}
@@ -438,7 +450,7 @@ export default function ElonlarPage() {
             
             {/* Filters count widget */}
             <div className={`rounded-[28px] border p-5 space-y-4 ${panel}`}>
-              <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] ${textStrong}`}>
+              <h3 className={`text-[10px] font-extrabold tracking-[0.2em] ${textStrong}`}>
                 Toifalar bo&apos;yicha
               </h3>
               
@@ -473,7 +485,7 @@ export default function ElonlarPage() {
             <div className={`rounded-[28px] border p-6 space-y-4 ${panel}`}>
               <div className="flex items-center gap-2 text-rose-500">
                 <Info size={16} />
-                <h4 className="text-xs font-black uppercase tracking-wider">Favqulodda Aloqa</h4>
+                <h4 className="text-xs font-extrabold tracking-wider">Favqulodda Aloqa</h4>
               </div>
               <p className={`text-xs leading-relaxed ${textMuted}`}>
                 Agarda yotoqxonada texnik yoki boshqa xavfli holatlar yuzaga kelsa, zudlik bilan navbatchi tarbiyachiga yoki xavfsizlik bo&apos;limiga xabar bering.
@@ -550,10 +562,10 @@ export default function ElonlarPage() {
               </button>
               
               <div className="space-y-3">
-                <span className="rounded-md bg-white/20 border border-white/10 px-3 py-1 text-[8px] font-black uppercase tracking-widest inline-block">
+                <span className="rounded-md bg-white/20 border border-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest inline-block">
                   {selectedElon.type}
                 </span>
-                <h2 className="text-xl sm:text-2xl font-black italic tracking-tight leading-tight">{selectedElon.title}</h2>
+                <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">{selectedElon.title}</h2>
               </div>
             </div>
 
@@ -563,18 +575,18 @@ export default function ElonlarPage() {
               {/* Metadata strip */}
               <div className="grid grid-cols-2 gap-3">
                 <div className={`p-3 rounded-xl border ${isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/5 bg-white/5'}`}>
-                  <span className={`text-[8px] font-black uppercase tracking-wider block ${textMuted} mb-0.5`}>Mas&apos;ul</span>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider block ${textMuted} mb-0.5`}>Mas&apos;ul</span>
                   <span className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-500 inline-block">{selectedElon.teacher || "Tizim ma'muri"}</span>
                 </div>
                 <div className={`p-3 rounded-xl border ${isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/5 bg-white/5'}`}>
-                  <span className={`text-[8px] font-black uppercase tracking-wider block ${textMuted} mb-0.5`}>Sana / Joy</span>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider block ${textMuted} mb-0.5`}>Sana / Joy</span>
                   <span className={`text-xs font-bold ${textStrong}`}>{selectedElon.date} • {selectedElon.room || "—"}</span>
                 </div>
               </div>
 
               {/* Text content details */}
               <div className="space-y-1.5">
-                <span className={`text-[8px] font-black uppercase tracking-widest ${textMuted}`}>Batafsil ma&apos;lumot</span>
+                <span className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Batafsil ma&apos;lumot</span>
                 <div className={`p-4 rounded-xl border italic text-xs sm:text-sm leading-relaxed ${
                   isLight ? 'bg-slate-50/50 border-slate-100 text-slate-700' : 'bg-white/5 border-white/5 text-gray-300'
                 }`}>

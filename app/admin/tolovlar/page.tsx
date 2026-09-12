@@ -8,7 +8,7 @@ import {
   CreditCard, Search, Check, X, Clock, AlertCircle,
   Eye, FileText, User,
   Sparkles, CheckCircle2, Loader,
-  Layers
+  Layers, AlertTriangle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Skel } from '@/components/ui/skeletons'
@@ -51,6 +51,10 @@ export default function AdminTolovlarPage() {
   const [submitting, setSubmitting] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
   const [receiptSignedUrl, setReceiptSignedUrl] = useState<string | null>(null)
+  // Separate from `receiptSignedUrl === null`, which also means "still
+  // loading" — without it a receipt that fails to load span the spinner
+  // forever and the reviewer had no idea anything had gone wrong.
+  const [receiptError, setReceiptError] = useState(false)
 
   // The `receipts` bucket is private — resolve a fresh signed URL whenever
   // the selected batch's receipt is shown, instead of using the stored
@@ -59,13 +63,15 @@ export default function AdminTolovlarPage() {
     const paymentId = selectedGroup?.records[0]?.id
     if (!paymentId) {
       setReceiptSignedUrl(null)
+      setReceiptError(false)
       return
     }
     let cancelled = false
     setReceiptSignedUrl(null)
+    setReceiptError(false)
     fetchReceiptSignedUrl(paymentId)
       .then((url) => { if (!cancelled) setReceiptSignedUrl(url) })
-      .catch(() => { if (!cancelled) setReceiptSignedUrl(null) })
+      .catch(() => { if (!cancelled) setReceiptError(true) })
     return () => { cancelled = true }
   }, [selectedGroup?.records])
 
@@ -328,7 +334,11 @@ export default function AdminTolovlarPage() {
                 {tab === 'waiting' && `Kutilmoqda (${countWaiting})`}
                 {tab === 'approved' && `Tasdiqlangan (${countApproved})`}
                 {tab === 'rejected' && `Rad etilgan (${countRejected})`}
-                {tab === 'all' && `Barchasi (${records.length})`}
+                {/* allGroups, not records: the three counters above count
+                    cards (one per student's batch) and so does the list
+                    below, so counting raw payment rows here promised 71
+                    items where the tab actually renders 22. */}
+                {tab === 'all' && `Barchasi (${allGroups.length})`}
               </button>
             )
           })}
@@ -580,6 +590,15 @@ export default function AdminTolovlarPage() {
                           <Eye size={16} />
                         </button>
                       </>
+                    ) : receiptError ? (
+                      <div className="flex flex-col items-center gap-2 p-6 text-center">
+                        <AlertTriangle size={28} className="text-amber-500" />
+                        <p className={`text-xs font-bold ${textStrong}`}>Chekni ochib bo&apos;lmadi</p>
+                        <p className={`text-[11px] ${textMuted}`}>
+                          Fayl o&apos;chirilgan yoki vaqtincha mavjud emas. Tasdiqlashdan oldin
+                          talabadan chekni qayta yuborishini so&apos;rang.
+                        </p>
+                      </div>
                     ) : (
                       <Loader size={24} className="animate-spin text-slate-400" />
                     )}

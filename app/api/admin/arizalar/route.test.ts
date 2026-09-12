@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError } from '@/server/http/api-error'
 
 const requireActiveStaff = vi.fn()
 

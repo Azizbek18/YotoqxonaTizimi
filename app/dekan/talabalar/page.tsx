@@ -651,9 +651,15 @@ export default function DekanStudentsPage() {
     {
       title: 'Kutilayotgan cheklar',
       count: waitingCount,
+      // The five cards above are shares of the student body; this one is a
+      // share of submitted receipts, so the bar reads far higher than the
+      // same number would against `totalCount`. Name the base in the
+      // description — otherwise "93%" looks like 93% of the faculty.
       percentage: payments.length ? Math.round((waitingCount / payments.length) * 100) : 0,
       icon: Clock,
-      description: waitingCount > 0 ? 'Admin tasdig‘ini kutmoqda' : undefined,
+      description: waitingCount > 0
+        ? `${waitingCount} / ${payments.length} chekdan · admin tasdig‘ini kutmoqda`
+        : undefined,
     },
   ]
 

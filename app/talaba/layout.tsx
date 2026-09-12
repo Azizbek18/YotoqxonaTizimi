@@ -11,7 +11,7 @@ import {
   LayoutDashboard, Megaphone, ListOrdered, ShieldCheck,
   UserCircle, Bell, Moon, Zap, Clock, CreditCard, FileText,
   X, AlertTriangle, CheckCircle2, AlertCircle, Upload, Sparkles,
-  Code, Send, Phone, ExternalLink, Camera
+  Code, Send, Phone, ExternalLink, Camera, ChevronRight
 } from 'lucide-react'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
@@ -88,14 +88,17 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
 
+// Five destinations, the platform maximum for a tab bar — seven left each
+// target barely wider than a fingertip on a 360px phone. The two that came
+// out stay one tap away: Profil is the header avatar (on every page) and
+// Qoidalar hangs off the discipline card, which is what sends students
+// looking for the rules in the first place.
 const NAV = [
   { icon: LayoutDashboard, label: 'Asosiy', href: '/talaba/dashboard' },
   { icon: Megaphone, label: "E'lonlar", href: '/talaba/elonlar' },
   { icon: ListOrdered, label: 'Navbat', href: '/talaba/navbat' },
-  { icon: ShieldCheck, label: 'Qoidalar', href: '/talaba/qoidalar' },
   { icon: CreditCard, label: "To'lov", href: '/talaba/tolova' },
   { icon: FileText, label: 'Arizalar', href: '/talaba/arizalar' },
-  { icon: UserCircle, label: 'Profil', href: '/talaba/profil' },
 ]
 
 const QUICK_ACTIONS = [
@@ -329,8 +332,18 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
           sticky containing block instead of the viewport, breaking `sticky top-0`. */}
       <header className={`fixed top-0 left-0 right-0 z-50 px-3 max-[359px]:px-2 sm:px-6 py-3 sm:py-4 transition-all ${isLight ? 'bg-white border-b border-slate-200' : 'bg-[#02040a] border-b border-white/5'}`}>
         <div className="max-w-6xl mx-auto flex justify-between items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-linear-to-tr p-px shrink-0 ${isLight ? 'from-blue-600 to-blue-400' : 'from-blue-600 to-cyan-400'}`}>
+          {/* The avatar is now the way into Profil (it left the tab bar), so
+              it has to actually be a link on every page — it used to be an
+              inert <div>. */}
+          <Link
+            href="/talaba/profil"
+            aria-label="Profil"
+            aria-current={pathname.startsWith('/talaba/profil') ? 'page' : undefined}
+            className={`group flex items-center gap-2 sm:gap-3 min-w-0 flex-1 -my-1 py-1 pr-2 rounded-2xl transition-colors ${
+              isLight ? 'hover:bg-slate-100' : 'hover:bg-white/5'
+            }`}
+          >
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-linear-to-tr p-px shrink-0 transition-transform group-hover:scale-105 ${isLight ? 'from-indigo-600 to-indigo-400' : 'from-indigo-600 to-cyan-400'}`}>
               <div className={`relative w-full h-full rounded-[15px] flex items-center justify-center overflow-hidden ${isLight ? 'bg-white' : 'bg-[#02040a]'}`}>
                 {profile?.avatar_url ? (
                   <Image
@@ -341,7 +354,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                     className="rounded-[15px] object-cover"
                   />
                 ) : (
-                  <UserCircle className={isLight ? 'text-blue-600' : 'text-cyan-400'} size={20} />
+                  <UserCircle className={isLight ? 'text-indigo-600' : 'text-cyan-400'} size={20} />
                 )}
               </div>
             </div>
@@ -349,12 +362,13 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
               <h2 className={`text-xs sm:text-sm font-bold tracking-tight truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
                 {profile?.full_name ? `${profile.full_name.split(' ')[0]} 👋` : 'Talaba 👋'}
               </h2>
-              <div className={`flex items-center gap-1.5 text-[8px] sm:text-[10px] font-medium uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>
-                <Clock size={8} className="shrink-0" />
-                <span className="truncate">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {profile?.room_number ? `${profile.room_number}-Xona` : 'Yotoqxona'}</span>
+              <div className={`flex items-center gap-1.5 text-[10px] sm:text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>
+                <Clock size={9} className="shrink-0" />
+                <span className="truncate">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {profile?.room_number ? `${profile.room_number}-xona` : 'Yotoqxona'}</span>
               </div>
             </div>
-          </div>
+            <ChevronRight size={16} className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${isLight ? 'text-slate-400' : 'text-slate-600'}`} />
+          </Link>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <div className="max-[359px]:scale-90 max-[359px]:-mx-1">
@@ -395,7 +409,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
 
         {/* Quick Actions Scrollable Row */}
         <section className="mb-6 sm:mb-8">
-          <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] mb-3 sm:mb-4 ml-1 ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Tezkor amallar</p>
+          <p className={`text-[11px] sm:text-xs font-semibold mb-2.5 sm:mb-3 ml-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Tezkor amallar</p>
           <div className="flex gap-2 sm:gap-4 overflow-x-auto no-scrollbar pb-2">
             {QUICK_ACTIONS.map((action) => (
               <motion.button
@@ -440,13 +454,16 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
               <Link key={item.href} href={item.href} aria-label={item.label} aria-current={isActive ? 'page' : undefined} className="relative shrink-0 flex-1 min-w-0 group">
                 <motion.div
                   whileTap={{ scale: 0.97 }}
-                  className="flex flex-col items-center justify-center py-2 sm:py-2.5 relative z-10 px-1"
+                  /* min-h-[52px] keeps every tab above the 44pt/48dp touch
+                     minimum once the label row is counted. */
+                  className="flex flex-col items-center justify-center min-h-[52px] py-1.5 relative z-10 px-0.5"
                 >
-                  {/* Active Indicator (Liquid Pill) */}
+                  {/* One active indicator, not three (pill + underline +
+                      icon glow all fired at once before). */}
                   {isActive && (
                     <motion.div
                       layoutId="nav-active-pill"
-                      className={`absolute inset-0 rounded-xl sm:rounded-[20px] border shadow-inner ${isLight ? 'bg-linear-to-tr from-blue-500/15 via-blue-500/5 to-transparent border-blue-500/15' : 'bg-linear-to-tr from-cyan-500/20 via-blue-500/10 to-transparent border-cyan-500/20'}`}
+                      className={`absolute inset-0 rounded-2xl ${isLight ? 'bg-indigo-50 border border-indigo-100' : 'bg-indigo-500/15 border border-indigo-400/20'}`}
                       transition={{
                         type: 'spring',
                         stiffness: 380,
@@ -456,33 +473,25 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                     />
                   )}
 
-                  <div className="relative mb-0.5 sm:mb-1">
+                  <div className="relative mb-1">
                     <item.icon
-                      size={18}
-                      strokeWidth={isActive ? 2.5 : 1.8}
-                      className={`transition-all duration-300 ${isActive ? isLight ? 'text-blue-600 drop-shadow-[0_0_10px_rgba(37,99,235,0.5)]' : 'text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]' : isLight ? 'text-slate-400 group-hover:text-slate-500' : 'text-slate-500 group-hover:text-slate-300'
+                      size={20}
+                      strokeWidth={isActive ? 2.4 : 1.9}
+                      className={`transition-colors duration-200 ${isActive ? isLight ? 'text-indigo-600' : 'text-indigo-300' : isLight ? 'text-slate-400 group-hover:text-slate-600' : 'text-slate-500 group-hover:text-slate-300'
                         }`}
                     />
                   </div>
 
-                  <span className={`h-3 text-[6px] sm:text-[9px] font-black uppercase tracking-wider sm:tracking-widest transition-opacity duration-150 ${isActive ? isLight ? 'text-blue-600 opacity-100' : 'text-cyan-400 opacity-100' : isLight ? 'text-slate-500 opacity-0 overflow-hidden' : 'text-slate-500 opacity-0 overflow-hidden'
+                  {/* Always legible: a tab bar whose inactive labels are
+                      hidden (and 6px when shown) forces students to guess
+                      what six unlabelled icons do. */}
+                  {/* `relative` is load-bearing: the active pill is
+                      absolutely positioned, so an unpositioned label paints
+                      underneath it and disappears on the active tab. */}
+                  <span className={`relative block w-full truncate text-center text-[10px] leading-none font-bold tracking-tight ${isActive ? isLight ? 'text-indigo-600' : 'text-indigo-300' : isLight ? 'text-slate-500' : 'text-slate-400'
                     }`}>
                     {item.label}
                   </span>
-
-                  {/* Active Bottom Bar */}
-                  {isActive && (
-                    <motion.div
-                      layoutId="active-bar"
-                      className={`absolute -bottom-0.5 sm:-bottom-1 w-3 h-0.5 rounded-full ${isLight ? 'bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.5)]' : 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]'}`}
-                      transition={{
-                        type: 'spring',
-                        stiffness: 380,
-                        damping: 30,
-                        mass: 0.8
-                      }}
-                    />
-                  )}
                 </motion.div>
               </Link>
             )
@@ -530,7 +539,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                 {notifications.length > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all border ${
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all border ${
                       isLight
                         ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                         : 'bg-white/5 border-white/5 text-gray-300 hover:bg-white/10'
@@ -590,7 +599,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
                       <div className="space-y-1 min-w-0 flex-1">
                         <div className="flex justify-between items-start gap-2">
                           <h4 className="text-xs font-black uppercase tracking-wider truncate">{notif.title}</h4>
-                          <span className="text-[8px] font-semibold shrink-0 uppercase opacity-60">
+                          <span className="text-[10px] font-semibold shrink-0 uppercase opacity-60">
                             {new Date(notif.time).toLocaleDateString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
@@ -633,11 +642,40 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* Unified Duolingo-inspired action language for the student panel. */
+        /* Unified Duolingo-inspired action language for the student panel.
+           One hue (indigo) in four deliberate tiers instead of painting every
+           button the same four-stop rainbow — that left the page with no
+           primary action and made "Hisobni o'chirish" look exactly like
+           "Qo'llab-quvvatlash". The chunky shelf depth is kept on purpose.
+
+             (default)              -> primary   solid brand + shelf
+             data-btn="secondary"   -> tonal tint, brand text
+             data-btn="ghost"       -> text only
+             data-btn="danger"      -> rose solid + shelf
+             data-student-button="plain" -> opt out entirely (unchanged) */
         body.talaba-ui {
-          --student-button-edge: #1d4ed8;
-          --student-button-focus: rgba(56, 189, 248, 0.48);
-          --student-button-shadow: rgba(37, 99, 235, 0.24);
+          --student-button-edge: #3730a3;
+          --student-button-focus: rgba(99, 102, 241, 0.5);
+          --student-button-shadow: rgba(79, 70, 229, 0.28);
+          --sb-top: #6366f1;
+          --sb-bottom: #4f46e5;
+          --sb-tonal-bg: rgba(99, 102, 241, 0.16);
+          --sb-tonal-edge: rgba(99, 102, 241, 0.3);
+          --sb-tonal-text: #c7d2fe;
+          --sb-ghost-text: #94a3b8;
+          --sb-ghost-hover: rgba(148, 163, 184, 0.14);
+          --sb-danger-top: #f43f5e;
+          --sb-danger-bottom: #e11d48;
+          --sb-danger-edge: #9f1239;
+          --sb-danger-shadow: rgba(225, 29, 72, 0.28);
+        }
+
+        html.theme-light body.talaba-ui {
+          --sb-tonal-bg: #eef2ff;
+          --sb-tonal-edge: #c7d2fe;
+          --sb-tonal-text: #4338ca;
+          --sb-ghost-text: #475569;
+          --sb-ghost-hover: rgba(71, 85, 105, 0.08);
         }
 
         body.talaba-ui :is(
@@ -657,13 +695,15 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
           a[class*="bg-linear-to-"]
         ):not([data-student-button="plain"]) {
           color: #ffffff !important;
-          background-color: #2563eb !important;
-          background-image: linear-gradient(135deg, #7c3aed 0%, #4f46e5 34%, #2563eb 68%, #06b6d4 100%) !important;
-          border-color: rgba(255, 255, 255, 0.28) !important;
+          background-color: var(--sb-bottom) !important;
+          /* One hue, top-lit — reads as a solid brand button with depth
+             rather than a four-colour gradient competing for attention. */
+          background-image: linear-gradient(180deg, var(--sb-top) 0%, var(--sb-bottom) 100%) !important;
+          border-color: rgba(255, 255, 255, 0.2) !important;
           box-shadow:
-            0 5px 0 var(--student-button-edge),
-            0 10px 22px var(--student-button-shadow) !important;
-          text-shadow: 0 1px 1px rgba(15, 23, 42, 0.22);
+            0 4px 0 var(--student-button-edge),
+            0 8px 18px var(--student-button-shadow) !important;
+          text-shadow: 0 1px 1px rgba(15, 23, 42, 0.18);
           translate: 0 0;
           transition:
             translate 140ms ease,
@@ -689,11 +729,11 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
           a[class*="bg-gradient-to-"],
           a[class*="bg-linear-to-"]
         ):not([data-student-button="plain"]):not(:disabled):hover {
-          filter: brightness(1.07) saturate(1.08);
+          filter: brightness(1.06);
           translate: 0 -1px;
           box-shadow:
-            0 6px 0 var(--student-button-edge),
-            0 12px 26px var(--student-button-shadow) !important;
+            0 5px 0 var(--student-button-edge),
+            0 10px 22px var(--student-button-shadow) !important;
         }
 
         body.talaba-ui :is(
@@ -713,10 +753,64 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
           a[class*="bg-linear-to-"]
         ):not([data-student-button="plain"]):not(:disabled):active {
           filter: brightness(0.98);
-          translate: 0 4px;
+          translate: 0 3px;
           box-shadow:
             0 1px 0 var(--student-button-edge),
-            0 4px 10px rgba(37, 99, 235, 0.18) !important;
+            0 3px 8px var(--student-button-shadow) !important;
+        }
+
+        /* ── Tier: secondary ── tonal tint, brand text, shallower shelf.
+           For the supporting action next to a primary one. */
+        body.talaba-ui [data-btn="secondary"]:not([data-student-button="plain"]) {
+          color: var(--sb-tonal-text) !important;
+          background-color: var(--sb-tonal-bg) !important;
+          background-image: none !important;
+          border-color: var(--sb-tonal-edge) !important;
+          box-shadow: 0 3px 0 var(--sb-tonal-edge) !important;
+          text-shadow: none;
+        }
+        body.talaba-ui [data-btn="secondary"]:not([data-student-button="plain"]):not(:disabled):hover {
+          filter: none;
+          background-color: var(--sb-tonal-edge) !important;
+          box-shadow: 0 4px 0 var(--sb-tonal-edge) !important;
+        }
+
+        /* ── Tier: ghost ── no fill at all; for tertiary/dismiss actions. */
+        body.talaba-ui [data-btn="ghost"]:not([data-student-button="plain"]) {
+          color: var(--sb-ghost-text) !important;
+          background-color: transparent !important;
+          background-image: none !important;
+          border-color: transparent !important;
+          box-shadow: none !important;
+          text-shadow: none;
+        }
+        body.talaba-ui [data-btn="ghost"]:not([data-student-button="plain"]):not(:disabled):hover {
+          filter: none;
+          translate: 0 0;
+          background-color: var(--sb-ghost-hover) !important;
+          box-shadow: none !important;
+        }
+        body.talaba-ui [data-btn="ghost"]:not([data-student-button="plain"]):not(:disabled):active {
+          translate: 0 1px;
+          box-shadow: none !important;
+        }
+
+        /* ── Tier: danger ── destructive actions must never be mistaken for
+           the brand action (account deletion used to look identical to the
+           support link). */
+        body.talaba-ui [data-btn="danger"]:not([data-student-button="plain"]) {
+          color: #ffffff !important;
+          background-color: var(--sb-danger-bottom) !important;
+          background-image: linear-gradient(180deg, var(--sb-danger-top) 0%, var(--sb-danger-bottom) 100%) !important;
+          border-color: rgba(255, 255, 255, 0.2) !important;
+          box-shadow:
+            0 4px 0 var(--sb-danger-edge),
+            0 8px 18px var(--sb-danger-shadow) !important;
+        }
+        body.talaba-ui [data-btn="danger"]:not([data-student-button="plain"]):not(:disabled):hover {
+          box-shadow:
+            0 5px 0 var(--sb-danger-edge),
+            0 10px 22px var(--sb-danger-shadow) !important;
         }
 
         body.talaba-ui button:not([data-student-button="plain"]):disabled {
@@ -1437,7 +1531,7 @@ function ProfileSetupModal({ profile, onComplete, isLight }: ProfileSetupProps) 
                       setPreview(null)
                       setAiResult(null)
                     }}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${
+                    className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${
                       isLight
                         ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
                         : 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
@@ -1605,7 +1699,7 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
 
         {/* Team MTalaba info */}
         <div className="space-y-1.5 mb-5 text-xs text-left">
-          <h5 className={`font-black uppercase tracking-wider text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>MTalaba Jamoasi</h5>
+          <h5 className={`font-bold uppercase tracking-wider text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>MTalaba Jamoasi</h5>
           <p className={`leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
             MTalaba jamoasi - oliy ta&apos;lim muassasalari va yotoqxona hayotini raqamlashtirish uchun zamonaviy dasturiy yechimlar yaratadigan talaba-dasturchilar va dizaynerlar jamoasidir.
           </p>
@@ -1613,7 +1707,7 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
 
         {/* Suggestion Form */}
         <div className="border-t border-dashed pt-4 border-slate-700/30 dark:border-white/10 text-left">
-          <h5 className={`font-black uppercase tracking-wider text-[10px] mb-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Taklif yuborish</h5>
+          <h5 className={`font-bold uppercase tracking-wider text-[10px] mb-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Taklif yuborish</h5>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <p className={`text-[10px] leading-relaxed mb-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>

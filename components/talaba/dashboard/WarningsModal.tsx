@@ -22,7 +22,7 @@ export default function WarningsModal({ open, onClose, items, onSelect }: Props)
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={onClose}>
       <div className="bg-[#0b0f19] border border-white/5 p-4 sm:p-7 rounded-2xl sm:rounded-[40px] shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4 sm:mb-6">
-          <h4 className="text-xl font-black italic flex items-center gap-2 uppercase tracking-tighter text-indigo-400">
+          <h4 className="text-xl font-extrabold flex items-center gap-2 tracking-tighter text-indigo-400">
             <FileText /> Arizalar &amp; Ogohlantirishlar
           </h4>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-all text-gray-400 cursor-pointer"><X /></button>
@@ -40,8 +40,8 @@ export default function WarningsModal({ open, onClose, items, onSelect }: Props)
                 className={`p-4 rounded-2xl border bg-white/5 cursor-pointer transition-all duration-200 hover:translate-x-1 ${borderGlow}`}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">{ariza.sana}</span>
-                  <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase ${
+                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">{ariza.sana}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase ${
                     ariza.daraja === 'danger' ? 'bg-red-500/10 text-red-400' :
                     ariza.daraja === 'warning' ? 'bg-amber-500/10 text-amber-400' :
                     'bg-blue-500/10 text-blue-400'

@@ -3,9 +3,11 @@ const baseUrl = process.env.APP_TEST_BASE_URL ?? 'http://127.0.0.1:3000'
 const checks = [
   { path: '/', status: 200 },
   { path: '/login', status: 200 },
-  { path: '/admin/login', status: 200 },
   { path: '/register', status: 200 },
-  { path: '/admin/foydalanuvchilar', status: 307, location: '/admin/login' },
+  // The standalone /admin shell is retired — proxy.ts maps every /admin/*
+  // path onto its /dekan/* home (see LEGACY_ADMIN_REDIRECTS there).
+  { path: '/admin/login', status: 307, location: '/login' },
+  { path: '/admin/foydalanuvchilar', status: 307, location: '/dekan/talabalar' },
   { path: '/dekan/sozlamalar', status: 307, location: '/login' },
   { path: '/talaba/tolova', status: 307, location: '/login' },
   { path: '/talaba/dashboard', status: 307, location: '/login' },

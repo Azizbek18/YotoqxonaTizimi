@@ -57,7 +57,7 @@ export default function MyApplicationsCard({ isLight, items }: Props) {
       <div className="flex flex-col min-[380px]:flex-row min-[380px]:justify-between min-[380px]:items-center gap-3 mb-5">
         <div className="flex items-start gap-2 min-w-0">
           <ClipboardList className={isLight ? 'text-blue-600' : 'text-indigo-400'} size={18} />
-          <h3 className={`text-[11px] sm:text-xs font-black uppercase tracking-[0.14em] sm:tracking-[0.2em] leading-relaxed ${t.textStrong}`}>
+          <h3 className={`text-[11px] sm:text-sm font-extrabold leading-relaxed ${t.textStrong}`}>
             Murojaat va Arizalarim Statusi
           </h3>
         </div>
@@ -78,12 +78,12 @@ export default function MyApplicationsCard({ isLight, items }: Props) {
               <div className={`p-4 rounded-2xl border ${t.cardBorder} ${t.cardInnerBg} flex flex-col justify-between gap-3`}>
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-[9px] font-black uppercase text-indigo-400">{typeLabel}</span>
-                    <span className="text-[9px] font-bold text-gray-500">{formatElonDate(app.createdDate)}</span>
+                    <span className="text-[10px] font-bold uppercase text-indigo-400">{typeLabel}</span>
+                    <span className="text-[10px] font-bold text-gray-500">{formatElonDate(app.createdDate)}</span>
                   </div>
-                  <h4 className={`text-xs font-bold line-clamp-2 ${t.textStrong}`}>{app.title}</h4>
+                  <h4 className={`text-sm font-bold line-clamp-2 ${t.textStrong}`}>{app.title}</h4>
                 </div>
-                <div className={`flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-lg self-start border ${info.badgeClass}`}>
+                <div className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg self-start border ${info.badgeClass}`}>
                   <StatusIcon size={10} />
                   <span>{info.label}</span>
                 </div>
@@ -111,7 +111,7 @@ export default function MyApplicationsCard({ isLight, items }: Props) {
               <span className="absolute inset-0 rounded-2xl bg-current opacity-10 blur-sm animate-pulse" />
             </motion.div>
 
-            <h4 className={`text-sm font-black mb-1 text-center tracking-wide uppercase ${t.textStrong}`}>
+            <h4 className={`text-sm font-extrabold mb-1 text-center tracking-wide ${t.textStrong}`}>
               Murojaatlar mavjud emas
             </h4>
             <p className={`text-xs text-center max-w-[280px] mb-5 leading-relaxed ${t.textMuted}`}>

@@ -34,21 +34,31 @@ export default function AnnouncementsBoard({ isLight, items, category, onCategor
     <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${t.surfaceBg}`}>
       <div className="flex flex-col gap-3.5 mb-6">
         <div>
-          <h3 className={`text-base font-black uppercase tracking-wider flex items-center gap-2 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`}>
+          <h3 className={`text-base font-extrabold flex items-center gap-2 ${isLight ? 'text-blue-600' : 'text-indigo-400'}`}>
             <Megaphone size={18} /> E&apos;lonlar va Xabarnomalar
           </h3>
           <p className={`text-[10px] mt-1 ${t.textMuted}`}>Yotoqxona ma&apos;muriyati tomonidan chop etilgan so&apos;nggi yangiliklar.</p>
         </div>
 
-        <div className="flex overflow-x-auto no-scrollbar gap-1.5 max-w-full pb-1 flex-nowrap shrink-0">
+        {/* A segmented filter, not five primary actions — hence
+            data-student-button="plain" (the panel-wide rule would otherwise
+            paint active and inactive chips identically) and flex-wrap
+            (no-scrollbar hid the last category off the right edge). */}
+        <div className="flex flex-wrap gap-1.5 max-w-full shrink-0">
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
+              data-student-button="plain"
               onClick={() => onCategoryChange(cat)}
-              className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all duration-200 shrink-0 ${
+              aria-pressed={category === cat}
+              className={`px-3 py-1.5 rounded-full border text-[11px] font-bold tracking-tight transition-colors duration-200 ${
                 category === cat
-                  ? 'bg-blue-600 text-white'
-                  : isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-white/5 hover:bg-white/10 text-gray-300'
+                  ? isLight
+                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    : 'bg-indigo-500 border-indigo-400 text-white'
+                  : isLight
+                    ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
               }`}
             >
               {cat}
@@ -70,11 +80,11 @@ export default function AnnouncementsBoard({ isLight, items, category, onCategor
             >
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-2.5">
-                  <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${styles.badge}`}>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${styles.badge}`}>
                     {elon.type}
                   </span>
                   {elon.is_from_captain && (
-                    <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border border-purple-500/30 bg-purple-500/10 text-purple-400">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border border-purple-500/30 bg-purple-500/10 text-purple-400">
                       🌟 Qavat Sardori
                     </span>
                   )}

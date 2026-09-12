@@ -15,7 +15,7 @@ export default function RoommatesCard({ isLight, roommates }: Props) {
   const t = dashboardTheme(isLight);
   return (
     <div className={`backdrop-blur-xl border rounded-3xl sm:rounded-[32px] p-4 sm:p-6 ${t.surfaceBg}`}>
-      <h3 className={`text-[10px] font-black tracking-[0.2em] mb-4 uppercase ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>
+      <h3 className={`text-[10px] font-extrabold mb-4 ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>
         Xonadoshlar ({roommates.length} kishi)
       </h3>
 
@@ -28,12 +28,12 @@ export default function RoommatesCard({ isLight, roommates }: Props) {
                 isLight ? 'bg-white border-slate-200' : 'bg-white/5 border-transparent'
               }`}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black border bg-blue-500/10 text-cyan-400 border-blue-500/20">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-bold border bg-blue-500/10 text-cyan-400 border-blue-500/20">
                     {initials}
                   </div>
                   <div>
                     <p className={`text-xs font-bold ${t.textStrong}`}>{roommate.full_name}</p>
-                    <p className={`text-[9px] ${t.textMuted}`}>{roommate.course || 1}-kurs | {roommate.faculty || 'Talaba'}</p>
+                    <p className={`text-[10px] ${t.textMuted}`}>{roommate.course || 1}-kurs | {roommate.faculty || 'Talaba'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

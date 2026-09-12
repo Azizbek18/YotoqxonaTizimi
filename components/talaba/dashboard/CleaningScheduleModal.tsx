@@ -92,7 +92,7 @@ export default function CleaningScheduleModal({
             {/* Modal Header */}
             <div className={`relative z-10 shrink-0 flex justify-between items-center gap-3 border-b px-4 sm:px-8 pt-4 sm:pt-8 pb-4 ${isLight ? 'border-slate-200' : 'border-white/5'}`}>
               <div className="min-w-0">
-                <h2 className="text-xl sm:text-2xl font-black italic uppercase tracking-tight flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2">
                   🧹 Tozalik Navbatchiligi
                 </h2>
                 <p className={`text-xs mt-1 truncate ${textMuted}`}>
@@ -115,7 +115,7 @@ export default function CleaningScheduleModal({
             <div className="relative z-10 flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 sm:px-8 py-4 sm:py-6 space-y-8">
               {/* Top Section: Weekdays List */}
               <div>
-                <h3 className="text-xs font-black uppercase tracking-widest text-blue-500 mb-4">
+                <h3 className="text-sm font-extrabold tracking-widest text-blue-500 mb-4">
                   📅 Hafta Kunlari (Navbatchilik Slotlari)
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
@@ -142,7 +142,7 @@ export default function CleaningScheduleModal({
                                 : 'border-dashed border-white/10 bg-slate-950/20 hover:bg-white/5 hover:border-white/20'
                         }`}
                       >
-                        <span className={`text-[10px] font-black uppercase tracking-wider mb-2 truncate ${
+                        <span className={`text-[10px] font-bold uppercase tracking-wider mb-2 truncate ${
                           assigned
                             ? isLight ? 'text-blue-600' : 'text-cyan-400'
                             : textMuted
@@ -175,7 +175,7 @@ export default function CleaningScheduleModal({
               {/* Bottom Section: Roommates (Draggable Cards) */}
               <div>
                 <div className="flex justify-between items-center gap-2 mb-4">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-indigo-500 truncate">
+                  <h3 className="text-sm font-extrabold tracking-widest text-indigo-500 truncate">
                     👥 Xonadoshlar (Ushlab torting yoki Tanlang)
                   </h3>
                   <span className={`shrink-0 text-[10px] font-semibold ${textMuted}`}>
@@ -210,7 +210,7 @@ export default function CleaningScheduleModal({
                       >
                         {/* Draggable Icon indicator */}
                         <div className="flex justify-between items-center mb-3">
-                          <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
                             isSelf
                               ? 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20'
                               : isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/5 text-slate-400'

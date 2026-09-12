@@ -13,7 +13,11 @@ export type GatewayCompatiblePayload = {
 const DEFAULT_TEXT_MODEL = 'alibaba/qwen3.7-flash'
 const DEFAULT_TEXT_FALLBACKS = ['amazon/nova-micro', 'openai/gpt-oss-20b']
 const DEFAULT_VISION_MODEL = 'alibaba/qwen3.7-flash'
-const DEFAULT_VISION_FALLBACKS = ['amazon/nova-lite', 'openai/gpt-5-nano', 'google/gemini-3.6-flash-lite']
+// google/gemini-3.6-flash-lite dropped: lib/ai.ts already calls Gemini directly
+// as its own downstream fallback, so keeping it here only stacked a 4th
+// sequential model attempt onto the abort budget below without adding a new
+// provider family.
+const DEFAULT_VISION_FALLBACKS = ['amazon/nova-lite', 'openai/gpt-5-nano']
 
 function modelList(value: string | undefined, fallback: string[]) {
   const parsed = (value ?? '').split(',').map((item) => item.trim()).filter(Boolean)
@@ -82,7 +86,12 @@ export async function gatewayGenerate(payload: GatewayCompatiblePayload, mode: '
     // Do not hide the original upstream error behind SDK retry delays.
     // Gateway itself handles the configured model fallbacks.
     maxRetries: 0,
-    abortSignal: AbortSignal.timeout(45_000),
+    // Gateway tries primary + each fallback model in sequence (routing.md),
+    // so the budget has to cover all of them. Vision payloads carry images
+    // and a longer fallback chain, so they get more room than text; the
+    // route's own default (Fluid Compute, 300s) has plenty of headroom
+    // above either value.
+    abortSignal: AbortSignal.timeout(mode === 'vision' ? 60_000 : 45_000),
     providerOptions: {
       gateway: {
         models: fallbacks,

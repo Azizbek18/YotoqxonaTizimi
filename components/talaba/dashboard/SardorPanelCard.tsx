@@ -21,7 +21,7 @@ export default function SardorPanelCard({ isLight, assignedFloor }: Props) {
             ⭐
           </div>
           <div>
-            <h4 className={`text-base font-black tracking-tight ${t.textStrong}`}>Sardorlik Faoliyati</h4>
+            <h4 className={`text-base font-extrabold tracking-tight ${t.textStrong}`}>Sardorlik Faoliyati</h4>
             <p className="text-[10px] uppercase font-bold tracking-widest text-purple-400">
               {assignedFloor}-qavat sardori
             </p>

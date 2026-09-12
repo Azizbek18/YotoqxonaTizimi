@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Heart, FileText } from 'lucide-react';
+import { Heart, FileText, ShieldCheck } from 'lucide-react';
 import { dashboardTheme } from './theme';
 
 const MAX_WARNINGS = 3;
@@ -31,7 +32,7 @@ export default function DisciplineRatingCard({ isLight, warningCount, onShowWarn
         : t.surfaceBg
     }`}>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <h3 className={`text-[10px] font-black tracking-[0.2em] uppercase ${
+        <h3 className={`text-[10px] font-extrabold ${
           critical ? 'text-red-500' : isLight ? 'text-blue-600' : 'text-indigo-400'
         }`}>
           Intizom Reytingi
@@ -39,7 +40,7 @@ export default function DisciplineRatingCard({ isLight, warningCount, onShowWarn
 
         <div className="flex items-center gap-1.5">
           <Heart size={14} className={critical ? 'text-red-500 animate-pulse' : 'text-emerald-500'} />
-          <span className={`text-[10px] font-black uppercase ${critical ? 'text-red-500' : 'text-emerald-500'}`}>
+          <span className={`text-[10px] font-bold uppercase ${critical ? 'text-red-500' : 'text-emerald-500'}`}>
             Intizom darajasi: {healthPercent}%
           </span>
         </div>
@@ -79,17 +80,35 @@ export default function DisciplineRatingCard({ isLight, warningCount, onShowWarn
           </p>
         </div>
 
-        <button
-          onClick={onShowWarnings}
-          className={`w-full sm:w-auto px-6 py-3.5 rounded-2xl border text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
-            critical
-              ? 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20'
-              : isLight ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-white hover:border-blue-500' : 'bg-white/5 border-white/5 text-gray-300 hover:bg-white/10'
-          }`}
-        >
-          <FileText size={14} />
-          <span>Barcha Ogohlantirishlar ({warningCount})</span>
-        </button>
+        {/* Qoidalar left the tab bar; this is where a student is actually
+            wondering what the rules are, so it gets the entry point. */}
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <button
+            data-student-button="plain"
+            onClick={onShowWarnings}
+            className={`w-full sm:w-auto px-5 py-3 rounded-2xl border text-xs font-bold tracking-tight transition-all duration-300 flex items-center justify-center gap-2 ${
+              critical
+                ? 'bg-rose-500/10 border-rose-500/20 text-rose-500 hover:bg-rose-500/20'
+                : isLight ? 'bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:text-indigo-700' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+            }`}
+          >
+            <FileText size={14} />
+            <span>Ogohlantirishlar ({warningCount})</span>
+          </button>
+
+          <Link
+            href="/talaba/qoidalar"
+            data-student-button="plain"
+            className={`w-full sm:w-auto px-5 py-3 rounded-2xl border text-xs font-bold tracking-tight transition-all duration-300 flex items-center justify-center gap-2 ${
+              isLight
+                ? 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:bg-indigo-100'
+                : 'bg-indigo-500/12 border-indigo-400/20 text-indigo-300 hover:bg-indigo-500/20'
+            }`}
+          >
+            <ShieldCheck size={14} />
+            <span>Yotoqxona qoidalari</span>
+          </Link>
+        </div>
       </div>
     </div>
   );

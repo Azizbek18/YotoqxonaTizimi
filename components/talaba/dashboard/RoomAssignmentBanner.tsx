@@ -34,7 +34,7 @@ export default function RoomAssignmentBanner({ isLight, roomNumber, floor, seenR
               <CheckCircle2 size={20} />
             </div>
             <div className="min-w-0 space-y-0.5">
-              <h3 className="text-xs font-black uppercase tracking-wider text-emerald-500">
+              <h3 className="text-sm font-extrabold text-emerald-500">
                 Sizga xona biriktirildi!
               </h3>
               <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
@@ -69,7 +69,7 @@ export default function RoomAssignmentBanner({ isLight, roomNumber, floor, seenR
             <Clock size={20} />
           </div>
           <div className="min-w-0 space-y-0.5">
-            <h3 className="text-xs font-black uppercase tracking-wider text-amber-500">
+            <h3 className="text-sm font-extrabold text-amber-500">
               Xona biriktirilishi kutilmoqda
             </h3>
             <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>

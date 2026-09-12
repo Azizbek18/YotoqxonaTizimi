@@ -7,29 +7,9 @@ import { normalizeDirection } from '@/lib/directions'
 import { normalizeFaculty } from '@/lib/faculties'
 import type { StaffRow, UserRow } from '@/types/database.generated'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
+import { resolveDeleteTarget, type UserSource } from './delete-target'
 
-type UserSource = 'users' | 'staff'
 type UserRole = 'talaba' | 'tarbiyachi' | 'dekan' | 'admin'
-
-export function resolveDeleteTarget(
-  submittedSource: UserSource,
-  student: { id: string } | null,
-  staff: { id: string; role: string } | null,
-): UserSource {
-  if (student && staff) {
-    throw new ApiError(409, "Hisob bir nechta profil jadvalida topildi; o'chirish xavfsizlik sabab to'xtatildi")
-  }
-  if (!student && !staff) throw new ApiError(404, 'Foydalanuvchi topilmadi')
-
-  const resolvedSource: UserSource = staff ? 'staff' : 'users'
-  if (submittedSource !== resolvedSource) {
-    throw new ApiError(409, "Foydalanuvchi manbasi eskirgan yoki noto'g'ri")
-  }
-  if (staff?.role === 'dekan') {
-    throw new ApiError(403, "Dekan profilini admin panelidan o'chirib bo'lmaydi")
-  }
-  return resolvedSource
-}
 
 type AdminUserRow = {
   id: string
@@ -395,6 +375,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ ok: true, users: combined })
   } catch (error) {
+    if (error instanceof ApiError) {
+      return jsonError(error.message, error.status)
+    }
     console.error('Admin users GET xato:', error)
     return jsonError('Foydalanuvchilarni yuklashda server xatosi yuz berdi', 500)
   }

@@ -38,6 +38,15 @@ export default function RoomInfoCard({
   selfName,
   onOpenSchedule,
 }: Props) {
+  // The dashboard passes "—" placeholders rather than nullish values, so
+  // emptiness has to be detected from the text, not from `?? null`.
+  const isBlank = (value: string | number | null | undefined) => {
+    const text = String(value ?? '').trim();
+    return text === '' || text === '—' || text === '-';
+  };
+  const hasRoom = !isBlank(roomNumberFull);
+  const hasGroup = !isBlank(group);
+
   const [cleaningDone, setCleaningDone] = useState(false);
 
   // The "done today" mark is a per-device convenience that clears at midnight.
@@ -85,18 +94,30 @@ export default function RoomInfoCard({
               <BedDouble size={20} />
             </div>
             <div className="min-w-0">
-              <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${isLight ? 'text-blue-600/80' : 'text-cyan-300/70'}`}>Yotgan joyi</span>
-              <h2 className={`truncate text-2xl font-black tracking-tight sm:text-3xl ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                {roomNumberFull}
-              </h2>
+              <span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isLight ? 'text-indigo-600/80' : 'text-cyan-300/70'}`}>Yotgan joyi</span>
+              {/* An em dash as the card's biggest headline told the student
+                  nothing; say what the state actually is. */}
+              {hasRoom ? (
+                <h2 className={`truncate text-2xl font-extrabold tracking-tight sm:text-3xl ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  {roomNumberFull}
+                </h2>
+              ) : (
+                <h2 className={`truncate text-base font-bold tracking-tight sm:text-lg ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                  Hali biriktirilmagan
+                </h2>
+              )}
             </div>
           </div>
-          <div className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-[10px] font-black shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] ${
-            isLight ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-white/10 bg-white/[0.05] text-slate-200'
-          }`}>
-            <Calendar size={13} className={isLight ? 'text-blue-500' : 'text-cyan-300'} />
-            <span>{floor ? `${floor}-qavat` : '—'}</span>
-          </div>
+          {/* The floor chip only exists to qualify a room — with no room it
+              was a box containing a dash. */}
+          {floor ? (
+            <div className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] ${
+              isLight ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-white/10 bg-white/[0.05] text-slate-200'
+            }`}>
+              <Calendar size={13} className={isLight ? 'text-indigo-500' : 'text-cyan-300'} />
+              <span>{floor}-qavat</span>
+            </div>
+          ) : null}
         </div>
 
         {/* Cleaning Duty Schedule */}
@@ -106,14 +127,14 @@ export default function RoomInfoCard({
           <div className="flex justify-between items-center gap-2 max-[359px]:flex-col max-[359px]:items-start">
             <div className="flex items-center gap-2">
               <ClipboardList size={14} className={isLight ? 'text-indigo-500' : 'text-indigo-300'} />
-              <p className={`text-[9px] font-black uppercase tracking-widest ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Tozalik navbatchiligi</p>
+              <p className={`text-[10px] font-bold uppercase tracking-widest ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Tozalik navbatchiligi</p>
             </div>
 
             <button
               type="button"
               onClick={toggleDone}
               aria-pressed={cleaningDone}
-              className={`no-shelf shrink-0 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[9px] font-black uppercase shadow-none transition-all ${
+              className={`no-shelf shrink-0 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold uppercase shadow-none transition-all ${
                 cleaningDone
                   ? isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-600' : 'border-emerald-400/25 bg-[#0d211d] text-emerald-300'
                   : isLight
@@ -131,7 +152,7 @@ export default function RoomInfoCard({
               isLight ? 'border-slate-200 bg-white' : 'border-white/[0.07] bg-[#050914]/70'
             }`}>
               <div className="absolute inset-y-3 left-0 w-0.5 rounded-full bg-gradient-to-b from-indigo-400 to-cyan-400" />
-              <div className={`flex items-center justify-between text-[9px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>
+              <div className={`flex items-center justify-between text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>
                 <span>Bugun ({todayName})</span>
                 <span className="size-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
               </div>
@@ -149,7 +170,7 @@ export default function RoomInfoCard({
             <button
               type="button"
               onClick={onOpenSchedule}
-              className={`no-shelf mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[9px] font-black uppercase tracking-wider shadow-none transition-all active:scale-98 ${
+              className={`no-shelf mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider shadow-none transition-all active:scale-98 ${
                 isLight
                   ? 'border-blue-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50'
                   : 'border-cyan-400/15 bg-[#0d1725] text-slate-200 hover:border-cyan-400/30 hover:bg-[#102033]'
@@ -161,19 +182,25 @@ export default function RoomInfoCard({
           </div>
         </div>
 
-        {/* Course / Group / Status indicators */}
+        {/* Course / Group / Status indicators — 8px labels were below any
+            legible minimum on a phone; 10px with normal weight reads better
+            and still stays quiet next to the values. */}
         <div className="grid grid-cols-3 gap-1.5 text-center sm:gap-2">
           <div className={`min-w-0 rounded-xl border px-1.5 py-2.5 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/[0.06] bg-white/[0.03]'}`}>
-            <p className={`mb-1 text-[8px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Kurs</p>
-            <p className={`truncate text-xs font-black sm:text-sm ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>{course}-kurs</p>
+            <p className={`mb-1 text-[10px] font-semibold ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Kurs</p>
+            <p className={`truncate text-sm font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
+              {course ? `${course}-kurs` : <span className={isLight ? 'text-slate-400' : 'text-slate-500'}>—</span>}
+            </p>
           </div>
           <div className={`min-w-0 rounded-xl border px-1.5 py-2.5 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/[0.06] bg-white/[0.03]'}`}>
-            <p className={`mb-1 text-[8px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Guruh</p>
-            <p className={`truncate text-xs font-black sm:text-sm ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>{group}</p>
+            <p className={`mb-1 text-[10px] font-semibold ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Guruh</p>
+            <p className={`truncate text-sm font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
+              {hasGroup ? group : <span className={isLight ? 'text-slate-400' : 'text-slate-500'}>—</span>}
+            </p>
           </div>
           <div className={`min-w-0 rounded-xl border px-1 py-2.5 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/[0.06] bg-white/[0.03]'}`}>
-            <p className={`mb-1 text-[8px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Xona statusi</p>
-            <span className={`inline-block max-w-full truncate rounded-md border px-1.5 py-0.5 text-[8px] font-black ${
+            <p className={`mb-1 text-[10px] font-semibold ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Xona statusi</p>
+            <span className={`inline-block max-w-full truncate rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${
               isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-emerald-400/15 bg-emerald-400/10 text-emerald-300'
             }`}>
               Namunali

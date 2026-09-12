@@ -268,7 +268,7 @@ export default function ArizalarContent() {
         <div className="space-y-6 pb-8">
             {/* Header */}
             <div>
-                <h1 className={`text-2xl sm:text-3xl font-black mb-2 break-words ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                <h1 className={`text-2xl sm:text-3xl font-extrabold mb-2 break-words ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     📋 Arizalar va Tushuntirishlar
                 </h1>
                 <p className={`text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
@@ -299,7 +299,7 @@ export default function ArizalarContent() {
             {/* Create New Application */}
             <div className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4 sm:p-5 ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
                 <div className="min-w-0">
-                    <h2 className={`text-base font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>Yangi ariza / tushuntirish</h2>
+                    <h2 className={`text-base font-extrabold ${isLight ? 'text-slate-900' : 'text-white'}`}>Yangi ariza / tushuntirish</h2>
                     <p className={`mt-0.5 text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Rasmiy hujjat tuziladi, ko‘rib chiqasiz va imzo qo‘yasiz</p>
                 </div>
                 <button
@@ -312,7 +312,7 @@ export default function ArizalarContent() {
 
             {/* Applications List */}
             <div className={`rounded-2xl backdrop-blur-xl p-4 sm:p-6 transition-all ${isLight ? 'bg-white border border-slate-200' : 'bg-slate-900/40 border border-white/10'}`}>
-                <h2 className={`text-lg font-black mb-4 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                <h2 className={`text-lg font-extrabold mb-4 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     📄 Arizalarning Ro&apos;yxati
                 </h2>
 
@@ -404,7 +404,7 @@ export default function ArizalarContent() {
                     >
                         <div className="flex items-start justify-between gap-3 mb-4">
                             <div className="min-w-0">
-                                <h2 className={`text-xl font-black break-words ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                <h2 className={`text-xl font-extrabold break-words ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                     {selectedApp.title}
                                 </h2>
                                 <p className={`text-xs mt-1 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>

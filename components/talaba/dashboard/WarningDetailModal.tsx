@@ -22,11 +22,11 @@ export default function WarningDetailModal({ ariza, onClose }: Props) {
           <div className="w-14 h-14 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500"><AlertTriangle size={28} /></div>
         </div>
 
-        <h3 className="text-center text-xl font-black italic mb-2 uppercase tracking-tight text-white">Intizomiy Ogohlantirish</h3>
+        <h3 className="text-center text-xl font-extrabold mb-2 tracking-tight text-white">Intizomiy Ogohlantirish</h3>
 
         <div className="space-y-4 my-6 text-center">
           <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-            <p className="text-[9px] font-black text-gray-500 uppercase mb-0.5">Sana</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase mb-0.5">Sana</p>
             <p className="text-xs font-bold text-white">{ariza.sana}</p>
           </div>
           <div className="bg-white/5 p-5 rounded-xl border border-white/5 italic text-xs sm:text-sm text-gray-300 leading-relaxed text-left">

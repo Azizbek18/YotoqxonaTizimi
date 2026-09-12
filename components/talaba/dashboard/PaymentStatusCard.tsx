@@ -23,7 +23,7 @@ export default function PaymentStatusCard({ isLight, paidAmount, stats, settings
   return (
     <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${t.surfaceBg} flex flex-col justify-between`}>
       <div>
-        <h4 className={`text-sm font-black mb-6 italic flex items-center gap-2 ${t.textStrong}`}>
+        <h4 className={`text-sm font-extrabold mb-6 flex items-center gap-2 ${t.textStrong}`}>
           <CreditCard className={isLight ? 'text-blue-600' : 'text-indigo-400'} /> To&apos;lov holati
         </h4>
 
@@ -48,21 +48,21 @@ export default function PaymentStatusCard({ isLight, paidAmount, stats, settings
 
             <div className="space-y-2.5">
               <div className={`flex justify-between items-center p-3 rounded-xl border ${t.cardBorder} ${t.cardInnerBg}`}>
-                <span className={`text-[9px] font-black uppercase ${t.textMuted}`}>Qolgan to&apos;lov</span>
+                <span className={`text-[10px] font-bold uppercase ${t.textMuted}`}>Qolgan to&apos;lov</span>
                 <span className={`text-xs font-black ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>{stats.remainingAmount.toLocaleString('uz-UZ')} UZS</span>
               </div>
               {stats.remainingAmount > 0 ? (
                 <div className={`flex justify-between items-center p-3 rounded-xl border animate-pulse ${
                   isLight ? 'bg-red-50 border-red-200' : 'bg-red-500/10 border-red-500/20'
                 }`}>
-                  <span className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-red-600' : 'text-red-400'}`}>Muddati</span>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-red-600' : 'text-red-400'}`}>Muddati</span>
                   <span className={`text-xs font-black ${isLight ? 'text-red-600' : 'text-red-400'}`}>Kutilmoqda</span>
                 </div>
               ) : (
                 <div className={`flex justify-between items-center p-3 rounded-xl border ${
                   isLight ? 'bg-green-50 border-green-200 text-green-700' : 'bg-green-500/10 border-green-500/20 text-green-400'
                 }`}>
-                  <span className="text-[9px] font-black uppercase tracking-wider">Holat</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Holat</span>
                   <span className="text-xs font-black">To&apos;liq to&apos;langan ✅</span>
                 </div>
               )}

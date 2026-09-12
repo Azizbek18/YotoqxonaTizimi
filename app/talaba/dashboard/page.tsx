@@ -367,9 +367,14 @@ export default function TalabaDashboard() {
 
       <PushNotificationCard isLight={isLight} />
 
+      {/* On phones the two columns flatten into one list (`contents`), which
+          lets each card claim its own priority via `order-*` — the DOM order
+          alone put roommates and support phone numbers above payment status
+          and announcements. `lg:` restores the real two-column layout. */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
         {/* ================= LEFT COLUMN ================= */}
-        <div className="lg:col-span-4 space-y-6 sm:space-y-8">
+        <div className="contents lg:block lg:col-span-4 lg:space-y-8">
+          <div className="order-1 lg:order-none">
           <RoomInfoCard
             isLight={isLight}
             roomNumberFull={roomNumberFull}
@@ -382,60 +387,81 @@ export default function TalabaDashboard() {
             selfName={profile.full_name}
             onOpenSchedule={cleaning.openModal}
           />
+          </div>
 
-          {docsMode && <ForeignDocsCard mode={docsMode} isLight={isLight} />}
+          {docsMode && (
+            <div className="order-2 lg:order-none">
+              <ForeignDocsCard mode={docsMode} isLight={isLight} />
+            </div>
+          )}
 
           {profile.is_floor_captain && (
-            <SardorPanelCard isLight={isLight} assignedFloor={profile.assigned_floor} />
+            <div className="order-3 lg:order-none">
+              <SardorPanelCard isLight={isLight} assignedFloor={profile.assigned_floor} />
+            </div>
           )}
 
           {floorCaptain && (
-            <FloorCaptainCard isLight={isLight} captain={floorCaptain} floor={floor} />
+            <div className="order-9 lg:order-none">
+              <FloorCaptainCard isLight={isLight} captain={floorCaptain} floor={floor} />
+            </div>
           )}
 
-          <RoommatesCard isLight={isLight} roommates={roommates} />
+          <div className="order-10 lg:order-none">
+            <RoommatesCard isLight={isLight} roommates={roommates} />
+          </div>
 
-          <SupportContactsCard
-            isLight={isLight}
-            contacts={contacts}
-            settingsStatus={settingsStatus}
-            onRetry={() => void loadSettings()}
-          />
+          <div className="order-11 lg:order-none">
+            <SupportContactsCard
+              isLight={isLight}
+              contacts={contacts}
+              settingsStatus={settingsStatus}
+              onRetry={() => void loadSettings()}
+            />
+          </div>
         </div>
 
         {/* ================= RIGHT COLUMN ================= */}
-        <div className="lg:col-span-8 space-y-6 sm:space-y-8">
+        <div className="contents lg:block lg:col-span-8 lg:space-y-8">
           {/* "Xabarlar" is the one action not already in the bottom nav bar. */}
           <button
             onClick={() => setIsChatModalOpen(true)}
-            className="w-full flex items-center gap-3 sm:gap-4 rounded-3xl sm:rounded-[32px] p-4 sm:p-6 bg-blue-600 text-white text-left transition-all"
+            className="order-8 lg:order-none w-full flex items-center gap-3 sm:gap-4 rounded-3xl sm:rounded-[32px] p-4 sm:p-6 bg-blue-600 text-white text-left transition-all"
           >
             <div className="shrink-0 flex items-center justify-center size-12 sm:size-14 rounded-2xl bg-white/15">
               <MessageSquare className="size-6 sm:size-7" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-black uppercase tracking-wider">Xabarlar</h3>
+              <h3 className="text-sm font-extrabold">Xabarlar</h3>
               <p className="text-xs text-white/80 mt-0.5">Yotoqxona ma&apos;muriyati bilan yozishmalar</p>
             </div>
           </button>
 
-          <AnnouncementsBoard
-            isLight={isLight}
-            items={filteredElonlar}
-            category={elonCategory}
-            onCategoryChange={setElonCategory}
-            onSelect={setSelectedElon}
-          />
+          <div className="order-6 lg:order-none">
+            <AnnouncementsBoard
+              isLight={isLight}
+              items={filteredElonlar}
+              category={elonCategory}
+              onCategoryChange={setElonCategory}
+              onSelect={setSelectedElon}
+            />
+          </div>
 
-          <MyApplicationsCard isLight={isLight} items={myApplications} />
+          <div className="order-7 lg:order-none">
+            <MyApplicationsCard isLight={isLight} items={myApplications} />
+          </div>
 
-          <DisciplineRatingCard
-            isLight={isLight}
-            warningCount={arizaSoni}
-            onShowWarnings={() => setShowArizalar(true)}
-          />
+          <div className="order-12 lg:order-none">
+            <DisciplineRatingCard
+              isLight={isLight}
+              warningCount={arizaSoni}
+              onShowWarnings={() => setShowArizalar(true)}
+            />
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+          {/* Money first on a phone: "do I still owe rent" is the question
+              students open this page for. */}
+          <div className="order-4 lg:order-none grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
             <PaymentStatusCard
               isLight={isLight}
               paidAmount={paidAmount}

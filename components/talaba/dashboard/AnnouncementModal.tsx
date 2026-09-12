@@ -22,10 +22,10 @@ export default function AnnouncementModal({ elon, onClose }: Props) {
           <div className="absolute top-4 sm:top-6 right-4 sm:right-6">
             <button onClick={onClose} className="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all text-white cursor-pointer"><X size={14} /></button>
           </div>
-          <span className="text-[9px] font-black bg-white/20 px-3 py-1 rounded-full uppercase tracking-widest mb-2 sm:mb-3 inline-block">
+          <span className="text-[10px] font-bold bg-white/20 px-3 py-1 rounded-full uppercase tracking-widest mb-2 sm:mb-3 inline-block">
             {elon.type}
           </span>
-          <h3 className="text-xl sm:text-3xl font-black italic tracking-tight leading-tight">{elon.title}</h3>
+          <h3 className="text-xl sm:text-3xl font-extrabold tracking-tight leading-tight">{elon.title}</h3>
         </div>
 
         <div className="p-5 sm:p-7 space-y-4 sm:space-y-6">
@@ -33,21 +33,21 @@ export default function AnnouncementModal({ elon, onClose }: Props) {
             <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
               <div className="flex items-center gap-2 text-indigo-400 mb-1">
                 <User size={14} />
-                <span className="text-[8px] font-black uppercase">Mas&apos;ul</span>
+                <span className="text-[10px] font-bold uppercase">Mas&apos;ul</span>
               </div>
               <p className="text-xs font-bold text-white">{elon.teacher}</p>
             </div>
             <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
               <div className="flex items-center gap-2 text-indigo-400 mb-1">
                 <MapPin size={14} />
-                <span className="text-[8px] font-black uppercase">Joy</span>
+                <span className="text-[10px] font-bold uppercase">Joy</span>
               </div>
               <p className="text-xs font-bold text-white">{elon.room}</p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Batafsil ma&apos;lumot</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Batafsil ma&apos;lumot</p>
             <p className="text-xs sm:text-sm text-gray-300 leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5 italic">
               &quot;{elon.desc}&quot;
             </p>

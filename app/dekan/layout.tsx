@@ -275,7 +275,11 @@ export default function DekanLayout({
               <p className={`text-[10px] font-medium truncate ${ui.muted}`} title={isSuperadmin ? 'Superadmin' : dekanFaculty || 'Fakultet'}>
                 {isSuperadmin
                   ? `SUPERADMIN · ${scopeIsGlobal ? 'GLOBAL' : saScope.toUpperCase()}`
-                  : dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet sozlanmagan'}
+                  // Until the scope request answers, "Fakultet sozlanmagan"
+                  // would state as fact something we don't know yet — every
+                  // dekan saw it flash on each page load.
+                  : !facultyResolved ? '···'
+                    : dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet sozlanmagan'}
               </p>
             </div>
           )}
@@ -469,7 +473,8 @@ export default function DekanLayout({
                 <span className="text-[11px] font-semibold truncate max-w-[160px]">
                   {isSuperadmin
                     ? (isGlobalSuperadminPage || scopeIsGlobal ? 'BARCHA FAKULTETLAR' : saScope.toUpperCase())
-                    : dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet yo‘q'}
+                    : !facultyResolved ? '···'
+                      : dekanFaculty ? dekanFaculty.toUpperCase() : 'Fakultet yo‘q'}
                 </span>
               </div>
 
@@ -523,7 +528,9 @@ export default function DekanLayout({
                     <div className="max-h-80 overflow-y-auto">
                       {recentPending.length === 0 ? (
                         <p className={`px-4 py-6 text-center text-xs ${ui.faint}`}>
-                          {dekanFaculty ? 'Kutilayotgan yo\'llanma yo\'q.' : 'Fakultet sozlanmagan.'}
+                          {!facultyResolved
+                            ? 'Yuklanmoqda…'
+                            : dekanFaculty ? 'Kutilayotgan yo\'llanma yo\'q.' : 'Fakultet sozlanmagan.'}
                         </p>
                       ) : (
                         recentPending.map((item) => (

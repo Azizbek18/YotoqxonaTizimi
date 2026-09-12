@@ -15,7 +15,11 @@ export default defineConfig({
     },
   },
   test: {
-    exclude: [...configDefaults.exclude, 'e2e/**'],
+    // `.vercel/` holds CLI metadata and, when the Vercel CLI is used locally,
+    // detached worktrees of this same repo. Their stale copies of our e2e specs
+    // would otherwise be collected here and fail (Playwright's `test()` cannot
+    // run under vitest).
+    exclude: [...configDefaults.exclude, 'e2e/**', '.vercel/**'],
     // The service-layer suites drive long mocked Supabase call chains; under
     // v8 coverage instrumentation on CI runners a few of them creep past the
     // 5s default and time out (14 flaky failures in `npm run test:coverage`,

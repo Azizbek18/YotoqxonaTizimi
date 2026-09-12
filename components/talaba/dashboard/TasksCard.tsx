@@ -46,7 +46,7 @@ export default function TasksCard({ isLight }: { isLight: boolean }) {
 
   return (
     <div className={`backdrop-blur-xl border rounded-[32px] p-6 ${t.surfaceBg}`}>
-      <h3 className={`text-[10px] font-black mb-4 uppercase tracking-widest ${isLight ? 'text-amber-600' : 'text-yellow-400'}`}>
+      <h3 className={`text-[10px] font-extrabold mb-4 ${isLight ? 'text-amber-600' : 'text-yellow-400'}`}>
         Shaxsiy Vazifalarim
       </h3>
 

@@ -135,7 +135,7 @@ export default function AdminChatModal({ open, onClose, isLight, profile }: Prop
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words font-medium">{msg.reason}</p>
-                    <span className={`text-[8px] self-end mt-1 font-bold ${
+                    <span className={`text-[10px] self-end mt-1 font-bold ${
                       isStudentSender ? 'text-purple-200' : 'text-slate-400'
                     }`}>
                       {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}

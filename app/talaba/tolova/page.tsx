@@ -507,9 +507,9 @@ export default function TolovaPage() {
                         <div>
                             <div className="flex items-center gap-2 mb-2">
                                 <CreditCard size={20} className={isLight ? 'text-blue-600' : 'text-cyan-400'} />
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>Moliyaviy nazorat</span>
+                                <span className={`text-[10px] font-bold uppercase tracking-widest ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>Moliyaviy nazorat</span>
                             </div>
-                            <h1 className={`text-2xl min-[360px]:text-3xl sm:text-4xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                            <h1 className={`text-2xl min-[360px]:text-3xl sm:text-4xl font-extrabold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                 To&apos;lov <span className="bg-gradient-to-r from-blue-500 to-cyan-400 bg-clip-text text-transparent">Boshqaruvi</span>
                             </h1>
                             <p className={`mt-2 text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
@@ -525,7 +525,7 @@ export default function TolovaPage() {
                             }`}>
                             <div className={`absolute inset-0 rounded-3xl -z-10 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                             <div className="flex items-center justify-between mb-4">
-                                <span className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>To&apos;langan summa</span>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>To&apos;langan summa</span>
                                 <div className={`p-2 rounded-xl ${isLight ? 'bg-emerald-50 text-emerald-600' : 'bg-emerald-500/10 text-emerald-400'}`}>
                                     <DollarSign size={16} />
                                 </div>
@@ -543,7 +543,7 @@ export default function TolovaPage() {
                             }`}>
                             <div className={`absolute inset-0 rounded-3xl -z-10 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                             <div className="flex items-center justify-between mb-4">
-                                <span className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Kutilayotgan summa</span>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Kutilayotgan summa</span>
                                 <div className={`p-2 rounded-xl ${isLight ? 'bg-blue-50 text-blue-600' : 'bg-blue-500/10 text-blue-400'}`}>
                                     <Clock size={16} />
                                 </div>
@@ -559,7 +559,7 @@ export default function TolovaPage() {
                             }`}>
                             <div className={`absolute inset-0 rounded-3xl -z-10 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                             <div className="flex items-center justify-between mb-4">
-                                <span className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Tasdiqlangan oylar</span>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Tasdiqlangan oylar</span>
                                 <div className={`p-2 rounded-xl ${isLight ? 'bg-cyan-50 text-cyan-600' : 'bg-cyan-500/10 text-cyan-400'}`}>
                                     <Check size={16} />
                                 </div>
@@ -575,7 +575,7 @@ export default function TolovaPage() {
                             }`}>
                             <div className={`absolute inset-0 rounded-3xl -z-10 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                             <div className="flex items-center justify-between mb-4">
-                                <span className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>To&apos;lov progressi</span>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>To&apos;lov progressi</span>
                                 <div className={`p-2 rounded-xl ${isLight ? 'bg-purple-50 text-purple-600' : 'bg-purple-500/10 text-purple-400'}`}>
                                     <TrendingUp size={16} />
                                 </div>
@@ -587,13 +587,13 @@ export default function TolovaPage() {
                                             <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="transparent" className={isLight ? "text-slate-100" : "text-white/5"} />
                                             <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="transparent" strokeDasharray="125" strokeDashoffset={125 - (125 * paymentStats.progressPercent) / 100} className="text-purple-500" style={{ transition: 'stroke-dashoffset 800ms ease-out' }} />
                                         </svg>
-                                        <span className={`absolute text-[10px] font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{paymentStats.progressPercent}%</span>
+                                        <span className={`absolute text-[10px] font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{paymentStats.progressPercent}%</span>
                                     </div>
                                     <div>
                                         <p className={`text-xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                             {paymentStats.progressPercent}% bajarildi
                                         </p>
-                                        <p className={`text-[9px] ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Qolgan to&apos;lov: {paymentStats.remainingAmount.toLocaleString('uz-UZ')} UZS</p>
+                                        <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Qolgan to&apos;lov: {paymentStats.remainingAmount.toLocaleString('uz-UZ')} UZS</p>
                                     </div>
                                 </div>
                             ) : (
@@ -605,7 +605,7 @@ export default function TolovaPage() {
                                         <button
                                             type="button"
                                             onClick={() => void loadSettings()}
-                                            className="mt-2 rounded-lg bg-rose-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-rose-500 hover:bg-rose-500/20"
+                                            className="mt-2 rounded-lg bg-rose-500/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-rose-500 hover:bg-rose-500/20"
                                         >
                                             Qayta urinish
                                         </button>
@@ -623,7 +623,7 @@ export default function TolovaPage() {
                             <div>
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
                                     <div>
-                                        <h3 className={`text-lg font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                        <h3 className={`text-lg font-extrabold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                             📅 Oylar jadvali
                                         </h3>
                                         <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -637,7 +637,7 @@ export default function TolovaPage() {
                                             <button
                                                 key={y}
                                                 onClick={() => setAcademicYearStart(y)}
-                                                className={`min-w-0 px-1.5 min-[380px]:px-3 py-2 min-[420px]:py-1.5 rounded-lg text-[10px] min-[380px]:text-xs font-black transition-all ${academicYearStart === y
+                                                className={`min-w-0 px-1.5 min-[380px]:px-3 py-2 min-[420px]:py-1.5 rounded-lg text-[10px] min-[380px]:text-xs font-bold transition-all ${academicYearStart === y
                                                     ? isLight ? 'bg-white text-blue-600 shadow-sm' : 'bg-white/[0.08] text-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.1)] border border-cyan-400/20'
                                                     : isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
                                                     }`}
@@ -669,7 +669,7 @@ export default function TolovaPage() {
                                                 </div>
 
                                                 <div className="mt-2">
-                                                    <p className={`text-[8px] font-black uppercase tracking-wider opacity-60`}>Holat</p>
+                                                    <p className={`text-[10px] font-bold uppercase tracking-wider opacity-60`}>Holat</p>
                                                     <p className={`text-[10px] font-bold mt-0.5 ${status === 'paid' || status === 'approved' ? 'text-emerald-500' :
                                                         status === 'waiting' ? 'text-blue-500' :
                                                             status === 'rejected' ? 'text-rose-500' : 'text-slate-400'
@@ -704,10 +704,10 @@ export default function TolovaPage() {
 
                                 <div>
                                     <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                                        <h3 className={`text-base sm:text-lg font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                        <h3 className={`text-base sm:text-lg font-extrabold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                             📤 Chek yuklash oynasi
                                         </h3>
-                                        <div className={`max-w-full break-words px-2.5 py-1 rounded-full border text-[9px] font-black uppercase ${isLight ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                                        <div className={`max-w-full break-words px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase ${isLight ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
                                             }`}>
                                             {selectedMonths.length > 0
                                                 ? selectedMonths.map(m => formatMonthYear(m, academicYearStart)).join(', ')
@@ -721,7 +721,7 @@ export default function TolovaPage() {
 
                                     {/* Sum Input Plate */}
                                     <div className="mb-5">
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                                        <label className={`block text-[10px] font-bold uppercase tracking-wider mb-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                                             To&apos;lov Summasi (UZS)
                                         </label>
                                         <div className="relative">
@@ -800,7 +800,7 @@ export default function TolovaPage() {
                         }`}>
                         <div className="flex items-center gap-2 mb-6">
                             <FileText size={18} className={isLight ? 'text-blue-600' : 'text-cyan-400'} />
-                            <h3 className={`text-lg font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                            <h3 className={`text-lg font-extrabold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                 Yuklangan cheklar va to&apos;lovlar tarixi
                             </h3>
                         </div>
@@ -826,7 +826,7 @@ export default function TolovaPage() {
                                                     <Calendar size={18} />
                                                 </div>
                                                 <div>
-                                                    <h4 className={`text-sm font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                                                    <h4 className={`text-sm font-extrabold ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                                         Chek: {record.month} {record.year}
                                                     </h4>
                                                     <p className={`text-xs mt-1 font-semibold ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
@@ -836,7 +836,7 @@ export default function TolovaPage() {
                                             </div>
 
                                             <div className="flex flex-wrap items-center gap-3">
-                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 ${getStatusColor(record.status)}`}>
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1 ${getStatusColor(record.status)}`}>
                                                     {getStatusIcon(record.status)}
                                                     {getStatusLabel(record.status)}
                                                 </span>
@@ -969,7 +969,7 @@ export default function TolovaPage() {
 
                                             {/* Title */}
                                             <div className="text-center mb-6">
-                                                <h3 className={`text-xl font-black tracking-tight mb-1 ${isLight ? 'text-slate-900' : 'text-white'
+                                                <h3 className={`text-xl font-extrabold tracking-tight mb-1 ${isLight ? 'text-slate-900' : 'text-white'
                                                     }`}>
                                                     {validationResult.is_duplicate
                                                         ? '🚫 Takroriy chek aniqlandi!'
@@ -1000,13 +1000,13 @@ export default function TolovaPage() {
                                                     <div className="absolute top-0 right-0 w-16 h-16 bg-blue-400/10 rounded-full blur-xl" />
                                                     <div className="flex items-center gap-1.5 mb-2">
                                                         <div className={`w-1.5 h-1.5 rounded-full ${isLight ? 'bg-blue-500' : 'bg-blue-400'}`} />
-                                                        <p className={`text-[8px] font-black uppercase tracking-widest ${isLight ? 'text-blue-600' : 'text-blue-400'
+                                                        <p className={`text-[10px] font-bold uppercase tracking-widest ${isLight ? 'text-blue-600' : 'text-blue-400'
                                                             }`}>Siz kiritgan</p>
                                                     </div>
                                                     <p className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                                         {amount.toLocaleString('uz-UZ')}
                                                     </p>
-                                                    <p className={`text-[9px] font-bold mt-0.5 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>UZS</p>
+                                                    <p className={`text-[10px] font-bold mt-0.5 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>UZS</p>
                                                 </div>
 
                                                 {/* AI extracted amount */}
@@ -1027,7 +1027,7 @@ export default function TolovaPage() {
                                                             ? 'bg-amber-500 animate-pulse'
                                                             : isLight ? 'bg-emerald-500' : 'bg-emerald-400'
                                                             }`} />
-                                                        <p className={`text-[8px] font-black uppercase tracking-widest ${validationResult.amount_match === false
+                                                        <p className={`text-[10px] font-bold uppercase tracking-widest ${validationResult.amount_match === false
                                                             ? 'text-amber-600'
                                                             : isLight ? 'text-emerald-600' : 'text-emerald-400'
                                                             }`}>Chekdagi (AI)</p>
@@ -1038,7 +1038,7 @@ export default function TolovaPage() {
                                                             : '—'
                                                         }
                                                     </p>
-                                                    <p className={`text-[9px] font-bold mt-0.5 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>UZS</p>
+                                                    <p className={`text-[10px] font-bold mt-0.5 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>UZS</p>
                                                 </div>
                                             </div>
 
@@ -1053,7 +1053,7 @@ export default function TolovaPage() {
                                                         <AlertCircle size={16} />
                                                     </div>
                                                     <div>
-                                                        <p className={`text-[9px] font-black uppercase tracking-wider ${isLight ? 'text-rose-600' : 'text-rose-400'
+                                                        <p className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-rose-600' : 'text-rose-400'
                                                             }`}>Farq aniqlandi</p>
                                                         <p className={`text-sm font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                                             {Math.abs(validationResult.extracted_amount - amount).toLocaleString('uz-UZ')} UZS
@@ -1073,7 +1073,7 @@ export default function TolovaPage() {
                                                             validationResult.confidence >= 80 ? 'text-emerald-500' :
                                                                 validationResult.confidence >= 50 ? 'text-amber-500' : 'text-rose-500'
                                                         } />
-                                                        <span className={`text-[9px] font-black uppercase tracking-widest ${isLight ? 'text-slate-500' : 'text-slate-400'
+                                                        <span className={`text-[10px] font-bold uppercase tracking-widest ${isLight ? 'text-slate-500' : 'text-slate-400'
                                                             }`}>Ishonchlilik darajasi</span>
                                                     </div>
                                                     <div className={`px-2.5 py-1 rounded-xl text-xs font-black ${validationResult.confidence >= 80
@@ -1115,7 +1115,7 @@ export default function TolovaPage() {
                                                             }`}>
                                                             <ShieldCheck size={11} />
                                                         </div>
-                                                        <p className={`text-[8px] font-black uppercase tracking-widest ${isLight ? 'text-indigo-500' : 'text-indigo-400'
+                                                        <p className={`text-[10px] font-bold uppercase tracking-widest ${isLight ? 'text-indigo-500' : 'text-indigo-400'
                                                             }`}>AI xulosasi</p>
                                                     </div>
                                                     <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'

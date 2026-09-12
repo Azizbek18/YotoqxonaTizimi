@@ -91,10 +91,17 @@ export default function ConfirmModal({
                         {/* Actions */}
                         {onConfirm && (
                             <div className={`flex gap-3 p-4 sm:p-6 border-t shrink-0 ${borderCls}`}>
+                                {/* data-btn only matters inside the student
+                                    panel (the rules are scoped to
+                                    body.talaba-ui); there the panel-wide
+                                    paint used to flatten "cancel" and a red
+                                    "danger" confirm into the same button.
+                                    Every other panel keeps these classes. */}
                                 <button
+                                    data-btn="secondary"
                                     onClick={onClose}
                                     disabled={isLoading}
-                                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50 ${
+                                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-bold tracking-tight transition-all disabled:opacity-50 ${
                                         isLight
                                             ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                                             : 'bg-white/5 hover:bg-white/10 text-slate-300'
@@ -103,9 +110,10 @@ export default function ConfirmModal({
                                     {cancelText}
                                 </button>
                                 <button
+                                    data-btn={confirmVariant === 'danger' ? 'danger' : undefined}
                                     onClick={onConfirm}
                                     disabled={isLoading}
-                                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50 text-white ${
+                                    className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-bold tracking-tight transition-all disabled:opacity-50 text-white ${
                                         confirmVariant === 'danger'
                                             ? 'bg-red-600 hover:bg-red-700'
                                             : 'bg-purple-600 hover:bg-purple-700'

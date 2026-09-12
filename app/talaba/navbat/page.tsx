@@ -114,14 +114,14 @@ export default function NavbatPage() {
               <ListOrdered size={22} />
             </div>
             <div>
-              <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+              <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                 isLight 
                   ? 'border-purple-200 bg-purple-50 text-purple-600' 
                   : 'border-purple-500/30 bg-purple-500/10 text-purple-400'
               }`}>
                 <Sparkles size={10} className="animate-pulse" /> {floorNumber}-qavat navbatchiligi
               </div>
-              <h1 className={`text-2xl font-black tracking-tighter uppercase mt-1 ${textStrong}`}>
+              <h1 className={`text-2xl font-extrabold tracking-tighter mt-1 ${textStrong}`}>
                 NAV<span className="text-purple-500">BAT</span>
               </h1>
             </div>
@@ -130,7 +130,7 @@ export default function NavbatPage() {
 
         {/* Top Section: Captain & Admins */}
         <section className="space-y-2">
-          <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Qavat Ma&apos;murlari</h2>
+          <h2 className="text-xs font-extrabold tracking-widest text-slate-500">Qavat Ma&apos;murlari</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Qavat Sardori */}
@@ -150,7 +150,7 @@ export default function NavbatPage() {
                     <ShieldCheck size={24} />
                   </div>
                   <div>
-                    <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${
                       isLight ? 'text-purple-600 bg-purple-50 border-purple-100' : 'text-purple-400 bg-purple-500/10 border-purple-500/20'
                     }`}>Qavat Sardori</span>
                     <h3 className={`text-sm font-extrabold mt-1.5 ${textStrong}`}>{captain.full_name}</h3>
@@ -182,7 +182,7 @@ export default function NavbatPage() {
                   <User size={24} />
                 </div>
                 <div>
-                  <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${
                     isLight ? 'text-indigo-600 bg-indigo-50 border-indigo-100' : 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20'
                   }`}>Navbatchilik Admini</span>
                   <h3 className={`text-sm font-extrabold mt-1.5 ${textStrong}`}>{admin.name}</h3>
@@ -195,7 +195,7 @@ export default function NavbatPage() {
 
         {/* Weekly Duty Schedule Grid */}
         <section className="flex-1 space-y-2">
-          <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Haftalik Navbatchilar Jadvali</h2>
+          <h2 className="text-xs font-extrabold tracking-widest text-slate-500">Haftalik Navbatchilar Jadvali</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {WEEKDAYS.map((day) => {
@@ -224,10 +224,10 @@ export default function NavbatPage() {
                   <div className="relative z-10 flex justify-between items-center gap-2 mb-4">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className={`w-2 h-8 rounded-full shrink-0 ${isToday ? 'bg-purple-500' : 'bg-slate-300'}`} />
-                      <h3 className={`text-lg font-black truncate ${isToday ? isLight ? 'text-purple-600' : 'text-purple-400' : textStrong}`}>{day}</h3>
+                      <h3 className={`text-lg font-extrabold truncate ${isToday ? isLight ? 'text-purple-600' : 'text-purple-400' : textStrong}`}>{day}</h3>
                     </div>
                     {isToday && (
-                      <span className={`shrink-0 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full animate-bounce ${
+                      <span className={`shrink-0 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full animate-bounce ${
                         isLight ? 'text-purple-600 bg-purple-100 border border-purple-200' : 'text-purple-400 bg-purple-500/10 border border-purple-500/25'
                       }`}>
                         Bugun

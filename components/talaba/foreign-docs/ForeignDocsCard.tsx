@@ -46,7 +46,7 @@ function CountdownRing({ days, isLight }: { days: number; isLight: boolean }) {
         <span className={`text-xl font-black leading-none ${isLight ? 'text-slate-900' : 'text-white'}`}>
           {days < 0 ? Math.abs(days) : days}
         </span>
-        <span className={`text-[8px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
           {days < 0 ? 'kun o‘tdi' : 'kun'}
         </span>
       </div>
@@ -104,9 +104,9 @@ function DocPanel({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Icon size={14} className={isLight ? 'text-blue-500' : 'text-blue-300'} />
-            <span className={`text-[10px] font-black uppercase tracking-widest ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{label}</span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{label}</span>
             {doc.verifiedAt && (
-              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-500">
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-500">
                 <ShieldCheck size={10} /> Tasdiqlangan
               </span>
             )}
@@ -116,9 +116,9 @@ function DocPanel({
             {expDate}gача amal qiladi
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-bold ${t.chip}`}>{DOC_STATUS_LABELS[doc.status]}</span>
+            <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${t.chip}`}>{DOC_STATUS_LABELS[doc.status]}</span>
             {doc.number && (
-              <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/10 text-slate-300'}`}>
+              <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/10 text-slate-300'}`}>
                 № {doc.number}
               </span>
             )}
@@ -126,7 +126,7 @@ function DocPanel({
               type="button"
               onClick={onEdit}
               data-student-button="plain"
-              className={`ml-auto inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[9px] font-black uppercase tracking-wider transition-colors ${
+              className={`ml-auto inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
                 isLight ? 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50' : 'border-white/10 bg-slate-900 text-slate-300 hover:bg-slate-800'
               }`}
             >
@@ -195,7 +195,7 @@ export default function ForeignDocsCard({ isLight, mode }: Props) {
           {mode === 'foreign' ? <Plane size={16} /> : <Home size={16} />}
         </div>
         <div>
-          <h3 className={`text-sm font-black uppercase tracking-wider ${isLight ? 'text-slate-900' : 'text-white'}`}>
+          <h3 className={`text-sm font-extrabold ${isLight ? 'text-slate-900' : 'text-white'}`}>
             {mode === 'foreign' ? 'Viza va propiska' : "Ro'yxatga olish (propiska)"}
           </h3>
           <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Muddat nazorati va eslatmalar</p>
@@ -237,7 +237,7 @@ export default function ForeignDocsCard({ isLight, mode }: Props) {
           <Link
             href="/talaba/hujjatlarim"
             data-student-button="plain"
-            className={`flex items-center justify-center gap-1 rounded-xl border py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${
+            className={`flex items-center justify-center gap-1 rounded-xl border py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
               isLight ? 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100' : 'border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]'
             }`}
           >

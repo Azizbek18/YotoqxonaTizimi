@@ -298,18 +298,28 @@ export default function SardorDashboard() {
       </header>
 
       {/* Yo'qlama */}
+      {/* Light mode keeps a solid tint instead of the gradient on purpose:
+          globals.css forces near-white text on every `a[class*="bg-gradient"]`
+          (it assumes a dark saturated CTA), which turned this pale card's
+          label invisible. See light-mode note 6. */}
       <Link
         href="/sardor/yoqlama"
-        className="group flex items-center gap-4 rounded-2xl border border-indigo-500/25 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 p-4 transition-all hover:border-indigo-500/40 hover:from-indigo-500/15 hover:to-purple-500/15"
+        className={`group flex items-center gap-4 rounded-2xl border p-4 transition-all ${
+          isLight
+            ? 'border-indigo-200 bg-indigo-50 hover:border-indigo-300 hover:bg-indigo-100'
+            : 'border-indigo-500/25 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 hover:border-indigo-500/40 hover:from-indigo-500/15 hover:to-purple-500/15'
+        }`}
       >
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300">
+        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+          isLight ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-500/20 text-indigo-300'
+        }`}>
           <ClipboardCheck size={22} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-black tracking-tight text-white">Yo&apos;qlama</p>
-          <p className="text-xs text-slate-400">Qavatingizdagi talabalarni belgilang — kim bor, kim yo&apos;q</p>
+          <p className={`text-sm font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Yo&apos;qlama</p>
+          <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Qavatingizdagi talabalarni belgilang — kim bor, kim yo&apos;q</p>
         </div>
-        <ChevronRight size={18} className="shrink-0 text-indigo-400 transition-transform group-hover:translate-x-0.5" />
+        <ChevronRight size={18} className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${isLight ? 'text-indigo-500' : 'text-indigo-400'}`} />
       </Link>
 
       {/* Tabs */}

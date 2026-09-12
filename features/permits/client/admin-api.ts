@@ -11,6 +11,24 @@ export function fetchDekanOverview() {
   return request<DekanOverview>()
 }
 
+export type DekanPendingSummary = {
+  pendingCount: number
+  recentRequests: { id: string; full_name: string; direction: string; created_at: string }[]
+}
+
+/**
+ * Badge + bell only. Use this instead of `fetchDekanOverview()` anywhere that
+ * polls in the background — overview loads the faculty's whole permit and
+ * student tables to answer the same two fields.
+ */
+export function fetchDekanPendingSummary() {
+  return apiRequest<DekanPendingSummary>(
+    '/api/dekan/pending-count',
+    undefined,
+    "Kutilayotgan arizalarni yuklab bo'lmadi",
+  )
+}
+
 export function approvePermitRequest(id: string) {
   return request({ method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action: 'approve' }) })
 }

@@ -3,8 +3,33 @@
 import { apiRequest } from '@/lib/api-client'
 import type { AppSettings, FacultyFee } from '../types'
 
-export function fetchAppSettings() {
-  return apiRequest<AppSettings>('/api/settings')
+// Every panel layout AND most pages inside it call this on mount, so one
+// navigation used to fire several identical uncached requests. Settings change
+// only when a dekan saves them, so a short shared cache (plus in-flight
+// de-duplication) collapses that burst into a single call without anyone
+// seeing stale values for long. updateAppSettings() clears it immediately.
+const SETTINGS_TTL_MS = 60_000
+let cached: { at: number; value: AppSettings } | null = null
+let inFlight: Promise<AppSettings> | null = null
+
+export function clearAppSettingsCache() {
+  cached = null
+  inFlight = null
+}
+
+export function fetchAppSettings(): Promise<AppSettings> {
+  if (cached && Date.now() - cached.at < SETTINGS_TTL_MS) return Promise.resolve(cached.value)
+  if (inFlight) return inFlight
+
+  inFlight = apiRequest<AppSettings>('/api/settings')
+    .then((value) => {
+      cached = { at: Date.now(), value }
+      return value
+    })
+    .finally(() => {
+      inFlight = null
+    })
+  return inFlight
 }
 
 // Dekan/tarbiyachi-scoped read — resolves to the CALLER's own faculty (not
@@ -16,12 +41,16 @@ export function fetchDekanSettings(dormId?: string) {
   return apiRequest<AppSettings>(`/api/dekan/settings${qs}`)
 }
 
-export function updateAppSettings(input: Partial<AppSettings>, dormId?: string) {
-  return apiRequest<AppSettings>('/api/dekan/settings', {
+export async function updateAppSettings(input: Partial<AppSettings>, dormId?: string) {
+  const saved = await apiRequest<AppSettings>('/api/dekan/settings', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dormId ? { ...input, dormId } : input),
   })
+  // Don't let the read cache above serve the pre-save values back to the
+  // dekan who just changed them.
+  clearAppSettingsCache()
+  return saved
 }
 
 // ---- dekan: Telegram notification chat for new permit requests ----

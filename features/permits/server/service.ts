@@ -53,6 +53,15 @@ export function createPermitAdminService(
   capacityDeps: CapacityDeps = {},
 ) {
   return {
+    // The badge + bell slice of overview(), for the panel layouts that poll
+    // in the background. `global` is the superadmin scope: every faculty's
+    // pending queue, which for a plain count is just the unfiltered query.
+    async pendingSummary({ faculty: facultyValue, global }: { faculty: string | null; global: boolean }) {
+      const faculty = facultyValue?.trim()
+      if (!global && !faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
+      return repository.pendingSummary(global ? null : faculty!)
+    },
+
     async overview(facultyValue: string | null): Promise<DekanOverview> {
       const faculty = facultyValue?.trim()
       if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')

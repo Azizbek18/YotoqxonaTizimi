@@ -35,7 +35,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { useDekanScope } from '@/lib/hooks/useDekanScope'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
 import { useVisiblePoll } from '@/lib/hooks/useVisiblePoll'
-import { fetchDekanOverview } from '@/features/permits/client/admin-api'
+import { fetchDekanPendingSummary } from '@/features/permits/client/admin-api'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
 import { fetchDekanDorm, resolveFloorClaim } from '@/features/dorms/client/api'
 import type { DekanDorm } from '@/features/dorms/types'
@@ -116,9 +116,11 @@ export default function DekanLayout({
     const session = await getSafeSession()
     if (!session) return
     try {
-      const { dashboard } = await fetchDekanOverview()
-      setPendingCount(dashboard.pendingCount)
-      setRecentPending(dashboard.recentRequests.map((request) => ({
+      // Deliberately NOT fetchDekanOverview(): that pulls the faculty's whole
+      // permit + student tables every tick just to fill a badge and five names.
+      const { pendingCount, recentRequests } = await fetchDekanPendingSummary()
+      setPendingCount(pendingCount)
+      setRecentPending(recentRequests.map((request) => ({
         id: request.id,
         full_name: request.full_name,
         direction: request.direction,

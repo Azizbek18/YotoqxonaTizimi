@@ -400,3 +400,33 @@ describe('permit admin service — overview', () => {
     await expect(createPermitAdminService(repository(), capacityDeps()).overview(null)).rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe('permit admin service — pending summary', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const summaryRepo = () => repository({
+    pendingSummary: vi.fn(async () => ({ pendingCount: 3, recentRequests: [] })),
+  } as unknown as Partial<PermitAdminRepository>)
+
+  it('scopes to the caller faculty and never touches the heavy load() path', async () => {
+    const repo = summaryRepo()
+    const result = await createPermitAdminService(repo).pendingSummary({ faculty: 'IT', global: false })
+
+    expect(result).toEqual({ pendingCount: 3, recentRequests: [] })
+    expect(repo.pendingSummary).toHaveBeenCalledWith('IT')
+    expect(repo.load).not.toHaveBeenCalled()
+  })
+
+  it('drops the faculty filter for a global superadmin', async () => {
+    const repo = summaryRepo()
+    await createPermitAdminService(repo).pendingSummary({ faculty: null, global: true })
+
+    expect(repo.pendingSummary).toHaveBeenCalledWith(null)
+  })
+
+  it('rejects a faculty-less dekan', async () => {
+    await expect(
+      createPermitAdminService(summaryRepo()).pendingSummary({ faculty: null, global: false }),
+    ).rejects.toMatchObject({ status: 403 })
+  })
+})

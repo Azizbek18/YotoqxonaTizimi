@@ -27,6 +27,31 @@ export function createPermitAdminRepository() {
       if (usersResult.error) throw usersResult.error
       return { permits: permitsResult.data ?? [], users: usersResult.data ?? [] }
     },
+    // Just the pending badge + bell list the panel layouts poll for. `load`
+    // above pulls every permit AND every student row of the faculty, which is
+    // the right shape for the dashboard but absurd for a number and five
+    // names polled every 45s in the background — it was the single largest
+    // consumer of both Active CPU and Fast Origin Transfer on the project.
+    // A `head` count plus a five-row, four-column select costs almost nothing.
+    async pendingSummary(faculty: string | null) {
+      const scope = <T extends { ilike: (column: string, value: string) => T }>(query: T) =>
+        faculty ? query.ilike('faculty', faculty) : query
+
+      const [countResult, recentResult] = await Promise.all([
+        scope(supabase.from('permit_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending')),
+        scope(
+          supabase
+            .from('permit_requests')
+            .select('id, full_name, direction, created_at')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(5),
+        ),
+      ])
+      if (countResult.error) throw countResult.error
+      if (recentResult.error) throw recentResult.error
+      return { pendingCount: countResult.count ?? 0, recentRequests: recentResult.data ?? [] }
+    },
     async find(id: string) {
       const { data, error } = await supabase.from('permit_requests').select('*').eq('id', id).maybeSingle()
       if (error) throw error

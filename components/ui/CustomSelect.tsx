@@ -95,7 +95,15 @@ export default function CustomSelect({
     }
   }, [open])
 
-  const baseTrigger = `w-full flex items-center justify-between gap-2 text-left transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+  // `w-full` only applies when the caller's className doesn't already pick a
+  // width (e.g. PhoneField's fixed `w-[128px]` dial-code select). Tailwind's
+  // generated stylesheet order — not the order classes appear in this string
+  // — decides which `w-*` utility wins, so simply appending `className` after
+  // `w-full` cannot be trusted to let a narrower override take effect; it was
+  // winning unpredictably and stretching the dial-code select to swallow the
+  // whole row, squeezing the phone-number input down to its icon.
+  const hasCustomWidth = /(^|\s)w-/.test(className)
+  const baseTrigger = `${hasCustomWidth ? '' : 'w-full'} flex items-center justify-between gap-2 text-left transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
     isLight ? 'text-slate-800' : 'text-white'
   }`
 

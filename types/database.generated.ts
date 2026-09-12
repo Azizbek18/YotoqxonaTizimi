@@ -51,6 +51,10 @@ export type UserRow = {
   avatar_url: string | null
   permit_url: string | null
   is_floor_captain: boolean | null
+  // Permissions the dekan has revoked from this student while they are a
+  // floor captain (migration 202609300020). `{}` = full access; only
+  // `false` entries are stored. See features/permissions/types.ts.
+  captain_permissions: Json | null
   assigned_floor: number | null
   warning_count: number | null
   blacklisted: boolean | null
@@ -74,6 +78,10 @@ export type StaffRow = {
   created_by: string | null
   signature_image: string | null
   telegram_chat_id: string | null
+  // Permissions the dekan has revoked from this staff member (migration
+  // 202609300020). `{}` = full access; only `false` entries are stored.
+  // See features/permissions/types.ts.
+  permissions: Json | null
   created_at: string
   updated_at: string
 }

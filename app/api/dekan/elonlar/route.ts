@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAnnouncementService } from '@/features/announcements/server/service'
-import { requireActiveStaff } from '@/server/auth/guards'
+import { requireActiveStaff, requireStaffPermission } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
 import { checkRateLimit } from '@/lib/security'
 
@@ -21,6 +21,7 @@ function authorGuard(staff: { role: string; id: string }) {
 export async function GET(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
+    requireStaffPermission(staff, 'announcements.manage')
     const elonlar = await createAnnouncementService().listAuthored(staff.faculty)
     return NextResponse.json({ elonlar })
   } catch (error) {
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
+    requireStaffPermission(staff, 'announcements.manage')
     const throttle = await checkRateLimit(`dekan-elon:${staff.id}`, 20, 60_000)
     if (!throttle.allowed) {
       return NextResponse.json({ error: "Juda ko'p urinish. Keyinroq urinib ko'ring." }, { status: 429 })
@@ -46,6 +48,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
+    requireStaffPermission(staff, 'announcements.manage')
     const body = await request.json().catch(() => null)
     const elon = await createAnnouncementService().updateAuthored(staff.faculty, body, authorGuard(staff))
     return NextResponse.json({ elon })
@@ -57,6 +60,7 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
+    requireStaffPermission(staff, 'announcements.manage')
     const result = await createAnnouncementService().removeAuthored(
       staff.faculty,
       request.nextUrl.searchParams.get('id'),

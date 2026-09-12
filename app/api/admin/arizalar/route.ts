@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
-import { requireActiveStaff } from '@/server/auth/guards'
+import { requireActiveStaff, requireStaffPermission } from '@/server/auth/guards'
 import { requireStaffFaculty, staffFacultyOrPrimary } from '@/server/auth/faculty'
 import { getApiError } from '@/server/http/api-error'
 
@@ -32,6 +32,7 @@ function errorResponse(error: unknown, fallback: string) {
 export async function GET(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['admin', 'dekan', 'tarbiyachi'])
+    requireStaffPermission(staff, 'applications.review')
     const faculty = resolveArizaFaculty(staff)
 
     const { data: requests, error } = await getServiceSupabase()
@@ -63,6 +64,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['admin', 'dekan', 'tarbiyachi'])
+    requireStaffPermission(staff, 'applications.review')
     const faculty = resolveArizaFaculty(staff)
     const isTarbiyachi = staff.role === 'tarbiyachi'
 
@@ -118,6 +120,7 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['admin', 'dekan'])
+    requireStaffPermission(staff, 'applications.review')
     const faculty = staffFacultyOrPrimary(staff.faculty)
 
     const body = await request.json()

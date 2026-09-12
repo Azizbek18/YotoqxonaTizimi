@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRoomAssignmentService } from '@/features/room-assignment/server/service'
-import { requireActiveStaff } from '@/server/auth/guards'
+import { requireActiveStaff, requireStaffPermission } from '@/server/auth/guards'
 import { requirePickedFaculty } from '@/server/auth/faculty'
 import { getApiError } from '@/server/http/api-error'
 import { checkRateLimit } from '@/lib/security'
@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     // A tarbiyachi reads this list (room map + student directory) but the
     // PATCH below — assigning a room — stays dekan/admin.
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
+    requireStaffPermission(staff, 'students.view')
     const students = await createRoomAssignmentService().listStudents(requirePickedFaculty(staff))
     return NextResponse.json({ students })
   } catch (error) {
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
+    requireStaffPermission(staff, 'students.view')
     const faculty = requirePickedFaculty(staff)
     const throttle = await checkRateLimit(`dekan-room-assign:${staff.id}`, 20, 60_000)
     if (!throttle.allowed) {

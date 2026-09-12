@@ -4,6 +4,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import { normalizeFaculty } from '@/lib/faculties'
 import { resolveCallerFaculty } from '@/server/auth/faculty'
 import { ApiError } from '@/server/http/api-error'
+import { can } from '@/features/permissions/types'
 import { createAttendanceRepository } from './repository'
 import type { AttendanceActor } from '../types'
 
@@ -23,11 +24,19 @@ export async function resolveAttendanceActor(request: Request): Promise<Attendan
 
   const { data: student } = await supabase
     .from('users')
-    .select('role, status, is_floor_captain, assigned_floor, gender, faculty')
+    .select('role, status, is_floor_captain, assigned_floor, gender, faculty, captain_permissions')
     .eq('id', user.id)
     .maybeSingle()
 
-  if (student?.role === 'talaba' && student.status === 'active' && student.is_floor_captain) {
+  // A captain whose 'attendance.mark' the dekan revoked simply falls through
+  // to the ordinary-resident branch below: they lose the marking scope but
+  // keep their own "Men yotoqxonadaman" check-in, which also reads this
+  // actor. Throwing here would take that away too.
+  const captainMarks = student?.is_floor_captain
+    ? can(student.captain_permissions, 'attendance.mark')
+    : false
+
+  if (student?.role === 'talaba' && student.status === 'active' && student.is_floor_captain && captainMarks) {
     if (!student.assigned_floor || (student.gender !== 'male' && student.gender !== 'female')) {
       throw new ApiError(400, 'Sardorlik qavati yoki jinsi belgilanmagan')
     }
@@ -69,12 +78,18 @@ export async function resolveAttendanceActor(request: Request): Promise<Attendan
 
   const { data: staff } = await supabase
     .from('staff')
-    .select('role, status, faculty, dorm_id, assigned_gender')
+    .select('role, status, faculty, dorm_id, assigned_gender, permissions')
     .eq('id', user.id)
     .maybeSingle()
 
   if (!staff || staff.status !== 'active' || !['tarbiyachi', 'dekan', 'admin'].includes(staff.role)) {
     throw new ApiError(403, 'Bu amal uchun ruxsat yo‘q', 'FORBIDDEN')
+  }
+
+  // Unlike a captain, a tarbiyachi has no resident role to fall back to —
+  // with the permission gone the whole section is simply closed to them.
+  if (staff.role === 'tarbiyachi' && !can(staff.permissions, 'attendance.manage')) {
+    throw new ApiError(403, 'Bu bo‘lim uchun dekan ruxsat bermagan', 'PERMISSION_REVOKED')
   }
 
   if (staff.role === 'tarbiyachi') {

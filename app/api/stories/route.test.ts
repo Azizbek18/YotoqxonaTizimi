@@ -4,7 +4,7 @@ import { ApiError } from '@/server/http/api-error'
 const requireActiveStudent = vi.fn()
 const listForStudent = vi.fn()
 
-vi.mock('@/server/auth/guards', () => ({
+vi.mock('@/server/auth/guards', () => ({ requireStaffPermission: () => {},
   requireActiveStudent: (...a: unknown[]) => requireActiveStudent(...a),
 }))
 vi.mock('@/features/stories/server/service', () => ({

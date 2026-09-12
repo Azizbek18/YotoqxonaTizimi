@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createFacultyStudentsService } from '@/features/faculty-students/server/service'
-import { requireActiveStaff } from '@/server/auth/guards'
+import { requireActiveStaff, requireStaffPermission } from '@/server/auth/guards'
 import { requirePickedFaculty } from '@/server/auth/faculty'
 import { getApiError } from '@/server/http/api-error'
 
@@ -9,6 +9,7 @@ import { getApiError } from '@/server/http/api-error'
 export async function GET(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
+    requireStaffPermission(staff, 'students.view')
     const scope = request.nextUrl.searchParams.get('scope')
     const students = await createFacultyStudentsService().listStudents(requirePickedFaculty(staff), scope)
     return NextResponse.json({ students })

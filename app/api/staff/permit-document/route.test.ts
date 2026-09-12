@@ -5,7 +5,7 @@ import { ApiError } from '@/server/http/api-error'
 const requireActiveStaff = vi.fn()
 const getServiceSupabase = vi.fn()
 
-vi.mock('@/server/auth/guards', () => ({
+vi.mock('@/server/auth/guards', () => ({ requireStaffPermission: () => {},
   requireActiveStaff: (...args: unknown[]) => requireActiveStaff(...args),
 }))
 vi.mock('@/lib/server-supabase', () => ({

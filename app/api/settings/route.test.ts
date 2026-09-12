@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { ApiError } from '@/server/http/api-error'
 
 const mocks = vi.hoisted(() => ({ user: vi.fn(), faculty: vi.fn(), get: vi.fn() }))
-vi.mock('@/server/auth/guards', () => ({ requireUser: mocks.user }))
+vi.mock('@/server/auth/guards', () => ({ requireStaffPermission: () => {}, requireUser: mocks.user }))
 vi.mock('@/server/auth/faculty', () => ({ resolveCallerFaculty: mocks.faculty }))
 vi.mock('@/features/app-settings/server/service', () => ({ createAppSettingsService: () => ({ get: mocks.get }) }))
 import { GET } from './route'

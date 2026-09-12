@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertTriangle,
@@ -17,6 +18,7 @@ import {
   Home,
   Mail,
   MapPin,
+  MoreVertical,
   Phone,
   Receipt,
   RotateCcw,
@@ -194,6 +196,36 @@ export default function DekanStudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<StudentProfileRow | null>(null)
   const [detailTab, setDetailTab] = useState<'profil' | 'hujjatlar' | 'oila' | 'tolovlar'>('profil')
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null)
+
+  // The header used to lay out five actions (edit / warn / captain / expel /
+  // delete) as a wrapping button row — on a real name + all the status
+  // badges it never had room and fell apart. One "..." menu instead, mirroring
+  // the pattern already used on /admin/foydalanuvchilar.
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
+  const [actionsMenuPos, setActionsMenuPos] = useState<{ top: number; left: number } | null>(null)
+  const actionsButtonRef = useRef<HTMLButtonElement>(null)
+  const ACTIONS_MENU_WIDTH = 224
+
+  useEffect(() => {
+    if (!actionsMenuOpen) return
+    const close = () => setActionsMenuOpen(false)
+    window.addEventListener('resize', close)
+    return () => window.removeEventListener('resize', close)
+  }, [actionsMenuOpen])
+
+  useEffect(() => { setActionsMenuOpen(false) }, [selectedStudent?.id])
+
+  const openActionsMenu = () => {
+    const rect = actionsButtonRef.current?.getBoundingClientRect()
+    if (rect) {
+      const left = Math.min(
+        Math.max(8, rect.right - ACTIONS_MENU_WIDTH),
+        window.innerWidth - ACTIONS_MENU_WIDTH - 8,
+      )
+      setActionsMenuPos({ top: rect.bottom + 8, left })
+    }
+    setActionsMenuOpen(true)
+  }
 
   const [warningModalOpen, setWarningModalOpen] = useState(false)
   const [warningLevel, setWarningLevel] = useState<StudentWarningLevel>('info')
@@ -1061,49 +1093,80 @@ export default function DekanStudentsPage() {
                 </div>
 
                 {!readOnly && (
-                <div className="flex w-full shrink-0 flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
+                <div className="shrink-0 self-start sm:self-center">
                   <button
-                    onClick={openEditModal}
-                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
-                  >
-                    <Edit2 size={14} />
-                    Tahrirlash
-                  </button>
-                  <button
-                    onClick={openWarningModal}
-                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
-                  >
-                    <AlertTriangle size={14} />
-                    Ogohlantirish
-                  </button>
-                  {captainEligible(selectedStudent) && (
-                    <button
-                      onClick={() => setCaptainModalOpen(true)}
-                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                        selectedStudent.is_floor_captain ? ui.accentSoft : ui.btnGhost
-                      }`}
-                    >
-                      <ShieldCheck size={14} />
-                      {selectedStudent.is_floor_captain ? 'Sardorlikdan olish' : 'Sardor tayinlash'}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => { setBlacklistReason(''); setBlacklistModalOpen(true) }}
-                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                      selectedStudent.blacklisted ? ui.btnGhost : ui.dangerSoft
+                    ref={actionsButtonRef}
+                    onClick={() => (actionsMenuOpen ? setActionsMenuOpen(false) : openActionsMenu())}
+                    aria-label="Amallar"
+                    title="Amallar"
+                    className={`flex items-center justify-center rounded-lg border p-2 transition-colors ${
+                      actionsMenuOpen ? ui.accentSoft : ui.btnGhost
                     }`}
                   >
-                    <UserX size={14} />
-                    {selectedStudent.blacklisted ? 'Chetlatishni bekor qilish' : 'Chetlatish'}
+                    <MoreVertical size={16} />
                   </button>
-                  <button
-                    onClick={() => setDeleteModalOpen(true)}
-                    aria-label="Talabani o‘chirish"
-                    title="Talabani o‘chirish"
-                    className={`flex items-center justify-center rounded-lg border p-2 transition-colors ${ui.dangerSoft}`}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {typeof document !== 'undefined' && createPortal(
+                    <AnimatePresence>
+                      {actionsMenuOpen && actionsMenuPos && (
+                        <>
+                          <button
+                            type="button"
+                            aria-label="Menyuni yopish"
+                            onClick={() => setActionsMenuOpen(false)}
+                            className="fixed inset-0 z-40 cursor-default"
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: -6 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                            transition={{ duration: 0.15 }}
+                            style={{ top: actionsMenuPos.top, left: actionsMenuPos.left, width: ACTIONS_MENU_WIDTH }}
+                            className={`fixed z-50 space-y-0.5 rounded-2xl border p-1.5 shadow-2xl backdrop-blur-xl ${ui.card}`}
+                          >
+                            <button
+                              onClick={() => { setActionsMenuOpen(false); openEditModal() }}
+                              className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${ui.body} ${isLight ? 'hover:bg-slate-100 hover:text-slate-900' : 'hover:bg-slate-800 hover:text-white'}`}
+                            >
+                              <Edit2 size={15} />
+                              Tahrirlash
+                            </button>
+                            <button
+                              onClick={() => { setActionsMenuOpen(false); openWarningModal() }}
+                              className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${isLight ? 'text-amber-700 hover:bg-amber-50' : 'text-amber-400 hover:bg-amber-500/10'}`}
+                            >
+                              <AlertTriangle size={15} />
+                              Ogohlantirish
+                            </button>
+                            {captainEligible(selectedStudent) && (
+                              <button
+                                onClick={() => { setActionsMenuOpen(false); setCaptainModalOpen(true) }}
+                                className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${isLight ? 'text-indigo-700 hover:bg-indigo-50' : 'text-indigo-300 hover:bg-indigo-500/10'}`}
+                              >
+                                <ShieldCheck size={15} />
+                                {selectedStudent.is_floor_captain ? 'Sardorlikdan olish' : 'Sardor tayinlash'}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => { setActionsMenuOpen(false); setBlacklistReason(''); setBlacklistModalOpen(true) }}
+                              className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${isLight ? 'text-rose-600 hover:bg-rose-50' : 'text-rose-400 hover:bg-rose-500/10'}`}
+                            >
+                              <UserX size={15} />
+                              {selectedStudent.blacklisted ? 'Chetlatishni bekor qilish' : 'Chetlatish'}
+                            </button>
+                            <div className={`mx-1.5 my-1 border-t ${ui.border}`} />
+                            <button
+                              onClick={() => { setActionsMenuOpen(false); setDeleteModalOpen(true) }}
+                              className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${isLight ? 'text-rose-600 hover:bg-rose-50' : 'text-rose-400 hover:bg-rose-500/10'}`}
+                            >
+                              <Trash2 size={15} />
+                              Talabani o&apos;chirish
+                            </button>
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>,
+                    document.body,
+                  )}
                 </div>
                 )}
               </div>

@@ -146,7 +146,7 @@ export default function VizaNazoratiPage() {
     setTo('')
   }
 
-  const exportTable = (format: 'excel' | 'csv') => {
+  const exportTable = async (format: 'excel' | 'csv') => {
     if (filtered.length === 0) {
       toast.error("Tanlangan filtr bo'yicha hujjat topilmadi")
       return
@@ -172,12 +172,17 @@ export default function VizaNazoratiPage() {
       r.country ?? '',
     ])
     const slug = `viza-nazorati_${new Date().toISOString().slice(0, 10)}`
-    if (format === 'excel') {
-      downloadXlsx({ filename: `${slug}.xlsx`, sheetName: 'Viza nazorati', headers, rows: body })
-      toast.success('Excel yuklab olindi')
-    } else {
-      downloadTextFile(`${slug}.csv`, buildStudentReportCsv(headers, body.map((r) => r.map(String))), 'text/csv;charset=utf-8;')
-      toast.success('CSV yuklab olindi')
+    try {
+      if (format === 'excel') {
+        await downloadXlsx({ filename: `${slug}.xlsx`, sheetName: 'Viza nazorati', headers, rows: body })
+        toast.success('Excel yuklab olindi')
+      } else {
+        downloadTextFile(`${slug}.csv`, buildStudentReportCsv(headers, body.map((r) => r.map(String))), 'text/csv;charset=utf-8;')
+        toast.success('CSV yuklab olindi')
+      }
+    } catch (error) {
+      console.error('Eksport xatosi:', error)
+      toast.error('Eksportda xatolik yuz berdi')
     }
   }
 

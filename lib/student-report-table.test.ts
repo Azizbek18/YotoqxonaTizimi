@@ -37,7 +37,7 @@ describe('buildStudentReportTable', () => {
     expect(rawRows[1][3]).toBe('Ikkinchi')
     // The two free beds carry the room, but no student data and no sequence number.
     expect(rawRows[2][0]).toBe('')
-    expect(rawRows[2][2]).toBe('№-5')
+    expect(rawRows[2][2]).toBe('№5')
     expect(rawRows[2][3]).toBe('')
   })
 
@@ -46,8 +46,8 @@ describe('buildStudentReportTable', () => {
       student({ room_number: '10' }),
       student({ room_number: '2' }),
     ])
-    expect(rawRows[0][2]).toBe('№-2')
-    expect(rawRows[STUDENT_REPORT_ROOM_CAPACITY][2]).toBe('№-10')
+    expect(rawRows[0][2]).toBe('№2')
+    expect(rawRows[STUDENT_REPORT_ROOM_CAPACITY][2]).toBe('№10')
   })
 
   it('merges repeated floor/room cells and blanks them only in displayRows', () => {
@@ -57,9 +57,9 @@ describe('buildStudentReportTable', () => {
     ])
 
     // Room column stays populated for CSV…
-    expect(rawRows.every((row) => row[2] === '№-7')).toBe(true)
+    expect(rawRows.every((row) => row[2] === '№7')).toBe(true)
     // …but is blanked below the first row where a merge covers it.
-    expect(displayRows[0][2]).toBe('№-7')
+    expect(displayRows[0][2]).toBe('№7')
     expect(displayRows[1][2]).toBe('')
 
     const roomMerge = merges.find((merge) => merge.s.c === 2)

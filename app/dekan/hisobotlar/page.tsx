@@ -231,7 +231,7 @@ export default function DekanReportsPage() {
     return `talabalar${suffix}_${new Date().toISOString().slice(0, 10)}`
   }
 
-  const exportTable = (format: 'excel' | 'csv') => {
+  const exportTable = async (format: 'excel' | 'csv') => {
     if (filteredStudents.length === 0) {
       toast.error("Tanlangan filtrlar bo'yicha talaba topilmadi")
       return
@@ -241,7 +241,7 @@ export default function DekanReportsPage() {
       const { headers, rawRows, displayRows, merges } = buildStudentReportTable(filteredStudents, floorOf)
 
       if (format === 'excel') {
-        downloadXlsx({
+        await downloadXlsx({
           filename: `${fileSlug()}.xlsx`,
           sheetName: 'Hisobot',
           headers,

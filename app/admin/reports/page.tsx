@@ -184,7 +184,7 @@ export default function AdminReportsPage() {
             });
 
             if (format === 'excel') {
-                downloadXlsx({
+                await downloadXlsx({
                     filename: `foydalanuvchilar_${new Date().toISOString().slice(0, 10)}.xlsx`,
                     sheetName: 'Hisobot',
                     headers,

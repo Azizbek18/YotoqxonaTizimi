@@ -30,6 +30,7 @@ import toast from 'react-hot-toast'
 import { fetchAdminPaymentSummary } from '@/features/payments/client/api'
 import { fetchAdminDashboard } from '@/features/admin-dashboard/client/api'
 import { fetchAppSettings } from '@/features/app-settings/client/api'
+import { buildStudentReportTable } from '@/lib/student-report-table'
 
 interface DashboardStats {
   totalStudents: number
@@ -397,164 +398,10 @@ export default function AdminDashboard() {
 
     setExporting(true)
     try {
-      // Xona raqami bo'yicha tabiiy saralash — shu bilan birga qavat
-      // (xonadan hisoblanadi) ham o'sish tartibida guruhlanadi
-      const sortedStudents = [...filteredStudents].sort((a, b) => {
-        const roomA = a.room_number || ''
-        const roomB = b.room_number || ''
-        return roomA.localeCompare(roomB, undefined, { numeric: true, sensitivity: 'base' })
-      })
-
-      // "YYYY-MM-DD" ni "DD.MM.YYYY" ko'rinishiga o'tkazish
-      const formatDate = (val?: string | null) => {
-        if (!val) return '-'
-        const match = val.match(/^(\d{4})-(\d{2})-(\d{2})/)
-        if (!match) return val
-        return `${match[3]}.${match[2]}.${match[1]}`
-      }
-
-      const headers = [
-        '№',
-        'Qavati',
-        'Xona raqami',
-        'F.I.Sh.',
-        'Viloyati',
-        'Tumani',
-        'MFY',
-        'Shartnoma raqami',
-        'Pasport seriya raqami',
-        'JSHSHIR',
-        'Pasport berilgan vaqti',
-        "Tug'ilgan kun, oy, yil",
-        'Fakulteti',
-        "Yo'nalish",
-        'Kursi',
-        'Millati',
-        'Moliya turi',
-        'Jinsi',
-        'Telefon raqami',
-        'Ijtimoiy holati',
-        'Ish joyi',
-        'Ish vaqti',
-        'TTJga joylashgan oyi',
-        "TTJdan chiqib ketgan sanasi",
-        'Tyutor',
-        'Telefon raqami',
-        'Otasining ismi va familiyasi',
-        'Ish joyi',
-        'Telefon nomeri',
-        'Onasining ismi va familiyasi',
-        'Onasining ish joyi',
-        'Telefon nomeri',
-      ]
-
-      // Har bir xonada 4 ta o'rin bor — talaba ma'lumotlaridan tashqari
-      // qolgan ustunlarni to'ldiruvchi yordamchi funksiya
-      const buildFields = (s: typeof sortedStudents[number]) => {
-        const gender = s.gender === 'male' ? 'Erkak' : (s.gender === 'female' ? 'Ayol' : (s.gender || '-'))
-        const phone = s.phone_number || s.phone || '-'
-        return [
-          s.full_name || '-',
-          s.region || '-',
-          s.district || '-',
-          s.mahalla || '-',
-          '-', // Shartnoma raqami — tizimda saqlanmaydi
-          s.passport_series || '-',
-          s.jshshir || '-',
-          formatDate(s.passport_date),
-          formatDate(s.birth_date),
-          s.faculty || '-',
-          s.direction || '-',
-          String(s.course ?? '-'),
-          s.nationality || '-',
-          s.study_type || '-',
-          gender,
-          phone,
-          '-', // Ijtimoiy holati — tizimda saqlanmaydi
-          '-', // Ish joyi (talabaning o'zi) — tizimda saqlanmaydi
-          '-', // Ish vaqti — tizimda saqlanmaydi
-          formatDate(s.entry_date),
-          '-', // TTJdan chiqib ketgan sanasi — tizimda saqlanmaydi
-          '-', // Tyutor — tizimda saqlanmaydi
-          '-', // Tyutor telefon raqami — tizimda saqlanmaydi
-          s.father_full_name || '-',
-          s.father_workplace || '-',
-          s.father_phone || '-',
-          s.mother_full_name || '-',
-          s.mother_workplace || '-',
-          s.mother_phone || '-',
-        ]
-      }
-      const emptyFields = () => Array(29).fill('')
-      const ROOM_CAPACITY = 4
-
-      // Ketma-ket bir xil xonadagi talabalarni guruhlash
-      type RoomGroup = { room: string | null; floor: number | null; students: typeof sortedStudents }
-      const roomGroups: RoomGroup[] = []
-      sortedStudents.forEach((s) => {
-        const room = s.room_number || null
-        const last = roomGroups[roomGroups.length - 1]
-        if (room && last && last.room === room) {
-          last.students.push(s)
-        } else {
-          roomGroups.push({ room, floor: floorOf(s.room_number), students: [s] })
-        }
-      })
-
-      // Ma'lumotlarni shakllantirish — xona to'liq bo'lmasa ham qolgan
-      // 4 tagacha o'rin bo'sh qator sifatida qoldiriladi
-      const rawRows: string[][] = []
-      let seq = 1
-      roomGroups.forEach((group) => {
-        const qavatValue = group.floor ? String(group.floor) : '-'
-        const xonaValue = group.room ? `№-${group.room}` : '-'
-
-        group.students.forEach((s) => {
-          rawRows.push([String(seq), qavatValue, xonaValue, ...buildFields(s)])
-          seq++
-        })
-
-        if (group.room) {
-          const emptySlots = Math.max(0, ROOM_CAPACITY - group.students.length)
-          for (let k = 0; k < emptySlots; k++) {
-            rawRows.push(['', qavatValue, xonaValue, ...emptyFields()])
-          }
-        }
-      })
-
-      // Bir xil qavat va xonalarni guruhlash (vizual birlashtirish)
-      const displayRows = JSON.parse(JSON.stringify(rawRows))
-      const excelMerges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = []
-
-      const mergeColumn = (col: number) => {
-        let i = 0
-        while (i < displayRows.length) {
-          const value = displayRows[i][col]
-          if (value === '-' || !value) {
-            i++
-            continue
-          }
-
-          let j = i + 1
-          while (j < displayRows.length && rawRows[j][col] === value) {
-            displayRows[j][col] = ''
-            j++
-          }
-
-          if (j - i > 1) {
-            excelMerges.push({
-              s: { r: i + 1, c: col },
-              e: { r: j, c: col },
-            })
-          }
-          i = j
-        }
-      }
-
-      if (displayRows.length > 0) {
-        mergeColumn(1) // Qavati
-        mergeColumn(2) // Xona raqami
-      }
+      // Ustunlar, xona bo'yicha guruhlash va bo'sh o'rinlar bilan to'ldirish —
+      // dekan paneli va admin/reports bilan bir xil jadval chiqishi uchun
+      // umumiy modulda (lib/student-report-table.ts)
+      const { headers, displayRows, merges } = buildStudentReportTable(filteredStudents, floorOf)
 
       let fileName = 'Talabalar_Hisoboti'
       if (reportFilters.gender !== 'all') fileName += `_${reportFilters.gender === 'male' ? 'Erkak' : 'Ayol'}`
@@ -567,12 +414,12 @@ export default function AdminDashboard() {
       }
       fileName += `_${new Date().toISOString().slice(0, 10)}.xlsx`
 
-      downloadXlsx({
+      await downloadXlsx({
         filename: fileName,
         sheetName: 'Talabalar',
         headers,
         rows: displayRows,
-        merges: excelMerges,
+        merges,
       })
 
       toast.success('Excel hisoboti muvaffaqiyatli yuklab olindi! 📊')

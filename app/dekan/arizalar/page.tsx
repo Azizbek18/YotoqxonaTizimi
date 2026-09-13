@@ -235,7 +235,7 @@ function ArizalarContent() {
       new Date(req.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }),
     ])
 
-    downloadXlsx({
+    await downloadXlsx({
       filename: `yotoqxona_arizalar_${statusFilter}.xlsx`,
       sheetName: 'Arizalar',
       headers,

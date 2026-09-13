@@ -39,19 +39,23 @@ export type StudentReportRow = {
   mother_phone?: string | null
 }
 
+// Sarlavha matni institutsional shablon (yotoqxona.xlsx, "Yashayotganlar"
+// varag'i) bilan so'zma-so'z bir xil bo'lishi kerak — imlo xatolari va
+// bo'shliqlari (Paspot, JSHIR, Tug'lgan, Otasini/Onasinong ...) shu
+// shablondan kelib chiqadi, o'zboshimchalik bilan "to'g'irlanmaydi".
 export const STUDENT_REPORT_HEADERS = [
   '№',
   'Qavati',
   'Xona raqami',
-  'F.I.Sh.',
-  'Viloyati',
+  'F.I.SH.',
+  'Viloyati ',
   'Tumani',
-  'MFY',
+  '         MFY',
   'Shartnoma raqami',
-  'Pasport seriya raqami',
-  'JSHSHIR',
-  'Pasport berilgan vaqti',
-  "Tug'ilgan kun, oy, yil",
+  'Paspot seriya raqami',
+  'JSHIR',
+  'Pasport  berilgan  vaqti',
+  "Tug'lgan kun, oy, yil",
   'Fakulteti',
   "Yo'nalish",
   'Kursi',
@@ -66,11 +70,11 @@ export const STUDENT_REPORT_HEADERS = [
   'TTJdan chiqib ketgan sanasi',
   'Tyutor',
   'Telefon raqami',
-  'Otasining ismi va familiyasi',
+  'Otasini Ismi va familiyasi',
   'Ish joyi',
   'Telefon nomeri',
-  'Onasining ismi va familiyasi',
-  'Onasining ish joyi',
+  'Onasini ismi va familiyasi',
+  'Onasinong Ish joyi',
   'Telefon nomeri',
 ]
 
@@ -187,7 +191,7 @@ export function buildStudentReportTable(
   let seq = 1
   roomGroups.forEach((group) => {
     const floorValue = group.floor ? String(group.floor) : '-'
-    const roomValue = group.room ? `№-${group.room}` : '-'
+    const roomValue = group.room ? `№${group.room}` : '-'
 
     group.students.forEach((student) => {
       rawRows.push([String(seq), floorValue, roomValue, ...buildFields(student)])

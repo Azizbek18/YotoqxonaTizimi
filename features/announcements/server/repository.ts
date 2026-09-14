@@ -125,7 +125,7 @@ export function createAnnouncementRepository() {
       if (!ids.length) return []
       const { data, error } = await supabase
         .from('users')
-        .select('id, full_name, is_floor_captain, assigned_floor')
+        .select('id, full_name, is_floor_captain, assigned_floor, is_council_chair')
         .in('id', ids)
       if (error) throw error
       return data ?? []

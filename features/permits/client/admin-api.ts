@@ -7,8 +7,9 @@ function request<T>(init?: RequestInit): Promise<T> {
   return apiRequest<T>('/api/dekan/overview', init, "Yo'llanma ma'lumotlarini yuklab bo'lmadi")
 }
 
-export function fetchDekanOverview() {
-  return request<DekanOverview>()
+export function fetchDekanOverview(dormId?: string | null) {
+  if (dormId === undefined) return request<DekanOverview>()
+  return apiRequest<DekanOverview>(`/api/dekan/overview?dormId=${encodeURIComponent(dormId ?? 'unassigned')}`)
 }
 
 export type DekanPendingSummary = {

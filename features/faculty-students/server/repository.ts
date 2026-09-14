@@ -3,7 +3,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import type { StudentScope, StudentWarningLevel } from '../types'
 
 const STUDENT_PROFILE_COLUMNS =
-  'id, full_name, middle_name, email, phone_number, avatar_url, gender, faculty, direction, course, status, room_number, assigned_floor, is_floor_captain, warning_count, blacklisted, birth_date, nationality, study_type, entry_date, region, district, mahalla, passport_series, jshshir, passport_date, father_full_name, father_workplace, father_phone, mother_full_name, mother_workplace, mother_phone, created_at'
+  'id, full_name, middle_name, email, phone_number, avatar_url, gender, faculty, direction, course, status, room_number, assigned_floor, is_floor_captain, is_council_chair, warning_count, blacklisted, birth_date, nationality, study_type, entry_date, region, district, mahalla, passport_series, jshshir, passport_date, father_full_name, father_workplace, father_phone, mother_full_name, mother_workplace, mother_phone, created_at'
 
 export function createFacultyStudentsRepository() {
   const supabase = getServiceSupabase()
@@ -13,7 +13,7 @@ export function createFacultyStudentsRepository() {
     async listStudentProfiles(faculty: string, scope: StudentScope) {
       let query = supabase
         .from('users')
-        .select(STUDENT_PROFILE_COLUMNS)
+        .select(`${STUDENT_PROFILE_COLUMNS}, dorm_id, block`)
         .eq('role', 'talaba')
         .eq('status', 'active')
         .ilike('faculty', faculty)
@@ -63,7 +63,7 @@ export function createFacultyStudentsRepository() {
     // and the "Sardorlar" list don't keep showing a removed resident.
     async setBlacklist(id: string, blacklisted: boolean) {
       const updates = blacklisted
-        ? { blacklisted, room_number: null, assigned_floor: null, is_floor_captain: false }
+        ? { blacklisted, room_number: null, assigned_floor: null, is_floor_captain: false, is_council_chair: false }
         : { blacklisted }
       const { data, error } = await supabase
         .from('users')

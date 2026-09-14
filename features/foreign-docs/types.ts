@@ -111,4 +111,5 @@ export type ForeignDocDashboardRow = ForeignDoc & {
   country: string | null
   course: number | null
   roomNumber: string | null
+  dormId: string | null
 }

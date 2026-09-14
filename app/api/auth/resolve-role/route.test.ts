@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   checkRateLimit: vi.fn(),
   state: {
     studentStatus: 'pending',
+    isOffCampus: false,
   },
 }))
 
@@ -15,7 +16,7 @@ function queryFor(table: string) {
     eq: () => builder,
     maybeSingle: async () => table === 'staff'
       ? { data: null, error: null }
-      : { data: { role: 'talaba', status: mocks.state.studentStatus }, error: null },
+      : { data: { role: 'talaba', status: mocks.state.studentStatus, is_off_campus: mocks.state.isOffCampus }, error: null },
   }
   return builder
 }
@@ -35,6 +36,7 @@ describe('resolve-role student activation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.state.studentStatus = 'pending'
+    mocks.state.isOffCampus = false
     mocks.getRequestUser.mockResolvedValue({ id: 'student-id', email: 'Student@Example.com' })
     mocks.checkRateLimit.mockResolvedValue({ allowed: true })
     mocks.rpc.mockResolvedValue({ data: true, error: null })
@@ -57,6 +59,15 @@ describe('resolve-role student activation', () => {
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ ok: true, role: null, reason: 'no_role' })
+    expect(mocks.rpc).not.toHaveBeenCalled()
+  })
+
+  it('never calls activate_pending_student for a pending KV-talaba (no permit row to match)', async () => {
+    mocks.state.isOffCampus = true
+    const response = await POST(new Request('https://example.test/api/auth/resolve-role', { method: 'POST' }))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true, role: null, reason: 'awaiting_dean_approval' })
     expect(mocks.rpc).not.toHaveBeenCalled()
   })
 })

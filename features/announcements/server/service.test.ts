@@ -143,6 +143,41 @@ describe('listForUser audience filtering', () => {
     const { elonlar } = await createAnnouncementService(repository).listForUser('student-1')
     expect(elonlar).toHaveLength(0)
   })
+
+  // The fake profile is faculty 'amit', gender 'male' — a council chair's
+  // notice has no target_floor, unlike a sardor's.
+  const councilRow = (overrides: Partial<PublishedRow>) =>
+    row({ audience: 'council', faculty: 'amit', target_floor: null, target_gender: 'male', ...overrides })
+
+  it('delivers a council-chair notice to every floor of a same-gender, same-faculty student', async () => {
+    const repository = fakeRepository({ listPublished: vi.fn(async () => [councilRow({})]) })
+    const { elonlar } = await createAnnouncementService(repository).listForUser('student-1')
+    expect(elonlar).toHaveLength(1)
+  })
+
+  it('does not deliver a council-chair notice to the other gender', async () => {
+    const repository = fakeRepository({ listPublished: vi.fn(async () => [councilRow({ target_gender: 'female' })]) })
+    const { elonlar } = await createAnnouncementService(repository).listForUser('student-1')
+    expect(elonlar).toHaveLength(0)
+  })
+
+  it('does not leak a council-chair notice to another faculty', async () => {
+    const repository = fakeRepository({ listPublished: vi.fn(async () => [councilRow({ faculty: 'fizika' })]) })
+    const { elonlar } = await createAnnouncementService(repository).listForUser('student-1')
+    expect(elonlar).toHaveLength(0)
+  })
+
+  it('marks the author as council chair, not floor captain, on a council notice', async () => {
+    const repository = fakeRepository({
+      listPublished: vi.fn(async () => [councilRow({ created_by: 'raisi-1' })]),
+      listStudentCreators: vi.fn(async () => [
+        { id: 'raisi-1', full_name: 'Raisi Ismi', is_floor_captain: false, is_council_chair: true, assigned_floor: null },
+      ]),
+    })
+    const { elonlar } = await createAnnouncementService(repository).listForUser('student-1')
+    expect(elonlar[0].is_from_council_chair).toBe(true)
+    expect(elonlar[0].is_from_captain).toBe(false)
+  })
 })
 
 describe('createForFaculty', () => {

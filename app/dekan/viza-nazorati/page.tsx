@@ -1,5 +1,9 @@
 'use client'
 
+import DormTabs from '@/components/dekan/DormTabs'
+import { useDormTabs } from '@/lib/hooks/useDormTabs'
+import { studentsInDorm } from '@/features/faculty-students/domain/dorm-scope'
+
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -71,7 +75,10 @@ export default function VizaNazoratiPage() {
   const isLight = useThemeStore((s) => s.theme) === 'light'
   const ui = dekanUI(isLight)
 
-  const [rows, setRows] = useState<ForeignDocDashboardRow[]>([])
+  const dormScope = useDormTabs()
+  const [allRows, setRows] = useState<ForeignDocDashboardRow[]>([])
+  const rows = useMemo(() => studentsInDorm(allRows.map((row) => ({ ...row, dorm_id: row.dormId })), dormScope.dormId),
+    [allRows, dormScope.dormId])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<ForeignDocDashboardRow | null>(null)
 
@@ -208,6 +215,7 @@ export default function VizaNazoratiPage() {
       </div>
 
       {/* Bucket cards */}
+      <DormTabs scope={dormScope} isLight={isLight} onChange={() => { setEditing(null); setSearch('') }} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {BUCKET_ORDER.map((b) => {
           const chip = statusChip(TONE_MAP[b], isLight)

@@ -270,6 +270,10 @@ function buildStudentUpdates(body: Record<string, unknown>) {
     updates.is_floor_captain = Boolean(body.is_floor_captain)
   }
 
+  if ('is_council_chair' in body) {
+    updates.is_council_chair = Boolean(body.is_council_chair)
+  }
+
   if ('assigned_floor' in body) {
     if (body.assigned_floor === null || body.assigned_floor === '') {
       updates.assigned_floor = null
@@ -564,6 +568,42 @@ export async function PATCH(request: NextRequest) {
       delete updates.assigned_floor
       delete updates.gender
       delete updates.is_floor_captain
+    }
+
+    if (source === 'users' && updates.is_council_chair === true) {
+      // Same reasoning as is_floor_captain above, minus the floor: a chair
+      // is scoped to (faculty, gender) only, so only gender needs to be
+      // resolvable. Uses updates.gender (this request's new value) when
+      // present, so a request that changes gender AND promotes in one call
+      // demotes the correct (new) bucket's existing chair.
+      const { data: currentUser } = await supabase
+        .from('users')
+        .select('gender')
+        .eq('id', id)
+        .maybeSingle()
+
+      const effectiveGender = 'gender' in updates
+        ? (typeof updates.gender === 'string' ? updates.gender : null)
+        : (currentUser?.gender ?? null)
+
+      if (!effectiveGender) {
+        return jsonError("Kengash raisi tayinlash uchun talabaga jins belgilangan bo'lishi shart", 400)
+      }
+
+      // Demoting the previous chair and writing this user's own
+      // is_council_chair happens in a single atomic RPC call (see
+      // 202609130000) — a plain UPDATE here would let a race leave the
+      // (faculty, gender) slot with two chairs at once.
+      const { error: promoteError } = await supabase.rpc('promote_council_chair', {
+        p_user_id: id,
+        p_is_chair: true,
+      })
+      if (promoteError) {
+        console.error('Council chair promotion failed:', promoteError)
+        return jsonError('Kengash raisini tayinlab bo‘lmadi', 500)
+      }
+
+      delete updates.is_council_chair
     }
 
     if (Object.keys(updates).length === 0) {

@@ -1,5 +1,9 @@
 'use client'
 
+import DormTabs from '@/components/dekan/DormTabs'
+import { useDormTabs } from '@/lib/hooks/useDormTabs'
+import { studentsInDorm } from '@/features/faculty-students/domain/dorm-scope'
+
 import React, { useCallback, useEffect, useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Search, Eye, Edit2, Trash2, FileText, Filter, RotateCcw } from 'lucide-react'
@@ -15,6 +19,7 @@ import ArizaSignatureBadge from '@/components/applications/ArizaSignatureBadge'
 
 interface ApplicationRequest {
   id: string
+  dorm_id: string | null
   student_name: string
   text: string
   level: 'info' | 'warning' | 'critical'
@@ -71,7 +76,9 @@ export default function AdminArizalar() {
   const textBody = ui.body
   const inputBg = `${ui.input} ${ui.ring}`
 
-  const [requests, setRequests] = useState<ApplicationRequest[]>([])
+  const dormScope = useDormTabs()
+  const [allRequests, setRequests] = useState<ApplicationRequest[]>([])
+  const requests = useMemo(() => studentsInDorm(allRequests, dormScope.dormId), [allRequests, dormScope.dormId])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | ApplicationRequest['level']>('all')
@@ -149,7 +156,7 @@ export default function AdminArizalar() {
         throw new Error(result.error ?? 'Yangilashda xato!')
       }
 
-      setRequests(requests.map(r => r.id === statusModal.request?.id ? { ...r, level: newStatus, status: newRealStatus } : r))
+      setRequests((prev) => prev.map(r => r.id === statusModal.request?.id ? { ...r, level: newStatus, status: newRealStatus } : r))
       setStatusModal({ isOpen: false })
       toast.success("Holat yangilandi!")
     } catch (error) {
@@ -180,7 +187,7 @@ export default function AdminArizalar() {
         throw new Error(result.error ?? "O'chirishda xato!")
       }
 
-      setRequests(requests.filter(r => r.id !== id))
+      setRequests((prev) => prev.filter(r => r.id !== id))
       toast.success("Ariza o'chirildi!")
       deleteModal.close()
     } catch (error) {
@@ -293,6 +300,9 @@ export default function AdminArizalar() {
   return (
     <div>
       {/* Header */}
+      <DormTabs scope={dormScope} isLight={isLight} onChange={() => {
+        setCurrentPage(1); setSearchTerm(''); setDetailModal({ isOpen: false }); setStatusModal({ isOpen: false }); deleteModal.close()
+      }} />
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className={`flex items-center gap-3 text-2xl font-extrabold tracking-tight sm:text-3xl ${textStrong}`}>

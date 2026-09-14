@@ -41,6 +41,7 @@ export interface Elon {
   time: string;
   desc: string;
   is_from_captain?: boolean;
+  is_from_council_chair?: boolean;
 }
 
 export interface Profile {
@@ -56,6 +57,7 @@ export interface Profile {
   group?: string | number;
   avatar_url?: string;
   is_floor_captain?: boolean;
+  is_council_chair?: boolean;
   assigned_floor?: number;
   gender?: string;
   warning_count?: number;

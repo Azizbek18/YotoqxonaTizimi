@@ -182,12 +182,16 @@ export default function FloorBalanceCard({
   balance,
   isLight,
   onlyFloor,
+  dormId,
+  base = '/dekan',
   className = '',
 }: {
   balance: BalancePayload | undefined
   isLight: boolean
   /** Render just this one floor (compact form for the room-map sidebar). */
   onlyFloor?: number
+  dormId?: string
+  base?: string
   className?: string
 }) {
   const ui = dekanUI(isLight)
@@ -300,7 +304,7 @@ export default function FloorBalanceCard({
 
       <div className="mt-3 flex justify-end">
         <Link
-          href="/dekan/xonalar"
+          href={`${base}/xonalar${dormId ? `?dormId=${encodeURIComponent(dormId)}` : ''}`}
           className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${ui.accentText}`}
         >
           Xonalar xaritasida joylashtirish <ArrowRight size={10} />

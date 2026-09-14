@@ -257,7 +257,7 @@ describe('permit admin service — overview', () => {
       users: [{
         id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Aziz',
         passport_series: 'AB1', jshshir: 'J1', phone_number: '+998', gender: 'male',
-        direction: 'astronomiya', course: 2, room_number: '12', dorm_id: null, warning_count: 0, blacklisted: false,
+        direction: 'astronomiya', course: 2, room_number: '12', dorm_id: null, block: null, assigned_floor: null, warning_count: 0, blacklisted: false,
       }],
     }))
     const overview = await createPermitAdminService(repository({ load }), capacityDeps()).overview('fizika')
@@ -281,7 +281,7 @@ describe('permit admin service — overview', () => {
       users: [{
         id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Aziz',
         passport_series: 'AB1', jshshir: 'J1', phone_number: '+998', gender: 'male',
-        direction: 'astronomiya', course: 2, room_number: '101', dorm_id: 'dorm-b', warning_count: 0, blacklisted: false,
+        direction: 'astronomiya', course: 2, room_number: '101', dorm_id: 'dorm-b', block: null, assigned_floor: null, warning_count: 0, blacklisted: false,
       }],
     }))
     const overview = await createPermitAdminService(repository({ load }), capacityDeps()).overview('fizika')
@@ -296,7 +296,7 @@ describe('permit admin service — overview', () => {
       users: [{
         id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Aziz',
         passport_series: 'AB1', jshshir: 'J1', phone_number: '+998', gender: 'male',
-        direction: 'astronomiya', course: 2, room_number: '12', dorm_id: null, warning_count: 0, blacklisted: false,
+        direction: 'astronomiya', course: 2, room_number: '12', dorm_id: null, block: null, assigned_floor: null, warning_count: 0, blacklisted: false,
       }],
     }))
     const deps = capacityDeps([
@@ -320,7 +320,7 @@ describe('permit admin service — overview', () => {
       users: [{
         id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Aziz',
         passport_series: 'PP9', jshshir: 'JJ9', phone_number: '+998', gender: 'male',
-        direction: 'astronomiya', course: 2, room_number: '5', dorm_id: null, warning_count: 0, blacklisted: false,
+        direction: 'astronomiya', course: 2, room_number: '5', dorm_id: null, block: null, assigned_floor: null, warning_count: 0, blacklisted: false,
       }],
     }))
     const deps = capacityDeps([{ room_number: '5', frozen: false, capacity: 4 }], 4)
@@ -345,7 +345,7 @@ describe('permit admin service — overview', () => {
       users: [{
         id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Aziz',
         passport_series: 'PP1', jshshir: 'JJ1', phone_number: '+998', gender: 'male',
-        direction: 'd', course: 1, room_number: '5', dorm_id: null, warning_count: 0, blacklisted: false,
+        direction: 'd', course: 1, room_number: '5', dorm_id: null, block: null, assigned_floor: null, warning_count: 0, blacklisted: false,
       }],
     }))
     const deps = capacityDeps([
@@ -374,7 +374,7 @@ describe('permit admin service — overview', () => {
       ],
       users: [{
         id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'X', course: 1,
-        passport_series: 'C', jshshir: 'C', phone_number: '+998', gender: 'male', direction: 'd', room_number: '11', dorm_id: null, warning_count: 0, blacklisted: false,
+        passport_series: 'C', jshshir: 'C', phone_number: '+998', gender: 'male', direction: 'd', room_number: '11', dorm_id: null, block: null, assigned_floor: null, warning_count: 0, blacklisted: false,
       }],
     }))
     const deps = capacityDeps([
@@ -398,6 +398,49 @@ describe('permit admin service — overview', () => {
 
   it('rejects a dekan with no faculty', async () => {
     await expect(createPermitAdminService(repository(), capacityDeps()).overview(null)).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('scopes requests and bed counts to the chosen dorm, using the linked student’s current residence', async () => {
+    const user = { id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Ali',
+      passport_series: 'A', jshshir: 'JA', phone_number: null, gender: 'male', direction: null,
+      course: 1, room_number: '22', dorm_id: 'd12', block: null, assigned_floor: 2, warning_count: 0, blacklisted: false }
+    const load = vi.fn(async () => ({ users: [user, { ...user, id: 'u2', passport_series: 'B', jshshir: 'JB', dorm_id: 'd3' }],
+      permits: [
+        permit({ id: 'linked', passport_series: 'B', jshshir: 'JB', dorm_id: 'd12', status: 'registered' }),
+        permit({ id: 'reserved', passport_series: 'C', jshshir: 'JC', dorm_id: 'd3', room_number: '22' }),
+        permit({ id: 'waiting', passport_series: 'D', jshshir: 'JD', dorm_id: null, status: 'pending' }),
+      ] }))
+    const deps = capacityDeps([{ room_number: '22', capacity: 4, frozen: false }])
+    const service = createPermitAdminService(repository({ load }), deps)
+    const first = await service.overview('fizika', 'd12')
+    expect(first.requests).toHaveLength(0)
+    expect(first.usersWithRooms.map((row) => row.id)).toEqual(['u1'])
+    expect(first.dashboard).toMatchObject({ activeStudentsCount: 1, totalOccupiedBeds: 1, availableBeds: 4, freeBeds: 3 })
+    expect(deps.roomLayout.listAllRooms).toHaveBeenCalledWith('fizika', 'd12')
+    expect(deps.appSettings.get).toHaveBeenCalledWith('fizika', 'd12')
+    const second = await service.overview('fizika', 'd3')
+    expect(second.requests.map((row) => row.id)).toEqual(['linked', 'reserved'])
+    expect(second.dashboard).toMatchObject({ totalOccupiedBeds: 2, freeBeds: 2 })
+    const unassigned = await service.overview('fizika', null)
+    expect(unassigned.requests.map((row) => row.id)).toEqual(['waiting'])
+    expect(unassigned.dashboard).toMatchObject({ pendingCount: 1, totalOccupiedBeds: 0, availableBeds: 0, freeBeds: 0 })
+  })
+
+  it('keeps occupancy and floor placement separate for repeated room numbers in blocked buildings', async () => {
+    const user = { id: 'a', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Ali',
+      passport_series: 'A', jshshir: 'JA', phone_number: null, gender: 'male', direction: null,
+      course: 1, room_number: '1', dorm_id: 'blocked', block: 'A', assigned_floor: 1, warning_count: 0, blacklisted: false }
+    const load = vi.fn(async () => ({ permits: [], users: [user,
+      { ...user, id: 'b', passport_series: 'B', jshshir: 'JB', block: 'B', assigned_floor: 2 },
+      { ...user, id: 'c', passport_series: 'C', jshshir: 'JC', block: 'B', assigned_floor: 2 },
+    ] }))
+    const deps = { roomLayout: { listAllRooms: vi.fn(async () => [
+      { room_number: '1', block: 'A', floor_number: 1, capacity: 5, frozen: false, gender: null },
+      { room_number: '1', block: 'B', floor_number: 2, capacity: 2, frozen: false, gender: null },
+    ]) }, appSettings: { get: vi.fn(async () => ({ defaultRoomCapacity: 4 })) } }
+    const { dashboard } = await createPermitAdminService(repository({ load }), deps).overview('fizika', 'blocked')
+    expect(dashboard).toMatchObject({ totalOccupiedBeds: 3, availableBeds: 7, freeBeds: 4 })
+    expect(dashboard.floorBalance?.floors.map((floor) => floor.byCourse[1])).toEqual([1, 2])
   })
 })
 

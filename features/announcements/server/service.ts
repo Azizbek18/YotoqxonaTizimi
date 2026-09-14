@@ -59,15 +59,17 @@ export function createAnnouncementService(repository: AnnouncementRepository = c
         repository.listStudentCreators(creatorIds),
         repository.listStaffCreators(creatorIds),
       ])
-      const creators = new Map<string, { name: string; isCaptain: boolean; floor?: number }>()
+      const creators = new Map<string, { name: string; isCaptain: boolean; floor?: number; isCouncilChair: boolean }>()
       students.forEach((student) => creators.set(student.id, {
         name: student.full_name || 'Talaba',
         isCaptain: Boolean(student.is_floor_captain),
         floor: student.assigned_floor ?? undefined,
+        isCouncilChair: Boolean(student.is_council_chair),
       }))
       staff.forEach((employee) => creators.set(employee.id, {
         name: employee.full_name,
         isCaptain: false,
+        isCouncilChair: false,
       }))
 
       const elonlar = rows
@@ -95,6 +97,15 @@ export function createAnnouncementService(repository: AnnouncementRepository = c
               && (row.target_gender === null || row.target_gender === userGender),
             )
           }
+          if (row.audience === 'council') {
+            // A council chair's notice: whole-faculty, gender-scoped, no
+            // floor filter — a raisi represents every same-gender student in
+            // the building, not one floor's worth.
+            return Boolean(
+              sameFacultyCode(row.faculty, currentFaculty ?? PRIMARY_FACULTY)
+              && (row.target_gender === null || row.target_gender === userGender),
+            )
+          }
           return false
         })
         .map((row) => {
@@ -104,13 +115,14 @@ export function createAnnouncementService(repository: AnnouncementRepository = c
             title: row.title,
             text: row.text,
             type: row.type as 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish',
-            audience: row.audience as 'all' | 'faculty' | 'floor' | 'system',
+            audience: row.audience as 'all' | 'faculty' | 'floor' | 'system' | 'council',
             faculty: row.faculty,
             created_at: row.created_at,
             published_at: row.published_at,
             author_name: creator?.name ?? "Tizim ma'muri",
             is_from_captain: creator?.isCaptain ?? false,
             captain_floor: creator?.floor,
+            is_from_council_chair: creator?.isCouncilChair ?? false,
           }
         })
       return { elonlar, currentFaculty }

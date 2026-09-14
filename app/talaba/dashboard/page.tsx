@@ -19,6 +19,7 @@ import PushNotificationCard from '@/components/pwa/PushNotificationCard';
 import AttendanceCheckinBanner from '@/components/attendance/AttendanceCheckinBanner';
 import RoomInfoCard from '@/components/talaba/dashboard/RoomInfoCard';
 import SardorPanelCard from '@/components/talaba/dashboard/SardorPanelCard';
+import CouncilPanelCard from '@/components/talaba/dashboard/CouncilPanelCard';
 import FloorCaptainCard from '@/components/talaba/dashboard/FloorCaptainCard';
 import RoommatesCard from '@/components/talaba/dashboard/RoommatesCard';
 import ForeignDocsCard from '@/components/talaba/foreign-docs/ForeignDocsCard';
@@ -203,10 +204,13 @@ export default function TalabaDashboard() {
               title: e.title,
               type: e.type,
               teacher: e.author_name || "Tizim ma'muri",
-              room: e.is_from_captain ? `${e.captain_floor}-qavat sardori` : "Ma'muriyat",
+              room: e.is_from_captain
+                ? `${e.captain_floor}-qavat sardori`
+                : e.is_from_council_chair ? 'Talaba kengashi raisi' : "Ma'muriyat",
               time: formatElonDate(e.published_at ?? e.created_at),
               desc: e.text,
               is_from_captain: e.is_from_captain,
+              is_from_council_chair: e.is_from_council_chair,
             }));
             setElonlar(mappedElons);
           } else {
@@ -398,6 +402,12 @@ export default function TalabaDashboard() {
           {profile.is_floor_captain && (
             <div className="order-3 lg:order-none">
               <SardorPanelCard isLight={isLight} assignedFloor={profile.assigned_floor} />
+            </div>
+          )}
+
+          {profile.is_council_chair && (
+            <div className="order-3 lg:order-none">
+              <CouncilPanelCard isLight={isLight} gender={profile.gender} />
             </div>
           )}
 

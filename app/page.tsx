@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  Sparkles, ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw, FileText, Hand, Handshake, BookOpen
+  Sparkles, ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw, FileText, Hand, Handshake, BookOpen, Home as HomeIcon
 } from 'lucide-react';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { Skel } from '@/components/ui/skeletons';
@@ -315,6 +315,16 @@ export default function Home() {
               Ariza holatini tekshirish
             </Link>
           </div>
+        )}
+        {!checkingPermit && !permitRequest && (
+          <p className="anim-in text-center text-[11px] font-medium" style={{ animationDelay: '0.16s' }}>
+            <Link
+              href="/kv-royxatdan-otish"
+              className={`inline-flex items-center gap-1.5 hover:underline ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}
+            >
+              <HomeIcon size={12} /> Yotoqxonada emas, ijarada (KV) turaman
+            </Link>
+          </p>
         )}
       </section>
 
@@ -634,6 +644,12 @@ export default function Home() {
                 Ariza holatini tekshirish
               </Link>
             </div>
+            <Link
+              href="/kv-royxatdan-otish"
+              className={`relative z-10 inline-flex items-center gap-1.5 text-[11px] font-medium hover:underline ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}
+            >
+              <HomeIcon size={12} /> Yotoqxonada emas, ijarada (KV) turaman
+            </Link>
           </div>
         )}
       </section>

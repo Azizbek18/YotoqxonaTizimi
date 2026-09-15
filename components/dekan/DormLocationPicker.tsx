@@ -9,15 +9,19 @@ import { geocodePlace, type GeocodeResult } from '@/features/dorms/client/api'
 // Tashkent centre — the fallback view when the dorm has no coordinate yet.
 const DEFAULT_CENTER: [number, number] = [41.311081, 69.240562]
 
+// CARTO's anonymous (no-key) raster basemaps (voyager/light_all/dark_all)
+// stopped serving real tiles — every one now returns a watermarked "API KEY
+// REQUIRED" placeholder. Plain tile.openstreetmap.org also doesn't work as a
+// drop-in replacement — OSM's tile usage policy actively blocks embedded
+// apps ("Access blocked... not following the tile usage policy", see
+// osm.wiki/Blocked); it's meant for very light, personal, non-embedded use.
+// Esri's free "Canvas" world basemaps (no API key, embeddable) have genuine
+// light AND dark styles, so no CSS filter trick is needed either.
+const ESRI_BASE = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas'
+const ESRI_ATTRIBUTION = '&copy; Esri &mdash; Esri, HERE, Garmin, OpenStreetMap contributors'
 const TILES = {
-  light: {
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; OpenStreetMap &copy; CARTO',
-  },
-  dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; OpenStreetMap &copy; CARTO',
-  },
+  light: { url: `${ESRI_BASE}/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}`, attribution: ESRI_ATTRIBUTION },
+  dark: { url: `${ESRI_BASE}/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`, attribution: ESRI_ATTRIBUTION },
 }
 
 const PIN_HTML = `
@@ -43,7 +47,7 @@ type Props = {
 /**
  * Map-based coordinate picker for the dorm's yo'qlama zone. Search a place or
  * tap the map to drop the pin; the pin is draggable and the allowed-distance
- * circle redraws live as the radius changes. No API key — CARTO/OSM tiles,
+ * circle redraws live as the radius changes. No API key — Esri Canvas tiles,
  * geocoding proxied through /api/dekan/geocode.
  */
 export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChange }: Props) {
@@ -116,7 +120,7 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
       })
       mapRef.current = map
       const t = isLight ? TILES.light : TILES.dark
-      tileRef.current = L.tileLayer(t.url, { attribution: t.attribution, maxZoom: 20 }).addTo(map)
+      tileRef.current = L.tileLayer(t.url, { attribution: t.attribution, maxZoom: 18 }).addTo(map)
       map.on('click', (e: LeafletNS.LeafletMouseEvent) => {
         placePin(e.latlng.lat, e.latlng.lng, false)
         emit(e.latlng.lat, e.latlng.lng)
@@ -144,7 +148,7 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
     if (!L || !map) return
     tileRef.current?.remove()
     const t = isLight ? TILES.light : TILES.dark
-    tileRef.current = L.tileLayer(t.url, { attribution: t.attribution, maxZoom: 20 }).addTo(map)
+    tileRef.current = L.tileLayer(t.url, { attribution: t.attribution, maxZoom: 18 }).addTo(map)
   }, [isLight])
 
   // Live radius.

@@ -70,9 +70,13 @@ export async function proxy(request: NextRequest) {
     "object-src 'none'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
-    // *.basemaps.cartocdn.com + *.tile.openstreetmap.org: slippy-map tiles for
-    // the dekan's yo'qlama location picker (Leaflet, no API key).
-    "img-src 'self' data: blob: https://*.supabase.co https://upload.wikimedia.org https://nuu.uz https://img.icons8.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org",
+    // server.arcgisonline.com: slippy-map tiles (Esri Canvas basemaps, no API
+    // key) for the dekan's yo'qlama location picker AND the student's
+    // propiska address picker (features/foreign-docs). basemaps.cartocdn.com
+    // and tile.openstreetmap.org are dead weight now (CARTO's anonymous tier
+    // requires a key; OSM blocks embedded apps) but left harmless in case a
+    // future feature adds a keyed CARTO account.
+    "img-src 'self' data: blob: https://*.supabase.co https://upload.wikimedia.org https://nuu.uz https://img.icons8.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://server.arcgisonline.com",
     "font-src 'self' data:",
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
     "worker-src 'self' blob:",

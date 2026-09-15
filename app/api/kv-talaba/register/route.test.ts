@@ -36,7 +36,10 @@ function request(body: Record<string, unknown>) {
 }
 
 const VALID = {
-  fullName: 'Aziza Karimova',
+  lastName: 'Karimova',
+  firstName: 'Aziza',
+  middleName: 'Botirovna',
+  noMiddleName: false,
   email: 'aziza@example.com',
   phone: '+998901234567',
   gender: 'female',
@@ -58,19 +61,36 @@ describe('POST /api/kv-talaba/register', () => {
     emailMaybeSingle.mockResolvedValue({ data: null })
   })
 
-  it('inserts a pending, off-campus, room-less talaba row', async () => {
+  it('inserts an active, off-campus, room-less talaba row with a composed full name — no dekan approval gate', async () => {
     const response = await POST(request(VALID))
     expect(response.status).toBe(200)
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({
       id: 'new-id',
       role: 'talaba',
-      status: 'pending',
+      status: 'active',
       is_off_campus: true,
       room_number: null,
       dorm_id: null,
       assigned_floor: null,
       faculty: 'amit',
       hemis_student_id: '12345',
+      full_name: 'Karimova Aziza Botirovna',
+      middle_name: 'Botirovna',
+    }))
+  })
+
+  it('400s when a name part is missing', async () => {
+    const response = await POST(request({ ...VALID, lastName: '' }))
+    expect(response.status).toBe(400)
+    expect(createAuthUserSafely).not.toHaveBeenCalled()
+  })
+
+  it('accepts noMiddleName without requiring a patronymic', async () => {
+    const response = await POST(request({ ...VALID, middleName: '', noMiddleName: true }))
+    expect(response.status).toBe(200)
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+      full_name: 'Karimova Aziza',
+      middle_name: null,
     }))
   })
 

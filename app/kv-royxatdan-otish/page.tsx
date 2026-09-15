@@ -1,49 +1,49 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { AnimatePresence } from 'framer-motion'
 import { Home, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/password-policy'
-import { PERMIT_FACULTIES } from '@/lib/faculties'
-import { directionsForFaculty } from '@/lib/directions'
+import { supabase } from '@/lib/supabase'
+import { getPasswordPolicyError } from '@/lib/password-policy'
+import StepProgress from '@/components/register/StepProgress'
+import Step1Name from '@/components/kv-register/Step1Name'
+import Step2Contact from '@/components/kv-register/Step2Contact'
+import Step3Gender from '@/components/kv-register/Step3Gender'
+import Step4Study from '@/components/kv-register/Step4Study'
+import Step5Password from '@/components/kv-register/Step5Password'
+import { initialKvData, KvRegisterData } from '@/components/kv-register/types'
 
-const COURSES = [1, 2, 3, 4, 5, 6]
+const TOTAL_STEPS = 5
 
 // KV-talaba (off-campus student) self-registration — deliberately its own
 // standalone page, not a step in the /register wizard: that wizard's whole
 // step machine assumes an approved permit_requests row exists somewhere,
-// which a KV-talaba never has. No document upload here — just enough to
-// identify the applicant and let a dekan sanity-check them (see
-// hemisStudentId, the field a future HEMIS/OneID check will read instead).
+// which a KV-talaba never has. No document upload here, no dekan approval
+// gate either — the account lands active immediately (see
+// api/kv-talaba/register's comment) and this page auto-signs the student in
+// and drops them straight on their dashboard, same as app/register does.
+// Split into one-field-per-step (components/kv-register/*) mirroring
+// components/register's wizard shape, rather than one long form — a
+// committed applicant mid-flow, same class of page as /register, so
+// framer-motion here is fine (see mobile-perf-pass memory: it's kept out of
+// the pre-registration entry pages only).
 export default function KvRoyxatdanOtish() {
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [gender, setGender] = useState('')
-  const [faculty, setFaculty] = useState('')
-  const [direction, setDirection] = useState('')
-  const [course, setCourse] = useState('')
-  const [group, setGroup] = useState('')
-  const [hemisStudentId, setHemisStudentId] = useState('')
+  const router = useRouter()
+  const [stepIndex, setStepIndex] = useState(0)
+  const [data, setData] = useState<KvRegisterData>(initialKvData)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
-  const directionOptions = useMemo(() => directionsForFaculty(faculty), [faculty])
+  const update = (patch: Partial<KvRegisterData>) => setData((current) => ({ ...current, ...patch }))
+  const next = () => setStepIndex((i) => Math.min(i + 1, TOTAL_STEPS - 1))
+  const back = () => setStepIndex((i) => Math.max(i - 1, 0))
 
-  const handleFacultyChange = (value: string) => {
-    setFaculty(value)
-    setDirection('')
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!fullName || !email || !gender || !faculty || !direction || !course || !password || !confirmPassword) {
-      toast.error("Majburiy maydonlarni to'ldiring")
-      return
-    }
+  const handleSubmit = async () => {
     if (password !== confirmPassword) {
       toast.error('Parollar bir xil emas')
       return
@@ -60,13 +60,38 @@ export default function KvRoyxatdanOtish() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fullName, email, phone, gender, faculty, direction,
-          course: Number(course), group, hemisStudentId, password, confirmPassword,
+          lastName: data.lastName,
+          firstName: data.firstName,
+          middleName: data.middleName,
+          noMiddleName: data.noMiddleName,
+          email: data.email,
+          phone: data.phone,
+          gender: data.gender,
+          faculty: data.faculty,
+          direction: data.direction,
+          course: Number(data.course),
+          group: data.group,
+          hemisStudentId: data.hemisStudentId,
+          password,
+          confirmPassword,
         }),
       })
       const result: { ok: boolean; error?: string } = await response.json()
       if (!response.ok || !result.ok) throw new Error(result.error ?? "Ro'yxatdan o'tishda xatolik")
-      setSubmitted(true)
+
+      // No dekan approval gate — the account is active immediately, so sign
+      // the student straight in and drop them on their dashboard, same as
+      // app/register does. A sign-in hiccup still counts as success: the
+      // account exists, they just log in by hand instead.
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: data.email.trim().toLowerCase(),
+        password,
+      })
+      if (signInError || !authData.session) {
+        setSubmitted(true)
+        return
+      }
+      router.push('/talaba/dashboard')
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Noma'lum xatolik")
     } finally {
@@ -81,148 +106,71 @@ export default function KvRoyxatdanOtish() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400">
             <CheckCircle2 size={28} />
           </div>
-          <h1 className="text-lg font-black">Arizangiz yuborildi</h1>
+          <h1 className="text-lg font-black">Akkauntingiz yaratildi</h1>
           <p className="mt-2 text-sm leading-relaxed text-slate-400">
-            Ma&apos;lumotlaringiz fakultet dekaniga yuborildi. Tasdiqlangach, shu email va parolingiz bilan tizimga kira olasiz.
+            Endi shu email va parolingiz bilan tizimga kirishingiz mumkin.
           </p>
-          <Link href="/" className="mt-6 inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-400 hover:underline">
-            <ArrowLeft size={14} /> Bosh sahifaga qaytish
+          <Link href="/login" className="mt-6 inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-400 hover:underline">
+            <ArrowLeft size={14} /> Kirish sahifasiga o&apos;tish
           </Link>
         </div>
       </main>
     )
   }
 
+  const stepProps = { stepNumber: stepIndex + 1, totalSteps: TOTAL_STEPS }
+
   return (
-    <main className="min-h-screen bg-[#020617] px-4 py-8 text-white">
-      <div className="mx-auto w-full max-w-md rounded-3xl border border-white/10 bg-[#0b1120]/85 p-6 shadow-2xl">
-        <Link href="/ariza-yuborish" className="mb-4 inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-white">
-          <ArrowLeft size={14} /> Orqaga
-        </Link>
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-300">
-            <Home size={22} />
+    <main className="min-h-screen bg-[#020617] px-4 py-6 text-white">
+      <div className="mx-auto w-full max-w-md rounded-3xl border border-white/10 bg-[#0b1120]/85 p-5 shadow-2xl">
+        <div className="mb-2 flex items-center gap-2.5">
+          <Link href="/ariza-yuborish" className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-white">
+            <ArrowLeft size={14} /> Orqaga
+          </Link>
+          <span className="text-slate-700">•</span>
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
+            <Home size={13} className="text-emerald-400" /> KV-talaba ro&apos;yxatdan o&apos;tishi
           </div>
-          <h1 className="text-xl font-black">KV-talaba ro&apos;yxatdan o&apos;tishi</h1>
-          <p className="mt-1 text-xs text-slate-400">Ijarada/kvartirada turadigan talabalar uchun — hujjat kerak emas</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-            placeholder="F.I.Sh"
-            required
-          />
-          <input
-            type="email"
-            name="email"
-            autoComplete="email"
-            maxLength={254}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-            placeholder="Email"
-            required
-          />
-          <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-            placeholder="Telefon"
-          />
-          <select
-            value={gender}
-            onChange={(e) => setGender(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-            required
-          >
-            <option value="" disabled>Jinsingiz</option>
-            <option value="male">O&apos;g&apos;il</option>
-            <option value="female">Qiz</option>
-          </select>
-          <select
-            value={faculty}
-            onChange={(e) => handleFacultyChange(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-            required
-          >
-            <option value="" disabled>Fakultetni tanlang</option>
-            {PERMIT_FACULTIES.map((f) => (
-              <option key={f.value} value={f.value}>{f.label}</option>
-            ))}
-          </select>
-          <select
-            value={direction}
-            onChange={(e) => setDirection(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none disabled:opacity-50"
-            required
-            disabled={!faculty}
-          >
-            <option value="" disabled>Yo&apos;nalishni tanlang</option>
-            {directionOptions.map((d) => (
-              <option key={d.value} value={d.value}>{d.label}</option>
-            ))}
-          </select>
-          <div className="grid grid-cols-2 gap-3">
-            <select
-              value={course}
-              onChange={(e) => setCourse(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-              required
-            >
-              <option value="" disabled>Kurs</option>
-              {COURSES.map((c) => (
-                <option key={c} value={c}>{c}-kurs</option>
-              ))}
-            </select>
-            <input
-              value={group}
-              onChange={(e) => setGroup(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-              placeholder="Guruh"
-            />
-          </div>
-          <input
-            value={hemisStudentId}
-            onChange={(e) => setHemisStudentId(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-            placeholder="HEMIS talaba ID (ixtiyoriy)"
-          />
-          <input
-            type="password"
-            name="new-password"
-            autoComplete="new-password"
-            minLength={PASSWORD_MIN_LENGTH}
-            maxLength={PASSWORD_MAX_LENGTH}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-            placeholder="Parol"
-            required
-          />
-          <input
-            type="password"
-            name="confirm-password"
-            autoComplete="new-password"
-            minLength={PASSWORD_MIN_LENGTH}
-            maxLength={PASSWORD_MAX_LENGTH}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none"
-            placeholder="Parolni tasdiqlang"
-            required
-          />
-          <button
-            disabled={loading}
-            className="w-full rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 px-4 py-3 text-xs font-black uppercase tracking-widest disabled:opacity-60"
-          >
-            {loading ? 'Yuborilmoqda...' : "Ariza yuborish"}
-          </button>
-        </form>
+        {stepIndex === 0 && (
+          <p className="mb-3 text-[11px] leading-snug text-slate-400">
+            Ijarada/kvartirada turadigan talabalar uchun — hujjat kerak emas.
+          </p>
+        )}
 
-        <p className="mt-5 text-center text-xs text-slate-400">
+        <StepProgress current={stepIndex + 1} total={TOTAL_STEPS} />
+
+        <AnimatePresence mode="wait">
+          {stepIndex === 0 && (
+            <Step1Name key="step1" data={data} onChange={update} onNext={next} {...stepProps} />
+          )}
+          {stepIndex === 1 && (
+            <Step2Contact key="step2" data={data} onChange={update} onNext={next} onBack={back} {...stepProps} />
+          )}
+          {stepIndex === 2 && (
+            <Step3Gender key="step3" data={data} onChange={update} onNext={next} onBack={back} {...stepProps} />
+          )}
+          {stepIndex === 3 && (
+            <Step4Study key="step4" data={data} onChange={update} onNext={next} onBack={back} {...stepProps} />
+          )}
+          {stepIndex === 4 && (
+            <Step5Password
+              key="step5"
+              data={data}
+              password={password}
+              confirmPassword={confirmPassword}
+              onPasswordChange={setPassword}
+              onConfirmPasswordChange={setConfirmPassword}
+              onSubmit={handleSubmit}
+              onBack={back}
+              loading={loading}
+              {...stepProps}
+            />
+          )}
+        </AnimatePresence>
+
+        <p className="mt-3 text-center text-[11px] text-slate-400">
           Akkauntingiz bormi?{' '}
           <Link href="/login" className="text-emerald-400 hover:underline">
             Kirish sahifasi

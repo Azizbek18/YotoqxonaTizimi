@@ -317,14 +317,31 @@ export default function Home() {
           </div>
         )}
         {!checkingPermit && !permitRequest && (
-          <p className="anim-in text-center text-[11px] font-medium" style={{ animationDelay: '0.16s' }}>
-            <Link
-              href="/kv-royxatdan-otish"
-              className={`inline-flex items-center gap-1.5 hover:underline ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}
-            >
-              <HomeIcon size={12} /> Yotoqxonada emas, ijarada (KV) turaman
-            </Link>
-          </p>
+          <Link
+            href="/kv-royxatdan-otish"
+            style={{ animationDelay: '0.16s' }}
+            className={`anim-in group relative mx-auto mt-3 flex w-fit max-w-full items-center gap-3 rounded-2xl border py-2 pl-2 pr-3.5 text-left transition-all duration-300 active:scale-[0.98] ${
+              isLight
+                ? 'border-emerald-200/80 bg-white/90 shadow-[0_6px_20px_-8px_rgba(16,185,129,0.25)] hover:border-emerald-300 hover:shadow-[0_10px_28px_-8px_rgba(16,185,129,0.35)]'
+                : 'border-emerald-400/20 bg-emerald-500/10 shadow-[0_6px_24px_-10px_rgba(16,185,129,0.5)] hover:bg-emerald-500/[0.16] hover:border-emerald-400/35'
+            }`}
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30 transition-transform duration-300 group-hover:scale-105">
+              <HomeIcon size={16} strokeWidth={2.4} />
+            </span>
+            <span className="min-w-0">
+              <span className={`block text-[9px] font-black uppercase tracking-[0.18em] ${isLight ? 'text-emerald-600/70' : 'text-emerald-300/70'} syne-font`}>
+                Yotoqxonada emas, ijarada turasizmi?
+              </span>
+              <span className={`block text-[13px] font-black leading-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>
+                KV-talaba sifatida ro&apos;yxatdan o&apos;ting
+              </span>
+            </span>
+            <ArrowRight
+              size={15}
+              className={`ml-1 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5 ${isLight ? 'text-emerald-600' : 'text-emerald-300'}`}
+            />
+          </Link>
         )}
       </section>
 
@@ -646,9 +663,27 @@ export default function Home() {
             </div>
             <Link
               href="/kv-royxatdan-otish"
-              className={`relative z-10 inline-flex items-center gap-1.5 text-[11px] font-medium hover:underline ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}
+              className={`group relative z-10 mx-auto flex w-fit max-w-full items-center gap-3 rounded-2xl border py-2 pl-2 pr-3.5 text-left transition-all duration-300 active:scale-[0.98] ${
+                isLight
+                  ? 'border-emerald-200/80 bg-white/90 hover:border-emerald-300'
+                  : 'border-emerald-400/20 bg-emerald-500/10 hover:bg-emerald-500/[0.16] hover:border-emerald-400/35'
+              }`}
             >
-              <HomeIcon size={12} /> Yotoqxonada emas, ijarada (KV) turaman
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30 transition-transform duration-300 group-hover:scale-105">
+                <HomeIcon size={16} strokeWidth={2.4} />
+              </span>
+              <span className="min-w-0">
+                <span className={`block text-[9px] font-black uppercase tracking-[0.18em] ${isLight ? 'text-emerald-600/70' : 'text-emerald-300/70'} syne-font`}>
+                  Yotoqxonada emas, ijarada turasizmi?
+                </span>
+                <span className={`block text-[13px] font-black leading-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>
+                  KV-talaba sifatida ro&apos;yxatdan o&apos;ting
+                </span>
+              </span>
+              <ArrowRight
+                size={15}
+                className={`ml-1 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5 ${isLight ? 'text-emerald-600' : 'text-emerald-300'}`}
+              />
             </Link>
           </div>
         )}

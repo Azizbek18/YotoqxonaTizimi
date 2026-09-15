@@ -5,16 +5,24 @@ import { checkRateLimit, getClientIp } from '@/lib/security'
 import { getPasswordPolicyError } from '@/lib/password-policy'
 import { isPermitFacultyValue } from '@/lib/faculties'
 import { directionBelongsToFaculty, normalizeDirection } from '@/lib/directions'
+import { buildFullName, getNamePartError, toTitleCaseName } from '@/lib/permit-validation'
+import { cyrillicToLatin } from '@/lib/transliterate'
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/
 
+function text(body: Record<string, unknown>, key: string, maxLength = 200) {
+  return String(body[key] ?? '').trim().slice(0, maxLength)
+}
+
 // KV-talaba (off-campus student) self-registration — deliberately the
 // mirror image of app/api/student/register: no permit_requests lookup, no
-// document, no passport/jshshir. A dekan-approved (interim; HEMIS/OneID
-// later — see off_campus_verified_by) `users` row lands `status: 'pending'`
-// the same way app/api/staff/register lands a staff row `status: 'active'`
-// directly — just gated behind an approval step instead of being immediate,
-// since there's no invite code here to stand in for verification yet.
+// document, no passport/jshshir. No dekan approval gate either (user
+// decision 2026-09-15: real verification needs HEMIS/OneID access this
+// project doesn't have yet, and a manual dekan queue with nothing reliable
+// to check it against was pure friction) — the row lands `status: 'active'`
+// immediately, the same way app/api/staff/register lands a staff row.
+// off_campus_verified_by stays null (no one verified this account); it's
+// still the field a future HEMIS/OneID check would write to.
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request)
@@ -24,7 +32,11 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const fullName = typeof body.fullName === 'string' ? body.fullName.trim() : ''
+    const firstName = toTitleCaseName(cyrillicToLatin(text(body, 'firstName', 80)))
+    const lastName = toTitleCaseName(cyrillicToLatin(text(body, 'lastName', 80)))
+    const noMiddleName = Boolean(body.noMiddleName)
+    const middleName = noMiddleName ? '' : toTitleCaseName(cyrillicToLatin(text(body, 'middleName', 80)))
+    const fullName = buildFullName({ lastName, firstName, middleName })
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
     const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
     const gender = body.gender === 'male' || body.gender === 'female' ? body.gender : ''
@@ -36,8 +48,14 @@ export async function POST(request: Request) {
     const password = typeof body.password === 'string' ? body.password : ''
     const confirmPassword = typeof body.confirmPassword === 'string' ? body.confirmPassword : ''
 
-    if (fullName.length < 3 || !password || !confirmPassword) {
+    if (!password || !confirmPassword) {
       return NextResponse.json({ ok: false, error: "Majburiy maydonlar to'ldirilmagan" }, { status: 400 })
+    }
+    const nameError = getNamePartError(lastName, 'Familiya')
+      || getNamePartError(firstName, 'Ism')
+      || (noMiddleName ? null : getNamePartError(middleName, 'Otasining ismi'))
+    if (nameError) {
+      return NextResponse.json({ ok: false, error: nameError }, { status: 400 })
     }
     if (!EMAIL_RE.test(email) || email.length > 254) {
       return NextResponse.json({ ok: false, error: "Email noto'g'ri" }, { status: 400 })
@@ -78,10 +96,11 @@ export async function POST(request: Request) {
       id: authData.user.id,
       email,
       full_name: fullName,
+      middle_name: middleName || null,
       phone_number: phone || null,
       gender,
       role: 'talaba',
-      status: 'pending',
+      status: 'active',
       faculty,
       direction: normalizeDirection(direction),
       course,

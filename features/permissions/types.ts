@@ -2,19 +2,22 @@
  * Per-person permissions the dekan can grant or revoke at any time, the way
  * Telegram lets an owner tune each admin's rights individually.
  *
- * Two subjects carry permissions:
- *   - `tarbiyachi` — a `staff` row   -> `staff.permissions`
- *   - `sardor`     — a floor captain -> `users.captain_permissions`
+ * Three subjects carry permissions:
+ *   - `tarbiyachi` — a `staff` row     -> `staff.permissions`
+ *   - `sardor`     — a floor captain   -> `users.captain_permissions`
  *     (a captain is a student with `users.is_floor_captain`, not a staff role)
+ *   - `raisi`      — a council chair   -> `users.council_chair_permissions`
+ *     (a student with `users.is_council_chair`; scoped to their own gender
+ *     across the whole faculty, not one floor)
  *
  * **An absent key means allowed.** The stored object only ever records what
  * has been taken away, so an empty `{}` is a fully-privileged member. This is
- * what makes the feature safe to deploy: every existing tarbiyachi and sardor
- * keeps working the moment the column appears, instead of being locked out
- * until someone ticks their boxes.
+ * what makes the feature safe to deploy: every existing tarbiyachi, sardor
+ * and raisi keeps working the moment the column appears, instead of being
+ * locked out until someone ticks their boxes.
  */
 
-export const PERMISSION_SUBJECTS = ['tarbiyachi', 'sardor'] as const
+export const PERMISSION_SUBJECTS = ['tarbiyachi', 'sardor', 'raisi'] as const
 export type PermissionSubject = (typeof PERMISSION_SUBJECTS)[number]
 
 export const TARBIYACHI_PERMISSIONS = [
@@ -32,9 +35,16 @@ export const SARDOR_PERMISSIONS = [
   'duty.schedule',
 ] as const
 
+export const RAISI_PERMISSIONS = [
+  'students.view',
+  'council.announcements',
+  'captains.manage',
+] as const
+
 export type TarbiyachiPermission = (typeof TARBIYACHI_PERMISSIONS)[number]
 export type SardorPermission = (typeof SARDOR_PERMISSIONS)[number]
-export type PermissionKey = TarbiyachiPermission | SardorPermission
+export type RaisiPermission = (typeof RAISI_PERMISSIONS)[number]
+export type PermissionKey = TarbiyachiPermission | SardorPermission | RaisiPermission
 
 /** What the dekan sees next to each toggle. */
 export const PERMISSION_LABELS: Record<PermissionKey, { title: string; hint: string }> = {
@@ -70,10 +80,20 @@ export const PERMISSION_LABELS: Record<PermissionKey, { title: string; hint: str
     title: 'Navbatchilik jadvali',
     hint: 'Qavat tozalik navbatchiligini tuzish',
   },
+  'council.announcements': {
+    title: "E'lon yozish",
+    hint: "O'z jinsi bo'yicha butun fakultet talabalariga e'lon yuborish",
+  },
+  'captains.manage': {
+    title: 'Sardor tayinlash',
+    hint: "O'z jinsi bo'yicha talabalarni qavat sardori etib tayinlash yoki olib tashlash",
+  },
 }
 
 export function permissionsForSubject(subject: PermissionSubject): readonly PermissionKey[] {
-  return subject === 'tarbiyachi' ? TARBIYACHI_PERMISSIONS : SARDOR_PERMISSIONS
+  if (subject === 'tarbiyachi') return TARBIYACHI_PERMISSIONS
+  if (subject === 'sardor') return SARDOR_PERMISSIONS
+  return RAISI_PERMISSIONS
 }
 
 /** The shape stored in the jsonb column: only revocations are written. */

@@ -24,6 +24,7 @@ type Member = {
 const SUBJECT_LABEL: Record<PermissionSubject, string> = {
   tarbiyachi: 'Tarbiyachi',
   sardor: 'Qavat sardori',
+  raisi: 'Talaba kengashi raisi',
 }
 
 /**

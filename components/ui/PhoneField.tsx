@@ -55,15 +55,25 @@ export default function PhoneField({
 
   const options = useMemo(
     () => [
-      ...PHONE_DIAL_CODES.map((c) => ({ value: c.code, label: `${c.code}  ${c.label}` })),
+      ...PHONE_DIAL_CODES.map((c) => ({
+        value: c.code,
+        label: (
+          <span className="flex items-baseline gap-2">
+            <span className="font-mono font-black tabular-nums">{c.code}</span>
+            <span className="opacity-70">{c.label}</span>
+          </span>
+        ),
+      })),
       { value: OTHER, label: 'Boshqa davlat…' },
     ],
     [],
   )
 
+  const maxLenFor = (code: string) => PHONE_DIAL_CODES.find((c) => c.code === code)?.maxLen ?? 12
+
   const emit = (code: string, nat: string) => {
     const cd = code.replace(/\D/g, '') || '998'
-    const nn = nat.replace(/\D/g, '').slice(0, 12)
+    const nn = nat.replace(/\D/g, '').slice(0, maxLenFor(`+${cd}`))
     onChange(nn ? `+${cd}${nn}` : '')
   }
 
@@ -110,6 +120,7 @@ export default function PhoneField({
           options={options}
           disabled={disabled}
           className={selectClassName || `w-[116px] shrink-0 rounded-xl px-3 py-3 text-[13px] ${isLight ? 'bg-white border border-slate-300 text-slate-900' : 'bg-white/[0.03] border border-white/12 text-white'}`}
+          menuClassName="w-60!"
         />
       )}
 
@@ -123,6 +134,7 @@ export default function PhoneField({
           value={national}
           onChange={(e) => emit(dialCode, e.target.value)}
           placeholder={placeholder}
+          maxLength={maxLenFor(dialCode)}
           className={inputClassName || `w-full rounded-xl border py-3 pl-9 pr-3 text-[13px] outline-none transition-colors ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500' : 'bg-white/[0.03] border-white/12 text-white focus:border-indigo-500/50'}`}
         />
       </div>

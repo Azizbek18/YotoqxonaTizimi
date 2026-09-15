@@ -6,6 +6,8 @@ import { createRoomLayoutRepository } from '@/features/room-layout/server/reposi
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 import { summariseBeds } from '@/lib/room-capacity'
 import { computeFloorBalance } from '@/lib/floor-balance'
+import { roomIdentity } from '@/lib/room-identity'
+import { overviewHousing } from './overview-housing'
 import { PERMIT_FACULTIES } from '@/lib/faculties'
 import type { DekanOverview } from '../types'
 import { createPermitAdminRepository, type PermitAdminRepository } from './repository'
@@ -44,8 +46,8 @@ async function notifyTelegramWithoutBreakingDecision(request: Awaited<ReturnType
 // Only what overview() needs for its bed-capacity maths — kept narrow so
 // the service test can stub it without a Supabase client.
 type CapacityDeps = {
-  roomLayout?: { listAllRooms: (faculty: string) => Promise<Array<{ room_number: string; frozen: boolean; capacity: number | null; floor_number: number; gender: 'male' | 'female' | null }>> }
-  appSettings?: { get: (faculty: string) => Promise<{ defaultRoomCapacity: number }> }
+  roomLayout?: { listAllRooms: (faculty: string, dormId?: string) => Promise<Array<{ room_number: string; block?: string | null; frozen: boolean; capacity: number | null; floor_number: number; gender: 'male' | 'female' | null }>> }
+  appSettings?: { get: (faculty: string, dormId?: string) => Promise<{ defaultRoomCapacity: number }> }
 }
 
 export function createPermitAdminService(
@@ -62,14 +64,20 @@ export function createPermitAdminService(
       return repository.pendingSummary(global ? null : faculty!)
     },
 
-    async overview(facultyValue: string | null): Promise<DekanOverview> {
+    async overview(facultyValue: string | null, dormId?: string | null): Promise<DekanOverview> {
       const faculty = facultyValue?.trim()
       if (!faculty) throw new ApiError(403, 'Dekan fakulteti biriktirilmagan')
       // repository.load already scopes both permits and students to this
       // faculty — nothing here is building-wide any more.
-      const { permits, users: students } = await repository.load(faculty)
-      const userByPassport = new Map(students.filter((user) => user.passport_series).map((user) => [user.passport_series, user]))
-      const userByJshshir = new Map(students.filter((user) => user.jshshir).map((user) => [user.jshshir, user]))
+      const { permits: rawPermits, users: allStudents } = await repository.load(faculty)
+      const userByPassport = new Map(allStudents.filter((user) => user.passport_series).map((user) => [user.passport_series, user]))
+      const userByJshshir = new Map(allStudents.filter((user) => user.jshshir).map((user) => [user.jshshir, user]))
+      const inScope = (value: string | null | undefined) => dormId === undefined || (value ?? null) === dormId
+      const students = allStudents.filter((student) => inScope(student.dorm_id))
+      const permits = rawPermits.map((permit) => {
+        const linked = userByPassport.get(permit.passport_series) ?? (permit.jshshir ? userByJshshir.get(permit.jshshir) : undefined)
+        return { ...permit, dorm_id: linked ? linked.dorm_id ?? null : permit.dorm_id ?? null }
+      }).filter((permit) => inScope(permit.dorm_id))
       const requests = permits.map((permit) => {
         const linked = userByPassport.get(permit.passport_series) ?? userByJshshir.get(permit.jshshir)
         return { ...permit, warning_count: linked?.warning_count ?? 0, blacklisted: linked?.blacklisted ?? false }
@@ -107,19 +115,24 @@ export function createPermitAdminService(
       // capacity override, and frozen rooms excluded: a room in ta'mirlash
       // is not a free bed, even if empty.
       const [scopedRooms, appSettings] = await Promise.all([
-        (capacityDeps.roomLayout ?? createRoomLayoutRepository()).listAllRooms(faculty),
-        (capacityDeps.appSettings ?? createAppSettingsService()).get(faculty),
+        dormId === null ? Promise.resolve([]) : dormId && !capacityDeps.roomLayout
+          ? overviewHousing(faculty, dormId)
+          : (capacityDeps.roomLayout ?? createRoomLayoutRepository()).listAllRooms(faculty, ...(dormId ? [dormId] : [])),
+        (capacityDeps.appSettings ?? createAppSettingsService()).get(faculty, ...(dormId ? [dormId] : [])),
       ])
       const defaultCapacity = appSettings.defaultRoomCapacity
       const occByRoom = new Map<string, number>()
-      const bumpRoom = (roomNumber: string | null | undefined) => {
-        if (!roomNumber) return
-        occByRoom.set(roomNumber, (occByRoom.get(roomNumber) ?? 0) + 1)
+      const bumpRoom = (row: Parameters<typeof roomIdentity>[0]) => {
+        if (!row.room_number) return
+        const key = roomIdentity({ ...row, dorm_id: dormId ?? null })
+        occByRoom.set(key, (occByRoom.get(key) ?? 0) + 1)
       }
-      studentsWithRooms.forEach((user) => bumpRoom(user.room_number))
-      approvedPermitsWithRooms.forEach((permit) => bumpRoom(permit.room_number))
+      studentsWithRooms.forEach(bumpRoom)
+      approvedPermitsWithRooms.forEach(bumpRoom)
 
-      const { availableBeds, freeBeds, frozenRoomCount } = summariseBeds(scopedRooms, defaultCapacity, occByRoom)
+      const keyedRooms = scopedRooms.map((room) => ({ ...room,
+        room_number: roomIdentity({ ...room, dorm_id: dormId ?? undefined }) }))
+      const { availableBeds, freeBeds, frozenRoomCount } = summariseBeds(keyedRooms, defaultCapacity, occByRoom)
 
       // ---- per-floor course-year balance ----
       // Every floor should mirror the faculty's overall course mix, scaled
@@ -129,7 +142,7 @@ export function createPermitAdminService(
       const floorCap = new Map<number, number>()
       const floorGenders = new Map<number, Set<'male' | 'female'>>()
       for (const room of scopedRooms) {
-        roomToFloor.set(room.room_number, room.floor_number)
+        roomToFloor.set(roomIdentity({ ...room, dorm_id: dormId ?? undefined }), room.floor_number)
         if (!room.frozen) {
           floorCap.set(room.floor_number, (floorCap.get(room.floor_number) ?? 0) + (room.capacity ?? defaultCapacity))
         }
@@ -152,11 +165,11 @@ export function createPermitAdminService(
 
       const placedForBalance: { floor: number; course: number | null }[] = []
       for (const user of studentsWithRooms) {
-        const fl = roomToFloor.get(user.room_number ?? '')
+        const fl = roomToFloor.get(roomIdentity({ ...user, dorm_id: dormId ?? null }))
         if (fl != null) placedForBalance.push({ floor: fl, course: user.course })
       }
       for (const permit of approvedPermitsWithRooms) {
-        const fl = roomToFloor.get(permit.room_number ?? '')
+        const fl = roomToFloor.get(roomIdentity({ ...permit, dorm_id: dormId ?? null }))
         if (fl != null) placedForBalance.push({ floor: fl, course: permit.course })
       }
 

@@ -90,6 +90,8 @@ function LoginContent() {
           userRole = roleResult.role
         } else if (roleResult.reason === 'email_not_verified') {
           failure = "Emailingiz hali tasdiqlanmagan. Ro'yxatdan o'tishda yuborilgan havola orqali parol o'rnating."
+        } else if (roleResult.reason === 'awaiting_dean_approval') {
+          failure = "Arizangiz dekanga yuborilgan, hali tasdiqlanmagan. Tasdiqlangach shu email va parol bilan kirishingiz mumkin bo'ladi."
         } else {
           failure = "Hisob faol emas yoki tizim roliga biriktirilmagan."
         }

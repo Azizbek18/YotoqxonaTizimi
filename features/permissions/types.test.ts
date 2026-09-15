@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  RAISI_PERMISSIONS,
   SARDOR_PERMISSIONS,
   TARBIYACHI_PERMISSIONS,
   PERMISSION_LABELS,
@@ -62,10 +63,11 @@ describe('catalogue', () => {
   it('exposes the right keys per subject', () => {
     expect(permissionsForSubject('tarbiyachi')).toBe(TARBIYACHI_PERMISSIONS)
     expect(permissionsForSubject('sardor')).toBe(SARDOR_PERMISSIONS)
+    expect(permissionsForSubject('raisi')).toBe(RAISI_PERMISSIONS)
   })
 
-  it('labels every key both subjects can carry', () => {
-    for (const key of [...TARBIYACHI_PERMISSIONS, ...SARDOR_PERMISSIONS]) {
+  it('labels every key every subject can carry', () => {
+    for (const key of [...TARBIYACHI_PERMISSIONS, ...SARDOR_PERMISSIONS, ...RAISI_PERMISSIONS]) {
       expect(PERMISSION_LABELS[key]?.title).toBeTruthy()
       expect(PERMISSION_LABELS[key]?.hint).toBeTruthy()
     }

@@ -1,5 +1,6 @@
 import { directionLabel } from '@/lib/directions'
 import { extractFloor } from '@/lib/floor'
+import { roomIdentity } from '@/lib/room-identity'
 import { sanitizeSpreadsheetCell, type SpreadsheetMerge } from '@/lib/spreadsheet-export'
 
 /**
@@ -15,6 +16,9 @@ import { sanitizeSpreadsheetCell, type SpreadsheetMerge } from '@/lib/spreadshee
 export type StudentReportRow = {
   full_name?: string | null
   room_number?: string | null
+  dorm_id?: string | null
+  block?: string | null
+  assigned_floor?: number | null
   region?: string | null
   district?: string | null
   mahalla?: string | null
@@ -171,25 +175,32 @@ export function buildStudentReportTable(
     const roomB = b.room_number || ''
     if (!roomA !== !roomB) return roomA ? -1 : 1
     return roomA.localeCompare(roomB, undefined, { numeric: true, sensitivity: 'base' })
+      || roomIdentity(a).localeCompare(roomIdentity(b), undefined, { numeric: true })
   })
 
-  type RoomGroup = { room: string | null; floor: number | null; students: StudentReportRow[] }
+  type RoomGroup = { key: string; room: string | null; floor: number | null; students: StudentReportRow[] }
   const roomGroups: RoomGroup[] = []
   sorted.forEach((student) => {
     const room = student.room_number || null
+    const key = roomIdentity(student)
     const last = roomGroups[roomGroups.length - 1]
-    if (room && last && last.room === room) {
+    if (room && last && last.key === key) {
       last.students.push(student)
     } else {
-      roomGroups.push({ room, floor: floorOf(student.room_number), students: [student] })
+      roomGroups.push({ key, room: room && student.block ? `${room} (${student.block} blok)` : room,
+        floor: student.block ? student.assigned_floor ?? null : floorOf(student.room_number) ?? student.assigned_floor ?? null,
+        students: [student] })
     }
   })
 
   // A partially filled room still shows its free beds as empty rows, so the
   // printed sheet reflects the actual capacity of each room.
   const rawRows: string[][] = []
+  const rowRoomKeys: string[] = []
+  const rowFloorKeys: string[] = []
   let seq = 1
   roomGroups.forEach((group) => {
+    const start = rawRows.length
     const floorValue = group.floor ? String(group.floor) : '-'
     const roomValue = group.room ? `№${group.room}` : '-'
 
@@ -203,6 +214,12 @@ export function buildStudentReportTable(
       for (let k = 0; k < emptySlots; k++) {
         rawRows.push(['', floorValue, roomValue, ...emptyFields()])
       }
+    }
+    const resident = group.students[0]
+    const floorKey = JSON.stringify([resident.dorm_id ?? null, resident.block ?? null, group.floor])
+    for (let index = start; index < rawRows.length; index++) {
+      rowRoomKeys.push(group.key)
+      rowFloorKeys.push(floorKey)
     }
   })
 
@@ -219,7 +236,8 @@ export function buildStudentReportTable(
       }
 
       let j = i + 1
-      while (j < displayRows.length && rawRows[j][col] === value) {
+      const keys = col === 1 ? rowFloorKeys : rowRoomKeys
+      while (j < displayRows.length && rawRows[j][col] === value && keys[j] === keys[i]) {
         displayRows[j][col] = '' // blank the repeats the merge will cover
         j++
       }

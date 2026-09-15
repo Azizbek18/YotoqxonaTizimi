@@ -18,6 +18,21 @@ const student = (overrides: StudentReportRow = {}): StudentReportRow => ({
 })
 
 describe('buildStudentReportTable', () => {
+  it('does not merge repeated room numbers across buildings, blocks or floors', () => {
+    const { rawRows, merges } = buildStudentReportTable([
+      student({ dorm_id: 'd12', room_number: '22' }),
+      student({ dorm_id: 'd3', room_number: '22' }),
+      student({ dorm_id: 'blocked', block: 'A', assigned_floor: 1, room_number: '22' }),
+      student({ dorm_id: 'blocked', block: 'A', assigned_floor: 2, room_number: '22' }),
+      student({ dorm_id: 'blocked', block: 'B', assigned_floor: 2, room_number: '22' }),
+    ], () => 9)
+    expect(rawRows).toHaveLength(5 * STUDENT_REPORT_ROOM_CAPACITY)
+    expect(merges.filter((merge) => merge.s.c === 2)).toHaveLength(5)
+    expect(merges.filter((merge) => merge.s.c === 2).every((merge) => merge.e.r - merge.s.r + 1 === STUDENT_REPORT_ROOM_CAPACITY)).toBe(true)
+    const actual = rawRows.filter((row) => row[3] === 'Test Talaba')
+    expect(actual.filter((row) => row[2].includes('A blok')).map((row) => row[1])).toEqual(['1', '2'])
+    expect(actual.filter((row) => row[2].includes('B blok')).map((row) => row[1])).toEqual(['2'])
+  })
   it('emits one column per header', () => {
     const { rawRows } = buildStudentReportTable([student()])
     expect(rawRows).toHaveLength(STUDENT_REPORT_ROOM_CAPACITY)

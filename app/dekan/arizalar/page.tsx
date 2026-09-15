@@ -1,6 +1,9 @@
 'use client'
 
-import React, { useCallback, useEffect, useState, Suspense } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react'
+import DormTabs from '@/components/dekan/DormTabs'
+import { useDormTabs } from '@/lib/hooks/useDormTabs'
+import { studentsInDorm } from '@/features/faculty-students/domain/dorm-scope'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { downloadXlsx } from '@/lib/spreadsheet-export'
@@ -51,6 +54,7 @@ interface PermitRequest {
   permit_url: string
   status: 'pending' | 'approved' | 'rejected' | 'registered'
   room_number: string | null
+  dorm_id: string | null
   reject_reason: string | null
   created_at: string
   warning_count?: number
@@ -97,12 +101,16 @@ function ArizalarContent() {
   const ui = dekanUI(isLight)
 
   // State
-  const [requests, setRequests] = useState<PermitRequest[]>([])
+  const dormScope = useDormTabs({ globalView: true })
+  const [allRequests, setRequests] = useState<PermitRequest[]>([])
+  const requests = useMemo(() => dormScope.global ? allRequests : studentsInDorm(allRequests, dormScope.dormId),
+    [allRequests, dormScope.global, dormScope.dormId])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<PermitRequest['status']>('pending')
   const [facultyFilter, setFacultyFilter] = useState('')
-  const [selectedReq, setSelectedReq] = useState<PermitRequest | null>(null)
+  const [selectedRequest, setSelectedReq] = useState<PermitRequest | null>(null)
+  const selectedReq = requests.find((request) => request.id === selectedRequest?.id) ?? null
   const { faculty: dekanFaculty, effectiveFaculty, role: dekanRole, scope: saScope, resolved: facultyResolved } = useDekanScope()
   // Superadmin acting cross-faculty — one queue over all 13 faculties, with
   // step-in approve/reject (server routes through updateGlobal()).
@@ -156,15 +164,18 @@ function ArizalarContent() {
   }, [facultyResolved, dekanFaculty, fetchRequests])
 
   // Auto-open request from URL query params
+  const openedLink = useRef<string | null>(null)
   useEffect(() => {
     const id = searchParams.get('id')
-    if (id && requests.length > 0) {
-      const found = requests.find((r) => r.id === id)
-      if (found) {
+    if (id && openedLink.current !== id && (dormScope.ready || dormScope.global) && !loading) {
+      const found = allRequests.find((r) => r.id === id)
+      if (found && (dormScope.global || found.dorm_id === null || dormScope.dorms.some((dorm) => dorm.dormId === found.dorm_id))) {
+        openedLink.current = id
+        if (!dormScope.global) dormScope.select(found.dorm_id)
         setSelectedReq(found)
       }
     }
-  }, [searchParams, requests])
+  }, [searchParams, allRequests, loading, dormScope])
 
   // Faculties present in the current queue (global mode only) — for the
   // per-faculty dropdown filter.
@@ -346,6 +357,10 @@ function ArizalarContent() {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       {/* List panel */}
       <div className="lg:col-span-8 space-y-4">
+        <DormTabs scope={dormScope} isLight={isLight} onChange={() => {
+          setSelectedReq(null); setApproveModalOpen(false); setRejectModalOpen(false)
+          setCancelModalOpen(false); setUnblockModalOpen(false); setSearchTerm('')
+        }} />
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
           <div>
             <h1 className={`text-xl font-bold tracking-tight ${ui.strong}`}>Yo‘llanmalar ro‘yxati</h1>

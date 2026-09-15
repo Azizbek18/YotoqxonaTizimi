@@ -55,6 +55,16 @@ export type UserRow = {
   // floor captain (migration 202609300020). `{}` = full access; only
   // `false` entries are stored. See features/permissions/types.ts.
   captain_permissions: Json | null
+  // True for the one student per (faculty, gender) serving as talaba
+  // kengashi raisi (migration 202609130000). See promote_council_chair().
+  is_council_chair: boolean | null
+  council_chair_permissions: Json | null
+  // True for a KV-talaba (off-campus student) — migration 202609140000.
+  // See server/auth/off-campus.ts.
+  is_off_campus: boolean | null
+  off_campus_verified_by: string | null
+  off_campus_verified_at: string | null
+  hemis_student_id: string | null
   assigned_floor: number | null
   warning_count: number | null
   blacklisted: boolean | null
@@ -587,6 +597,10 @@ export interface Database {
       }
       promote_floor_captain: {
         Args: { p_user_id: string; p_assigned_floor: number; p_gender: string; p_is_captain: boolean }
+        Returns: void
+      }
+      promote_council_chair: {
+        Args: { p_user_id: string; p_is_chair: boolean }
         Returns: void
       }
       create_student_warning_atomic: {

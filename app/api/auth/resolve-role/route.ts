@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     const { data: initialStudentUser, error: userError } = await supabase
       .from('users')
-      .select('role, status')
+      .select('role, status, is_off_campus')
       .eq('id', requestUser.id)
       .maybeSingle()
     if (userError) {
@@ -58,7 +58,11 @@ export async function POST(request: Request) {
     }
     let studentUser = initialStudentUser
 
-    if (studentUser?.role === 'talaba' && studentUser.status === 'pending') {
+    // A KV-talaba (off-campus student) never has a permit_requests row, so
+    // activate_pending_student (permit-anchored) would only ever no-op for
+    // them — skip it outright and let the reason below name the real cause
+    // (dekan hasn't approved yet), not a misleading "email not verified".
+    if (studentUser?.role === 'talaba' && studentUser.status === 'pending' && !studentUser.is_off_campus) {
       const { data: activated, error: activationError } = await supabase.rpc(
         'activate_pending_student',
         { p_user_id: requestUser.id, p_email: email },
@@ -71,7 +75,7 @@ export async function POST(request: Request) {
         )
       }
       if (activated) {
-        studentUser = { role: 'talaba', status: 'active' }
+        studentUser = { role: 'talaba', status: 'active', is_off_campus: false }
       }
     }
 
@@ -81,9 +85,10 @@ export async function POST(request: Request) {
 
     // The caller is already authenticated, so naming their own account state
     // is not enumeration — and "pending" is the one case a student can fix
-    // themselves (finish the emailed confirmation link).
+    // themselves (finish the emailed confirmation link, or wait for dekan
+    // approval if they're a KV-talaba).
     const reason = studentUser?.role === 'talaba' && studentUser.status === 'pending'
-      ? 'email_not_verified'
+      ? (studentUser.is_off_campus ? 'awaiting_dean_approval' : 'email_not_verified')
       : 'no_role'
     return NextResponse.json({ ok: true, role: null, reason })
   } catch (error) {

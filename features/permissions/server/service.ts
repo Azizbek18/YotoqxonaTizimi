@@ -28,7 +28,7 @@ export function createPermissionsService() {
   return {
     /** Everyone in this faculty whose rights the dekan can tune. */
     async listMembers(faculty: string): Promise<PermissionMember[]> {
-      const [staffResult, captainResult] = await Promise.all([
+      const [staffResult, captainResult, chairResult] = await Promise.all([
         supabase
           .from('staff')
           .select('id, full_name, email, permissions, assigned_floor, status')
@@ -44,10 +44,19 @@ export function createPermissionsService() {
           .eq('is_floor_captain', true)
           .ilike('faculty', faculty)
           .order('full_name', { ascending: true }),
+        supabase
+          .from('users')
+          .select('id, full_name, room_number, gender, council_chair_permissions')
+          .eq('role', 'talaba')
+          .eq('status', 'active')
+          .eq('is_council_chair', true)
+          .ilike('faculty', faculty)
+          .order('full_name', { ascending: true }),
       ])
 
       if (staffResult.error) throw staffResult.error
       if (captainResult.error) throw captainResult.error
+      if (chairResult.error) throw chairResult.error
 
       const tarbiyachi: PermissionMember[] = (staffResult.data ?? []).map((row) => ({
         id: String(row.id),
@@ -70,7 +79,18 @@ export function createPermissionsService() {
         permissions: asMap(row.captain_permissions, 'sardor'),
       }))
 
-      return [...tarbiyachi, ...sardor]
+      const raisi: PermissionMember[] = (chairResult.data ?? []).map((row) => ({
+        id: String(row.id),
+        subject: 'raisi' as const,
+        fullName: String(row.full_name ?? 'Noma’lum'),
+        detail: [
+          row.gender === 'female' ? "qizlar (butun fakultet)" : row.gender === 'male' ? "yigitlar (butun fakultet)" : null,
+          row.room_number ? `${row.room_number}-xona` : null,
+        ].filter(Boolean).join(' · '),
+        permissions: asMap(row.council_chair_permissions, 'raisi'),
+      }))
+
+      return [...tarbiyachi, ...sardor, ...raisi]
     },
 
     /**
@@ -107,7 +127,7 @@ export function createPermissionsService() {
         const { error: updateError } = await supabase
           .from('staff').update({ permissions }).eq('id', memberId)
         if (updateError) throw updateError
-      } else {
+      } else if (subject === 'sardor') {
         const { data: target, error } = await supabase
           .from('users')
           .select('id, faculty, is_floor_captain')
@@ -120,6 +140,20 @@ export function createPermissionsService() {
         }
         const { error: updateError } = await supabase
           .from('users').update({ captain_permissions: permissions }).eq('id', memberId)
+        if (updateError) throw updateError
+      } else {
+        const { data: target, error } = await supabase
+          .from('users')
+          .select('id, faculty, is_council_chair')
+          .eq('id', memberId)
+          .maybeSingle()
+        if (error) throw error
+        if (!target?.is_council_chair) throw new ApiError(404, 'Kengash raisi topilmadi')
+        if ((target.faculty ?? '').toLowerCase() !== faculty.toLowerCase()) {
+          throw new ApiError(403, 'Boshqa fakultet talabasini boshqarib bo‘lmaydi')
+        }
+        const { error: updateError } = await supabase
+          .from('users').update({ council_chair_permissions: permissions }).eq('id', memberId)
         if (updateError) throw updateError
       }
 

@@ -1,5 +1,9 @@
 'use client'
 
+import DormTabs from '@/components/dekan/DormTabs'
+import { useDormTabs } from '@/lib/hooks/useDormTabs'
+import { studentsInDorm } from '@/features/faculty-students/domain/dorm-scope'
+
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
@@ -97,10 +101,25 @@ export default function DekanReportsPage() {
   const isLight = theme === 'light'
   const ui = dekanUI(isLight)
 
-  const { floors: layoutFloors, floorOf } = useRoomFloors()
+  const dormScope = useDormTabs()
+  const { floors: layoutFloors, floorOf: layoutFloorOf, loaded: floorsLoaded } = useRoomFloors(dormScope.dormId ?? undefined)
 
-  const [students, setStudents] = useState<StudentProfileRow[]>([])
-  const [payments, setPayments] = useState<FacultyPaymentRecord[]>([])
+  const [allStudents, setStudents] = useState<StudentProfileRow[]>([])
+  const [allPayments, setPayments] = useState<FacultyPaymentRecord[]>([])
+  const students = useMemo(() => studentsInDorm(allStudents, dormScope.dormId), [allStudents, dormScope.dormId])
+  const payments = useMemo(() => {
+    const ids = new Set(students.map((student) => student.id))
+    return allPayments.filter((payment) => ids.has(payment.student_id))
+  }, [allPayments, students])
+  const floorOf = useCallback((roomNumber?: string | null) => {
+    if (!floorsLoaded || dormScope.activeDorm?.layoutKind === 'blocked') {
+      return null
+    }
+    return layoutFloorOf(roomNumber)
+  }, [floorsLoaded, dormScope.activeDorm?.layoutKind, layoutFloorOf])
+  const studentFloor = useCallback((student: StudentProfileRow) => student.block
+    ? student.assigned_floor : floorOf(student.room_number) ?? student.assigned_floor,
+  [floorOf])
   const [yearlyContractFee, setYearlyContractFee] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
@@ -145,12 +164,12 @@ export default function DekanReportsPage() {
     [students]
   )
   const floors = useMemo(
-    () => (layoutFloors.length > 0
+    () => (floorsLoaded && dormScope.activeDorm?.layoutKind !== 'blocked' && layoutFloors.length > 0
       ? layoutFloors
-      : [...new Set(students.map((s) => floorOf(s.room_number)).filter((f): f is number => f !== null))].sort(
+      : [...new Set(students.map(studentFloor).filter((f): f is number => f !== null))].sort(
           (a, b) => a - b
         )),
-    [layoutFloors, students, floorOf]
+    [layoutFloors, students, studentFloor, floorsLoaded, dormScope.activeDorm?.layoutKind]
   )
 
   const filteredStudents = useMemo(() => {
@@ -169,7 +188,7 @@ export default function DekanReportsPage() {
       if (filters.studyType && (student.study_type ?? '').trim() !== filters.studyType) return false
       if (filters.region && (student.region ?? '').trim() !== filters.region) return false
       if (filters.course && String(student.course ?? '') !== filters.course) return false
-      if (filters.floor && String(floorOf(student.room_number) ?? '') !== filters.floor) return false
+      if (filters.floor && String(studentFloor(student) ?? '') !== filters.floor) return false
       if (filters.onlyCaptains && !student.is_floor_captain) return false
       if (filters.onlyWarned && (student.warning_count ?? 0) === 0) return false
 
@@ -184,7 +203,7 @@ export default function DekanReportsPage() {
 
       return true
     })
-  }, [students, filters, paySummaries, floorOf])
+  }, [students, filters, paySummaries, studentFloor])
 
   const activeFilterChips = useMemo(() => {
     const chips: { key: keyof Filters; label: string }[] = []
@@ -315,6 +334,7 @@ export default function DekanReportsPage() {
       </div>
 
       {/* Quick presets */}
+      <DormTabs scope={dormScope} isLight={isLight} onChange={() => setFilters(EMPTY_FILTERS)} />
       <div className={`rounded-2xl border p-5 ${ui.card}`}>
         <h3 className={`mb-3 ${sectionLabel}`}>Tez tanlov</h3>
         <div className="flex flex-wrap gap-2">

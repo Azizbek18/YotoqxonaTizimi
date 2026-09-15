@@ -79,14 +79,17 @@ export function isPlausibleInternationalPhone(input: unknown) {
 // Country dial codes offered in <PhoneField>. O'zbekiston is the default; the
 // rest cover the actual foreign-student population (Turkmen, Tajik, Kazakh,
 // Kyrgyz…). "Boshqa" (empty code) lets the applicant type any code by hand.
+// `maxLen` is the national significant number's digit count for that
+// country — PhoneField caps typing at it so e.g. an O'zbek number can't run
+// past its real 9 digits.
 export const PHONE_DIAL_CODES = [
-  { code: '+998', label: "O'zbekiston" },
-  { code: '+993', label: 'Turkmaniston' },
-  { code: '+992', label: 'Tojikiston' },
-  { code: '+7', label: "Qozog'iston / Rossiya" },
-  { code: '+996', label: "Qirg'iziston" },
-  { code: '+93', label: "Afg'oniston" },
-  { code: '+994', label: 'Ozarbayjon' },
+  { code: '+998', label: "O'zbekiston", maxLen: 9 },
+  { code: '+993', label: 'Turkmaniston', maxLen: 8 },
+  { code: '+992', label: 'Tojikiston', maxLen: 9 },
+  { code: '+7', label: "Qozog'iston / Rossiya", maxLen: 10 },
+  { code: '+996', label: "Qirg'iziston", maxLen: 9 },
+  { code: '+93', label: "Afg'oniston", maxLen: 9 },
+  { code: '+994', label: 'Ozarbayjon', maxLen: 9 },
 ] as const
 
 export const DEFAULT_DIAL_CODE = '+998'

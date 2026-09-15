@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { FileCheck2, Globe2, ArrowLeft, ChevronRight } from 'lucide-react'
+import { FileCheck2, Globe2, Home, ArrowLeft, ChevronRight } from 'lucide-react'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -38,15 +38,15 @@ export default function ArizaTuriTanlash() {
         </Link>
       </div>
 
-      <div className="relative z-10 w-full max-w-3xl">
+      <div className="relative z-10 w-full max-w-4xl">
         <div className="anim-in text-center mb-8 sm:mb-10">
           <h1 className="text-xl sm:text-3xl font-black uppercase tracking-tight">Siz kimsiz?</h1>
           <p className={`text-xs sm:text-sm font-medium mt-2 max-w-lg mx-auto ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-            Yotoqxonaga joylashish uchun to&apos;ldiriladigan hujjat toifangizga qarab farq qiladi — to&apos;g&apos;ri variantni tanlang.
+            Yotoqxonaga joylashish yoki tashqi (KV) ro&apos;yxatdan o&apos;tish — to&apos;ldiriladigan hujjat toifangizga qarab farq qiladi, to&apos;g&apos;ri variantni tanlang.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           <div className="anim-in" style={{ animationDelay: '0.05s' }}>
             <Link
               href="/ruxsatnoma-yuborish"
@@ -92,6 +92,31 @@ export default function ArizaTuriTanlash() {
               </div>
               <div className="flex items-center gap-1.5 mt-6 text-[10px] font-black uppercase tracking-widest text-amber-500 group-hover:gap-2.5 transition-all">
                 <span>Ariza va Tilxat yuborish</span>
+                <ChevronRight size={14} />
+              </div>
+            </Link>
+          </div>
+
+          <div className="anim-in" style={{ animationDelay: '0.15s' }}>
+            <Link
+              href="/kv-royxatdan-otish"
+              className={`group h-full flex flex-col justify-between p-6 sm:p-7 rounded-3xl border backdrop-blur-3xl transition-all hover:-translate-y-1 ${
+                isLight
+                  ? 'bg-white/90 border-slate-200 hover:border-emerald-400 shadow-lg shadow-slate-200/60'
+                  : 'bg-[#0b1120]/80 border-white/10 hover:border-emerald-500/40 shadow-2xl shadow-black/40'
+              }`}
+            >
+              <div>
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-600/25 mb-4">
+                  <Home size={22} />
+                </div>
+                <h2 className="text-sm sm:text-base font-black uppercase tracking-wide">KV / Ijarada turaman</h2>
+                <p className={`text-[11px] sm:text-xs leading-relaxed mt-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                  Yotoqxonada emas, ijaradagi kvartirada yashayman. <b>Hujjat kerak emas</b> — ma&apos;lumotlarimni to&apos;ldirib, dekan tasdig&apos;ini kutaman.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 mt-6 text-[10px] font-black uppercase tracking-widest text-emerald-500 group-hover:gap-2.5 transition-all">
+                <span>Ro&apos;yxatdan o&apos;tish</span>
                 <ChevronRight size={14} />
               </div>
             </Link>

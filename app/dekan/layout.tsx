@@ -25,6 +25,7 @@ import {
   Stamp,
   UserRoundSearch,
   Wallet,
+  Home,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -214,6 +215,7 @@ export default function DekanLayout({
       { label: 'Blok xonalari', caption: op('A/B qanotli bino'), href: '/dekan/blok-xonalar', icon: DoorClosed },
       { label: '3D Xonalar', caption: op('Qavat tarxi quruvchisi'), href: '/dekan/3d-xonalar', icon: Layers3 },
       { label: 'Talabalar', caption: isSuperadmin ? 'Fakultetlararo boshqaruv' : op('Fakultet talabalari'), href: isSuperadmin ? '/dekan/talabalar-global' : '/dekan/talabalar', icon: Users },
+      { label: 'KV talabalar', caption: op('Ijarada turuvchi talabalar'), href: '/dekan/kv-talabalar', icon: Home },
       { label: 'Viza nazorati', caption: op('Xorijiy va boshqa viloyat talabalari'), href: '/dekan/viza-nazorati', icon: Stamp },
       // Faculty-admin tools. The page bodies are the /admin/* implementations
       // (re-exported under /dekan/*), so they render inside THIS panel's chrome.

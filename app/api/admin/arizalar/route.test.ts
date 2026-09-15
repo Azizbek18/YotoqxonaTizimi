@@ -48,6 +48,22 @@ beforeEach(() => {
 })
 
 describe('GET', () => {
+  it('resolves each application’s dorm from its own student profile', async () => {
+    requireActiveStaff.mockResolvedValue(AUTH(AMIT_DEKAN))
+    from.mockImplementationOnce(() => {
+      terminal = { data: [{ id: 'a1', student_id: 's1' }, { id: 'a2', student_id: 's2' }], error: null }
+      return makeChain()
+    }).mockImplementationOnce(() => {
+      terminal = { data: [{ id: 's1', dorm_id: 'd12' }, { id: 's2', dorm_id: 'd3' }], error: null }
+      return makeChain()
+    })
+    const res = await GET(req('GET'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.requests.map((row: { dorm_id: string }) => row.dorm_id)).toEqual(['d12', 'd3'])
+    expect(argsOf('in')).toContainEqual(['id', ['s1', 's2']])
+    expect(argsOf('eq')).toContainEqual(['faculty', 'amit'])
+  })
   it('scopes a tarbiyachi to their own faculty', async () => {
     requireActiveStaff.mockResolvedValue(AUTH(AMIT_TARBIYACHI))
     terminal = { data: [], error: null }

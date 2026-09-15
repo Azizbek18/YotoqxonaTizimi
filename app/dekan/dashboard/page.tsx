@@ -1,6 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
+import DormTabs from '@/components/dekan/DormTabs'
+import { useDormTabs } from '@/lib/hooks/useDormTabs'
 import { motion } from 'framer-motion'
 import {
   PieChart,
@@ -65,6 +67,11 @@ export default function DekanDashboard() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
   const ui = dekanUI(isLight)
+  const dormScope = useDormTabs({ globalView: true })
+  const dormKey = dormScope.global ? 'global' : dormScope.dormId ?? 'unassigned'
+  const [loadedDormKey, setLoadedDormKey] = useState<string | null>(null)
+  const [dataError, setDataError] = useState<string | null>(null)
+  const requestSequence = useRef(0)
 
   const [stats, setStats] = useState<DashboardStats>({
     pendingCount: 0,
@@ -88,9 +95,13 @@ export default function DekanDashboard() {
   const isGlobal = dekanRole === 'admin' && (!saScope || saScope === '*')
 
   const loadData = async (faculty: string | null) => {
+    const sequence = ++requestSequence.current
+    setDataError(null)
     try {
       if (!faculty) throw new Error('Fakultet biriktirilmagan')
-      const { dashboard } = await fetchDekanOverview()
+      const { dashboard } = await fetchDekanOverview(dormScope.global ? undefined : dormScope.dormId)
+      if (sequence !== requestSequence.current) return
+      setLoadedDormKey(dormKey)
       setCourseDistribution(dashboard.courseDistribution)
       setFacultyDistribution(dashboard.facultyDistribution)
       setFloorBalance(dashboard.floorBalance)
@@ -108,6 +119,8 @@ export default function DekanDashboard() {
         loading: false,
       })
     } catch (err) {
+      if (sequence !== requestSequence.current) return
+      setDataError(err instanceof Error ? err.message : 'Hisobotni yuklab bo‘lmadi')
       console.error('Error fetching dashboard statistics:', err)
       setStats((prev) => ({ ...prev, loading: false }))
     }
@@ -117,8 +130,8 @@ export default function DekanDashboard() {
   // dashboard left open in a background tab was reloading the whole overview
   // every 30s.
   useVisiblePoll(() => loadData(dekanFaculty), 90_000, {
-    enabled: facultyResolved,
-    restartKey: dekanFaculty,
+    enabled: facultyResolved && (dormScope.global || dormScope.ready),
+    restartKey: `${dekanFaculty}:${dormKey}`,
   })
 
   // Real capacity for this dekan's scope: their own floors, per-room
@@ -167,9 +180,18 @@ export default function DekanDashboard() {
     },
   ].filter((card) => !(isTarbiyachi && card.permitOnly))
 
-  if (stats.loading) {
+  if (dataError) return (
+    <div className="space-y-6">
+      <DormTabs scope={dormScope} isLight={isLight} onChange={() => setDataError(null)} />
+      <p className={`text-sm ${ui.muted}`}>{dataError}</p>
+      <button onClick={() => void loadData(dekanFaculty)} className={`rounded-xl px-4 py-2 ${ui.btnGhost}`}>Qayta urinish</button>
+    </div>
+  )
+
+  if (stats.loading || (!dormScope.global && !dormScope.ready) || loadedDormKey !== dormKey) {
     return (
       <div className="space-y-6">
+        <DormTabs scope={dormScope} isLight={isLight} />
         <Skel className="h-40 w-full rounded-3xl" />
         <SkelStatGrid count={4} />
         <div className="grid gap-4 lg:grid-cols-2">
@@ -184,6 +206,7 @@ export default function DekanDashboard() {
 
   return (
     <div className="space-y-6">
+      <DormTabs scope={dormScope} isLight={isLight} onChange={() => setDataError(null)} />
       {/* Hero */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -238,7 +261,7 @@ export default function DekanDashboard() {
             transition={{ delay: idx * 0.05, duration: 0.25 }}
           >
             <Link
-              href={card.link}
+              href={`${card.link}${!dormScope.global && dormScope.dormId ? `?dormId=${encodeURIComponent(dormScope.dormId)}` : dormScope.dormId === null ? '?dormId=unassigned' : ''}`}
               className={`group relative block overflow-hidden rounded-2xl border p-5 ${ui.card} ${ui.hoverLift}`}
             >
               <span className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 to-violet-500 opacity-0 transition-opacity group-hover:opacity-100" />
@@ -370,7 +393,7 @@ export default function DekanDashboard() {
           </div>
         </div>
       ) : (
-        floorBalance && <FloorBalanceCard balance={floorBalance} isLight={isLight} />
+        floorBalance && dormScope.activeDorm?.layoutKind !== 'blocked' && <FloorBalanceCard balance={floorBalance} isLight={isLight} dormId={dormScope.dormId ?? undefined} base={base} />
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

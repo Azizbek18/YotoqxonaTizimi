@@ -7,6 +7,7 @@ import type {
   SendWarningResult,
   SetBlacklistInput,
   SetBlacklistResult,
+  SetCouncilChairInput,
   SetFloorCaptainInput,
   StudentProfileRow,
   StudentScope,
@@ -51,6 +52,21 @@ export function setStudentFloorCaptain({ studentId, isCaptain }: SetFloorCaptain
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id: studentId, source: 'users', is_floor_captain: isCaptain }),
+  })
+}
+
+// Appoint the student as talaba kengashi raisi (council chairman) for their
+// own gender across the whole faculty, or strip that role. Same mechanism as
+// setStudentFloorCaptain — /api/admin/users routes is_council_chair=true
+// through the promote_council_chair RPC, which atomically demotes whoever
+// currently holds the (faculty, gender) slot; is_council_chair=false is a
+// plain demote. Faculty scope is enforced server-side; a student with no
+// gender set is rejected with 400 (rare — gender is asked at registration).
+export function setStudentCouncilChair({ studentId, isChair }: SetCouncilChairInput) {
+  return requestJson<{ ok: true }>('/api/admin/users', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: studentId, source: 'users', is_council_chair: isChair }),
   })
 }
 

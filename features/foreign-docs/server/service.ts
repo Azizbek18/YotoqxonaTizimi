@@ -207,6 +207,7 @@ export function createForeignDocsService(
         country: row.users?.country ?? null,
         course: row.users?.course ?? null,
         roomNumber: row.users?.room_number ?? null,
+        dormId: row.users?.dorm_id ?? null,
       }))
     },
 

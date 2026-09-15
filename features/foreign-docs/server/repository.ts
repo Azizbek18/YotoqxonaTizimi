@@ -30,6 +30,7 @@ export type StudentContextRow = {
   country: string | null
   course: number | null
   room_number: string | null
+  dorm_id?: string | null
 }
 
 export type DashboardDocRow = ForeignStudentDocumentRow & { users: StudentContextRow | null }
@@ -144,7 +145,7 @@ export function createForeignDocsRepository() {
     async listForFaculty(faculty: string): Promise<DashboardDocRow[]> {
       const { data, error } = await supabase
         .from('foreign_student_documents')
-        .select(`${DOC_COLUMNS}, users!inner(full_name, faculty, country, course, room_number)`)
+        .select(`${DOC_COLUMNS}, users!inner(full_name, faculty, country, course, room_number, dorm_id)`)
         .ilike('users.faculty', faculty)
         .order('expires_on', { ascending: true })
       if (error) throw error

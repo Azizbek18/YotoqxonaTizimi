@@ -27,8 +27,11 @@ export type StudentProfileRow = {
   course: number | null
   status: string | null
   room_number: string | null
+  dorm_id: string | null
+  block: string | null
   assigned_floor: number | null
   is_floor_captain: boolean | null
+  is_council_chair: boolean | null
   warning_count: number | null
   blacklisted: boolean | null
   birth_date: string | null
@@ -119,4 +122,17 @@ export type SetBlacklistResult = {
 export type SetFloorCaptainInput = {
   studentId: string
   isCaptain: boolean
+}
+
+/**
+ * Appoint a student as talaba kengashi raisi (student council chairman), or
+ * remove that role. Unlike captaincy, this is scoped to the student's own
+ * `gender` across the WHOLE faculty, not one floor — a roomless student can
+ * still be appointed, as long as their gender is set. Promoting atomically
+ * demotes whoever currently holds the same (faculty, gender) slot — one
+ * chair per gender per faculty.
+ */
+export type SetCouncilChairInput = {
+  studentId: string
+  isChair: boolean
 }

@@ -79,13 +79,18 @@ export default function AnnouncementsBoard({ isLight, items, category, onCategor
               }`}
             >
               <div className="flex-1 space-y-2">
-                <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2.5">
                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${styles.badge}`}>
                     {elon.type}
                   </span>
                   {elon.is_from_captain && (
                     <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border border-purple-500/30 bg-purple-500/10 text-purple-400">
                       🌟 Qavat Sardori
+                    </span>
+                  )}
+                  {elon.is_from_council_chair && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border border-indigo-500/30 bg-indigo-500/10 text-indigo-400">
+                      🎓 Kengash Raisi
                     </span>
                   )}
                   <div className={`flex items-center gap-1 text-[10px] ${t.textMuted}`}>

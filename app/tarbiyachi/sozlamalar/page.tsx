@@ -83,8 +83,6 @@ export default function TarbiyachiSozlamalarPage() {
     { label: 'Tarbiyachi', name: settings.tarbiyachiName, phone: settings.tarbiyachiPhone },
     { label: 'Komendant', name: settings.komendantName, phone: settings.komendantPhone },
     { label: 'Shifokor', name: settings.doctorName, phone: settings.doctorPhone },
-    { label: 'Talabalar kengashi (o‘g‘il)', name: settings.talabaKengashiRaisiOgilName, phone: settings.talabaKengashiRaisiOgilPhone },
-    { label: 'Talabalar kengashi (qiz)', name: settings.talabaKengashiRaisiQizName, phone: settings.talabaKengashiRaisiQizPhone },
     { label: 'Qo‘riqxona', name: '', phone: settings.securityPhone },
   ]
 

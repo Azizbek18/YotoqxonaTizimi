@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     const { data: requests, error } = await getServiceSupabase()
       .from('arizalar')
-      .select('id, student_name, text, level, status, created_at')
+      .select('id, student_id, student_name, text, level, status, created_at')
       .eq('faculty', faculty)
       .in('type', ['ariza', 'tushuntirish'])
       .neq('status', 'draft')
@@ -45,8 +45,20 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error
 
+    // arizalar.student_id references auth.users, so resolve public profiles
+    // explicitly rather than relying on a PostgREST relationship.
+    const ids = [...new Set((requests ?? []).map((row) => row.student_id).filter((id): id is string => Boolean(id)))]
+    const dormByStudent = new Map<string, string | null>()
+    if (ids.length) {
+      const { data: students, error: studentError } = await getServiceSupabase().from('users')
+        .select('id, dorm_id').eq('role', 'talaba').eq('faculty', faculty).in('id', ids)
+      if (studentError) throw studentError
+      for (const student of students ?? []) dormByStudent.set(student.id, student.dorm_id ?? null)
+    }
+
     const formatted = (requests ?? []).map((request) => ({
       id: String(request.id),
+      dorm_id: request.student_id ? dormByStudent.get(request.student_id) ?? null : null,
       student_name: request.student_name ?? 'Noma\'lum',
       text: request.text ?? '',
       level: (request.level ?? 'info') as ApplicationLevel,

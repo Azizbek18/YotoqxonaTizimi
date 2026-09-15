@@ -31,12 +31,13 @@ interface Elon {
   text: string;
   date: string;
   type: 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish';
-  audience: 'all' | 'faculty' | 'floor' | 'system';
+  audience: 'all' | 'faculty' | 'floor' | 'system' | 'council';
   faculty: string | null;
   teacher: string;
   room: string;
   is_from_captain?: boolean;
   captain_floor?: number;
+  is_from_council_chair?: boolean;
 }
 
 interface DbElon {
@@ -44,7 +45,7 @@ interface DbElon {
   title: string;
   text: string;
   type: Elon['type'];
-  audience: 'all' | 'faculty' | 'floor' | 'system';
+  audience: 'all' | 'faculty' | 'floor' | 'system' | 'council';
   faculty: string | null;
   is_published?: boolean;
   created_at: string;
@@ -53,6 +54,7 @@ interface DbElon {
   location?: string | null;
   is_from_captain?: boolean;
   captain_floor?: number;
+  is_from_council_chair?: boolean;
 }
 
 type ViewMode = 'dorm' | 'faculty';
@@ -117,9 +119,12 @@ function mapDbElon(elon: DbElon): Elon {
     faculty: elon.faculty,
     date: formatElonDate(elon.published_at ?? elon.created_at),
     teacher: elon.author_name || "Tizim ma'muri",
-    room: elon.is_from_captain ? `${elon.captain_floor}-qavat sardori` : (elon.location || "4-bino"),
+    room: elon.is_from_captain
+      ? `${elon.captain_floor}-qavat sardori`
+      : elon.is_from_council_chair ? 'Talaba kengashi raisi' : (elon.location || "4-bino"),
     is_from_captain: elon.is_from_captain,
-    captain_floor: elon.captain_floor
+    captain_floor: elon.captain_floor,
+    is_from_council_chair: elon.is_from_council_chair,
   };
 }
 
@@ -195,8 +200,14 @@ export default function ElonlarPage() {
     () => elonlar.filter((elon) => elon.audience === 'all' || elon.audience === 'system'),
     [elonlar]
   );
+  // 'floor' (sardor) and 'council' (kengash raisi) rows the server already
+  // scoped to this reader (gender/floor match) before returning them — they
+  // belong here too, not just a bare 'faculty' (dekan) notice, or a sardor's
+  // and a raisi's own announcements would never show up on this page at all.
   const facultyElonlar = useMemo(
-    () => elonlar.filter((elon) => elon.audience === 'faculty' && currentFaculty && elon.faculty === currentFaculty),
+    () => elonlar.filter((elon) =>
+      (elon.audience === 'faculty' || elon.audience === 'floor' || elon.audience === 'council')
+      && currentFaculty && elon.faculty === currentFaculty),
     [currentFaculty, elonlar]
   );
   const activeList = view === 'faculty' ? facultyElonlar : dormElonlar;
@@ -393,14 +404,19 @@ export default function ElonlarPage() {
                   >
                     {/* Header info */}
                     <div className="space-y-2.5 w-full">
-                      <div className="flex justify-between items-center gap-2">
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap justify-between items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className={`rounded-md border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${styles.badge}`}>
                             {elon.type}
                           </span>
                           {elon.is_from_captain && (
                             <span className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-purple-400">
                               🌟 Qavat Sardori
+                            </span>
+                          )}
+                          {elon.is_from_council_chair && (
+                            <span className="rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-400">
+                              🎓 Kengash Raisi
                             </span>
                           )}
                         </div>

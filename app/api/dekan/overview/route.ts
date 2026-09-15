@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createPermitAdminService } from '@/features/permits/server/service'
 import { requireActiveStaff } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
+import { requireDormFilter } from '@/server/auth/dorm'
 
 function errorResponse(error: unknown) {
   console.error('Dekan overview API error:', error)
@@ -17,8 +18,10 @@ export async function GET(request: NextRequest) {
     // decides a permit stays dekan/admin.
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin', 'tarbiyachi'])
     const service = createPermitAdminService()
+    const dormId = staff.superadminGlobal ? undefined
+      : await requireDormFilter(staff.faculty, request.nextUrl.searchParams.get('dormId'))
     return NextResponse.json(
-      staff.superadminGlobal ? await service.overviewGlobal() : await service.overview(staff.faculty),
+      staff.superadminGlobal ? await service.overviewGlobal() : await service.overview(staff.faculty, dormId),
     )
   } catch (error) {
     return errorResponse(error)

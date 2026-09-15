@@ -3,13 +3,14 @@ export type StudentAnnouncement = {
   title: string
   text: string
   type: 'Muhim' | 'Tadbir' | 'Yangilik' | 'Ogohlantirish'
-  audience: 'all' | 'faculty' | 'floor' | 'system'
+  audience: 'all' | 'faculty' | 'floor' | 'system' | 'council'
   faculty: string | null
   created_at: string
   published_at: string | null
   author_name: string
   is_from_captain: boolean
   captain_floor?: number
+  is_from_council_chair: boolean
 }
 
 export type StudentAnnouncementsPayload = {

@@ -1,5 +1,10 @@
 'use client'
 
+import { isRoommate } from '@/lib/roommates'
+import { studentsInDorm } from '@/features/faculty-students/domain/dorm-scope'
+import { fetchDekanDorm } from '@/features/dorms/client/api'
+import type { DekanDorm } from '@/features/dorms/types'
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { createPortal } from 'react-dom'
@@ -7,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertTriangle,
   ArrowLeft,
+  Award,
   BedDouble,
   CalendarDays,
   CheckCircle2,
@@ -42,6 +48,7 @@ import {
   fetchFacultyStudents,
   sendStudentWarning,
   setStudentBlacklist,
+  setStudentCouncilChair,
   setStudentFloorCaptain,
   updateFacultyStudent,
 } from '@/features/faculty-students/client/api'
@@ -175,12 +182,25 @@ export default function DekanStudentsPage() {
   // delete controls are hidden; every read-only detail tab stays.
   const { readOnly } = useStaffPanel()
 
-  const { floorOf } = useRoomFloors()
+  const [dorms, setDorms] = useState<DekanDorm[]>([])
+  const [dormsLoading, setDormsLoading] = useState(true)
+  const [dormsError, setDormsError] = useState(false)
+  const [activeDormId, setActiveDormId] = useState<string | null | undefined>(undefined)
+  const activeDorm = dorms.find((dorm) => dorm.dormId === activeDormId)
+  const { floorOf, loaded: floorsLoaded } = useRoomFloors(activeDormId ?? undefined)
 
-  const [students, setStudents] = useState<StudentProfileRow[]>([])
+  const [allStudents, setStudents] = useState<StudentProfileRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [payments, setPayments] = useState<FacultyPaymentRecord[]>([])
+  const [allPayments, setPayments] = useState<FacultyPaymentRecord[]>([])
   const [paymentsLoading, setPaymentsLoading] = useState(true)
+  const students = useMemo(
+    () => studentsInDorm(allStudents, dormsLoading || dormsError ? undefined : activeDormId),
+    [allStudents, activeDormId, dormsLoading, dormsError],
+  )
+  const payments = useMemo(() => {
+    const ids = new Set(students.map((student) => student.id))
+    return allPayments.filter((payment) => ids.has(payment.student_id))
+  }, [allPayments, students])
 
   // null (not a guessed default) while settings are loading or unavailable —
   // a wrong warningThreshold would mis-colour badges, and a wrong contract
@@ -239,6 +259,9 @@ export default function DekanStudentsPage() {
   const [captainModalOpen, setCaptainModalOpen] = useState(false)
   const [captainBusy, setCaptainBusy] = useState(false)
 
+  const [councilModalOpen, setCouncilModalOpen] = useState(false)
+  const [councilBusy, setCouncilBusy] = useState(false)
+
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editTab, setEditTab] = useState<EditTabKey>('asosiy')
   const [editForm, setEditForm] = useState<typeof EMPTY_EDIT_FORM>(EMPTY_EDIT_FORM)
@@ -271,7 +294,7 @@ export default function DekanStudentsPage() {
       // visible here (in the "Xonasiz" folder) so the dekan can re-house them.
       const rows = await fetchFacultyStudents('all')
       setStudents(rows)
-      setSelectedStudent((prev) => (prev ? rows.find((row) => row.id === prev.id) ?? prev : prev))
+      setSelectedStudent((prev) => (prev ? rows.find((row) => row.id === prev.id) ?? null : prev))
     } catch (error) {
       const message = error instanceof Error ? error.message : "Talabalarni yuklashda xato!"
       console.error('Dekan talabalarini yuklashda xato:', message)
@@ -314,9 +337,49 @@ export default function DekanStudentsPage() {
     void loadSettings()
   }, [loadStudents, loadPayments, loadSettings])
 
+  const loadDorms = useCallback(async () => {
+    setDormsLoading(true)
+    setDormsError(false)
+    try {
+      const result = await fetchDekanDorm()
+      const wanted = new URLSearchParams(window.location.search).get('dormId')
+      setDorms(result.dorms)
+      setActiveDormId((prev) => {
+        if (prev === null || result.dorms.some((dorm) => dorm.dormId === prev)) return prev
+        return result.dorms.find((dorm) => dorm.dormId === wanted)?.dormId
+          ?? result.dorms.find((dorm) => dorm.isPrimary)?.dormId
+          ?? result.dorms[0]?.dormId
+          ?? null
+      })
+    } catch (error) {
+      setDormsError(true)
+      setSelectedStudent(null)
+      toast.error(error instanceof Error ? error.message : "Yotoqxonalarni yuklab bo'lmadi")
+    } finally {
+      setDormsLoading(false)
+    }
+  }, [])
+
+  const selectDorm = (dormId: string | null) => {
+    setSelectedStudent(null)
+    setActionsMenuOpen(false)
+    setActiveDormId(dormId)
+    setActiveFolder('all')
+    setSearchTerm('')
+    setFilterRoom('')
+  }
+
+  // A reload may move the open student to a different building.
+  useEffect(() => {
+    if (selectedStudent && !students.some((student) => student.id === selectedStudent.id)) {
+      setSelectedStudent(null)
+    }
+  }, [students, selectedStudent])
+
   useEffect(() => {
     refreshAll()
-  }, [refreshAll])
+    void loadDorms()
+  }, [refreshAll, loadDorms])
 
   // Deep link from the room map ("Talaba kabinetini ochish"):
   // /…/talabalar?student=<id> auto-opens that student's detail once the list
@@ -325,12 +388,13 @@ export default function DekanStudentsPage() {
   // pattern the room map uses for ?dormId.
   const deepLinkConsumed = useRef(false)
   useEffect(() => {
-    if (deepLinkConsumed.current || students.length === 0) return
+    if (deepLinkConsumed.current || loading || dormsLoading || dormsError) return
     const wanted = new URLSearchParams(window.location.search).get('student')
     deepLinkConsumed.current = true
     if (!wanted) return
-    const match = students.find((row) => row.id === wanted)
-    if (match) {
+    const match = allStudents.find((row) => row.id === wanted)
+    if (match && (match.dorm_id === null || dorms.some((dorm) => dorm.dormId === match.dorm_id))) {
+      setActiveDormId(match.dorm_id)
       setSelectedStudent(match)
       setActiveFolder('all')
       setSearchTerm('')
@@ -339,7 +403,7 @@ export default function DekanStudentsPage() {
       toast.error("Bu talaba ro'yxatda topilmadi")
     }
     window.history.replaceState(null, '', window.location.pathname)
-  }, [students])
+  }, [allStudents, loading, dorms, dormsLoading, dormsError])
 
   // null while the real contract fee hasn't loaded — every debt/progress
   // figure below is measured against it, so there is nothing honest to show
@@ -393,7 +457,7 @@ export default function DekanStudentsPage() {
   const roommates = useMemo(() => {
     if (!selectedStudent?.room_number) return []
     return students.filter(
-      (student) => student.room_number === selectedStudent.room_number && student.id !== selectedStudent.id
+      (student) => isRoommate(student, selectedStudent)
     )
   }, [students, selectedStudent])
 
@@ -401,7 +465,9 @@ export default function DekanStudentsPage() {
     // Read the floor off the admin's qavat tarxi rather than the student's
     // stored assigned_floor, so a room moved between floors shows up here
     // immediately instead of after the next re-assignment.
-    const floor = floorOf(student.room_number) ?? student.assigned_floor
+    const floor = activeDorm?.layoutKind === 'blocked' || !floorsLoaded
+      ? student.assigned_floor
+      : floorOf(student.room_number) ?? student.assigned_floor
     return [
       { icon: Mail, label: 'Email', value: student.email },
       { icon: Phone, label: 'Telefon', value: student.phone_number },
@@ -411,6 +477,7 @@ export default function DekanStudentsPage() {
       { icon: Home, label: 'Xona', value: student.room_number },
       { icon: BedDouble, label: 'Qavat', value: floor ? `${floor}-qavat` : undefined },
       { icon: ShieldCheck, label: 'Sardorlik holati', value: student.is_floor_captain ? 'Qavat sardori' : undefined },
+      { icon: ShieldCheck, label: 'Kengash raisligi', value: student.is_council_chair ? 'Talaba kengashi raisi' : undefined },
       {
         icon: CalendarDays,
         label: "Tug'ilgan sana",
@@ -550,6 +617,31 @@ export default function DekanStudentsPage() {
       toast.error(error instanceof Error ? error.message : "Amalni bajarib bo'lmadi")
     } finally {
       setCaptainBusy(false)
+    }
+  }
+
+  // Chairmanship is scoped to the student's own gender across the whole
+  // faculty, not one floor — a roomless student can still be appointed, as
+  // long as their gender is set (asked at registration, so this almost
+  // never blocks anyone in practice, unlike floor captaincy).
+  const councilEligible = (student: StudentProfileRow) =>
+    Boolean(student.is_council_chair) || Boolean(normalizeGender(student.gender))
+
+  const handleToggleCouncilChair = async () => {
+    if (!selectedStudent || councilBusy) return
+    const next = !selectedStudent.is_council_chair
+    setCouncilBusy(true)
+    try {
+      await setStudentCouncilChair({ studentId: selectedStudent.id, isChair: next })
+      // The RPC also demotes the previous chair of this gender, so a local
+      // merge would leave that other row stale — re-fetch instead.
+      await loadStudents()
+      toast.success(next ? 'Talaba kengash raisi etib tayinlandi' : 'Kengash raisligi olib tashlandi')
+      setCouncilModalOpen(false)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Amalni bajarib bo'lmadi")
+    } finally {
+      setCouncilBusy(false)
     }
   }
 
@@ -710,7 +802,7 @@ export default function DekanStudentsPage() {
   const cardSurface = ui.card
   const infoTileSurface = isLight ? 'bg-slate-100 text-slate-500' : 'bg-slate-800/40 text-slate-400'
   const infoValueText = ui.strong
-  const busy = loading || paymentsLoading
+  const busy = loading || paymentsLoading || dormsLoading
 
   return (
     <div>
@@ -719,12 +811,12 @@ export default function DekanStudentsPage() {
         <div>
           <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${ui.strong}`}>Talabalar</h1>
           <p className={`mt-1 text-xs sm:text-sm ${ui.muted}`}>
-            Ro&apos;yxatdan o&apos;tib, yotoqxonaga to&apos;liq joylashtirilgan fakultet talabalari va ularning to&apos;lov holati
+            {dormsLoading || dormsError ? 'Fakultet talabalari va ularning to‘lov holati' : activeDorm ? `${activeDorm.number}-yotoqxona talabalari va ularning to‘lov holati` : 'Yotoqxona biriktirilmagan talabalar'}
           </p>
         </div>
 
         <button
-          onClick={refreshAll}
+          onClick={() => { refreshAll(); void loadDorms() }}
           disabled={busy}
           className={`inline-flex items-center justify-center rounded-lg border p-3 transition-colors disabled:opacity-50 ${ui.btnGhost}`}
           title="Yangilash"
@@ -737,6 +829,31 @@ export default function DekanStudentsPage() {
           </motion.div>
         </button>
       </div>
+
+      {dormsLoading ? (
+        <div className="mb-6 flex gap-2"><Skel className="h-10 w-36 rounded-xl" /><Skel className="h-10 w-36 rounded-xl" /></div>
+      ) : dormsError ? (
+        <div className={`mb-6 rounded-xl border p-4 ${ui.card}`}>
+          <p className={`text-sm ${ui.muted}`}>Yotoqxonalarni yuklab bo‘lmadi.</p>
+          <button onClick={() => void loadDorms()} className="mt-2 text-sm font-semibold text-indigo-600">Qayta urinish</button>
+        </div>
+      ) : (
+        <div role="group" aria-label="Yotoqxona tanlash" className={`mb-6 flex gap-2 overflow-x-auto rounded-xl border p-2 ${ui.card}`}>
+          {[...dorms.map((dorm) => ({ id: dorm.dormId as string | null, label: `${dorm.number}-yotoqxona` })),
+            ...(allStudents.some((student) => student.dorm_id === null) || dorms.length === 0
+              ? [{ id: null, label: 'Yotoqxona biriktirilmagan' }] : [])].map((tab) => (
+            <button
+              key={tab.id ?? 'unassigned'}
+              aria-pressed={activeDormId === tab.id}
+              onClick={() => selectDorm(tab.id)}
+              className={`shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${activeDormId === tab.id ? 'bg-indigo-600 text-white' : `${ui.muted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`}`}
+            >
+              {tab.label}
+              <span className="ml-2 text-xs opacity-75">{studentsInDorm(allStudents, tab.id).length}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Stats Section */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -856,7 +973,7 @@ export default function DekanStudentsPage() {
 
           {/* List items */}
           <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
-            {loading ? (
+            {loading || dormsLoading ? (
               <div className="space-y-2 p-2">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-3 rounded-xl px-2 py-2.5">
@@ -870,7 +987,7 @@ export default function DekanStudentsPage() {
               </div>
             ) : filteredStudents.length === 0 ? (
               <div className={`p-8 text-center text-xs ${ui.faint}`}>
-                {students.length === 0 ? "Hozircha bu fakultetda talaba yo'q" : 'Talaba topilmadi'}
+                {dormsError ? 'Yotoqxonani yuklash uchun qayta urinib ko‘ring' : students.length === 0 ? 'Bu bo‘limda hozircha talaba yo‘q' : 'Talaba topilmadi'}
               </div>
             ) : (
               filteredStudents.map((student) => {
@@ -1082,6 +1199,11 @@ export default function DekanStudentsPage() {
                           Qavat sardori
                         </span>
                       )}
+                      {selectedStudent.is_council_chair && (
+                        <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold ${ui.accentSoft}`}>
+                          Kengash raisi
+                        </span>
+                      )}
                       {selectedStudent.blacklisted && (
                         <span className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold ${statusChip('danger', isLight).chip}`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${statusChip('danger', isLight).dot}`} />
@@ -1144,6 +1266,15 @@ export default function DekanStudentsPage() {
                               >
                                 <ShieldCheck size={15} />
                                 {selectedStudent.is_floor_captain ? 'Sardorlikdan olish' : 'Sardor tayinlash'}
+                              </button>
+                            )}
+                            {councilEligible(selectedStudent) && (
+                              <button
+                                onClick={() => { setActionsMenuOpen(false); setCouncilModalOpen(true) }}
+                                className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${isLight ? 'text-indigo-700 hover:bg-indigo-50' : 'text-indigo-300 hover:bg-indigo-500/10'}`}
+                              >
+                                <Award size={15} />
+                                {selectedStudent.is_council_chair ? 'Kengash raisligidan olish' : 'Kengash raisi tayinlash'}
                               </button>
                             )}
                             <button
@@ -1612,6 +1743,41 @@ export default function DekanStudentsPage() {
               sardori etib tayinlanadi va sardor paneliga (yo&apos;qlama, qavat e&apos;lonlari) kirish huquqini
               oladi. Shu qavat va jins bo&apos;yicha <span className="font-black">hozirgi sardor avtomatik
               almashtiriladi</span> — bir qavatda bitta sardor bo&apos;ladi.
+            </div>
+          )}
+        </div>
+      </ConfirmModal>
+
+      {/* Council chair (talaba kengashi raisi) appoint / revoke modal */}
+      <ConfirmModal
+        isOpen={councilModalOpen}
+        title={selectedStudent?.is_council_chair ? 'Kengash raisligidan olish' : 'Kengash raisi etib tayinlash'}
+        description={selectedStudent ? selectedStudent.full_name : undefined}
+        onClose={() => setCouncilModalOpen(false)}
+        onConfirm={handleToggleCouncilChair}
+        confirmText={selectedStudent?.is_council_chair ? 'Olib tashlash' : 'Tayinlash'}
+        confirmVariant={selectedStudent?.is_council_chair ? 'danger' : 'primary'}
+        isLoading={councilBusy}
+        maxWidthClass="max-w-lg"
+      >
+        <div className="space-y-4">
+          {selectedStudent?.is_council_chair ? (
+            <div className={`rounded-lg border p-3 text-[11px] leading-relaxed ${isLight ? 'border-indigo-200 bg-indigo-50 text-indigo-800' : 'border-indigo-500/25 bg-indigo-500/10 text-indigo-200'}`}>
+              Talaba <span className="font-black">kengash raisligidan</span> olib tashlanadi va o&apos;z paneliga
+              (talabalar ro&apos;yxati, e&apos;lonlar) kirish huquqini yo&apos;qotadi. Fakultet{' '}
+              <span className="font-black">raisisiz qoladi</span> — kerak bo&apos;lsa boshqa talabani tayinlang.
+              Talabaning xonasi va boshqa ma&apos;lumotlari o&apos;zgarmaydi.
+            </div>
+          ) : (
+            <div className={`rounded-lg border p-3 text-[11px] leading-relaxed ${isLight ? 'border-indigo-200 bg-indigo-50 text-indigo-800' : 'border-indigo-500/25 bg-indigo-500/10 text-indigo-200'}`}>
+              <span className="font-black">{selectedStudent?.full_name}</span> butun fakultet{' '}
+              <span className="font-black">
+                {selectedStudent?.gender ? genderLabel(selectedStudent.gender).toLowerCase() : ''} talabalari
+              </span>{' '}
+              uchun kengash raisi etib tayinlanadi va talabalar ro&apos;yxati + e&apos;lon yozish huquqini oladi
+              (butun fakultet bo&apos;yicha, bitta qavat emas). Shu jins bo&apos;yicha{' '}
+              <span className="font-black">hozirgi raisi avtomatik almashtiriladi</span> — bir fakultetda har
+              jinsdan bitta raisi bo&apos;ladi.
             </div>
           )}
         </div>

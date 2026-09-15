@@ -7,6 +7,8 @@ import toast from 'react-hot-toast'
 import { getSafeUser, getAuthHeaders } from '@/lib/auth-session'
 import AttendanceBoard from '@/components/attendance/AttendanceBoard'
 import type { AttendanceState, RosterView } from '@/features/attendance/types'
+import LeaderBackdrop from '@/components/leader/LeaderBackdrop'
+import { leaderTheme } from '@/components/leader/leader-theme'
 
 export default function SardorYoqlamaPage() {
   const [loading, setLoading] = useState(true)
@@ -101,23 +103,25 @@ export default function SardorYoqlamaPage() {
   }
 
   // text-slate-200, not -100: the light-mode override in globals.css only
-  // lists text-{slate,gray,…}-{200..700}, so an inherited -100 stayed pale and
-  // the "Yo'qlama" heading was invisible on the repainted light background.
-  // -100 can't just be added to that list — talaba/tolova and
-  // PaymentStatusCard use it as a pale ring track in light mode.
+  // lists text-{slate,gray,…}-{200..700}, so an inherited -100 stayed pale —
+  // moot now that this page is permanently dark (leader-theme shell), but
+  // kept since AttendanceBoard itself may still be reached from a
+  // light-mode-aware panel elsewhere.
+  const t = leaderTheme.sardor
   return (
-    <div className="min-h-screen bg-[#070b13] text-slate-200">
-      <div className="mx-auto max-w-3xl px-4 py-6">
-        <Link href="/sardor/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-slate-400 hover:bg-white/5">
+    <div className="relative min-h-screen bg-[#070b13] text-slate-200">
+      <LeaderBackdrop role="sardor" />
+      <div className="relative z-10 mx-auto max-w-3xl px-4 py-6">
+        <Link href="/sardor/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-black uppercase tracking-wider text-slate-400 backdrop-blur-xl transition-colors hover:bg-white/10 hover:text-white">
           <ArrowLeft size={14} /> Panel
         </Link>
 
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-300">
+          <div className={`flex h-11 w-11 items-center justify-center rounded-2xl text-white ${t.gradient}`}>
             <ClipboardCheck size={20} />
           </div>
           <div>
-            <h1 className="text-xl font-black tracking-tight">Yo‘qlama</h1>
+            <h1 className="text-xl font-black tracking-tight text-white">Yo‘qlama</h1>
             <p className="text-xs text-slate-400">O‘z qavatingizdagi talabalarni belgilang</p>
           </div>
         </div>
@@ -129,13 +133,13 @@ export default function SardorYoqlamaPage() {
         ) : view ? (
           <AttendanceBoard view={view} onMark={mark} onClose={closeSession} busy={busy} />
         ) : (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center backdrop-blur-xl">
             <p className="text-sm text-slate-300">Hozircha ochiq yo‘qlama yo‘q.</p>
             <button
               type="button"
               onClick={openSession}
               disabled={busy}
-              className="mt-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:brightness-110 disabled:opacity-50"
+              className={`mt-4 rounded-xl px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:brightness-110 disabled:opacity-50 ${t.gradient}`}
             >
               {busy ? 'Ochilyapti…' : 'Yo‘qlama ochish'}
             </button>

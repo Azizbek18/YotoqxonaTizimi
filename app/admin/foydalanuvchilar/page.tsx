@@ -1,5 +1,7 @@
 'use client'
 
+import { isRoommate } from '@/lib/roommates'
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
@@ -56,6 +58,8 @@ type UserRow = {
   direction?: string | null
   course?: number | null
   room_number?: string | null
+  dorm_id?: string | null
+  block?: string | null
   status?: string | null
   middle_name?: string | null
   region?: string | null
@@ -499,7 +503,7 @@ export default function AdminUsersPage() {
   const roommates = useMemo(() => {
     const activeUser = selectedUser
     if (!activeUser?.room_number) return []
-    return users.filter((u) => u.room_number === activeUser.room_number && u.id !== activeUser.id)
+    return users.filter((u) => u.role === 'talaba' && isRoommate(u, activeUser))
   }, [users, selectedUser])
 
   const handleDeleteClick = (userId: string) => {

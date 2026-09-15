@@ -13,6 +13,24 @@ export async function fetchMyForeignDocs(): Promise<ForeignDoc[]> {
   return result.docs
 }
 
+export type GeocodeResult = { name: string; lat: number; lng: number }
+
+/** Free-text place search for the propiska address map picker (OSM
+ *  Nominatim, proxied server-side — see app/api/student/geocode). */
+export function geocodeAddress(query: string) {
+  return apiRequest<{ results: GeocodeResult[] }>(
+    `/api/student/geocode?q=${encodeURIComponent(query.trim())}`,
+  )
+}
+
+/** Coordinates → the place name Nominatim resolves the dropped pin to. */
+export async function reverseGeocodeAddress(lat: number, lng: number): Promise<string | null> {
+  const result = await apiRequest<{ name: string | null }>(
+    `/api/student/geocode?lat=${lat}&lng=${lng}`,
+  )
+  return result.name
+}
+
 /**
  * Hujjatni yaratadi/yangilaydi. Fayl ixtiyoriy — multipart bilan yuboriladi
  * (avatar yuklash namunasi). `apiRequest` Content-Type ni o'zi qo'ymaydi, shu

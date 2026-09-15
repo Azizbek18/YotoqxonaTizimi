@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { prepareUploadFile } from '@/lib/prepare-upload'
 import { saveForeignDoc, deleteForeignDoc } from '@/features/foreign-docs/client/api'
+import AddressMapPicker from './AddressMapPicker'
 import {
   DOC_STATUS_LABELS,
   REGISTRATION_BASIS_LABELS,
@@ -231,11 +232,16 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
           {!isVisa && (
             <div>
               <label className={labelCls}>Manzil</label>
+              {!ttjSelected && (
+                <div className="mb-2">
+                  <AddressMapPicker isLight={isLight} onResolved={(name) => setAddress(name)} />
+                </div>
+              )}
               <textarea
                 rows={2}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder={ttjSelected ? 'Yotoqxona nomi avtomatik qo‘yiladi' : 'To‘liq yashash manzili'}
+                placeholder={ttjSelected ? 'Yotoqxona nomi avtomatik qo‘yiladi' : "Yuqoridan xaritada belgilang yoki bu yerga qo'lda yozing"}
                 maxLength={300}
                 className={`${fieldCls} resize-none`}
               />

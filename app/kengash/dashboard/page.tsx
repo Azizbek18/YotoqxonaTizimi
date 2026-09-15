@@ -3,14 +3,13 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import Image from 'next/image'
 import {
-  Users, Megaphone, LogOut, Search, Clock,
-  Trash2, Plus, Sparkles, Phone, Mail, X,
-  ArrowLeft, ShieldCheck, FileText, MessageSquareWarning, ShieldHalf,
-  Building2, DoorClosed, Snowflake,
+  Users, Megaphone, Search, Clock,
+  Trash2, Plus, Phone, Mail, X,
+  FileText, MessageSquareWarning, ShieldHalf,
+  Building2, DoorClosed, Snowflake, Crown,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getSafeUser, getAuthHeaders } from '@/lib/auth-session'
-import Link from 'next/link'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import CustomSelect from '@/components/ui/CustomSelect'
@@ -21,6 +20,13 @@ import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 import { directionLabel } from '@/lib/directions'
 import { normalizeGender } from '@/lib/gender'
+import LeaderBackdrop from '@/components/leader/LeaderBackdrop'
+import LeaderHeader from '@/components/leader/LeaderHeader'
+import LeaderTabs, { type LeaderTab } from '@/components/leader/LeaderTabs'
+import SectionHeading from '@/components/leader/SectionHeading'
+import EmptyState from '@/components/leader/EmptyState'
+import ModalShell from '@/components/leader/ModalShell'
+import { glassCard, leaderTheme } from '@/components/leader/leader-theme'
 
 interface Student {
   id: string
@@ -65,11 +71,20 @@ const ELON_TYPE_STYLE: Record<Elon['type'], { dot: string; badge: string }> = {
   Yangilik: { dot: 'bg-cyan-500', badge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
 }
 
+const listStagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.025 } },
+}
+const rowIn = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+}
+
 function initialsOf(name: string) {
   return name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'ST'
 }
 
-/** One compact row — used for both the "Talabalar" and "Sardorlar" tabs so
+/** One person card — used for both the "Talabalar" and "Sardorlar" tabs so
  *  the two lists read as one system, not two differently-designed screens.
  *  `onToggleCaptain` is only passed where the raisi is allowed to appoint —
  *  its absence (room occupant popup, revoked captains.manage) hides the
@@ -82,12 +97,14 @@ function PersonRow({ person, onToggleCaptain }: { person: Student; onToggleCapta
   ].filter(Boolean).join(' · ')
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/[0.03]">
-      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/20">
+    <motion.div variants={rowIn} className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.035]">
+      <div className={`relative h-11 w-11 shrink-0 overflow-hidden rounded-full ring-2 ring-inset ${
+        person.is_floor_captain ? 'ring-purple-500/40 bg-purple-500/10' : 'ring-indigo-500/25 bg-indigo-500/10'
+      }`}>
         {person.avatar_url ? (
-          <Image src={person.avatar_url} alt={person.full_name} fill sizes="40px" unoptimized className="object-cover" />
+          <Image src={person.avatar_url} alt={person.full_name} fill sizes="44px" unoptimized className="object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs font-bold text-indigo-300">
+          <div className={`flex h-full w-full items-center justify-center text-xs font-bold ${person.is_floor_captain ? 'text-purple-300' : 'text-indigo-300'}`}>
             {initialsOf(person.full_name)}
           </div>
         )}
@@ -127,7 +144,7 @@ function PersonRow({ person, onToggleCaptain }: { person: Student; onToggleCapta
         </div>
       )}
 
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1.5 opacity-90 transition-opacity group-hover:opacity-100">
         {person.phone_number && (
           <a
             href={`tel:${person.phone_number}`}
@@ -158,23 +175,23 @@ function PersonRow({ person, onToggleCaptain }: { person: Student; onToggleCapta
           </button>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }
 
 function PersonList({ people, emptyLabel, onToggleCaptain }: { people: Student[]; emptyLabel: string; onToggleCaptain?: (person: Student) => void }) {
   if (people.length === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed border-white/10 py-16 text-center">
-        <Users size={28} className="mx-auto mb-2 text-slate-500" />
-        <p className="text-sm text-slate-400">{emptyLabel}</p>
-      </div>
-    )
+    return <EmptyState role="kengash" icon={Users} title={emptyLabel} />
   }
   return (
-    <div className="divide-y divide-white/5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.015]">
+    <motion.div
+      variants={listStagger}
+      initial="hidden"
+      animate="show"
+      className={`${glassCard()} divide-y divide-white/5`}
+    >
       {people.map((person) => <PersonRow key={person.id} person={person} onToggleCaptain={onToggleCaptain} />)}
-    </div>
+    </motion.div>
   )
 }
 
@@ -392,6 +409,17 @@ export default function KengashDashboard() {
       .filter((r) => !q || r.roomNumber.toLowerCase().includes(q))
   }, [roomsInScope, activeFloor, roomSearch])
 
+  const floorOccupancy = useMemo(() => {
+    const map = new Map<number, { total: number; occupied: number }>()
+    for (const r of roomsInScope) {
+      const entry = map.get(r.floor) ?? { total: 0, occupied: 0 }
+      entry.total += 1
+      if ((occupantsByRoom.get(r.roomNumber) ?? []).length > 0) entry.occupied += 1
+      map.set(r.floor, entry)
+    }
+    return map
+  }, [roomsInScope, occupantsByRoom])
+
   const handleCreateElon = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newElonForm.title || !newElonForm.text) {
@@ -492,350 +520,294 @@ export default function KengashDashboard() {
 
   if (!mounted || loading) {
     return (
-      <div className="min-h-screen bg-[#070b13] px-4 py-8 sm:px-6 lg:px-8">
-        <SkelPage />
+      <div className="relative min-h-screen bg-[#070b13]">
+        <LeaderBackdrop role="kengash" />
+        <div className="relative z-10 px-4 py-8 sm:px-6 lg:px-8">
+          <SkelPage />
+        </div>
       </div>
     )
   }
 
   const genderLabel = profile?.gender === 'Ayol' || profile?.gender === 'female' ? 'Qizlar' : 'Yigitlar'
+  const t = leaderTheme.kengash
+
+  const tabs: LeaderTab[] = [
+    ...(allows('students.view')
+      ? [
+          { key: 'students', label: 'Talabalar', icon: Users, count: students.length },
+          { key: 'captains', label: 'Sardorlar', icon: ShieldHalf, count: captains.length },
+          { key: 'rooms', label: 'Xonalar xaritasi', icon: Building2 },
+        ]
+      : []),
+    { key: 'elonlar', label: "E'lonlarim", icon: Megaphone, count: elonlar.length },
+  ]
 
   return (
-    <div className="min-h-screen bg-[#070b13] text-white py-8 px-4 sm:px-6 lg:px-8 space-y-6">
-      {/* Top Header */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/5 pb-6">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/talaba/dashboard"
-            className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 transition-all flex items-center justify-center"
-          >
-            <ArrowLeft size={16} />
-          </Link>
-          <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-indigo-400">
-              <ShieldCheck size={12} />
-              Talaba kengashi raisi ({genderLabel})
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight mt-2 flex items-center gap-2">
-              {profile?.full_name} <Sparkles size={20} className="text-yellow-400" />
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Butun fakultet {genderLabel.toLowerCase()} talabalarini boshqarish va e&apos;lonlar yuborish
-            </p>
-          </div>
-        </div>
+    <div className="relative min-h-screen bg-[#070b13] text-white">
+      <LeaderBackdrop role="kengash" />
+      <div className="relative z-10 mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+        <LeaderHeader
+          role="kengash"
+          icon={Crown}
+          badgeText={`Talaba kengashi raisi · ${genderLabel}`}
+          name={profile?.full_name ?? ''}
+          subtitle={`Butun fakultet ${genderLabel.toLowerCase()} talabalarini boshqarish va e'lonlar yuborish`}
+          backHref="/talaba/dashboard"
+          stats={[
+            { icon: Users, value: students.length, label: 'Talabalar' },
+            { icon: ShieldHalf, value: captains.length, label: 'Sardorlar' },
+            { icon: Megaphone, value: elonlar.length, label: "E'lonlar" },
+          ]}
+        />
 
-        <Link
-          href="/talaba/dashboard"
-          className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap"
-        >
-          <LogOut size={14} />
-          Talaba paneliga qaytish
-        </Link>
-      </header>
+        <LeaderTabs role="kengash" tabs={tabs} active={activeTab} onChange={(k) => setActiveTab(k as typeof activeTab)} />
 
-      {/* Tabs */}
-      <div className="flex overflow-x-auto no-scrollbar gap-1.5 p-1.5 rounded-2xl bg-white/[0.03] border border-white/5 w-full sm:w-fit shrink-0">
-        {allows('students.view') && (
-          <>
-            <button
-              onClick={() => setActiveTab('students')}
-              className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'students'
-                  ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white'
-                  : 'text-slate-400 hover:bg-white/5'
-              }`}
+        {/* Main Tab Panels */}
+        <AnimatePresence mode="wait">
+          {activeTab === 'rooms' && allows('students.view') ? (
+            <motion.div
+              key="rooms"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-4"
             >
-              <Users size={14} />
-              Talabalar ({students.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('captains')}
-              className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'captains'
-                  ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white'
-                  : 'text-slate-400 hover:bg-white/5'
-              }`}
-            >
-              <ShieldHalf size={14} />
-              Sardorlar ({captains.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('rooms')}
-              className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'rooms'
-                  ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white'
-                  : 'text-slate-400 hover:bg-white/5'
-              }`}
-            >
-              <Building2 size={14} />
-              Xonalar xaritasi
-            </button>
-          </>
-        )}
-        <button
-          onClick={() => setActiveTab('elonlar')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'elonlar'
-              ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white'
-              : 'text-slate-400 hover:bg-white/5'
-          }`}
-        >
-          <Megaphone size={14} />
-          Mening E&apos;lonlarim ({elonlar.length})
-        </button>
-      </div>
-
-      {/* Main Tab Panels */}
-      <AnimatePresence mode="wait">
-        {activeTab === 'rooms' && allows('students.view') ? (
-          <motion.div
-            key="rooms"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            className="space-y-4"
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-lg font-black tracking-tight">Xonalar xaritasi</h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Butun fakultet {genderLabel.toLowerCase()} xonalari — faqat ko&apos;rish uchun
-                </p>
-              </div>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Xona raqami..."
-                  value={roomSearch}
-                  onChange={(e) => setRoomSearch(e.target.value)}
-                  className="w-full border rounded-2xl py-2.5 pl-11 pr-4 bg-white/5 border-white/5 text-white placeholder:text-gray-500 focus:border-indigo-500/30 outline-none text-xs transition-all"
-                />
-              </div>
-            </div>
-
-            {!roomsLoaded ? (
-              <div className="rounded-2xl border border-dashed border-white/10 py-16 text-center">
-                <p className="text-sm text-slate-400">Yuklanmoqda...</p>
-              </div>
-            ) : (
-              <>
-                <div className="flex flex-wrap gap-1.5">
-                  {floors.map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setActiveFloor(f)}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap ${
-                        activeFloor === f
-                          ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white'
-                          : 'bg-white/5 text-slate-400 hover:bg-white/10 border border-white/5'
-                      }`}
-                    >
-                      {f}-qavat
-                    </button>
-                  ))}
-                </div>
-
-                {roomsOnFloor.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/10 py-16 text-center">
-                    <DoorClosed size={28} className="mx-auto mb-2 text-slate-500" />
-                    <p className="text-sm text-slate-400">Bu qavatda {genderLabel.toLowerCase()} uchun xona topilmadi</p>
+              <SectionHeading
+                title="Xonalar xaritasi"
+                description={`Butun fakultet ${genderLabel.toLowerCase()} xonalari — faqat ko'rish uchun`}
+                action={
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Xona raqami..."
+                      value={roomSearch}
+                      onChange={(e) => setRoomSearch(e.target.value)}
+                      className="w-full border rounded-2xl py-2.5 pl-11 pr-4 bg-white/5 border-white/5 text-white placeholder:text-gray-500 focus:border-indigo-500/30 outline-none text-xs transition-all"
+                    />
                   </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
-                    {roomsOnFloor.map((room) => {
-                      const occupants = occupantsByRoom.get(room.roomNumber) ?? []
-                      const tone = room.frozen
-                        ? 'border-amber-500/25 bg-amber-500/5 text-amber-300'
-                        : occupants.length > 0
-                          ? 'border-indigo-500/25 bg-indigo-500/10 text-indigo-200 hover:border-indigo-500/50'
-                          : 'border-white/10 bg-white/[0.02] text-slate-400 hover:border-white/20'
+                }
+              />
+
+              {!roomsLoaded ? (
+                <EmptyState role="kengash" icon={Building2} title="Yuklanmoqda..." />
+              ) : (
+                <>
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    {floors.map((f) => {
+                      const occ = floorOccupancy.get(f)
+                      const pct = occ && occ.total > 0 ? Math.round((occ.occupied / occ.total) * 100) : 0
+                      const isActive = activeFloor === f
                       return (
                         <button
-                          key={room.roomNumber}
-                          onClick={() => setSelectedRoom(room.roomNumber)}
-                          className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-3 text-center transition-colors ${tone}`}
+                          key={f}
+                          onClick={() => setActiveFloor(f)}
+                          className={`shrink-0 rounded-2xl border px-4 py-2.5 text-left transition-all ${
+                            isActive
+                              ? `border-transparent text-white ${t.gradient}`
+                              : 'border-white/5 bg-white/5 text-slate-300 hover:bg-white/10'
+                          }`}
                         >
-                          {room.frozen ? <Snowflake size={14} /> : <DoorClosed size={14} />}
-                          <span className="text-sm font-black">{room.roomNumber}</span>
-                          <span className="text-[10px] font-semibold">
-                            {room.frozen ? "Ta'mirlash" : `${occupants.length} kishi`}
+                          <span className="block text-xs font-black uppercase tracking-wider">{f}-qavat</span>
+                          <span className={`mt-1 block h-1 w-14 overflow-hidden rounded-full ${isActive ? 'bg-white/25' : 'bg-white/10'}`}>
+                            <span
+                              className={`block h-full rounded-full ${isActive ? 'bg-white' : 'bg-indigo-400'}`}
+                              style={{ width: `${pct}%` }}
+                            />
                           </span>
                         </button>
                       )
                     })}
                   </div>
-                )}
 
-                <div className="flex flex-wrap gap-4 text-[11px] text-slate-500">
-                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-indigo-500/20 border border-indigo-500/25" /> Band</span>
-                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-white/5 border border-white/10" /> Bo&apos;sh</span>
-                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-amber-500/10 border border-amber-500/25" /> Ta&apos;mirlash</span>
-                </div>
-              </>
-            )}
-          </motion.div>
-        ) : (activeTab === 'students' || activeTab === 'captains') && allows('students.view') ? (
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            className="space-y-4"
-          >
-            <div className="relative w-full max-w-md">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Ism, xona yoki guruh bo'yicha qidirish..."
-                value={studentSearch}
-                onChange={(e) => setStudentSearch(e.target.value)}
-                className="w-full border rounded-2xl py-3 pl-11 pr-4 bg-white/5 border-white/5 text-white placeholder:text-gray-500 focus:border-indigo-500/30 outline-none text-xs sm:text-sm transition-all"
-              />
-            </div>
+                  {roomsOnFloor.length === 0 ? (
+                    <EmptyState role="kengash" icon={DoorClosed} title={`Bu qavatda ${genderLabel.toLowerCase()} uchun xona topilmadi`} />
+                  ) : (
+                    <motion.div
+                      variants={listStagger}
+                      initial="hidden"
+                      animate="show"
+                      className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"
+                    >
+                      {roomsOnFloor.map((room) => {
+                        const occupants = occupantsByRoom.get(room.roomNumber) ?? []
+                        const tone = room.frozen
+                          ? 'border-amber-500/25 bg-amber-500/5 text-amber-300'
+                          : occupants.length > 0
+                            ? 'border-indigo-500/25 bg-indigo-500/10 text-indigo-200 hover:border-indigo-500/50'
+                            : 'border-white/10 bg-white/[0.02] text-slate-400 hover:border-white/20'
+                        return (
+                          <motion.button
+                            key={room.roomNumber}
+                            variants={rowIn}
+                            onClick={() => setSelectedRoom(room.roomNumber)}
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-3 text-center transition-all hover:-translate-y-0.5 ${tone}`}
+                          >
+                            {room.frozen ? <Snowflake size={14} /> : <DoorClosed size={14} />}
+                            <span className="text-sm font-black">{room.roomNumber}</span>
+                            <span className="text-[10px] font-semibold">
+                              {room.frozen ? "Ta'mirlash" : `${occupants.length} kishi`}
+                            </span>
+                          </motion.button>
+                        )
+                      })}
+                    </motion.div>
+                  )}
 
-            <div className="flex flex-wrap items-center gap-2">
-              <CustomSelect
-                value={filterFloor}
-                onChange={setFilterFloor}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs sm:w-auto"
-                options={[
-                  { value: 'all', label: 'Barcha qavatlar' },
-                  ...floorOptions.map((f) => ({ value: String(f), label: `${f}-qavat` })),
-                ]}
-              />
-              <CustomSelect
-                value={filterCourse}
-                onChange={setFilterCourse}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs sm:w-auto"
-                options={[
-                  { value: 'all', label: 'Barcha kurslar' },
-                  ...courseOptions.map((c) => ({ value: String(c), label: `${c}-kurs` })),
-                ]}
-              />
-              <CustomSelect
-                value={filterDirection}
-                onChange={setFilterDirection}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs sm:w-auto"
-                options={[
-                  { value: 'all', label: 'Barcha yo\'nalishlar' },
-                  ...directionOptions,
-                ]}
-              />
-              {filtersActive && (
-                <button
-                  onClick={clearFilters}
-                  className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 transition-colors hover:bg-white/10"
-                >
-                  <X size={12} /> Saralashni tozalash
-                </button>
+                  <div className="flex flex-wrap gap-4 text-[11px] text-slate-500">
+                    <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-indigo-500/20 border border-indigo-500/25" /> Band</span>
+                    <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-white/5 border border-white/10" /> Bo&apos;sh</span>
+                    <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-amber-500/10 border border-amber-500/25" /> Ta&apos;mirlash</span>
+                  </div>
+                </>
               )}
-            </div>
-
-            {activeTab === 'students' ? (
-              <PersonList
-                people={filteredStudents}
-                emptyLabel="Hech qanday talaba topilmadi"
-                onToggleCaptain={allows('captains.manage') ? handleToggleCaptain : undefined}
-              />
-            ) : (
-              <PersonList
-                people={filteredCaptains}
-                emptyLabel="Bu fakultetda hali sardor tayinlanmagan"
-                onToggleCaptain={allows('captains.manage') ? handleToggleCaptain : undefined}
-              />
-            )}
-          </motion.div>
-        ) : (
-          <motion.div
-            key="elonlar"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            className="space-y-4"
-          >
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h3 className="text-lg font-black tracking-tight">Fakultet E&apos;lonlari</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Faqat {genderLabel.toLowerCase()} talabalarga ko&apos;rinadigan xabarnomalar</p>
-              </div>
-              {allows('council.announcements') && (
-                <button
-                  onClick={() => setNewElonOpen(true)}
-                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap w-full sm:w-auto"
-                >
-                  <Plus size={16} />
-                  Yangi E&apos;lon
-                </button>
-              )}
-            </div>
-
-            {elonlar.length > 0 ? (
-              <div className="divide-y divide-white/5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.015]">
-                {elonlar.map((elon) => {
-                  const style = ELON_TYPE_STYLE[elon.type]
-                  return (
-                    <div key={elon.id} className="flex items-start gap-3 p-4">
-                      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className={`rounded-md border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${style.badge}`}>
-                            {elon.type}
-                          </span>
-                          <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500">
-                            <Clock size={10} /> {new Date(elon.created_at).toLocaleDateString('uz-UZ')}
-                          </span>
-                        </div>
-                        <h4 className="truncate text-sm font-bold text-white">{elon.title}</h4>
-                        <p className="text-xs leading-relaxed text-slate-400">{elon.text}</p>
-                      </div>
-                      {allows('council.announcements') && (
-                        <button
-                          onClick={() => handleDeleteElon(elon.id)}
-                          title="O'chirish"
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-400 transition-colors hover:border-rose-500/25 hover:bg-rose-500/10 hover:text-rose-400"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-white/10 py-16 text-center">
-                <Megaphone size={28} className="mx-auto mb-2 text-slate-500" />
-                <p className="text-sm text-slate-400">Hozircha hech qanday e&apos;lon chop etilmagan</p>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* New Announcement Modal */}
-      <AnimatePresence>
-        {newElonOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+            </motion.div>
+          ) : (activeTab === 'students' || activeTab === 'captains') && allows('students.view') ? (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg rounded-[2rem] border border-white/10 bg-[#0b1120] p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden"
+              key={activeTab}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-4"
             >
-              <div className="absolute right-[-10%] top-[-10%] w-[50%] h-[50%] rounded-full blur-[80px] bg-indigo-500/10" />
-
-              <div className="relative z-10">
-                <h3 className="text-xl font-black tracking-tight flex items-center gap-2">
-                  <Megaphone size={20} className="text-indigo-400" />
-                  Yangi E&apos;lon Chop Etish
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Ushbu e&apos;lon butun fakultet {genderLabel.toLowerCase()} talabalariga yuboriladi.
-                </p>
+              <div className="relative w-full max-w-md">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Ism, xona yoki guruh bo'yicha qidirish..."
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                  className="w-full border rounded-2xl py-3 pl-11 pr-4 bg-white/5 border-white/5 text-white placeholder:text-gray-500 focus:border-indigo-500/30 outline-none text-xs sm:text-sm transition-all"
+                />
               </div>
 
-              <form onSubmit={handleCreateElon} className="relative z-10 space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <CustomSelect
+                  value={filterFloor}
+                  onChange={setFilterFloor}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs sm:w-auto"
+                  options={[
+                    { value: 'all', label: 'Barcha qavatlar' },
+                    ...floorOptions.map((f) => ({ value: String(f), label: `${f}-qavat` })),
+                  ]}
+                />
+                <CustomSelect
+                  value={filterCourse}
+                  onChange={setFilterCourse}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs sm:w-auto"
+                  options={[
+                    { value: 'all', label: 'Barcha kurslar' },
+                    ...courseOptions.map((c) => ({ value: String(c), label: `${c}-kurs` })),
+                  ]}
+                />
+                <CustomSelect
+                  value={filterDirection}
+                  onChange={setFilterDirection}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs sm:w-auto"
+                  options={[
+                    { value: 'all', label: 'Barcha yo\'nalishlar' },
+                    ...directionOptions,
+                  ]}
+                />
+                {filtersActive && (
+                  <button
+                    onClick={clearFilters}
+                    className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-300 transition-colors hover:bg-white/10"
+                  >
+                    <X size={12} /> Saralashni tozalash
+                  </button>
+                )}
+              </div>
+
+              {activeTab === 'students' ? (
+                <PersonList
+                  people={filteredStudents}
+                  emptyLabel="Hech qanday talaba topilmadi"
+                  onToggleCaptain={allows('captains.manage') ? handleToggleCaptain : undefined}
+                />
+              ) : (
+                <PersonList
+                  people={filteredCaptains}
+                  emptyLabel="Bu fakultetda hali sardor tayinlanmagan"
+                  onToggleCaptain={allows('captains.manage') ? handleToggleCaptain : undefined}
+                />
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="elonlar"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-4"
+            >
+              <SectionHeading
+                title="Fakultet E'lonlari"
+                description={`Faqat ${genderLabel.toLowerCase()} talabalarga ko'rinadigan xabarnomalar`}
+                action={
+                  allows('council.announcements') && (
+                    <button
+                      onClick={() => setNewElonOpen(true)}
+                      className={`flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl px-5 py-3 text-xs font-black uppercase tracking-wider text-white transition-all duration-300 sm:w-auto ${t.gradient} hover:brightness-110`}
+                    >
+                      <Plus size={16} />
+                      Yangi E&apos;lon
+                    </button>
+                  )
+                }
+              />
+
+              {elonlar.length > 0 ? (
+                <motion.div variants={listStagger} initial="hidden" animate="show" className={`${glassCard()} divide-y divide-white/5`}>
+                  {elonlar.map((elon) => {
+                    const style = ELON_TYPE_STYLE[elon.type]
+                    return (
+                      <motion.div variants={rowIn} key={elon.id} className="flex items-start gap-3 p-4">
+                        <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`rounded-md border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${style.badge}`}>
+                              {elon.type}
+                            </span>
+                            <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500">
+                              <Clock size={10} /> {new Date(elon.created_at).toLocaleDateString('uz-UZ')}
+                            </span>
+                          </div>
+                          <h4 className="truncate text-sm font-bold text-white">{elon.title}</h4>
+                          <p className="text-xs leading-relaxed text-slate-400">{elon.text}</p>
+                        </div>
+                        {allows('council.announcements') && (
+                          <button
+                            onClick={() => handleDeleteElon(elon.id)}
+                            title="O'chirish"
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-400 transition-colors hover:border-rose-500/25 hover:bg-rose-500/10 hover:text-rose-400"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </motion.div>
+                    )
+                  })}
+                </motion.div>
+              ) : (
+                <EmptyState role="kengash" icon={Megaphone} title="Hozircha hech qanday e'lon chop etilmagan" />
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* New Announcement Modal */}
+        <AnimatePresence>
+          {newElonOpen && (
+            <ModalShell
+              role="kengash"
+              icon={Megaphone}
+              title="Yangi E'lon Chop Etish"
+              description={`Ushbu e'lon butun fakultet ${genderLabel.toLowerCase()} talabalariga yuboriladi.`}
+              onClose={() => setNewElonOpen(false)}
+            >
+              <form onSubmit={handleCreateElon} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Mavzu / Sarlavha</label>
                   <input
@@ -886,107 +858,89 @@ export default function KengashDashboard() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 disabled:opacity-55"
+                    className={`flex-1 py-3 rounded-xl text-white text-xs font-black uppercase tracking-wider transition-all duration-300 disabled:opacity-55 ${t.gradient} hover:brightness-110`}
                   >
                     {isSubmitting ? 'Chop etilmoqda...' : 'Chop etish'}
                   </button>
                 </div>
               </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+            </ModalShell>
+          )}
+        </AnimatePresence>
 
-      {/* Delete Announcement Confirm Modal */}
-      <ConfirmModal
-        isOpen={deleteElonModal.isOpen}
-        title="E'lonni o'chirish"
-        description="Ushbu e'lonni o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi."
-        onClose={deleteElonModal.close}
-        onConfirm={confirmDeleteElon}
-        confirmText="O'chirish"
-        confirmVariant="danger"
-        isLoading={deleteElonModal.isLoading}
-      />
+        {/* Delete Announcement Confirm Modal */}
+        <ConfirmModal
+          isOpen={deleteElonModal.isOpen}
+          title="E'lonni o'chirish"
+          description="Ushbu e'lonni o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi."
+          onClose={deleteElonModal.close}
+          onConfirm={confirmDeleteElon}
+          confirmText="O'chirish"
+          confirmVariant="danger"
+          isLoading={deleteElonModal.isLoading}
+        />
 
-      {/* Appoint / revoke floor captain (qavat sardori) modal — states the
-          floor explicitly: captaincy always tracks the student's own
-          residence floor (assigned_floor), never a floor picked separately,
-          so this is a confirmation of that floor, not a choice of it. */}
-      <ConfirmModal
-        isOpen={captainModal.isOpen}
-        title={captainModal.target?.is_floor_captain ? 'Sardorlikdan olish' : 'Sardor etib tayinlash'}
-        description={
-          captainModal.target
-            ? `${captainModal.target.full_name}${captainModal.target.room_number ? ` · ${captainModal.target.room_number}-xona` : ''}`
-            : undefined
-        }
-        onClose={captainModal.close}
-        onConfirm={confirmToggleCaptain}
-        confirmText={captainModal.target?.is_floor_captain ? 'Olib tashlash' : 'Tayinlash'}
-        confirmVariant={captainModal.target?.is_floor_captain ? 'danger' : 'primary'}
-        isLoading={captainBusy}
-      >
-        {captainModal.target && (
-          <div className="rounded-lg border border-indigo-500/25 bg-indigo-500/10 p-3 text-[11px] leading-relaxed text-indigo-200">
-            {captainModal.target.is_floor_captain ? (
-              <>
-                Talaba <span className="font-black">{captainModal.target.assigned_floor}-qavat</span> sardorligidan
-                olib tashlanadi. Qavat <span className="font-black">sardorsiz qoladi</span> — kerak bo&apos;lsa
-                boshqa talabani tayinlang.
-              </>
-            ) : (
-              <>
-                <span className="font-black">{captainModal.target.full_name}</span> o&apos;zi yashaydigan{' '}
-                <span className="font-black">{captainModal.target.assigned_floor}-qavat</span> sardori etib
-                tayinlanadi. Shu qavatda hozir sardor bo&apos;lsa, <span className="font-black">avtomatik
-                almashtiriladi</span> — bir qavatda bitta sardor bo&apos;ladi.
-              </>
-            )}
-          </div>
-        )}
-      </ConfirmModal>
+        {/* Appoint / revoke floor captain (qavat sardori) modal — states the
+            floor explicitly: captaincy always tracks the student's own
+            residence floor (assigned_floor), never a floor picked separately,
+            so this is a confirmation of that floor, not a choice of it. */}
+        <ConfirmModal
+          isOpen={captainModal.isOpen}
+          title={captainModal.target?.is_floor_captain ? 'Sardorlikdan olish' : 'Sardor etib tayinlash'}
+          description={
+            captainModal.target
+              ? `${captainModal.target.full_name}${captainModal.target.room_number ? ` · ${captainModal.target.room_number}-xona` : ''}`
+              : undefined
+          }
+          onClose={captainModal.close}
+          onConfirm={confirmToggleCaptain}
+          confirmText={captainModal.target?.is_floor_captain ? 'Olib tashlash' : 'Tayinlash'}
+          confirmVariant={captainModal.target?.is_floor_captain ? 'danger' : 'primary'}
+          isLoading={captainBusy}
+        >
+          {captainModal.target && (
+            <div className="rounded-lg border border-indigo-500/25 bg-indigo-500/10 p-3 text-[11px] leading-relaxed text-indigo-200">
+              {captainModal.target.is_floor_captain ? (
+                <>
+                  Talaba <span className="font-black">{captainModal.target.assigned_floor}-qavat</span> sardorligidan
+                  olib tashlanadi. Qavat <span className="font-black">sardorsiz qoladi</span> — kerak bo&apos;lsa
+                  boshqa talabani tayinlang.
+                </>
+              ) : (
+                <>
+                  <span className="font-black">{captainModal.target.full_name}</span> o&apos;zi yashaydigan{' '}
+                  <span className="font-black">{captainModal.target.assigned_floor}-qavat</span> sardori etib
+                  tayinlanadi. Shu qavatda hozir sardor bo&apos;lsa, <span className="font-black">avtomatik
+                  almashtiriladi</span> — bir qavatda bitta sardor bo&apos;ladi.
+                </>
+              )}
+            </div>
+          )}
+        </ConfirmModal>
 
-      {/* Room occupants (read-only) */}
-      <AnimatePresence>
-        {selectedRoom && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs" onClick={() => setSelectedRoom(null)}>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-[2rem] border border-white/10 bg-[#0b1120] shadow-2xl overflow-hidden"
+        {/* Room occupants (read-only) */}
+        <AnimatePresence>
+          {selectedRoom && (
+            <ModalShell
+              role="kengash"
+              icon={DoorClosed}
+              title={`${selectedRoom}-xona`}
+              description={`${(occupantsByRoom.get(selectedRoom) ?? []).length} kishi yashaydi`}
+              onClose={() => setSelectedRoom(null)}
             >
-              <div className="flex items-center justify-between border-b border-white/5 p-5">
-                <div>
-                  <h3 className="text-base font-black tracking-tight">{selectedRoom}-xona</h3>
-                  <p className="text-[11px] text-slate-400">
-                    {(occupantsByRoom.get(selectedRoom) ?? []).length} kishi yashaydi
-                  </p>
+              {(occupantsByRoom.get(selectedRoom) ?? []).length === 0 ? (
+                <p className="py-8 text-center text-sm text-slate-400">Bu xona hozircha bo&apos;sh</p>
+              ) : (
+                <div className={`${glassCard()} -mx-2 divide-y divide-white/5`}>
+                  {(occupantsByRoom.get(selectedRoom) ?? []).map((person) => (
+                    <PersonRow key={person.id} person={person} />
+                  ))}
                 </div>
-                <button
-                  onClick={() => setSelectedRoom(null)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-              <div className="max-h-[60vh] overflow-y-auto">
-                {(occupantsByRoom.get(selectedRoom) ?? []).length === 0 ? (
-                  <p className="p-8 text-center text-sm text-slate-400">Bu xona hozircha bo&apos;sh</p>
-                ) : (
-                  <div className="divide-y divide-white/5">
-                    {(occupantsByRoom.get(selectedRoom) ?? []).map((person) => (
-                      <PersonRow key={person.id} person={person} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              )}
+            </ModalShell>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }

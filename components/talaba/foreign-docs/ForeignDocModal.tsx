@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
-import { X, Plane, Home, Upload, FileText, Trash2 } from 'lucide-react'
+import { X, Plane, Home, Upload, FileText, Trash2, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import CustomSelect from '@/components/ui/CustomSelect'
+import { prepareUploadFile } from '@/lib/prepare-upload'
 import { saveForeignDoc, deleteForeignDoc } from '@/features/foreign-docs/client/api'
 import {
   DOC_STATUS_LABELS,
@@ -38,6 +39,7 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
   const [address, setAddress] = useState('')
   const [note, setNote] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [preparingFile, setPreparingFile] = useState(false)
   const [busy, setBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -51,7 +53,33 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
     setAddress(existing?.address ?? '')
     setNote(existing?.note ?? '')
     setFile(null)
+    setPreparingFile(false)
   }, [open, existing])
+
+  // Same client-side pre-flight every other upload in the app runs (avatar,
+  // passport photo, yo'llanma doc) — HEIC→JPEG plus a downscale/re-encode
+  // when the file would otherwise trip the server's 4 MB cap or magic-byte
+  // check. This modal used to hand the raw <input> File straight to the
+  // server, so a real phone photo of a visa/propiska page routinely failed
+  // with no way for the student to fix it (see lib/prepare-upload.ts).
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = event.target.files?.[0] ?? null
+    event.target.value = ''
+    if (!picked) return
+    setPreparingFile(true)
+    try {
+      const prepared = await prepareUploadFile(picked, { allowPdf: true, maxDimension: 2200 })
+      if (!prepared.ok) {
+        toast.error(prepared.message)
+        return
+      }
+      setFile(prepared.file)
+    } catch {
+      toast.error("Faylni tayyorlab bo'lmadi. Boshqa fayl tanlang.")
+    } finally {
+      setPreparingFile(false)
+    }
+  }
 
   const title = useMemo(() => {
     const kind = isVisa ? 'viza' : 'propiska'
@@ -224,19 +252,28 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
             <input
               ref={fileRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp,application/pdf"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              accept="image/jpeg,image/png,image/webp,application/pdf,image/heic,image/heif"
+              onChange={handleFileChange}
               className="hidden"
             />
             <button
               type="button"
+              disabled={preparingFile}
               onClick={() => fileRef.current?.click()}
-              className={`flex w-full items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors ${
+              className={`flex w-full items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors disabled:opacity-60 ${
                 isLight ? 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100' : 'border-white/10 bg-slate-900 text-slate-200 hover:bg-slate-800'
               }`}
             >
-              {file ? <FileText size={16} /> : <Upload size={16} />}
-              <span className="truncate">{file ? file.name : existing?.hasFile ? 'Fayl biriktirilgan — almashtirish' : 'Fayl tanlang (JPG / PNG / PDF)'}</span>
+              {preparingFile ? <Loader2 size={16} className="animate-spin" /> : file ? <FileText size={16} /> : <Upload size={16} />}
+              <span className="truncate">
+                {preparingFile
+                  ? 'Fayl tayyorlanmoqda…'
+                  : file
+                    ? file.name
+                    : existing?.hasFile
+                      ? 'Fayl biriktirilgan — almashtirish'
+                      : 'Fayl tanlang (JPG / PNG / PDF)'}
+              </span>
             </button>
           </div>
 
@@ -271,7 +308,7 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
             </button>
             <button
               type="submit"
-              disabled={busy}
+              disabled={busy || preparingFile}
               className="flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-50"
             >
               {busy ? 'Saqlanmoqda...' : 'Saqlash'}

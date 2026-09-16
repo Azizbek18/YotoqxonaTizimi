@@ -262,7 +262,8 @@ const payload = {
   generatedAt: new Date().toISOString(),
   source: 'kenjebaev/regions + uzinfocom-org/digital-health-ig (SSV)',
   regions,
-  districts: districts.map(({ soato, ...d }) => d),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest destructure drops soato from the output row
+  districts: districts.map(({ soato: _soato, ...d }) => d),
   mahallas,
 }
 mkdirSync(OUT_DIR, { recursive: true })

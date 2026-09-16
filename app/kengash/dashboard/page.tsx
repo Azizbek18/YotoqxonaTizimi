@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import {
   Users, Megaphone, Search, Clock,
   Trash2, Plus, Phone, Mail, X,
@@ -196,6 +197,7 @@ function PersonList({ people, emptyLabel, onToggleCaptain }: { people: Student[]
 }
 
 export default function KengashDashboard() {
+  const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [students, setStudents] = useState<Student[]>([])
   const [captains, setCaptains] = useState<Student[]>([])
@@ -231,7 +233,7 @@ export default function KengashDashboard() {
       const user = await getSafeUser()
       if (!user) {
         toast.error("Tizimga kirish talab etiladi")
-        window.location.href = '/login'
+        router.replace('/login')
         return
       }
 
@@ -239,7 +241,7 @@ export default function KengashDashboard() {
 
       if (!profileData || !profileData.is_council_chair) {
         toast.error("Ruxsat berilmagan! Siz talaba kengashi raisi emassiz.")
-        window.location.href = '/talaba/dashboard'
+        router.replace('/talaba/dashboard')
         return
       }
 
@@ -306,6 +308,7 @@ export default function KengashDashboard() {
   useEffect(() => {
     setMounted(true)
     loadDashboardData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount; loadDashboardData isn't memoized
   }, [])
 
   // The default tab is "Talabalar" — if the dekan has revoked that right,

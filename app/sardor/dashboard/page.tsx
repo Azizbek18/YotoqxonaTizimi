@@ -7,6 +7,7 @@ import {
   ShieldCheck, X, ClipboardCheck, ChevronRight, ShieldHalf,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import { getSafeUser, getAuthHeaders } from '@/lib/auth-session'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -65,6 +66,7 @@ function initialsOf(name: string) {
 }
 
 export default function SardorDashboard() {
+  const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [students, setStudents] = useState<Student[]>([])
   const [elonlar, setElonlar] = useState<Elon[]>([])
@@ -106,7 +108,7 @@ export default function SardorDashboard() {
       const user = await getSafeUser()
       if (!user) {
         toast.error("Tizimga kirish talab etiladi")
-        window.location.href = '/login'
+        router.replace('/login')
         return
       }
 
@@ -115,7 +117,7 @@ export default function SardorDashboard() {
 
       if (!profileData || !profileData.is_floor_captain) {
         toast.error("Ruxsat berilmagan! Siz qavat sardori emassiz.")
-        window.location.href = '/talaba/dashboard'
+        router.replace('/talaba/dashboard')
         return
       }
 
@@ -176,6 +178,7 @@ export default function SardorDashboard() {
   useEffect(() => {
     setMounted(true)
     loadDashboardData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount; loadDashboardData isn't memoized
   }, [])
 
   // The default tab is "Talabalar" — if the dekan has revoked that right,

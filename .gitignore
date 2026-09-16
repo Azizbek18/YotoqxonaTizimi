@@ -32,6 +32,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+# Chromium's own log (audio warnings etc.) when a Playwright/headless run
+# dumps it into the repo root instead of a temp profile dir.
+debug.log
 
 # env files (can opt-in for committing if needed)
 .env*

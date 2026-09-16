@@ -43,11 +43,24 @@ export default defineConfig({
         'lib/fonts/tinos-data.ts',
         'types/**',
       ],
+      // Raised from a 15% floor in three passes: (1) server/auth/* (guards,
+      // faculty, council, sardor, tarbiyachi), lib/server-auth.ts +
+      // server-supabase.ts + server-admin.ts, and the payments/attendance/
+      // permit-cancel/room-assignment routes; (2) the remaining 0%-coverage
+      // critical routes (attendance close/flags/history/roster/session,
+      // student applications + foreign-docs, staff arizalar, admin dorms +
+      // sections, room-floors freeze/gender/capacity, every AI route); (3)
+      // admin/dorms/room-grants, dekan dorm/settings/geocode, attendance
+      // summary, room-floors generate, ariza-signature verify, student
+      // profile(+update)/geocode, staff telegram-chat, and a much deeper
+      // admin/users pass (401/403/400/404/409/500 across GET/PATCH/DELETE).
+      // Actual coverage after that pass was ~51-59%; these sit a few points
+      // under it so a routine refactor doesn't immediately redden CI.
       thresholds: {
-        statements: 15,
-        branches: 15,
-        functions: 15,
-        lines: 15,
+        statements: 54,
+        branches: 50,
+        functions: 49,
+        lines: 57,
       },
     },
   },

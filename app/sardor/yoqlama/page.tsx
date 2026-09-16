@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, ClipboardCheck, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getSafeUser, getAuthHeaders } from '@/lib/auth-session'
@@ -11,6 +12,7 @@ import LeaderBackdrop from '@/components/leader/LeaderBackdrop'
 import { leaderTheme } from '@/components/leader/leader-theme'
 
 export default function SardorYoqlamaPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [view, setView] = useState<RosterView | null>(null)
@@ -28,7 +30,7 @@ export default function SardorYoqlamaPage() {
     setLoading(true)
     setError(null)
     try {
-      if (!(await getSafeUser())) { window.location.href = '/login'; return }
+      if (!(await getSafeUser())) { router.replace('/login'); return }
       const headers = await getAuthHeaders()
       const res = await fetch('/api/attendance/session', { headers, cache: 'no-store' })
       const data = await res.json()
@@ -41,7 +43,7 @@ export default function SardorYoqlamaPage() {
     } finally {
       setLoading(false)
     }
-  }, [loadRoster])
+  }, [loadRoster, router])
 
   useEffect(() => { bootstrap() }, [bootstrap])
 

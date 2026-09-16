@@ -9,8 +9,10 @@ function evidence(request: NextRequest): SignatureEvidence {
 }
 
 function errorResponse(error: unknown) {
-  console.error('Student applications API error:', error)
   const response = getApiError(error, 'Murojaat so\'rovini bajarib bo\'lmadi')
+  // Authentication, authorization and validation failures are expected 4xx
+  // responses, not server incidents. Keep error logs for genuine 5xx faults.
+  if (response.status >= 500) console.error('Student applications API error:', error)
   return NextResponse.json(response.body, { status: response.status })
 }
 

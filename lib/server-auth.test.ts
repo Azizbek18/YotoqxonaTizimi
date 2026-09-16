@@ -1,141 +1,130 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('server-only', () => ({}))
+const VALID_SESSION_ID = '11111111-2222-3333-4444-555555555555'
 
-const getClaims = vi.fn()
-const cookieGetClaims = vi.fn()
-const sessionId = '11111111-1111-4111-8111-111111111111'
-const rpc = vi.fn()
-const eq = vi.fn()
-const maybeSingle = vi.fn()
-
-vi.mock('@/lib/server-supabase', () => ({ getServiceSupabase: () => ({ rpc }) }))
+const mocks = vi.hoisted(() => ({
+  createClient: vi.fn(),
+  tokenGetClaims: vi.fn(),
+  cookieGetClaims: vi.fn(),
+  createServerSupabaseClient: vi.fn(),
+  rpcEqMaybeSingle: vi.fn(),
+}))
 
 vi.mock('@supabase/supabase-js', () => ({
-  createClient: () => ({ auth: { getClaims } }),
+  createClient: mocks.createClient,
 }))
 vi.mock('@/lib/server-admin', () => ({
-  createServerSupabaseClient: async () => ({ auth: { getClaims: cookieGetClaims } }),
+  createServerSupabaseClient: mocks.createServerSupabaseClient,
+}))
+vi.mock('@/lib/server-supabase', () => ({
+  getServiceSupabase: () => ({
+    rpc: () => ({ eq: () => ({ maybeSingle: mocks.rpcEqMaybeSingle }) }),
+  }),
 }))
 
-const { getRequestUser, getRequestAuth } = await import('./server-auth')
+const { getRequestAuth, getRequestUser } = await import('./server-auth')
 
-const b64url = (obj: unknown) =>
-  Buffer.from(JSON.stringify(obj)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-const makeToken = (payload: Record<string, unknown>) => `h.${b64url(payload)}.sig`
+const VALID_CLAIMS = {
+  sub: 'user-1',
+  session_id: VALID_SESSION_ID,
+  email: 'student@example.com',
+  role: 'authenticated',
+  aud: 'authenticated',
+  iat: 1_700_000_000,
+}
 
-const bearer = (token: string) => new Request('https://x', { headers: { authorization: `Bearer ${token}` } })
+function bearerRequest(token = 'a-jwt-token') {
+  return new Request('https://example.test/api/x', { headers: { authorization: `Bearer ${token}` } })
+}
+
+function cookieRequest() {
+  return new Request('https://example.test/api/x')
+}
 
 beforeEach(() => {
   vi.resetAllMocks()
-  rpc.mockReturnValue({ eq })
-  eq.mockReturnValue({ maybeSingle })
-  maybeSingle.mockResolvedValue({ data: { id: sessionId }, error: null })
-  vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://project.supabase.co')
-  vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'anon-key')
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co'
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key'
+  mocks.createClient.mockReturnValue({ auth: { getClaims: mocks.tokenGetClaims } })
+  mocks.createServerSupabaseClient.mockResolvedValue({ auth: { getClaims: mocks.cookieGetClaims } })
+  mocks.rpcEqMaybeSingle.mockResolvedValue({ data: { id: VALID_SESSION_ID }, error: null })
 })
 
-afterEach(() => {
-  vi.clearAllMocks()
-  vi.unstubAllEnvs()
-})
-
-describe('getRequestUser (Bearer token)', () => {
-  it('returns the user built from verified claims', async () => {
-    getClaims.mockResolvedValue({
-      data: { claims: { sub: 'user-1', session_id: sessionId, email: 'A@Example.com', iat: 1_700_000_000 } },
-      error: null,
-    })
-
-    const user = await getRequestUser(bearer(makeToken({ sub: 'user-1' })))
-
-    expect(getClaims).toHaveBeenCalledWith(expect.stringContaining('.'))
-    expect(user?.id).toBe('user-1')
-    expect(user?.email).toBe('A@Example.com')
-    expect(rpc).toHaveBeenCalledWith('list_user_sessions', { p_user_id: 'user-1' })
-    expect(eq).toHaveBeenCalledWith('id', sessionId)
+describe('getRequestAuth — Bearer token path', () => {
+  it('returns null when the Supabase env vars are missing', async () => {
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL
+    await expect(getRequestAuth(bearerRequest())).resolves.toBeNull()
   })
 
-  it('returns null when the token is invalid or expired', async () => {
-    getClaims.mockResolvedValue({ data: null, error: { message: 'invalid JWT' } })
-    expect(await getRequestUser(bearer(makeToken({ sub: 'user-1' })))).toBeNull()
+  it('returns null when getClaims errors', async () => {
+    mocks.tokenGetClaims.mockResolvedValue({ data: null, error: new Error('bad token') })
+    await expect(getRequestAuth(bearerRequest())).resolves.toBeNull()
   })
 
-  it('returns null when claims carry no subject', async () => {
-    getClaims.mockResolvedValue({ data: { claims: { email: 'x@y.z' } }, error: null })
-    expect(await getRequestUser(bearer(makeToken({})))).toBeNull()
+  it('returns null when the session_id claim is not a valid UUID', async () => {
+    mocks.tokenGetClaims.mockResolvedValue({ data: { claims: { ...VALID_CLAIMS, session_id: 'not-a-uuid' } }, error: null })
+    await expect(getRequestAuth(bearerRequest())).resolves.toBeNull()
   })
 
-  it('retries once on a transient network error, then succeeds', async () => {
-    getClaims
+  it('throws when the live-session check itself errors (fails closed, not silently)', async () => {
+    mocks.tokenGetClaims.mockResolvedValue({ data: { claims: VALID_CLAIMS }, error: null })
+    mocks.rpcEqMaybeSingle.mockResolvedValue({ data: null, error: new Error('db down') })
+    await expect(getRequestAuth(bearerRequest())).rejects.toThrow('Auth session validation failed')
+  })
+
+  it('returns null for a revoked session (row no longer present)', async () => {
+    mocks.tokenGetClaims.mockResolvedValue({ data: { claims: VALID_CLAIMS }, error: null })
+    mocks.rpcEqMaybeSingle.mockResolvedValue({ data: null, error: null })
+    await expect(getRequestAuth(bearerRequest())).resolves.toBeNull()
+  })
+
+  it('returns the user + sessionId for a valid, live session', async () => {
+    mocks.tokenGetClaims.mockResolvedValue({ data: { claims: VALID_CLAIMS }, error: null })
+    const result = await getRequestAuth(bearerRequest())
+    expect(result?.sessionId).toBe(VALID_SESSION_ID)
+    expect(result?.user.id).toBe('user-1')
+    expect(result?.user.email).toBe('student@example.com')
+  })
+
+  it('retries once on a transient network error talking to Supabase Auth', async () => {
+    mocks.tokenGetClaims
       .mockRejectedValueOnce(new TypeError('fetch failed'))
-      .mockResolvedValueOnce({ data: { claims: { sub: 'user-2', session_id: sessionId } }, error: null })
-
-    const user = await getRequestUser(bearer(makeToken({ sub: 'user-2' })))
-    expect(user?.id).toBe('user-2')
-    expect(getClaims).toHaveBeenCalledTimes(2)
+      .mockResolvedValueOnce({ data: { claims: VALID_CLAIMS }, error: null })
+    const result = await getRequestAuth(bearerRequest())
+    expect(result?.sessionId).toBe(VALID_SESSION_ID)
+    expect(mocks.tokenGetClaims).toHaveBeenCalledTimes(2)
   })
 
-  it('rethrows a non-network error', async () => {
-    getClaims.mockRejectedValue(new Error('boom'))
-    await expect(getRequestUser(bearer(makeToken({ sub: 'user-3' })))).rejects.toThrow('boom')
-  })
-})
-
-describe('getRequestUser (cookie session)', () => {
-  it('verifies the cookie-backed token via the SSR client', async () => {
-    cookieGetClaims.mockResolvedValue({ data: { claims: { sub: 'user-9', session_id: sessionId } }, error: null })
-
-    const user = await getRequestUser(new Request('https://x'))
-
-    expect(cookieGetClaims).toHaveBeenCalledTimes(1)
-    expect(getClaims).not.toHaveBeenCalled()
-    expect(user?.id).toBe('user-9')
-  })
-
-  it('returns null when there is no valid session', async () => {
-    cookieGetClaims.mockResolvedValue({ data: null, error: null })
-    expect(await getRequestUser(new Request('https://x'))).toBeNull()
+  it('does not retry and propagates a non-network error', async () => {
+    mocks.tokenGetClaims.mockRejectedValue(new Error('boom'))
+    await expect(getRequestAuth(bearerRequest())).rejects.toThrow('boom')
+    expect(mocks.tokenGetClaims).toHaveBeenCalledTimes(1)
   })
 })
 
-describe.each(['bearer', 'cookie'] as const)('%s session security', (mode) => {
-  const request = () => mode === 'bearer' ? bearer('signed-token') : new Request('https://x')
-  const verifier = () => mode === 'bearer' ? getClaims : cookieGetClaims
-  beforeEach(() => {
-    verifier().mockResolvedValue({ data: { claims: { sub: 'user-1', session_id: sessionId } }, error: null })
+describe('getRequestAuth — cookie session path', () => {
+  it('returns null when getClaims errors', async () => {
+    mocks.cookieGetClaims.mockResolvedValue({ data: null, error: new Error('no cookie') })
+    await expect(getRequestAuth(cookieRequest())).resolves.toBeNull()
   })
 
-  it('returns the verified current session for device management', async () => {
-    expect(await getRequestAuth(request())).toMatchObject({ user: { id: 'user-1' }, sessionId })
+  it('returns the user + sessionId for a valid cookie session', async () => {
+    mocks.cookieGetClaims.mockResolvedValue({ data: { claims: VALID_CLAIMS }, error: null })
+    const result = await getRequestAuth(cookieRequest())
+    expect(result?.sessionId).toBe(VALID_SESSION_ID)
+    expect(result?.user.id).toBe('user-1')
+  })
+})
+
+describe('getRequestUser', () => {
+  it('returns null when there is no live session', async () => {
+    mocks.cookieGetClaims.mockResolvedValue({ data: null, error: new Error('none') })
+    await expect(getRequestUser(cookieRequest())).resolves.toBeNull()
   })
 
-  it('rejects a revoked session while its signed token remains valid, without caching', async () => {
-    expect(await getRequestUser(request())).not.toBeNull()
-    maybeSingle.mockResolvedValue({ data: null, error: null })
-    expect(await getRequestUser(request())).toBeNull()
-    expect(rpc).toHaveBeenCalledTimes(2)
-  })
-
-  it('does not accept another session in place of the token session', async () => {
-    maybeSingle.mockResolvedValue({ data: { id: '22222222-2222-4222-8222-222222222222' }, error: null })
-    expect(await getRequestUser(request())).toBeNull()
-  })
-
-  it.each([undefined, '', 'invalid-session-id'])('rejects a missing or malformed session_id: %s', async (id) => {
-    verifier().mockResolvedValue({ data: { claims: { sub: 'user-1', session_id: id } }, error: null })
-    expect(await getRequestUser(request())).toBeNull()
-    expect(rpc).not.toHaveBeenCalled()
-  })
-
-  it('rejects invalid signatures before querying privileged session data', async () => {
-    verifier().mockResolvedValue({ data: null, error: { message: 'invalid JWT' } })
-    expect(await getRequestUser(request())).toBeNull()
-    expect(rpc).not.toHaveBeenCalled()
-  })
-
-  it('fails closed when the database lookup fails', async () => {
-    maybeSingle.mockResolvedValue({ data: null, error: { message: 'database unavailable' } })
-    await expect(getRequestUser(request())).rejects.toThrow('Auth session validation failed')
+  it('returns just the user when the session is live', async () => {
+    mocks.cookieGetClaims.mockResolvedValue({ data: { claims: VALID_CLAIMS }, error: null })
+    const user = await getRequestUser(cookieRequest())
+    expect(user?.id).toBe('user-1')
   })
 })

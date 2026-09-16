@@ -1,6 +1,7 @@
 import 'server-only'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { ApiError } from '@/server/http/api-error'
+import { logDegradedFallback } from '@/lib/network-error'
 import { PERMIT_FACULTIES, PRIMARY_FACULTY } from '@/lib/faculties'
 import type { Database } from '@/types/database.generated'
 import type { AppSettings, FacultyFee } from '../types'
@@ -164,7 +165,7 @@ export function createAppSettingsRepository() {
       // them). Once the migrations land this branch is never taken.
       const fallback = await getDormSettingsFromAppSettings(faculty)
       if (fallback) return fallback
-      console.error('Dorm settings lookup failed and legacy fallback empty:', error)
+      logDegradedFallback('Dorm settings lookup', error)
     }
     return { ...DORM_DEFAULTS, ttjName: '' }
   }

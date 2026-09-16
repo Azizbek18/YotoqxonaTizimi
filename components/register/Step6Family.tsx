@@ -219,7 +219,11 @@ function ParentSection(p: ParentSectionProps) {
           Ish joyi va telefon so&apos;ralmaydi. Kamida bitta ota yoki ona ma&apos;lumoti to&apos;liq bo&apos;lishi kerak.
         </p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        // Stacked, not a 2-column grid: PhoneField's dial-code select
+        // (w-[116px] fixed) plus the national-number input needs ~210px+ to
+        // stay readable, which a 2-up column inside this card's width
+        // starves down to an unusably narrow (~50px) number field.
+        <div className="space-y-5">
           <InputGroup isLight={p.isLight} label="Ish joyi" icon={Briefcase} placeholder={p.workplacePlaceholder} className={p.glassInput} value={p.workplace} onChange={p.onWorkplace} />
           <div className="space-y-1.5 flex-1 text-left">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Telefon raqami</label>

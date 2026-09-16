@@ -23,6 +23,13 @@ function text(body: Record<string, unknown>, key: string, maxLength = 200) {
 // immediately, the same way app/api/staff/register lands a staff row.
 // off_campus_verified_by stays null (no one verified this account); it's
 // still the field a future HEMIS/OneID check would write to.
+//
+// citizenship also writes `region` (Uzbek citizen) or `country` (foreign
+// citizen) — the same two `users` columns features/foreign-docs'
+// resolveDocsMode() already keys off to unlock the visa module (foreign) or
+// propiska module (Uzbek, registered outside the dorm's home region). That
+// gating is dorm-independent, so a roomless KV-talaba needs it exactly like
+// a dorm student does.
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request)
@@ -40,6 +47,9 @@ export async function POST(request: Request) {
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
     const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
     const gender = body.gender === 'male' || body.gender === 'female' ? body.gender : ''
+    const citizenship = body.citizenship === 'uz' || body.citizenship === 'foreign' ? body.citizenship : ''
+    const region = citizenship === 'uz' ? text(body, 'region', 120) : ''
+    const country = citizenship === 'foreign' ? text(body, 'country', 120) : ''
     const faculty = typeof body.faculty === 'string' ? body.faculty.trim() : ''
     const direction = typeof body.direction === 'string' ? body.direction.trim() : ''
     const course = Number(body.course)
@@ -62,6 +72,15 @@ export async function POST(request: Request) {
     }
     if (!gender) {
       return NextResponse.json({ ok: false, error: "Jins tanlanmagan" }, { status: 400 })
+    }
+    if (!citizenship) {
+      return NextResponse.json({ ok: false, error: "Fuqarolik tanlanmagan" }, { status: 400 })
+    }
+    if (citizenship === 'uz' && !region) {
+      return NextResponse.json({ ok: false, error: "Viloyat tanlanmagan" }, { status: 400 })
+    }
+    if (citizenship === 'foreign' && !country) {
+      return NextResponse.json({ ok: false, error: "Fuqarolik davlati kiritilmagan" }, { status: 400 })
     }
     if (!isPermitFacultyValue(faculty)) {
       return NextResponse.json({ ok: false, error: "Fakultet tanlanmagan" }, { status: 400 })
@@ -99,6 +118,8 @@ export async function POST(request: Request) {
       middle_name: middleName || null,
       phone_number: phone || null,
       gender,
+      region: region || null,
+      country: country || null,
       role: 'talaba',
       status: 'active',
       faculty,

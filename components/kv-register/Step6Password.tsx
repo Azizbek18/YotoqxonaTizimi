@@ -22,7 +22,7 @@ interface Props {
   totalSteps: number
 }
 
-export default function Step5Password({
+export default function Step6Password({
   data, password, confirmPassword, onPasswordChange, onConfirmPasswordChange, onSubmit, onBack, loading, stepNumber, totalSteps,
 }: Props) {
   const [show, setShow] = useState(false)

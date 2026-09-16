@@ -43,6 +43,8 @@ const VALID = {
   email: 'aziza@example.com',
   phone: '+998901234567',
   gender: 'female',
+  citizenship: 'uz',
+  region: 'Toshkent shahri',
   faculty: 'amit',
   direction: 'suniy-intellekt',
   course: 1,
@@ -81,6 +83,42 @@ describe('POST /api/kv-talaba/register', () => {
 
   it('400s when a name part is missing', async () => {
     const response = await POST(request({ ...VALID, lastName: '' }))
+    expect(response.status).toBe(400)
+    expect(createAuthUserSafely).not.toHaveBeenCalled()
+  })
+
+  it('accepts a foreign citizen and stores country, not region', async () => {
+    const response = await POST(request({ ...VALID, citizenship: 'foreign', region: '', country: 'Tojikiston' }))
+    expect(response.status).toBe(200)
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+      region: null,
+      country: 'Tojikiston',
+    }))
+  })
+
+  it('stores an Uzbek citizen’s region, not country', async () => {
+    const response = await POST(request(VALID))
+    expect(response.status).toBe(200)
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+      region: 'Toshkent shahri',
+      country: null,
+    }))
+  })
+
+  it('400s when citizenship is missing', async () => {
+    const response = await POST(request({ ...VALID, citizenship: '' }))
+    expect(response.status).toBe(400)
+    expect(createAuthUserSafely).not.toHaveBeenCalled()
+  })
+
+  it('400s when an Uzbek citizen has no region', async () => {
+    const response = await POST(request({ ...VALID, region: '' }))
+    expect(response.status).toBe(400)
+    expect(createAuthUserSafely).not.toHaveBeenCalled()
+  })
+
+  it('400s when a foreign citizen has no country', async () => {
+    const response = await POST(request({ ...VALID, citizenship: 'foreign', region: '', country: '' }))
     expect(response.status).toBe(400)
     expect(createAuthUserSafely).not.toHaveBeenCalled()
   })

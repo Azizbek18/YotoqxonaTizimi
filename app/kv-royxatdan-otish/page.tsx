@@ -14,11 +14,12 @@ import StepProgress from '@/components/register/StepProgress'
 import Step1Name from '@/components/kv-register/Step1Name'
 import Step2Contact from '@/components/kv-register/Step2Contact'
 import Step3Gender from '@/components/kv-register/Step3Gender'
-import Step4Study from '@/components/kv-register/Step4Study'
-import Step5Password from '@/components/kv-register/Step5Password'
+import Step4Citizenship from '@/components/kv-register/Step4Citizenship'
+import Step5Study from '@/components/kv-register/Step5Study'
+import Step6Password from '@/components/kv-register/Step6Password'
 import { initialKvData, KvRegisterData } from '@/components/kv-register/types'
 
-const TOTAL_STEPS = 5
+const TOTAL_STEPS = 6
 
 // KV-talaba (off-campus student) self-registration — deliberately its own
 // standalone page, not a step in the /register wizard: that wizard's whole
@@ -70,6 +71,9 @@ export default function KvRoyxatdanOtish() {
           email: data.email,
           phone: data.phone,
           gender: data.gender,
+          citizenship: data.citizenship,
+          region: data.region,
+          country: data.country,
           faculty: data.faculty,
           direction: data.direction,
           course: Number(data.course),
@@ -161,11 +165,14 @@ export default function KvRoyxatdanOtish() {
             <Step3Gender key="step3" data={data} onChange={update} onNext={next} onBack={back} {...stepProps} />
           )}
           {stepIndex === 3 && (
-            <Step4Study key="step4" data={data} onChange={update} onNext={next} onBack={back} {...stepProps} />
+            <Step4Citizenship key="step4" data={data} onChange={update} onNext={next} onBack={back} {...stepProps} />
           )}
           {stepIndex === 4 && (
-            <Step5Password
-              key="step5"
+            <Step5Study key="step5" data={data} onChange={update} onNext={next} onBack={back} {...stepProps} />
+          )}
+          {stepIndex === 5 && (
+            <Step6Password
+              key="step6"
               data={data}
               password={password}
               confirmPassword={confirmPassword}

@@ -8,6 +8,8 @@ import { Home, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 import { getPasswordPolicyError } from '@/lib/password-policy'
+import ThemeToggle from '@/components/theme/ThemeToggle'
+import { useThemeStore } from '@/lib/stores/theme-store'
 import StepProgress from '@/components/register/StepProgress'
 import Step1Name from '@/components/kv-register/Step1Name'
 import Step2Contact from '@/components/kv-register/Step2Contact'
@@ -32,6 +34,7 @@ const TOTAL_STEPS = 5
 // the pre-registration entry pages only).
 export default function KvRoyxatdanOtish() {
   const router = useRouter()
+  const isLight = useThemeStore((s) => s.theme) === 'light'
   const [stepIndex, setStepIndex] = useState(0)
   const [data, setData] = useState<KvRegisterData>(initialKvData)
   const [password, setPassword] = useState('')
@@ -101,16 +104,19 @@ export default function KvRoyxatdanOtish() {
 
   if (submitted) {
     return (
-      <main className="min-h-screen bg-[#020617] px-4 py-8 text-white flex items-center justify-center">
-        <div className="mx-auto w-full max-w-md rounded-3xl border border-white/10 bg-[#0b1120]/85 p-8 text-center shadow-2xl">
+      <main className={`min-h-screen px-4 py-8 flex items-center justify-center relative ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100 text-slate-900' : 'bg-[#020617] text-white'}`}>
+        <div className="absolute top-4 right-4 z-20">
+          <ThemeToggle />
+        </div>
+        <div className={`mx-auto w-full max-w-md rounded-3xl border p-8 text-center shadow-2xl ${isLight ? 'bg-white/90 border-slate-200' : 'border-white/10 bg-[#0b1120]/85'}`}>
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400">
             <CheckCircle2 size={28} />
           </div>
           <h1 className="text-lg font-black">Akkauntingiz yaratildi</h1>
-          <p className="mt-2 text-sm leading-relaxed text-slate-400">
+          <p className={`mt-2 text-sm leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
             Endi shu email va parolingiz bilan tizimga kirishingiz mumkin.
           </p>
-          <Link href="/login" className="mt-6 inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-400 hover:underline">
+          <Link href="/login" className="mt-6 inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-500 hover:underline">
             <ArrowLeft size={14} /> Kirish sahifasiga o&apos;tish
           </Link>
         </div>
@@ -121,20 +127,23 @@ export default function KvRoyxatdanOtish() {
   const stepProps = { stepNumber: stepIndex + 1, totalSteps: TOTAL_STEPS }
 
   return (
-    <main className="min-h-screen bg-[#020617] px-4 py-6 text-white flex items-center justify-center">
-      <div className="mx-auto w-full max-w-md rounded-3xl border border-white/10 bg-[#0b1120]/85 p-5 shadow-2xl">
+    <main className={`min-h-screen px-4 py-6 flex items-center justify-center relative ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100 text-slate-900' : 'bg-[#020617] text-white'}`}>
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
+      <div className={`mx-auto w-full max-w-md rounded-3xl border p-5 shadow-2xl ${isLight ? 'bg-white/90 border-slate-200' : 'border-white/10 bg-[#0b1120]/85'}`}>
         <div className="mb-2 flex items-center gap-2.5">
-          <Link href="/ariza-yuborish" className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-white">
+          <Link href="/ariza-yuborish" className={`inline-flex items-center gap-1.5 text-xs font-bold ${isLight ? 'text-slate-500 hover:text-slate-900' : 'text-slate-400 hover:text-white'}`}>
             <ArrowLeft size={14} /> Orqaga
           </Link>
-          <span className="text-slate-700">•</span>
-          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
-            <Home size={13} className="text-emerald-400" /> KV-talaba ro&apos;yxatdan o&apos;tishi
+          <span className={isLight ? 'text-slate-300' : 'text-slate-700'}>•</span>
+          <div className={`flex items-center gap-1.5 text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+            <Home size={13} className="text-emerald-500" /> KV-talaba ro&apos;yxatdan o&apos;tishi
           </div>
         </div>
 
         {stepIndex === 0 && (
-          <p className="mb-3 text-[11px] leading-snug text-slate-400">
+          <p className={`mb-3 text-[11px] leading-snug ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
             Ijarada/kvartirada turadigan talabalar uchun — hujjat kerak emas.
           </p>
         )}
@@ -170,9 +179,9 @@ export default function KvRoyxatdanOtish() {
           )}
         </AnimatePresence>
 
-        <p className="mt-3 text-center text-[11px] text-slate-400">
+        <p className={`mt-3 text-center text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
           Akkauntingiz bormi?{' '}
-          <Link href="/login" className="text-emerald-400 hover:underline">
+          <Link href="/login" className="text-emerald-500 hover:underline">
             Kirish sahifasi
           </Link>
         </p>

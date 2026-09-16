@@ -44,10 +44,9 @@ try {
   await svc.from('users').insert({ id: authId, email, full_name: 'SMOKE Sessions', role: 'talaba', status: 'active' })
 
   const tokA = await signIn(email, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130 Safari/537')
-  const tokB = await signIn(email, 'Mozilla/5.0 (Linux; Android 14) Chrome/130 Mobile Safari/537')
+  await signIn(email, 'Mozilla/5.0 (Linux; Android 14) Chrome/130 Mobile Safari/537')
 
   const asA = api(tokA)
-  const asB = api(tokB)
 
   // ---- unauth ----
   let r = await fetch(`${BASE}/api/account/sessions`)

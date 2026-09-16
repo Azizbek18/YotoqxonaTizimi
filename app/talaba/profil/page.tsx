@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
@@ -276,6 +277,7 @@ function RoommateCard({ roommate, isLight }: RoommateCardProps) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function StudentProfile() {
+  const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [roommates, setRoommates] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
@@ -475,7 +477,7 @@ export default function StudentProfile() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    window.location.href = '/login'
+    router.push('/login')
   }
 
   // ─── Password change handler ─────────────────────────────────────────────────

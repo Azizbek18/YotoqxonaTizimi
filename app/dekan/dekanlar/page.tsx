@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   ArrowRight,
   Building2,
@@ -348,6 +349,7 @@ function FacultyCard({
   coveredFaculties: Set<string>
   onChanged: () => void
 }) {
+  const router = useRouter()
   const ui = dekanUI(isLight)
   const active = row.dekan?.status === 'active'
   const state = row.dekan ? statusChip(active ? 'success' : 'warning', isLight) : statusChip('neutral', isLight)
@@ -431,7 +433,8 @@ function FacultyCard({
           type="button"
           onClick={() => {
             setSuperadminScope(row.faculty)
-            window.location.href = '/dekan/dashboard'
+            router.push('/dekan/dashboard')
+            router.refresh()
           }}
           className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.accentSolid}`}
         >

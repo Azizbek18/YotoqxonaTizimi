@@ -29,6 +29,8 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+        env:
+          E2E_SKIP_BUILD: '1'
       - name: npm audit (retry on registry errors)
         run: |
           for attempt in 1 2 3 4; do

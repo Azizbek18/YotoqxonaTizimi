@@ -97,6 +97,20 @@ Migratsiyalar quyidagi jarayonlarni amalga oshiradi:
 
 ## ✅ Tekshiruvlar
 
+E2E testlar Playwright Chromium’ni talab qiladi — birinchi marta ishlatishdan oldin bir marta o‘rnating:
+
+```bash
+npm run setup:e2e
+```
+
+`npm run test:e2e` joriy kodni production rejimida build qiladi, vaqtinchalik
+lokal serverni ishga tushiradi va testdan keyin uni yopadi. Real Supabase bilan
+authenticated/responsive oqimlarni tekshirish uchun izolyatsiyalangan test loyiha
+credentiallari bilan `npm run test:e2e:authenticated` ishlating; bu buyruq
+vaqtinchalik foydalanuvchi va ariza yaratib, yakunda o‘chiradi. Tasodifan haqiqiy
+bazaga yozmaslik uchun avval `E2E_ALLOW_DATABASE_WRITES=1` ni faqat test muhiti
+uchun o‘rnating.
+
 ```bash
 npm run lint
 npm run typecheck

@@ -129,6 +129,22 @@ export const FACULTY_DIRECTIONS: Record<PermitFacultyValue, readonly DirectionOp
     { value: 'sport-kurash', label: 'Sport faoliyati (kurash)' },
     { value: 'sport-dzyudo', label: 'Sport faoliyati (dzyudo)' },
     { value: 'sport-basketbol', label: 'Sport faoliyati (basketbol)' },
+    // Confirmed against the faculty's own nuu.uz kafedra page (2026-09-13):
+    // the department states it runs exactly five "Sport faoliyati (faoliyat
+    // turlari bo'yicha)" specialisations — taekvondo WT, regbi, kurash,
+    // dzyudo, erkin kurash — the two below were missing. "Milliy kurash"
+    // (also requested) is the same sport as 'sport-kurash' above, not a
+    // separate direction.
+    { value: 'sport-taekvondo', label: 'Sport faoliyati (taekvondo WT)' },
+    { value: 'sport-regbi', label: 'Sport faoliyati (regbi)' },
+    // "Voleybol" wasn't on the nuu.uz kafedra page (it's a real OO'YMTV
+    // direction, code 5610503, but that page names it as run elsewhere —
+    // UzDJTSU, Namangan DU). Added anyway on the dekans' own confirmation
+    // that this faculty runs it too (2026-09-13) — the web listing was
+    // evidently stale/incomplete, and the faculty's word wins per the same
+    // rule this file already follows for iqtisodiyot/xorijiy-filologiya/
+    // ozbek-filologiyasi above.
+    { value: 'sport-voleybol', label: 'Sport faoliyati (voleybol)' },
     { value: 'sport-menejment', label: 'Menejment (sport tadbirlarini tashkil etish va boshqarish)' },
     { value: 'sport-tadbirlari', label: 'Sport tadbirlarini tashkil etish va boshqarish' },
   ],

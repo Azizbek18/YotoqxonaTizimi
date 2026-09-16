@@ -561,6 +561,16 @@ export async function PATCH(request: NextRequest) {
         p_is_captain: true,
       })
       if (promoteError) {
+        // The RPC serializes concurrent promotions into the same (faculty,
+        // floor, gender) bucket behind an advisory lock and demotes any
+        // current captain before writing this one, so users_floor_captain_
+        // unique_idx should never actually fire here — but a 23505 from it
+        // is still a "someone's already captain of this slot" conflict, not
+        // a server fault, so it gets the same 409 the old direct-UPDATE path
+        // used to return before the atomic RPC replaced it.
+        if (promoteError.code === '23505') {
+          return jsonError("Bu qavat va jins uchun sardor allaqachon tayinlangan", 409)
+        }
         console.error('Floor captain promotion failed:', promoteError)
         return jsonError('Qavat sardorini tayinlab bo‘lmadi', 500)
       }
@@ -615,9 +625,6 @@ export async function PATCH(request: NextRequest) {
       : await supabase.from('staff').update(updates as Partial<StaffRow>).eq('id', id)
 
     if (error) {
-      if (error.code === '23505' && source === 'users' && updates.is_floor_captain === true) {
-        return jsonError("Bu qavat va jins uchun sardor allaqachon tayinlangan", 409)
-      }
       console.error('Admin user update failed:', error)
       return jsonError('Foydalanuvchini yangilab bo‘lmadi', 500)
     }

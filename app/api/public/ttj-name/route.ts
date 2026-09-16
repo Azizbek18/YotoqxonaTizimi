@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAppSettingsService } from '@/features/app-settings/server/service'
 import { normalizeFaculty } from '@/lib/faculties'
+import { logDegradedFallback } from '@/lib/network-error'
 
 // Deliberately unauthenticated: the imtiyozli-ariza applicant fills out
 // their Ariza/Tilxat preview before ever logging in, and needs to see the
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     const settings = await createAppSettingsService().get(faculty)
     return NextResponse.json({ ttjName: settings.ttjName })
   } catch (error) {
-    console.error('Public TTJ name fetch failed:', error)
+    logDegradedFallback('Public TTJ name fetch', error)
     return NextResponse.json({ ttjName: '' })
   }
 }

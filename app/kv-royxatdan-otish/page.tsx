@@ -121,7 +121,7 @@ export default function KvRoyxatdanOtish() {
   const stepProps = { stepNumber: stepIndex + 1, totalSteps: TOTAL_STEPS }
 
   return (
-    <main className="min-h-screen bg-[#020617] px-4 py-6 text-white">
+    <main className="min-h-screen bg-[#020617] px-4 py-6 text-white flex items-center justify-center">
       <div className="mx-auto w-full max-w-md rounded-3xl border border-white/10 bg-[#0b1120]/85 p-5 shadow-2xl">
         <div className="mb-2 flex items-center gap-2.5">
           <Link href="/ariza-yuborish" className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-white">

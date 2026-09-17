@@ -42,7 +42,7 @@ export default function ArizaTuriTanlash() {
         <div className="anim-in text-center mb-8 sm:mb-10">
           <h1 className="text-xl sm:text-3xl font-black uppercase tracking-tight">Siz kimsiz?</h1>
           <p className={`text-xs sm:text-sm font-medium mt-2 max-w-lg mx-auto ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-            Yotoqxonaga joylashish yoki ijarada turib ro&apos;yxatdan o&apos;tish — to&apos;ldiriladigan hujjat toifangizga qarab farq qiladi, to&apos;g&apos;ri variantni tanlang.
+            Yotoqxonaga joylashish yoki tashqi (Kvartira) ro&apos;yxatdan o&apos;tish — to&apos;ldiriladigan hujjat toifangizga qarab farq qiladi, to&apos;g&apos;ri variantni tanlang.
           </p>
         </div>
 
@@ -110,7 +110,7 @@ export default function ArizaTuriTanlash() {
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-600/25 mb-4">
                   <Home size={22} />
                 </div>
-                <h2 className="text-sm sm:text-base font-black uppercase tracking-wide">Ijarada turaman</h2>
+                <h2 className="text-sm sm:text-base font-black uppercase tracking-wide">Kvartira / Ijarada turaman</h2>
                 <p className={`text-[11px] sm:text-xs leading-relaxed mt-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                   Yotoqxonada emas, ijaradagi kvartirada yashayman. <b>Hujjat kerak emas</b> — ma&apos;lumotlarimni to&apos;ldirib, darhol tizimga kiraman.
                 </p>

@@ -177,9 +177,26 @@ function LoginContent() {
       <div className="relative z-10 w-full max-w-[320px] sm:max-w-110">
         {/* Logo Section */}
         <div className="text-center mb-6 sm:mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 shadow-xl mb-4 p-1">
-            <div className="relative w-full h-full rounded-full overflow-hidden">
-              <Image src="/logo.png" alt="Mening yotoqxonam" fill sizes="80px" className="object-cover" priority />
+          <div className="relative mb-4 inline-flex">
+            {/* Do'ppi logoga bog'langan: forma va ekran o'lchamidan mustaqil turadi. */}
+            <div
+              className="pointer-events-none absolute left-[calc(50%+8px)] top-[-18px] z-20 h-11 w-11 -translate-x-1/2 rotate-[12deg] sm:top-[-26px] sm:h-15 sm:w-15 sm:rotate-[14deg]"
+              aria-hidden="true"
+            >
+              <Image
+                src="/doppi-black-transparent.png"
+                alt=""
+                fill
+                sizes="(max-width: 640px) 44px, 60px"
+                className="object-contain"
+                priority
+              />
+            </div>
+
+            <div className="inline-flex items-center justify-center w-18 h-18 sm:w-24 sm:h-24 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 shadow-xl p-1">
+              <div className="relative w-full h-full rounded-full overflow-hidden">
+                <Image src="/logo.png" alt="Mening yotoqxonam" fill sizes="80px" className="object-cover" priority />
+              </div>
             </div>
           </div>
           <h1
@@ -191,25 +208,6 @@ function LoginContent() {
         </div>
 
         <div className={`relative backdrop-blur-3xl border rounded-3xl sm:rounded-4xl p-3 sm:p-10 shadow-2xl overflow-visible ${isLight ? 'bg-white/80 border-slate-200' : 'bg-[#0b1120]/80 border-white/10'}`}>
-          {/* Do'ppi formaning yuqori chetiga kiyilgan milliy bezak sifatida turadi. */}
-          <div
-            className="pointer-events-none absolute right-[3px] -top-4 z-20 h-18 w-18 origin-bottom-left rotate-[24deg] sm:right-[-13px] sm:-top-21 sm:h-28 sm:w-28 sm:rotate-[30deg]"
-            aria-hidden="true"
-          >
-            <div className={`absolute bottom-0 left-1/2 h-3 w-14 -translate-x-1/2 rounded-[50%] blur-md sm:h-4 sm:w-24 ${isLight ? 'bg-slate-900/20' : 'bg-black/60'}`} />
-            <Image
-              src="/doppi-black-transparent.png"
-              alt=""
-              fill
-              sizes="(max-width: 640px) 72px, 112px"
-              className="object-contain drop-shadow-[0_12px_12px_rgba(15,23,42,0.28)]"
-              priority
-            />
-          </div>
-
-          {/* Telefonda do‘ppi tablar va sarlavha ustiga chiqib ketmasligi uchun alohida joy. */}
-          <div className="h-14 sm:hidden" aria-hidden="true" />
-
           {/* Tabs */}
           <div className="flex gap-2.5 mb-6 sm:mb-10">
             <button type="button" className={`flex-1 py-2 sm:py-3 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-widest rounded-xl border ${isLight ? 'text-white bg-blue-600 border-blue-700' : 'text-white bg-blue-600 border-blue-500'}`}>Kirish</button>

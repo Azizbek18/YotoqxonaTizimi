@@ -153,6 +153,53 @@ describe('POST /api/student/register', () => {
     })
   })
 
+  it('blocked-layout dorm: resolves the real floor from floor_room_layout by block, not the simple-dorm formula', async () => {
+    // Regression for the bug found investigating cross-gender rooming in a
+    // blocked-layout dorm: room numbers repeat on every floor of every
+    // block, so a lookup that ignores `block` is ambiguous and used to fall
+    // through (silently) to extractFloor()'s rooms-per-floor formula, which
+    // always resolved a small room number to floor 1 — regardless of which
+    // real floor the permit was actually assigned to.
+    const capture: { userInsert?: Record<string, unknown> } = {}
+    getServiceSupabase.mockReturnValue(
+      makeSupabase(
+        {
+          permit_requests: [{
+            data: { ...APPROVED_FOREIGN_PERMIT.data, room_number: '2', block: 'A' },
+            error: null,
+          }],
+          users: [{ data: null, error: null }],
+          floor_room_layout: [{ data: { floor_number: 12 }, error: null }],
+        },
+        capture,
+      ),
+    )
+
+    const response = await POST(req(foreignBody()))
+
+    expect(response.status).toBe(200)
+    expect(capture.userInsert).toMatchObject({
+      room_number: '2',
+      block: 'A',
+      assigned_floor: 12,
+    })
+  })
+
+  it('simple-layout dorm: no floor_room_layout row falls back to the rooms-per-floor formula', async () => {
+    const capture: { userInsert?: Record<string, unknown> } = {}
+    getServiceSupabase.mockReturnValue(
+      makeSupabase(
+        { permit_requests: [APPROVED_FOREIGN_PERMIT], users: [{ data: null, error: null }] },
+        capture,
+      ),
+    )
+
+    const response = await POST(req(foreignBody()))
+
+    expect(response.status).toBe(200)
+    expect(capture.userInsert).toMatchObject({ room_number: '12', block: null, assigned_floor: 1 })
+  })
+
   it('keeps a foreign (+993) phone number instead of forcing +998', async () => {
     const capture: { userInsert?: Record<string, unknown> } = {}
     getServiceSupabase.mockReturnValue(

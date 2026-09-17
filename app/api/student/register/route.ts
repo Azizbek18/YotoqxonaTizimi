@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     const supabase = getServiceSupabase()
     let permitQuery = supabase
       .from('permit_requests')
-      .select('id, email, full_name, gender, faculty, direction, course, room_number, dorm_id, status, origin_country, origin_region, study_type, application_type')
+      .select('id, email, full_name, gender, faculty, direction, course, room_number, dorm_id, block, status, origin_country, origin_region, study_type, application_type')
       .eq('passport_series', passport)
       .eq('email', email)
       .eq('application_type', applicationType)
@@ -267,12 +267,24 @@ export async function POST(request: NextRequest) {
       if (!dormId) {
         dormId = await createDormRepository().facultyDormId(permit.faculty)
       }
+      // A blocked-layout dorm reuses the same room numbers on every floor of
+      // every block (e.g. room "2" exists once per block per floor), so this
+      // lookup must match on block too or it's ambiguous across the whole
+      // building. An ambiguous match previously failed .maybeSingle() with an
+      // unchecked error, silently falling through to extractFloor() — a
+      // formula only valid for simple (non-blocked) dorms — which always
+      // resolves a small room number like "2" to floor 1, regardless of which
+      // real floor/block the permit was assigned to.
       let layoutQuery = supabase
         .from('floor_room_layout')
         .select('floor_number')
         .eq('room_number', permit.room_number)
       if (dormId) layoutQuery = layoutQuery.eq('dorm_id', dormId)
-      const { data: layoutRow } = await layoutQuery.maybeSingle()
+      layoutQuery = permit.block
+        ? layoutQuery.eq('block', permit.block)
+        : layoutQuery.is('block', null)
+      const { data: layoutRow, error: layoutError } = await layoutQuery.maybeSingle()
+      if (layoutError) throw layoutError
       assignedFloor = layoutRow?.floor_number ?? extractFloor(permit.room_number)
     }
 
@@ -308,6 +320,7 @@ export async function POST(request: NextRequest) {
       mother_phone: motherPhone || null,
       room_number: permit.room_number,
       dorm_id: permit.room_number ? dormId : null,
+      block: permit.room_number ? (permit.block ?? null) : null,
       assigned_floor: assignedFloor,
       entry_date: entryDate,
       role: 'talaba',

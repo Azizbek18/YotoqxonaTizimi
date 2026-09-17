@@ -112,7 +112,7 @@ export default function ArizaTuriTanlash() {
                 </div>
                 <h2 className="text-sm sm:text-base font-black uppercase tracking-wide">KV / Ijarada turaman</h2>
                 <p className={`text-[11px] sm:text-xs leading-relaxed mt-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                  Yotoqxonada emas, ijaradagi kvartirada yashayman. <b>Hujjat kerak emas</b> — ma&apos;lumotlarimni to&apos;ldirib, dekan tasdig&apos;ini kutaman.
+                  Yotoqxonada emas, ijaradagi kvartirada yashayman. <b>Hujjat kerak emas</b> — ma&apos;lumotlarimni to&apos;ldirib, darhol tizimga kiraman.
                 </p>
               </div>
               <div className="flex items-center gap-1.5 mt-6 text-[10px] font-black uppercase tracking-widest text-emerald-500 group-hover:gap-2.5 transition-all">

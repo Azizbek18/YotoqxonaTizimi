@@ -11,6 +11,10 @@ function sameFaculty(value: string | null | undefined, faculty: string) {
   return (value ?? '').trim().toLocaleLowerCase() === faculty.trim().toLocaleLowerCase()
 }
 
+function hasKnownGender(value: string | null | undefined): value is 'male' | 'female' {
+  return value === 'male' || value === 'female'
+}
+
 // Forward an optional dormId (targets one of the faculty's several
 // buildings, 202609300000) as a real trailing arg only when present, so a
 // call made without one has the EXACT same shape as before this parameter
@@ -94,6 +98,10 @@ async function assignPermitRoom(
   if (!roomNumber) {
     await repository.clearPermitRoom(permitId)
     return { success: true as const }
+  }
+
+  if (!hasKnownGender(permit.gender)) {
+    throw new ApiError(409, 'Talabaning jinsi belgilanmagan — avval ma’lumotini to‘ldiring')
   }
 
   // Already in this exact room? For a blocked dorm the number alone isn't
@@ -184,6 +192,10 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
       if (!roomNumber) {
         await repository.clearStudentRoom(studentId)
         return { success: true as const }
+      }
+
+      if (!hasKnownGender(student.gender)) {
+        throw new ApiError(409, 'Talabaning jinsi belgilanmagan — avval ma’lumotini to‘ldiring')
       }
 
       if (roomNumber === student.room_number && sameSection(section, student)) {

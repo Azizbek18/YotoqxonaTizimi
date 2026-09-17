@@ -119,6 +119,14 @@ describe('room assignment service', () => {
       .rejects.toBeInstanceOf(ApiError)
   })
 
+  it('rejects placement when the student gender is missing', async () => {
+    const repo = repository({ findStudent: vi.fn(async () => student({ gender: null })) })
+
+    await expect(createRoomAssignmentService(repo).assignRoom('IT', { studentId: 'student-1', roomNumber: '101' }))
+      .rejects.toMatchObject({ status: 409 })
+    expect(repo.assignRoomAtomic).not.toHaveBeenCalled()
+  })
+
   describe('listStudents', () => {
     // The roomless queue a dekan assigns from has to include people who
     // were approved but haven't self-registered yet — otherwise a newly
@@ -139,6 +147,15 @@ describe('room assignment service', () => {
   })
 
   describe('assignRoom with source: permit', () => {
+    it('rejects placement when the permit gender is missing', async () => {
+      const repo = repository({ findPermit: vi.fn(async () => permit({ gender: null as never })) })
+
+      await expect(createRoomAssignmentService(repo).assignRoom('IT', {
+        studentId: 'permit-1', roomNumber: '101', source: 'permit',
+      })).rejects.toMatchObject({ status: 409 })
+      expect(repo.assignPermitRoomAtomic).not.toHaveBeenCalled()
+    })
+
     it("reserves a room on an approved permit without sending an email (nobody's registered yet)", async () => {
       const repo = repository()
       const result = await createRoomAssignmentService(repo)

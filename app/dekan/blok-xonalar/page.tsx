@@ -96,8 +96,22 @@ export default function BlokXonalarPage() {
   }
 
   // The people who can take the room being filled — gender-compatible, roomless.
-  const roomGender = picking?.gender ?? section?.gender ?? null
-  const candidates = roomless.filter((s) => !roomGender || normGender(s.gender) === roomGender || !s.gender)
+  const occupantGenders = new Set(
+    picking?.occupants.map((o) => normGender(o.gender)).filter((g): g is 'male' | 'female' => g !== null) ?? [],
+  )
+  const roomHasGenderIssue = occupantGenders.size > 1
+    || Boolean(picking?.occupants.some((o) => normGender(o.gender) === null))
+  const roomGender = picking?.gender ?? section?.gender
+    ?? (occupantGenders.size === 1 ? [...occupantGenders][0] : null)
+  // Gender is mandatory for placement.  In particular, do not treat a
+  // missing value as compatible: that was the gap which could create a
+  // mixed room from an older/incomplete student record.
+  const candidates = roomHasGenderIssue
+    ? []
+    : roomless.filter((s) => {
+        const gender = normGender(s.gender)
+        return gender !== null && (!roomGender || gender === roomGender)
+      })
 
   return (
     <div className="space-y-5">
@@ -153,6 +167,10 @@ export default function BlokXonalarPage() {
           {section.rooms.map((r) => {
             const free = Math.max(0, r.capacity - r.occupants.length)
             const full = free === 0
+            const genders = new Set(
+              r.occupants.map((o) => normGender(o.gender)).filter((g): g is 'male' | 'female' => g !== null),
+            )
+            const genderIssue = genders.size > 1 || r.occupants.some((o) => normGender(o.gender) === null)
             return (
               <div key={r.roomNumber}
                 className={`rounded-xl border p-3 ${ui.card} ${r.frozen ? 'opacity-60' : ''}`}>
@@ -185,15 +203,21 @@ export default function BlokXonalarPage() {
                   {r.occupants.length === 0 && <li className={ui.faint}>bo‘sh</li>}
                 </ul>
 
+                {genderIssue && (
+                  <p className={`mt-2 text-[10px] font-bold ${statusChip('danger', isLight).text}`}>
+                    Jins ma’lumoti aralash yoki to‘liq emas — joylashtirish bloklandi
+                  </p>
+                )}
+
                 <div className="mt-2.5">
                   {r.frozen ? (
                     <span className={`flex items-center gap-1 text-[10px] font-semibold ${statusChip('neutral', isLight).text}`}>
                       <Lock size={10} /> muzlatilgan
                     </span>
                   ) : (
-                    <button onClick={() => setPicking(r)} disabled={full}
+                    <button onClick={() => setPicking(r)} disabled={full || genderIssue}
                       className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-bold uppercase tracking-wider disabled:opacity-40 ${ui.accentSoft}`}>
-                      <UserPlus size={12} /> {full ? 'To‘la' : `Joylashtirish (${free})`}
+                      <UserPlus size={12} /> {full ? 'To‘la' : genderIssue ? 'Tekshirish kerak' : `Joylashtirish (${free})`}
                     </button>
                   )}
                 </div>
@@ -265,6 +289,11 @@ export default function BlokXonalarPage() {
             </div>
             {genderLabel(picking.gender ?? section.gender) && (
               <p className={`mt-1 text-[11px] ${ui.muted}`}>Faqat {genderLabel(picking.gender ?? section.gender)} talabalar</p>
+            )}
+            {roomHasGenderIssue && (
+              <p className={`mt-2 text-[11px] font-semibold ${statusChip('danger', isLight).text}`}>
+                Bu xonada hozir turli jinsdagi talabalar bor. Avval ulardan birini boshqa mos xonaga ko‘chiring.
+              </p>
             )}
             <div className="mt-3 max-h-[50vh] space-y-1 overflow-y-auto">
               {candidates.length === 0 && (

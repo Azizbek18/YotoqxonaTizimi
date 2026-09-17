@@ -111,6 +111,11 @@ vaqtinchalik foydalanuvchi va ariza yaratib, yakunda o‘chiradi. Tasodifan haqi
 bazaga yozmaslik uchun avval `E2E_ALLOW_DATABASE_WRITES=1` ni faqat test muhiti
 uchun o‘rnating.
 
+`npm run test:e2e -- --list` faqat testlarni ro‘yxatlaydi; u production build yoki
+lokal serverni ishga tushirmaydi. `npm run validate:env` production URLlari,
+Supabase/Redis HTTPS manzillari, portal kalitlarining uzunligi va bir-biridan
+farqliligini ham tekshiradi.
+
 ```bash
 npm run lint
 npm run typecheck

@@ -43,4 +43,5 @@ jobs:
             echo "::warning::npm audit registry unreachable (attempt $attempt) — retrying in $((attempt * 20))s"
             sleep $((attempt * 20))
           done
-          echo "::warning::npm audit skipped — registry unreachable after 4 attempts"
+          echo "::error::npm audit could not complete — registry unreachable after 4 attempts"
+          exit 1

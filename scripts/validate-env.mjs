@@ -25,6 +25,15 @@ if (missing.length > 0) {
   process.exit(1)
 }
 
+function parseUrl(name) {
+  try {
+    return new URL(process.env[name])
+  } catch {
+    console.error(`${name} must be a valid absolute URL.`)
+    process.exit(1)
+  }
+}
+
 function jwtRole(value) {
   const parts = value.split('.')
   if (parts.length !== 3) return null
@@ -57,9 +66,54 @@ if (!validServiceRoleKey) {
   process.exit(1)
 }
 
-const appUrl = new URL(process.env.NEXT_PUBLIC_APP_URL)
+const appUrl = parseUrl('NEXT_PUBLIC_APP_URL')
 if (appUrl.protocol !== 'https:') {
   console.error('NEXT_PUBLIC_APP_URL must use HTTPS in production.')
+  process.exit(1)
+}
+
+if (appUrl.username || appUrl.password || appUrl.hostname === 'localhost' || appUrl.hostname === '127.0.0.1') {
+  console.error('NEXT_PUBLIC_APP_URL must be a public production URL without embedded credentials.')
+  process.exit(1)
+}
+
+const supabaseUrl = parseUrl('NEXT_PUBLIC_SUPABASE_URL')
+if (supabaseUrl.protocol !== 'https:' || !supabaseUrl.hostname.endsWith('.supabase.co')) {
+  console.error('NEXT_PUBLIC_SUPABASE_URL must be an HTTPS *.supabase.co project URL.')
+  process.exit(1)
+}
+
+for (const name of ['RATE_LIMIT_REDIS_REST_URL']) {
+  const value = parseUrl(name)
+  if (value.protocol !== 'https:') {
+    console.error(`${name} must use HTTPS in production.`)
+    process.exit(1)
+  }
+}
+
+const accessSecrets = [
+  'ADMIN_PORTAL_KEY',
+  'TARBIYACHI_PORTAL_KEY',
+  'DEKAN_PORTAL_KEY',
+  'DEKAN_REGISTER_CODE',
+]
+for (const name of accessSecrets) {
+  if (process.env[name].trim().length < 16) {
+    console.error(`${name} must contain at least 16 characters.`)
+    process.exit(1)
+  }
+}
+if (new Set(accessSecrets.map((name) => process.env[name].trim())).size !== accessSecrets.length) {
+  console.error('Portal keys and DEKAN_REGISTER_CODE must all be different secrets.')
+  process.exit(1)
+}
+
+const allowedDeanIds = process.env.DEKAN_ALLOWED_IDS
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean)
+if (allowedDeanIds.length === 0 || allowedDeanIds.some((value) => !/^[A-Za-z0-9_-]{3,64}$/.test(value))) {
+  console.error('DEKAN_ALLOWED_IDS must be a comma-separated list of valid IDs.')
   process.exit(1)
 }
 

@@ -3,8 +3,9 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
-import { Mail, Lock, ChevronRight, House, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, ChevronRight, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
@@ -176,20 +177,35 @@ function LoginContent() {
       <div className="relative z-10 w-full max-w-[320px] sm:max-w-110">
         {/* Logo Section */}
         <div className="text-center mb-6 sm:mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 shadow-xl mb-4 p-px">
-            <div className={`w-full h-full rounded-full flex items-center justify-center ${isLight ? 'bg-white text-blue-600' : 'bg-[#020617] text-blue-500'}`}>
-              <House className="h-7 w-7 sm:h-10 sm:w-10" />
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 shadow-xl mb-4 p-1">
+            <div className="relative w-full h-full rounded-full overflow-hidden">
+              <Image src="/logo.png" alt="Mening yotoqxonam" fill sizes="80px" className="object-cover" priority />
             </div>
           </div>
           <h1
             className="text-xl sm:text-4xl font-black tracking-tighter uppercase italic leading-none bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent"
             style={{ fontFamily: baloo2.style.fontFamily }}
           >
-            Yotoqxona Tizimi
+            Mening yotoqxonam
           </h1>
         </div>
 
-        <div className={`relative backdrop-blur-3xl border rounded-3xl sm:rounded-4xl p-3 sm:p-10 shadow-2xl overflow-hidden ${isLight ? 'bg-white/80 border-slate-200' : 'bg-[#0b1120]/80 border-white/10'}`}>
+        <div className={`relative backdrop-blur-3xl border rounded-3xl sm:rounded-4xl p-3 sm:p-10 shadow-2xl overflow-visible ${isLight ? 'bg-white/80 border-slate-200' : 'bg-[#0b1120]/80 border-white/10'}`}>
+          {/* Do'ppi formaning yuqori chetiga kiyilgan milliy bezak sifatida turadi. */}
+          <div
+            className="pointer-events-none absolute right-[3px] -top-7 z-20 h-20 w-20 origin-bottom-left rotate-[30deg] sm:right-[-13px] sm:-top-21 sm:h-28 sm:w-28"
+            aria-hidden="true"
+          >
+            <div className={`absolute bottom-0 left-1/2 h-4 w-20 -translate-x-1/2 rounded-[50%] blur-md sm:w-24 ${isLight ? 'bg-slate-900/20' : 'bg-black/60'}`} />
+            <Image
+              src="/doppi-black-transparent.png"
+              alt=""
+              fill
+              sizes="(max-width: 640px) 96px, 128px"
+              className="object-contain drop-shadow-[0_12px_12px_rgba(15,23,42,0.28)]"
+              priority
+            />
+          </div>
 
           {/* Tabs */}
           <div className="flex gap-2.5 mb-6 sm:mb-10">

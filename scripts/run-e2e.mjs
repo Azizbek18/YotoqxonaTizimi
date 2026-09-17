@@ -5,6 +5,7 @@ const root = new URL('../', import.meta.url)
 const isWindows = process.platform === 'win32'
 const authenticated = process.argv.includes('--authenticated')
 const forwardedArgs = process.argv.slice(2).filter((arg) => arg !== '--authenticated')
+const listOnly = forwardedArgs.includes('--list')
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL
 const port = process.env.E2E_PORT ?? '3100'
 const localBaseUrl = `http://127.0.0.1:${port}`
@@ -113,27 +114,33 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 }
 
 try {
-  if (authenticated) {
-    try {
-      process.loadEnvFile('.env.local')
-    } catch (error) {
-      if (error?.code !== 'ENOENT') throw error
-    }
-  }
-  assertAuthenticatedEnvironment()
-  if (externalBaseUrl) {
-    await runPlaywright(externalBaseUrl)
+  // Playwright can discover tests from its config without a built/running app.
+  // Keeping this fast also makes editor integrations and CI diagnostics useful.
+  if (listOnly) {
+    await runPlaywright(externalBaseUrl ?? localBaseUrl)
   } else {
-    if (process.env.E2E_SKIP_BUILD !== '1') {
-      await run(process.execPath, ['node_modules/next/dist/bin/next', 'build'])
+    if (authenticated) {
+      try {
+        process.loadEnvFile('.env.local')
+      } catch (error) {
+        if (error?.code !== 'ENOENT') throw error
+      }
     }
-    server = spawn(
-      process.execPath,
-      ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', port],
-      { cwd: root, stdio: 'inherit', shell: false },
-    )
-    await waitUntilReady(localBaseUrl, server)
-    await runPlaywright(localBaseUrl)
+    assertAuthenticatedEnvironment()
+    if (externalBaseUrl) {
+      await runPlaywright(externalBaseUrl)
+    } else {
+      if (process.env.E2E_SKIP_BUILD !== '1') {
+        await run(process.execPath, ['node_modules/next/dist/bin/next', 'build'])
+      }
+      server = spawn(
+        process.execPath,
+        ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', port],
+        { cwd: root, stdio: 'inherit', shell: false },
+      )
+      await waitUntilReady(localBaseUrl, server)
+      await runPlaywright(localBaseUrl)
+    }
   }
 } catch (error) {
   console.error(error instanceof Error ? error.message : error)

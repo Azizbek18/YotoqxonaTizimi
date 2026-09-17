@@ -78,7 +78,7 @@ test('ariza imzo verify: noma’lum kodni hech qachon tasdiqlamaydi', async ({ r
 })
 
 test('yo‘llanma PDF’i AI tekshiruvi uchun JPEG ga aylantiriladi', async ({ page }) => {
-  test.setTimeout(90_000)
+  test.setTimeout(120_000)
   const pageErrors: Error[] = []
   page.on('pageerror', (error) => pageErrors.push(error))
 
@@ -112,12 +112,15 @@ test('yo‘llanma PDF’i AI tekshiruvi uchun JPEG ga aylantiriladi', async ({ p
     buffer: Buffer.from(pdf.output('arraybuffer')),
   })
 
-  await expect(page.getByText('yollanma.jpg')).toBeVisible({ timeout: 20_000 })
+  // pdf.js is intentionally lazy-loaded. On a cold cache or a CPU-throttled
+  // machine the worker download + first render can take longer than ordinary
+  // UI assertions, so wait for the actual completion state.
+  await expect(page.getByText('yollanma.jpg')).toBeVisible({ timeout: 60_000 })
   expect(pageErrors).toEqual([])
 })
 
 test('yo‘llanma oqimi Ariza + Tilxatni imzolashni talab qiladi (yuklab olish yo‘q)', async ({ page }) => {
-  test.setTimeout(90_000)
+  test.setTimeout(120_000)
   const pageErrors: Error[] = []
   page.on('pageerror', (error) => pageErrors.push(error))
 
@@ -150,7 +153,7 @@ test('yo‘llanma oqimi Ariza + Tilxatni imzolashni talab qiladi (yuklab olish y
     mimeType: 'application/pdf',
     buffer: Buffer.from(pdf.output('arraybuffer')),
   })
-  await expect(page.getByText('yollanma.jpg')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('yollanma.jpg')).toBeVisible({ timeout: 60_000 })
   await page.getByRole('button', { name: /Keyingi/i }).click()
 
   // Step 4 — tekshirish card → go to the signature step. (`.` for the okina

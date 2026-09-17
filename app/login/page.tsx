@@ -193,10 +193,10 @@ function LoginContent() {
         <div className={`relative backdrop-blur-3xl border rounded-3xl sm:rounded-4xl p-3 sm:p-10 shadow-2xl overflow-visible ${isLight ? 'bg-white/80 border-slate-200' : 'bg-[#0b1120]/80 border-white/10'}`}>
           {/* Do'ppi formaning yuqori chetiga kiyilgan milliy bezak sifatida turadi. */}
           <div
-            className="pointer-events-none absolute right-[3px] -top-7 z-20 h-20 w-20 origin-bottom-left rotate-[30deg] sm:right-[-13px] sm:-top-21 sm:h-28 sm:w-28"
+            className="pointer-events-none absolute right-1 -top-11 z-20 h-14 w-14 origin-bottom-left rotate-[22deg] sm:right-[-13px] sm:-top-21 sm:h-28 sm:w-28"
             aria-hidden="true"
           >
-            <div className={`absolute bottom-0 left-1/2 h-4 w-20 -translate-x-1/2 rounded-[50%] blur-md sm:w-24 ${isLight ? 'bg-slate-900/20' : 'bg-black/60'}`} />
+            <div className={`absolute bottom-0 left-1/2 h-3 w-14 -translate-x-1/2 rounded-[50%] blur-md sm:h-4 sm:w-24 ${isLight ? 'bg-slate-900/20' : 'bg-black/60'}`} />
             <Image
               src="/doppi-black-transparent.png"
               alt=""

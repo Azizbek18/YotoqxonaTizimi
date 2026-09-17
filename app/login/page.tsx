@@ -193,16 +193,16 @@ function LoginContent() {
         <div className={`relative backdrop-blur-3xl border rounded-3xl sm:rounded-4xl p-3 sm:p-10 shadow-2xl overflow-visible ${isLight ? 'bg-white/80 border-slate-200' : 'bg-[#0b1120]/80 border-white/10'}`}>
           {/* Do'ppi formaning yuqori chetiga kiyilgan milliy bezak sifatida turadi. */}
           <div
-            className="pointer-events-none absolute right-1 -top-11 z-20 h-14 w-14 origin-bottom-left rotate-[22deg] sm:right-[-13px] sm:-top-21 sm:h-28 sm:w-28"
+            className="pointer-events-none absolute right-2 -top-6 z-20 h-[46px] w-[60px] origin-bottom-right rotate-[14deg] sm:right-2 sm:-top-12 sm:h-[92px] sm:w-[120px]"
             aria-hidden="true"
           >
-            <div className={`absolute bottom-0 left-1/2 h-3 w-14 -translate-x-1/2 rounded-[50%] blur-md sm:h-4 sm:w-24 ${isLight ? 'bg-slate-900/20' : 'bg-black/60'}`} />
+            <div className={`absolute -bottom-0.5 left-1/2 h-2.5 w-10 -translate-x-1/2 rounded-[50%] blur-sm sm:h-4 sm:w-16 ${isLight ? 'bg-slate-900/25' : 'bg-black/60'}`} />
             <Image
               src="/doppi-black-transparent.png"
               alt=""
               fill
-              sizes="(max-width: 640px) 96px, 128px"
-              className="object-contain drop-shadow-[0_12px_12px_rgba(15,23,42,0.28)]"
+              sizes="(max-width: 640px) 60px, 120px"
+              className="object-contain drop-shadow-[0_10px_10px_rgba(15,23,42,0.3)]"
               priority
             />
           </div>

@@ -138,7 +138,7 @@ export default function KvRoyxatdanOtish() {
           </Link>
           <span className={isLight ? 'text-slate-300' : 'text-slate-700'}>•</span>
           <div className={`flex items-center gap-1.5 text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-            <Home size={13} className="text-emerald-500" /> KV-talaba ro&apos;yxatdan o&apos;tishi
+            <Home size={13} className="text-emerald-500" /> Ijarada turuvchi talaba ro&apos;yxatdan o&apos;tishi
           </div>
         </div>
 

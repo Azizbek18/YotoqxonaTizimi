@@ -22,7 +22,7 @@ interface Props {
   totalSteps: number
 }
 
-export default function Step4Study({ data, onChange, onNext, onBack, stepNumber, totalSteps }: Props) {
+export default function Step5Study({ data, onChange, onNext, onBack, stepNumber, totalSteps }: Props) {
   const isLight = useThemeStore((s) => s.theme) === 'light'
   const directionOptions = useMemo(() => directionsForFaculty(data.faculty), [data.faculty])
 

@@ -11,6 +11,13 @@ export interface KvRegisterData {
   email: string
   phone: string
   gender: '' | 'male' | 'female'
+  // Drives which visa/propiska module (features/foreign-docs) the account
+  // unlocks after registration — see resolveDocsMode: 'foreign' needs
+  // `country` set, 'uz' needs `region` set. Neither is dorm-dependent, so a
+  // KV-talaba (never assigned a room) is covered the same as a dorm student.
+  citizenship: '' | 'uz' | 'foreign'
+  region: string
+  country: string
   faculty: string
   direction: string
   course: string
@@ -26,6 +33,9 @@ export const initialKvData: KvRegisterData = {
   email: '',
   phone: '',
   gender: '',
+  citizenship: '',
+  region: '',
+  country: '',
   faculty: '',
   direction: '',
   course: '',

@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     const { data: requests, error } = await getServiceSupabase()
       .from('arizalar')
-      .select('id, student_id, student_name, text, level, status, created_at')
+      .select('id, student_id, student_name, text, type, level, status, created_at')
       .eq('faculty', faculty)
       .in('type', ['ariza', 'tushuntirish'])
       .neq('status', 'draft')
@@ -49,22 +49,41 @@ export async function GET(request: NextRequest) {
     // explicitly rather than relying on a PostgREST relationship.
     const ids = [...new Set((requests ?? []).map((row) => row.student_id).filter((id): id is string => Boolean(id)))]
     const dormByStudent = new Map<string, string | null>()
+    const roomByStudent = new Map<string, string | null>()
     if (ids.length) {
       const { data: students, error: studentError } = await getServiceSupabase().from('users')
-        .select('id, dorm_id').eq('role', 'talaba').eq('faculty', faculty).in('id', ids)
+        .select('id, dorm_id, room_number').eq('role', 'talaba').eq('faculty', faculty).in('id', ids)
       if (studentError) throw studentError
-      for (const student of students ?? []) dormByStudent.set(student.id, student.dorm_id ?? null)
+      for (const student of students ?? []) {
+        dormByStudent.set(student.id, student.dorm_id ?? null)
+        roomByStudent.set(student.id, student.room_number ?? null)
+      }
+    }
+
+    // "3-marta tushuntirish yozgan talaba" ogohlantirishi uchun: har bir
+    // talabaning shu faylda ko'rinayotgan barcha tushuntirish xatlari soni —
+    // dekan/tarbiyachi buni ro'yxatda alohida so'ramasdan darhol ko'rishi kerak.
+    const tushuntirishCountByStudent = new Map<string, number>()
+    for (const request of requests ?? []) {
+      if (request.type !== 'tushuntirish' || !request.student_id) continue
+      tushuntirishCountByStudent.set(
+        request.student_id,
+        (tushuntirishCountByStudent.get(request.student_id) ?? 0) + 1,
+      )
     }
 
     const formatted = (requests ?? []).map((request) => ({
       id: String(request.id),
       dorm_id: request.student_id ? dormByStudent.get(request.student_id) ?? null : null,
+      room_number: request.student_id ? roomByStudent.get(request.student_id) ?? null : null,
       student_name: request.student_name ?? 'Noma\'lum',
       text: request.text ?? '',
+      type: (request.type ?? 'ariza') as 'ariza' | 'tushuntirish',
       level: (request.level ?? 'info') as ApplicationLevel,
       status: request.status ?? 'pending',
       created_at: request.created_at ?? null,
       updated_at: null,
+      tushuntirish_count: request.student_id ? tushuntirishCountByStudent.get(request.student_id) ?? 0 : 0,
     }))
 
     return NextResponse.json({ ok: true, requests: formatted })

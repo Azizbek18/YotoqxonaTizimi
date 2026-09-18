@@ -21,7 +21,10 @@ export type StudentArizaPdfData = ArizaComposeInput & {
   verifyCode?: string | null
 }
 
-export async function generateStudentArizaPdf(data: StudentArizaPdfData) {
+export async function generateStudentArizaPdf(
+  data: StudentArizaPdfData,
+  options: { mode?: 'save' | 'blob' } = {},
+): Promise<string | void> {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   registerTinos(doc)
@@ -102,6 +105,10 @@ export async function generateStudentArizaPdf(data: StudentArizaPdfData) {
     doc.setFont(FONT, 'normal'); doc.setFontSize(9)
     para(`Elektron imzolangan hujjat. Tekshiruv kodi: ${data.verifyCode}`, { size: 9, gap: 1.5 })
     para('Haqiqiyligini tekshirish: meningyotoqxonam.uz/ariza-tekshirish', { size: 9 })
+  }
+
+  if (options.mode === 'blob') {
+    return doc.output('bloburl') as unknown as string
   }
 
   const slug = normalizePdfText(data.fullName).replace(/[^A-Za-z]+/g, '_').replace(/^_|_$/g, '') || 'talaba'

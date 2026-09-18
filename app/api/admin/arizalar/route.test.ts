@@ -64,6 +64,32 @@ describe('GET', () => {
     expect(argsOf('in')).toContainEqual(['id', ['s1', 's2']])
     expect(argsOf('eq')).toContainEqual(['faculty', 'amit'])
   })
+  it('counts each student’s own tushuntirish letters and carries their room number', async () => {
+    requireActiveStaff.mockResolvedValue(AUTH(AMIT_DEKAN))
+    from.mockImplementationOnce(() => {
+      terminal = {
+        data: [
+          { id: 'a1', student_id: 's1', type: 'tushuntirish' },
+          { id: 'a2', student_id: 's1', type: 'tushuntirish' },
+          { id: 'a3', student_id: 's1', type: 'tushuntirish' },
+          { id: 'a4', student_id: 's2', type: 'ariza' },
+        ],
+        error: null,
+      }
+      return makeChain()
+    }).mockImplementationOnce(() => {
+      terminal = { data: [{ id: 's1', dorm_id: 'd1', room_number: '305' }, { id: 's2', dorm_id: 'd1', room_number: '112' }], error: null }
+      return makeChain()
+    })
+    const res = await GET(req('GET'))
+    const body = await res.json()
+    const bySid = (id: string) => body.requests.find((r: { id: string }) => r.id === id)
+    expect(bySid('a3').tushuntirish_count).toBe(3)
+    expect(bySid('a3').room_number).toBe('305')
+    expect(bySid('a4').tushuntirish_count).toBe(0)
+    expect(bySid('a4').type).toBe('ariza')
+  })
+
   it('scopes a tarbiyachi to their own faculty', async () => {
     requireActiveStaff.mockResolvedValue(AUTH(AMIT_TARBIYACHI))
     terminal = { data: [], error: null }

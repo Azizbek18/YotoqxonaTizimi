@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  Sparkles, ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw, FileText, Hand, Handshake, BookOpen, Home as HomeIcon
+  Sparkles, ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw, FileText, Hand, Handshake, BookOpen, Home as HomeIcon, GraduationCap, Search, Building2, UserCheck, Users
 } from 'lucide-react';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { Skel } from '@/components/ui/skeletons';
@@ -116,25 +116,31 @@ export default function Home() {
 
   const staffRoles = [
     {
-      title: "Dekan",
-      desc: "Yo'llanmalarni tasdiqlash, xonalarga joylashtirish, 3D qavat tarxini boshqarish va Excel jadvallarini yuklab olish.",
-      color: "from-amber-500/20 to-orange-600/25 border-amber-500/30 text-amber-300",
-      btnColor: "from-amber-500 to-orange-600 shadow-amber-500/20 hover:shadow-amber-500/35",
-      icon: "https://img.icons8.com/3d-fluency/188/businessman.png"
+      title: "Dekan va Mas'ullar",
+      badge: "Akademik boshqaruv",
+      desc: "Yo‘llanmalarni tasdiqlash, xonalarga joylashtirish, 3D qavat tarxini boshqarish va hisobotlarni shakllantirish.",
+      btnText: "Dekan portali",
+      icon: Building2,
+      gradient: "from-blue-600 to-indigo-600",
+      shadow: "shadow-blue-500/25",
     },
     {
-      title: "Tarbiyachi",
-      desc: "Yotoqxona tartibini nazorat qilish, arizalarni tasdiqlash va ogohlantirishlar berish.",
-      color: "from-emerald-500/20 to-teal-600/25 border-emerald-500/30 text-emerald-300",
-      btnColor: "from-emerald-500 to-teal-600 shadow-emerald-500/20 hover:shadow-emerald-500/35",
-      icon: "https://img.icons8.com/3d-fluency/188/manager.png"
+      title: "Yotoqxona tarbiyachisi",
+      badge: "Tartib va monitoring",
+      desc: "Yotoqxona ichki tartibini nazorat qilish, arizalarni tasdiqlash va talabalar intizomini ta'minlash.",
+      btnText: "Tarbiyachi portali",
+      icon: UserCheck,
+      gradient: "from-indigo-600 to-purple-600",
+      shadow: "shadow-indigo-500/25",
     },
     {
-      title: "Qavat Sardori",
-      desc: "Navbatchilik jadvallarini tuzish va qavat tozaligini nazorat qilish.",
-      color: "from-indigo-500/20 to-purple-600/25 border-indigo-500/30 text-indigo-300",
-      btnColor: "from-indigo-500 to-purple-600 shadow-indigo-500/20 hover:shadow-indigo-500/35",
-      icon: "https://img.icons8.com/3d-fluency/188/user-male-circle.png"
+      title: "Qavat sardorlari",
+      badge: "Talabalar yetakchisi",
+      desc: "Navbatchilik jadvallarini tuzish, qavat tozaligi va ichki muhit monitoringini olib borish.",
+      btnText: "Sardor portali",
+      icon: Users,
+      gradient: "from-slate-800 to-slate-950 dark:from-slate-700 dark:to-slate-900",
+      shadow: "shadow-slate-500/20",
     }
   ];
 
@@ -205,8 +211,15 @@ export default function Home() {
         isLight ? 'border-slate-200' : 'border-white/5'
       }`}>
         <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
-          <div className="w-7 h-7 sm:w-10 sm:h-10 shrink-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/30 border border-white/10 scale-105">
-            🏠
+          <div className="relative w-8 h-8 sm:w-11 sm:h-11 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 border border-white/10">
+            <Image
+              src="/logo.png"
+              alt="Meningyotoqxonam.uz logosi"
+              fill
+              sizes="(max-width: 640px) 32px, 44px"
+              className="object-cover"
+              priority
+            />
           </div>
           <span className={`text-sm sm:text-lg font-black uppercase tracking-[0.02em] sm:tracking-[0.08em] bg-clip-text text-transparent bg-gradient-to-r transition-colors duration-300 syne-font truncate ${
             isLight ? 'from-slate-900 to-slate-600' : 'from-white via-gray-100 to-gray-300'
@@ -233,115 +246,163 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-10 max-w-5xl mx-auto px-4 pt-12 md:pt-20 text-center space-y-5">
+      <section className="relative z-10 max-w-5xl mx-auto px-4 pt-10 sm:pt-16 text-center space-y-4">
         <div
-          className={`anim-in inline-flex items-center gap-2 sm:gap-2.5 max-w-full px-3 sm:px-4.5 py-2 rounded-full border text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-widest text-center transition-colors duration-500 ${
+          className={`anim-in inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[11px] font-bold tracking-wide uppercase transition-all shadow-xs ${
             isLight
-              ? 'border-indigo-500/20 bg-indigo-500/5 text-indigo-600 shadow-sm shadow-indigo-50'
-              : 'border-indigo-500/20 bg-indigo-500/10 text-indigo-400 shadow-md shadow-indigo-950/20'
+              ? 'border-blue-200 bg-blue-50/80 text-blue-700'
+              : 'border-blue-500/30 bg-blue-500/10 text-blue-300'
           }`}
         >
-          <Sparkles size={12} className="shrink-0 animate-pulse text-indigo-500" />
-          <span className="break-words">YOTOQXONADA JOY OLISH MULTI-BOSQICHLI TIZIMI</span>
+          <GraduationCap size={15} className={isLight ? 'text-blue-600' : 'text-blue-400'} />
+          <span>OTM Talabalar Turar Joyi</span>
         </div>
 
         <h1
-          style={{ animationDelay: '0.06s' }}
-          className={`anim-in text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-[1.05] uppercase max-w-4xl mx-auto transition-colors duration-500 syne-font ${
+          style={{ animationDelay: '0.04s' }}
+          className={`anim-in text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-[1.1] uppercase max-w-3xl mx-auto transition-colors duration-500 syne-font ${
             isLight ? 'text-slate-900' : 'text-white'
           }`}
         >
-          Talabalar yotoqxonasiga <br />
-          <span className="bg-gradient-to-r from-cyan-400 via-indigo-500 to-purple-500 bg-clip-text text-transparent drop-shadow-sm">
-            ariza va joylashish
+          Talabalar yotoqxonasi <br className="hidden sm:inline" />
+          <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            va ijara tizimi
           </span>
         </h1>
-        <p className="max-w-2xl mx-auto mt-5 text-base leading-relaxed">
-          Yotoqxona uchun ariza yoki yo‘llanma yuboring, ko‘rib chiqish holatini tekshiring
-          va tasdiqlangandan keyin shaxsiy kabinetingizga kiring.
-        </p>
-        <Link
-          href="/yotoqxona"
-          style={{ animationDelay: '0.09s' }}
-          className={`anim-in group relative mx-auto mt-5 flex w-fit max-w-full items-center gap-3 rounded-2xl border py-2 pl-2 pr-3.5 text-left transition-all duration-300 active:scale-[0.98] ${
-            isLight
-              ? 'border-indigo-200/80 bg-white/90 shadow-[0_6px_20px_-8px_rgba(79,70,229,0.25)] hover:border-indigo-300 hover:shadow-[0_10px_28px_-8px_rgba(79,70,229,0.35)]'
-              : 'border-indigo-400/20 bg-indigo-500/10 shadow-[0_6px_24px_-10px_rgba(79,70,229,0.5)] hover:bg-indigo-500/[0.16] hover:border-indigo-400/35'
-          }`}
-        >
-          <span
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/30 transition-transform duration-300 group-hover:scale-105`}
-          >
-            <BookOpen size={16} strokeWidth={2.4} />
-          </span>
-          <span className="min-w-0">
-            <span className={`block text-[9px] font-black uppercase tracking-[0.18em] ${isLight ? 'text-indigo-500/70' : 'text-indigo-300/70'} syne-font`}>
-              Yangi talabalarga
-            </span>
-            <span className={`block text-[13px] font-black leading-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>
-              Yotoqxonaga joylashish yo‘riqnomasi
-            </span>
-          </span>
-          <ArrowRight
-            size={15}
-            className={`ml-1 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5 ${isLight ? 'text-indigo-500' : 'text-indigo-300'}`}
-          />
-        </Link>
 
-        {/* First thing a never-applied talaba should see — no scrolling
-            past the (purely decorative) 3-step timeline required. Only
-            shown once we actually know there's no permit on record for
-            this session; someone with a pending/approved/etc. one instead
-            scrolls to their full status panel below, same as before. */}
+        {/* Featured Guide Banner */}
+        <div className="mx-auto w-full max-w-4xl pt-1 sm:pt-2">
+          <Link
+            href="/yotoqxona"
+            className="group flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl bg-white/95 dark:bg-[#0b1120]/90 border-blue-200/90 dark:border-blue-500/30 hover:border-blue-400 dark:hover:border-blue-400/60 shadow-lg shadow-blue-500/10 dark:shadow-black/40"
+          >
+            <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/25 group-hover:scale-105 transition-transform">
+                <BookOpen size={18} />
+              </div>
+              <div className="text-left min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-600 text-white shrink-0">
+                    Qo‘llanma
+                  </span>
+                  <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
+                    Yotoqxonaga joylashish bo‘yicha to‘liq yo‘riqnoma
+                  </span>
+                </div>
+                <p className="text-[11px] mt-0.5 leading-snug text-slate-600 dark:text-slate-400 truncate">
+                  Ariza topshirish tartibi, imtiyozlar va qadam-baqadam yo‘riqnoma
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 shrink-0 ml-3">
+              <span className="hidden sm:inline">Yo‘riqnomani o‘qish</span>
+              <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+        </div>
+
+        {/* 3 Compact Action Cards */}
         {!checkingPermit && !permitRequest && (
           <div
-            style={{ animationDelay: '0.12s' }}
-            className="anim-in flex flex-col sm:flex-row items-center justify-center gap-3 pt-2"
+            style={{ animationDelay: '0.08s' }}
+            className="anim-in mx-auto w-full max-w-4xl pt-1 sm:pt-2"
           >
-            <Link
-              href="/ariza-yuborish"
-              className="w-full sm:w-auto py-4 px-8 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/50 active:scale-[0.98] border border-white/10"
-            >
-              <UploadCloud size={16} /> Ariza Yuborish
-            </Link>
-            <Link
-              href="/ruxsatnoma-tekshirish"
-              className={`w-full sm:w-auto py-4 px-8 rounded-2xl border font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
-                isLight
-                  ? 'bg-white hover:bg-slate-50 border-slate-300 text-slate-800'
-                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
-              }`}
-            >
-              Ariza holatini tekshirish
-            </Link>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
+              {/* 1. Ariza yuborish */}
+              <Link
+                href="/ariza-yuborish"
+                className={`group relative p-4 sm:p-5 rounded-2xl border text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between ${
+                  isLight
+                    ? 'bg-white/95 border-slate-200 hover:border-blue-400 shadow-md shadow-slate-200/60'
+                    : 'bg-white/[0.03] border-white/10 hover:border-blue-500/40 shadow-lg shadow-black/30'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20">
+                      <UploadCloud size={20} />
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                      isLight ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-blue-500/10 border-blue-500/20 text-blue-300'
+                    }`}>
+                      Yotoqxona
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black tracking-tight">Ariza yuborish</h3>
+                  <p className={`text-xs mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Joylashish uchun yo‘llanma yoki ariza topshirish
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs font-bold text-blue-600 dark:text-blue-400">
+                  <span>Topshirish</span>
+                  <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+
+              {/* 2. Holatni tekshirish */}
+              <Link
+                href="/ruxsatnoma-tekshirish"
+                className={`group relative p-4 sm:p-5 rounded-2xl border text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between ${
+                  isLight
+                    ? 'bg-white/95 border-slate-200 hover:border-indigo-400 shadow-md shadow-slate-200/60'
+                    : 'bg-white/[0.03] border-white/10 hover:border-indigo-500/40 shadow-lg shadow-black/30'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/20">
+                      <Search size={20} />
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                      isLight ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300'
+                    }`}>
+                      Natija
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black tracking-tight">Holatni tekshirish</h3>
+                  <p className={`text-xs mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Topshirilgan arizani pasport orqali tekshirish
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                  <span>Tekshirish</span>
+                  <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+
+              {/* 3. Kvartira hisobi */}
+              <Link
+                href="/kv-royxatdan-otish"
+                className={`group relative p-4 sm:p-5 rounded-2xl border text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between ${
+                  isLight
+                    ? 'bg-white/95 border-slate-200 hover:border-emerald-400 shadow-md shadow-slate-200/60'
+                    : 'bg-white/[0.03] border-white/10 hover:border-emerald-500/40 shadow-lg shadow-black/30'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20">
+                      <HomeIcon size={20} />
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                      isLight ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                    }`}>
+                      Ijara
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black tracking-tight">Kvartira hisobi</h3>
+                  <p className={`text-xs mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Ijarada turuvchi talabalar uchun tezkor ro‘yxat
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  <span>Ro‘yxatdan o‘tish</span>
+                  <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+            </div>
           </div>
-        )}
-        {!checkingPermit && !permitRequest && (
-          <Link
-            href="/kv-royxatdan-otish"
-            style={{ animationDelay: '0.16s' }}
-            className={`anim-in group relative mx-auto mt-3 flex w-fit max-w-full items-center gap-3 rounded-2xl border py-2 pl-2 pr-3.5 text-left transition-all duration-300 active:scale-[0.98] ${
-              isLight
-                ? 'border-emerald-200/80 bg-white/90 shadow-[0_6px_20px_-8px_rgba(16,185,129,0.25)] hover:border-emerald-300 hover:shadow-[0_10px_28px_-8px_rgba(16,185,129,0.35)]'
-                : 'border-emerald-400/20 bg-emerald-500/10 shadow-[0_6px_24px_-10px_rgba(16,185,129,0.5)] hover:bg-emerald-500/[0.16] hover:border-emerald-400/35'
-            }`}
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30 transition-transform duration-300 group-hover:scale-105">
-              <HomeIcon size={16} strokeWidth={2.4} />
-            </span>
-            <span className="min-w-0">
-              <span className={`block text-[9px] font-black uppercase tracking-[0.18em] ${isLight ? 'text-emerald-600/70' : 'text-emerald-300/70'} syne-font`}>
-                Yotoqxonada emas, ijarada turasizmi?
-              </span>
-              <span className={`block text-[13px] font-black leading-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>
-                KV-talaba sifatida ro&apos;yxatdan o&apos;ting
-              </span>
-            </span>
-            <ArrowRight
-              size={15}
-              className={`ml-1 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5 ${isLight ? 'text-emerald-600' : 'text-emerald-300'}`}
-            />
-          </Link>
         )}
       </section>
 
@@ -474,278 +535,231 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Dynamic Glass Action Container */}
-      <section className="relative z-10 max-w-3xl mx-auto px-4 pt-8">
-        {checkingPermit ? (
-          <div className="anim-in rounded-[28px] sm:rounded-[36px] glass-panel p-5 sm:p-10 space-y-5">
-            <div className="flex items-center gap-4">
-              <Skel className="h-14 w-14 shrink-0 rounded-2xl" />
-              <div className="flex-1 space-y-2.5">
-                <Skel className="h-4 w-1/2" />
-                <Skel className="h-3 w-2/3" />
+      {/* Dynamic Glass Action Container - Only active when checking or user has an active application */}
+      {(checkingPermit || permitRequest) && (
+        <section className="relative z-10 max-w-3xl mx-auto px-4 pt-8">
+          {checkingPermit ? (
+            <div className="anim-in rounded-[28px] sm:rounded-[36px] glass-panel p-5 sm:p-10 space-y-5">
+              <div className="flex items-center gap-4">
+                <Skel className="h-14 w-14 shrink-0 rounded-2xl" />
+                <div className="flex-1 space-y-2.5">
+                  <Skel className="h-4 w-1/2" />
+                  <Skel className="h-3 w-2/3" />
+                </div>
               </div>
+              <Skel className="h-24 w-full rounded-2xl" />
+              <Skel className="h-12 w-full rounded-2xl" />
             </div>
-            <Skel className="h-24 w-full rounded-2xl" />
-            <Skel className="h-12 w-full rounded-2xl" />
-          </div>
-        ) : permitRequest ? (
-          <div className={`anim-in p-5 sm:p-10 rounded-[28px] sm:rounded-[36px] glass-panel text-center space-y-6 relative overflow-hidden transition-all ${
-            isLight ? 'bg-white/90' : 'bg-[#060a17]/90'
-          }`}>
-            <div className="absolute inset-0 bg-radial-gradient from-indigo-500/10 via-transparent to-transparent opacity-40 pointer-events-none" />
+          ) : permitRequest ? (
+            <div className={`anim-in p-5 sm:p-10 rounded-[28px] sm:rounded-[36px] glass-panel text-center space-y-6 relative overflow-hidden transition-all ${
+              isLight ? 'bg-white/90' : 'bg-[#060a17]/90'
+            }`}>
+              <div className="absolute inset-0 bg-radial-gradient from-indigo-500/10 via-transparent to-transparent opacity-40 pointer-events-none" />
 
-            {permitRequest.status === 'pending' && (
-              <>
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-[24px] bg-amber-500/15 text-amber-500 border border-amber-500/30 shadow-lg shadow-amber-500/10">
-                  <Clock size={32} className="animate-pulse" />
-                </div>
-                <div className="space-y-3">
-                  <h3 className="text-xl font-black uppercase tracking-wider text-amber-500 syne-font">Arizangiz Kutilmoqda</h3>
-                  <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                    Hurmatli <b>{permitRequest.full_name}</b>, siz yuborgan yotoqxona yo&apos;llanmasi hozirda ko&apos;rib chiqilmoqda. Arizangiz tasdiqlanib, Dekan xona raqamini belgilaganidan so&apos;ng ro&apos;yxatdan o&apos;tish imkoni ochiladi.
-                  </p>
-                </div>
-                {typeof permitRequest.queuePosition === 'number' && typeof permitRequest.queueTotal === 'number' && (
-                  <div className={`mx-auto flex max-w-[240px] items-center justify-between gap-3 rounded-2xl border px-5 py-3 relative z-10 ${
-                    isLight ? 'bg-white border-amber-200' : 'bg-slate-950/40 border-amber-500/20'
-                  }`}>
-                    <span className={`text-[10px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Navbatdagi o&apos;rningiz
-                    </span>
-                    <span className="text-base font-black text-amber-500">
-                      {permitRequest.queuePosition} / {permitRequest.queueTotal}
-                    </span>
+              {permitRequest.status === 'pending' && (
+                <>
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-[24px] bg-amber-500/15 text-amber-500 border border-amber-500/30 shadow-lg shadow-amber-500/10">
+                    <Clock size={32} className="animate-pulse" />
                   </div>
-                )}
-                <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
-                  <button
-                    onClick={() => checkStatus(false)}
-                    className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-                  >
-                    <RefreshCw size={14} className="animate-spin" style={{ animationDuration: '4s' }} /> Statusni yangilash
-                  </button>
-                  <button
-                    onClick={handleClearStatus}
-                    className={`flex-1 py-3.5 px-6 rounded-2xl border font-black text-xs uppercase tracking-wider transition-all active:scale-[0.98] ${
-                      isLight ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'
-                    }`}
-                  >
-                    Boshqa yo&apos;llanma yuklash
-                  </button>
-                </div>
-              </>
-            )}
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-black uppercase tracking-wider text-amber-500 syne-font">Arizangiz Kutilmoqda</h3>
+                    <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+                      Hurmatli <b>{permitRequest.full_name}</b>, siz yuborgan yotoqxona yo&apos;llanmasi hozirda ko&apos;rib chiqilmoqda. Arizangiz tasdiqlanib, Dekan xona raqamini belgilaganidan so&apos;ng ro&apos;yxatdan o&apos;tish imkoni ochiladi.
+                    </p>
+                  </div>
+                  {typeof permitRequest.queuePosition === 'number' && typeof permitRequest.queueTotal === 'number' && (
+                    <div className={`mx-auto flex max-w-[240px] items-center justify-between gap-3 rounded-2xl border px-5 py-3 relative z-10 ${
+                      isLight ? 'bg-white border-amber-200' : 'bg-slate-950/40 border-amber-500/20'
+                    }`}>
+                      <span className={`text-[10px] font-black uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                        Navbatdagi o&apos;rningiz
+                      </span>
+                      <span className="text-base font-black text-amber-500">
+                        {permitRequest.queuePosition} / {permitRequest.queueTotal}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
+                    <button
+                      onClick={() => checkStatus(false)}
+                      className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                    >
+                      <RefreshCw size={14} className="animate-spin" style={{ animationDuration: '4s' }} /> Statusni yangilash
+                    </button>
+                    <button
+                      onClick={handleClearStatus}
+                      className={`flex-1 py-3.5 px-6 rounded-2xl border font-black text-xs uppercase tracking-wider transition-all active:scale-[0.98] ${
+                        isLight ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'
+                      }`}
+                    >
+                      Boshqa yo&apos;llanma yuklash
+                    </button>
+                  </div>
+                </>
+              )}
 
-            {permitRequest.status === 'rejected' && (
-              <>
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-[24px] bg-rose-500/15 text-rose-500 border border-rose-500/30 shadow-lg shadow-rose-500/10">
-                  <XCircle size={32} />
-                </div>
-                <div className="space-y-3">
-                  <h3 className="text-xl font-black uppercase tracking-wider text-rose-500 syne-font">Ariza Rad Etildi</h3>
-                  <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                    Yo&apos;llanma arizangiz rad etilgan. Sababi: <span className="font-bold text-rose-500">{permitRequest.reject_reason || "Hujjat talabga javob bermaydi."}</span>
-                  </p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
-                  <Link
-                    href={permitRequest.application_type === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'}
-                    className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-black text-xs uppercase tracking-wider text-center transition-all shadow-lg shadow-rose-500/20 active:scale-[0.98] border border-white/10"
-                  >
-                    {permitRequest.application_type === 'imtiyozli' ? 'Qayta yuborish' : 'Qayta yuborish (my.gov.uz)'}
-                  </Link>
-                  <button
-                    onClick={handleClearStatus}
-                    className={`flex-1 py-3.5 px-6 rounded-2xl border font-black text-xs uppercase tracking-wider transition-all active:scale-[0.98] ${
-                      isLight ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'
-                    }`}
-                  >
-                    Boshqa pasport
-                  </button>
-                </div>
-              </>
-            )}
+              {permitRequest.status === 'rejected' && (
+                <>
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-[24px] bg-rose-500/15 text-rose-500 border border-rose-500/30 shadow-lg shadow-rose-500/10">
+                    <XCircle size={32} />
+                  </div>
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-black uppercase tracking-wider text-rose-500 syne-font">Ariza Rad Etildi</h3>
+                    <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+                      Yo&apos;llanma arizangiz rad etilgan. Sababi: <span className="font-bold text-rose-500">{permitRequest.reject_reason || "Hujjat talabga javob bermaydi."}</span>
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
+                    <Link
+                      href={permitRequest.application_type === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'}
+                      className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-black text-xs uppercase tracking-wider text-center transition-all shadow-lg shadow-rose-500/20 active:scale-[0.98] border border-white/10"
+                    >
+                      {permitRequest.application_type === 'imtiyozli' ? 'Qayta yuborish' : 'Qayta yuborish (my.gov.uz)'}
+                    </Link>
+                    <button
+                      onClick={handleClearStatus}
+                      className={`flex-1 py-3.5 px-6 rounded-2xl border font-black text-xs uppercase tracking-wider transition-all active:scale-[0.98] ${
+                        isLight ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'
+                      }`}
+                    >
+                      Boshqa pasport
+                    </button>
+                  </div>
+                </>
+              )}
 
-            {permitRequest.status === 'approved' && (
-              <>
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-[24px] bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
-                  <CheckCircle2 size={32} className="animate-bounce" />
-                </div>
-                <div className="space-y-3">
-                  <h3 className="text-xl font-black uppercase tracking-wider text-emerald-500 syne-font">Yo&apos;llanmangiz tasdiqlandi!</h3>
-                  <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-600' : 'text-slate-200'}`}>
-                    Tabriklaymiz, <b>{permitRequest.full_name}</b>! Yo&apos;llanma tasdiqlandi va sizga <b>{permitRequest.room_number}-xona</b> ajratildi. Quyidagi tugma orqali emailingizni tasdiqlab, akkauntni faollashtiring.
-                  </p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
-                  <Link
-                    href="/register"
-                    className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98] border border-white/10"
-                  >
-                    <UserPlus size={14} /> Ro&apos;yxatdan O&apos;tish
-                  </Link>
-                  <button
-                    onClick={handleClearStatus}
-                    className={`py-4 px-6 rounded-2xl border font-black text-xs uppercase tracking-wider transition-all active:scale-[0.98] ${
-                      isLight ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'
-                    }`}
-                  >
-                    Keshni tozalash
-                  </button>
-                </div>
-              </>
-            )}
+              {permitRequest.status === 'approved' && (
+                <>
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-[24px] bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
+                    <CheckCircle2 size={32} className="animate-bounce" />
+                  </div>
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-black uppercase tracking-wider text-emerald-500 syne-font">Yo&apos;llanmangiz tasdiqlandi!</h3>
+                    <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-600' : 'text-slate-200'}`}>
+                      Tabriklaymiz, <b>{permitRequest.full_name}</b>! Yo&apos;llanma tasdiqlandi va sizga <b>{permitRequest.room_number}-xona</b> ajratildi. Quyidagi tugma orqali emailingizni tasdiqlab, akkauntni faollashtiring.
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
+                    <Link
+                      href="/register"
+                      className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98] border border-white/10"
+                    >
+                      <UserPlus size={14} /> Ro&apos;yxatdan O&apos;tish
+                    </Link>
+                    <button
+                      onClick={handleClearStatus}
+                      className={`py-4 px-6 rounded-2xl border font-black text-xs uppercase tracking-wider transition-all active:scale-[0.98] ${
+                        isLight ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'
+                      }`}
+                    >
+                      Keshni tozalash
+                    </button>
+                  </div>
+                </>
+              )}
 
-            {permitRequest.status === 'registered' && (
-              <>
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-[24px] bg-sky-500/15 text-sky-500 border border-sky-500/30 shadow-lg shadow-sky-500/10">
-                  <LogIn size={32} />
-                </div>
-                <div className="space-y-3">
-                  <h3 className="text-xl font-black uppercase tracking-wider text-sky-500 syne-font">Ro&apos;yxatdan O&apos;tish Yakunlangan</h3>
-                  <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                    Hurmatli <b>{permitRequest.full_name}</b>, siz ro&apos;yxatdan o&apos;tib parolingizni kiritgansiz. Tizimdan foydalanish uchun kirish sahifasiga o&apos;ting.
-                  </p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
-                  <Link
-                    href="/login?student=1"
-                    className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-sky-500/20 border border-white/10"
-                  >
-                    <LogIn size={14} /> Tizimga Kirish
-                  </Link>
-                  <button
-                    onClick={handleClearStatus}
-                    className={`py-4 px-6 rounded-2xl border font-black text-xs uppercase tracking-wider transition-all active:scale-[0.98] ${
-                      isLight ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'
-                    }`}
-                  >
-                    Boshqa pasport
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className={`anim-in p-5 sm:p-10 rounded-[28px] sm:rounded-[36px] glass-panel text-center space-y-6 relative overflow-hidden transition-all ${
-            isLight ? 'bg-white/90' : 'bg-[#060a17]/90'
-          }`}>
-            <div className="absolute inset-0 bg-radial-gradient from-indigo-500/10 via-transparent to-transparent opacity-40 pointer-events-none" />
-
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-[24px] bg-indigo-500/15 text-indigo-500 border border-indigo-500/30 shadow-lg shadow-indigo-500/10">
-              <UploadCloud size={32} />
+              {permitRequest.status === 'registered' && (
+                <>
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-[24px] bg-sky-500/15 text-sky-500 border border-sky-500/30 shadow-lg shadow-sky-500/10">
+                    <LogIn size={32} />
+                  </div>
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-black uppercase tracking-wider text-sky-500 syne-font">Ro&apos;yxatdan O&apos;tish Yakunlangan</h3>
+                    <p className={`text-xs leading-relaxed max-w-lg mx-auto ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+                      Hurmatli <b>{permitRequest.full_name}</b>, siz ro&apos;yxatdan o&apos;tib parolingizni kiritgansiz. Tizimdan foydalanish uchun kirish sahifasiga o&apos;ting.
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
+                    <Link
+                      href="/login?student=1"
+                      className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-sky-500/20 border border-white/10"
+                    >
+                      <LogIn size={14} /> Tizimga Kirish
+                    </Link>
+                    <button
+                      onClick={handleClearStatus}
+                      className={`py-4 px-6 rounded-2xl border font-black text-xs uppercase tracking-wider transition-all active:scale-[0.98] ${
+                        isLight ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'
+                      }`}
+                    >
+                      Boshqa pasport
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-            
-            <div className="space-y-3">
-              <h3 className="text-xl font-black uppercase tracking-wider syne-font">Yotoqxona Ruxsatnomasi</h3>
-              <p className={`text-xs leading-relaxed max-w-md mx-auto ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                Talabalar tizimda ro&apos;yxatdan o&apos;tishdan oldin my.gov.uz portalidan olingan yo&apos;llanma (yoki xorijlik/imtiyozli talabalar uchun Ariza+Tilxat) faylini yuborishlari shart.
-              </p>
-            </div>
+          ) : null}
+        </section>
+      )}
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
-              <Link
-                href="/ariza-yuborish"
-                className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/30 active:scale-[0.98] border border-white/10"
-              >
-                <UploadCloud size={14} /> Ariza Yuborish
-              </Link>
-              <Link
-                href="/ruxsatnoma-tekshirish"
-                className={`flex-1 py-4 px-6 rounded-2xl border font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
-                  isLight
-                    ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800'
-                    : 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
-                }`}
-              >
-                Ariza holatini tekshirish
-              </Link>
-            </div>
-            <Link
-              href="/kv-royxatdan-otish"
-              className={`group relative z-10 mx-auto flex w-fit max-w-full items-center gap-3 rounded-2xl border py-2 pl-2 pr-3.5 text-left transition-all duration-300 active:scale-[0.98] ${
-                isLight
-                  ? 'border-emerald-200/80 bg-white/90 hover:border-emerald-300'
-                  : 'border-emerald-400/20 bg-emerald-500/10 hover:bg-emerald-500/[0.16] hover:border-emerald-400/35'
-              }`}
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30 transition-transform duration-300 group-hover:scale-105">
-                <HomeIcon size={16} strokeWidth={2.4} />
-              </span>
-              <span className="min-w-0">
-                <span className={`block text-[9px] font-black uppercase tracking-[0.18em] ${isLight ? 'text-emerald-600/70' : 'text-emerald-300/70'} syne-font`}>
-                  Yotoqxonada emas, ijarada turasizmi?
-                </span>
-                <span className={`block text-[13px] font-black leading-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>
-                  KV-talaba sifatida ro&apos;yxatdan o&apos;ting
-                </span>
-              </span>
-              <ArrowRight
-                size={15}
-                className={`ml-1 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5 ${isLight ? 'text-emerald-600' : 'text-emerald-300'}`}
-              />
-            </Link>
-          </div>
-        )}
-      </section>
-
-      {/* Staff and Admins Portals (Futuristic segmented layout) */}
-      <section className="relative z-10 max-w-7xl mx-auto px-4 py-20 space-y-10">
+      {/* Staff and Admins Portals */}
+      <section className="relative z-10 max-w-7xl mx-auto px-4 py-16 sm:py-20 space-y-8">
         <div className="text-center space-y-3">
-          <h2 className="text-xs font-black uppercase tracking-[0.25em] text-indigo-500 syne-font">Admin & Xodimlar portali</h2>
+          <div
+            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[11px] font-bold tracking-wide uppercase transition-all shadow-xs ${
+              isLight
+                ? 'border-indigo-200 bg-indigo-50/80 text-indigo-700'
+                : 'border-indigo-500/30 bg-indigo-500/10 text-indigo-300'
+            }`}
+          >
+            <ShieldCheck size={14} className={isLight ? 'text-indigo-600' : 'text-indigo-400'} />
+            <span>Admin & Xodimlar Portali</span>
+          </div>
+
           <h3 className={`text-2xl sm:text-3xl font-black uppercase tracking-tight transition-colors duration-500 syne-font ${
             isLight ? 'text-slate-900' : 'text-white'
-          }`}>Boshqaruv tizimiga o&apos;tish</h3>
-          <p className={`text-[10px] max-w-md mx-auto ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-            Xodimlar, tarbiyachilar va administratorlar tizimga kirib, o&apos;z boshqaruv panellaridan foydalanishlari mumkin.
+          }`}>
+            Boshqaruv tizimiga o‘tish
+          </h3>
+          <p className={`text-xs max-w-md mx-auto leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            Xodimlar, tarbiyachilar va ma‘muriyat uchun maxsus boshqaruv kabinetlari
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {staffRoles.map((role) => (
-            <div
-              key={role.title}
-              className={`border p-5 sm:p-6 rounded-[32px] flex flex-col justify-between min-h-[340px] shadow-xl relative overflow-hidden group transition-all duration-300 hover:-translate-y-1 ${
-                isLight
-                  ? 'bg-white border-slate-200 shadow-slate-200/50 hover:border-slate-300'
-                  : `bg-[#060a17]/80 border-white/5 hover:border-white/10`
-              }`}
-            >
-              {/* Internal glow behind icon */}
-              <div className={`absolute top-[-20%] right-[-20%] w-[50%] h-[40%] rounded-full blur-[40px] bg-gradient-to-br ${role.color} opacity-20 group-hover:opacity-45 transition-opacity pointer-events-none`} />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {staffRoles.map((role) => {
+            const Icon = role.icon;
+            return (
+              <div
+                key={role.title}
+                className={`p-6 sm:p-7 rounded-3xl border flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl relative overflow-hidden group ${
+                  isLight
+                    ? 'bg-white/95 border-slate-200 hover:border-blue-300 shadow-lg shadow-slate-200/60'
+                    : 'bg-[#0b1120]/80 border-white/10 hover:border-blue-500/30 shadow-2xl shadow-black/40'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-3 mb-6">
+                    <div className={`w-13 h-13 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105 shadow-md bg-gradient-to-br ${role.gradient} ${role.shadow} text-white`}>
+                      <Icon size={24} strokeWidth={2.2} />
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border ${
+                      isLight
+                        ? 'bg-slate-100 border-slate-200 text-slate-700'
+                        : 'bg-white/5 border-white/10 text-slate-300'
+                    }`}>
+                      {role.badge}
+                    </span>
+                  </div>
 
-              <div className="space-y-4">
-                <div className="relative h-24 mt-4">
-                  <Image
-                    src={role.icon}
-                    alt={role.title}
-                    fill
-                    sizes="96px"
-                    loading="lazy"
-                    unoptimized
-                    className="object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.2)] group-hover:scale-110 transition-transform duration-300"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <h4 className={`text-sm font-black tracking-tight syne-font ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  <h4 className={`text-base sm:text-lg font-black tracking-tight syne-font ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     {role.title}
                   </h4>
-                  <p className={`text-[10px] leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                  <p className={`text-xs leading-relaxed mt-2.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                     {role.desc}
                   </p>
                 </div>
-              </div>
 
-              <Link 
-                href="/login"
-                className={`w-full mt-6 py-3 rounded-2xl bg-gradient-to-r ${role.btnColor} text-slate-950 font-black text-[10px] uppercase tracking-wider text-center flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all border border-white/10`}
-              >
-                <span className="text-white">Tizimga Kirish</span>
-                <ArrowRight size={11} className="text-white group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
-          ))}
+                <Link
+                  href="/login"
+                  className={`w-full mt-7 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-md bg-gradient-to-r ${role.gradient} text-white shadow-blue-500/15 hover:opacity-95 active:scale-[0.98]`}
+                >
+                  <span>{role.btnText}</span>
+                  <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
+            );
+          })}
         </div>
       </section>
 

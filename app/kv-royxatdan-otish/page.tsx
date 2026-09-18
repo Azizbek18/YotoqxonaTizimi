@@ -4,11 +4,12 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence } from 'framer-motion'
-import { Home, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { GraduationCap, Home, ArrowLeft, CheckCircle2, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 import { getPasswordPolicyError } from '@/lib/password-policy'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import DeveloperContactLink from '@/components/DeveloperContactLink'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import StepProgress from '@/components/register/StepProgress'
 import Step1Name from '@/components/kv-register/Step1Name'
@@ -19,6 +20,7 @@ import Step5Password from '@/components/kv-register/Step5Password'
 import { initialKvData, KvRegisterData } from '@/components/kv-register/types'
 
 const TOTAL_STEPS = 5
+const STEP_NAMES = ['F.I.Sh', 'Aloqa', 'Jinsi', "O'qish", 'Xavfsizlik']
 
 // KV-talaba (off-campus student) self-registration — deliberately its own
 // standalone page, not a step in the /register wizard: that wizard's whole
@@ -27,11 +29,6 @@ const TOTAL_STEPS = 5
 // gate either — the account lands active immediately (see
 // api/kv-talaba/register's comment) and this page auto-signs the student in
 // and drops them straight on their dashboard, same as app/register does.
-// Split into one-field-per-step (components/kv-register/*) mirroring
-// components/register's wizard shape, rather than one long form — a
-// committed applicant mid-flow, same class of page as /register, so
-// framer-motion here is fine (see mobile-perf-pass memory: it's kept out of
-// the pre-registration entry pages only).
 export default function KvRoyxatdanOtish() {
   const router = useRouter()
   const isLight = useThemeStore((s) => s.theme) === 'light'
@@ -104,22 +101,23 @@ export default function KvRoyxatdanOtish() {
 
   if (submitted) {
     return (
-      <main className={`min-h-screen px-4 py-8 flex items-center justify-center relative ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100 text-slate-900' : 'bg-[#020617] text-white'}`}>
+      <main className={`min-h-screen px-4 py-8 flex items-center justify-center relative overflow-hidden ${isLight ? 'bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 text-slate-900' : 'bg-[#020617] text-white'}`}>
         <div className="absolute top-4 right-4 z-20">
           <ThemeToggle />
         </div>
-        <div className={`mx-auto w-full max-w-md rounded-3xl border p-8 text-center shadow-2xl ${isLight ? 'bg-white/90 border-slate-200' : 'border-white/10 bg-[#0b1120]/85'}`}>
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400">
-            <CheckCircle2 size={28} />
+        <div className={`mx-auto w-full max-w-md rounded-3xl border p-8 text-center shadow-2xl backdrop-blur-xl ${isLight ? 'bg-white/95 border-slate-200' : 'border-white/10 bg-[#0b1120]/90'}`}>
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-500 shadow-lg shadow-emerald-500/10">
+            <CheckCircle2 size={32} />
           </div>
-          <h1 className="text-lg font-black">Akkauntingiz yaratildi</h1>
-          <p className={`mt-2 text-sm leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-            Endi shu email va parolingiz bilan tizimga kirishingiz mumkin.
+          <h1 className="text-xl font-black tracking-tight">Akkauntingiz muvaffaqiyatli yaratildi!</h1>
+          <p className={`mt-2 text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+            Kvartirada yashovchi talaba sifatida tizimga kiritildingiz. Endi email va parolingiz orqali shaxsiy kabinetingizga kirishingiz mumkin.
           </p>
-          <Link href="/login" className="mt-6 inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-500 hover:underline">
-            <ArrowLeft size={14} /> Kirish sahifasiga o&apos;tish
+          <Link href="/login" className="mt-6 inline-flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-blue-500/20 transition-all">
+            <ArrowLeft size={16} /> Tizimga kirish
           </Link>
         </div>
+        <DeveloperContactLink />
       </main>
     )
   }
@@ -127,65 +125,122 @@ export default function KvRoyxatdanOtish() {
   const stepProps = { stepNumber: stepIndex + 1, totalSteps: TOTAL_STEPS }
 
   return (
-    <main className={`min-h-screen px-4 py-6 flex items-center justify-center relative ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100 text-slate-900' : 'bg-[#020617] text-white'}`}>
+    <main className={`min-h-screen px-4 py-8 sm:py-12 flex flex-col items-center justify-center relative overflow-x-hidden ${isLight ? 'bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 text-slate-900' : 'bg-[#020617] text-white'}`}>
+      {/* Decorative ambient background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className={`absolute top-[-15%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[130px] ${isLight ? 'bg-blue-200/50' : 'bg-blue-600/10'}`} />
+        <div className={`absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[130px] ${isLight ? 'bg-indigo-200/50' : 'bg-indigo-600/10'}`} />
+      </div>
+
       <div className="absolute top-4 right-4 z-20">
         <ThemeToggle />
       </div>
-      <div className={`mx-auto w-full max-w-md rounded-3xl border p-5 shadow-2xl ${isLight ? 'bg-white/90 border-slate-200' : 'border-white/10 bg-[#0b1120]/85'}`}>
-        <div className="mb-2 flex items-center gap-2.5">
-          <Link href="/ariza-yuborish" className={`inline-flex items-center gap-1.5 text-xs font-bold ${isLight ? 'text-slate-500 hover:text-slate-900' : 'text-slate-400 hover:text-white'}`}>
-            <ArrowLeft size={14} /> Orqaga
-          </Link>
-          <span className={isLight ? 'text-slate-300' : 'text-slate-700'}>•</span>
-          <div className={`flex items-center gap-1.5 text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-            <Home size={13} className="text-emerald-500" /> Kvartira-talaba ro&apos;yxatdan o&apos;tishi
+
+      <div className="relative z-10 w-full max-w-xl mx-auto">
+        {/* Academic Header & System Badge */}
+        <div className="text-center mb-5 sm:mb-6">
+          <div
+            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[11px] font-bold tracking-wide uppercase mb-3 border shadow-xs backdrop-blur-md transition-all ${
+              isLight
+                ? 'bg-blue-50/90 border-blue-200 text-blue-700'
+                : 'bg-blue-500/10 border-blue-500/30 text-blue-300'
+            }`}
+          >
+            <GraduationCap size={15} className={isLight ? 'text-blue-600' : 'text-blue-400'} />
+            <span>OTM Talabalar Axborot Tizimi</span>
           </div>
+
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight">
+            Kvartira-talaba hisobidan ro‘yxatdan o‘tish
+          </h1>
+          <p className={`text-xs mt-1.5 max-w-md mx-auto leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+            Universitet talabalar turar joyi va tashqi ijara monitoringi platformasi
+          </p>
         </div>
 
-        {stepIndex === 0 && (
-          <p className={`mb-3 text-[11px] leading-snug ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-            Ijarada/kvartirada turadigan talabalar uchun — hujjat kerak emas.
-          </p>
-        )}
+        {/* Wizard Card */}
+        <div className={`w-full rounded-3xl border p-5 sm:p-7 shadow-2xl backdrop-blur-2xl transition-all ${isLight ? 'bg-white/95 border-slate-200 shadow-slate-200/70' : 'border-white/10 bg-[#0b1120]/90 shadow-black/60'}`}>
+          {/* Top Bar inside Card */}
+          <div className="mb-4 flex items-center justify-between gap-2 pb-3 border-b border-slate-200/60 dark:border-white/5">
+            <Link
+              href="/ariza-yuborish"
+              className={`inline-flex items-center gap-1.5 text-xs font-bold transition-colors ${
+                isLight ? 'text-slate-600 hover:text-blue-600' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <ArrowLeft size={14} /> Toifani o‘zgartirish
+            </Link>
 
-        <StepProgress current={stepIndex + 1} total={TOTAL_STEPS} />
+            <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border ${
+              isLight
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+            }`}>
+              <Home size={12} className="text-emerald-500" />
+              <span>Hujjatsiz tezkor ro‘yxat</span>
+            </span>
+          </div>
 
-        <AnimatePresence mode="wait">
+          {/* Educational Notice on First Step */}
           {stepIndex === 0 && (
-            <Step1Name key="step1" data={data} onChange={update} onNext={next} {...stepProps} />
+            <div className={`mb-4 flex items-start gap-2.5 p-3 rounded-2xl border text-xs transition-all ${
+              isLight ? 'bg-blue-50/80 border-blue-200/80 text-blue-950' : 'bg-blue-950/25 border-blue-500/20 text-blue-200'
+            }`}>
+              <ShieldCheck size={16} className="shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+              <div className="leading-relaxed">
+                <p className="font-bold text-[11px] uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                  Ijarada / kvartirada yashovchi talabalar uchun
+                </p>
+                <p className="text-[11px] mt-0.5 opacity-90">
+                  Ushbu forma orqali yotoqxonada emas, ijarada turuvchi talabalar OTM monitoring tizimiga tezkor kiritiladi.
+                </p>
+              </div>
+            </div>
           )}
-          {stepIndex === 1 && (
-            <Step2Contact key="step2" data={data} onChange={update} onNext={next} onBack={back} {...stepProps} />
-          )}
-          {stepIndex === 2 && (
-            <Step3Gender key="step3" data={data} onChange={update} onNext={next} onBack={back} {...stepProps} />
-          )}
-          {stepIndex === 3 && (
-            <Step4Study key="step4" data={data} onChange={update} onNext={next} onBack={back} {...stepProps} />
-          )}
-          {stepIndex === 4 && (
-            <Step5Password
-              key="step5"
-              data={data}
-              password={password}
-              confirmPassword={confirmPassword}
-              onPasswordChange={setPassword}
-              onConfirmPasswordChange={setConfirmPassword}
-              onSubmit={handleSubmit}
-              onBack={back}
-              loading={loading}
-              {...stepProps}
-            />
-          )}
-        </AnimatePresence>
 
-        <p className={`mt-3 text-center text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-          Akkauntingiz bormi?{' '}
-          <Link href="/login" className="text-emerald-500 hover:underline">
-            Kirish sahifasi
-          </Link>
-        </p>
+          {/* Stepper with Step Names */}
+          <StepProgress current={stepIndex + 1} total={TOTAL_STEPS} stepNames={STEP_NAMES} />
+
+          <div className="pt-2">
+            <AnimatePresence mode="wait">
+              {stepIndex === 0 && (
+                <Step1Name key="step1" data={data} onChange={update} onNext={next} {...stepProps} />
+              )}
+              {stepIndex === 1 && (
+                <Step2Contact key="step2" data={data} onChange={update} onNext={next} onBack={back} {...stepProps} />
+              )}
+              {stepIndex === 2 && (
+                <Step3Gender key="step3" data={data} onChange={update} onNext={next} onBack={back} {...stepProps} />
+              )}
+              {stepIndex === 3 && (
+                <Step4Study key="step4" data={data} onChange={update} onNext={next} onBack={back} {...stepProps} />
+              )}
+              {stepIndex === 4 && (
+                <Step5Password
+                  key="step5"
+                  data={data}
+                  password={password}
+                  confirmPassword={confirmPassword}
+                  onPasswordChange={setPassword}
+                  onConfirmPasswordChange={setConfirmPassword}
+                  onSubmit={handleSubmit}
+                  onBack={back}
+                  loading={loading}
+                  {...stepProps}
+                />
+              )}
+            </AnimatePresence>
+          </div>
+
+          <p className={`mt-5 pt-4 border-t border-slate-200/60 dark:border-white/5 text-center text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+            Akkauntingiz bormi?{' '}
+            <Link href="/login" className="text-blue-600 font-bold hover:underline ml-1">
+              Tizimga kirish
+            </Link>
+          </p>
+        </div>
       </div>
+      <DeveloperContactLink />
     </main>
   )
 }

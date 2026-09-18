@@ -34,15 +34,23 @@ export default function Step3Gender({ data, onChange, onNext, onBack, stepNumber
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 px-1">
-      <div className="flex items-center gap-2">
-        <div className="rounded-lg bg-emerald-500/15 p-1.5 text-emerald-400">
-          <Sparkles size={14} />
+      {/* Step Header */}
+      <div className="flex items-center gap-2.5 pb-1">
+        <div className="rounded-xl bg-blue-500/15 p-2 text-blue-600 dark:text-blue-400">
+          <Sparkles size={17} />
         </div>
-        <h2 className={`text-[13px] font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Jinsingiz</h2>
-        <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-emerald-500/70">{stepLabel(stepNumber, totalSteps)}</span>
+        <div>
+          <h2 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            Jinsingizni tanlang
+          </h2>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">Yotoqxona va hisob mezonlari uchun</p>
+        </div>
+        <span className="ml-auto text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-200/60 dark:border-blue-500/20">
+          {stepLabel(stepNumber, totalSteps)}
+        </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3.5">
         {OPTIONS.map((opt) => {
           const isActive = data.gender === opt.id
           const Icon = opt.icon
@@ -51,21 +59,25 @@ export default function Step3Gender({ data, onChange, onNext, onBack, stepNumber
               key={opt.id}
               type="button"
               onClick={() => onChange({ gender: opt.id })}
-              className={`relative overflow-hidden p-3.5 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all ${
+              className={`relative overflow-hidden p-4 rounded-2xl border flex flex-col items-center justify-center gap-2.5 transition-all ${
                 isActive
-                  ? (isLight ? 'bg-white border-emerald-300 shadow-lg' : 'bg-white/8 border-emerald-400/30 shadow-xl')
-                  : (isLight ? 'bg-white/60 border-slate-200 opacity-60' : 'bg-white/2 border-white/5 opacity-50')
+                  ? (isLight
+                      ? 'bg-blue-50/70 border-blue-400 shadow-md ring-2 ring-blue-100'
+                      : 'bg-blue-950/40 border-blue-500 shadow-xl ring-2 ring-blue-500/20')
+                  : (isLight
+                      ? 'bg-white border-slate-200 hover:border-slate-300'
+                      : 'bg-white/[0.02] border-white/8 hover:border-white/15 opacity-70')
               }`}
             >
               {isActive && (
-                <div className="absolute top-2 right-2 z-10">
-                  <Check className="text-emerald-500 w-3.5 h-3.5" strokeWidth={3} />
+                <div className="absolute top-2.5 right-2.5 z-10">
+                  <Check className="text-blue-600 dark:text-blue-400 w-4 h-4" strokeWidth={3} />
                 </div>
               )}
-              <div className={`p-2.5 rounded-xl bg-linear-to-br ${isActive ? opt.color : isLight ? 'from-slate-200 to-slate-100' : 'from-slate-700 to-slate-800'}`}>
-                <Icon className={`${isActive ? (isLight ? 'text-slate-900' : 'text-white') : 'text-slate-400'} w-5 h-5`} />
+              <div className={`p-3 rounded-xl bg-gradient-to-br ${isActive ? opt.color : (isLight ? 'from-slate-100 to-slate-200' : 'from-slate-800 to-slate-900')} text-white shadow-xs`}>
+                <Icon className="w-5 h-5" />
               </div>
-              <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? (isLight ? 'text-slate-900' : 'text-white') : 'text-slate-500'}`}>
+              <span className={`text-[11px] font-bold uppercase tracking-wider ${isActive ? (isLight ? 'text-blue-950' : 'text-white') : 'text-slate-500'}`}>
                 {opt.label}
               </span>
             </button>
@@ -73,23 +85,27 @@ export default function Step3Gender({ data, onChange, onNext, onBack, stepNumber
         })}
       </div>
 
-      <div className="flex items-center gap-3 pt-1">
+      <div className="flex items-center gap-3 pt-2">
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={onBack}
-          className={`h-11 w-11 flex items-center justify-center rounded-xl border transition-all ${isLight ? 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200 hover:text-slate-900' : 'bg-white/3 border-white/8 text-slate-400 hover:bg-white/10'}`}
+          className={`h-11 w-11 flex items-center justify-center rounded-xl border transition-all ${
+            isLight
+              ? 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+              : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
+          }`}
+          title="Orqaga"
         >
-          <ArrowLeft size={17} />
+          <ArrowLeft size={18} />
         </motion.button>
         <motion.button
+          whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
           onClick={validate}
-          className="flex-1 relative overflow-hidden group p-px rounded-xl bg-linear-to-r from-emerald-600 to-teal-700"
+          className="flex-1 h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 transition-all"
         >
-          <div className={`relative py-3 rounded-[11px] flex items-center justify-center gap-2 ${isLight ? 'bg-white/90' : 'bg-transparent'}`}>
-            <span className={`font-bold text-[12px] tracking-widest uppercase ${isLight ? 'text-slate-900' : 'text-white'}`}>Davom etish</span>
-            <ArrowRight className={`${isLight ? 'text-emerald-600' : 'text-white'} translate-x-1 transition-transform`} size={16} />
-          </div>
+          <span>Davom etish</span>
+          <ArrowRight size={16} />
         </motion.button>
       </div>
     </motion.div>

@@ -171,7 +171,7 @@ describe('createApplicationService — signing', () => {
     const { repo } = fakeRepo()
     await expect(createApplicationService(repo).createFormalAriza('stu-1', {
       kind: 'ariza', recipient: 'rektor', title: 'X', fullName: 'Boshqa Odam',
-      ttjNumber: '', room: '', incidentText: 'matn matn matn',
+      incidentText: 'matn matn matn',
       signature: { attested: true, image: PNG },
     })).rejects.toThrow(/F\.I\.Sh/i)
   })
@@ -180,9 +180,32 @@ describe('createApplicationService — signing', () => {
     const { repo } = fakeRepo()
     await expect(createApplicationService(repo).createFormalAriza('stu-1', {
       kind: 'ariza', recipient: 'rektor', title: 'X', fullName: PROFILE.full_name,
-      ttjNumber: '', room: '', incidentText: 'matn matn matn',
+      incidentText: 'matn matn matn',
       signature: { attested: true },
     })).rejects.toThrow(/[Ii]mzo/)
+  })
+
+  it('createFormalAriza: ignores a forged dorm/room number and uses the student\'s real one', async () => {
+    const { repo, store } = fakeRepo()
+    const res = await createApplicationService(repo).createFormalAriza('stu-1', {
+      kind: 'tushuntirish',
+      recipient: 'dekan',
+      title: 'Kechikish',
+      fullName: PROFILE.full_name,
+      // A student-supplied dorm/room should never reach the signed letter —
+      // the server must derive it from the profile (see the comment in
+      // createFormalAriza). Confirms the fix for the editable-field bug.
+      ttjNumber: '999',
+      room: '999',
+      incidentText: 'Bugun do‘stlarim bilan tug‘ilgan kunni nishonlab kech qaytdim.',
+      signature: { attested: true, image: PNG },
+    })
+
+    expect(res.compose.ttjNumber).toBe('12')
+    expect(res.compose.room).toBe(PROFILE.room_number)
+    const ariza = store.ariza as Record<string, unknown>
+    expect(String(ariza.text)).toContain('12-sonli talabalar turar joyining 305-xonasida')
+    expect(String(ariza.text)).not.toContain('999')
   })
 
   it('staffSignature: unsigned vs signed', async () => {

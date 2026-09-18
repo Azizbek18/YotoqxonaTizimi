@@ -79,8 +79,6 @@ export type FormalArizaBody = {
   recipient: 'rektor' | 'prorektor' | 'dekan'
   title: string
   fullName: string
-  ttjNumber: string
-  room: string
   incidentText: string
   signature: { attested: true; image: string }
 }

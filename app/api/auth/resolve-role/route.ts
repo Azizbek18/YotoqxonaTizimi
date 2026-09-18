@@ -14,7 +14,11 @@ export async function POST(request: Request) {
       )
     }
 
-    const requestUser = await getRequestUser(request)
+    // This route is called immediately after signInWithPassword, where the
+    // new auth.sessions row can briefly lag behind the freshly-issued token.
+    // Every other caller of getRequestUser must keep failing closed on the
+    // first check (see RequestAuthOptions in lib/server-auth.ts).
+    const requestUser = await getRequestUser(request, { retryOnMissingSession: true })
     if (!requestUser?.id || !requestUser.email) {
       return NextResponse.json(
         { ok: false, error: 'Autentifikatsiya talab qilinadi' },

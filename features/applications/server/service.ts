@@ -237,9 +237,15 @@ export function createApplicationService(repository: ApplicationRepository = cre
       }
 
       const facultyLabel = permitFacultyLabel(profile.faculty ?? '') || (profile.faculty ?? '')
-      const dekanName = input.recipient === 'dekan'
-        ? await repository.dekanNameForFaculty(profile.faculty ?? '')
-        : null
+      // The dorm/room a student is officially housed in is never taken from
+      // their own request — same trust boundary as `level` in
+      // parseStudentApplication above. Otherwise a student could sign a
+      // formal letter to the rector/dean claiming a different room number
+      // than the one they're actually assigned.
+      const [dekanName, ttjNumber] = await Promise.all([
+        input.recipient === 'dekan' ? repository.dekanNameForFaculty(profile.faculty ?? '') : Promise.resolve(null),
+        repository.ttjNumberForFaculty(profile.faculty ?? ''),
+      ])
 
       const compose = {
         kind: input.kind,
@@ -247,8 +253,8 @@ export function createApplicationService(repository: ApplicationRepository = cre
         fullName: input.fullName,
         facultyLabel,
         course: profile.course ?? 1,
-        ttjNumber: input.ttjNumber,
-        room: input.room,
+        ttjNumber: ttjNumber ?? '',
+        room: profile.room_number ?? '',
         incidentText: input.incidentText,
         dekanName,
       } as const

@@ -30,8 +30,6 @@ export type FormalArizaInput = {
   recipient: ArizaRecipient
   title: string
   fullName: string
-  ttjNumber: string
-  room: string
   incidentText: string
   signatureImage: string
   attested: boolean
@@ -56,8 +54,6 @@ export function parseFormalAriza(value: unknown): FormalArizaInput {
     recipient: s.recipient,
     title: text(s.title, 200, true),
     fullName: text(s.fullName, 160, true),
-    ttjNumber: text(s.ttjNumber, 20),
-    room: text(s.room, 20),
     incidentText: text(s.incidentText, 8000, true),
     signatureImage: sig.image,
     attested: true,

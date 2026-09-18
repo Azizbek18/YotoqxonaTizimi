@@ -5,6 +5,7 @@ const VALID_SESSION_ID = '11111111-2222-3333-4444-555555555555'
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   tokenGetClaims: vi.fn(),
+  tokenGetUser: vi.fn(),
   cookieGetClaims: vi.fn(),
   createServerSupabaseClient: vi.fn(),
   rpcEqMaybeSingle: vi.fn(),
@@ -45,9 +46,10 @@ beforeEach(() => {
   vi.resetAllMocks()
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co'
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key'
-  mocks.createClient.mockReturnValue({ auth: { getClaims: mocks.tokenGetClaims } })
+  mocks.createClient.mockReturnValue({ auth: { getClaims: mocks.tokenGetClaims, getUser: mocks.tokenGetUser } })
   mocks.createServerSupabaseClient.mockResolvedValue({ auth: { getClaims: mocks.cookieGetClaims } })
   mocks.rpcEqMaybeSingle.mockResolvedValue({ data: { id: VALID_SESSION_ID }, error: null })
+  mocks.tokenGetUser.mockResolvedValue({ data: { user: null }, error: new Error('invalid token') })
 })
 
 describe('getRequestAuth — Bearer token path', () => {
@@ -61,6 +63,39 @@ describe('getRequestAuth — Bearer token path', () => {
     await expect(getRequestAuth(bearerRequest())).resolves.toBeNull()
   })
 
+  it('rejects a structurally invalid bearer token locally, without an authoritative getUser network call', async () => {
+    mocks.tokenGetClaims.mockResolvedValue({ data: null, error: new Error('bad token') })
+    await expect(getRequestAuth(bearerRequest('not-a-jwt'))).resolves.toBeNull()
+    expect(mocks.tokenGetUser).not.toHaveBeenCalled()
+  })
+
+  it('falls back to authoritative getUser verification when getClaims fails', async () => {
+    const token = [
+      Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url'),
+      Buffer.from(JSON.stringify(VALID_CLAIMS)).toString('base64url'),
+      'signature',
+    ].join('.')
+    mocks.tokenGetClaims.mockResolvedValue({ data: null, error: new Error('JWKS unavailable') })
+    mocks.tokenGetUser.mockResolvedValue({
+      data: {
+        user: {
+          id: VALID_CLAIMS.sub,
+          email: VALID_CLAIMS.email,
+          phone: '',
+          app_metadata: {},
+          user_metadata: {},
+        },
+      },
+      error: null,
+    })
+
+    const result = await getRequestAuth(bearerRequest(token))
+
+    expect(mocks.tokenGetUser).toHaveBeenCalledWith(token)
+    expect(result?.sessionId).toBe(VALID_SESSION_ID)
+    expect(result?.user.email).toBe(VALID_CLAIMS.email)
+  })
+
   it('returns null when the session_id claim is not a valid UUID', async () => {
     mocks.tokenGetClaims.mockResolvedValue({ data: { claims: { ...VALID_CLAIMS, session_id: 'not-a-uuid' } }, error: null })
     await expect(getRequestAuth(bearerRequest())).resolves.toBeNull()
@@ -72,10 +107,41 @@ describe('getRequestAuth — Bearer token path', () => {
     await expect(getRequestAuth(bearerRequest())).rejects.toThrow('Auth session validation failed')
   })
 
-  it('returns null for a revoked session (row no longer present)', async () => {
+  it('returns null for a revoked session (row no longer present), failing closed on the first check', async () => {
     mocks.tokenGetClaims.mockResolvedValue({ data: { claims: VALID_CLAIMS }, error: null })
     mocks.rpcEqMaybeSingle.mockResolvedValue({ data: null, error: null })
     await expect(getRequestAuth(bearerRequest())).resolves.toBeNull()
+    expect(mocks.rpcEqMaybeSingle).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not retry a missing session unless retryOnMissingSession is requested', async () => {
+    mocks.tokenGetClaims.mockResolvedValue({ data: { claims: VALID_CLAIMS }, error: null })
+    mocks.rpcEqMaybeSingle
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: { id: VALID_SESSION_ID }, error: null })
+
+    await expect(getRequestAuth(bearerRequest())).resolves.toBeNull()
+    expect(mocks.rpcEqMaybeSingle).toHaveBeenCalledTimes(1)
+  })
+
+  it('accepts a newly-created session when it becomes visible on retry, opted in via retryOnMissingSession', async () => {
+    mocks.tokenGetClaims.mockResolvedValue({ data: { claims: VALID_CLAIMS }, error: null })
+    mocks.rpcEqMaybeSingle
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: { id: VALID_SESSION_ID }, error: null })
+
+    const result = await getRequestAuth(bearerRequest(), { retryOnMissingSession: true })
+
+    expect(result?.sessionId).toBe(VALID_SESSION_ID)
+    expect(mocks.rpcEqMaybeSingle).toHaveBeenCalledTimes(2)
+  })
+
+  it('still fails closed after exhausting retries for a genuinely revoked session, even opted in', async () => {
+    mocks.tokenGetClaims.mockResolvedValue({ data: { claims: VALID_CLAIMS }, error: null })
+    mocks.rpcEqMaybeSingle.mockResolvedValue({ data: null, error: null })
+
+    await expect(getRequestAuth(bearerRequest(), { retryOnMissingSession: true })).resolves.toBeNull()
+    expect(mocks.rpcEqMaybeSingle).toHaveBeenCalledTimes(3)
   })
 
   it('returns the user + sessionId for a valid, live session', async () => {

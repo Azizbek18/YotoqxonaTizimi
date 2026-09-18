@@ -79,7 +79,7 @@ export default function FormalArizaComposer({
     try {
       const res = await submitFormalAriza({
         kind, recipient, title: title.trim(), fullName: fullName.trim(),
-        ttjNumber: ttjNumber.trim(), room: room.trim(), incidentText: incidentText.trim(),
+        incidentText: incidentText.trim(),
         signature: { attested: true, image: signature },
       })
       setReceipt(res.receipt)
@@ -90,7 +90,7 @@ export default function FormalArizaComposer({
     } finally {
       setBusy(false)
     }
-  }, [signature, attested, kind, recipient, title, fullName, ttjNumber, room, incidentText, onSubmitted])
+  }, [signature, attested, kind, recipient, title, fullName, incidentText, onSubmitted])
 
   const downloadPdf = () => {
     generateStudentArizaPdf({
@@ -172,13 +172,26 @@ export default function FormalArizaComposer({
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className={label}>Yotoqxona raqami</label>
-                      <input className={field} value={ttjNumber} onChange={(e) => setTtjNumber(e.target.value)} placeholder="12" maxLength={20} />
+                      <input
+                        className={`${field} cursor-not-allowed opacity-70`}
+                        value={ttjNumber}
+                        readOnly
+                        disabled
+                        placeholder="—"
+                      />
                     </div>
                     <div>
                       <label className={label}>Xona</label>
-                      <input className={field} value={room} onChange={(e) => setRoom(e.target.value)} placeholder="305" maxLength={20} />
+                      <input
+                        className={`${field} cursor-not-allowed opacity-70`}
+                        value={room}
+                        readOnly
+                        disabled
+                        placeholder="—"
+                      />
                     </div>
                   </div>
+                  <p className={`-mt-2 text-[11px] ${muted}`}>Yotoqxona va xona raqami tizimdan avtomatik olinadi, tahrirlab bo‘lmaydi.</p>
                   <div>
                     <label className={label}>{kind === 'tushuntirish' ? 'Nima bo‘ldi? (voqea tafsiloti)' : 'Iltimosingiz / holat tafsiloti'}</label>
                     <textarea

@@ -117,6 +117,24 @@ describe('LoginPage', () => {
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/talaba/dashboard'), { timeout: 2000 })
   })
 
+  it('retries a transient 401 while a freshly-created session becomes visible', async () => {
+    mocks.signInWithPassword.mockResolvedValue({ data: { session: { access_token: 'tok' } }, error: null })
+    ;(global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({
+        ok: false, status: 401, json: async () => ({ ok: false, error: 'Autentifikatsiya talab qilinadi' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true, status: 200, json: async () => ({ ok: true, role: 'tarbiyachi' }),
+      })
+    render(<LoginPage />)
+
+    await fillAndSubmit('staff@example.com', 'Sup3r$ecretPass!')
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2), { timeout: 2000 })
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/tarbiyachi/dashboard'), { timeout: 2500 })
+    expect(mocks.signOut).not.toHaveBeenCalled()
+  })
+
   it('surfaces a network failure distinctly instead of a generic "no role" message', async () => {
     mocks.signInWithPassword.mockResolvedValue({ data: { session: null }, error: null })
     ;(global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network down'))

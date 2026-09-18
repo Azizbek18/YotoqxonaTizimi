@@ -68,6 +68,13 @@ export async function proxy(request: NextRequest) {
     "form-action 'self'",
     "frame-ancestors 'none'",
     "object-src 'none'",
+    // blob: — the signed ariza/tushuntirish PDF is generated client-side
+    // (jsPDF) and shown inline in an iframe so staff never leaves the review
+    // page. Without this, frame-src falls back to default-src 'self' and
+    // Chrome blocks the blob URL. Still same-origin only: no third-party
+    // frames, and framing *this* app elsewhere stays blocked by
+    // frame-ancestors.
+    "frame-src 'self' blob:",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
     // server.arcgisonline.com: slippy-map tiles (Esri Canvas basemaps, no API

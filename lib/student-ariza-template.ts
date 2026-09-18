@@ -32,7 +32,7 @@ export function recipientLine(
 }
 
 export function arizaHeadingText(kind: ArizaKind): string {
-  return kind === 'tushuntirish' ? 'T U S H U N T I R I S H' : 'A R I Z A'
+  return kind === 'tushuntirish' ? 'T U S H U N T I R I S H   X A T I' : 'A R I Z A'
 }
 
 export type ArizaComposeInput = {

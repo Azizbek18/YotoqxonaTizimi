@@ -60,7 +60,8 @@ describe('composeArizaBody', () => {
 describe('composeArizaFullText', () => {
   it('assembles recipient + applicant + heading + body', () => {
     const text = composeArizaFullText(base)
-    expect(text).toContain('T U S H U N T I R I S H')
+    // The heading is "tushuntirish xati", not the bare "tushuntirish".
+    expect(text).toContain('T U S H U N T I R I S H   X A T I')
     expect(text.startsWith('Mirzo Ulug')).toBe(true)
     expect(text).toContain(applicantLine(base))
   })

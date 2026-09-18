@@ -102,7 +102,18 @@ export default function ArizaPdfViewerModal({
       maxWidthClass="max-w-3xl"
       onClose={onClose}
     >
-      <div className="flex h-[75vh] w-full flex-col gap-3">
+      <div className="flex h-[70vh] w-full flex-col gap-3">
+        {blobUrl && (
+          <div className="flex shrink-0 justify-end">
+            <a
+              href={blobUrl}
+              download={`${studentName ?? 'ariza'}.pdf`}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${isLight ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/15 text-slate-300 hover:bg-white/10'}`}
+            >
+              <Download size={13} /> Yuklab olish
+            </a>
+          </div>
+        )}
         <div className="min-h-0 flex-1">
           {error && (
             <div className={`flex h-full items-center justify-center text-center text-sm ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>
@@ -115,24 +126,16 @@ export default function ArizaPdfViewerModal({
             </div>
           )}
           {blobUrl && (
+            // #toolbar=0&navpanes=0 strips Chrome's own PDF chrome (toolbar +
+            // thumbnail rail) so staff sees just the document; the download
+            // control above replaces what that toolbar offered.
             <iframe
-              src={blobUrl}
+              src={`${blobUrl}#toolbar=0&navpanes=0&view=FitH`}
               title="Ariza hujjati"
               className={`h-full w-full rounded-xl border ${isLight ? 'border-slate-200' : 'border-white/10'}`}
             />
           )}
         </div>
-        {blobUrl && (
-          <div className="flex justify-end">
-            <a
-              href={blobUrl}
-              download={`${studentName ?? 'ariza'}.pdf`}
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${isLight ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/15 text-slate-300 hover:bg-white/10'}`}
-            >
-              <Download size={13} /> Yuklab olish
-            </a>
-          </div>
-        )}
       </div>
     </ConfirmModal>
   )

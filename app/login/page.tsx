@@ -44,6 +44,33 @@ function LoginContent() {
     }
   };
 
+  const resolveSignedInRole = async (accessToken?: string) => {
+    const retryDelays = [0, 200, 500]
+    let lastResponse: Response | null = null
+    let lastResult: { ok?: boolean; role?: string | null; reason?: string; error?: string } | null = null
+
+    for (const retryDelay of retryDelays) {
+      if (retryDelay) {
+        await new Promise<void>((resolve) => setTimeout(resolve, retryDelay))
+      }
+      lastResponse = await fetch('/api/auth/resolve-role', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+      })
+      lastResult = await lastResponse.json().catch(() => null)
+
+      // A just-created Supabase session may take a brief moment to become
+      // visible to the server's live-session check. Retry only 401; role,
+      // account-state and server errors must be returned immediately.
+      if (lastResponse.status !== 401) break
+    }
+
+    return { response: lastResponse, result: lastResult }
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password) return show3DToast('error', "Ma'lumotlarni to'liq kiriting")
@@ -75,14 +102,10 @@ function LoginContent() {
       let userRole: string | null = null
       let failure: string | null = null
       try {
-        const roleResponse = await fetch('/api/auth/resolve-role', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(authData.session?.access_token ? { Authorization: `Bearer ${authData.session.access_token}` } : {}),
-          },
-        })
-        const roleResult = await roleResponse.json().catch(() => null)
+        const { response: roleResponse, result: roleResult } = await resolveSignedInRole(
+          authData.session?.access_token,
+        )
+        if (!roleResponse) throw new Error('Rolni aniqlash so‘rovi bajarilmadi')
         if (!roleResponse.ok || !roleResult?.ok) {
           failure = roleResult?.error
             ? `${roleResult.error} (${roleResponse.status})`
@@ -162,6 +185,34 @@ function LoginContent() {
         .light .cyber-input-inner {
           background: rgba(255, 255, 255, 0.95);
         }
+
+        /* Har necha soniyada bir marta: logo aylanadi, shu payt do'ppi
+           "yechilib" havoga ko'tariladi va aylanish tugagach yana
+           kiyib qo'yilgandek joyiga tushadi. */
+        @keyframes loginLogoSpin {
+          0% { transform: rotate(0deg); }
+          14% { transform: rotate(360deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes loginDoppiLift {
+          0% { transform: translateY(0) rotate(0deg); }
+          6% { transform: translateY(-15px) rotate(-12deg); }
+          14% { transform: translateY(-15px) rotate(-12deg); }
+          19% { transform: translateY(3px) rotate(6deg); }
+          24% { transform: translateY(0) rotate(0deg); }
+          100% { transform: translateY(0) rotate(0deg); }
+        }
+        .login-logo-spin {
+          animation: loginLogoSpin 5s ease-in-out infinite;
+          animation-delay: 1s;
+        }
+        .login-doppi-lift {
+          animation: loginDoppiLift 5s ease-in-out infinite;
+          animation-delay: 1s;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .login-logo-spin, .login-doppi-lift { animation: none; }
+        }
       `}} />
       {/* Theme Toggle */}
       <div className="absolute top-4 right-4 z-20">
@@ -178,22 +229,29 @@ function LoginContent() {
         {/* Logo Section */}
         <div className="text-center mb-6 sm:mb-10">
           <div className="relative mb-4 inline-flex">
-            {/* Do'ppi logoga bog'langan: forma va ekran o'lchamidan mustaqil turadi. */}
+            {/* Do'ppi logoga bog'langan: forma va ekran o'lchamidan mustaqil turadi.
+                Tashqi div joylashuvni (markazlashni) ushlab turadi, o'rtadagi
+                div davriy "yechilib-kiyilish" animatsiyasini bajaradi, ichki
+                div esa doimiy og'ma burchakni saqlaydi. */}
             <div
-              className="pointer-events-none absolute left-[calc(50%+8px)] top-[-18px] z-20 h-11 w-11 -translate-x-1/2 rotate-[12deg] sm:top-[-26px] sm:h-15 sm:w-15 sm:rotate-[14deg]"
+              className="pointer-events-none absolute left-[calc(50%+8px)] top-[-18px] z-20 h-11 w-11 -translate-x-1/2 sm:top-[-26px] sm:h-15 sm:w-15"
               aria-hidden="true"
             >
-              <Image
-                src="/doppi-black-transparent.png"
-                alt=""
-                fill
-                sizes="(max-width: 640px) 44px, 60px"
-                className="object-contain"
-                priority
-              />
+              <div className="login-doppi-lift h-full w-full">
+                <div className="relative h-full w-full rotate-[12deg] sm:rotate-[14deg]">
+                  <Image
+                    src="/doppi-black-transparent.png"
+                    alt=""
+                    fill
+                    sizes="(max-width: 640px) 44px, 60px"
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="inline-flex items-center justify-center w-18 h-18 sm:w-24 sm:h-24 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 shadow-xl p-1">
+            <div className="login-logo-spin inline-flex items-center justify-center w-18 h-18 sm:w-24 sm:h-24 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 shadow-xl p-1">
               <div className="relative w-full h-full rounded-full overflow-hidden">
                 <Image src="/logo.png" alt="Mening yotoqxonam" fill sizes="80px" className="object-cover" priority />
               </div>

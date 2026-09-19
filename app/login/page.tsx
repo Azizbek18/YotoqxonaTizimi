@@ -153,8 +153,10 @@ function LoginContent() {
     }
   }
 
+  // overflow-x only: clipping both axes here trapped the card off-screen on
+  // short viewports, since flex centering pushes overflow past both edges.
   return (
-    <main className={`min-h-screen flex items-center justify-center p-3 sm:p-5 relative overflow-hidden ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'} ${baloo2.className}`} style={{ fontFamily: baloo2.style.fontFamily }}>
+    <main className={`min-h-[100dvh] flex items-center justify-center py-6 px-3 sm:py-10 sm:px-6 relative overflow-x-hidden ${isLight ? 'bg-gradient-to-br from-slate-50 to-slate-100' : 'bg-[#020617]'} ${baloo2.className}`} style={{ fontFamily: baloo2.style.fontFamily }}>
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes sweep {
           0% { background-position: 0% 50%; }
@@ -164,7 +166,7 @@ function LoginContent() {
         .cyber-border {
           background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
           padding: 1px;
-          border-radius: 12px;
+          border-radius: 14px;
           transition: all 0.35s ease;
         }
         .cyber-border.focused {
@@ -179,7 +181,7 @@ function LoginContent() {
         .cyber-input-inner {
           background: rgba(11, 17, 32, 0.75);
           backdrop-filter: blur(15px);
-          border-radius: 11px;
+          border-radius: 13px;
           transition: all 0.3s ease;
         }
         .light .cyber-input-inner {
@@ -220,14 +222,14 @@ function LoginContent() {
       </div>
 
       {/* Static Background Glows */}
-      <div className={`absolute top-0 left-0 w-full h-full pointer-events-none ${isLight ? 'opacity-30' : ''}`}>
+      <div className={`absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none ${isLight ? 'opacity-30' : ''}`}>
         <div className={`absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[100px] ${isLight ? 'bg-blue-200' : 'bg-blue-500/10'}`} />
         <div className={`absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[100px] ${isLight ? 'bg-indigo-200' : 'bg-indigo-500/10'}`} />
       </div>
 
-      <div className="relative z-10 w-full max-w-[320px] sm:max-w-110">
-        {/* Logo Section */}
-        <div className="text-center mb-6 sm:mb-10">
+      <div className="relative z-10 w-full max-w-[380px] sm:max-w-[440px] mx-auto">
+        {/* Logo Section - unchanged */}
+        <div className="text-center mb-6 sm:mb-8">
           <div className="relative mb-4 inline-flex">
             {/* Do'ppi logoga bog'langan: forma va ekran o'lchamidan mustaqil turadi.
                 Tashqi div joylashuvni (markazlashni) ushlab turadi, o'rtadagi
@@ -265,24 +267,42 @@ function LoginContent() {
           </h1>
         </div>
 
-        <div className={`relative backdrop-blur-3xl border rounded-3xl sm:rounded-4xl p-3 sm:p-10 shadow-2xl overflow-visible ${isLight ? 'bg-white/80 border-slate-200' : 'bg-[#0b1120]/80 border-white/10'}`}>
-          {/* Tabs */}
-          <div className="flex gap-2.5 mb-6 sm:mb-10">
-            <button type="button" className={`flex-1 py-2 sm:py-3 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-widest rounded-xl border ${isLight ? 'text-white bg-blue-600 border-blue-700' : 'text-white bg-blue-600 border-blue-500'}`}>Kirish</button>
-            <Link href="/register" className={`flex-1 py-2 sm:py-3 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all italic ${isLight ? 'text-slate-500 hover:text-slate-700 bg-white border-slate-200' : 'text-slate-500 hover:text-white bg-white/5 border-white/10'}`}>Ro&apos;yxatdan o&apos;tish</Link>
+        <div className={`relative backdrop-blur-3xl border rounded-3xl sm:rounded-4xl p-5 sm:p-8 md:p-9 shadow-2xl overflow-visible transition-all ${isLight ? 'bg-white/90 border-slate-200/90 shadow-slate-900/10' : 'bg-[#0b1120]/85 border-white/10 shadow-black/40'}`}>
+          {/* Segmented Tabs - No-shelf, clean iOS/Modern Web style */}
+          <div className={`no-shelf p-1 rounded-2xl border flex gap-1 mb-5 sm:mb-7 ${isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-900/80 border-slate-800'}`}>
+            <button
+              type="button"
+              className="no-shelf cursor-pointer flex-1 py-2.5 sm:py-3 text-center text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-xl transition-all bg-blue-600 text-white shadow-xs"
+            >
+              Kirish
+            </button>
+            <Link
+              href="/register"
+              className={`no-shelf cursor-pointer flex-1 py-2.5 sm:py-3 text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all ${
+                isLight
+                  ? 'text-slate-500 hover:text-slate-900 hover:bg-white/60'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              Ro‘yxatdan o‘tish
+            </Link>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6">
-            <div className="space-y-2">
-              <label className={`text-[9px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Email Manzil</label>
+          <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
+            <div className="space-y-1.5">
+              <label className={`text-[10px] sm:text-[11px] font-bold uppercase tracking-wider ml-1 block ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                Email Manzil
+              </label>
               <div className={`cyber-border ${focusedField === 'email' ? 'focused' : ''}`}>
                 <div className="cyber-input-inner relative">
-                  <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'email' ? 'text-blue-500 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : isLight ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'email' ? 'text-blue-500 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : isLight ? 'text-slate-400' : 'text-slate-500'}`}>
                     <Mail size={18} />
                   </div>
                   {focusedField === 'email' && (
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-500/10 blur-[6px] pointer-events-none" />
                   )}
+                  {/* Padding stays py-only: a responsive all-sides `sm:p-*` lands
+                      later in the sheet than `pl-*` and silently eats the icon gutter. */}
                   <input
                     type="email"
                     name="email"
@@ -294,18 +314,20 @@ function LoginContent() {
                     onBlur={() => setFocusedField(null)}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="misol@gmail.com"
-                    className={`w-full bg-transparent p-3 pl-12 rounded-xl text-sm outline-none transition-colors ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'}`}
+                    className={`w-full bg-transparent py-3 sm:py-3.5 pl-11 pr-3 rounded-xl text-sm sm:text-base outline-none transition-colors ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'}`}
                     required
                   />
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className={`text-[9px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Maxfiy Parol</label>
+            <div className="space-y-1.5">
+              <label className={`text-[10px] sm:text-[11px] font-bold uppercase tracking-wider ml-1 block ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                Maxfiy Parol
+              </label>
               <div className={`cyber-border ${focusedField === 'password' ? 'focused' : ''}`}>
                 <div className="cyber-input-inner relative">
-                  <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'password' ? 'text-blue-500 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : isLight ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'password' ? 'text-blue-500 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : isLight ? 'text-slate-400' : 'text-slate-500'}`}>
                     <Lock size={18} />
                   </div>
                   {focusedField === 'password' && (
@@ -321,13 +343,14 @@ function LoginContent() {
                     onBlur={() => setFocusedField(null)}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className={`w-full bg-transparent p-3 pl-12 pr-12 rounded-xl text-sm outline-none transition-colors ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'}`}
+                    className={`w-full bg-transparent py-3 sm:py-3.5 pl-11 pr-11 rounded-xl text-sm sm:text-base outline-none transition-colors ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'}`}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${isLight ? 'text-slate-400 hover:text-slate-600' : 'text-slate-500 hover:text-white'}`}
+                    className={`no-shelf cursor-pointer absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${isLight ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                    title={showPassword ? "Parolni yashirish" : "Parolni ko'rsatish"}
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -336,8 +359,13 @@ function LoginContent() {
             </div>
 
             <button
+              type="submit"
               disabled={loading}
-              className={`w-full h-12 sm:h-14 rounded-xl sm:rounded-[22px] font-black text-[10px] sm:text-[12px] tracking-widest uppercase flex items-center justify-center gap-2 transition-all ${loading ? isLight ? 'bg-slate-100 text-slate-400' : 'bg-white/5 text-slate-600' : isLight ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]' : 'bg-linear-to-r from-blue-600 to-indigo-700 text-white active:scale-[0.98]'}`}
+              className={`no-shelf cursor-pointer w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] disabled:opacity-50 ${
+                loading
+                  ? isLight ? 'bg-slate-100 text-slate-400' : 'bg-white/5 text-slate-600'
+                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-600/25'
+              }`}
             >
               {loading ? (
                 <div className={`w-5 h-5 border-2 rounded-full animate-spin ${isLight ? 'border-slate-300 border-t-slate-600' : 'border-white/20 border-t-white'}`} />
@@ -350,10 +378,12 @@ function LoginContent() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className={`text-[14px] sm:text-[14px] font-bold ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>
+          <div className="mt-5 sm:mt-6 text-center">
+            <p className={`text-xs sm:text-sm font-semibold ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
               Parolni unutdingizmi?{' '}
-              <Link href="/forgot-password" className={`hover:underline ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-500'}`}>Tiklash</Link>
+              <Link href="/forgot-password" className={`font-bold hover:underline ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}>
+                Tiklash
+              </Link>
             </p>
           </div>
 

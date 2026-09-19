@@ -121,6 +121,7 @@ export type DormSection = {
 
 // ---- dekan's read + assign view of the blocked-dorm rooms they own ----
 export type BlockedRoomOccupant = {
+  id?: string
   name: string
   gender: 'male' | 'female' | null
   /** 'user' = registered resident · 'permit' = approved, room reserved, not yet registered. */

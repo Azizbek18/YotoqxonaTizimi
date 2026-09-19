@@ -15,6 +15,10 @@ export default defineConfig({
     },
   },
   test: {
+    // This repository has many small suites, including jsdom-heavy component
+    // tests. Capping the pool prevents Windows from timing out while spawning
+    // a large burst of fork workers alongside TypeScript/Next.js processes.
+    maxWorkers: 4,
     // `.vercel/` holds CLI metadata and, when the Vercel CLI is used locally,
     // detached worktrees of this same repo. Their stale copies of our e2e specs
     // would otherwise be collected here and fail (Playwright's `test()` cannot

@@ -2,7 +2,23 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { DoorClosed, MousePointer2, Pause, Play, Snowflake, Users, X } from 'lucide-react'
+import {
+  Box,
+  Compass,
+  DoorClosed,
+  Eye,
+  Maximize2,
+  Minimize2,
+  MousePointer2,
+  Pause,
+  Play,
+  RotateCcw,
+  Snowflake,
+  Users,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react'
 import * as THREE from 'three'
 import { getRoomOccupancyTone } from '@/features/app-settings/presentation'
 import { useScopedFontFamily } from '@/lib/font-scope-context'
@@ -56,6 +72,8 @@ export default function RoomScene3D({
   const [hovered, setHovered] = useState<Hover>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [autoRotate, setAutoRotate] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [cameraPreset, setCameraPreset] = useState<'3d' | 'topdown' | 'corridor'>('3d')
 
   const roomByNumber = useMemo(() => {
     const m = new Map<string, SceneRoom>()
@@ -63,10 +81,12 @@ export default function RoomScene3D({
     return m
   }, [rooms])
 
-  // The animation loop reads live state through refs so toggling rotation or
-  // hovering never tears down and rebuilds the whole Three.js scene.
+  // Refs to allow external camera & view manipulation without recreating scene
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
+  const roomGroupRef = useRef<THREE.Group | null>(null)
   const autoRotateRef = useRef(autoRotate)
   const pauseForInteractionRef = useRef(false)
+
   useEffect(() => { autoRotateRef.current = autoRotate }, [autoRotate])
   useEffect(() => { pauseForInteractionRef.current = Boolean(hovered) || selected !== null }, [hovered, selected])
 
@@ -87,6 +107,7 @@ export default function RoomScene3D({
     const camera = new THREE.PerspectiveCamera(45, width / Math.max(height, 1), 0.1, 100)
     camera.position.set(0, 5, 8)
     camera.lookAt(0, 0, 0)
+    cameraRef.current = camera
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
     renderer.setSize(width, height, false)
@@ -101,28 +122,38 @@ export default function RoomScene3D({
     })
     if (canvas.parentElement) resizeObserver.observe(canvas.parentElement)
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6))
-    const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8)
-    dirLight1.position.set(5, 10, 7)
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7))
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.9)
+    dirLight1.position.set(6, 12, 8)
     scene.add(dirLight1)
-    const dirLight2 = new THREE.DirectionalLight(0x6366f1, 0.4)
-    dirLight2.position.set(-5, 5, -5)
+    const dirLight2 = new THREE.DirectionalLight(0x6366f1, 0.45)
+    dirLight2.position.set(-6, 6, -6)
     scene.add(dirLight2)
 
     const roomGroup = new THREE.Group()
     scene.add(roomGroup)
+    roomGroupRef.current = roomGroup
 
-    const slabGeo = new THREE.BoxGeometry(slabWidth, 0.15, slabDepth)
-    const slabMat = new THREE.MeshStandardMaterial({ color: isLight ? 0xe2e8f0 : 0x111827, roughness: 0.8, metalness: 0.1 })
+    // Ground floor slab with architectural bevel lines
+    const slabGeo = new THREE.BoxGeometry(slabWidth, 0.16, slabDepth)
+    const slabMat = new THREE.MeshStandardMaterial({
+      color: isLight ? 0xf1f5f9 : 0x0f172a,
+      roughness: 0.85,
+      metalness: 0.1,
+    })
     const slabMesh = new THREE.Mesh(slabGeo, slabMat)
-    slabMesh.position.set(0, -0.075, 0)
+    slabMesh.position.set(0, -0.08, 0)
     roomGroup.add(slabMesh)
     const slabEdges = new THREE.EdgesGeometry(slabGeo)
-    const slabLineMat = new THREE.LineBasicMaterial({ color: isLight ? 0x94a3b8 : 0x475569 })
+    const slabLineMat = new THREE.LineBasicMaterial({ color: isLight ? 0xcbd5e1 : 0x334155 })
     slabMesh.add(new THREE.LineSegments(slabEdges, slabLineMat))
 
-    const corridorGeo = new THREE.BoxGeometry(corridorWidth, 0.02, slabDepth - 0.3)
-    const corridorMat = new THREE.MeshStandardMaterial({ color: isLight ? 0xcbd5e1 : 0x1e293b, roughness: 0.9 })
+    // Corridor runway
+    const corridorGeo = new THREE.BoxGeometry(corridorWidth, 0.02, slabDepth - 0.25)
+    const corridorMat = new THREE.MeshStandardMaterial({
+      color: isLight ? 0xe2e8f0 : 0x1e293b,
+      roughness: 0.9,
+    })
     const corridorMesh = new THREE.Mesh(corridorGeo, corridorMat)
     corridorMesh.position.set(0, 0.01, 0)
     roomGroup.add(corridorMesh)
@@ -136,7 +167,11 @@ export default function RoomScene3D({
 
       const geo = new THREE.BoxGeometry(room.width, room.height, room.depth)
       const material = new THREE.MeshStandardMaterial({
-        color, roughness: 0.2, metalness: 0.1, transparent: true, opacity: room.frozen ? 0.55 : 0.85,
+        color,
+        roughness: 0.2,
+        metalness: 0.1,
+        transparent: true,
+        opacity: room.frozen ? 0.55 : 0.85,
       })
       const mesh = new THREE.Mesh(geo, material)
       mesh.position.set(room.x, room.height / 2, room.z)
@@ -161,18 +196,17 @@ export default function RoomScene3D({
       pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1
       pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1
       raycaster.setFromCamera(pointer, camera)
-      // Non-recursive: hit the solid room boxes only, never their wireframe
-      // (LineSegments) children — those carry no name and would blank the card.
       const hit = raycaster.intersectObjects(meshes, false)[0]?.object
       if (!hit) return undefined
       let obj: THREE.Object3D | null = hit
       while (obj && !obj.name && obj.parent) obj = obj.parent
       return obj && obj.name ? (obj as THREE.Mesh) : undefined
     }
+
     const orbit = (dx: number, dy: number) => {
       roomGroup.rotation.y += dx * 0.005
       roomGroup.rotation.x += dy * 0.005
-      roomGroup.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, roomGroup.rotation.x))
+      roomGroup.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, roomGroup.rotation.x))
     }
 
     const onMouseDown = (e: MouseEvent) => { isDragging = true; prevMouse = { x: e.offsetX, y: e.offsetY } }
@@ -201,10 +235,22 @@ export default function RoomScene3D({
       setTimeout(() => mesh.scale.set(1, 1, 1), 150)
       setSelected(mesh.name)
     }
+
+    // Wheel zoom
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const factor = e.deltaY > 0 ? 1.06 : 0.94
+      const dist = camera.position.length() * factor
+      if (dist >= 3 && dist <= 25) {
+        camera.position.multiplyScalar(factor)
+      }
+    }
+
     canvas.addEventListener('mousedown', onMouseDown)
     canvas.addEventListener('mousemove', onMouseMove)
     canvas.addEventListener('mouseleave', onMouseLeave)
     canvas.addEventListener('click', onClick)
+    canvas.addEventListener('wheel', onWheel, { passive: false })
     window.addEventListener('mouseup', onMouseUp)
 
     let touchPrev = { x: 0, y: 0 }
@@ -228,6 +274,7 @@ export default function RoomScene3D({
       if (onScreen && !frameId) animate()
     }, { threshold: 0.05 })
     io.observe(canvas)
+
     const animate = () => {
       if (!onScreen) { frameId = 0; return }
       frameId = requestAnimationFrame(animate)
@@ -246,6 +293,7 @@ export default function RoomScene3D({
       canvas.removeEventListener('mousemove', onMouseMove)
       canvas.removeEventListener('mouseleave', onMouseLeave)
       canvas.removeEventListener('click', onClick)
+      canvas.removeEventListener('wheel', onWheel)
       canvas.removeEventListener('touchstart', onTouchStart)
       canvas.removeEventListener('touchmove', onTouchMove)
       canvas.removeEventListener('touchend', onMouseUp)
@@ -262,11 +310,52 @@ export default function RoomScene3D({
     }
   }, [rooms, slabWidth, slabDepth, corridorWidth, isLight])
 
+  // Camera preset controls
+  const handlePreset = (preset: '3d' | 'topdown' | 'corridor') => {
+    setCameraPreset(preset)
+    const camera = cameraRef.current
+    const group = roomGroupRef.current
+    if (!camera || !group) return
+
+    setAutoRotate(false)
+    if (preset === 'topdown') {
+      group.rotation.set(Math.PI / 2, 0, 0)
+      camera.position.set(0, 9, 0.01)
+      camera.lookAt(0, 0, 0)
+    } else if (preset === 'corridor') {
+      group.rotation.set(0.04, 0, 0)
+      camera.position.set(0, 1.5, 5.5)
+      camera.lookAt(0, 0.3, 0)
+    } else {
+      group.rotation.set(0.35, 0.5, 0)
+      camera.position.set(0, 5, 8)
+      camera.lookAt(0, 0, 0)
+    }
+  }
+
+  const handleReset = () => {
+    setCameraPreset('3d')
+    const camera = cameraRef.current
+    const group = roomGroupRef.current
+    if (!camera || !group) return
+    group.rotation.set(0, 0, 0)
+    camera.position.set(0, 5, 8)
+    camera.lookAt(0, 0, 0)
+    setAutoRotate(true)
+  }
+
+  const handleZoom = (direction: 'in' | 'out') => {
+    const camera = cameraRef.current
+    if (!camera) return
+    const factor = direction === 'in' ? 0.85 : 1.15
+    const dist = camera.position.length() * factor
+    if (dist >= 3 && dist <= 25) {
+      camera.position.multiplyScalar(factor)
+    }
+  }
+
   const capacityKnown = rooms.some((r) => r.capacity != null)
   const anyFrozen = rooms.some((r) => r.frozen)
-  const pill = `flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${
-    isLight ? 'border-slate-200 bg-white/85 text-slate-700' : 'border-white/10 bg-white/[0.05] text-slate-200'
-  }`
   const legend: Array<[string, string]> = [['#10b981', 'Bo‘sh']]
   if (capacityKnown) legend.push(['#f59e0b', 'Qisman'], ['#ef4444', 'To‘la'])
   else legend.push(['#64748b', 'Sig‘im noma‘lum'])
@@ -275,11 +364,9 @@ export default function RoomScene3D({
   const hoverRoom = hovered ? roomByNumber.get(hovered.roomNumber) : undefined
   const selectedRoom = selected ? roomByNumber.get(selected) : undefined
 
-  // Cursor-anchored placement for the hover card, flipped away from the
-  // viewport edge so it never spills off-screen.
   const hoverPos = (() => {
     if (!hovered || typeof window === 'undefined') return { left: 0, top: 0 }
-    const W = 268
+    const W = 280
     const H = 340
     const flipX = hovered.clientX > window.innerWidth - W - 24
     const flipY = hovered.clientY > window.innerHeight - H - 24
@@ -289,47 +376,162 @@ export default function RoomScene3D({
     }
   })()
 
+  const canvasHeightClass = isExpanded ? 'h-[620px]' : 'h-[440px]'
+
   return (
-    <div className={`relative min-h-[420px] overflow-hidden rounded-2xl border ${
-      className ?? (isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-slate-900/40')
+    <div className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
+      className ?? (isLight ? 'border-slate-200/90 bg-white/90 shadow-sm' : 'border-slate-800 bg-slate-900/60 shadow-lg')
     }`}>
-      {/* legend */}
-      <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-wrap gap-1.5">
+      {/* Top Left: Glassmorphic Status Legend */}
+      <div className="pointer-events-none absolute left-3.5 top-3.5 z-10 flex flex-wrap items-center gap-1.5 backdrop-blur-md rounded-xl p-1 bg-white/60 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/10 shadow-xs">
         {legend.map(([c, label]) => (
-          <div key={label} className={pill}>
-            <span className="h-2 w-2 rounded-full" style={{ background: c }} />
-            <span className="text-[10px] font-bold uppercase tracking-tighter">{label}</span>
+          <div
+            key={label}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+              isLight ? 'text-slate-700' : 'text-slate-200'
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full ring-2 ring-white/50 dark:ring-black/30" style={{ background: c }} />
+            <span>{label}</span>
           </div>
         ))}
       </div>
 
-      {/* auto-rotate toggle */}
+      {/* Top Right: Advanced Interactive 3D Toolbar */}
       {rooms.length > 0 && (
-        <button
-          type="button"
-          onClick={() => setAutoRotate((v) => !v)}
-          className={`absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
-            isLight ? 'border-slate-200 bg-white/85 text-slate-700 hover:bg-white' : 'border-white/10 bg-white/[0.05] text-slate-200 hover:bg-white/10'
-          }`}
-          title={autoRotate ? "Aylanishni to‘xtatish" : 'Aylantirish'}
-        >
-          {autoRotate ? <Pause size={11} /> : <Play size={11} />}
-          {autoRotate ? 'To‘xtatish' : 'Aylantirish'}
-        </button>
+        <div className="absolute right-3.5 top-3.5 z-10 flex flex-wrap items-center gap-1 backdrop-blur-md rounded-xl p-1 bg-white/70 dark:bg-slate-900/70 border border-slate-200/70 dark:border-white/10 shadow-xs">
+          {/* Camera View Mode Presets */}
+          <div className="flex items-center gap-0.5 border-r border-slate-200 dark:border-white/10 pr-1 mr-0.5">
+            <button
+              type="button"
+              onClick={() => handlePreset('3d')}
+              className={`no-shelf flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                cameraPreset === '3d'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-white/10'
+              }`}
+              title="3D Izometrik ko'rinish"
+            >
+              <Box size={12} />
+              3D
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePreset('topdown')}
+              className={`no-shelf flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                cameraPreset === 'topdown'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-white/10'
+              }`}
+              title="2D Plan / Tepadan ko'rinish"
+            >
+              <Compass size={12} />
+              2D Tarx
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePreset('corridor')}
+              className={`no-shelf flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                cameraPreset === 'corridor'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-white/10'
+              }`}
+              title="Yo'lak (Koridor) burchagi"
+            >
+              <Eye size={12} />
+              Yo‘lak
+            </button>
+          </div>
+
+          {/* Zoom Buttons */}
+          <div className="flex items-center gap-0.5 border-r border-slate-200 dark:border-white/10 pr-1 mr-0.5">
+            <button
+              type="button"
+              onClick={() => handleZoom('in')}
+              className={`no-shelf p-1.5 rounded-lg transition-colors ${
+                isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-white/10'
+              }`}
+              title="Kattalashtirish (Zoom In)"
+              aria-label="Zoom in"
+            >
+              <ZoomIn size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleZoom('out')}
+              className={`no-shelf p-1.5 rounded-lg transition-colors ${
+                isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-white/10'
+              }`}
+              title="Kichraytirish (Zoom Out)"
+              aria-label="Zoom out"
+            >
+              <ZoomOut size={13} />
+            </button>
+          </div>
+
+          {/* Auto-rotate Toggle */}
+          <button
+            type="button"
+            onClick={() => setAutoRotate((v) => !v)}
+            className={`no-shelf flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+              autoRotate
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                : isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-white/10'
+            }`}
+            title={autoRotate ? "Aylanishni to‘xtatish" : 'Avto-aylanishni yoqish'}
+          >
+            {autoRotate ? <Pause size={11} /> : <Play size={11} />}
+            <span className="hidden sm:inline">{autoRotate ? 'Jonli' : 'To‘xtagan'}</span>
+          </button>
+
+          {/* Reset Camera */}
+          <button
+            type="button"
+            onClick={handleReset}
+            className={`no-shelf p-1.5 rounded-lg transition-colors ${
+              isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-white/10'
+            }`}
+            title="Dastlabki holatga qaytarish"
+            aria-label="Reset"
+          >
+            <RotateCcw size={13} />
+          </button>
+
+          {/* Expand Height Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsExpanded((v) => !v)}
+            className={`no-shelf p-1.5 rounded-lg transition-colors ${
+              isExpanded
+                ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400'
+                : isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-white/10'
+            }`}
+            title={isExpanded ? 'Standart balandlikka qaytarish' : 'Kengaytirilgan maket'}
+            aria-label="Toggle height"
+          >
+            {isExpanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+          </button>
+        </div>
       )}
 
+      {/* 3D Canvas or Empty State */}
       {rooms.length === 0 ? (
-        <div className="flex h-[420px] flex-col items-center justify-center px-6 text-center">
-          <p className={`text-sm font-bold ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className={`flex ${canvasHeightClass} flex-col items-center justify-center px-6 text-center`}>
+          <div className={`mb-3 rounded-2xl p-4 border ${isLight ? 'bg-slate-100/70 border-slate-200' : 'bg-slate-800/40 border-slate-700'}`}>
+            <Box size={36} className="text-indigo-500 opacity-60" />
+          </div>
+          <p className={`text-sm font-bold ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
             {emptyHint ?? 'Hali xona qo‘shilmagan.'}
           </p>
         </div>
       ) : (
-        <canvas ref={canvasRef} className="block h-[420px] w-full cursor-grab outline-none active:cursor-grabbing" />
+        <canvas
+          ref={canvasRef}
+          className={`block ${canvasHeightClass} w-full cursor-grab outline-none active:cursor-grabbing transition-all duration-300`}
+        />
       )}
 
-      {/* hover card — follows the cursor, portalled out so an ancestor
-          transform / overflow can't clip it */}
+      {/* Hover card — follows cursor */}
       {hovered && typeof document !== 'undefined' && createPortal(
         <div
           className="pointer-events-none fixed z-[9999]"
@@ -340,9 +542,9 @@ export default function RoomScene3D({
         document.body,
       )}
 
-      {/* click card — pinned in a corner, stays while you inspect the model */}
+      {/* Selected click card — pinned in bottom right */}
       {selected && selectedRoom && (
-        <div className="absolute bottom-3 right-3 z-20 max-w-[calc(100%-1.5rem)]">
+        <div className="absolute bottom-3.5 right-3.5 z-20 max-w-[calc(100%-1.75rem)] animate-in fade-in zoom-in-95 duration-150">
           <RoomInfoCard
             room={selectedRoom}
             roomNumber={selected}
@@ -353,12 +555,13 @@ export default function RoomScene3D({
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-3 left-3">
-        <p className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest ${
-          isLight ? 'text-slate-400' : 'text-slate-500'
+      {/* Helper text on bottom left */}
+      <div className="pointer-events-none absolute bottom-3.5 left-3.5">
+        <p className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest backdrop-blur-md rounded-lg px-2.5 py-1 ${
+          isLight ? 'bg-white/60 text-slate-500 border border-slate-200/50' : 'bg-slate-900/60 text-slate-400 border border-white/5'
         }`}>
-          <MousePointer2 size={12} />
-          Aylantirish uchun sudrang, tanlash uchun xonani bosing.
+          <MousePointer2 size={12} className="text-indigo-500" />
+          Aylantirish uchun sudrang · Kattalashtirish uchun g‘ildirakni burang · Xonani bosing
         </p>
       </div>
     </div>

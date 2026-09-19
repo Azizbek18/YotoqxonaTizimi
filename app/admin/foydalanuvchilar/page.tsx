@@ -1265,10 +1265,10 @@ export default function AdminUsersPage() {
                     <button
                       key={tab.key}
                       onClick={() => setDetailTab(tab.key as 'profil' | 'hujjatlar' | 'oila' | 'tolovlar' | 'chat')}
-                      className={`flex-1 shrink-0 whitespace-nowrap py-2 px-3 sm:px-4 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                      className={`no-shelf flex-1 shrink-0 whitespace-nowrap py-2 px-3 sm:px-4 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
                         detailTab === tab.key
-                          ? 'bg-indigo-600 text-white shadow-[0_3px_0_0_#3730a3]'
-                          : `${isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-white'}`
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : `${isLight ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50' : 'text-slate-400 hover:text-white hover:bg-white/5'}`
                       }`}
                     >
                       {tab.label}
@@ -1289,11 +1289,11 @@ export default function AdminUsersPage() {
                           const Icon = item.icon
                           return (
                             <div key={idx} className="flex items-center gap-3">
-                              <div className="rounded-lg p-2.5 bg-slate-800/40 text-slate-400 shrink-0">
+                              <div className={`rounded-lg p-2.5 shrink-0 ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-slate-800/40 text-slate-400'}`}>
                                 <Icon size={16} />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="text-white text-xs font-semibold truncate">{item.value}</p>
+                                <p className={`text-xs font-semibold truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>{item.value}</p>
                                 <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{item.label}</p>
                               </div>
                             </div>
@@ -1316,11 +1316,11 @@ export default function AdminUsersPage() {
                           const Icon = item.icon
                           return (
                             <div key={idx} className="flex items-center gap-3">
-                              <div className="rounded-lg p-2.5 bg-slate-800/40 text-slate-400 shrink-0">
+                              <div className={`rounded-lg p-2.5 shrink-0 ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-slate-800/40 text-slate-400'}`}>
                                 <Icon size={16} />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="text-white text-xs font-semibold truncate">{item.value}</p>
+                                <p className={`text-xs font-semibold truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>{item.value}</p>
                                 <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{item.label}</p>
                               </div>
                             </div>
@@ -1344,7 +1344,7 @@ export default function AdminUsersPage() {
                           <div key={idx} className="flex items-center gap-3">
                             <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)] shrink-0" />
                             <div className="min-w-0 flex-1">
-                              <p className="text-white text-xs font-semibold truncate">{item.value}</p>
+                              <p className={`text-xs font-semibold truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>{item.value}</p>
                               <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{item.label}</p>
                             </div>
                           </div>
@@ -1609,7 +1609,9 @@ export default function AdminUsersPage() {
                           title={roommate.full_name}
                           onClick={() => setSelectedUser(roommate)}
                         >
-                          <div className="relative h-12 w-12 overflow-hidden rounded-xl border border-white/10 bg-white/5 transition-all group-hover:scale-105 group-hover:border-emerald-500/50">
+                          <div className={`relative h-12 w-12 overflow-hidden rounded-xl border transition-all group-hover:scale-105 group-hover:border-emerald-500/50 ${
+                            isLight ? 'border-slate-200 bg-slate-100' : 'border-white/10 bg-white/5'
+                          }`}>
                             {roommate.avatar_url ? (
                               <Image
                                 src={roommate.avatar_url}
@@ -1620,12 +1622,16 @@ export default function AdminUsersPage() {
                                 className="object-cover"
                               />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-emerald-500/20 to-teal-500/20 text-[10px] font-black text-emerald-200">
+                              <div className={`flex h-full w-full items-center justify-center text-[10px] font-black ${
+                                isLight ? 'text-emerald-700 bg-emerald-50' : 'bg-linear-to-br from-emerald-500/20 to-teal-500/20 text-emerald-200'
+                              }`}>
                                 {getInitials(roommate.full_name)}
                               </div>
                             )}
                           </div>
-                          <span className="text-[9px] text-slate-400 font-bold max-w-[64px] truncate">{roommate.full_name.split(' ')[0]}</span>
+                          <span className={`text-[9px] font-bold max-w-[64px] truncate ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                            {roommate.full_name.split(' ')[0]}
+                          </span>
                         </div>
                       ))}
                     </div>

@@ -12,9 +12,10 @@ import {
   DoorOpen,
   Clock,
   ChevronDown,
-  Sparkles,
   MapPin,
   Loader2,
+  Search,
+  CheckCircle2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getAuthHeaders } from '@/lib/auth-session'
@@ -56,7 +57,11 @@ const STATE_UI: Record<AttendanceState, { label: string; short: string; solid: s
 }
 
 function initials(name: string) {
-  return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || '?'
+  const trimmed = name.trim()
+  if (!trimmed) return '??'
+  const parts = trimmed.split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase() || '??'
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 /** mm:ss (or h:mm:ss) left until `iso`, or null when past. */
@@ -89,6 +94,7 @@ export default function TarbiyachiYoqlamaPage() {
   const [flags, setFlags] = useState<Flag[]>([])
   const [error, setError] = useState<string | null>(null)
   const [activeFloor, setActiveFloor] = useState<number | 'all'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set())
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -257,60 +263,128 @@ export default function TarbiyachiYoqlamaPage() {
   const totalUnmarked = s?.unmarked ?? 0
   const pct = s && s.total ? Math.round(((s.present + s.excused + s.absent) / s.total) * 100) : 0
 
-  const shownFloors = activeFloor === 'all' ? floors : floors.filter((f) => f.floor === activeFloor)
+  const shownFloors = useMemo(
+    () => (activeFloor === 'all' ? floors : floors.filter((f) => f.floor === activeFloor)),
+    [floors, activeFloor]
+  )
+
+  // Filtered floors based on search query
+  const filteredFloors = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return shownFloors
+    return shownFloors
+      .map((fl) => {
+        const matchingRooms = fl.rooms
+          .map((room) => {
+            const roomMatches = room.roomNumber.toLowerCase().includes(q)
+            const matchingResidents = room.residents.filter((res) =>
+              res.fullName.toLowerCase().includes(q)
+            )
+            if (roomMatches) return room
+            if (matchingResidents.length > 0) return { ...room, residents: matchingResidents }
+            return null
+          })
+          .filter((r): r is NonNullable<typeof r> => r !== null)
+
+        if (matchingRooms.length === 0) return null
+        const residents = matchingRooms.flatMap((r) => r.residents)
+        return {
+          ...fl,
+          rooms: matchingRooms,
+          total: residents.length,
+          present: residents.filter((r) => r.state === 'present').length,
+          marked: residents.filter((r) => r.state !== 'unmarked').length,
+          unmarkedIds: residents.filter((r) => r.state === 'unmarked').map((r) => r.id),
+        }
+      })
+      .filter((fl): fl is NonNullable<typeof fl> => fl !== null)
+  }, [shownFloors, searchQuery])
 
   return (
-    <div className="space-y-5 pb-24">
-      {/* ── Hero ─────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 p-5 sm:p-7"
+    <div className="space-y-6 pb-28">
+      {/* ── Hero Banner ──────────────────────────────────── */}
+      <div
+        className="no-shelf relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 p-5 sm:p-7 shadow-xl shadow-indigo-950/20 border border-white/20 text-white"
       >
-        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+        {/* Ambient glows */}
+        <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -left-16 -bottom-20 h-60 w-60 rounded-full bg-violet-400/10 blur-3xl" />
+
+        {/* Top bar inside hero */}
         <div className="relative flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-white">
-              <ClipboardCheck size={22} />
-            </span>
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-inner shrink-0">
+              <ClipboardCheck size={24} strokeWidth={2.2} />
+            </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Yo‘qlama</h1>
-              <p className="mt-0.5 text-xs sm:text-sm text-indigo-100">
-                Qavatma-qavat kunlik nazorat
-                {view && ` · ${view.session.kind === 'nightly' ? 'kechki' : 'qo‘lda ochilgan'}`}
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white" style={{ color: '#ffffff' }}>
+                  Yo‘qlama
+                </h1>
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white/15 text-white backdrop-blur-md border border-white/20"
+                  style={{ color: '#ffffff' }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {view ? (view.session.kind === 'nightly' ? 'Kechki nazorat' : 'Qo‘lda ochilgan') : 'Kunlik nazorat'}
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs sm:text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
+                Yotoqxona xonalarini qavatma-qavat tekshirish va talabalar davomatini qayd etish
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             {view?.session.status === 'open' && countdown && (
-              <span className="inline-flex items-center gap-1.5 rounded-xl bg-white/15 px-3 py-2 text-sm font-bold text-white tabular-nums">
-                <Clock size={14} /> {countdown}
+              <span
+                className="no-shelf inline-flex items-center gap-1.5 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 px-3.5 py-2 text-xs sm:text-sm font-bold text-white tabular-nums shadow-xs"
+                style={{ color: '#ffffff' }}
+              >
+                <Clock size={15} className="text-white/80" />
+                <span>{countdown}</span>
               </span>
             )}
             <button
+              type="button"
               onClick={() => void bootstrap()}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/95 px-3.5 py-2 text-xs font-bold text-indigo-700 shadow-lg shadow-black/10 transition-transform hover:bg-white active:scale-95"
+              className="no-shelf inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white transition-all active:scale-95 shadow-xs"
+              style={{ color: '#ffffff' }}
+              title="Yangilash"
             >
-              <RefreshCw size={14} />
+              <RefreshCw size={15} />
             </button>
           </div>
         </div>
 
+        {/* Hero Statistics */}
         {s && (
-          <div className="relative mt-5 flex flex-wrap items-center gap-4">
-            <HeroRing pct={pct} present={s.present} total={s.total} />
-            <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-4 min-w-[240px]">
+          <div className="relative mt-6 flex flex-wrap items-center gap-4 sm:gap-6">
+            <HeroRing pct={pct} marked={s.present + s.excused + s.absent} total={s.total} />
+            <div className="grid flex-1 grid-cols-2 gap-2.5 sm:grid-cols-4 min-w-[240px]">
               {([
-                ['Hozir', s.present, 'present'],
-                ['Ruxsat', s.excused, 'excused'],
-                ['Yo‘q', s.absent, 'absent'],
-                ['Belgilanmagan', s.unmarked, 'unmarked'],
-              ] as const).map(([label, val, st]) => (
-                <div key={label} className="rounded-2xl bg-white/10 p-3 backdrop-blur-sm">
-                  <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-100">
-                    <span className={`h-1.5 w-1.5 rounded-full ${STATE_UI[st].dot}`} /> {label}
+                ['Hozir', s.present, 'present', 'bg-emerald-400'],
+                ['Ruxsat', s.excused, 'excused', 'bg-amber-400'],
+                ['Yo‘q', s.absent, 'absent', 'bg-rose-400'],
+                ['Belgilanmagan', s.unmarked, 'unmarked', 'bg-slate-300'],
+              ] as const).map(([label, val, , dotColor]) => (
+                <div
+                  key={label}
+                  className="no-shelf rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 p-3 sm:p-3.5 transition-all hover:bg-white/20"
+                >
+                  <p
+                    className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-white"
+                    style={{ color: 'rgba(255, 255, 255, 0.9)' }}
+                  >
+                    <span className={`h-2 w-2 rounded-full ${dotColor}`} />
+                    <span>{label}</span>
                   </p>
-                  <p className="mt-1 text-2xl font-bold text-white tabular-nums">{val}</p>
+                  <p
+                    className="mt-1 text-2xl sm:text-3xl font-black text-white tabular-nums tracking-tight"
+                    style={{ color: '#ffffff' }}
+                  >
+                    {val}
+                  </p>
                 </div>
               ))}
             </div>
@@ -318,31 +392,44 @@ export default function TarbiyachiYoqlamaPage() {
         )}
 
         {view && view.session.status !== 'open' && (
-          <p className="relative mt-4 rounded-xl bg-white/15 px-3 py-2 text-xs font-semibold text-white">
+          <p
+            className="relative mt-4 rounded-xl bg-white/15 px-3 py-2 text-xs font-semibold text-white border border-white/20"
+            style={{ color: '#ffffff' }}
+          >
             {view.session.status === 'auto_closed' ? 'Yo‘qlama vaqti tugadi' : 'Yo‘qlama yakunlangan'} — faqat ko‘rish mumkin.
           </p>
         )}
-      </motion.div>
+      </div>
 
       {/* ── Body ─────────────────────────────────────────── */}
       {loading ? (
-        <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skel key={i} className="h-28 rounded-2xl" />)}</div>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skel key={i} className="h-28 rounded-2xl" />
+          ))}
+        </div>
       ) : error ? (
-        <div className={`flex items-start gap-3 rounded-2xl border p-5 text-sm ${
-          isLight ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-rose-500/25 bg-rose-500/10 text-rose-200'
-        }`}>
+        <div
+          className={`flex items-start gap-3 rounded-2xl border p-5 text-sm ${
+            isLight ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-rose-500/25 bg-rose-500/10 text-rose-200'
+          }`}
+        >
           <AlertTriangle size={18} className="mt-0.5 shrink-0" />
           <div>
             <p className="font-semibold">{error}</p>
-            <button onClick={() => void bootstrap()} className={`mt-2 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${ui.dangerSoft}`}>
+            <button
+              type="button"
+              onClick={() => void bootstrap()}
+              className={`no-shelf mt-2 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${ui.dangerSoft}`}
+            >
               Qayta urinish
             </button>
           </div>
         </div>
       ) : !view ? (
-        <div className={`rounded-3xl border p-8 sm:p-12 text-center ${ui.card}`}>
+        <div className={`no-shelf rounded-3xl border p-8 sm:p-12 text-center ${ui.card}`}>
           <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${ui.accentSoft}`}>
-            <ClipboardCheck size={26} />
+            <ClipboardCheck size={28} />
           </div>
           <h2 className={`text-lg font-bold ${ui.strong}`}>Hozircha ochiq yo‘qlama yo‘q</h2>
           <p className={`mx-auto mt-1.5 max-w-md text-sm ${ui.muted}`}>
@@ -350,8 +437,10 @@ export default function TarbiyachiYoqlamaPage() {
             qavatma-qavat belgilashingiz mumkin.
           </p>
           <button
-            onClick={openSession} disabled={busy}
-            className={`mx-auto mt-5 flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold tracking-wide transition ${ui.accentSolid}`}
+            type="button"
+            onClick={openSession}
+            disabled={busy}
+            className={`no-shelf mx-auto mt-5 flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold tracking-wide transition shadow-md active:scale-95 ${ui.accentSolid}`}
           >
             {busy ? <Loader2 size={16} className="animate-spin" /> : <ClipboardCheck size={16} />}
             {busy ? 'Ochilmoqda…' : 'Yo‘qlama ochish'}
@@ -359,55 +448,127 @@ export default function TarbiyachiYoqlamaPage() {
         </div>
       ) : (
         <>
-          {/* Floor rail */}
-          {floors.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              <FloorPill
-                active={activeFloor === 'all'} onClick={() => setActiveFloor('all')} ui={ui}
-                label="Barchasi" marked={s ? s.present + s.excused + s.absent : 0} total={s?.total ?? 0}
-              />
-              {floors.map((f) => (
+          {/* Floor Rail & Quick Search Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {floors.length > 1 && (
+              <div
+                role="group"
+                aria-label="Qavat tanlash"
+                className={`no-shelf inline-flex max-w-full items-center gap-1.5 p-1.5 rounded-2xl border overflow-x-auto scrollbar-none transition-colors ${
+                  isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-950/70 border-slate-800/90'
+                }`}
+              >
                 <FloorPill
-                  key={f.floor} active={activeFloor === f.floor} onClick={() => setActiveFloor(f.floor)} ui={ui}
-                  label={f.floor > 0 ? `${f.floor}-qavat` : 'Qavatsiz'} marked={f.marked} total={f.total}
+                  active={activeFloor === 'all'}
+                  onClick={() => setActiveFloor('all')}
+                  isLight={isLight}
+                  label="Barchasi"
+                  marked={s ? s.present + s.excused + s.absent : 0}
+                  total={s?.total ?? 0}
                 />
-              ))}
+                {floors.map((f) => (
+                  <FloorPill
+                    key={f.floor}
+                    active={activeFloor === f.floor}
+                    onClick={() => setActiveFloor(f.floor)}
+                    isLight={isLight}
+                    label={f.floor > 0 ? `${f.floor}-qavat` : 'Qavatsiz'}
+                    marked={f.marked}
+                    total={f.total}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Quick Search */}
+            <div className="relative flex-1 min-w-[200px] max-w-xs self-stretch sm:self-auto">
+              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Xona yoki talaba qidirish..."
+                className={`no-shelf w-full rounded-xl border py-2 pl-9 pr-8 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${
+                  isLight
+                    ? 'border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:border-indigo-500'
+                    : 'border-slate-800 bg-slate-900 text-slate-200 placeholder-slate-500 focus:border-indigo-500'
+                }`}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="no-shelf absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <X size={13} />
+                </button>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Floor panels */}
           <div className="space-y-4">
-            {shownFloors.map((f) => (
-              <FloorPanel
-                key={f.floor}
-                floor={f}
-                isLight={isLight}
-                ui={ui}
-                canWrite={canWrite}
-                pendingIds={pendingIds}
-                onMark={(ids, st) => void markMany(ids, st)}
-              />
-            ))}
+            {filteredFloors.length === 0 ? (
+              <div className={`no-shelf rounded-2xl border p-10 text-center ${ui.card}`}>
+                <p className={`text-sm ${ui.muted}`}>Qidiruv bo‘yicha hech qanday xona yoki talaba topilmadi</p>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="no-shelf mt-2 text-xs font-bold text-indigo-600 hover:underline"
+                >
+                  Qidiruvni tozalash
+                </button>
+              </div>
+            ) : (
+              filteredFloors.map((f) => (
+                <FloorPanel
+                  key={f.floor}
+                  floor={f}
+                  isLight={isLight}
+                  ui={ui}
+                  canWrite={canWrite}
+                  pendingIds={pendingIds}
+                  onMark={(ids, st) => void markMany(ids, st)}
+                />
+              ))
+            )}
           </div>
 
           {/* Flags */}
           {flags.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`rounded-2xl border p-4 sm:p-5 ${ui.card}`}>
-              <div className={`mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${isLight ? 'text-amber-700' : 'text-amber-300'}`}>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`no-shelf rounded-2xl border p-4 sm:p-5 ${ui.card}`}
+            >
+              <div
+                className={`mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${
+                  isLight ? 'text-amber-700' : 'text-amber-300'
+                }`}
+              >
                 <AlertTriangle size={14} /> Sababsiz yo‘qlar — ko‘rib chiqing ({flags.length})
               </div>
               <div className="space-y-2">
                 {flags.map((fl) => (
-                  <div key={fl.recordId} className={`flex flex-wrap items-center gap-2 rounded-xl border p-2.5 ${ui.inset}`}>
+                  <div
+                    key={fl.recordId}
+                    className={`no-shelf flex flex-wrap items-center gap-2 rounded-xl border p-2.5 ${ui.inset}`}
+                  >
                     <span className={`text-[13px] font-semibold ${ui.strong}`}>{fl.roomNumber}-xona</span>
                     <span className={`text-xs ${ui.muted}`}>{fl.sessionDate}</span>
                     <div className="ml-auto flex gap-2">
-                      <button onClick={() => resolveFlag(fl.recordId, 'dismiss')}
-                        className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}>
+                      <button
+                        type="button"
+                        onClick={() => resolveFlag(fl.recordId, 'dismiss')}
+                        className={`no-shelf rounded-lg border px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+                      >
                         Sababli edi
                       </button>
-                      <button onClick={() => resolveFlag(fl.recordId, 'warn')}
-                        className="inline-flex items-center gap-1 rounded-lg bg-rose-500/90 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white transition-colors hover:bg-rose-500">
+                      <button
+                        type="button"
+                        onClick={() => resolveFlag(fl.recordId, 'warn')}
+                        className="no-shelf inline-flex items-center gap-1 rounded-lg bg-rose-500/90 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white transition-colors hover:bg-rose-500"
+                      >
                         <ShieldAlert size={12} /> Ogohlantirish
                       </button>
                     </div>
@@ -423,22 +584,48 @@ export default function TarbiyachiYoqlamaPage() {
       <AnimatePresence>
         {view && canWrite && (
           <motion.div
-            initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
-            className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:pl-[300px]"
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[calc(0.85rem+env(safe-area-inset-bottom))] lg:pl-[290px]"
           >
-            <div className={`mx-auto flex max-w-3xl items-center gap-3 rounded-2xl border p-2.5 shadow-2xl ${isLight ? 'bg-white/95 border-slate-200 backdrop-blur' : 'bg-slate-900/95 border-slate-700 backdrop-blur'}`}>
-              <span className={`px-2 text-xs font-semibold ${totalUnmarked > 0 ? ui.strong : (isLight ? 'text-emerald-600' : 'text-emerald-400')}`}>
-                {totalUnmarked > 0
-                  ? <><span className="text-base font-bold tabular-nums">{totalUnmarked}</span> ta belgilanmagan</>
-                  : <span className="inline-flex items-center gap-1.5"><Sparkles size={14} /> Hammasi belgilandi</span>}
-              </span>
+            <div
+              className={`no-shelf mx-auto flex max-w-2xl items-center justify-between gap-4 rounded-2xl border p-3 shadow-2xl backdrop-blur-xl ${
+                isLight
+                  ? 'bg-white/95 border-slate-200/90 shadow-slate-900/10'
+                  : 'bg-slate-900/95 border-slate-700/90 shadow-black/40'
+              }`}
+            >
+              <div className="flex items-center gap-2.5 pl-1.5">
+                {totalUnmarked > 0 ? (
+                  <>
+                    <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                    <span className={`text-xs sm:text-sm font-semibold ${ui.strong}`}>
+                      <strong className="text-amber-600 dark:text-amber-400 font-black tabular-nums">{totalUnmarked}</strong> ta talaba belgilanmagan
+                    </span>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 size={17} className="shrink-0" />
+                    <span className="text-xs sm:text-sm font-bold">Barcha talabalar belgilandi!</span>
+                  </div>
+                )}
+              </div>
+
               <button
-                onClick={closeSession} disabled={busy}
-                className={`ml-auto rounded-xl px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition ${
-                  totalUnmarked > 0 ? ui.btnGhost : 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-[0_2px_8px_rgba(16,185,129,0.35)] hover:to-emerald-700 active:scale-[0.98]'
+                type="button"
+                onClick={closeSession}
+                disabled={busy}
+                className={`no-shelf inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all active:scale-95 shadow-sm shrink-0 ${
+                  totalUnmarked > 0
+                    ? isLight
+                      ? 'border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      : 'border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700'
+                    : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-emerald-500/25 font-black'
                 }`}
               >
-                {busy ? 'Yakunlanmoqda…' : 'Yo‘qlamani yakunlash'}
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <ClipboardCheck size={15} />}
+                <span>{busy ? 'Yakunlanmoqda…' : 'Yo‘qlamani yakunlash'}</span>
               </button>
             </div>
           </motion.div>
@@ -450,44 +637,99 @@ export default function TarbiyachiYoqlamaPage() {
 
 /* ───────────────────────── sub-components ───────────────────────── */
 
-function HeroRing({ pct, present, total }: { pct: number; present: number; total: number }) {
-  const r = 30, c = 2 * Math.PI * r
+function HeroRing({ pct, marked, total }: { pct: number; marked: number; total: number }) {
+  const r = 32
+  const c = 2 * Math.PI * r
   return (
-    <div className="relative shrink-0">
-      <svg width="88" height="88" viewBox="0 0 88 88" className="-rotate-90">
-        <circle cx="44" cy="44" r={r} fill="none" stroke="currentColor" strokeWidth="7" className="text-white/15" />
-        <circle cx="44" cy="44" r={r} fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round"
-          strokeDasharray={c} strokeDashoffset={c - (c * pct) / 100}
-          className="text-white transition-all duration-700" />
+    <div className="relative shrink-0 text-white">
+      <svg width="92" height="92" viewBox="0 0 92 92" className="-rotate-90">
+        <circle
+          cx="46"
+          cy="46"
+          r={r}
+          fill="none"
+          stroke="rgba(255, 255, 255, 0.25)"
+          strokeWidth="7"
+        />
+        <circle
+          cx="46"
+          cy="46"
+          r={r}
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c - (c * pct) / 100}
+          className="transition-all duration-700"
+        />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-lg font-bold text-white tabular-nums leading-none">{present}<span className="text-white/50">/{total}</span></span>
-        <span className="text-[9px] font-semibold uppercase tracking-wider text-indigo-100">belgilandi</span>
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+        <span
+          className="text-base font-black text-white tabular-nums leading-none"
+          style={{ color: '#ffffff' }}
+        >
+          {marked}
+          <span className="text-xs font-bold" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+            /{total}
+          </span>
+        </span>
+        <span
+          className="text-[9px] font-bold uppercase tracking-wider mt-0.5"
+          style={{ color: 'rgba(255, 255, 255, 0.9)' }}
+        >
+          {pct}%
+        </span>
       </div>
     </div>
   )
 }
 
 function FloorPill({
-  active, onClick, label, marked, total, ui,
+  active,
+  onClick,
+  label,
+  marked,
+  total,
+  isLight,
 }: {
-  active: boolean; onClick: () => void; label: string; marked: number; total: number
-  ui: ReturnType<typeof dekanUI>
+  active: boolean
+  onClick: () => void
+  label: string
+  marked: number
+  total: number
+  isLight: boolean
 }) {
   const done = total > 0 && marked >= total
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`group shrink-0 rounded-2xl border px-3.5 py-2 text-left transition-all ${
-        active ? 'border-transparent bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-[0_4px_14px_-4px_rgba(79,70,229,0.5)]'
-        : `${ui.btnGhost}`
+      className={`no-shelf relative inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-150 shrink-0 select-none active:scale-[0.98] ${
+        active
+          ? isLight
+            ? 'bg-white text-indigo-600 shadow-xs border border-slate-200/80 font-bold'
+            : 'bg-indigo-600 text-white shadow-xs shadow-indigo-600/30 border border-indigo-500/30 font-bold'
+          : isLight
+            ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60 border border-transparent'
+            : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] border border-transparent'
       }`}
     >
-      <p className={`text-xs font-bold ${active ? 'text-white' : ui.strong}`}>{label}</p>
-      <p className={`mt-0.5 flex items-center gap-1 text-[10px] font-semibold tabular-nums ${active ? 'text-indigo-100' : ui.muted}`}>
-        {done && <Check size={11} className={active ? 'text-white' : 'text-emerald-500'} />}
+      <span>{label}</span>
+      <span
+        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors ${
+          active
+            ? isLight
+              ? 'bg-indigo-50 text-indigo-700 font-black'
+              : 'bg-white/20 text-white font-black'
+            : isLight
+              ? 'bg-slate-200/80 text-slate-600'
+              : 'bg-slate-800 text-slate-400'
+        }`}
+      >
+        {done && <Check size={11} className={active ? (isLight ? 'text-indigo-600' : 'text-white') : 'text-emerald-500'} />}
         {marked}/{total}
-      </p>
+      </span>
     </button>
   )
 }
@@ -502,7 +744,12 @@ type FloorData = {
 }
 
 function FloorPanel({
-  floor, isLight, ui, canWrite, pendingIds, onMark,
+  floor,
+  isLight,
+  ui,
+  canWrite,
+  pendingIds,
+  onMark,
 }: {
   floor: FloorData
   isLight: boolean
@@ -516,57 +763,102 @@ function FloorPanel({
   const pct = floor.total ? Math.round((floor.marked / floor.total) * 100) : 0
 
   return (
-    <motion.section layout className={`overflow-hidden rounded-2xl border ${ui.card}`}>
+    <motion.section
+      layout
+      className={`no-shelf overflow-hidden rounded-2xl border transition-all ${
+        isLight ? 'border-slate-200/90 bg-white shadow-xs' : 'border-slate-800/90 bg-slate-900/60 shadow-xs'
+      }`}
+    >
       {/* header */}
-      <div className={`flex flex-wrap items-center gap-3 p-4 ${isLight ? 'bg-slate-50/60' : 'bg-white/[0.02]'}`}>
-        <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2.5 min-w-0">
-          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${
-            done ? (isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-500/15 text-emerald-300') : ui.accentSoft
-          }`}>
-            {done ? <Check size={16} /> : (floor.floor > 0 ? floor.floor : '—')}
+      <div
+        className={`flex flex-wrap items-center justify-between gap-3 p-3.5 sm:p-4 border-b ${
+          isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-900/50 border-slate-800/80'
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="no-shelf flex items-center gap-3 min-w-0 text-left"
+        >
+          <span
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black transition-colors ${
+              done
+                ? 'bg-emerald-500 text-white shadow-xs shadow-emerald-500/20'
+                : isLight
+                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/80'
+                  : 'bg-indigo-950/60 text-indigo-300 border border-indigo-800/60'
+            }`}
+          >
+            {done ? <Check size={18} strokeWidth={2.6} /> : (floor.floor > 0 ? floor.floor : '—')}
           </span>
-          <span className="min-w-0">
-            <span className={`block text-sm font-bold ${ui.strong}`}>
+          <div className="min-w-0">
+            <span className={`block text-sm sm:text-base font-bold tracking-tight ${ui.strong}`}>
               {floor.floor > 0 ? `${floor.floor}-qavat` : 'Qavatsiz xonalar'}
             </span>
-            <span className={`block text-[11px] font-medium ${ui.muted}`}>
-              {floor.rooms.length} xona · {floor.present} hozir
+            <span className={`block text-xs font-medium ${ui.muted}`}>
+              {floor.rooms.length} ta xona · {floor.present} ta hozir
             </span>
-          </span>
-          <ChevronDown size={16} className={`${ui.muted} transition-transform ${open ? '' : '-rotate-90'}`} />
+          </div>
+          <ChevronDown
+            size={16}
+            className={`${ui.muted} transition-transform duration-200 ml-1 ${open ? 'rotate-180' : ''}`}
+          />
         </button>
 
-        <div className="ml-auto flex items-center gap-3">
-          <div className={`hidden sm:block h-1.5 w-28 overflow-hidden rounded-full ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`}>
-            <div className={`h-full rounded-full transition-all duration-500 ${done ? 'bg-emerald-500' : 'bg-gradient-to-r from-indigo-500 to-violet-500'}`} style={{ width: `${pct}%` }} />
+        <div className="flex items-center gap-3 ml-auto">
+          {/* Progress bar */}
+          <div className={`hidden sm:block h-2 w-28 sm:w-36 overflow-hidden rounded-full ${isLight ? 'bg-slate-200/80' : 'bg-slate-800'}`}>
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                done ? 'bg-emerald-500' : 'bg-indigo-600'
+              }`}
+              style={{ width: `${pct}%` }}
+            />
           </div>
+
           <span className={`text-xs font-bold tabular-nums ${done ? (isLight ? 'text-emerald-600' : 'text-emerald-400') : ui.muted}`}>
             {floor.marked}/{floor.total}
           </span>
+
           {canWrite && floor.unmarkedIds.length > 0 && (
             <button
+              type="button"
               onClick={() => onMark(floor.unmarkedIds, 'present')}
-              className={`rounded-lg px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider transition ${
-                isLight ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+              className={`no-shelf inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-xs ${
+                isLight
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/90 hover:bg-emerald-100 hover:border-emerald-300'
+                  : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25'
               }`}
-              title="Qolganlarni «Hozir» deb belgilash"
+              title="Qavatdagi barcha belgilanmaganlarni «Hozir» deb belgilash"
             >
-              Qolgani ✓
+              <Check size={13} strokeWidth={2.4} />
+              <span>Qolgani ✓</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* rooms */}
+      {/* rooms grid */}
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-3.5 p-4 sm:grid-cols-2 xl:grid-cols-3">
               {floor.rooms.map((room) => (
-                <RoomCard key={room.roomNumber} room={room} isLight={isLight} ui={ui} canWrite={canWrite} pendingIds={pendingIds} onMark={onMark} />
+                <RoomCard
+                  key={room.roomNumber}
+                  room={room}
+                  isLight={isLight}
+                  ui={ui}
+                  canWrite={canWrite}
+                  pendingIds={pendingIds}
+                  onMark={onMark}
+                />
               ))}
             </div>
           </motion.div>
@@ -577,7 +869,12 @@ function FloorPanel({
 }
 
 function RoomCard({
-  room, isLight, ui, canWrite, pendingIds, onMark,
+  room,
+  isLight,
+  ui,
+  canWrite,
+  pendingIds,
+  onMark,
 }: {
   room: RosterView['rooms'][number]
   isLight: boolean
@@ -591,20 +888,46 @@ function RoomCard({
   const full = marked === room.residents.length
 
   return (
-    <div className={`rounded-2xl border p-3 ${ui.inset}`}>
-      <div className="mb-2 flex items-center gap-2">
-        <DoorOpen size={14} className={ui.muted} />
-        <span className={`text-xs font-bold ${ui.strong}`}>{room.roomNumber}-xona</span>
-        <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums ${
-          full ? (isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-500/15 text-emerald-300')
-          : (isLight ? 'bg-slate-200 text-slate-600' : 'bg-slate-700 text-slate-300')
-        }`}>
-          {present}/{room.residents.length}
+    <div
+      className={`no-shelf rounded-2xl border p-3.5 transition-all ${
+        isLight
+          ? 'bg-slate-50/70 border-slate-200/80 hover:border-slate-300'
+          : 'bg-slate-900/50 border-slate-800/80 hover:border-slate-700'
+      }`}
+    >
+      <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-200/70 dark:border-slate-800/80">
+        <div className="flex items-center gap-2">
+          <DoorOpen size={15} className="text-indigo-600 dark:text-indigo-400" />
+          <span className={`text-xs sm:text-sm font-black ${ui.strong}`}>
+            {room.roomNumber ? `${room.roomNumber}-xona` : 'Xonasiz'}
+          </span>
+        </div>
+        <span
+          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold tabular-nums border ${
+            full
+              ? isLight
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+              : isLight
+                ? 'bg-slate-200/70 text-slate-700 border-slate-200/60'
+                : 'bg-slate-800 text-slate-300 border-slate-700'
+          }`}
+        >
+          {present}/{room.residents.length} hozir
         </span>
       </div>
+
       <div className="space-y-1.5">
         {room.residents.map((r) => (
-          <ResidentRow key={r.id} r={r} isLight={isLight} ui={ui} canWrite={canWrite} pending={pendingIds.has(r.id)} onMark={(st) => onMark([r.id], st)} />
+          <ResidentRow
+            key={r.id}
+            r={r}
+            isLight={isLight}
+            ui={ui}
+            canWrite={canWrite}
+            pending={pendingIds.has(r.id)}
+            onMark={(st) => onMark([r.id], st)}
+          />
         ))}
       </div>
     </div>
@@ -612,7 +935,12 @@ function RoomCard({
 }
 
 function ResidentRow({
-  r, isLight, ui, canWrite, pending, onMark,
+  r,
+  isLight,
+  ui,
+  canWrite,
+  pending,
+  onMark,
 }: {
   r: RosterResident
   isLight: boolean
@@ -622,23 +950,42 @@ function ResidentRow({
   onMark: (state: AttendanceState) => void
 }) {
   return (
-    <div className={`flex items-center gap-2 rounded-xl px-1.5 py-1 ${pending ? 'opacity-60' : ''}`}>
-      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-        isLight ? 'bg-slate-200 text-slate-600' : 'bg-slate-700 text-slate-200'
-      }`}>
+    <div
+      className={`flex items-center gap-2.5 p-1 rounded-xl transition-colors ${
+        pending ? 'opacity-50 pointer-events-none' : ''
+      }`}
+    >
+      <div
+        className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 border transition-colors ${
+          isLight
+            ? 'bg-slate-100 text-slate-700 border-slate-200/80'
+            : 'bg-slate-800 text-slate-200 border-slate-700'
+        }`}
+      >
         {initials(r.fullName)}
-      </span>
-      <span className={`min-w-0 flex-1 truncate text-[13px] font-medium ${ui.strong}`}>
-        {r.fullName}
+      </div>
+
+      <div className="min-w-0 flex-1 truncate">
+        <span className={`block text-xs sm:text-sm font-semibold truncate ${ui.strong}`}>
+          {r.fullName}
+        </span>
         {r.source === 'self_location' && (
-          <span className={`ml-1.5 inline-flex items-center gap-0.5 align-middle text-[9px] font-semibold ${ui.muted}`} title="Talaba GPS bilan tasdiqladi">
-            <MapPin size={9} />{r.selfDistanceM != null ? `${r.selfDistanceM}m` : 'GPS'}
+          <span
+            className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400"
+            title="Talaba GPS bilan tasdiqladi"
+          >
+            <MapPin size={10} />
+            <span>{r.selfDistanceM != null ? `${r.selfDistanceM}m` : 'GPS tasdiqlangan'}</span>
           </span>
         )}
-      </span>
+      </div>
 
       {canWrite ? (
-        <div className={`flex shrink-0 divide-x overflow-hidden rounded-lg border ${isLight ? 'border-slate-200 divide-slate-200' : 'border-slate-700 divide-slate-700'}`}>
+        <div
+          className={`no-shelf inline-flex items-center p-0.5 rounded-xl border gap-0.5 shrink-0 transition-colors ${
+            isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-950/70 border-slate-800/90'
+          }`}
+        >
           {REAL_STATES.map((st) => {
             const active = r.state === st
             return (
@@ -647,24 +994,29 @@ function ResidentRow({
                 type="button"
                 disabled={pending}
                 aria-label={STATE_UI[st].label}
+                title={STATE_UI[st].label}
                 onClick={() => onMark(st)}
-                className={`flex items-center gap-1 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                className={`no-shelf h-7 w-7 sm:h-7.5 sm:w-8 rounded-lg text-[11px] font-black inline-flex items-center justify-center transition-all duration-150 active:scale-90 ${
                   active
-                    ? STATE_UI[st].solid
-                    : `${isLight ? 'bg-white text-slate-500 hover:bg-slate-100 hover:text-slate-700' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`
+                    ? STATE_UI[st].solid + ' shadow-xs'
+                    : isLight
+                      ? 'text-slate-400 hover:text-slate-800 hover:bg-white/80'
+                      : 'text-slate-500 hover:text-slate-200 hover:bg-white/[0.08]'
                 }`}
               >
-                {st === 'present' && <Check size={12} />}
-                {st === 'absent' && <X size={12} />}
-                {st === 'excused' && (active ? STATE_UI[st].short : 'R')}
+                {st === 'present' && <Check size={13} strokeWidth={2.6} />}
+                {st === 'absent' && <X size={13} strokeWidth={2.6} />}
+                {st === 'excused' && <span>R</span>}
               </button>
             )
           })}
         </div>
       ) : (
-        <span className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-          isLight ? STATE_UI[r.state].softLight : STATE_UI[r.state].softDark
-        }`}>
+        <span
+          className={`shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide border ${
+            isLight ? STATE_UI[r.state].softLight : STATE_UI[r.state].softDark
+          }`}
+        >
           {STATE_UI[r.state].short}
         </span>
       )}

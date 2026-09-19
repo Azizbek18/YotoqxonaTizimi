@@ -476,7 +476,7 @@ export default function TolovaPage() {
     const downloadReceipt = async (paymentId?: string) => {
         if (!paymentId) return
         try {
-            const url = await fetchReceiptSignedUrl(paymentId)
+            const url = await fetchReceiptSignedUrl(paymentId, { download: true })
             const link = document.createElement('a')
             link.href = url
             link.rel = 'noopener noreferrer'

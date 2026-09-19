@@ -62,9 +62,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Kvitansiya manzili noto‘g‘ri.' }, { status: 500 })
   }
 
+  // Default to an inline disposition so "view" callers get the browser's
+  // native PDF/image viewer instead of a forced Save-As; only the explicit
+  // download action (student's own "Yuklab olish") asks for `download=1`.
+  const forceDownload = request.nextUrl.searchParams.get('download') === '1'
   const { data, error } = await supabase.storage
     .from('receipts')
-    .createSignedUrl(path, 60, path.toLowerCase().endsWith('.pdf') ? { download: true } : undefined)
+    .createSignedUrl(path, 60, forceDownload ? { download: true } : undefined)
   if (error || !data?.signedUrl) {
     return NextResponse.json({ error: 'Kvitansiya havolasini yaratib bo‘lmadi.' }, { status: 500 })
   }

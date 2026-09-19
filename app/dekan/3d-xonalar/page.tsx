@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import {
   DoorOpen, Layers3, Users,
   ArrowLeft, ArrowRight,
-  Plus, Trash2, GripVertical, ChevronDown, Save, RotateCcw
+  Plus, Trash2, GripVertical, ChevronDown, Save, RotateCcw,
+  CheckCircle2, Percent, Building2,
 } from 'lucide-react'
 import { Reorder, useDragControls } from 'framer-motion'
 import ConfirmModal from '@/components/ui/ConfirmModal'
@@ -213,10 +214,8 @@ export default function Dekan3DXonalarPage() {
   // block editor or Save — a pure viewer.
   const { readOnly } = useStaffPanel()
   const surfaceBg = ui.card
-  const cardBg = ui.inset
   const textMuted = ui.muted
   const textStrong = ui.strong
-  const inputBg = ui.input
 
   const loadRoomOccupancy = useCallback(async () => {
     try {
@@ -514,17 +513,16 @@ export default function Dekan3DXonalarPage() {
     const totalBeds = capacityUnknown
       ? null
       : liveRooms.reduce((sum, r) => sum + (r.capacity ?? defaultRoomCapacity ?? 0), 0)
+    const occPercent = totalBeds && totalBeds > 0 ? Math.min(100, Math.round((occupiedPlaces / totalBeds) * 100)) : 0
     return {
       occupiedPlaces,
       totalRooms: roomCount,
       frozenRooms: positionedRooms.rooms.length - liveRooms.length,
       freePlaces: getFreePlaces(totalBeds, occupiedPlaces),
+      totalBeds,
+      occPercent,
     }
   }, [roomSnapshots, positionedRooms, defaultRoomCapacity])
-
-  const quickAddBtn = isLight
-    ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-    : 'bg-white/5 text-slate-300 hover:bg-white/10'
 
   const capLabel = (c: number | null) => (c === null ? 'Standart' : String(c))
 
@@ -534,57 +532,90 @@ export default function Dekan3DXonalarPage() {
     const bedsKnown = defaultRoomCapacity !== null || filled.every((b) => b.capacity !== null)
     const panelOpen = capPanelSide === side
     return (
-      <div className={`rounded-2xl border p-3 ${cardBg}`}>
-        <div className="flex items-center justify-between gap-2 mb-2.5">
-          <h3 className={`text-xs font-bold uppercase tracking-wider ${textStrong}`}>
-            {side === 'left' ? 'Chap tomon' : "O'ng tomon"}
-          </h3>
+      <div className={`rounded-2xl border p-4 transition-all ${
+        isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900/60 border-slate-800 shadow-md'
+      }`}>
+        <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-100 dark:border-white/5">
+          <div className="flex items-center gap-2.5">
+            <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${
+              side === 'left' ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-violet-500/10 text-violet-600 dark:text-violet-400'
+            }`}>
+              {side === 'left' ? <ArrowLeft size={16} /> : <ArrowRight size={16} />}
+            </div>
+            <div>
+              <h3 className={`text-xs font-black uppercase tracking-wider ${textStrong}`}>
+                {side === 'left' ? 'Chap tomon' : "O'ng tomon"}
+              </h3>
+              <p className={`text-[10px] font-bold tabular-nums ${textMuted}`}>
+                {filled.length} ta xona{bedsKnown ? ` · ${beds} joy` : ''}
+              </p>
+            </div>
+          </div>
           <div className="flex items-center gap-1.5">
-            <span className={`text-[10px] font-bold tabular-nums ${textMuted}`}>
-              {filled.length} ta{bedsKnown ? ` · ${beds} joy` : ''}
-            </span>
             <button
               type="button"
               onClick={() => setCapPanelSide(panelOpen ? null : side)}
-              className={`flex items-center gap-0.5 rounded-lg px-2 py-1 text-[10px] font-bold ${
-                panelOpen ? ui.accentSolid : quickAddBtn
+              className={`no-shelf flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition-colors ${
+                panelOpen
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : isLight ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
               }`}
-              title="Ommaviy sig'im"
+              title="Ommaviy sig'im berish"
             >
               Sig&apos;im <ChevronDown size={11} className={panelOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
             </button>
-            <button type="button" onClick={() => addBlock(side, 1)} className={`flex items-center gap-0.5 rounded-lg px-2 py-1 text-[10px] font-bold ${quickAddBtn}`}>
+            <button
+              type="button"
+              onClick={() => addBlock(side, 1)}
+              className={`no-shelf flex items-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition-colors ${
+                isLight ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100' : 'bg-indigo-950/40 text-indigo-300 hover:bg-indigo-900/50'
+              }`}
+              title="1 ta xona qo'shish"
+            >
               <Plus size={11} /> 1
             </button>
-            <button type="button" onClick={() => addBlock(side, 5)} className={`flex items-center gap-0.5 rounded-lg px-2 py-1 text-[10px] font-bold ${quickAddBtn}`}>
+            <button
+              type="button"
+              onClick={() => addBlock(side, 5)}
+              className={`no-shelf flex items-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition-colors ${
+                isLight ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100' : 'bg-indigo-950/40 text-indigo-300 hover:bg-indigo-900/50'
+              }`}
+              title="5 ta xona ketma-ket qo'shish"
+            >
               <Plus size={11} /> 5
             </button>
           </div>
         </div>
 
         {panelOpen && (
-          <div className={`mb-2.5 rounded-xl border p-2.5 space-y-2.5 text-[10px] ${isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.03]'}`}>
+          <div className={`mb-3 rounded-xl border p-3 space-y-2.5 text-[10px] shadow-xs ${
+            isLight ? 'border-indigo-100 bg-indigo-50/60' : 'border-indigo-900/40 bg-indigo-950/30'
+          }`}>
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className={`font-bold uppercase tracking-wider ${textMuted}`}>Bu tomon hammasi →</span>
+              <span className={`font-bold uppercase tracking-wider ${textMuted}`}>Bu tomon hammasi:</span>
               {CAPACITY_CHOICES.map((c) => (
                 <button
                   key={String(c)}
                   type="button"
                   onClick={() => applyColumnCapacity(side, c)}
-                  className={`rounded-md px-2 py-1 font-bold ${quickAddBtn}`}
+                  className={`no-shelf rounded-md px-2 py-1 font-bold transition-colors ${
+                    isLight ? 'bg-white text-slate-700 hover:bg-indigo-100 border border-slate-200/60 shadow-2xs' : 'bg-slate-800 text-slate-200 hover:bg-slate-700 border border-white/5'
+                  }`}
                 >
                   {capLabel(c)}
                 </button>
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className={`font-bold uppercase tracking-wider ${textMuted}`}>№</span>
+              <span className={`font-bold uppercase tracking-wider ${textMuted}`}>Oraliq №:</span>
               <input
                 value={capRange.from}
                 onChange={(e) => setCapRange((r) => ({ ...r, from: e.target.value.replace(/\D/g, '') }))}
                 inputMode="numeric"
                 placeholder="12"
-                className={`w-12 text-center py-1 rounded-md outline-none border ${inputBg}`}
+                className={`w-12 text-center py-1 rounded-md outline-none border font-bold text-xs ${
+                  isLight ? 'bg-white border-slate-200 focus:border-indigo-500' : 'bg-slate-800 border-slate-700 focus:border-indigo-500'
+                }`}
               />
               <span className={textMuted}>–</span>
               <input
@@ -592,7 +623,9 @@ export default function Dekan3DXonalarPage() {
                 onChange={(e) => setCapRange((r) => ({ ...r, to: e.target.value.replace(/\D/g, '') }))}
                 inputMode="numeric"
                 placeholder="20"
-                className={`w-12 text-center py-1 rounded-md outline-none border ${inputBg}`}
+                className={`w-12 text-center py-1 rounded-md outline-none border font-bold text-xs ${
+                  isLight ? 'bg-white border-slate-200 focus:border-indigo-500' : 'bg-slate-800 border-slate-700 focus:border-indigo-500'
+                }`}
               />
               <span className={`font-bold uppercase tracking-wider ${textMuted}`}>→</span>
               {CAPACITY_CHOICES.map((c) => (
@@ -600,7 +633,9 @@ export default function Dekan3DXonalarPage() {
                   key={String(c)}
                   type="button"
                   onClick={() => applyRangeCapacity(side, c)}
-                  className={`rounded-md px-2 py-1 font-bold ${quickAddBtn}`}
+                  className={`no-shelf rounded-md px-2 py-1 font-bold transition-colors ${
+                    isLight ? 'bg-white text-slate-700 hover:bg-indigo-100 border border-slate-200/60 shadow-2xs' : 'bg-slate-800 text-slate-200 hover:bg-slate-700 border border-white/5'
+                  }`}
                 >
                   {capLabel(c)}
                 </button>
@@ -610,9 +645,11 @@ export default function Dekan3DXonalarPage() {
         )}
 
         {blocks.length === 0 ? (
-          <p className={`py-5 text-center text-[11px] font-medium ${textMuted}`}>
-            Xona yo&apos;q — <span className="font-bold">+1</span> yoki <span className="font-bold">+5</span> bosing.
-          </p>
+          <div className="py-8 text-center">
+            <p className={`text-xs font-medium ${textMuted}`}>
+              Xona yo&apos;q — yuqoridagi <span className="font-bold text-indigo-600 dark:text-indigo-400">+1</span> yoki <span className="font-bold text-indigo-600 dark:text-indigo-400">+5</span> tugmasini bosing.
+            </p>
+          </div>
         ) : (
           <Reorder.Group
             axis="y"
@@ -641,7 +678,6 @@ export default function Dekan3DXonalarPage() {
                   key={block.id}
                   block={block}
                   isLight={isLight}
-                  inputBg={inputBg}
                   textMuted={textMuted}
                   toneDot={block.frozen ? 'bg-cyan-500' : trimmed ? TONE_DOT[tone] : isLight ? 'bg-slate-300' : 'bg-slate-600'}
                   occText={occText}
@@ -663,98 +699,200 @@ export default function Dekan3DXonalarPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Title Header */}
-      <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${textStrong}`}>
-            {readOnly ? '3D xonalar' : 'Qavat tarxi quruvchisi'}
-          </h1>
-          <p className={`mt-1 max-w-3xl text-xs sm:text-sm leading-6 ${textMuted}`}>
-            {readOnly
-              ? "Har bir qavatning xonalari va ularning bandligi jonli 3D maketda ko'rinadi. Qavatni tanlab, xonani bosib tafsilotlarini ko'ring."
-              : "Har bir qavat uchun xonalarni chap va o'ng tomonga, xohlagan tartibda va o'lchamda qo'shing — natija pastda jonli 3D maketda ko'rinadi."}
-          </p>
-        </div>
+    <div className="space-y-5">
+      {/* Executive Hero Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-5 sm:p-6 text-white shadow-lg border border-white/20">
+        <div className="absolute -right-12 -top-12 h-64 w-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute -left-12 -bottom-12 h-48 w-48 rounded-full bg-indigo-500/20 blur-xl pointer-events-none" />
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:min-w-[520px]">
-          {[
-            { icon: Users, label: 'Band joy', value: summary.occupiedPlaces, hint: undefined as string | undefined },
-            { icon: DoorOpen, label: "Bo'sh joy", value: summary.freePlaces ?? '—', hint: undefined as string | undefined },
-            {
-              icon: Layers3,
-              label: 'Jami xona',
-              value: `${summary.totalRooms} ta`,
-              hint: summary.frozenRooms > 0 ? `${summary.frozenRooms} ta muzlatilgan` : undefined,
-            },
-          ].map(({ icon: Icon, label, value, hint }) => (
-            <div key={label} className={`rounded-xl border p-4 ${cardBg}`}>
-              <div className={`flex items-center gap-2 ${textMuted}`}>
-                <Icon className={`h-4 w-4 ${ui.accentText}`} />
-                <span className="text-xs font-semibold uppercase tracking-[0.16em]">{label}</span>
-              </div>
-              <p className={`mt-2 truncate text-2xl font-bold ${textStrong}`}>{value}</p>
-              {hint && <p className={`mt-0.5 truncate text-[10px] font-medium ${textMuted}`}>{hint}</p>}
+        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-inner">
+              <Layers3 size={24} className="text-white" />
             </div>
-          ))}
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-black tracking-tight" style={{ color: '#ffffff' }}>
+                  {readOnly ? '3D Qavat maketi' : '3D Qavat tarxi quruvchisi'}
+                </h1>
+                {isDirty ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-amber-400/20 text-amber-200 border border-amber-400/40">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    Saqlanmagan o‘zgarishlar bor
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-white/10 text-emerald-300 border border-white/20">
+                    <CheckCircle2 size={12} />
+                    Saqlangan
+                  </span>
+                )}
+              </div>
+              <p className="text-xs sm:text-sm font-medium mt-0.5" style={{ color: '#e0e7ff' }}>
+                {activeDorm ? `${activeDorm.number}-yotoqxona` : 'Yotoqxona'} · {activeFloor}-qavat arxitekturasi va xonalar bandligi jonli 3D maketda
+              </p>
+            </div>
+          </div>
+
+          {!readOnly && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => void loadFloorLayout(activeFloor)}
+                className="no-shelf inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3.5 py-2 text-xs font-bold transition-all hover:bg-white/20 active:scale-95"
+                style={{ color: '#ffffff' }}
+                title="Saqlangan holatga qaytarish"
+              >
+                <RotateCcw size={14} />
+                <span>Qaytarish</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || !isDirty}
+                className={`no-shelf inline-flex items-center gap-2 rounded-xl px-5 py-2 text-xs font-black uppercase tracking-wider transition-all shadow-md active:scale-95 ${
+                  isDirty
+                    ? 'bg-amber-400 text-slate-900 hover:bg-amber-300 ring-2 ring-amber-400/40 shadow-amber-400/20'
+                    : 'bg-white text-indigo-700 hover:bg-slate-100 disabled:opacity-60'
+                }`}
+              >
+                <Save size={14} />
+                <span>{saving ? 'Saqlanmoqda...' : 'Saqlash'}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Building switcher — only shown once the faculty actually holds more
-          than one dorm (many-to-many, 202609300000). */}
-      {dorms.length > 1 && (
-        <div className={`flex flex-wrap gap-1 rounded-xl p-1 w-fit ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'}`}>
-          {dorms.map((d) => {
-            const isActive = (activeDormId ?? primaryDormId) === d.dormId
-            return (
-              <button
-                key={d.dormId}
-                type="button"
-                onClick={() => {
-                  if (isActive) return
-                  if (isDirty) { setPendingDormId(d.dormId); return }
-                  setActiveDormId(d.dormId)
-                }}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                  isActive
-                    ? 'bg-indigo-600 text-white'
-                    : `${textMuted} ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-200'}`
-                }`}
-              >
-                {d.number}-yotoqxona{d.isPrimary ? ' (asosiy)' : ''}
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Floor Selection Tabs */}
-      <div className={`flex gap-1 p-1 rounded-xl ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'} w-full overflow-x-auto no-scrollbar sm:w-fit`}>
-        {floors.map((fl) => {
-          const active = fl === activeFloor
+      {/* 4-Metric KPI Summary */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          {
+            icon: Users,
+            label: 'Band o‘rinlar',
+            value: `${summary.occupiedPlaces} ta`,
+            sub: 'Talabalar joylashgan',
+            accent: 'text-indigo-600 dark:text-indigo-400',
+            bg: isLight ? 'bg-indigo-50/70 border-indigo-100' : 'bg-indigo-950/20 border-indigo-900/40',
+          },
+          {
+            icon: DoorOpen,
+            label: 'Bo‘sh joylar',
+            value: summary.freePlaces !== null ? `${summary.freePlaces} ta` : '—',
+            sub: 'Bo‘sh o‘rinlar soni',
+            accent: 'text-emerald-600 dark:text-emerald-400',
+            bg: isLight ? 'bg-emerald-50/70 border-emerald-100' : 'bg-emerald-950/20 border-emerald-900/40',
+          },
+          {
+            icon: Layers3,
+            label: 'Jami xonalar',
+            value: `${summary.totalRooms} ta`,
+            sub: summary.frozenRooms > 0 ? `${summary.frozenRooms} ta muzlatilgan` : 'Faol xonalar soni',
+            accent: 'text-sky-600 dark:text-sky-400',
+            bg: isLight ? 'bg-sky-50/70 border-sky-100' : 'bg-sky-950/20 border-sky-900/40',
+          },
+          {
+            icon: Percent,
+            label: 'Bandlik darajasi',
+            value: `${summary.occPercent}%`,
+            sub: `${summary.occupiedPlaces} / ${summary.totalBeds ?? '?'} o‘rin band`,
+            accent: 'text-violet-600 dark:text-violet-400',
+            bg: isLight ? 'bg-violet-50/70 border-violet-100' : 'bg-violet-950/20 border-violet-900/40',
+          },
+        ].map((item) => {
+          const Icon = item.icon
           return (
-            <button
-              key={fl}
-              onClick={() => {
-                if (fl === activeFloor) return
-                // Saqlanmagan o'zgarishlar bo'lsa — brauzer alert'i emas, modal.
-                if (isDirty) {
-                  setPendingFloor(fl)
-                  return
-                }
-                setActiveFloor(fl)
-              }}
-              className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2 ${
-                active
-                  ? 'bg-indigo-600 text-white'
-                  : `${ui.muted} ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-200'}`
-              }`}
+            <div
+              key={item.label}
+              className={`flex items-center gap-3.5 rounded-2xl border p-3.5 shadow-xs transition-all ${item.bg}`}
             >
-              <Layers3 size={14} className={active ? 'text-white' : 'text-indigo-500'} />
-              {fl}-qavat
-            </button>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-800 shadow-2xs border border-slate-200/60 dark:border-slate-700/60 ${item.accent}`}>
+                <Icon size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`text-[10px] font-bold uppercase tracking-wider ${ui.faint}`}>
+                  {item.label}
+                </p>
+                <p className={`truncate text-lg font-black leading-tight ${ui.strong}`}>
+                  {item.value}
+                </p>
+                <p className={`truncate text-[10px] ${ui.muted}`}>
+                  {item.sub}
+                </p>
+              </div>
+            </div>
           )
         })}
+      </div>
+
+      {/* Building & Floor Selector Bar */}
+      <div className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-2.5 shadow-xs ${
+        isLight ? 'bg-white border-slate-200/80' : 'bg-slate-900/60 border-slate-800'
+      }`}>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Building switcher (if > 1 dorm) */}
+          {dorms.length > 1 && (
+            <div className={`flex gap-1 rounded-xl p-1 border ${isLight ? 'bg-slate-100 border-slate-200/60' : 'bg-slate-800/60 border-white/5'}`}>
+              {dorms.map((d) => {
+                const isActive = (activeDormId ?? primaryDormId) === d.dormId
+                return (
+                  <button
+                    key={d.dormId}
+                    type="button"
+                    onClick={() => {
+                      if (isActive) return
+                      if (isDirty) { setPendingDormId(d.dormId); return }
+                      setActiveDormId(d.dormId)
+                    }}
+                    className={`no-shelf flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Building2 size={13} />
+                    <span>{d.number}-yotoqxona{d.isPrimary ? ' (asosiy)' : ''}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Floor Selection Tabs */}
+          <div className="flex gap-1 overflow-x-auto no-scrollbar">
+            {floors.map((fl) => {
+              const active = fl === activeFloor
+              return (
+                <button
+                  key={fl}
+                  onClick={() => {
+                    if (fl === activeFloor) return
+                    if (isDirty) {
+                      setPendingFloor(fl)
+                      return
+                    }
+                    setActiveFloor(fl)
+                  }}
+                  className={`no-shelf shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    active
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : isLight
+                        ? 'bg-slate-100 hover:bg-slate-200/80 text-slate-700'
+                        : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300'
+                  }`}
+                >
+                  <Layers3 size={13} className={active ? 'text-white' : 'text-indigo-500'} />
+                  <span>{fl}-qavat</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="hidden xl:flex items-center gap-2">
+          <span className={`text-[11px] font-bold ${ui.muted}`}>
+            Xonalar soni: <span className="font-extrabold text-indigo-600 dark:text-indigo-400">{summary.totalRooms} ta</span>
+          </span>
+        </div>
       </div>
 
       {settingsStatus === 'error' && (
@@ -765,7 +903,7 @@ export default function Dekan3DXonalarPage() {
           <button
             type="button"
             onClick={() => void loadSettings()}
-            className={`shrink-0 rounded-lg px-3 py-2 font-bold uppercase tracking-wider ${ui.dangerSoft}`}
+            className={`no-shelf shrink-0 rounded-lg px-3 py-2 font-bold uppercase tracking-wider ${ui.dangerSoft}`}
           >
             Qayta urinish
           </button>
@@ -773,65 +911,58 @@ export default function Dekan3DXonalarPage() {
       )}
 
       {loading ? (
-        <div className={`backdrop-blur-xl border rounded-2xl p-5 space-y-4 ${surfaceBg}`}>
+        <div className={`border rounded-2xl p-5 space-y-4 ${surfaceBg}`}>
           <div className="flex flex-wrap gap-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skel key={i} className="h-9 w-24 rounded-xl" />
             ))}
           </div>
-          <Skel className="h-[420px] w-full rounded-2xl" />
+          <Skel className="h-[440px] w-full rounded-2xl" />
         </div>
       ) : (
         <>
           {/* Editor — hidden in the tarbiyachi (view-only) panel */}
           {!readOnly && (
-          <div className={`backdrop-blur-xl border rounded-2xl p-6 ${surfaceBg}`}>
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <div className="min-w-0">
-                <h2 className={`text-lg font-bold ${textStrong}`}>{activeFloor}-qavat tarxi</h2>
-                <p className={`text-xs mt-1 ${textMuted}`}>+1 / +5 bilan xona qo&apos;shing, qatorni sudrab tartiblang, o&apos;lcham uchun pillni bosing.</p>
+            <div className={`border rounded-2xl p-5 space-y-4 shadow-sm ${
+              isLight ? 'bg-slate-50/50 border-slate-200/80' : 'bg-slate-900/40 border-slate-800'
+            }`}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className={`text-base font-black tracking-tight ${textStrong}`}>
+                    {activeFloor}-qavat arxitekturasi va xonalar joylashuvi
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${textMuted}`}>
+                    Xonalarni sudrab tartiblang, o&apos;lcham va sig&apos;imni sozlang — o&apos;zgarishlar pastdagi 3D maketda aks etadi.
+                  </p>
+                </div>
               </div>
-              <div className="flex gap-2 shrink-0">
-                <button
-                  onClick={() => void loadFloorLayout(activeFloor)}
-                  className={`p-2.5 rounded-xl border transition-all ${isLight ? 'border-slate-200 hover:bg-slate-50' : 'border-white/10 hover:bg-white/5 text-slate-300'}`}
-                  title="Saqlangan holatga qaytarish"
-                >
-                  <RotateCcw size={16} />
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
-                >
-                  <Save size={14} /> {saving ? 'Saqlanmoqda...' : 'Saqlash'}
-                </button>
-              </div>
-            </div>
 
-            {/* Phones: one side at a time via a segment. md+: both columns. */}
-            <div className={`md:hidden flex gap-1 p-1 rounded-xl mb-3 ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'}`}>
-              {(['left', 'right'] as const).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setMobileSide(s)}
-                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                    mobileSide === s ? 'bg-indigo-600 text-white' : textMuted
-                  }`}
-                >
-                  {s === 'left' ? 'Chap' : "O'ng"} tomon
-                </button>
-              ))}
+              {/* Phones: one side at a time via a segment. md+: both columns. */}
+              <div className={`md:hidden flex gap-1 p-1 rounded-xl ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'}`}>
+                {(['left', 'right'] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setMobileSide(s)}
+                    className={`no-shelf flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
+                      mobileSide === s ? 'bg-indigo-600 text-white shadow-xs' : textMuted
+                    }`}
+                  >
+                    {s === 'left' ? 'Chap' : "O'ng"} tomon ({s === 'left' ? leftBlocks.length : rightBlocks.length})
+                  </button>
+                ))}
+              </div>
+
+              <div className="md:hidden">
+                {renderColumn(mobileSide, mobileSide === 'left' ? leftBlocks : rightBlocks)}
+              </div>
+
+              {/* Desktop: Side-by-side with central corridor metaphor */}
+              <div className="hidden md:grid md:grid-cols-2 gap-4">
+                {renderColumn('left', leftBlocks)}
+                {renderColumn('right', rightBlocks)}
+              </div>
             </div>
-            <div className="md:hidden">
-              {renderColumn(mobileSide, mobileSide === 'left' ? leftBlocks : rightBlocks)}
-            </div>
-            <div className="hidden md:grid md:grid-cols-2 gap-4">
-              {renderColumn('left', leftBlocks)}
-              {renderColumn('right', rightBlocks)}
-            </div>
-          </div>
           )}
 
           {/* 3D Preview — shared with the «Blok xonalari» maket */}
@@ -841,7 +972,6 @@ export default function Dekan3DXonalarPage() {
             slabDepth={positionedRooms.slabDepth}
             corridorWidth={CORRIDOR_WIDTH}
             isLight={isLight}
-            className={`backdrop-blur-xl ${surfaceBg}`}
             emptyHint={readOnly ? 'Bu qavat uchun tarx hali kiritilmagan.' : "Hali xona qo'shilmagan — yuqoridan xona qo'shing."}
           />
         </>
@@ -893,12 +1023,11 @@ export default function Dekan3DXonalarPage() {
 // its useDragControls hook isn't recreated on every parent render (which would
 // kill the drag).
 function RoomRow({
-  block, isLight, inputBg, textMuted, toneDot, occText, over, defaultCapacity, side,
+  block, isLight, textMuted, toneDot, occText, over, defaultCapacity, side,
   onNumber, onCycleSize, onCapacity, onMoveSide, onRemove,
 }: {
   block: EditableBlock
   isLight: boolean
-  inputBg: string
   textMuted: string
   toneDot: string
   occText: string
@@ -920,16 +1049,20 @@ function RoomRow({
       value={block.id}
       dragListener={false}
       dragControls={controls}
-      className={`relative flex items-center gap-1.5 rounded-lg border pl-0.5 pr-1 h-9 ${
-        isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.02]'
+      className={`no-shelf relative flex items-center gap-1.5 rounded-xl border pl-1 pr-1.5 h-10 transition-all ${
+        isLight
+          ? 'border-slate-200/80 bg-white hover:border-slate-300 shadow-2xs'
+          : 'border-white/10 bg-slate-800/40 hover:border-white/20'
       }`}
     >
       <span
         onPointerDown={(e) => controls.start(e)}
-        className={`shrink-0 touch-none cursor-grab active:cursor-grabbing px-0.5 ${textMuted}`}
+        className={`no-shelf shrink-0 touch-none cursor-grab active:cursor-grabbing p-1 rounded-md transition-colors ${
+          isLight ? 'text-slate-400 hover:text-slate-600 hover:bg-slate-100' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+        }`}
         aria-hidden
       >
-        <GripVertical size={14} />
+        <GripVertical size={15} />
       </span>
       <input
         type="text"
@@ -937,14 +1070,18 @@ function RoomRow({
         value={block.roomNumber}
         onChange={(e) => onNumber(e.target.value)}
         placeholder="№"
-        className={`w-11 sm:w-12 shrink-0 text-xs text-center py-1 rounded-md outline-none border ${inputBg}`}
+        className={`w-12 sm:w-14 shrink-0 text-xs font-bold text-center py-1 rounded-lg outline-none border transition-all ${
+          isLight
+            ? 'bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20'
+            : 'bg-slate-800 border-slate-700 focus:bg-slate-900 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20'
+        }`}
       />
       <button
         type="button"
         onClick={onCycleSize}
         title="O'lchamni o'zgartirish"
-        className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 h-7 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${
-          isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
+        className={`no-shelf flex-1 min-w-0 flex items-center justify-center gap-1.5 h-7 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-colors ${
+          isLight ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
         }`}
       >
         <span className="flex items-end gap-[2px]">
@@ -965,10 +1102,10 @@ function RoomRow({
           type="button"
           onClick={() => setCapOpen((o) => !o)}
           title={isOverride ? `Sig'im: ${block.capacity} (istisno)` : `Sig'im: standart (${defaultCapacity ?? '?'})`}
-          className={`h-7 min-w-[26px] px-1 rounded-md text-[11px] font-black tabular-nums transition-colors ${
+          className={`no-shelf h-7 min-w-[28px] px-1.5 rounded-lg text-[11px] font-black tabular-nums transition-colors ${
             isOverride
-              ? 'bg-indigo-500/10 text-indigo-500 ring-1 ring-indigo-500/30'
-              : isLight ? 'bg-slate-100 text-slate-400 hover:text-slate-600' : 'bg-white/5 text-slate-500 hover:text-slate-300'
+              ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-500/30'
+              : isLight ? 'bg-slate-100 text-slate-500 hover:text-slate-800' : 'bg-white/5 text-slate-400 hover:text-slate-200'
           }`}
         >
           {shownCapacity ?? '·'}
@@ -977,8 +1114,8 @@ function RoomRow({
           <>
             <div className="fixed inset-0 z-10" onClick={() => setCapOpen(false)} />
             <div
-              className={`absolute right-0 top-8 z-20 flex flex-wrap gap-1 w-[132px] rounded-lg border p-1.5 shadow-xl ${
-                isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-slate-900'
+              className={`absolute right-0 top-8 z-20 flex flex-wrap gap-1 w-[136px] rounded-xl border p-1.5 shadow-xl backdrop-blur-md ${
+                isLight ? 'border-slate-200 bg-white/95' : 'border-slate-700 bg-slate-900/95'
               }`}
             >
               {CAPACITY_CHOICES.map((c) => (
@@ -986,10 +1123,10 @@ function RoomRow({
                   key={String(c)}
                   type="button"
                   onClick={() => { onCapacity(c); setCapOpen(false) }}
-                  className={`min-w-[26px] px-1.5 py-1 rounded-md text-[10px] font-bold ${
+                  className={`no-shelf min-w-[28px] px-1.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${
                     (c ?? null) === (block.capacity ?? null)
-                      ? 'bg-indigo-600 text-white'
-                      : isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : isLight ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-white/5 text-slate-300 hover:bg-white/10'
                   }`}
                 >
                   {c === null ? 'Std' : c}
@@ -1000,18 +1137,18 @@ function RoomRow({
         )}
       </div>
 
-      <span className="shrink-0 flex items-center justify-end gap-1 w-[50px]">
+      <span className="shrink-0 flex items-center justify-end gap-1 w-[52px]">
         <span className={`h-2 w-2 rounded-full ${toneDot}`} />
-        <span className={`text-[9px] font-semibold tabular-nums ${over ? 'text-rose-500' : textMuted}`}>{occText}</span>
+        <span className={`text-[9px] font-bold tabular-nums ${over ? 'text-rose-500' : textMuted}`}>{occText}</span>
       </span>
-      {/* Send the room to the other side of the corridor — nothing about the
-          room changes, only where it sits in the 3D maket. */}
+
+      {/* Send the room to the other side of the corridor */}
       <button
         type="button"
         onClick={onMoveSide}
         title={side === 'left' ? "O'ng tomonga o'tkazish" : "Chap tomonga o'tkazish"}
         aria-label={side === 'left' ? "O'ng tomonga o'tkazish" : "Chap tomonga o'tkazish"}
-        className={`shrink-0 p-1 rounded-md transition-colors ${
+        className={`no-shelf shrink-0 p-1.5 rounded-lg transition-colors ${
           isLight ? 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50' : 'text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10'
         }`}
       >
@@ -1020,7 +1157,7 @@ function RoomRow({
       <button
         type="button"
         onClick={onRemove}
-        className="shrink-0 p-1 rounded-md text-rose-500 hover:bg-rose-500/10 dark:text-rose-400"
+        className="no-shelf shrink-0 p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 dark:text-rose-400 transition-colors"
         aria-label="O'chirish"
       >
         <Trash2 size={13} />

@@ -270,7 +270,8 @@ html.theme-light [class*="text-stone-600"] {
    #173154 (reported: dekan dashboard title unreadable in light mode). Scoped
    to the exact hero gradient so no other surface is affected; `text-indigo-700`
    on the nested white "Yangilash" button is untouched (not text-white). */
-html.theme-light :is(div, section, header)[class*="from-indigo-600"][class*="to-violet-700"] [class*="text-white"] {
+html.theme-light :is(div, section, header, [class*="rounded"])[class*="from-indigo-"] [class*="text-white"],
+html.theme-light :is(div, section, header, [class*="rounded"])[class*="from-indigo-"] [class*="text-indigo-100"] {
   color: #ffffff !important;
 }
 

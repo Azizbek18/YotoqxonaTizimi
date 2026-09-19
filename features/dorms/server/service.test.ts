@@ -353,13 +353,13 @@ describe('createDormService.blockedRoomMap', () => {
     expect(dorm.sections.map((s) => `${s.block}${s.floor}`)).toEqual(['A3', 'B3'])
 
     const a1 = dorm.sections[0].rooms.find((r) => r.roomNumber === '1')!
-    expect(a1.occupants).toEqual([{ name: 'Ali', gender: 'male', kind: 'user' }]) // deduped
+    expect(a1.occupants).toEqual([{ id: 'u1', name: 'Ali', gender: 'male', kind: 'user' }]) // deduped
 
     const a5 = dorm.sections[0].rooms.find((r) => r.roomNumber === '5')!
     expect(a5).toMatchObject({ capacity: 8, frozen: true })
 
     const b2 = dorm.sections[1].rooms.find((r) => r.roomNumber === '2')!
-    expect(b2.occupants).toEqual([{ name: 'Vali', gender: 'male', kind: 'permit' }])
+    expect(b2.occupants).toEqual([{ id: 'p2', name: 'Vali', gender: 'male', kind: 'permit' }])
   })
 })
 

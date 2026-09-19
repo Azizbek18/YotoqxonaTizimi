@@ -22,6 +22,7 @@ export default function ArizaPdfViewerModal({
   onClose: () => void
 }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const [plainText, setPlainText] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function ArizaPdfViewerModal({
     let alive = true
     let createdUrl: string | null = null
     setBlobUrl(null)
+    setPlainText(null)
     setError(null)
 
     ;(async () => {
@@ -41,14 +43,21 @@ export default function ArizaPdfViewerModal({
 
         const f = doc.formal as (ArizaComposeInput & Record<string, unknown>) | null
         if (!f) {
-          // Older free-text applications predate the formal composer: render
-          // their stored text as a plain PDF so staff still sees a document
-          // instead of an error.
+          // Older free-text applications predate the formal composer. Show
+          // the stored text directly as HTML — an iframe'd PDF here used to
+          // rely on the `#view=FitH` fragment to fit Chrome's built-in PDF
+          // viewer to width, but that fragment needs a "top" coordinate to
+          // be honored (per the PDF Open Parameters spec); without it the
+          // viewer fell back to a zoomed-in default with no horizontal
+          // scrollbar, cropping the text. A generated PDF is still offered
+          // for download.
+          const rawText = String(doc.text ?? '')
+          setPlainText(rawText)
           const { jsPDF } = await import('jspdf')
           const plain = new jsPDF({ unit: 'mm', format: 'a4' })
           plain.setFont('Helvetica', 'normal')
           plain.setFontSize(11)
-          plain.text(plain.splitTextToSize(String(doc.text ?? ''), 180), 15, 20)
+          plain.text(plain.splitTextToSize(rawText, 180), 15, 20)
           const plainUrl = plain.output('bloburl') as unknown as string
           if (!alive) {
             URL.revokeObjectURL(plainUrl)
@@ -120,12 +129,16 @@ export default function ArizaPdfViewerModal({
               {error}
             </div>
           )}
-          {!error && !blobUrl && (
+          {!error && !blobUrl && !plainText && (
             <div className={`flex h-full items-center justify-center gap-2 text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               <Loader2 size={16} className="animate-spin" /> Yuklanmoqda…
             </div>
           )}
-          {blobUrl && (
+          {plainText != null ? (
+            <div className={`h-full overflow-y-auto whitespace-pre-wrap rounded-xl border p-5 text-sm leading-relaxed ${isLight ? 'border-slate-200 bg-white text-slate-800' : 'border-white/10 bg-slate-900 text-slate-100'}`}>
+              {plainText}
+            </div>
+          ) : blobUrl && (
             // #toolbar=0&navpanes=0 strips Chrome's own PDF chrome (toolbar +
             // thumbnail rail) so staff sees just the document; the download
             // control above replaces what that toolbar offered.

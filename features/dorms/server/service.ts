@@ -654,14 +654,20 @@ export function createDormService(repository: DormRepository = createDormReposit
           if (u.passport_series) idKeys.add(`p:${u.passport_series}`)
           if (u.jshshir) idKeys.add(`j:${u.jshshir}`)
           put(u.block!, u.assigned_floor, u.room_number!, {
-            name: u.full_name ?? 'Talaba', gender: (u.gender as 'male' | 'female' | null) ?? null, kind: 'user',
+            id: u.id,
+            name: u.full_name ?? 'Talaba',
+            gender: (u.gender as 'male' | 'female' | null) ?? null,
+            kind: 'user',
           })
         }
         for (const p of occ.permits) {
           if ((p.passport_series && idKeys.has(`p:${p.passport_series}`))
             || (p.jshshir && idKeys.has(`j:${p.jshshir}`))) continue
           put(p.block!, p.assigned_floor, p.room_number!, {
-            name: p.full_name ?? 'Abituriyent', gender: (p.gender as 'male' | 'female' | null) ?? null, kind: 'permit',
+            id: p.id,
+            name: p.full_name ?? 'Abituriyent',
+            gender: (p.gender as 'male' | 'female' | null) ?? null,
+            kind: 'permit',
           })
         }
 

@@ -14,9 +14,13 @@ import {
   ArrowLeft,
   Award,
   BedDouble,
+  Building2,
   CalendarDays,
+  Check,
   CheckCircle2,
   Clock,
+  Copy,
+  CreditCard,
   DollarSign,
   Edit2,
   FileText,
@@ -31,6 +35,7 @@ import {
   Search,
   ShieldCheck,
   Trash2,
+  User,
   Users,
   UserRound,
   UsersRound,
@@ -269,6 +274,15 @@ export default function DekanStudentsPage() {
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deletingStudent, setDeletingStudent] = useState(false)
+
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const copyToClipboard = (text: string | undefined | null, key: string, label: string) => {
+    if (!text) return
+    void navigator.clipboard.writeText(text)
+    setCopiedKey(key)
+    toast.success(`${label} nusxalandi`)
+    setTimeout(() => setCopiedKey(null), 2000)
+  }
 
   const getInitials = (name: string) =>
     name
@@ -734,56 +748,48 @@ export default function DekanStudentsPage() {
     : null
   const waitingCount = payments.filter((record) => WAITING_PAYMENT_STATUSES.has(record.status)).length
 
-  const statCards = [
+  const metricPills = [
     {
       title: 'Jami talabalar',
-      count: students.length,
-      percentage: 100,
+      value: students.length,
       icon: Users,
-      description:
-        roomlessCount > 0
-          ? `${placedCount} joylashgan · ${roomlessCount} xonasiz`
-          : captainCount > 0
-            ? `${captainCount} ta qavat sardori`
-            : undefined,
+      color: 'indigo' as const,
+      sub: roomlessCount > 0 ? `${placedCount} joylashgan • ${roomlessCount} xonasiz` : `${placedCount} joylashgan`,
     },
     {
-      title: "O'g'il bolalar",
-      count: maleCount,
-      percentage: Math.round((maleCount / totalCount) * 100),
-      icon: UserRound,
+      title: 'Xonada joylashgan',
+      value: placedCount,
+      icon: Home,
+      color: 'emerald' as const,
+      sub: `${Math.round((placedCount / totalCount) * 100)}% qamrov`,
     },
     {
-      title: 'Qiz bolalar',
-      count: femaleCount,
-      percentage: Math.round((femaleCount / totalCount) * 100),
-      icon: UsersRound,
+      title: 'Xonasiz talabalar',
+      value: roomlessCount,
+      icon: AlertTriangle,
+      color: roomlessCount > 0 ? 'amber' as const : 'slate' as const,
+      sub: roomlessCount > 0 ? 'Joylashtirish zarur' : 'Barchasi joylashgan',
     },
     {
       title: "To'liq to'laganlar",
-      count: paidCount,
-      percentage: paidCount === null ? 0 : Math.round((paidCount / totalCount) * 100),
+      value: paidCount ?? '—',
       icon: CheckCircle2,
+      color: 'emerald' as const,
+      sub: paidCount !== null ? `${Math.round((paidCount / totalCount) * 100)}% to'lagan` : 'Hisoblanmoqda...',
     },
     {
-      title: 'Qarzdorlar',
-      count: debtorCount,
-      percentage: debtorCount === null ? 0 : Math.round((debtorCount / totalCount) * 100),
+      title: 'Qarzdor talabalar',
+      value: debtorCount ?? '—',
       icon: DollarSign,
-      description: totalDebt ? `Jami qarz: ${formatSum(totalDebt)}` : undefined,
+      color: (debtorCount ?? 0) > 0 ? 'rose' as const : 'slate' as const,
+      sub: totalDebt ? formatSum(totalDebt) : 'Qarz mavjud emas',
     },
     {
       title: 'Kutilayotgan cheklar',
-      count: waitingCount,
-      // The five cards above are shares of the student body; this one is a
-      // share of submitted receipts, so the bar reads far higher than the
-      // same number would against `totalCount`. Name the base in the
-      // description — otherwise "93%" looks like 93% of the faculty.
-      percentage: payments.length ? Math.round((waitingCount / payments.length) * 100) : 0,
+      value: waitingCount,
       icon: Clock,
-      description: waitingCount > 0
-        ? `${waitingCount} / ${payments.length} chekdan · admin tasdig‘ini kutmoqda`
-        : undefined,
+      color: waitingCount > 0 ? 'sky' as const : 'slate' as const,
+      sub: waitingCount > 0 ? 'Admin tasdig‘ida' : 'Kutilayotgan chek yo‘q',
     },
   ]
 
@@ -805,161 +811,258 @@ export default function DekanStudentsPage() {
   const busy = loading || paymentsLoading || dormsLoading
 
   return (
-    <div>
-      {/* Title Header */}
-      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${ui.strong}`}>Talabalar</h1>
-          <p className={`mt-1 text-xs sm:text-sm ${ui.muted}`}>
-            {dormsLoading || dormsError ? 'Fakultet talabalari va ularning to‘lov holati' : activeDorm ? `${activeDorm.number}-yotoqxona talabalari va ularning to‘lov holati` : 'Yotoqxona biriktirilmagan talabalar'}
-          </p>
-        </div>
+    <div className="space-y-4">
+      {/* ── Executive Multi-Layered Hero Banner (Compact) ─────────── */}
+      <div className="no-shelf relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-4 sm:p-5 shadow-lg shadow-indigo-950/15 border border-white/20 text-white">
+        {/* Decorative ambient lighting & subtle micro-dot texture */}
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -left-12 -bottom-16 h-48 w-48 rounded-full bg-violet-400/15 blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] opacity-[0.07]" />
 
-        <button
-          onClick={() => { refreshAll(); void loadDorms() }}
-          disabled={busy}
-          className={`inline-flex items-center justify-center rounded-lg border p-3 transition-colors disabled:opacity-50 ${ui.btnGhost}`}
-          title="Yangilash"
-        >
-          <motion.div
-            animate={busy ? { rotate: 360 } : {}}
-            transition={busy ? { repeat: Infinity, duration: 1.2, ease: 'linear' } : {}}
-          >
-            <RotateCcw size={18} />
-          </motion.div>
-        </button>
+        {/* Top bar inside hero */}
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md text-white border border-white/25 shadow-inner shrink-0">
+              <Users size={20} strokeWidth={2.2} />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/15 text-white backdrop-blur-md border border-white/20"
+                  style={{ color: '#ffffff' }}
+                >
+                  <Building2 size={11} className="text-white/80" />
+                  {activeDorm ? `${activeDorm.number}-sonli TTJ` : "Yotoqxona biriktirilmagan"}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {students.length} nafar talaba
+                </span>
+              </div>
+              <h1 className="text-lg sm:text-xl font-black tracking-tight text-white" style={{ color: '#ffffff' }}>
+                Talabalar boshqaruvi
+              </h1>
+              <p className="mt-0.5 text-xs text-indigo-100" style={{ color: '#e0e7ff' }}>
+                {dormsLoading || dormsError
+                  ? 'Fakultet talabalari, to‘lov kvitansiyalari va xonalar monitoringi'
+                  : activeDorm
+                    ? `${activeDorm.number}-yotoqxona talabalari ro‘yxati, xonalarga joylashuv va to‘lov nazorati`
+                    : 'Yotoqxona biriktirilmagan talabalar ro‘yxati'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            <button
+              type="button"
+              onClick={() => { refreshAll(); void loadDorms() }}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white text-xs font-bold transition-all disabled:opacity-50 no-shelf cursor-pointer active:scale-95 shadow-xs"
+              title="Ma'lumotlarni yangilash"
+            >
+              <motion.div
+                animate={busy ? { rotate: 360 } : {}}
+                transition={busy ? { repeat: Infinity, duration: 1.2, ease: 'linear' } : {}}
+              >
+                <RotateCcw size={14} />
+              </motion.div>
+              <span style={{ color: '#ffffff' }}>{busy ? '...' : 'Yangilash'}</span>
+            </button>
+          </div>
+        </div>
       </div>
 
+      {/* Dormitory Selector Tabs */}
       {dormsLoading ? (
-        <div className="mb-6 flex gap-2"><Skel className="h-10 w-36 rounded-xl" /><Skel className="h-10 w-36 rounded-xl" /></div>
+        <div className="flex gap-2"><Skel className="h-9 w-32 rounded-xl" /><Skel className="h-9 w-32 rounded-xl" /></div>
       ) : dormsError ? (
-        <div className={`mb-6 rounded-xl border p-4 ${ui.card}`}>
-          <p className={`text-sm ${ui.muted}`}>Yotoqxonalarni yuklab bo‘lmadi.</p>
-          <button onClick={() => void loadDorms()} className="mt-2 text-sm font-semibold text-indigo-600">Qayta urinish</button>
+        <div className={`rounded-xl border p-3 ${ui.card}`}>
+          <p className={`text-xs ${ui.muted}`}>Yotoqxonalarni yuklab bo‘lmadi.</p>
+          <button onClick={() => void loadDorms()} className="no-shelf mt-1 text-xs font-bold text-indigo-600">Qayta urinish</button>
         </div>
       ) : (
-        <div role="group" aria-label="Yotoqxona tanlash" className={`mb-6 flex gap-2 overflow-x-auto rounded-xl border p-2 ${ui.card}`}>
+        <div
+          role="group"
+          aria-label="Yotoqxona tanlash"
+          className={`no-shelf inline-flex max-w-full items-center gap-1 p-1 rounded-xl border overflow-x-auto scrollbar-none transition-colors ${
+            isLight
+              ? 'bg-slate-100/90 border-slate-200/80'
+              : 'bg-slate-900/90 border-slate-800'
+          }`}
+        >
           {[...dorms.map((dorm) => ({ id: dorm.dormId as string | null, label: `${dorm.number}-yotoqxona` })),
             ...(allStudents.some((student) => student.dorm_id === null) || dorms.length === 0
-              ? [{ id: null, label: 'Yotoqxona biriktirilmagan' }] : [])].map((tab) => (
-            <button
-              key={tab.id ?? 'unassigned'}
-              aria-pressed={activeDormId === tab.id}
-              onClick={() => selectDorm(tab.id)}
-              className={`shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${activeDormId === tab.id ? 'bg-indigo-600 text-white' : `${ui.muted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`}`}
-            >
-              {tab.label}
-              <span className="ml-2 text-xs opacity-75">{studentsInDorm(allStudents, tab.id).length}</span>
-            </button>
-          ))}
+              ? [{ id: null, label: 'Biriktirilmagan' }] : [])].map((tab) => {
+            const isActive = activeDormId === tab.id
+            const count = studentsInDorm(allStudents, tab.id).length
+            return (
+              <button
+                key={tab.id ?? 'unassigned'}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => selectDorm(tab.id)}
+                className={`no-shelf relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 select-none ${
+                  isActive
+                    ? isLight
+                      ? 'bg-white text-indigo-600 shadow-xs border border-slate-200/80 font-black'
+                      : 'bg-indigo-600 text-white shadow-xs border border-indigo-500/30 font-black'
+                    : isLight
+                      ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60 border border-transparent'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] border border-transparent'
+                }`}
+              >
+                <Building2
+                  size={13}
+                  className={`shrink-0 ${
+                    isActive
+                      ? isLight ? 'text-indigo-600' : 'text-white'
+                      : isLight ? 'text-slate-400' : 'text-slate-500'
+                  }`}
+                />
+                <span>{tab.label}</span>
+                <span
+                  className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-black ${
+                    isActive
+                      ? isLight
+                        ? 'bg-indigo-50 text-indigo-700'
+                        : 'bg-white/20 text-white'
+                      : isLight
+                        ? 'bg-slate-200 text-slate-600'
+                        : 'bg-slate-800 text-slate-400'
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            )
+          })}
         </div>
       )}
 
-      {/* Stats Section */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {statCards.map((card, index) => {
+      {/* Ultra-Compact 6-Metric KPI Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        {metricPills.map((card) => {
           const Icon = card.icon
           return (
-            <motion.div
+            <div
               key={card.title}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.04, duration: 0.2 }}
-              className={`rounded-2xl border p-5 ${ui.card} ${ui.hoverLift}`}
+              className={`rounded-xl border p-2.5 transition-all ${
+                isLight
+                  ? 'bg-white border-slate-200/80 shadow-xs hover:border-indigo-200'
+                  : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+              }`}
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${ui.muted}`}>{card.title}</p>
-                  <p className={`mt-2 text-3xl font-bold leading-none tracking-tight ${ui.strong}`}>
-                    {busy ? '...' : card.count ?? '—'}
-                  </p>
-                </div>
-                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${ui.accentTile}`}>
-                  <Icon size={20} strokeWidth={2.2} />
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <div className={`mb-1 flex items-center justify-between text-[10px] font-semibold ${ui.faint}`}>
-                  <span>ULUSH</span>
-                  <span>{busy || card.count === null ? '...' : `${card.percentage}%`}</span>
-                </div>
-                <div className={`h-1.5 w-full overflow-hidden rounded-full ${isLight ? 'bg-slate-100' : 'bg-slate-800'}`}>
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: busy || card.count === null ? 0 : `${card.percentage}%` }}
-                    transition={{ duration: 0.8, ease: 'easeOut' }}
-                    className="h-full rounded-full bg-indigo-600"
-                  />
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${ui.muted} truncate`}>
+                  {card.title}
+                </span>
+                <div className={`p-1 rounded-md shrink-0 ${
+                  card.color === 'indigo' ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' :
+                  card.color === 'emerald' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                  card.color === 'amber' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                  card.color === 'rose' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' :
+                  card.color === 'sky' ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400' :
+                  'bg-slate-500/10 text-slate-500'
+                }`}>
+                  <Icon size={12} />
                 </div>
               </div>
-
-              {card.description && !busy && (
-                <p className={`mt-2 text-[10px] font-medium ${ui.muted}`}>{card.description}</p>
-              )}
-            </motion.div>
+              <p className={`text-lg font-black leading-tight tracking-tight ${ui.strong}`}>
+                {busy ? '...' : card.value}
+              </p>
+              <p className={`text-[9px] font-semibold mt-0.5 truncate ${
+                card.color === 'amber' && roomlessCount > 0 ? 'text-amber-600 dark:text-amber-400' :
+                card.color === 'rose' && (debtorCount ?? 0) > 0 ? 'text-rose-600 dark:text-rose-400' :
+                ui.faint
+              }`}>
+                {busy ? '...' : card.sub}
+              </p>
+            </div>
           )
         })}
       </div>
 
       {/* Split list / detail layout */}
       <div
-        className={`grid h-[620px] grid-cols-1 overflow-hidden rounded-2xl border md:grid-cols-12 ${ui.card}`}
+        className={`grid h-[680px] lg:h-[720px] grid-cols-1 overflow-hidden rounded-2xl border md:grid-cols-12 ${
+          isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900 border-slate-800'
+        }`}
       >
-        {/* Left: students list */}
+        {/* Left: students directory */}
         <div
-          className={`col-span-12 h-full min-h-0 border-r md:col-span-4 lg:col-span-3 ${
-            isLight ? 'border-slate-200 bg-slate-50' : 'border-slate-800 bg-slate-900'
+          className={`col-span-12 h-full min-h-0 border-r md:col-span-4 lg:col-span-4 xl:col-span-3 ${
+            isLight ? 'border-slate-200/80 bg-slate-50/50' : 'border-slate-800 bg-slate-900/50'
           } ${selectedStudent ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}
         >
           {/* Search inputs */}
-          <div className="space-y-2.5 p-4">
+          <div className={`p-3 space-y-2 border-b ${isLight ? 'border-slate-200/80' : 'border-slate-800'}`}>
             <div className="relative">
-              <Search className={`absolute left-3 top-3.5 ${ui.faint}`} size={16} />
+              <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
               <input
                 type="text"
-                placeholder="Ism yoki email bo'yicha..."
+                placeholder="Ism yoki email..."
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                className={`w-full rounded-lg border py-3 pl-10 pr-4 text-xs transition-colors ${ui.input} ${ui.ring}`}
+                className={`w-full rounded-xl border py-2 pl-9 pr-8 text-xs transition-colors ${ui.input} ${ui.ring}`}
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="no-shelf absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <div className="relative">
-              <Home className={`absolute left-3 top-3.5 ${ui.faint}`} size={16} />
+              <Home className="absolute left-3 top-2.5 text-slate-400" size={14} />
               <input
                 type="text"
                 placeholder="Xona raqami bo'yicha..."
                 value={filterRoom}
                 onChange={(event) => setFilterRoom(event.target.value)}
-                className={`w-full rounded-lg border py-3 pl-10 pr-4 text-xs transition-colors ${ui.input} ${ui.ring}`}
+                className={`w-full rounded-xl border py-2 pl-9 pr-8 text-xs transition-colors ${ui.input} ${ui.ring}`}
               />
+              {filterRoom && (
+                <button
+                  type="button"
+                  onClick={() => setFilterRoom('')}
+                  className="no-shelf absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Folder tabs */}
-          <div className={`no-scrollbar flex gap-1 overflow-x-auto border-b px-4 pb-2 ${ui.border}`}>
+          {/* Folder filter pills */}
+          <div className={`no-scrollbar flex gap-1 overflow-x-auto border-b p-2 ${isLight ? 'border-slate-200/80' : 'border-slate-800'}`}>
             {folders.map((folder) => {
               const isActive = activeFolder === folder.key
               const disabled = folder.count === null
               return (
                 <button
                   key={folder.key}
+                  type="button"
                   onClick={() => !disabled && setActiveFolder(folder.key)}
                   disabled={disabled}
-                  className={`relative shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 ${
+                  className={`no-shelf relative shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all disabled:opacity-40 select-none ${
                     isActive
-                      ? 'bg-indigo-600 text-white'
-                      : `${ui.muted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : isLight
+                        ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 bg-white/70 border border-slate-200/60'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800 bg-slate-800/40 border border-slate-800'
                   }`}
                 >
                   <span className="flex items-center gap-1.5">
                     {folder.label}
-                    {folder.count !== null && folder.count > 0 && (
+                    {folder.count !== null && (
                       <span
-                        className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                        className={`rounded-full px-1.5 py-0.2 text-[9px] font-black ${
                           isActive
-                            ? 'bg-white/20 text-white'
-                            : isLight ? 'bg-slate-200 text-slate-600' : 'bg-slate-700 text-slate-300'
+                            ? 'bg-white/25 text-white'
+                            : isLight ? 'bg-slate-200 text-slate-700' : 'bg-slate-700 text-slate-300'
                         }`}
                       >
                         {folder.count}
@@ -972,7 +1075,7 @@ export default function DekanStudentsPage() {
           </div>
 
           {/* List items */}
-          <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+          <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto py-1">
             {loading || dormsLoading ? (
               <div className="space-y-2 p-2">
                 {Array.from({ length: 8 }).map((_, i) => (
@@ -1001,29 +1104,42 @@ export default function DekanStudentsPage() {
                   <button
                     key={student.id}
                     onClick={() => setSelectedStudent(student)}
-                    className={`no-shelf flex w-full items-center gap-3 border-b p-3 text-left transition-colors ${ui.border} ${
+                    className={`no-shelf group relative flex w-[calc(100%-12px)] mx-1.5 my-1 items-center gap-2.5 rounded-xl p-2.5 text-left transition-all duration-150 select-none ${
                       isActive
-                        ? 'bg-indigo-600 text-white'
-                        : `${ui.strong} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800/70'}`
+                        ? isLight
+                          ? 'bg-indigo-50/80 hover:bg-indigo-50/90 text-slate-900 border-2 border-indigo-500 shadow-xs ring-2 ring-indigo-500/10'
+                          : 'bg-indigo-950/40 hover:bg-indigo-950/60 text-slate-100 border-2 border-indigo-500 shadow-xs ring-2 ring-indigo-500/20'
+                        : isLight
+                          ? 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/70 hover:border-indigo-200'
+                          : 'bg-slate-800/40 hover:bg-slate-800/80 text-slate-100 border border-slate-800 hover:border-slate-700'
                     }`}
                   >
+                    {/* Left Active Indicator Notch */}
+                    {isActive && (
+                      <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-indigo-600 dark:bg-indigo-400" />
+                    )}
+
                     <div className="relative shrink-0">
-                      <div className={`relative h-11 w-11 overflow-hidden rounded-lg ${isLight ? 'bg-slate-200' : 'bg-slate-800'}`}>
+                      <div className={`relative h-10 w-10 overflow-hidden rounded-xl border ${
+                        isActive
+                          ? isLight ? 'border-indigo-300 bg-indigo-100/70' : 'border-indigo-500/50 bg-indigo-900/40'
+                          : isLight ? 'border-slate-200 bg-slate-100' : 'border-slate-700 bg-slate-800'
+                      }`}>
                         {student.avatar_url ? (
                           <Image
                             src={student.avatar_url}
                             alt={student.full_name}
                             fill
-                            sizes="44px"
+                            sizes="40px"
                             unoptimized
                             className="object-cover"
                           />
                         ) : (
                           <div
-                            className={`flex h-full w-full items-center justify-center text-xs font-bold ${
+                            className={`flex h-full w-full items-center justify-center text-[11px] font-black ${
                               isActive
-                                ? 'bg-white/10 text-white'
-                                : isLight ? 'bg-slate-200 text-slate-600' : 'bg-slate-800 text-slate-300'
+                                ? isLight ? 'text-indigo-700' : 'text-indigo-200'
+                                : isLight ? 'text-slate-600' : 'text-slate-300'
                             }`}
                           >
                             {getInitials(student.full_name)}
@@ -1033,20 +1149,28 @@ export default function DekanStudentsPage() {
 
                       {/* Gender dot */}
                       <span
-                        className={`absolute bottom-0 right-0 h-3 w-3 rounded-full ring-2 ${
-                          isLight ? 'ring-white' : 'ring-slate-900'
+                        className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ${
+                          isActive
+                            ? isLight ? 'ring-indigo-100' : 'ring-slate-900'
+                            : isLight ? 'ring-white' : 'ring-slate-900'
                         } ${accent.dot}`}
                       />
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1.5">
-                        <p className="truncate text-xs font-semibold leading-none">{student.full_name}</p>
+                      <div className="flex items-center justify-between gap-1">
+                        <p className={`truncate text-xs font-bold leading-tight ${
+                          isActive
+                            ? isLight ? 'text-indigo-950 font-extrabold' : 'text-white font-extrabold'
+                            : isLight ? 'text-slate-900' : 'text-slate-100'
+                        }`}>
+                          {student.full_name}
+                        </p>
                         <span className="flex shrink-0 items-center gap-1">
                           {student.blacklisted && (
                             <span
-                              className={`rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ${
-                                isActive ? 'bg-white/20 text-white' : statusChip('danger', isLight).chip
+                              className={`rounded px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${
+                                statusChip('danger', isLight).chip
                               }`}
                             >
                               Chetlatilgan
@@ -1054,8 +1178,8 @@ export default function DekanStudentsPage() {
                           )}
                           {student.is_floor_captain && (
                             <span
-                              className={`rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ${
-                                isActive ? 'bg-white/20 text-white' : (isLight ? 'bg-slate-100 text-slate-600' : 'bg-slate-800 text-slate-300')
+                              className={`rounded px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${
+                                isLight ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-indigo-900/40 text-indigo-300 border border-indigo-800'
                               }`}
                             >
                               Sardor
@@ -1063,27 +1187,47 @@ export default function DekanStudentsPage() {
                           )}
                           {warnings > 0 && (
                             <span
-                              className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${
-                                isActive ? 'border-white/10 bg-white/20 text-white' : WARNING_BADGE_CLASSES[tone]
-                              }`}
+                              className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-black ${WARNING_BADGE_CLASSES[tone]}`}
                             >
                               <span
-                                className={`h-1 w-1 rounded-full ${isActive ? 'bg-white' : WARNING_DOT_CLASSES[tone]}`}
+                                className={`h-1 w-1 rounded-full ${WARNING_DOT_CLASSES[tone]}`}
                               />
                               {warnings}
                             </span>
                           )}
                         </span>
                       </div>
-                      <div className="mt-1 flex items-center justify-between gap-2">
-                        <p className={`truncate text-[10px] ${isActive ? 'text-indigo-100' : ui.muted}`}>
-                          {student.room_number ? `Xona: ${student.room_number}` : student.email}
-                        </p>
+
+                      <div className="mt-1 flex items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-1.5 min-w-0 truncate">
+                          {student.room_number ? (
+                            <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                              isActive
+                                ? isLight ? 'bg-white text-indigo-700 border border-indigo-200 shadow-2xs' : 'bg-slate-800 text-indigo-300 border border-indigo-800/60'
+                                : isLight ? 'bg-slate-100 text-slate-700' : 'bg-slate-800 text-slate-300'
+                            }`}>
+                              <Home size={10} className="shrink-0" />
+                              {student.room_number}-xona
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                              Xonasiz
+                            </span>
+                          )}
+                          {student.course && (
+                            <span className={`text-[10px] font-medium ${
+                              isActive
+                                ? isLight ? 'text-indigo-600 font-semibold' : 'text-indigo-300 font-semibold'
+                                : 'text-slate-400'
+                            }`}>
+                              {student.course}-kurs
+                            </span>
+                          )}
+                        </div>
+
                         {summary && (
                           <span
-                            className={`shrink-0 whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${
-                              isActive ? 'border-white/10 bg-white/20 text-white' : PAY_STATE_BADGE_CLASSES[summary.state]
-                            }`}
+                            className={`shrink-0 whitespace-nowrap rounded-full border px-1.5 py-0.5 text-[9px] font-black ${PAY_STATE_BADGE_CLASSES[summary.state]}`}
                           >
                             {summary.state === 'paid' ? "To'lagan" : formatSum(summary.remaining)}
                           </span>
@@ -1097,73 +1241,97 @@ export default function DekanStudentsPage() {
           </div>
         </div>
 
-        {/* Right: student details */}
+        {/* Right: student profile & cabinet */}
         <div
-          className={`col-span-12 h-full min-h-0 overflow-hidden md:col-span-8 lg:col-span-9 ${
-            isLight ? 'bg-slate-50' : 'bg-slate-950'
+          className={`col-span-12 h-full min-h-0 overflow-hidden md:col-span-8 lg:col-span-8 xl:col-span-9 ${
+            isLight ? 'bg-slate-50/70' : 'bg-slate-950/70'
           } ${!selectedStudent ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}
         >
           {!selectedStudent ? (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
-              <div className={`mb-4 rounded-full p-6 ${isLight ? 'bg-slate-200 text-slate-400' : 'bg-slate-800 text-slate-500'}`}>
-                <UsersRound size={48} />
+              <div className={`mb-4 rounded-3xl p-6 border ${
+                isLight ? 'bg-white border-slate-200/80 text-slate-400 shadow-xs' : 'bg-slate-900 border-slate-800 text-slate-500'
+              }`}>
+                <UsersRound size={44} strokeWidth={1.75} className="text-indigo-500" />
               </div>
-              <p className={`max-w-xs text-sm ${ui.muted}`}>
-                Talabaning to&apos;liq ma&apos;lumotlari va to&apos;lov holatini ko&apos;rish uchun chap ro&apos;yxatdan tanlang
+              <h3 className={`text-base font-black tracking-tight ${ui.strong}`}>
+                Talaba tanlanmagan
+              </h3>
+              <p className={`mt-1 max-w-xs text-xs ${ui.muted}`}>
+                Talabaning to&apos;liq shaxsiy profili, hujjati, oila ma&apos;lumotlari va to&apos;lov holatini ko&apos;rish uchun chap ro&apos;yxatdan tanlang
               </p>
             </div>
           ) : (
             <>
               {/* Selected student header */}
-              <div className={`flex shrink-0 flex-col justify-between gap-3 border-b p-4 sm:flex-row sm:items-center ${ui.border} ${isLight ? 'bg-white' : 'bg-slate-900'}`}>
-                <div className="flex w-full min-w-0 items-center gap-3 sm:w-auto">
+              <div className={`flex shrink-0 flex-col justify-between gap-3 border-b p-4 sm:flex-row sm:items-center ${
+                isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900 border-slate-800'
+              }`}>
+                <div className="flex w-full min-w-0 items-center gap-3.5 sm:w-auto">
                   <button
                     onClick={() => setSelectedStudent(null)}
-                    className={`-ml-2 rounded-lg p-2 md:hidden ${ui.muted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`}
+                    className={`no-shelf -ml-1 rounded-xl p-2 md:hidden transition-colors ${
+                      isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-slate-400 hover:bg-slate-800'
+                    }`}
                     aria-label="Ro'yxatga qaytish"
                   >
-                    <ArrowLeft size={20} />
+                    <ArrowLeft size={18} />
                   </button>
 
                   <div
-                    className={`relative h-11 w-11 shrink-0 cursor-pointer overflow-hidden rounded-lg ${isLight ? 'bg-slate-200' : 'bg-slate-800'}`}
+                    className={`group relative h-13 w-13 shrink-0 cursor-pointer overflow-hidden rounded-2xl border-2 transition-transform hover:scale-105 ${
+                      isLight ? 'border-slate-200 bg-slate-100' : 'border-slate-700 bg-slate-800'
+                    }`}
                     onClick={() => selectedStudent.avatar_url && setFullScreenImage(selectedStudent.avatar_url)}
+                    title="Rasmni kattalashtirish"
                   >
                     {selectedStudent.avatar_url ? (
                       <Image
                         src={selectedStudent.avatar_url}
                         alt={selectedStudent.full_name}
                         fill
-                        sizes="44px"
+                        sizes="52px"
                         unoptimized
                         className="object-cover"
                       />
                     ) : (
-                      <div className={`flex h-full w-full items-center justify-center text-xs font-bold ${isLight ? 'bg-slate-200 text-slate-600' : 'bg-slate-800 text-slate-300'}`}>
+                      <div className={`flex h-full w-full items-center justify-center text-sm font-black ${
+                        isLight ? 'bg-indigo-50 text-indigo-600' : 'bg-indigo-950/60 text-indigo-300'
+                      }`}>
                         {getInitials(selectedStudent.full_name)}
                       </div>
                     )}
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <h2 className={`break-words text-sm font-semibold leading-tight ${ui.strong}`}>
-                      {selectedStudent.full_name}
-                    </h2>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <h2 className={`truncate text-base sm:text-lg font-black tracking-tight ${ui.strong}`}>
+                        {selectedStudent.full_name}
+                      </h2>
+                      {selectedStudent.gender && (
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full ${genderAccent(selectedStudent.gender).dot}`}
+                          title={genderLabel(selectedStudent.gender)}
+                        />
+                      )}
+                    </div>
+
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       {selectedStudent.room_number ? (
-                        <span className={`flex items-center gap-1.5 text-[10px] font-semibold ${statusChip('success', isLight).text}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${statusChip('success', isLight).dot}`} />
-                          {selectedStudent.room_number}-xonada joylashgan
+                        <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${statusChip('success', isLight).chip}`}>
+                          <Home size={11} />
+                          {selectedStudent.room_number}-xona
                         </span>
                       ) : (
-                        <span className={`flex items-center gap-1.5 text-[10px] font-semibold ${statusChip('warning', isLight).text}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${statusChip('warning', isLight).dot}`} />
-                          Xonasiz — joylashtirilmagan
+                        <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${statusChip('warning', isLight).chip}`}>
+                          <AlertTriangle size={11} />
+                          Xonasiz
                         </span>
                       )}
+
                       {selectedSummary && (
                         <span
-                          className={`shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                          className={`shrink-0 whitespace-nowrap rounded-md border px-2 py-0.5 text-[10px] font-black ${
                             PAY_STATE_BADGE_CLASSES[selectedSummary.state]
                           }`}
                         >
@@ -1171,245 +1339,533 @@ export default function DekanStudentsPage() {
                           {selectedSummary.state !== 'paid' && ` — ${formatSum(selectedSummary.remaining)}`}
                         </span>
                       )}
+
                       <span
-                        className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                        className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-[10px] font-black ${
                           WARNING_BADGE_CLASSES[getWarningTone(selectedStudent.warning_count ?? 0, warningThreshold)]
                         }`}
                       >
                         {(selectedStudent.warning_count ?? 0) === 0 ? (
                           <>
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            Ogohlantirish yo&apos;q (A&apos;lo)
+                            <CheckCircle2 size={11} className="text-emerald-500" />
+                            Intizom: A&apos;lo
                           </>
                         ) : (
                           <>
-                            <span
-                              className={`h-1.5 w-1.5 rounded-full ${
-                                WARNING_DOT_CLASSES[
-                                  getWarningTone(selectedStudent.warning_count ?? 0, warningThreshold)
-                                ]
-                              }`}
-                            />
+                            <AlertTriangle size={11} />
                             {selectedStudent.warning_count} ta ogohlantirish
                           </>
                         )}
                       </span>
+
                       {selectedStudent.is_floor_captain && (
-                        <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold ${ui.accentSoft}`}>
+                        <span className="shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 text-[10px] font-black bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
                           Qavat sardori
                         </span>
                       )}
                       {selectedStudent.is_council_chair && (
-                        <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold ${ui.accentSoft}`}>
+                        <span className="shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 text-[10px] font-black bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
                           Kengash raisi
                         </span>
                       )}
                       {selectedStudent.blacklisted && (
-                        <span className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold ${statusChip('danger', isLight).chip}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${statusChip('danger', isLight).dot}`} />
-                          Yotoqxonadan chetlatilgan
+                        <span className={`shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 text-[10px] font-black ${statusChip('danger', isLight).chip}`}>
+                          Chetlatilgan
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {!readOnly && (
-                <div className="shrink-0 self-start sm:self-center">
-                  <button
-                    ref={actionsButtonRef}
-                    onClick={() => (actionsMenuOpen ? setActionsMenuOpen(false) : openActionsMenu())}
-                    aria-label="Amallar"
-                    title="Amallar"
-                    className={`flex items-center justify-center rounded-lg border p-2 transition-colors ${
-                      actionsMenuOpen ? ui.accentSoft : ui.btnGhost
-                    }`}
-                  >
-                    <MoreVertical size={16} />
-                  </button>
-                  {typeof document !== 'undefined' && createPortal(
-                    <AnimatePresence>
-                      {actionsMenuOpen && actionsMenuPos && (
-                        <>
-                          <button
-                            type="button"
-                            aria-label="Menyuni yopish"
-                            onClick={() => setActionsMenuOpen(false)}
-                            className="fixed inset-0 z-40 cursor-default"
-                          />
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: -6 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: -6 }}
-                            transition={{ duration: 0.15 }}
-                            style={{ top: actionsMenuPos.top, left: actionsMenuPos.left, width: ACTIONS_MENU_WIDTH }}
-                            className={`fixed z-50 space-y-0.5 rounded-2xl border p-1.5 shadow-2xl backdrop-blur-xl ${ui.card}`}
-                          >
-                            <button
-                              onClick={() => { setActionsMenuOpen(false); openEditModal() }}
-                              className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${ui.body} ${isLight ? 'hover:bg-slate-100 hover:text-slate-900' : 'hover:bg-slate-800 hover:text-white'}`}
-                            >
-                              <Edit2 size={15} />
-                              Tahrirlash
-                            </button>
-                            <button
-                              onClick={() => { setActionsMenuOpen(false); openWarningModal() }}
-                              className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${isLight ? 'text-amber-700 hover:bg-amber-50' : 'text-amber-400 hover:bg-amber-500/10'}`}
-                            >
-                              <AlertTriangle size={15} />
-                              Ogohlantirish
-                            </button>
-                            {captainEligible(selectedStudent) && (
+                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  {selectedStudent.phone_number && (
+                    <a
+                      href={`tel:${selectedStudent.phone_number}`}
+                      className={`no-shelf inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                        isLight
+                          ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                          : 'bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border-emerald-800/60'
+                      }`}
+                      title="Qo'ng'iroq qilish"
+                    >
+                      <Phone size={13} />
+                      <span className="hidden sm:inline">Qo&apos;ng&apos;iroq</span>
+                    </a>
+                  )}
+
+                  {!readOnly && (
+                    <div className="relative">
+                      <button
+                        ref={actionsButtonRef}
+                        onClick={() => (actionsMenuOpen ? setActionsMenuOpen(false) : openActionsMenu())}
+                        aria-label="Amallar"
+                        title="Boshqarish amallari"
+                        className={`no-shelf inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                          actionsMenuOpen
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            : isLight
+                              ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-xs'
+                              : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                        }`}
+                      >
+                        <MoreVertical size={14} />
+                        <span>Amallar</span>
+                      </button>
+                      {typeof document !== 'undefined' && createPortal(
+                        <AnimatePresence>
+                          {actionsMenuOpen && actionsMenuPos && (
+                            <>
                               <button
-                                onClick={() => { setActionsMenuOpen(false); setCaptainModalOpen(true) }}
-                                className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${isLight ? 'text-indigo-700 hover:bg-indigo-50' : 'text-indigo-300 hover:bg-indigo-500/10'}`}
+                                type="button"
+                                aria-label="Menyuni yopish"
+                                onClick={() => setActionsMenuOpen(false)}
+                                className="fixed inset-0 z-40 cursor-default"
+                              />
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: -6 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                                transition={{ duration: 0.15 }}
+                                style={{ top: actionsMenuPos.top, left: actionsMenuPos.left, width: ACTIONS_MENU_WIDTH }}
+                                className={`fixed z-50 space-y-0.5 rounded-2xl border p-1.5 shadow-2xl backdrop-blur-xl ${ui.card}`}
                               >
-                                <ShieldCheck size={15} />
-                                {selectedStudent.is_floor_captain ? 'Sardorlikdan olish' : 'Sardor tayinlash'}
-                              </button>
-                            )}
-                            {councilEligible(selectedStudent) && (
-                              <button
-                                onClick={() => { setActionsMenuOpen(false); setCouncilModalOpen(true) }}
-                                className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${isLight ? 'text-indigo-700 hover:bg-indigo-50' : 'text-indigo-300 hover:bg-indigo-500/10'}`}
-                              >
-                                <Award size={15} />
-                                {selectedStudent.is_council_chair ? 'Kengash raisligidan olish' : 'Kengash raisi tayinlash'}
-                              </button>
-                            )}
-                            <button
-                              onClick={() => { setActionsMenuOpen(false); setBlacklistReason(''); setBlacklistModalOpen(true) }}
-                              className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${isLight ? 'text-rose-600 hover:bg-rose-50' : 'text-rose-400 hover:bg-rose-500/10'}`}
-                            >
-                              <UserX size={15} />
-                              {selectedStudent.blacklisted ? 'Chetlatishni bekor qilish' : 'Chetlatish'}
-                            </button>
-                            <div className={`mx-1.5 my-1 border-t ${ui.border}`} />
-                            <button
-                              onClick={() => { setActionsMenuOpen(false); setDeleteModalOpen(true) }}
-                              className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${isLight ? 'text-rose-600 hover:bg-rose-50' : 'text-rose-400 hover:bg-rose-500/10'}`}
-                            >
-                              <Trash2 size={15} />
-                              Talabani o&apos;chirish
-                            </button>
-                          </motion.div>
-                        </>
+                                <button
+                                  onClick={() => { setActionsMenuOpen(false); openEditModal() }}
+                                  className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors ${ui.body} ${isLight ? 'hover:bg-slate-100 hover:text-slate-900' : 'hover:bg-slate-800 hover:text-white'}`}
+                                >
+                                  <Edit2 size={14} />
+                                  Tahrirlash
+                                </button>
+                                <button
+                                  onClick={() => { setActionsMenuOpen(false); openWarningModal() }}
+                                  className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors ${isLight ? 'text-amber-700 hover:bg-amber-50' : 'text-amber-400 hover:bg-amber-500/10'}`}
+                                >
+                                  <AlertTriangle size={14} />
+                                  Ogohlantirish
+                                </button>
+                                {captainEligible(selectedStudent) && (
+                                  <button
+                                    onClick={() => { setActionsMenuOpen(false); setCaptainModalOpen(true) }}
+                                    className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors ${isLight ? 'text-indigo-700 hover:bg-indigo-50' : 'text-indigo-300 hover:bg-indigo-500/10'}`}
+                                  >
+                                    <ShieldCheck size={14} />
+                                    {selectedStudent.is_floor_captain ? 'Sardorlikdan olish' : 'Sardor tayinlash'}
+                                  </button>
+                                )}
+                                {councilEligible(selectedStudent) && (
+                                  <button
+                                    onClick={() => { setActionsMenuOpen(false); setCouncilModalOpen(true) }}
+                                    className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors ${isLight ? 'text-indigo-700 hover:bg-indigo-50' : 'text-indigo-300 hover:bg-indigo-500/10'}`}
+                                  >
+                                    <Award size={14} />
+                                    {selectedStudent.is_council_chair ? 'Kengash raisligidan olish' : 'Kengash raisi tayinlash'}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => { setActionsMenuOpen(false); setBlacklistReason(''); setBlacklistModalOpen(true) }}
+                                  className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors ${isLight ? 'text-rose-600 hover:bg-rose-50' : 'text-rose-400 hover:bg-rose-500/10'}`}
+                                >
+                                  <UserX size={14} />
+                                  {selectedStudent.blacklisted ? 'Chetlatishni bekor qilish' : 'Chetlatish'}
+                                </button>
+                                <div className={`mx-1.5 my-1 border-t ${ui.border}`} />
+                                <button
+                                  onClick={() => { setActionsMenuOpen(false); setDeleteModalOpen(true) }}
+                                  className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors ${isLight ? 'text-rose-600 hover:bg-rose-50' : 'text-rose-400 hover:bg-rose-500/10'}`}
+                                >
+                                  <Trash2 size={14} />
+                                  Talabani o&apos;chirish
+                                </button>
+                              </motion.div>
+                            </>
+                          )}
+                        </AnimatePresence>,
+                        document.body,
                       )}
-                    </AnimatePresence>,
-                    document.body,
+                    </div>
                   )}
                 </div>
-                )}
               </div>
 
               {/* Details body */}
               <div className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-                {/* Tab menu */}
-                <div className={`no-scrollbar flex flex-nowrap gap-1 overflow-x-auto rounded-lg border p-1 ${ui.inset}`}>
-                  {([
-                    { key: 'profil', label: 'Profil' },
-                    { key: 'hujjatlar', label: 'Hujjat & Manzil' },
-                    { key: 'oila', label: 'Oila' },
-                    { key: 'tolovlar', label: "To'lovlar" },
-                  ] as const).map((tab) => (
-                    <button
-                      key={tab.key}
-                      onClick={() => setDetailTab(tab.key)}
-                      className={`flex-1 shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors sm:px-4 ${
-                        detailTab === tab.key
-                          ? 'bg-indigo-600 text-white'
-                          : `${ui.muted} ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-200'}`
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
+                {/* Segmented Tab Bar */}
+                <div className={`no-scrollbar flex flex-nowrap gap-1 overflow-x-auto rounded-xl border p-1 ${
+                  isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-900 border-slate-800'
+                }`}>
+                  {[
+                    { key: 'profil' as const, label: 'Profil', icon: User },
+                    { key: 'hujjatlar' as const, label: 'Hujjat & Manzil', icon: FileText },
+                    { key: 'oila' as const, label: 'Oila', icon: Users },
+                    { key: 'tolovlar' as const, label: "To'lovlar", icon: CreditCard },
+                  ].map((tab) => {
+                    const Icon = tab.icon
+                    const isActive = detailTab === tab.key
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setDetailTab(tab.key)}
+                        className={`no-shelf flex-1 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 select-none ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs font-black'
+                            : isLight
+                              ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                        }`}
+                      >
+                        <Icon size={14} className={isActive ? 'text-white' : 'opacity-70'} />
+                        <span>{tab.label}</span>
+                      </button>
+                    )
+                  })}
                 </div>
 
                 {/* Tab: Profil */}
                 {detailTab === 'profil' && (
-                  <div className={`space-y-3.5 rounded-xl border p-4 ${cardSurface}`}>
-                    <h3 className={`mb-2 text-[10px] font-bold uppercase tracking-[0.18em] ${ui.muted}`}>
-                      Asosiy ma&apos;lumotlar
-                    </h3>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      {studentInfoItems(selectedStudent)
-                        .filter((item) => !HUJJAT_LABELS.includes(item.label))
-                        .map((item) => {
-                          const Icon = item.icon
-                          return (
-                            <div key={item.label} className="flex items-center gap-3">
-                              <div className={`shrink-0 rounded-lg p-2.5 ${infoTileSurface}`}>
-                                <Icon size={16} />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className={`truncate text-xs font-semibold ${infoValueText}`}>{item.value}</p>
-                                <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500">
-                                  {item.label}
-                                </p>
-                              </div>
-                            </div>
-                          )
-                        })}
-                    </div>
-                  </div>
-                )}
+                  <div className="space-y-3.5">
+                    {/* Academic & Dorm Info Card */}
+                    <div className={`rounded-2xl border p-4.5 ${
+                      isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900 border-slate-800'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                          <GraduationCap size={16} />
+                        </div>
+                        <div>
+                          <h3 className={`text-xs font-black uppercase tracking-wider ${ui.strong}`}>
+                            Ta&apos;lim va Yotoqxona joylashuvi
+                          </h3>
+                          <p className={`text-[10px] ${ui.muted}`}>Fakultet, yo&apos;nalish va biriktirilgan xona ma&apos;lumotlari</p>
+                        </div>
+                      </div>
 
-                {/* Tab: Hujjatlar */}
-                {detailTab === 'hujjatlar' && (
-                  <div className={`space-y-3.5 rounded-xl border p-4 ${cardSurface}`}>
-                    <h3 className={`mb-2 text-[10px] font-bold uppercase tracking-[0.18em] ${ui.muted}`}>
-                      Hujjat va manzillar
-                    </h3>
-                    {studentInfoItems(selectedStudent).filter((item) => HUJJAT_LABELS.includes(item.label)).length ===
-                    0 ? (
-                      <p className={`text-xs ${ui.faint}`}>Kiritilmagan</p>
-                    ) : (
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {studentInfoItems(selectedStudent)
-                          .filter((item) => HUJJAT_LABELS.includes(item.label))
+                          .filter((item) => ['Fakultet', "Yo'nalish", 'Kurs', 'Xona', 'Qavat', "Ta'lim turi", 'Yotoqxonaga kirgan sana'].includes(item.label))
                           .map((item) => {
                             const Icon = item.icon
                             return (
-                              <div key={item.label} className="flex items-center gap-3">
-                                <div className={`shrink-0 rounded-lg p-2.5 ${infoTileSurface}`}>
-                                  <Icon size={16} />
+                              <div
+                                key={item.label}
+                                className={`flex items-center gap-3 p-2.5 rounded-xl border ${
+                                  isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-800/40 border-slate-800'
+                                }`}
+                              >
+                                <div className={`shrink-0 rounded-lg p-2 ${infoTileSurface}`}>
+                                  <Icon size={16} className="text-indigo-600 dark:text-indigo-400" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className={`truncate text-xs font-semibold ${infoValueText}`}>{item.value}</p>
-                                  <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                                  <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
                                     {item.label}
+                                  </p>
+                                  <p className={`truncate text-xs font-bold ${infoValueText} mt-0.5`}>
+                                    {item.value}
                                   </p>
                                 </div>
                               </div>
                             )
                           })}
                       </div>
-                    )}
+                    </div>
+
+                    {/* Personal & Contact Info Card */}
+                    <div className={`rounded-2xl border p-4.5 ${
+                      isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900 border-slate-800'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                          <User size={16} />
+                        </div>
+                        <div>
+                          <h3 className={`text-xs font-black uppercase tracking-wider ${ui.strong}`}>
+                            Shaxsiy va Bog&apos;lanish ma&apos;lumotlari
+                          </h3>
+                          <p className={`text-[10px] ${ui.muted}`}>Talaba bilan bevosita aloqa vositalari</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {studentInfoItems(selectedStudent)
+                          .filter((item) => !HUJJAT_LABELS.includes(item.label) && !['Fakultet', "Yo'nalish", 'Kurs', 'Xona', 'Qavat', "Ta'lim turi", 'Yotoqxonaga kirgan sana'].includes(item.label))
+                          .map((item) => {
+                            const Icon = item.icon
+                            const isPhone = item.label === 'Telefon'
+                            const isEmail = item.label === 'Email'
+                            return (
+                              <div
+                                key={item.label}
+                                className={`flex items-center gap-3 p-2.5 rounded-xl border ${
+                                  isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-800/40 border-slate-800'
+                                }`}
+                              >
+                                <div className={`shrink-0 rounded-lg p-2 ${infoTileSurface}`}>
+                                  <Icon size={16} className="text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                                    {item.label}
+                                  </p>
+                                  {isPhone ? (
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <a
+                                        href={`tel:${item.value}`}
+                                        className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline truncate"
+                                      >
+                                        {item.value}
+                                      </a>
+                                      <button
+                                        type="button"
+                                        onClick={() => copyToClipboard(item.value, 'phone', 'Telefon')}
+                                        className="no-shelf text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                        title="Nusxalash"
+                                      >
+                                        {copiedKey === 'phone' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                                      </button>
+                                    </div>
+                                  ) : isEmail ? (
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <a
+                                        href={`mailto:${item.value}`}
+                                        className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline truncate"
+                                      >
+                                        {item.value}
+                                      </a>
+                                      <button
+                                        type="button"
+                                        onClick={() => copyToClipboard(item.value, 'email', 'Email')}
+                                        className="no-shelf text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                        title="Nusxalash"
+                                      >
+                                        {copiedKey === 'email' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <p className={`truncate text-xs font-bold ${infoValueText} mt-0.5`}>
+                                      {item.value}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab: Hujjatlar */}
+                {detailTab === 'hujjatlar' && (
+                  <div className="space-y-3.5">
+                    {/* ID & Passport Card */}
+                    <div className={`rounded-2xl border p-4.5 ${
+                      isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900 border-slate-800'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="p-1.5 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                          <FileText size={16} />
+                        </div>
+                        <div>
+                          <h3 className={`text-xs font-black uppercase tracking-wider ${ui.strong}`}>
+                            Pasport va Shaxsiy Identifikatsiya
+                          </h3>
+                          <p className={`text-[10px] ${ui.muted}`}>Pasport seriya, raqam va JSHSHIR rekvizitlari</p>
+                        </div>
+                      </div>
+
+                      {studentInfoItems(selectedStudent)
+                        .filter((item) => ['Passport seriya', 'JSHSHIR', 'Passport sanasi', 'Millati', 'Jinsi'].includes(item.label)).length === 0 ? (
+                        <div className={`rounded-2xl border p-6 text-center ${
+                          isLight ? 'bg-white border-slate-200/80' : 'bg-slate-900 border-slate-800'
+                        }`}>
+                          <div className="inline-flex p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 mb-2">
+                            <FileText size={24} />
+                          </div>
+                          <h4 className={`text-xs font-bold ${ui.strong}`}>Pasport ma&apos;lumotlari kiritilmagan</h4>
+                          <p className={`text-[10px] ${ui.faint} mt-0.5`}>
+                            Ushbu talabaning pasport yoki shaxsiy identifikatsiya rekvizitlari bazada mavjud emas.
+                          </p>
+                        </div>
+                      ) : (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {studentInfoItems(selectedStudent)
+                          .filter((item) => ['Passport seriya', 'JSHSHIR', 'Passport sanasi', 'Millati', 'Jinsi'].includes(item.label))
+                          .map((item) => {
+                            const Icon = item.icon
+                            const isCopyable = item.label === 'Passport seriya' || item.label === 'JSHSHIR'
+                            return (
+                              <div
+                                key={item.label}
+                                className={`flex items-center gap-3 p-2.5 rounded-xl border ${
+                                  isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-800/40 border-slate-800'
+                                }`}
+                              >
+                                <div className={`shrink-0 rounded-lg p-2 ${infoTileSurface}`}>
+                                  <Icon size={16} className="text-sky-600 dark:text-sky-400" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                                    {item.label}
+                                  </p>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <p className={`truncate text-xs font-bold ${infoValueText}`}>
+                                      {item.value}
+                                    </p>
+                                    {isCopyable && (
+                                      <button
+                                        type="button"
+                                        onClick={() => copyToClipboard(item.value, item.label, item.label)}
+                                        className="no-shelf text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                        title="Nusxalash"
+                                      >
+                                        {copiedKey === item.label ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                      </div>
+                      )}
+                    </div>
+
+                    {/* Address Card */}
+                    <div className={`rounded-2xl border p-4.5 ${
+                      isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900 border-slate-800'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                          <MapPin size={16} />
+                        </div>
+                        <div>
+                          <h3 className={`text-xs font-black uppercase tracking-wider ${ui.strong}`}>
+                            Doimiy Yashash Manzili
+                          </h3>
+                          <p className={`text-[10px] ${ui.muted}`}>Talabaning pasport bo‘yicha ro‘yxatdan o‘tgan hududi</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div className={`p-3 rounded-xl border ${isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-800/40 border-slate-800'}`}>
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Viloyat / Shahar</p>
+                          <p className={`text-xs font-bold ${infoValueText} mt-1`}>{selectedStudent.region || '—'}</p>
+                        </div>
+                        <div className={`p-3 rounded-xl border ${isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-800/40 border-slate-800'}`}>
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Tuman / Hudud</p>
+                          <p className={`text-xs font-bold ${infoValueText} mt-1`}>{selectedStudent.district || '—'}</p>
+                        </div>
+                        <div className={`p-3 rounded-xl border ${isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-800/40 border-slate-800'}`}>
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Mahalla / Ko‘cha</p>
+                          <p className={`text-xs font-bold ${infoValueText} mt-1`}>{selectedStudent.mahalla || '—'}</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 {/* Tab: Oila */}
                 {detailTab === 'oila' && (
-                  <div className={`space-y-3.5 rounded-xl border p-4 ${cardSurface}`}>
-                    <h3 className={`mb-2 text-[10px] font-bold uppercase tracking-[0.18em] ${ui.muted}`}>
-                      Oila a&apos;zolari
-                    </h3>
+                  <div className="space-y-3.5">
                     {familyInfoItems(selectedStudent).length === 0 ? (
-                      <p className={`text-xs ${ui.faint}`}>Kiritilmagan</p>
+                      <div className={`rounded-2xl border p-8 text-center ${
+                        isLight ? 'bg-white border-slate-200/80' : 'bg-slate-900 border-slate-800'
+                      }`}>
+                        <div className="inline-flex p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 mb-2">
+                          <Users size={24} />
+                        </div>
+                        <h4 className={`text-xs font-bold ${ui.strong}`}>Oila ma&apos;lumotlari kiritilmagan</h4>
+                        <p className={`text-[10px] ${ui.faint} mt-0.5`}>
+                          Ushbu talabaning ota-onasi yoki vasiylari haqidagi ma&apos;lumotlar bazada mavjud emas.
+                        </p>
+                      </div>
                     ) : (
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        {familyInfoItems(selectedStudent).map((item) => (
-                          <div key={item.label} className="flex items-center gap-3">
-                            <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
-                            <div className="min-w-0 flex-1">
-                              <p className={`truncate text-xs font-semibold ${infoValueText}`}>{item.value}</p>
-                              <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500">
-                                {item.label}
-                              </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        {/* Father card */}
+                        <div className={`rounded-2xl border p-4.5 ${
+                          isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900 border-slate-800'
+                        }`}>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                              <User size={16} />
+                            </div>
+                            <div>
+                              <h3 className={`text-xs font-black uppercase tracking-wider ${ui.strong}`}>
+                                Otasi haqida ma&apos;lumot
+                              </h3>
+                              <p className={`text-[10px] ${ui.muted}`}>F.I.Sh., ish joyi va telefon raqami</p>
                             </div>
                           </div>
-                        ))}
+
+                          <div className="space-y-2.5">
+                            <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-800/40 border-slate-800'}`}>
+                              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">To‘liq F.I.Sh.</p>
+                              <p className={`text-xs font-bold ${infoValueText} mt-0.5`}>{selectedStudent.father_full_name || 'Kiritilmagan'}</p>
+                            </div>
+                            <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-800/40 border-slate-800'}`}>
+                              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Ish joyi va lavozimi</p>
+                              <p className={`text-xs font-bold ${infoValueText} mt-0.5`}>{selectedStudent.father_workplace || 'Kiritilmagan'}</p>
+                            </div>
+                            <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-800/40 border-slate-800'}`}>
+                              <div>
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Telefon raqami</p>
+                                <p className={`text-xs font-bold ${infoValueText} mt-0.5`}>{selectedStudent.father_phone || 'Kiritilmagan'}</p>
+                              </div>
+                              {selectedStudent.father_phone && (
+                                <a
+                                  href={`tel:${selectedStudent.father_phone}`}
+                                  className="no-shelf inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-bold transition-colors"
+                                >
+                                  <Phone size={11} />
+                                  Qo&apos;ng&apos;iroq
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Mother card */}
+                        <div className={`rounded-2xl border p-4.5 ${
+                          isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900 border-slate-800'
+                        }`}>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="p-1.5 rounded-lg bg-pink-500/10 text-pink-600 dark:text-pink-400">
+                              <User size={16} />
+                            </div>
+                            <div>
+                              <h3 className={`text-xs font-black uppercase tracking-wider ${ui.strong}`}>
+                                Onasi haqida ma&apos;lumot
+                              </h3>
+                              <p className={`text-[10px] ${ui.muted}`}>F.I.Sh., ish joyi va telefon raqami</p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2.5">
+                            <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-800/40 border-slate-800'}`}>
+                              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">To‘liq F.I.Sh.</p>
+                              <p className={`text-xs font-bold ${infoValueText} mt-0.5`}>{selectedStudent.mother_full_name || 'Kiritilmagan'}</p>
+                            </div>
+                            <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-800/40 border-slate-800'}`}>
+                              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Ish joyi va lavozimi</p>
+                              <p className={`text-xs font-bold ${infoValueText} mt-0.5`}>{selectedStudent.mother_workplace || 'Kiritilmagan'}</p>
+                            </div>
+                            <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-800/40 border-slate-800'}`}>
+                              <div>
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Telefon raqami</p>
+                                <p className={`text-xs font-bold ${infoValueText} mt-0.5`}>{selectedStudent.mother_phone || 'Kiritilmagan'}</p>
+                              </div>
+                              {selectedStudent.mother_phone && (
+                                <a
+                                  href={`tel:${selectedStudent.mother_phone}`}
+                                  className="no-shelf inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-bold transition-colors"
+                                >
+                                  <Phone size={11} />
+                                  Qo&apos;ng&apos;iroq
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1419,65 +1875,78 @@ export default function DekanStudentsPage() {
                 {detailTab === 'tolovlar' && (
                   <div className="space-y-4">
                     {settingsStatus === 'loading' ? (
-                      <div className={`rounded-xl border p-6 text-center text-xs ${cardSurface} ${ui.muted}`}>
+                      <div className={`rounded-2xl border p-6 text-center text-xs ${cardSurface} ${ui.muted}`}>
                         Shartnoma summasi sozlamasi yuklanmoqda...
                       </div>
                     ) : settingsStatus === 'error' ? (
-                      <div className={`rounded-xl border p-6 text-center text-xs ${
+                      <div className={`rounded-2xl border p-6 text-center text-xs ${
                         isLight ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-rose-500/25 bg-rose-500/10 text-rose-300'
                       }`}>
                         <p>Shartnoma summasi sozlamasini yuklab bo&apos;lmadi.</p>
                         <button
                           type="button"
                           onClick={() => void loadSettings()}
-                          className={`mt-3 rounded-lg px-3 py-2 font-bold uppercase tracking-wider transition-colors ${ui.dangerSoft}`}
+                          className={`no-shelf mt-3 rounded-xl px-3 py-2 font-bold uppercase tracking-wider transition-colors ${ui.dangerSoft}`}
                         >
                           Qayta urinish
                         </button>
                       </div>
                     ) : selectedSummary ? (
                       <>
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                           {[
-                            { label: "To'langan summa", value: selectedSummary.paid, icon: CheckCircle2 },
-                            { label: 'Qolgan summa', value: selectedSummary.remaining, icon: DollarSign },
-                            { label: 'Shartnoma miqdori', value: selectedSummary.contractFee, icon: FileText },
-                            { label: "Kutilayotgan to'lovlar", value: selectedSummary.waiting, icon: Clock },
+                            { label: "To'langan summa", value: selectedSummary.paid, icon: CheckCircle2, color: 'emerald' },
+                            { label: 'Qolgan qarz', value: selectedSummary.remaining, icon: DollarSign, color: 'rose' },
+                            { label: 'Shartnoma miqdori', value: selectedSummary.contractFee, icon: FileText, color: 'indigo' },
+                            { label: "Kutilayotgan to'lovlar", value: selectedSummary.waiting, icon: Clock, color: 'sky' },
                           ].map((card) => {
                             const Icon = card.icon
                             return (
                               <div
                                 key={card.label}
-                                className={`flex items-center gap-3 rounded-xl border p-4 ${cardSurface}`}
+                                className={`rounded-2xl border p-3 ${
+                                  isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900 border-slate-800'
+                                }`}
                               >
-                                <div className={`shrink-0 rounded-lg p-2.5 ${infoTileSurface}`}>
-                                  <Icon size={20} />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className={`text-sm font-bold leading-none ${infoValueText}`}>
-                                    {card.value.toLocaleString('uz-UZ')} UZS
-                                  </p>
-                                  <p className={`mt-1 text-[9px] font-bold uppercase tracking-wider ${ui.faint}`}>
+                                <div className="flex items-center justify-between gap-1 mb-1">
+                                  <p className={`text-[9px] font-bold uppercase tracking-wider ${ui.faint} truncate`}>
                                     {card.label}
                                   </p>
+                                  <div className={`p-1 rounded-md shrink-0 ${
+                                    card.color === 'emerald' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                                    card.color === 'rose' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' :
+                                    card.color === 'indigo' ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' :
+                                    'bg-sky-500/10 text-sky-600 dark:text-sky-400'
+                                  }`}>
+                                    <Icon size={12} />
+                                  </div>
                                 </div>
+                                <p className={`text-sm sm:text-base font-black leading-tight tracking-tight ${
+                                  card.color === 'rose' && card.value > 0 ? 'text-rose-600 dark:text-rose-400' :
+                                  card.color === 'emerald' && card.value > 0 ? 'text-emerald-600 dark:text-emerald-400' :
+                                  infoValueText
+                                }`}>
+                                  {card.value.toLocaleString('uz-UZ')} UZS
+                                </p>
                               </div>
                             )
                           })}
                         </div>
 
-                        <div className={`rounded-xl border p-4 ${cardSurface}`}>
+                        <div className={`rounded-2xl border p-4 ${
+                          isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900 border-slate-800'
+                        }`}>
                           <div className="mb-2 flex items-center justify-between">
                             <span className={`text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>
-                              To&apos;lov progressi
+                              Yillik Shartnoma to&apos;lov progressi
                             </span>
-                            <span className={`text-xs font-bold ${ui.accentText}`}>
+                            <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
                               {selectedSummary.progressPercent}%
                             </span>
                           </div>
                           <div className={`h-2.5 w-full overflow-hidden rounded-full ${isLight ? 'bg-slate-100' : 'bg-slate-800'}`}>
                             <div
-                              className="h-2.5 rounded-full bg-indigo-600 transition-all duration-500"
+                              className="h-2.5 rounded-full bg-linear-to-r from-indigo-600 to-emerald-500 transition-all duration-500"
                               style={{ width: `${selectedSummary.progressPercent}%` }}
                             />
                           </div>
@@ -1485,8 +1954,11 @@ export default function DekanStudentsPage() {
                       </>
                     ) : null}
 
-                    <div className={`rounded-xl border p-4 ${cardSurface}`}>
-                      <h3 className={`mb-4 text-[10px] font-bold uppercase tracking-[0.18em] ${ui.muted}`}>
+                    {/* Receipts History */}
+                    <div className={`rounded-2xl border p-4 ${
+                      isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900 border-slate-800'
+                    }`}>
+                      <h3 className={`mb-3 text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>
                         To&apos;lov kvitansiyalari tarixi
                       </h3>
 
@@ -1497,16 +1969,21 @@ export default function DekanStudentsPage() {
                           To&apos;lov kvitansiyalari mavjud emas
                         </p>
                       ) : (
-                        <div className="space-y-2.5">
+                        <div className="space-y-2">
                           {selectedPayments.map((record) => {
                             const isApproved = APPROVED_PAYMENT_STATUSES.has(record.status)
                             const isWaiting = WAITING_PAYMENT_STATUSES.has(record.status)
 
                             return (
-                              <div key={record.id} className={`rounded-lg border p-3 text-xs ${ui.inset}`}>
+                              <div
+                                key={record.id}
+                                className={`rounded-xl border p-3 text-xs ${
+                                  isLight ? 'bg-slate-50/80 border-slate-200/60' : 'bg-slate-800/40 border-slate-800'
+                                }`}
+                              >
                                 <div className="flex items-center justify-between gap-3">
                                   <div className="min-w-0">
-                                    <p className={`font-semibold ${infoValueText}`}>
+                                    <p className={`font-bold ${infoValueText}`}>
                                       {record.month}, {record.year}
                                     </p>
                                     <p className={`mt-0.5 text-[10px] ${ui.faint}`}>
@@ -1517,14 +1994,14 @@ export default function DekanStudentsPage() {
                                     {record.has_receipt && (
                                       <span
                                         className={`flex items-center gap-1 text-[9px] font-bold ${ui.faint}`}
-                                        title="Chek yuklangan (faylni faqat admin ko'ra oladi)"
+                                        title="Chek yuklangan"
                                       >
                                         <Receipt size={12} />
                                         Chek
                                       </span>
                                     )}
                                     <span
-                                      className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                                      className={`rounded-md px-2 py-0.5 text-[9px] font-bold ${
                                         statusChip(isApproved ? 'success' : isWaiting ? 'info' : 'danger', isLight).chip
                                       }`}
                                     >
@@ -1546,49 +2023,95 @@ export default function DekanStudentsPage() {
                   </div>
                 )}
 
-                {/* Roommates */}
+                {/* Roommates Card */}
                 {roommates.length > 0 && (
-                  <div className={`rounded-xl border p-4 ${cardSurface}`}>
-                    <h3 className={`mb-4 text-[10px] font-bold uppercase tracking-[0.18em] ${ui.muted}`}>
-                      Xonadoshlar
-                    </h3>
-                    <div className="flex flex-wrap gap-4">
-                      {roommates.map((roommate) => (
-                        <button
-                          key={roommate.id}
-                          type="button"
-                          className="group flex flex-col items-center gap-1.5"
-                          title={roommate.full_name}
-                          onClick={() => setSelectedStudent(roommate)}
-                        >
-                          <div className={`relative h-12 w-12 overflow-hidden rounded-lg border transition-colors group-hover:border-indigo-400/50 ${ui.border} ${isLight ? 'bg-slate-100' : 'bg-slate-800'}`}>
-                            {roommate.avatar_url ? (
-                              <Image
-                                src={roommate.avatar_url}
-                                alt={roommate.full_name}
-                                fill
-                                sizes="48px"
-                                unoptimized
-                                className="object-cover"
-                              />
-                            ) : (
-                              <div className={`flex h-full w-full items-center justify-center text-[10px] font-bold ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                                {getInitials(roommate.full_name)}
+                  <div className={`rounded-2xl border p-4.5 transition-all ${
+                    isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900 border-slate-800'
+                  }`}>
+                    <div className="flex items-center justify-between mb-3.5">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                          <Users size={16} />
+                        </div>
+                        <div>
+                          <h3 className={`text-xs font-black uppercase tracking-wider ${ui.strong}`}>
+                            Xonadoshlar ({roommates.length} kishi)
+                          </h3>
+                          <p className={`text-[10px] ${ui.muted}`}>
+                            {selectedStudent.room_number}-xonada birga istiqomat qiluvchi talabalar
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                      {roommates.map((roommate) => {
+                        const rSummary = paySummaries?.get(roommate.id)
+                        return (
+                          <button
+                            key={roommate.id}
+                            type="button"
+                            className={`no-shelf group flex items-center gap-3 p-2.5 rounded-xl border text-left transition-all ${
+                              isLight
+                                ? 'bg-slate-50 hover:bg-indigo-50/60 hover:border-indigo-200 border-slate-200/70'
+                                : 'bg-slate-800/40 hover:bg-slate-800 hover:border-indigo-500/40 border-slate-800'
+                            }`}
+                            title={`${roommate.full_name} profilini ochish`}
+                            onClick={() => setSelectedStudent(roommate)}
+                          >
+                            <div className={`relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border transition-colors ${
+                              isLight ? 'border-slate-200 bg-white' : 'border-slate-700 bg-slate-800'
+                            }`}>
+                              {roommate.avatar_url ? (
+                                <Image
+                                  src={roommate.avatar_url}
+                                  alt={roommate.full_name}
+                                  fill
+                                  sizes="40px"
+                                  unoptimized
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className={`flex h-full w-full items-center justify-center text-[10px] font-black ${
+                                  isLight ? 'text-indigo-600' : 'text-indigo-300'
+                                }`}>
+                                  {getInitials(roommate.full_name)}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <p className={`truncate text-xs font-bold ${
+                                isLight ? 'text-slate-900 group-hover:text-indigo-600' : 'text-slate-100 group-hover:text-indigo-400'
+                              }`}>
+                                {roommate.full_name}
+                              </p>
+                              <div className="mt-0.5 flex items-center gap-1.5">
+                                {roommate.course && (
+                                  <span className={`text-[10px] ${ui.muted}`}>{roommate.course}-kurs</span>
+                                )}
+                                {rSummary && (
+                                  <span className={`text-[9px] font-bold ${
+                                    rSummary.state === 'paid' ? 'text-emerald-500' : 'text-amber-500'
+                                  }`}>
+                                    • {rSummary.state === 'paid' ? "To'lagan" : "Qarzdor"}
+                                  </span>
+                                )}
                               </div>
-                            )}
-                          </div>
-                          <span className={`max-w-[64px] truncate text-[9px] font-semibold ${ui.muted}`}>
-                            {roommate.full_name.split(' ')[0]}
-                          </span>
-                        </button>
-                      ))}
+                            </div>
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
 
-                <div className={`rounded-xl border p-4 text-center ${ui.inset}`}>
-                  <p className={`text-[10px] font-bold uppercase tracking-widest ${ui.muted}`}>
-                    Ro&apos;yxatdan o&apos;tgan sana: {formatDate(selectedStudent.created_at)}
+                {/* Footer register date */}
+                <div className={`rounded-xl border p-3 text-center ${
+                  isLight ? 'bg-slate-50/50 border-slate-200/60' : 'bg-slate-900/50 border-slate-800/80'
+                }`}>
+                  <p className={`text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>
+                    Tizimda ro&apos;yxatdan o&apos;tgan sana: {formatDate(selectedStudent.created_at)}
                   </p>
                 </div>
               </div>
@@ -1621,12 +2144,12 @@ export default function DekanStudentsPage() {
                   key={option.key}
                   type="button"
                   onClick={() => setWarningLevel(option.key)}
-                  className={`rounded-md px-3 py-2.5 text-center transition-colors ${
+                  className={`no-shelf rounded-xl px-3 py-2.5 text-center transition-colors ${
                     warningLevel === option.key
                       ? option.key === 'warning'
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-indigo-600 text-white'
-                      : `${ui.muted} ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-200'}`
+                        ? 'bg-amber-500 text-white shadow-xs'
+                        : 'bg-indigo-600 text-white shadow-xs'
+                      : `${ui.muted} ${isLight ? 'hover:text-slate-800 hover:bg-slate-100' : 'hover:text-slate-200 hover:bg-slate-800'}`
                   }`}
                 >
                   <span className="block text-[11px] font-bold uppercase tracking-wider">{option.label}</span>
@@ -1807,10 +2330,10 @@ export default function DekanStudentsPage() {
                 key={tab.key}
                 type="button"
                 onClick={() => setEditTab(tab.key)}
-                className={`flex-1 shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors sm:px-4 ${
+                className={`no-shelf flex-1 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-all sm:px-4 ${
                   editTab === tab.key
-                    ? 'bg-indigo-600 text-white'
-                    : `${ui.muted} ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-200'}`
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : `${ui.muted} ${isLight ? 'hover:text-slate-800 hover:bg-slate-100' : 'hover:text-slate-200 hover:bg-slate-800'}`
                 }`}
               >
                 {tab.label}

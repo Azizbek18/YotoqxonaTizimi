@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Wallet, Phone, ShieldAlert, Globe2, Send, MapPinned } from 'lucide-react'
+import { Wallet, Phone, ShieldAlert, Globe2, Send, MapPinned, Building2, RotateCcw, Sliders } from 'lucide-react'
 import { UZ_REGION_NAMES } from '@/lib/uz-address'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
+import { useDekanScope } from '@/lib/hooks/useDekanScope'
+import { permitFacultyLabel } from '@/lib/faculties'
 import {
     fetchDekanSettings,
     updateAppSettings,
@@ -35,6 +37,7 @@ export default function DekanSozlamalarPage() {
     const theme = useThemeStore((state) => state.theme)
     const isLight = theme === 'light'
     const ui = dekanUI(isLight)
+    const { effectiveFaculty: dekanFaculty } = useDekanScope()
 
     const [settings, setSettings] = useState<AppSettings | null>(null)
     const [savedSettings, setSavedSettings] = useState<AppSettings | null>(null)
@@ -205,10 +208,55 @@ export default function DekanSozlamalarPage() {
     )
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${ui.strong}`}>Tizim sozlamalari</h1>
-                <p className={`mt-1 text-xs sm:text-sm ${ui.muted}`}>To&apos;lov, xona va aloqa ma&apos;lumotlarini shu yerdan boshqaring</p>
+        <div className="space-y-6 pb-12">
+            {/* Hero Banner (Compact) */}
+            <div className="no-shelf relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-4 sm:p-5 shadow-lg shadow-indigo-950/15 border border-white/20 text-white">
+                <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+                <div className="pointer-events-none absolute -left-12 -bottom-16 h-48 w-48 rounded-full bg-violet-400/15 blur-3xl" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] opacity-[0.07]" />
+
+                <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md text-white border border-white/25 shadow-inner shrink-0">
+                            <Sliders size={20} strokeWidth={2.2} />
+                        </div>
+                        <div>
+                            <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                                <span
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/15 text-white backdrop-blur-md border border-white/20"
+                                    style={{ color: '#ffffff' }}
+                                >
+                                    <Building2 size={11} className="text-white/80" />
+                                    {dekanFaculty ? permitFacultyLabel(dekanFaculty) : "Fakultet boshqaruvi"}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                    Tizim parametrlari
+                                </span>
+                            </div>
+                            <h1 className="text-lg sm:text-xl font-black tracking-tight text-white" style={{ color: '#ffffff' }}>
+                                Tizim sozlamalari
+                            </h1>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => void loadSettings()}
+                            disabled={loading}
+                            className="inline-flex items-center justify-center h-8.5 w-8.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white transition-all disabled:opacity-50 no-shelf cursor-pointer active:scale-95 shadow-xs"
+                            title="Yangilash"
+                        >
+                            <motion.div
+                                animate={loading ? { rotate: 360 } : {}}
+                                transition={loading ? { repeat: Infinity, duration: 1.2, ease: 'linear' } : {}}
+                            >
+                                <RotateCcw size={15} />
+                            </motion.div>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {loading ? (

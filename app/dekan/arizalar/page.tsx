@@ -431,7 +431,7 @@ function ArizalarContent() {
             />
           )}
 
-          <div className={`flex flex-wrap gap-1 rounded-xl p-1 ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'}`}>
+          <div className={`no-shelf flex flex-wrap gap-1 rounded-xl p-1 ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'}`}>
             {(Object.keys(STATUS_META) as PermitRequest['status'][]).map((status) => {
               const count = requests.filter((r) => r.status === status && (!facultyFilter || r.faculty === facultyFilter)).length
               const meta = STATUS_META[status]
@@ -440,13 +440,14 @@ function ArizalarContent() {
               return (
                 <button
                   key={status}
+                  type="button"
                   onClick={() => {
                     setStatusFilter(status)
                     setSelectedReq(null)
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
+                  className={`no-shelf px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
                     isActive
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-indigo-600 text-white shadow-xs'
                       : `${ui.muted} ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-200'}`
                   }`}
                 >

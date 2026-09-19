@@ -45,9 +45,7 @@ function floorHeadline(row: FloorBalanceRow, nearEmpty: boolean) {
 /**
  * One course on one floor. The focal number is the concrete action —
  * how many students of this course still need placing here (`+N`), how many
- * are surplus (`N`), or `✓` when the floor already holds its share. A tinted
- * cell (amber = surplus, indigo = short, plain = fine) and the honest
- * `hozir N · meʼyor N` breakdown underneath.
+ * are surplus (`+N`), or `✓` when the floor already holds its share.
  */
 function CourseCell({
   row,
@@ -56,6 +54,7 @@ function CourseCell({
   ramp,
   isLight,
   nearEmpty,
+  compact = false,
 }: {
   row: FloorBalanceRow
   course: number
@@ -63,6 +62,7 @@ function CourseCell({
   ramp: string[]
   isLight: boolean
   nearEmpty: boolean
+  compact?: boolean
 }) {
   const ui = dekanUI(isLight)
   const { placed, target, gap, mode } = courseMode(row, course, nearEmpty)
@@ -77,55 +77,67 @@ function CourseCell({
   const cellTone =
     mode === 'over'
       ? isLight
-        ? 'bg-amber-50 ring-amber-200/70'
+        ? 'bg-amber-50/80 ring-amber-200/80 hover:bg-amber-50'
         : 'bg-amber-500/10 ring-amber-500/25'
       : mode === 'need'
         ? isLight
-          ? 'bg-indigo-50 ring-indigo-200/70'
+          ? 'bg-indigo-50/80 ring-indigo-200/80 hover:bg-indigo-50'
           : 'bg-indigo-500/10 ring-indigo-500/25'
         : isLight
-          ? 'bg-white ring-slate-200'
+          ? 'bg-slate-50/80 ring-slate-200 hover:bg-white'
           : 'bg-slate-900/40 ring-slate-700/60'
 
-  // Progress toward the floor's share for this course — plain count ratio,
-  // capped so a surplus just shows a full bar.
   const barPct = target > 0 ? Math.min(100, (placed / target) * 100) : placed > 0 ? 100 : 0
-  // Only the two action states get a coloured bar — "yetarli" stays calm so the
-  // eye lands on the cells that still need work.
   const barColor =
     mode === 'over'
       ? isLight
-        ? 'bg-amber-400'
-        : 'bg-amber-500'
+        ? 'bg-amber-500'
+        : 'bg-amber-400'
       : mode === 'need'
-        ? 'bg-indigo-500'
+        ? 'bg-indigo-600'
         : isLight
-          ? 'bg-slate-300'
-          : 'bg-slate-600'
+          ? 'bg-emerald-500'
+          : 'bg-emerald-400'
 
-  const bigNumber = mode === 'over' ? `${placed - target}` : mode === 'need' ? `+${gap}` : '✓'
-  const bigWord = mode === 'over' ? 'ortiqcha' : mode === 'need' ? 'qoʻshish' : 'yetarli'
+  const bigNumber = mode === 'over' ? `+${placed - target}` : mode === 'need' ? `+${gap}` : '✓'
+  const badgeLabel = mode === 'over' ? 'Ortiqcha' : mode === 'need' ? 'Kerak' : 'Yetarli'
 
   return (
-    <div className={`flex flex-col items-center rounded-xl px-2 py-3 text-center ring-1 ring-inset ${cellTone}`}>
-      <div className="flex items-center gap-1">
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: ramp[colorIndex] }} />
-        <span className={`text-[8px] font-bold uppercase tracking-wider ${ui.muted}`}>{course}-kurs</span>
+    <div className={`flex flex-col justify-between rounded-xl ring-1 ring-inset ${compact ? 'p-2' : 'p-2.5'} ${cellTone} transition-all`}>
+      {/* Header: Course + Badge */}
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: ramp[colorIndex] }} />
+          <span className={`text-[11px] font-black uppercase tracking-wider truncate ${ui.strong}`}>
+            {course}-kurs
+          </span>
+        </div>
+        <span
+          className={`shrink-0 inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${chip.chip}`}
+        >
+          {badgeLabel}
+        </span>
       </div>
 
-      <div className={`mt-1.5 text-2xl font-black leading-none tabular-nums ${chip.text}`}>{bigNumber}</div>
-      <div className={`mt-0.5 text-[9px] font-bold uppercase tracking-wide ${chip.text}`}>{bigWord}</div>
-
-      <div className={`mt-2 h-1.5 w-full rounded-full ${isLight ? 'bg-slate-200' : 'bg-slate-700/60'}`}>
-        <div
-          className={`h-full rounded-full ${barColor}`}
-          style={{ width: `${Math.max(barPct, placed > 0 ? 6 : 0)}%` }}
-        />
+      {/* Main Metric: Big Action Number & Ratio */}
+      <div className="mt-2 flex items-baseline justify-between gap-1">
+        <span className={`text-xl font-black leading-none tabular-nums ${chip.text}`}>
+          {bigNumber}
+        </span>
+        <span className={`text-[10px] font-semibold tabular-nums whitespace-nowrap ${ui.faint}`}>
+          <b className={ui.strong}>{placed}</b> / {target} ta
+        </span>
       </div>
 
-      <span className={`mt-1.5 text-[9px] font-medium tabular-nums ${ui.faint}`}>
-        hozir {placed} · meʼyor {target}
-      </span>
+      {/* Progress Bar */}
+      <div className="mt-2">
+        <div className={`h-1.5 w-full rounded-full overflow-hidden ${isLight ? 'bg-slate-200/80' : 'bg-slate-700/60'}`}>
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+            style={{ width: `${Math.max(barPct, placed > 0 ? 6 : 0)}%` }}
+          />
+        </div>
+      </div>
     </div>
   )
 }
@@ -134,10 +146,12 @@ function FloorBlock({
   row,
   ramp,
   isLight,
+  compact = false,
 }: {
   row: FloorBalanceRow
   ramp: string[]
   isLight: boolean
+  compact?: boolean
 }) {
   const ui = dekanUI(isLight)
   const nearEmpty = isNearEmptyRow(row)
@@ -146,22 +160,32 @@ function FloorBlock({
   const free = Math.max(0, row.capacity - row.placed)
 
   return (
-    <div className={`rounded-xl border p-3.5 ${ui.inset}`}>
-      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-        <div className="flex items-baseline gap-2">
-          <span className={`text-xs font-bold ${ui.strong}`}>{row.floor}-qavat</span>
-          <span className={`text-[10px] font-medium tabular-nums ${ui.muted}`}>
-            {row.placed} / {row.capacity} joy{free > 0 ? ` · ${free} ta boʻsh` : ''}
+    <div className={`rounded-2xl border p-3.5 ${ui.inset}`}>
+      {/* Header section */}
+      <div className="flex flex-col gap-1.5 pb-2.5 border-b border-slate-200/70 dark:border-slate-700/60">
+        <div className="flex items-center justify-between gap-2">
+          <span className={`text-xs font-black uppercase tracking-wider ${ui.strong}`}>
+            {row.floor}-qavat kursi balansi
+          </span>
+          <span
+            className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${chip.chip}`}
+          >
+            <head.Icon size={11} /> {head.label}
           </span>
         </div>
-        <span
-          className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${chip.chip}`}
-        >
-          <head.Icon size={10} /> {head.label}
-        </span>
+        <div className="flex items-center justify-between text-[11px] font-medium">
+          <span className={ui.muted}>Bandlik holati:</span>
+          <span className={`tabular-nums font-semibold ${ui.strong}`}>
+            {row.placed} / {row.capacity} joy{' '}
+            <span className={free > 0 ? 'text-emerald-600 font-bold' : ui.faint}>
+              ({free > 0 ? `${free} ta boʻsh` : 'to‘la'})
+            </span>
+          </span>
+        </div>
       </div>
 
-      <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {/* Grid: 2 columns in compact mode, or 2 cols on mobile / 4 cols on tablet+ */}
+      <div className={`mt-2.5 grid gap-2 ${compact ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>
         {COURSES.map((c, i) => (
           <CourseCell
             key={c}
@@ -171,6 +195,7 @@ function FloorBlock({
             ramp={ramp}
             isLight={isLight}
             nearEmpty={nearEmpty}
+            compact={compact}
           />
         ))}
       </div>
@@ -185,6 +210,7 @@ export default function FloorBalanceCard({
   dormId,
   base = '/dekan',
   className = '',
+  compact,
 }: {
   balance: BalancePayload | undefined
   isLight: boolean
@@ -193,9 +219,11 @@ export default function FloorBalanceCard({
   dormId?: string
   base?: string
   className?: string
+  compact?: boolean
 }) {
   const ui = dekanUI(isLight)
   const ramp = dekanChart.courseRamp(isLight)
+  const isCompact = compact ?? (onlyFloor != null)
 
   const rows = (balance?.floors ?? []).filter((f) => onlyFloor == null || f.floor === onlyFloor)
 
@@ -208,7 +236,7 @@ export default function FloorBalanceCard({
   if (onlyFloor != null) {
     const row = rows[0]
     if (!row) return null
-    return <FloorBlock row={row} ramp={ramp} isLight={isLight} />
+    return <FloorBlock row={row} ramp={ramp} isLight={isLight} compact={isCompact} />
   }
 
   // "Hali joylashtirilmagan" — totalToHouse already counts placed + roomless.

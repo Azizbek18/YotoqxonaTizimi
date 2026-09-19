@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  Sparkles, ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw, FileText, Hand, Handshake, BookOpen, Home as HomeIcon, GraduationCap, Search, Building2, UserCheck, Users
+  ArrowRight, ShieldCheck, Cpu, Activity, Clock, CheckCircle2, XCircle, LogIn, UploadCloud, UserPlus, RefreshCw, FileText, Hand, Handshake, BookOpen, Home as HomeIcon, GraduationCap, Search, Building2, UserCheck, Users
 } from 'lucide-react';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { Skel } from '@/components/ui/skeletons';

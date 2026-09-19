@@ -23,7 +23,15 @@ import {
   Mars,
   MousePointerSquareDashed,
   ArrowUpRight,
-  Check
+  Check,
+  Building2,
+  CheckCircle2,
+  Sparkles,
+  ShieldCheck,
+  Phone,
+  GraduationCap,
+  MessageSquare,
+  ShieldAlert,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -45,7 +53,6 @@ import { compareRoomNumbers } from '@/features/room-layout/plan'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { useStaffPanel } from '@/lib/hooks/useStaffPanel'
 import { computeFloorBalance, checkFloorPlacement } from '@/lib/floor-balance'
-import FloorBalanceCard from '@/components/dekan/FloorBalanceCard'
 import { fetchDekanSettings } from '@/features/app-settings/client/api'
 import { getRoomOccupancyTone } from '@/features/app-settings/presentation'
 import { permitFacultyLabel } from '@/lib/faculties'
@@ -86,6 +93,38 @@ interface RoomData {
   // (see the comment above `orphans` below). Freezing writes to that table,
   // so a room that isn't in it can't be frozen from here.
   inLayout: boolean
+}
+
+function getStudentInitials(name: string): string {
+  if (!name || name === 'Noma‘lum') return '?'
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase()
+}
+
+function formatPhoneNumber(phone: string): string {
+  if (!phone) return '—'
+  const cleaned = phone.replace(/\D/g, '')
+  if (cleaned.length === 9) {
+    return `+998 (${cleaned.slice(0, 2)}) ${cleaned.slice(2, 5)}-${cleaned.slice(5, 7)}-${cleaned.slice(7, 9)}`
+  }
+  if (cleaned.length === 12 && cleaned.startsWith('998')) {
+    return `+998 (${cleaned.slice(3, 5)}) ${cleaned.slice(5, 8)}-${cleaned.slice(8, 10)}-${cleaned.slice(10, 12)}`
+  }
+  return phone
+}
+
+function getTelegramUrl(phone: string): string | null {
+  if (!phone) return null
+  const cleaned = phone.replace(/\D/g, '')
+  if (cleaned.length === 9) {
+    return `https://t.me/+998${cleaned}`
+  }
+  if (cleaned.length === 12) {
+    return `https://t.me/+${cleaned}`
+  }
+  return null
 }
 
 export default function DekanXonalarMap() {
@@ -551,16 +590,20 @@ export default function DekanXonalarMap() {
 
   // Filters. Sorted floor-then-natural so "10-xona" doesn't sit between
   // "1-xona" and "2-xona" (orphan rooms are appended unsorted upstream).
-  const filteredRooms = rooms
-    .filter((r) => {
-      const matchesFloor = floorFilter === 'all' || r.floor === floorFilter
-      const matchesSearch =
-        r.roomNumber.includes(searchTerm) ||
-        r.occupants.some((o) => o.full_name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredRooms = useMemo(
+    () =>
+      rooms
+        .filter((r) => {
+          const matchesFloor = floorFilter === 'all' || r.floor === floorFilter
+          const matchesSearch =
+            r.roomNumber.includes(searchTerm) ||
+            r.occupants.some((o) => o.full_name.toLowerCase().includes(searchTerm.toLowerCase()))
 
-      return matchesFloor && matchesSearch
-    })
-    .sort((a, b) => a.floor - b.floor || compareRoomNumbers(a.roomNumber, b.roomNumber))
+          return matchesFloor && matchesSearch
+        })
+        .sort((a, b) => a.floor - b.floor || compareRoomNumbers(a.roomNumber, b.roomNumber)),
+    [rooms, floorFilter, searchTerm]
+  )
 
   // Assignable students for the currently selected room: name search, plus
   // gender-matched to the room's declared gender (or, if undeclared, to the
@@ -577,6 +620,20 @@ export default function DekanXonalarMap() {
 
   // Effective bed count for a room: its own override, else the dorm default.
   const roomBeds = (room: RoomData) => room.capacity ?? defaultCapacity
+
+  const filteredRoomsStats = useMemo(
+    () =>
+      filteredRooms.reduce(
+        (acc, r) => {
+          acc.occupied += r.occupants.length
+          if (r.frozen) acc.frozen += 1
+          else acc.free += Math.max(0, (r.capacity ?? defaultCapacity) - r.occupants.length)
+          return acc
+        },
+        { free: 0, occupied: 0, frozen: 0 }
+      ),
+    [filteredRooms, defaultCapacity]
+  )
 
   // ---- live per-floor course balance ----
   // Recomputed from the same data the map already holds, so it stays current
@@ -650,182 +707,293 @@ export default function DekanXonalarMap() {
   const totalRoomsWithMixedGenders = rooms.filter((r) => r.gender === 'mixed').length
   const totalFullRooms = rooms.filter((r) => !r.frozen && r.occupants.length >= roomBeds(r)).length
 
-  return (
-    <div className="space-y-6">
-      {/* 0. Building switcher — only shown once the faculty actually holds
-          more than one dorm (many-to-many, 202609300000). */}
-      {dorms.length > 1 && (
-        <div className={`flex flex-wrap gap-1 rounded-xl p-1 w-fit ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'}`}>
-          {dorms.map((d) => {
-            const isActive = (activeDormId ?? primaryDormId) === d.dormId
-            return (
-              <button
-                key={d.dormId}
-                onClick={() => setActiveDormId(d.dormId === primaryDormId ? undefined : d.dormId)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                  isActive
-                    ? 'bg-indigo-600 text-white'
-                    : `${ui.muted} ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-200'}`
-                }`}
-              >
-                {d.number}-yotoqxona{d.isPrimary ? ' (asosiy)' : ''}
-              </button>
-            )
-          })}
-        </div>
-      )}
+  const activeDorm = dorms.find((d) => (activeDormId ?? primaryDormId) === d.dormId)
+  const occPercent = availableBeds > 0 ? Math.min(100, Math.round((totalOccupiedBeds / availableBeds) * 100)) : 0
 
-      {/* 1. Header Overview Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+  return (
+    <div className="space-y-5">
+      {/* Executive Hero Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-5 sm:p-6 text-white shadow-lg border border-white/20">
+        <div className="absolute -right-12 -top-12 h-64 w-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute -left-12 -bottom-12 h-48 w-48 rounded-full bg-indigo-500/20 blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-inner">
+              <LayoutGrid size={24} className="text-white" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-black tracking-tight" style={{ color: '#ffffff' }}>
+                  Xonalar xaritasi & Joylashuv
+                </h1>
+                <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-white/10 text-emerald-300 border border-white/20">
+                  <CheckCircle2 size={12} />
+                  {rooms.length} ta xona
+                </span>
+                {totalRoomsWithMixedGenders > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-rose-500/20 text-rose-200 border border-rose-400/30 animate-pulse">
+                    <AlertTriangle size={12} />
+                    {totalRoomsWithMixedGenders} ta nomuvofiqlik
+                  </span>
+                )}
+              </div>
+              <p className="text-xs sm:text-sm font-medium mt-0.5" style={{ color: '#e0e7ff' }}>
+                {activeDorm ? `${activeDorm.number}-yotoqxona` : 'Yotoqxona'} · Qavatlar bo‘yicha xonalar taqsimoti, talabalar joylashuvi va gender balansi
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {!readOnly && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+                  className={`no-shelf inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+                    selectMode
+                      ? 'bg-amber-400 text-slate-900 shadow-md ring-2 ring-amber-400/40'
+                      : 'border border-white/20 bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                  style={{ color: selectMode ? undefined : '#ffffff' }}
+                >
+                  <MousePointerSquareDashed size={14} />
+                  <span>{selectMode ? 'Tanlashni tugatish' : 'Xonalarni tanlash'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGeneratorOpen(true)}
+                  className="no-shelf inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-black uppercase tracking-wider text-indigo-700 hover:bg-slate-100 transition-all shadow-md active:scale-95"
+                >
+                  <Plus size={14} />
+                  <span>Xona qo‘shish</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 5-Metric KPI Summary */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {[
-          { label: 'Band joylar', value: `${totalOccupiedBeds} / ${availableBeds}`, icon: BedDouble },
+          {
+            label: 'Band joylar',
+            value: `${totalOccupiedBeds} / ${availableBeds}`,
+            sub: `${occPercent}% to‘lgan`,
+            icon: BedDouble,
+            accent: 'text-indigo-600 dark:text-indigo-400',
+            bg: isLight ? 'bg-indigo-50/70 border-indigo-100' : 'bg-indigo-950/20 border-indigo-900/40',
+          },
           {
             label: 'Bo‘sh joylar',
             value: `${freePlaces} ta`,
+            sub: freePlaces === 0 ? 'Bo‘sh joy qolmagan' : 'Zaxira mavjud',
             icon: DoorOpen,
-            tone: freePlaces === 0 ? 'danger' as const : undefined,
+            accent: freePlaces === 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400',
+            bg: freePlaces === 0
+              ? isLight ? 'bg-rose-50/70 border-rose-100' : 'bg-rose-950/20 border-rose-900/40'
+              : isLight ? 'bg-emerald-50/70 border-emerald-100' : 'bg-emerald-950/20 border-emerald-900/40',
           },
-          // Roomless active students + approved-but-unregistered permits of
-          // this faculty — the same list the "Talaba joylashtirish" modal
-          // draws from. Surfaced here so a student left without a room (e.g.
-          // just removed from one) is visible without opening every room.
-          { label: 'Xonasiz talabalar', value: `${students.length} ta`, icon: UserMinus, tone: students.length > 0 ? 'warning' as const : undefined },
           {
-            label: frozenRooms > 0 ? `To‘la xonalar · ${frozenRooms} muzlatilgan` : 'To‘la xonalar',
-            value: `${totalFullRooms} ta`,
-            icon: DoorClosed,
+            label: 'Xonasiz talabalar',
+            value: `${students.length} ta`,
+            sub: students.length > 0 ? 'Joylashtirish zarur' : 'Barcha talaba xonada',
+            icon: UserMinus,
+            accent: students.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-400',
+            bg: students.length > 0
+              ? isLight ? 'bg-amber-50/70 border-amber-100' : 'bg-amber-950/20 border-amber-900/40'
+              : isLight ? 'bg-slate-50/70 border-slate-200/80' : 'bg-slate-900/20 border-slate-800',
           },
-          { label: 'Gender xatoliklar', value: `${totalRoomsWithMixedGenders} ta xona`, icon: Users2, tone: totalRoomsWithMixedGenders > 0 ? 'danger' as const : undefined },
-        ].map((stat, idx) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.04, duration: 0.2 }}
-            className={`p-4 rounded-2xl border ${surfaceBg} ${ui.hoverLift} flex items-center gap-3`}
-          >
-            <div className={`h-11 w-11 shrink-0 rounded-xl flex items-center justify-center ${
-              stat.tone ? statusChip(stat.tone, isLight).chip : ui.accentTile
-            }`}>
-              <stat.icon size={18} strokeWidth={2.2} />
+          {
+            label: 'To‘la xonalar',
+            value: `${totalFullRooms} ta`,
+            sub: frozenRooms > 0 ? `${frozenRooms} ta muzlatilgan` : 'To‘liq band xonalar',
+            icon: DoorClosed,
+            accent: 'text-sky-600 dark:text-sky-400',
+            bg: isLight ? 'bg-sky-50/70 border-sky-100' : 'bg-sky-950/20 border-sky-900/40',
+          },
+          {
+            label: 'Gender nazorati',
+            value: totalRoomsWithMixedGenders > 0 ? `${totalRoomsWithMixedGenders} ta xatolik` : 'To‘g‘ri taqsimot',
+            sub: totalRoomsWithMixedGenders > 0 ? 'Aralash jins mavjud' : 'Nomuvofiqlik yo‘q',
+            icon: totalRoomsWithMixedGenders > 0 ? AlertTriangle : ShieldCheck,
+            accent: totalRoomsWithMixedGenders > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400',
+            bg: totalRoomsWithMixedGenders > 0
+              ? isLight ? 'bg-rose-50/70 border-rose-100' : 'bg-rose-950/20 border-rose-900/40'
+              : isLight ? 'bg-emerald-50/70 border-emerald-100' : 'bg-emerald-950/20 border-emerald-900/40',
+          },
+        ].map((item) => {
+          const Icon = item.icon
+          return (
+            <div
+              key={item.label}
+              className={`flex items-center gap-3 rounded-2xl border p-3.5 shadow-xs transition-all ${item.bg}`}
+            >
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-800 shadow-2xs border border-slate-200/60 dark:border-slate-700/60 ${item.accent}`}>
+                <Icon size={18} strokeWidth={2.2} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`text-[9px] font-bold uppercase tracking-wider ${ui.faint}`}>
+                  {item.label}
+                </p>
+                <p className={`truncate text-base sm:text-lg font-black leading-tight ${ui.strong}`}>
+                  {item.value}
+                </p>
+                <p className={`truncate text-[10px] ${ui.muted}`}>
+                  {item.sub}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className={`block text-[9px] font-semibold uppercase tracking-wider truncate ${textMuted}`}>{stat.label}</span>
-              <h3 className={`text-lg sm:text-xl font-bold mt-0.5 tracking-tight ${stat.tone ? statusChip(stat.tone, isLight).text : textStrong}`}>
-                {stat.value}
-              </h3>
-            </div>
-          </motion.div>
-        ))}
+          )
+        })}
       </div>
 
-      {/* 2. Map Controls */}
-      <div className={`p-4 rounded-2xl border ${surfaceBg} flex flex-col gap-3`}>
-        <div className="relative">
-          <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${ui.faint}`} />
-          <input
-            type="text"
-            placeholder="Xona raqami yoki talaba ismi bo'yicha qidirish..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full text-sm py-3 pl-12 pr-11 rounded-xl border transition-colors ${ui.input} ${ui.ring}`}
-          />
-          {searchTerm && (
-            <button
-              type="button"
-              onClick={() => setSearchTerm('')}
-              aria-label="Qidiruvni tozalash"
-              className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${ui.muted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`}
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-
-        {/* Floor Selection */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className={`flex flex-wrap gap-1 rounded-xl p-1 ${isLight ? 'bg-slate-100' : 'bg-slate-800/60'}`}>
-            {(['all', ...floors] as const).map((fl) => (
-              <button
-                key={fl}
-                onClick={() => setFloorFilter(fl as number | 'all')}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                  floorFilter === fl
-                    ? 'bg-indigo-600 text-white'
-                    : `${ui.muted} ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-200'}`
-                }`}
-              >
-                {fl === 'all' ? 'Barchasi' : `${fl}-qavat`}
-              </button>
-            ))}
-          </div>
-
-          {!readOnly && (
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
-              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                selectMode ? ui.accentSolid : ui.btnGhost
+      {/* Search & Floor Filters Toolbar */}
+      <div className={`rounded-2xl border p-3 shadow-xs space-y-3 ${
+        isLight ? 'bg-white border-slate-200/80' : 'bg-slate-900/60 border-slate-800'
+      }`}>
+        <div className="flex flex-col md:flex-row md:items-center gap-2.5">
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <Search size={16} className={`absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none ${ui.faint}`} />
+            <input
+              type="text"
+              placeholder="Xona raqami yoki talaba ismi bo'yicha qidirish..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`w-full text-xs font-medium py-2.5 pl-10 pr-9 rounded-xl border transition-all ${
+                isLight
+                  ? 'bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15'
+                  : 'bg-slate-800/80 border-slate-700 focus:bg-slate-900 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20'
               }`}
-            >
-              <MousePointerSquareDashed size={13} /> {selectMode ? 'Tanlashni tugatish' : 'Xonalarni tanlash'}
-            </button>
-            <button
-              onClick={() => setGeneratorOpen(true)}
-              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
-            >
-              <Plus size={13} /> Xona qo&apos;shish
-            </button>
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                aria-label="Qidiruvni tozalash"
+                className={`no-shelf absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${ui.muted} ${isLight ? 'hover:bg-slate-200' : 'hover:bg-slate-700'}`}
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
+
+          {/* Building Switcher (if > 1 dorm) */}
+          {dorms.length > 1 && (
+            <div className={`flex gap-1 rounded-xl p-1 border shrink-0 ${isLight ? 'bg-slate-100 border-slate-200/60' : 'bg-slate-800/60 border-white/5'}`}>
+              {dorms.map((d) => {
+                const isActive = (activeDormId ?? primaryDormId) === d.dormId
+                return (
+                  <button
+                    key={d.dormId}
+                    type="button"
+                    onClick={() => setActiveDormId(d.dormId === primaryDormId ? undefined : d.dormId)}
+                    className={`no-shelf flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Building2 size={13} />
+                    <span>{d.number}-yotoqxona{d.isPrimary ? ' (asosiy)' : ''}</span>
+                  </button>
+                )
+              })}
+            </div>
           )}
         </div>
+
+        {/* Floor selector tabs */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-white/5">
+          <div className="flex gap-1 overflow-x-auto no-scrollbar py-0.5">
+            {(['all', ...floors] as const).map((fl) => {
+              const active = floorFilter === fl
+              return (
+                <button
+                  key={fl}
+                  onClick={() => setFloorFilter(fl as number | 'all')}
+                  className={`no-shelf shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    active
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : isLight
+                        ? 'bg-slate-100 hover:bg-slate-200/80 text-slate-700'
+                        : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300'
+                  }`}
+                >
+                  <span>{fl === 'all' ? 'Barchasi' : `${fl}-qavat`}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+            <span>Ko‘rsatilmoqda: <span className="font-extrabold text-indigo-600 dark:text-indigo-400">{filteredRooms.length} ta xona</span></span>
+          </div>
+        </div>
+
         {selectMode && (
-          <p className={`text-[10px] font-medium ${textMuted}`}>
-            Xonalarni bosib belgilang, so&apos;ng pastdagi paneldan jinsni tanlang.
-          </p>
+          <div className={`flex items-center gap-2 rounded-xl p-2.5 text-xs font-medium ${
+            isLight ? 'bg-indigo-50 border border-indigo-100 text-indigo-900' : 'bg-indigo-950/30 border border-indigo-900/40 text-indigo-200'
+          }`}>
+            <MousePointerSquareDashed size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span>Xonalarni ustiga bosib belgilang, so&apos;ng pastdagi paneldan kerakli jinsni biriktiring.</span>
+          </div>
         )}
       </div>
 
       {/* 3. Main Occupancy Grid and Side Detail panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Rooms Grid (Left) */}
-        <div className={`lg:col-span-8 p-5 rounded-2xl border ${surfaceBg}`}>
-          <div className={`flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4 pb-4 border-b text-[10px] font-medium ${ui.border} ${textMuted}`}>
-            <span className="flex items-center gap-1.5"><span className={`h-3 w-3 rounded border ${isLight ? 'bg-emerald-100 border-emerald-300' : 'bg-emerald-500/15 border-emerald-500/40'}`} /> O&apos;g&apos;il bolalar xonasi</span>
-            <span className="flex items-center gap-1.5"><span className={`h-3 w-3 rounded border ${isLight ? 'bg-pink-100 border-pink-300' : 'bg-pink-500/15 border-pink-500/40'}`} /> Qizlar xonasi</span>
-            <span className="flex items-center gap-1.5"><span className={`h-3 w-3 rounded border ${ui.border}`} /> Belgilanmagan</span>
-            <span className="flex items-center gap-1.5"><AlertTriangle size={11} className={isLight ? 'text-amber-500' : 'text-amber-400'} /> Jins nomuvofiqligi</span>
-            <span className="flex items-center gap-1.5"><Snowflake size={11} className={isLight ? 'text-cyan-500' : 'text-cyan-400'} /> Muzlatilgan (ta&apos;mirlash)</span>
+        <div className={`lg:col-span-8 p-4 sm:p-5 rounded-2xl border ${surfaceBg}`}>
+          {/* Glassmorphic Status Legend */}
+          <div className={`flex flex-wrap items-center gap-2 mb-4 pb-3.5 border-b text-[11px] font-bold ${ui.border}`}>
+            <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-500/20">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" /> O‘g‘il bolalar xonasi
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 bg-pink-50 dark:bg-pink-500/10 text-pink-700 dark:text-pink-400 border border-pink-200/60 dark:border-pink-500/20">
+              <span className="h-2 w-2 rounded-full bg-pink-500" /> Qizlar xonasi
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700">
+              <span className="h-2 w-2 rounded-full bg-slate-400" /> Belgilanmagan
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-500/20">
+              <AlertTriangle size={12} className="text-amber-500" /> Jins nomuvofiqligi
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-200/60 dark:border-cyan-500/20">
+              <Snowflake size={12} className="text-cyan-500" /> Muzlatilgan (ta‘mirlash)
+            </span>
           </div>
+
           {loading || !floorsLoaded ? (
-            <div className="grid grid-cols-2 gap-3 p-1 sm:grid-cols-3 lg:grid-cols-4">
-              {Array.from({ length: 12 }).map((_, i) => (
+            <div className="grid grid-cols-2 gap-3 p-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              {Array.from({ length: 18 }).map((_, i) => (
                 <Skel key={i} className="h-24 rounded-2xl" />
               ))}
             </div>
           ) : rooms.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-              <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-slate-800 text-slate-500'}`}>
-                <LayoutGrid size={24} />
+              <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-slate-800 text-slate-500'}`}>
+                <LayoutGrid size={26} />
               </div>
-              <h3 className={`text-sm font-semibold ${textStrong}`}>Xonalar hali kiritilmagan</h3>
-              <p className={`mx-auto mt-2 max-w-md text-[11px] leading-relaxed ${textMuted}`}>
+              <h3 className={`text-sm font-bold ${textStrong}`}>Xonalar hali kiritilmagan</h3>
+              <p className={`mx-auto mt-2 max-w-md text-xs leading-relaxed ${textMuted}`}>
                 Qaysi xona qaysi qavatda ekanini admin &laquo;Qavat tarxi quruvchisi&raquo;da belgilaydi. Admin
-                kiritishini kutishingiz yoki xonalarni hozirning o&apos;zida o&apos;zingiz yaratishingiz mumkin —
-                yaratganingiz adminda ham ko&apos;rinadi.
+                kiritishini kutishingiz yoki xonalarni hozirning o&apos;zida o&apos;zingiz yaratishingiz mumkin.
               </p>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
                 {!readOnly && (
-                <button
-                  onClick={() => setGeneratorOpen(true)}
-                  className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.accentSolid}`}
-                >
-                  <Plus size={14} /> O&apos;zingiz kiriting
-                </button>
+                  <button
+                    onClick={() => setGeneratorOpen(true)}
+                    className={`no-shelf flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${ui.accentSolid}`}
+                  >
+                    <Plus size={14} /> O&apos;zingiz kiriting
+                  </button>
                 )}
                 <button
                   onClick={() => { void reloadRoomFloors(); void fetchRoomsData() }}
-                  className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.btnGhost}`}
+                  className={`no-shelf flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
                 >
                   <RotateCcw size={14} /> Qayta tekshirish
                 </button>
@@ -833,9 +1001,6 @@ export default function DekanXonalarMap() {
             </div>
           ) : (
             <>
-              {/* Rooms exist only because students live in them — the building
-                  itself was never entered, so most rooms are missing and the
-                  dekan can't place anyone into them. */}
               {layoutRooms.length === 0 && (
                 <div className={`mb-4 flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${
                   isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'
@@ -851,114 +1016,117 @@ export default function DekanXonalarMap() {
                     </p>
                   </div>
                   {!readOnly && (
-                  <button
-                    onClick={() => setGeneratorOpen(true)}
-                    className={`flex shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.accentSolid}`}
-                  >
-                    <Plus size={14} /> O&apos;zingiz kiriting
-                  </button>
+                    <button
+                      onClick={() => setGeneratorOpen(true)}
+                      className={`no-shelf flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${ui.accentSolid}`}
+                    >
+                      <Plus size={14} /> O&apos;zingiz kiriting
+                    </button>
                   )}
                 </div>
               )}
 
-              <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-3">
-              {filteredRooms.map((room) => {
-                const count = room.occupants.length
-                const isSelected = selectedRoom?.roomNumber === room.roomNumber
-                const isMultiPicked = selectMode && selectedRoomNumbers.has(room.roomNumber)
-                const conflict = roomGenderConflict(room)
-                const washGender = roomWashGender(room)
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
+                {filteredRooms.map((room) => {
+                  const count = room.occupants.length
+                  const isSelected = selectedRoom?.roomNumber === room.roomNumber
+                  const isMultiPicked = selectMode && selectedRoomNumbers.has(room.roomNumber)
+                  const conflict = roomGenderConflict(room)
+                  const washGender = roomWashGender(room)
 
-                // Card wash by gender so the grid reads as boy/girl at a
-                // glance — green = o'g'il xona, pink = qiz xona. A frozen
-                // room (cyan) or a gender conflict (amber) overrides it;
-                // selection is a ring so the wash colour stays visible.
-                let roomBorderColor = ui.border
-                let roomBgColor = ''
+                  let roomBorderColor = isLight ? 'border-slate-200/90' : 'border-slate-700/80'
+                  let roomBgColor = isLight ? 'bg-white hover:bg-slate-50' : 'bg-slate-800/40 hover:bg-slate-800/70'
 
-                if (washGender === 'female') {
-                  roomBgColor = isLight ? 'bg-pink-100/70' : 'bg-pink-500/10'
-                  roomBorderColor = isLight ? 'border-pink-200' : 'border-pink-500/30'
-                } else if (washGender === 'male') {
-                  roomBgColor = isLight ? 'bg-emerald-100/70' : 'bg-emerald-500/10'
-                  roomBorderColor = isLight ? 'border-emerald-200' : 'border-emerald-500/30'
-                }
+                  if (washGender === 'female') {
+                    roomBgColor = isLight ? 'bg-pink-50/70 hover:bg-pink-50' : 'bg-pink-950/20 hover:bg-pink-950/35'
+                    roomBorderColor = isLight ? 'border-pink-200 hover:border-pink-300' : 'border-pink-500/30 hover:border-pink-500/50'
+                  } else if (washGender === 'male') {
+                    roomBgColor = isLight ? 'bg-emerald-50/70 hover:bg-emerald-50' : 'bg-emerald-950/20 hover:bg-emerald-950/35'
+                    roomBorderColor = isLight ? 'border-emerald-200 hover:border-emerald-300' : 'border-emerald-500/30 hover:border-emerald-500/50'
+                  }
 
-                if (conflict) {
-                  roomBgColor = ''
-                  roomBorderColor = isLight ? 'border-amber-300 bg-amber-50' : 'border-amber-500/40 bg-amber-500/10'
-                } else if (room.frozen) {
-                  roomBgColor = ''
-                  roomBorderColor = isLight ? 'border-cyan-300 bg-cyan-50' : 'border-cyan-500/40 bg-cyan-500/10'
-                }
+                  if (conflict) {
+                    roomBgColor = isLight ? 'bg-amber-50/70 hover:bg-amber-50' : 'bg-amber-950/20 hover:bg-amber-950/35'
+                    roomBorderColor = isLight ? 'border-amber-300 hover:border-amber-400' : 'border-amber-500/40 hover:border-amber-500/60'
+                  } else if (room.frozen) {
+                    roomBgColor = isLight ? 'bg-cyan-50/60 hover:bg-cyan-50' : 'bg-cyan-950/20 hover:bg-cyan-950/35'
+                    roomBorderColor = isLight ? 'border-cyan-200 hover:border-cyan-300' : 'border-cyan-500/30 hover:border-cyan-500/50'
+                  }
 
-                const roomRing = isMultiPicked
-                  ? (isLight ? 'ring-2 ring-indigo-600 ring-offset-1' : 'ring-2 ring-indigo-400 ring-offset-1 ring-offset-slate-900')
-                  : isSelected
-                    ? (isLight ? 'ring-2 ring-indigo-500 ring-offset-1' : 'ring-2 ring-indigo-400 ring-offset-1 ring-offset-slate-900')
-                    : ''
+                  const roomRing = isMultiPicked
+                    ? 'ring-2 ring-indigo-600 shadow-sm'
+                    : isSelected
+                      ? 'ring-2 ring-indigo-500 shadow-md border-indigo-400'
+                      : 'shadow-2xs'
 
-                return (
-                  <div
-                    key={room.roomNumber}
-                    onClick={() => (selectMode ? toggleRoomSelection(room.roomNumber) : selectRoom(room))}
-                    className={`relative p-3 rounded-xl border cursor-pointer transition-colors text-center flex flex-col justify-between h-24 hover:border-indigo-400/60 ${roomBorderColor} ${roomBgColor} ${roomRing} ${room.frozen ? 'opacity-75' : ''}`}
-                  >
-                    {isMultiPicked && (
-                      <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-white">
-                        <Check size={10} strokeWidth={3} />
-                      </span>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className={`text-[10px] font-bold uppercase tracking-wider ${textMuted}`}>
-                        {room.floor > 0 ? `Q-${room.floor}` : 'Q-?'}
-                      </span>
-                      {conflict ? (
-                        <AlertTriangle size={12} className={isLight ? 'text-amber-500' : 'text-amber-400'} />
-                      ) : room.frozen ? (
-                        <Snowflake size={12} className={isLight ? 'text-cyan-500' : 'text-cyan-400'} />
-                      ) : washGender === 'female' ? (
-                        <Venus size={12} className={isLight ? 'text-pink-500' : 'text-pink-400'} />
-                      ) : washGender === 'male' ? (
-                        <Mars size={12} className={isLight ? 'text-emerald-600' : 'text-emerald-400'} />
-                      ) : null}
+                  return (
+                    <div
+                      key={room.roomNumber}
+                      onClick={() => (selectMode ? toggleRoomSelection(room.roomNumber) : selectRoom(room))}
+                      className={`no-shelf relative p-2.5 sm:p-3 rounded-xl border cursor-pointer transition-all duration-150 text-center flex flex-col justify-between h-[104px] ${roomBorderColor} ${roomBgColor} ${roomRing} ${room.frozen ? 'opacity-80' : ''}`}
+                    >
+                      {isMultiPicked && (
+                        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-white shadow-xs">
+                          <Check size={10} strokeWidth={3} />
+                        </span>
+                      )}
+
+                      {/* Card Header: Floor & State Icon */}
+                      <div className="flex items-center justify-between">
+                        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                          isLight ? 'bg-white/80 text-slate-700 border border-slate-200/60' : 'bg-slate-900/60 text-slate-300 border border-white/5'
+                        }`}>
+                          {room.floor > 0 ? `Q-${room.floor}` : 'Q-?'}
+                        </span>
+                        {conflict ? (
+                          <AlertTriangle size={13} className="text-amber-500" />
+                        ) : room.frozen ? (
+                          <Snowflake size={13} className="text-cyan-500" />
+                        ) : washGender === 'female' ? (
+                          <Venus size={13} className="text-pink-500" />
+                        ) : washGender === 'male' ? (
+                          <Mars size={13} className="text-emerald-600" />
+                        ) : null}
+                      </div>
+
+                      {/* Card Center: Room Number & Subtitle */}
+                      <div>
+                        <h4 className={`text-xs sm:text-sm font-black tracking-tight ${textStrong}`}>
+                          {room.roomNumber}-xona
+                        </h4>
+                        <p className={`text-[9px] font-bold mt-0.5 ${textMuted}`}>
+                          {room.frozen
+                            ? "Muzlatilgan"
+                            : count === 0 && room.declaredGender
+                              ? (room.declaredGender === 'female' ? 'Qizlar xonasi' : "O'g'il bolalar xonasi")
+                              : `${count} / ${roomBeds(room)} o‘rin`}
+                        </p>
+                      </div>
+
+                      {/* Bed Slots Visualizer */}
+                      <div className="flex justify-center items-center gap-1 mt-1 shrink-0">
+                        {Array.from({ length: roomBeds(room) }).map((_, idx) => {
+                          const isOccupied = idx < count
+                          const occ = room.occupants[idx]
+
+                          let dotColor = isLight ? 'bg-slate-200' : 'bg-slate-700'
+                          if (isOccupied) {
+                            const occGender = normalizeGender(occ.gender)
+                            dotColor = occGender ? genderAccent(occGender).dot : 'bg-indigo-500'
+                          }
+
+                          return (
+                            <div
+                              key={idx}
+                              className={`h-1.5 w-2.5 rounded-full ${dotColor}`}
+                              title={occ ? `${occ.full_name} (${occ.status === 'registered' ? 'Faol' : 'Ruxsatnomali'})` : "Bo'sh joy"}
+                            />
+                          )
+                        })}
+                      </div>
                     </div>
-
-                    <div>
-                      <h4 className={`text-sm font-bold ${textStrong}`}>{room.roomNumber}-xona</h4>
-                      <p className={`text-[9px] font-medium ${textMuted}`}>
-                        {room.frozen
-                          ? "Muzlatilgan"
-                          : count === 0 && room.declaredGender
-                            ? (room.declaredGender === 'female' ? 'Qizlar xonasi' : "O'g'il bolalar xonasi")
-                            : `${count} / ${roomBeds(room)} o'rin${room.capacity != null ? ' •' : ''}`}
-                      </p>
-                    </div>
-
-                    {/* One dot per bed — the room's own sig'im, else the dorm default */}
-                    <div className="flex justify-center gap-1 mt-1 shrink-0">
-                      {Array.from({ length: roomBeds(room) }).map((_, idx) => {
-                        const isOccupied = idx < count
-                        const occ = room.occupants[idx]
-
-                        let dotColor = isLight ? 'bg-slate-200' : 'bg-slate-700'
-                        if (isOccupied) {
-                          const occGender = normalizeGender(occ.gender)
-                          dotColor = occGender ? genderAccent(occGender).dot : 'bg-indigo-500'
-                        }
-
-                        return (
-                          <div
-                            key={idx}
-                            className={`h-2 w-2 rounded-full ${dotColor}`}
-                            title={occ ? `${occ.full_name} (${occ.status === 'registered' ? 'Faol' : 'Ruxsatnomali'})` : "Bo'sh joy"}
-                          />
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
               </div>
             </>
           )}
@@ -973,267 +1141,409 @@ export default function DekanXonalarMap() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className={`flex flex-col max-h-[calc(100vh-7.5rem)] p-5 rounded-2xl border ${surfaceBg}`}
+                className={`flex flex-col max-h-[calc(100vh-7.5rem)] p-4 sm:p-5 rounded-2xl border shadow-sm ${surfaceBg}`}
               >
-                <div className={`flex items-center justify-between border-b pb-3 shrink-0 ${ui.border}`}>
-                  <div>
-                    <h3 className={`text-sm font-bold uppercase tracking-wider ${textStrong}`}>
-                      {selectedRoom.roomNumber}-xona tafsiloti
-                    </h3>
-                    <p className={`text-[9px] font-medium ${textMuted}`}>
-                      {selectedRoom.floor > 0
-                        ? `${selectedRoom.floor}-qavatda joylashgan`
-                        : 'Qavat tarxida belgilanmagan xona'}
-                    </p>
+                {/* Header */}
+                <div className={`flex items-center justify-between border-b pb-3.5 shrink-0 ${ui.border}`}>
+                  <div className="flex items-center gap-2.5">
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${ui.accentTileSoft}`}>
+                      <DoorClosed size={18} />
+                    </div>
+                    <div>
+                      <h3 className={`text-sm font-black uppercase tracking-wider ${textStrong}`}>
+                        {selectedRoom.roomNumber}-xona tafsiloti
+                      </h3>
+                      <p className={`text-[10px] font-bold ${textMuted}`}>
+                        {selectedRoom.floor > 0
+                          ? `${selectedRoom.floor}-qavatda joylashgan`
+                          : 'Qavat tarxida belgilanmagan xona'}
+                      </p>
+                    </div>
                   </div>
                   <button
                     onClick={() => setSelectedRoom(null)}
-                    className={`p-1.5 rounded-lg shrink-0 ${textMuted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`}
+                    className={`no-shelf p-1.5 rounded-lg shrink-0 ${textMuted} ${isLight ? 'hover:bg-slate-100 text-slate-500' : 'hover:bg-slate-800 text-slate-400'}`}
+                    title="Yopish"
                   >
-                    <X size={14} />
+                    <X size={16} />
                   </button>
                 </div>
 
-                <div className="flex-1 min-h-0 space-y-4 overflow-y-auto custom-scrollbar pt-4 -mr-1 pr-1">
-                {readOnly ? null : selectedRoom.gender === 'mixed' || selectedRoom.frozen ? null : selectedRoom.occupants.length >= roomBeds(selectedRoom) ? (
-                  <div className={`p-2.5 rounded-lg text-center text-[10px] font-medium ${ui.inset} ${textMuted}`}>
-                    Xona to&apos;la — yangi talaba joylashtirib bo&apos;lmaydi
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAssignModalOpen(true)}
-                    className={`flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.accentSolid}`}
-                  >
-                    <UserPlus size={14} /> Talaba joylashtirish
-                  </button>
-                )}
-
-                {/* Frozen (ta'mirlash) notice — the room's only unfreeze control. */}
-                {selectedRoom.frozen && (
-                  <div className={`p-3 rounded-lg border text-[10px] flex items-start gap-2 ${ui.inset} ${textMuted}`}>
-                    <Snowflake size={14} className="shrink-0 mt-0.5" />
-                    <div className="min-w-0 flex-1">
-                      <p className={`font-bold ${textStrong}`}>Xona muzlatilgan</p>
-                      <p className="mt-0.5 leading-tight">
-                        {selectedRoom.frozenReason || "Ta'mirlash tufayli vaqtincha yopilgan."} Yangi talaba
-                        joylashtirib bo&apos;lmaydi — mavjud talabalar o&apos;z joyida qoladi.
-                      </p>
-                      {!readOnly && (
-                      <button
-                        onClick={handleUnfreezeRoom}
-                        disabled={freezingRoom}
-                        className={`mt-2.5 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.accentSolid}`}
-                      >
-                        <Unlock size={12} /> {freezingRoom ? 'Bajarilmoqda...' : 'Muzlatishni bekor qilish'}
-                      </button>
-                      )}
+                <div className="flex-1 min-h-0 space-y-3.5 overflow-y-auto custom-scrollbar pt-3.5 -mr-1 pr-1">
+                  {readOnly ? null : selectedRoom.gender === 'mixed' || selectedRoom.frozen ? null : selectedRoom.occupants.length >= roomBeds(selectedRoom) ? (
+                    <div className={`p-2.5 rounded-xl text-center text-xs font-bold ${ui.inset} ${textMuted}`}>
+                      Xona to‘liq to‘lgan — yangi talaba joylashtirib bo‘lmaydi
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <button
+                      onClick={() => setAssignModalOpen(true)}
+                      className={`no-shelf flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-black uppercase tracking-wider transition-all shadow-xs ${ui.accentSolid}`}
+                    >
+                      <UserPlus size={15} /> Talaba joylashtirish
+                    </button>
+                  )}
 
-                {/* Freeze (ta'mirlash) action — a labeled button, not just an icon, so
-                    it's actually noticed instead of blending into the header. Shown
-                    regardless of capacity/gender: a full or mixed room can still need
-                    to go into repair. Orphan rooms (not in floor_room_layout) can't be
-                    frozen from here — see the RoomData.inLayout comment. */}
-                {!readOnly && selectedRoom.inLayout && !selectedRoom.frozen && (
-                  <button
-                    onClick={() => setFreezeModalOpen(true)}
-                    className={`flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${ui.btnGhost}`}
-                  >
-                    <Snowflake size={14} /> Xonani muzlatish (ta&apos;mirlash)
-                  </button>
-                )}
+                  {/* Frozen Notice */}
+                  {selectedRoom.frozen && (
+                    <div className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 ${
+                      isLight ? 'border-cyan-200 bg-cyan-50/70 text-cyan-900' : 'border-cyan-500/30 bg-cyan-950/30 text-cyan-200'
+                    }`}>
+                      <Snowflake size={16} className="shrink-0 mt-0.5 text-cyan-500" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold uppercase tracking-wider">Xona muzlatilgan</p>
+                        <p className="mt-0.5 text-[11px] leading-relaxed opacity-90">
+                          {selectedRoom.frozenReason || "Ta'mirlash tufayli vaqtincha yopilgan."} Yangi talaba joylashtirib bo‘lmaydi.
+                        </p>
+                        {!readOnly && (
+                          <button
+                            onClick={handleUnfreezeRoom}
+                            disabled={freezingRoom}
+                            className="no-shelf mt-2.5 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-50"
+                          >
+                            <Unlock size={12} /> {freezingRoom ? 'Bajarilmoqda...' : 'Muzlatishni bekor qilish'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
-                {/* Declared room gender — set it before anyone is placed so
-                    the building can be planned. A choice that clashes with a
-                    student already in the room is disabled. */}
-                {!readOnly && selectedRoom.inLayout && (() => {
-                  const occGenders = new Set(
-                    selectedRoom.occupants.map((o) => normalizeGender(o.gender)).filter(Boolean),
-                  )
-                  const opts: { value: 'male' | 'female' | null; label: string; icon: typeof Venus }[] = [
-                    { value: 'male', label: "O'g'il bolalar", icon: Mars },
-                    { value: 'female', label: 'Qizlar', icon: Venus },
-                    { value: null, label: 'Belgilanmagan', icon: X },
-                  ]
-                  return (
-                    <div className={`rounded-xl border overflow-hidden ${ui.inset}`}>
-                      <div className={`flex items-center gap-3 p-3 border-b ${ui.border}`}>
-                        <Users2 size={16} className={`shrink-0 ${ui.accentText}`} />
-                        <p className={`flex-1 text-[10px] font-bold uppercase tracking-wider ${textStrong}`}>
-                          Xona jinsi
+                  {/* Freeze Action */}
+                  {!readOnly && selectedRoom.inLayout && !selectedRoom.frozen && (
+                    <button
+                      onClick={() => setFreezeModalOpen(true)}
+                      className={`no-shelf flex w-full items-center justify-center gap-2 rounded-xl border py-2 text-xs font-bold transition-colors ${ui.btnGhost}`}
+                    >
+                      <Snowflake size={14} className="text-cyan-500" /> Xonani muzlatish (ta&apos;mirlash)
+                    </button>
+                  )}
+
+                  {/* Declared Room Gender Picker */}
+                  {!readOnly && selectedRoom.inLayout && (() => {
+                    const occGenders = new Set(
+                      selectedRoom.occupants.map((o) => normalizeGender(o.gender)).filter(Boolean),
+                    )
+                    const opts: { value: 'male' | 'female' | null; label: string; icon: typeof Venus }[] = [
+                      { value: 'male', label: "O'g'il bolalar", icon: Mars },
+                      { value: 'female', label: 'Qizlar', icon: Venus },
+                      { value: null, label: 'Belgilanmagan', icon: X },
+                    ]
+                    return (
+                      <div className={`rounded-xl border overflow-hidden ${ui.inset}`}>
+                        <div className={`flex items-center gap-2 p-2.5 border-b ${ui.border}`}>
+                          <Users2 size={15} className={`shrink-0 ${ui.accentText}`} />
+                          <p className={`flex-1 text-[10px] font-bold uppercase tracking-wider ${textStrong}`}>
+                            Xona jinsi
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5 p-2">
+                          {opts.map((opt) => {
+                            const active = (selectedRoom.declaredGender ?? null) === opt.value
+                            const clashes = opt.value !== null && occGenders.size > 0 && !occGenders.has(opt.value)
+                            return (
+                              <button
+                                key={String(opt.value)}
+                                type="button"
+                                disabled={savingGender || clashes}
+                                onClick={() => handleSetGender(opt.value)}
+                                title={clashes ? 'Xonada boshqa jinsdagi talaba bor' : undefined}
+                                className={`no-shelf flex flex-col items-center gap-1 rounded-lg px-1.5 py-2 text-[10px] font-bold transition-all disabled:opacity-40 ${
+                                  active
+                                    ? opt.value === 'female'
+                                      ? (isLight ? 'bg-pink-100 text-pink-700 font-black' : 'bg-pink-500/20 text-pink-300 font-black')
+                                      : opt.value === 'male'
+                                        ? (isLight ? 'bg-emerald-100 text-emerald-700 font-black' : 'bg-emerald-500/20 text-emerald-300 font-black')
+                                        : ui.accentSoft
+                                    : `${ui.muted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`
+                                }`}
+                              >
+                                <opt.icon size={14} />
+                                {opt.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Declared-gender conflict warning */}
+                  {roomGenderConflict(selectedRoom) && selectedRoom.gender !== 'mixed' && selectedRoom.declaredGender && (
+                    <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
+                      isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+                    }`}>
+                      <AlertTriangle size={15} className="shrink-0 mt-0.5 text-amber-500" />
+                      <div>
+                        <p className="font-bold uppercase">Jins nomuvofiqligi</p>
+                        <p className="mt-0.5 text-[11px] leading-tight">
+                          Xona {selectedRoom.declaredGender === 'female' ? 'qizlar' : "o'g'il bolalar"} uchun belgilangan,
+                          lekin ichida boshqa jinsdagi talaba bor.
                         </p>
                       </div>
-                      <div className="grid grid-cols-3 gap-1.5 p-2">
-                        {opts.map((opt) => {
-                          const active = (selectedRoom.declaredGender ?? null) === opt.value
-                          const clashes = opt.value !== null && occGenders.size > 0 && !occGenders.has(opt.value)
-                          return (
-                            <button
-                              key={String(opt.value)}
-                              type="button"
-                              disabled={savingGender || clashes}
-                              onClick={() => handleSetGender(opt.value)}
-                              title={clashes ? 'Xonada boshqa jinsdagi talaba bor' : undefined}
-                              className={`flex flex-col items-center gap-1 rounded-lg px-1.5 py-2 text-[9px] font-bold uppercase tracking-wider transition-colors disabled:opacity-40 ${
-                                active
-                                  ? opt.value === 'female'
-                                    ? (isLight ? 'bg-pink-100 text-pink-700' : 'bg-pink-500/20 text-pink-300')
-                                    : opt.value === 'male'
-                                      ? (isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-500/20 text-emerald-300')
-                                      : ui.accentSoft
-                                  : `${ui.muted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`
-                              }`}
-                            >
-                              <opt.icon size={14} />
-                              {opt.label}
-                            </button>
-                          )
-                        })}
-                      </div>
                     </div>
-                  )
-                })()}
-
-                {/* Declared-gender conflict — a student of the other gender is
-                    already in a room the dekan reserved. */}
-                {roomGenderConflict(selectedRoom) && selectedRoom.gender !== 'mixed' && selectedRoom.declaredGender && (
-                  <div className={`p-3 rounded-lg border text-[10px] flex items-start gap-2 ${
-                    isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/40 bg-amber-500/10 text-amber-200'
-                  }`}>
-                    <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-bold uppercase">Jins nomuvofiqligi</p>
-                      <p className="mt-0.5 leading-tight">
-                        Xona {selectedRoom.declaredGender === 'female' ? 'qizlar' : "o'g'il bolalar"} uchun belgilangan,
-                        lekin ichida boshqa jinsdagi talaba bor. Talabani ko&apos;chiring yoki belgini o&apos;zgartiring.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Mixed Gender Error message */}
-                {selectedRoom.gender === 'mixed' && (
-                  <div className={`p-3 rounded-lg border text-[10px] flex items-start gap-2 ${ui.dangerSoft}`}>
-                    <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-bold uppercase">Gender aralashuvi xatosi</p>
-                      <p className="mt-0.5 leading-tight">
-                        Xonada ham o‘g‘il bolalar, ham qiz bolalar joylashtirilgan. Iltimos, xona taqsimotini o‘zgartiring.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* This floor's course balance — so the dekan sees the mix
-                    they're adding to before picking a student. */}
-                {selectedRoom.floor > 0 && floorBalance.floors.some((f) => f.floor === selectedRoom.floor) && (
-                  <FloorBalanceCard balance={floorBalance} isLight={isLight} onlyFloor={selectedRoom.floor} />
-                )}
-
-                {/* Occupants list */}
-                <div className="space-y-3">
-                  {selectedRoom.occupants.length === 0 ? (
-                    <div className={`text-center py-8 text-xs font-medium ${ui.faint}`}>Xona bo‘sh</div>
-                  ) : (
-                    selectedRoom.occupants.map((occ, occIndex) => {
-                      const st = statusChip(occ.status === 'registered' ? 'success' : 'warning', isLight)
-                      return (
-                      <div
-                        key={occ.id || `${selectedRoom.roomNumber}-anon-${occIndex}`}
-                        className={`p-3 rounded-lg border space-y-2 ${ui.inset}`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className={`h-2 w-2 rounded-full shrink-0 ${genderAccent(occ.gender).dot}`} />
-                            <h4 className={`text-xs font-semibold truncate ${textStrong}`}>{occ.full_name}</h4>
-                          </div>
-                          <span className={`shrink-0 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${st.chip}`}>
-                            {occ.status === 'registered' ? 'Faol' : 'Kutmoqda'}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2.5 text-[10px] font-medium">
-                          <div>
-                            <span className={textMuted}>Fakultet:</span>
-                            <p className={`truncate ${textStrong}`} title={permitFacultyLabel(occ.faculty)}>
-                              {permitFacultyLabel(occ.faculty) || '—'}
-                            </p>
-                          </div>
-                          <div>
-                            <span className={textMuted}>Kurs/Jinsi:</span>
-                            <p className={textStrong}>
-                              {occ.course ? `${occ.course}-kurs • ` : ''}{genderLabel(occ.gender)}
-                            </p>
-                          </div>
-                          <div>
-                            <span className={textMuted}>Telefon:</span>
-                            <p className={textStrong}>{occ.phone}</p>
-                          </div>
-                          {occ.warning_count && occ.warning_count > 0 ? (
-                            <div>
-                              <span className={statusChip('warning', isLight).text}>Ogohlantirishlar:</span>
-                              <p className={`font-semibold ${statusChip('warning', isLight).text}`}>{occ.warning_count} ta</p>
-                            </div>
-                          ) : null}
-                        </div>
-
-                        {/* Jump to this student's full record in the Talabalar
-                            section. Only for real accounts ('registered') —
-                            an 'approved' occupant is an unregistered permit
-                            row, not yet a student. Shown in both panels. */}
-                        {occ.status === 'registered' && occ.id && (
-                          <Link
-                            href={`${base}/talabalar?student=${occ.id}`}
-                            className={`no-shelf mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
-                          >
-                            <ArrowUpRight size={11} /> Talaba kabinetini ochish
-                          </Link>
-                        )}
-
-                        {!readOnly && occ.id && (
-                          confirmRemoveId === occ.id ? (
-                            <div className={`mt-1 flex items-center gap-2 rounded-lg border px-2.5 py-2 ${ui.dangerSoft}`}>
-                              <AlertTriangle size={12} className="shrink-0" />
-                              <span className="flex-1 text-[9px] font-bold uppercase tracking-wider">
-                                Rostdan chiqarilsinmi?
-                              </span>
-                              <button
-                                onClick={() => handleRemoveStudent(occ)}
-                                disabled={removingId === occ.id}
-                                className={`rounded-md px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider disabled:opacity-50 ${ui.btnDanger}`}
-                              >
-                                {removingId === occ.id ? '...' : 'Ha'}
-                              </button>
-                              <button
-                                onClick={() => setConfirmRemoveId(null)}
-                                className={`rounded-md border px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider ${ui.btnGhost}`}
-                              >
-                                Yo&apos;q
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setConfirmRemoveId(occ.id)}
-                              className={`mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${ui.dangerSoft}`}
-                            >
-                              <UserMinus size={11} />
-                              {occ.status === 'approved' ? "Xona biriktirishni bekor qilish" : 'Xonadan chiqarish'}
-                            </button>
-                          )
-                        )}
-                      </div>
-                      )
-                    })
                   )}
-                </div>
+
+                  {/* Mixed Gender Error message */}
+                  {selectedRoom.gender === 'mixed' && (
+                    <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${ui.dangerSoft}`}>
+                      <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold uppercase">Gender aralashuvi xatosi</p>
+                        <p className="mt-0.5 text-[11px] leading-tight">
+                          Xonada ham o‘g‘il bolalar, ham qiz bolalar joylashtirilgan.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Occupants list */}
+                  <div className="space-y-2.5">
+                    <p className={`text-[10px] font-bold uppercase tracking-wider ${ui.faint}`}>
+                      Yashovchi talabalar ({selectedRoom.occupants.length})
+                    </p>
+                    {selectedRoom.occupants.length === 0 ? (
+                      <div className={`text-center py-6 text-xs font-medium rounded-xl border border-dashed ${isLight ? 'border-slate-200 text-slate-400' : 'border-slate-700 text-slate-500'}`}>
+                        Xona bo‘sh
+                      </div>
+                    ) : (
+                      selectedRoom.occupants.map((occ, occIndex) => {
+                        const isFemale = normalizeGender(occ.gender) === 'female'
+                        const isRegistered = occ.status === 'registered'
+                        const statusBadge = isRegistered
+                          ? (isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/20 text-emerald-300')
+                          : (isLight ? 'bg-amber-100 text-amber-800' : 'bg-amber-500/20 text-amber-300')
+                        const tgUrl = getTelegramUrl(occ.phone)
+                        const isConfirming = confirmRemoveId === occ.id
+                        const isTarbiyachiRole = base === '/tarbiyachi' || readOnly
+
+                        return (
+                          <div
+                            key={occ.id || `${selectedRoom.roomNumber}-anon-${occIndex}`}
+                            className={`rounded-2xl border p-3 transition-all shadow-2xs hover:shadow-sm ${
+                              isLight
+                                ? 'bg-white border-slate-200/90 hover:border-slate-300'
+                                : 'bg-slate-900/70 border-slate-800 hover:border-slate-700'
+                            }`}
+                          >
+                            {/* Top row: Avatar + Name + Status */}
+                            <div className="flex items-start gap-2.5">
+                              {/* Avatar with Initials & Gender Badge */}
+                              <div
+                                className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-black text-xs tracking-wider shadow-2xs ${
+                                  isFemale
+                                    ? isLight
+                                      ? 'bg-pink-100 text-pink-700 ring-1 ring-pink-300/80'
+                                      : 'bg-pink-950/80 text-pink-300 ring-1 ring-pink-700/60'
+                                    : isLight
+                                      ? 'bg-sky-100 text-sky-800 ring-1 ring-sky-300/80'
+                                      : 'bg-sky-950/80 text-sky-300 ring-1 ring-sky-700/60'
+                                }`}
+                              >
+                                {getStudentInitials(occ.full_name)}
+                                <span
+                                  className={`absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] shadow-2xs ring-2 ${
+                                    isLight ? 'ring-white' : 'ring-slate-900'
+                                  } ${
+                                    isFemale
+                                      ? 'bg-pink-500 text-white'
+                                      : 'bg-sky-500 text-white'
+                                  }`}
+                                  title={genderLabel(occ.gender)}
+                                >
+                                  {isFemale ? <Venus size={8} strokeWidth={2.5} /> : <Mars size={8} strokeWidth={2.5} />}
+                                </span>
+                              </div>
+
+                              {/* Name & Subtitle Badges */}
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-start justify-between gap-1.5">
+                                  {occ.id ? (
+                                    <Link
+                                      href={`${base}/talabalar?student=${occ.id}`}
+                                      className={`text-xs font-bold leading-snug truncate hover:underline hover:text-indigo-600 dark:hover:text-indigo-400 ${textStrong}`}
+                                      title={occ.full_name}
+                                    >
+                                      {occ.full_name}
+                                    </Link>
+                                  ) : (
+                                    <h4
+                                      className={`text-xs font-bold leading-snug truncate ${textStrong}`}
+                                      title={occ.full_name}
+                                    >
+                                      {occ.full_name}
+                                    </h4>
+                                  )}
+                                  <span
+                                    className={`shrink-0 inline-flex items-center rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${statusBadge}`}
+                                  >
+                                    {isRegistered ? 'Faol' : 'Kutmoqda'}
+                                  </span>
+                                </div>
+
+                                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                  {occ.course > 0 && (
+                                    <span
+                                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                                        isLight ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200' : 'bg-indigo-950/50 text-indigo-300 ring-1 ring-indigo-800'
+                                      }`}
+                                    >
+                                      {occ.course}-kurs
+                                    </span>
+                                  )}
+                                  <span
+                                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-medium ${
+                                      isFemale
+                                        ? isLight ? 'bg-pink-50 text-pink-700' : 'bg-pink-950/40 text-pink-300'
+                                        : isLight ? 'bg-sky-50 text-sky-700' : 'bg-sky-950/40 text-sky-300'
+                                    }`}
+                                  >
+                                    {genderLabel(occ.gender)}
+                                  </span>
+                                  {occ.warning_count && occ.warning_count > 0 ? (
+                                    <span
+                                      className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                                        isLight ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-300' : 'bg-amber-950/60 text-amber-300 ring-1 ring-amber-800'
+                                      }`}
+                                    >
+                                      <ShieldAlert size={10} className="shrink-0 text-amber-600" />
+                                      {occ.warning_count} ta ogohlantirish
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Details: Faculty & Phone */}
+                            <div className={`mt-2 space-y-1 rounded-xl p-2 text-[10px] border ${ui.inset}`}>
+                              <div className="flex items-start gap-1.5">
+                                <GraduationCap size={13} className="shrink-0 mt-0.5 text-indigo-500" />
+                                <div className="min-w-0 flex-1">
+                                  <p className={`font-semibold leading-tight line-clamp-2 ${textStrong}`} title={permitFacultyLabel(occ.faculty)}>
+                                    {permitFacultyLabel(occ.faculty) || 'Fakultet belgilanmagan'}
+                                  </p>
+                                  {occ.direction && (
+                                    <p className={`text-[9px] truncate ${textMuted}`} title={directionLabel(occ.direction)}>
+                                      {directionLabel(occ.direction)}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-200/60 dark:border-slate-800/80">
+                                <div className="flex items-center gap-1.5">
+                                  <Phone size={12} className="shrink-0 text-emerald-500" />
+                                  <a
+                                    href={`tel:${occ.phone}`}
+                                    className={`font-bold tabular-nums hover:underline ${
+                                      isLight ? 'text-slate-800 hover:text-indigo-600' : 'text-slate-200 hover:text-indigo-400'
+                                    }`}
+                                  >
+                                    {formatPhoneNumber(occ.phone)}
+                                  </a>
+                                </div>
+                                {tgUrl && (
+                                  <a
+                                    href={tgUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={`no-shelf inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold transition-colors ${
+                                      isLight ? 'bg-sky-50 text-sky-700 hover:bg-sky-100' : 'bg-sky-950/40 text-sky-300 hover:bg-sky-900/60'
+                                    }`}
+                                    title="Telegram orqali yozish"
+                                  >
+                                    <MessageSquare size={10} /> Telegram
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Actions section tailored for Dekan vs Tarbiyachi */}
+                            <div className="mt-2">
+                              {!readOnly && occ.id && isConfirming ? (
+                                <div className={`flex items-center gap-2 rounded-xl border p-2 ${ui.dangerSoft}`}>
+                                  <AlertTriangle size={13} className="shrink-0 text-red-600" />
+                                  <span className="flex-1 text-[10px] font-bold leading-tight">
+                                    Rostdan chiqarilsinmi?
+                                  </span>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveStudent(occ)}
+                                      disabled={removingId === occ.id}
+                                      className={`no-shelf rounded-md px-2 py-1 text-[9px] font-black uppercase tracking-wider disabled:opacity-50 ${ui.btnDanger}`}
+                                    >
+                                      {removingId === occ.id ? '...' : 'Ha'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setConfirmRemoveId(null)}
+                                      className={`no-shelf rounded-md border px-2 py-1 text-[9px] font-bold uppercase tracking-wider ${ui.btnGhost}`}
+                                    >
+                                      Yo‘q
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  {/* Call button */}
+                                  {occ.phone && (
+                                    <a
+                                      href={`tel:${occ.phone}`}
+                                      className={`no-shelf inline-flex flex-1 items-center justify-center gap-1 rounded-lg border py-1.5 text-[10px] font-bold transition-all ${
+                                        isLight
+                                          ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
+                                          : 'bg-emerald-950/30 hover:bg-emerald-900/50 text-emerald-300 border-emerald-800/60'
+                                      }`}
+                                      title="Telefon orqali qo‘ng‘iroq qilish"
+                                    >
+                                      <Phone size={11} className="text-emerald-600 dark:text-emerald-400" />
+                                      <span>Qo‘ng‘iroq</span>
+                                    </a>
+                                  )}
+
+                                  {/* Cabinet / Profile link */}
+                                  {occ.id && (
+                                    <Link
+                                      href={`${base}/talabalar?student=${occ.id}`}
+                                      className={`no-shelf inline-flex flex-1 items-center justify-center gap-1 rounded-lg border py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${
+                                        isTarbiyachiRole
+                                          ? isLight
+                                            ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+                                            : 'bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border-indigo-800/60'
+                                          : `${ui.btnGhost}`
+                                      }`}
+                                      title={isTarbiyachiRole ? 'Tarbiyachi kabinetida ko‘rish' : 'Talaba kabinetini ochish'}
+                                    >
+                                      <ArrowUpRight size={11} />
+                                      <span>Profil</span>
+                                    </Link>
+                                  )}
+
+                                  {/* Dekan-Only: Remove / Reassign Button */}
+                                  {!readOnly && occ.id && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setConfirmRemoveId(occ.id)}
+                                      className={`no-shelf inline-flex items-center justify-center rounded-lg border p-1.5 text-[10px] font-bold transition-all ${
+                                        isLight
+                                          ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
+                                          : 'bg-red-950/30 hover:bg-red-900/50 text-red-300 border-red-800/60'
+                                      }`}
+                                      title={occ.status === 'approved' ? 'Xona biriktirishni bekor qilish' : 'Xonadan chiqarish'}
+                                    >
+                                      <UserMinus size={13} />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
                 </div>
 
-                {/* Capacity + occupancy — one calm block. Bed count is a
-                    stepper; landing on the building default clears the
-                    override (see stepCapacity). A frozen room's beds never
-                    count as free. */}
+                {/* Capacity + Occupancy Stepper */}
                 {(() => {
                   const isOverride = selectedRoom.inLayout && selectedRoom.capacity != null
                   const beds = roomBeds(selectedRoom)
@@ -1256,45 +1566,45 @@ export default function DekanXonalarMap() {
                               Xona sig&apos;imi
                             </p>
                             {readOnly ? (
-                              <span className={`shrink-0 text-lg font-black tabular-nums ${isOverride ? ui.accentText : textStrong}`}>
+                              <span className={`shrink-0 text-base font-black tabular-nums ${isOverride ? ui.accentText : textStrong}`}>
                                 {beds} ta
                               </span>
                             ) : (
-                            <div className="shrink-0 flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                aria-label="Kamaytirish"
-                                disabled={savingCapacity || beds <= CAPACITY_MIN}
-                                onClick={() => stepCapacity(-1)}
-                                className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30 ${ui.btnGhost}`}
-                              >
-                                <Minus size={13} />
-                              </button>
-                              <span className={`w-8 text-center text-lg font-black tabular-nums ${isOverride ? ui.accentText : textStrong}`}>
-                                {beds}
-                              </span>
-                              <button
-                                type="button"
-                                aria-label="Ko‘paytirish"
-                                disabled={savingCapacity || beds >= CAPACITY_MAX}
-                                onClick={() => stepCapacity(1)}
-                                className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30 ${ui.accentSolid}`}
-                              >
-                                <Plus size={13} />
-                              </button>
-                            </div>
+                              <div className="shrink-0 flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  aria-label="Kamaytirish"
+                                  disabled={savingCapacity || beds <= CAPACITY_MIN}
+                                  onClick={() => stepCapacity(-1)}
+                                  className={`no-shelf flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30 ${ui.btnGhost}`}
+                                >
+                                  <Minus size={13} />
+                                </button>
+                                <span className={`w-8 text-center text-base font-black tabular-nums ${isOverride ? ui.accentText : textStrong}`}>
+                                  {beds}
+                                </span>
+                                <button
+                                  type="button"
+                                  aria-label="Ko‘paytirish"
+                                  disabled={savingCapacity || beds >= CAPACITY_MAX}
+                                  onClick={() => stepCapacity(1)}
+                                  className={`no-shelf flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30 ${ui.accentSolid}`}
+                                >
+                                  <Plus size={13} />
+                                </button>
+                              </div>
                             )}
                           </div>
                           <div className="mt-2 flex items-center justify-between gap-2 pl-7">
                             <span className={`text-[10px] ${textMuted}`}>
-                              {isOverride ? `Istisno · bino standarti ${defaultCapacity} ta` : 'Bino standarti bo’yicha'}
+                              {isOverride ? `Istisno · bino standarti ${defaultCapacity} ta` : 'Bino standarti bo‘yicha'}
                             </span>
                             {isOverride && !readOnly && (
                               <button
                                 type="button"
                                 disabled={savingCapacity}
                                 onClick={() => handleSetCapacity(null)}
-                                className={`shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.accentSoft}`}
+                                className={`no-shelf shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.accentSoft}`}
                               >
                                 <RotateCcw size={11} />
                                 Standart
@@ -1324,11 +1634,58 @@ export default function DekanXonalarMap() {
                 })()}
               </motion.div>
             ) : (
-              <div className={`p-10 rounded-2xl border ${surfaceBg} flex flex-col items-center justify-center text-center`}>
-                <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-3 ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-slate-800 text-slate-500'}`}>
-                  <BedDouble size={20} />
+              /* Rich Overview when no room is selected */
+              <div className={`p-5 rounded-2xl border shadow-sm space-y-4 ${surfaceBg}`}>
+                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-white/5">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${ui.accentTileSoft}`}>
+                    <Building2 size={18} />
+                  </div>
+                  <div>
+                    <h3 className={`text-sm font-black uppercase tracking-wider ${textStrong}`}>
+                      Qavat & Bino hisoboti
+                    </h3>
+                    <p className={`text-[10px] font-bold ${textMuted}`}>
+                      {floorFilter === 'all' ? 'Barcha qavatlar holati' : `${floorFilter}-qavat ko‘rsatkichlari`}
+                    </p>
+                  </div>
                 </div>
-                <p className={`text-xs font-medium ${textMuted}`}>Xona tafsilotlarini ko‘rish uchun xarita bo‘limidan xonani bosing</p>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className={`p-3 rounded-xl border ${ui.inset}`}>
+                    <p className={`text-[10px] font-bold uppercase ${ui.faint}`}>Xonalar</p>
+                    <p className={`text-lg font-black mt-0.5 ${textStrong}`}>{filteredRooms.length} ta</p>
+                  </div>
+                  <div className={`p-3 rounded-xl border ${ui.inset}`}>
+                    <p className={`text-[10px] font-bold uppercase ${ui.faint}`}>Bo‘sh joy</p>
+                    <p className="text-lg font-black mt-0.5 text-emerald-600 dark:text-emerald-400">
+                      {filteredRoomsStats.free} ta
+                    </p>
+                  </div>
+                  <div className={`p-3 rounded-xl border ${ui.inset}`}>
+                    <p className={`text-[10px] font-bold uppercase ${ui.faint}`}>Band o‘rin</p>
+                    <p className="text-lg font-black mt-0.5 text-indigo-600 dark:text-indigo-400">
+                      {filteredRoomsStats.occupied} ta
+                    </p>
+                  </div>
+                  <div className={`p-3 rounded-xl border ${ui.inset}`}>
+                    <p className={`text-[10px] font-bold uppercase ${ui.faint}`}>Muzlatilgan</p>
+                    <p className="text-lg font-black mt-0.5 text-cyan-600 dark:text-cyan-400">
+                      {filteredRoomsStats.frozen} ta
+                    </p>
+                  </div>
+                </div>
+
+                <div className={`rounded-xl p-3.5 border text-xs space-y-1.5 ${
+                  isLight ? 'bg-indigo-50/70 border-indigo-100 text-indigo-950' : 'bg-indigo-950/20 border-indigo-900/40 text-indigo-200'
+                }`}>
+                  <p className="font-bold flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" />
+                    Tezkor yo‘riqnoma:
+                  </p>
+                  <p className="text-[11px] leading-relaxed opacity-90">
+                    Chapdagi xaritadan istalgan xona kartasini bosing — xona yashovchilari, telefon raqamlari, gender belgisi va joylashtirish amallari ochiladi.
+                  </p>
+                </div>
               </div>
             )}
           </AnimatePresence>

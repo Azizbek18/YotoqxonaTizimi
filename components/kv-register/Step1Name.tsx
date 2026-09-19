@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { User, ArrowRight, IdCard, CheckCircle2 } from 'lucide-react'
+import { User, ArrowRight, IdCard } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { getNamePartError } from '@/lib/permit-validation'

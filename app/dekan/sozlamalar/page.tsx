@@ -15,9 +15,10 @@ import {
     updateDekanTelegramChat,
 } from '@/features/app-settings/client/api'
 import type { AppSettings } from '@/features/app-settings/types'
-import { fetchDekanDorm } from '@/features/dorms/client/api'
-import type { DekanDorm } from '@/features/dorms/types'
+import { fetchBlockedRoomMap, fetchDekanDorm } from '@/features/dorms/client/api'
+import type { BlockedRoomMapDorm, DekanDorm } from '@/features/dorms/types'
 import DormFloorsCard from '@/components/dekan/DormFloorsCard'
+import BlockedDormFloorsCard from '@/components/dekan/BlockedDormFloorsCard'
 import AddDormCard from '@/components/dekan/AddDormCard'
 import DormRoomSettingsCard from '@/components/dekan/DormRoomSettingsCard'
 import AttendanceSettingsCard from '@/components/dekan/AttendanceSettingsCard'
@@ -42,6 +43,8 @@ export default function DekanSozlamalarPage() {
     const [settings, setSettings] = useState<AppSettings | null>(null)
     const [savedSettings, setSavedSettings] = useState<AppSettings | null>(null)
     const [dorms, setDorms] = useState<DekanDorm[]>([])
+    const [blockedDorms, setBlockedDorms] = useState<BlockedRoomMapDorm[] | null>(null)
+    const [blockedDormsLoadFailed, setBlockedDormsLoadFailed] = useState(false)
     const [loading, setLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
     const [saving, setSaving] = useState(false)
@@ -78,6 +81,15 @@ export default function DekanSozlamalarPage() {
         fetchDekanDorm()
             .then(({ dorms }) => setDorms(dorms))
             .catch(() => setDorms([]))
+        fetchBlockedRoomMap()
+            .then(({ dorms }) => {
+                setBlockedDorms(dorms)
+                setBlockedDormsLoadFailed(false)
+            })
+            .catch(() => {
+                setBlockedDorms([])
+                setBlockedDormsLoadFailed(true)
+            })
     }, [])
 
     // Replace one dorm entry in place (by dormId) — used by the per-building
@@ -283,21 +295,31 @@ export default function DekanSozlamalarPage() {
                     <div className="space-y-6">
                         {dorms.map((d, i) => (
                             <div key={d.dormId} className="space-y-6">
-                                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                                    <DormFloorsCard
-                                        dorm={d}
-                                        onChange={updateOneDorm}
-                                        onDormsChange={setDorms}
-                                        showBuildingControls={dorms.length > 1}
-                                    />
-                                </motion.div>
-                                {/* One "Xona va qavat sozlamalari" per building — floor
-                                    count, default capacity and the room layout are all
-                                    per-dorm, so a faculty's 2nd+ building needs its own
-                                    card, not a single primary-only one. */}
-                                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 + 0.015 }}>
-                                    <DormRoomSettingsCard dorm={d} />
-                                </motion.div>
+                                {d.layoutKind === 'blocked' ? (
+                                    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                                        <BlockedDormFloorsCard
+                                            dorm={d}
+                                            sections={blockedDorms?.find((item) => item.dormId === d.dormId)?.sections ?? []}
+                                            loading={blockedDorms === null}
+                                            loadFailed={blockedDormsLoadFailed}
+                                        />
+                                    </motion.div>
+                                ) : (
+                                    <>
+                                        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                                            <DormFloorsCard
+                                                dorm={d}
+                                                onChange={updateOneDorm}
+                                                onDormsChange={setDorms}
+                                                showBuildingControls={dorms.length > 1}
+                                            />
+                                        </motion.div>
+                                        {/* Simple buildings keep their editable floor and room layout controls. */}
+                                        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 + 0.015 }}>
+                                            <DormRoomSettingsCard dorm={d} />
+                                        </motion.div>
+                                    </>
+                                )}
                                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 + 0.03 }}>
                                     <AttendanceSettingsCard dorm={d} onChange={updateOneDorm} />
                                 </motion.div>

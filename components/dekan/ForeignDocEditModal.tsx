@@ -155,27 +155,41 @@ export default function ForeignDocEditModal({ isLight, doc, onClose, onSaved }: 
           <button
             type="button"
             onClick={() => setVerified((v) => !v)}
-            className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-semibold transition-colors ${
+            className={`no-shelf cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold transition-all active:scale-95 ${
               verified
                 ? isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
                 : ui.btnGhost
             }`}
           >
-            <ShieldCheck size={14} />
-            {verified ? 'Tekshirilgan deb belgilangan' : 'Tekshirilgan deb belgilash'}
+            <ShieldCheck size={15} />
+            <span>{verified ? 'Tekshirilgan deb belgilangan' : 'Tekshirilgan deb belgilash'}</span>
           </button>
 
           {doc.hasFile && (
-            <button type="button" onClick={openFile} className={`flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${ui.btnGhost}`}>
-              <FileText size={14} /> Biriktirilgan faylni ochish
+            <button
+              type="button"
+              onClick={openFile}
+              className={`no-shelf cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold transition-all active:scale-95 ${ui.btnGhost}`}
+            >
+              <FileText size={15} />
+              <span>Biriktirilgan faylni ochish</span>
             </button>
           )}
 
-          <div className="flex gap-3 pt-1">
-            <button onClick={onClose} className={`flex-1 rounded-lg border px-4 py-2.5 text-xs font-bold uppercase tracking-wider ${ui.btnGhost}`}>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className={`no-shelf cursor-pointer flex-1 rounded-xl border px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all active:scale-95 ${ui.btnGhost}`}
+            >
               Bekor qilish
             </button>
-            <button onClick={save} disabled={busy} className={`flex-1 rounded-lg px-4 py-2.5 text-xs font-bold uppercase tracking-wider ${ui.accentSolid}`}>
+            <button
+              type="button"
+              onClick={save}
+              disabled={busy}
+              className="no-shelf cursor-pointer flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md shadow-blue-600/20 px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50"
+            >
               {busy ? 'Saqlanmoqda...' : 'Saqlash'}
             </button>
           </div>

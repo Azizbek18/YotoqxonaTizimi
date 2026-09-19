@@ -7,13 +7,16 @@ import { checkRateLimit, getClientIp } from '@/lib/security'
 import { extractReceiptPath } from '@/lib/safe-storage-url'
 import { normalizePaymentTransactionId } from '@/features/payments/domain/validation'
 import { MAX_UPLOAD_SIZE_BYTES } from '@/lib/upload-limits'
+import { staffDormFaculties } from '@/server/auth/faculty'
+import { normalizeFaculty } from '@/lib/faculties'
 
-// Looks up `role` for the given identity in `table`, trying `id` then
-// `email` as two safe, parameterized lookups — never interpolate
-// user-controlled values into a single `.or()` filter string (PostgREST's
-// or() mini-language treats commas/dots as syntax, so raw interpolation
-// there is an injection vector).
-async function canAnalyzePayment(userId: string, studentId: string) {
+// Who may run the AI check: the payment's own student, a superadmin, and the
+// tarbiyachi who actually reviews receipts — scoped to the faculties living
+// in their building. Receipt review moved from the retired admin panel to
+// /tarbiyachi/tolovlar (which re-exports that page), but this endpoint still
+// admitted `admin` only, so the reviewer looking at the receipt got a 403
+// from the very button the page offers them.
+async function canAnalyzePayment(userId: string, studentId: string, paymentFaculty: string | null) {
   const supabase = getServiceSupabase()
   if (userId === studentId) {
     const { data: student } = await supabase
@@ -26,10 +29,18 @@ async function canAnalyzePayment(userId: string, studentId: string) {
 
   const { data: staff } = await supabase
     .from('staff')
-    .select('role, status')
+    .select('role, status, faculty')
     .eq('id', userId)
     .maybeSingle()
-  return staff?.role === 'admin' && staff.status === 'active'
+  if (staff?.status !== 'active') return false
+  if (staff.role === 'admin') return true
+
+  const faculty = normalizeFaculty(paymentFaculty)
+  if (!faculty || staff.role !== 'tarbiyachi') return false
+  // Same scope the tarbiyachi's own payment list uses: every faculty living
+  // in their building, not just their own.
+  const faculties = await staffDormFaculties(userId, staff.faculty)
+  return faculties.some((f) => normalizeFaculty(f) === faculty)
 }
 
 export async function POST(req: NextRequest) {
@@ -54,7 +65,7 @@ export async function POST(req: NextRequest) {
     // 1. Fetch the payment record
     const { data: record, error: fetchError } = await supabase
       .from('tolovlar')
-      .select('id, student_id, student_name, month, year, amount, receipt_url, status, transaction_id')
+      .select('id, student_id, student_name, month, year, amount, receipt_url, status, transaction_id, faculty')
       .eq('id', paymentId)
       .single()
 
@@ -62,7 +73,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'To\'lov yozuvi topilmadi' }, { status: 404 })
     }
 
-    if (!(await canAnalyzePayment(user.id, record.student_id))) {
+    if (!(await canAnalyzePayment(user.id, record.student_id, record.faculty))) {
       return NextResponse.json({ error: 'Ushbu to‘lovni tahlil qilishga ruxsat yo‘q' }, { status: 403 })
     }
 

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   aiVisionJson: vi.fn(),
   storageDownload: vi.fn(),
   rpcSingle: vi.fn(),
+  staffDormFaculties: vi.fn(),
 }))
 
 type Result = { data?: unknown; error?: unknown }
@@ -34,6 +35,7 @@ function chain(table: string) {
 vi.mock('@/lib/server-auth', () => ({ getRequestUser: mocks.getRequestUser }))
 vi.mock('@/lib/security', () => ({ checkRateLimit: mocks.checkRateLimit, getClientIp: mocks.getClientIp }))
 vi.mock('@/lib/ai', () => ({ aiVisionConfigured: mocks.aiVisionConfigured, aiVisionJson: mocks.aiVisionJson }))
+vi.mock('@/server/auth/faculty', () => ({ staffDormFaculties: mocks.staffDormFaculties }))
 vi.mock('@/lib/server-supabase', () => ({
   getServiceSupabase: () => ({
     from: (table: string) => chain(table),
@@ -62,6 +64,7 @@ beforeEach(() => {
     data: {
       id: 'pay1', student_id: 'stu1', student_name: 'Ali', month: 9, year: 2026,
       amount: 300000, receipt_url: 'stu1/receipt.jpg', status: 'waiting', transaction_id: null,
+      faculty: 'amit',
     },
     error: null,
   }
@@ -118,6 +121,40 @@ describe('POST /api/ai/tahlil', () => {
     tableState.staff.maybeSingle = { data: { role: 'admin', status: 'active' }, error: null }
     const res = await POST(req({ paymentId: 'pay1' }))
     expect(res.status).toBe(200)
+  })
+
+  // The tarbiyachi is the one who actually reviews receipts
+  // (/tarbiyachi/tolovlar re-exports the old admin page, AI button included).
+  it('allows the tarbiyachi whose building holds the payment’s faculty', async () => {
+    mocks.aiVisionJson.mockResolvedValue(aiResult())
+    mocks.getRequestUser.mockResolvedValue({ id: 'tarb1' })
+    tableState.staff.maybeSingle = { data: { role: 'tarbiyachi', status: 'active', faculty: 'amit' }, error: null }
+    mocks.staffDormFaculties.mockResolvedValue(['amit', 'iqtisodiyot'])
+    const res = await POST(req({ paymentId: 'pay1' }))
+    expect(res.status).toBe(200)
+  })
+
+  it('403s a tarbiyachi from a building that does not hold the payment’s faculty', async () => {
+    mocks.getRequestUser.mockResolvedValue({ id: 'tarb2' })
+    tableState.staff.maybeSingle = { data: { role: 'tarbiyachi', status: 'active', faculty: 'kimyo' }, error: null }
+    mocks.staffDormFaculties.mockResolvedValue(['kimyo'])
+    const res = await POST(req({ paymentId: 'pay1' }))
+    expect(res.status).toBe(403)
+  })
+
+  it('403s an inactive (suspended) tarbiyachi of the right building', async () => {
+    mocks.getRequestUser.mockResolvedValue({ id: 'tarb3' })
+    tableState.staff.maybeSingle = { data: { role: 'tarbiyachi', status: 'inactive', faculty: 'amit' }, error: null }
+    mocks.staffDormFaculties.mockResolvedValue(['amit'])
+    const res = await POST(req({ paymentId: 'pay1' }))
+    expect(res.status).toBe(403)
+  })
+
+  it('403s a dekan — receipt review (and its AI check) is the tarbiyachi’s job', async () => {
+    mocks.getRequestUser.mockResolvedValue({ id: 'dekan1' })
+    tableState.staff.maybeSingle = { data: { role: 'dekan', status: 'active', faculty: 'amit' }, error: null }
+    const res = await POST(req({ paymentId: 'pay1' }))
+    expect(res.status).toBe(403)
   })
 
   it('409s a payment that has already been decided', async () => {

@@ -306,6 +306,7 @@ export default function StudentProfile() {
 
   // Logout confirmation state
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   // Last login
   const [lastLogin, setLastLogin] = useState<string | null>(null)
@@ -476,8 +477,14 @@ export default function StudentProfile() {
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
+    if (loggingOut) return
+    setLoggingOut(true)
+    try {
+      await supabase.auth.signOut()
+      router.push('/login')
+    } catch {
+      setLoggingOut(false)
+    }
   }
 
   // ─── Password change handler ─────────────────────────────────────────────────
@@ -1547,6 +1554,7 @@ export default function StudentProfile() {
         description="Rostdan ham tizimdan chiqmoqchimisiz?"
         onClose={() => setShowLogoutConfirm(false)}
         onConfirm={handleLogout}
+        isLoading={loggingOut}
         confirmText="Ha, chiqish"
         confirmVariant="danger"
       />

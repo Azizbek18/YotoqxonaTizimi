@@ -61,6 +61,7 @@ export default function DekanLayout({
   const [mounted, setMounted] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
   const { faculty: dekanFaculty, fullName: dekanName, role: dekanRole, scope: saScope, resolved: facultyResolved } = useDekanScope()
   useToastOffset(84)
   const [recentPending, setRecentPending] = useState<{ id: string; full_name: string; direction: string; created_at: string | null }[]>([])
@@ -228,12 +229,15 @@ export default function DekanLayout({
   }, [pendingCount, isSuperadmin, scopeLabel])
 
   const handleLogout = async () => {
+    if (loggingOut) return
+    setLoggingOut(true)
     try {
       await supabase.auth.signOut()
       toast.success('Chiqib ketdingiz!')
       router.push('/login')
     } catch {
       toast.error('Chiqib ketishda xato!')
+      setLoggingOut(false)
     } finally {
       setShowLogoutConfirm(false)
     }
@@ -592,6 +596,7 @@ export default function DekanLayout({
         description="Rostdan ham tizimdan chiqmoqchimisiz?"
         onClose={() => setShowLogoutConfirm(false)}
         onConfirm={handleLogout}
+        isLoading={loggingOut}
         confirmText="Ha, chiqish"
         confirmVariant="danger"
       />

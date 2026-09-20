@@ -80,6 +80,7 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
   const [pending, setPending] = useState<PendingAriza[]>([])
   const [notifOpen, setNotifOpen] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -126,12 +127,15 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
   )
 
   const handleLogout = async () => {
+    if (loggingOut) return
+    setLoggingOut(true)
     try {
       await supabase.auth.signOut()
       toast.success('Tizimdan chiqdingiz')
       router.push('/login')
     } catch {
       toast.error('Chiqishda xato')
+      setLoggingOut(false)
     } finally {
       setShowLogoutConfirm(false)
     }
@@ -358,6 +362,7 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
         description="Rostdan ham tizimdan chiqmoqchimisiz?"
         onClose={() => setShowLogoutConfirm(false)}
         onConfirm={handleLogout}
+        isLoading={loggingOut}
         confirmText="Ha, chiqish"
         confirmVariant="danger"
       />

@@ -44,6 +44,7 @@ export default function AdminLayout({
   const [waitingCount, setWaitingCount] = useState(0)
   const [mounted, setMounted] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
@@ -98,12 +99,15 @@ export default function AdminLayout({
   ]), [waitingCount])
 
   const handleLogout = async () => {
+    if (loggingOut) return
+    setLoggingOut(true)
     try {
       await supabase.auth.signOut()
       toast.success("Chiqib ketdingiz!")
       router.push('/login')
     } catch {
       toast.error("Chiqib ketishda xato!")
+      setLoggingOut(false)
     } finally {
       setShowLogoutConfirm(false)
     }
@@ -363,6 +367,7 @@ export default function AdminLayout({
       description="Rostdan ham tizimdan chiqmoqchimisiz?"
       onClose={() => setShowLogoutConfirm(false)}
       onConfirm={handleLogout}
+      isLoading={loggingOut}
       confirmText="Ha, chiqish"
       confirmVariant="danger"
     />

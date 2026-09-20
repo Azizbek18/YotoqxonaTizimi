@@ -94,22 +94,12 @@ describe('requireCouncilChair', () => {
     expect(errorOf(result).status).toBe(403)
   })
 
-  it('403s a chair with no gender set', async () => {
-    mocks.getRequestUser.mockResolvedValue({ id: 'u1' })
-    mocks.maybeSingle.mockResolvedValue({
-      data: { role: 'talaba', status: 'active', is_council_chair: true, faculty: 'amit', gender: null },
-      error: null,
-    })
-    const result = await requireCouncilChair(req())
-    expect(errorOf(result).status).toBe(403)
-  })
-
-  it('resolves the chair, faculty and gender for a valid caller', async () => {
+  it('resolves the chair and faculty for a valid caller, no gender required', async () => {
     mocks.getRequestUser.mockResolvedValue({ id: 'u1' })
     mocks.maybeSingle.mockResolvedValue({
       data: {
         id: 'u1', role: 'talaba', status: 'active', is_council_chair: true,
-        faculty: 'AMIT', gender: 'female', council_chair_permissions: {},
+        faculty: 'AMIT', gender: null, council_chair_permissions: {},
       },
       error: null,
     })
@@ -117,7 +107,6 @@ describe('requireCouncilChair', () => {
     expect('error' in result).toBe(false)
     if (!('error' in result)) {
       expect(result.faculty).toBe('amit')
-      expect(result.gender).toBe('female')
     }
   })
 })

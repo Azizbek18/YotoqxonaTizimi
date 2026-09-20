@@ -17,8 +17,14 @@ export type CouncilChair = {
 }
 
 // Every /api/kengash/* route requires the caller to be an active council
-// chair (talaba kengashi raisi) student, scoped to their own gender across
-// the whole faculty — unlike a sardor, there is no floor to narrow further.
+// chair (talaba kengashi raisi) student, scoped to the WHOLE faculty —
+// both genders, unlike a sardor, who has one floor to narrow to. A faculty
+// can have up to two chairs (one appointed per gender, see the dekan's
+// "Talaba kengashi raisi" picker), but either one now represents — and can
+// see/manage — every student of their faculty, not just their own gender's
+// half (explicit product decision: a chair should never leave the other
+// gender with zero visible representation just because no one's appointed
+// there yet).
 //
 // `permission` narrows it further: the dekan can revoke any single right at
 // any time (features/permissions), and a revoked one closes the section
@@ -49,15 +55,12 @@ export async function requireCouncilChair(request: NextRequest, permission?: Rai
     } as const
   }
 
-  // A raisi's scope is one faculty's whole student body of their own gender.
+  // A raisi's scope is their whole faculty's student body, both genders.
   // Missing / unrecognised faculty fails closed — never silently widens.
   const faculty = normalizeFaculty(caller.faculty)
   if (!faculty) {
     return { error: NextResponse.json({ error: 'Fakultet biriktirilmagan' }, { status: 403 }) } as const
   }
-  if (caller.gender !== 'male' && caller.gender !== 'female') {
-    return { error: NextResponse.json({ error: 'Jins belgilanmagan' }, { status: 403 }) } as const
-  }
 
-  return { caller: caller as CouncilChair, serviceSupabase, faculty, gender: caller.gender } as const
+  return { caller: caller as CouncilChair, serviceSupabase, faculty } as const
 }

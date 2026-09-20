@@ -22,7 +22,6 @@ import { useMyCouncilPermissions } from '@/lib/hooks/useMyCouncilPermissions'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 import { directionLabel } from '@/lib/directions'
-import { normalizeGender } from '@/lib/gender'
 import LeaderBackdrop from '@/components/leader/LeaderBackdrop'
 import LeaderHeader from '@/components/leader/LeaderHeader'
 import LeaderTabs, { type LeaderTab } from '@/components/leader/LeaderTabs'
@@ -523,13 +522,10 @@ export default function KengashDashboard() {
   const filteredStudents = useMemo(() => applyStudentFilters(students), [students, studentSearch, filterFloor, filterCourse, filterDirection])
   const filteredCaptains = useMemo(() => applyStudentFilters(captains), [captains, studentSearch, filterFloor, filterCourse, filterDirection])
 
-  // Rooms Data Hook
-  const raisiGender = useMemo(() => normalizeGender(profile?.gender), [profile?.gender])
+  // Rooms Data Hook — a raisi's scope is the whole faculty building, both
+  // genders' floors included (no gender filter here anymore).
   const { floors, rooms: layoutRooms, loaded: roomsLoaded } = useRoomFloors()
-  const roomsInScope = useMemo(
-    () => layoutRooms.filter((r) => r.gender === null || r.gender === raisiGender),
-    [layoutRooms, raisiGender],
-  )
+  const roomsInScope = layoutRooms
 
   const occupantsByRoom = useMemo(() => {
     const map = new Map<string, Student[]>()
@@ -701,7 +697,7 @@ export default function KengashDashboard() {
           icon={Crown}
           badgeText={`Talaba Kengashi Raisi · ${genderLabel}`}
           name={profile?.full_name ?? 'Talaba Kengashi Raisi'}
-          subtitle={`Fakultet ${genderLabel.toLowerCase()} talabalar turar joyini boshqarish, qavat sardorlarini tayinlash va e’lonlar yuborish`}
+          subtitle="Fakultet talabalar turar joyini boshqarish, qavat sardorlarini tayinlash va e’lonlar yuborish"
           backHref="/talaba/dashboard"
           stats={[
             {
@@ -771,7 +767,7 @@ export default function KengashDashboard() {
                     <span>Xonalar Xaritasi</span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Fakultet {genderLabel.toLowerCase()} yashaydigan xonalar va qavatlar to‘liqlik holati
+                    Fakultet talabalari yashaydigan xonalar va qavatlar to‘liqlik holati
                   </p>
                 </div>
 
@@ -833,7 +829,7 @@ export default function KengashDashboard() {
                     <EmptyState
                       role="kengash"
                       icon={DoorClosed}
-                      title={`Ushbu qavatda ${genderLabel.toLowerCase()} uchun xona topilmadi`}
+                      title="Ushbu qavatda xona topilmadi"
                       isLight={isLight}
                     />
                   ) : (
@@ -1146,7 +1142,7 @@ export default function KengashDashboard() {
                     <span>Fakultet E’lonlari</span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Faqat sizning fakultetingiz {genderLabel.toLowerCase()} talabalariga ko‘rinadigan rasmiy bildirishnomalar
+                    Faqat sizning fakultetingiz talabalariga ko‘rinadigan rasmiy bildirishnomalar
                   </p>
                 </div>
 
@@ -1225,7 +1221,7 @@ export default function KengashDashboard() {
               role="kengash"
               icon={Megaphone}
               title="Yangi E’lon Chop Etish"
-              description={`Ushbu e’lon butun fakultet ${genderLabel.toLowerCase()} talabalariga yuboriladi.`}
+              description="Ushbu e’lon butun fakultet talabalariga yuboriladi."
               onClose={() => setNewElonOpen(false)}
               isLight={isLight}
             >

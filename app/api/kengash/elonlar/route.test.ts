@@ -13,7 +13,7 @@ describe('POST /api/kengash/elonlar', () => {
     vi.clearAllMocks()
   })
 
-  it('stamps a whole-faculty, gender-scoped audience — no floor, unlike a sardor post', async () => {
+  it('stamps a whole-faculty audience, both genders — no floor, unlike a sardor post', async () => {
     const single = vi.fn(async () => ({
       data: { id: 'elon-1', title: 'Yig’ilish', audience: 'council' },
       error: null,
@@ -24,7 +24,6 @@ describe('POST /api/kengash/elonlar', () => {
       caller: { id: 'raisi-1' },
       serviceSupabase: { from: () => ({ insert }) },
       faculty: 'amit',
-      gender: 'female',
     })
 
     const request = new NextRequest('http://localhost/api/kengash/elonlar', {
@@ -40,7 +39,7 @@ describe('POST /api/kengash/elonlar', () => {
       audience: 'council',
       faculty: 'amit',
       target_floor: null,
-      target_gender: 'female',
+      target_gender: null,
       created_by: 'raisi-1',
     }))
   })

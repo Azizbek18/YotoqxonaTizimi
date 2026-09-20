@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireCouncilChair } from '@/server/auth/council'
 
 // Lets a raisi appoint or demote a qavat sardori (floor captain) among the
-// students of their own gender across the faculty — the same promotion the
-// dekan can already do from Talabalar (/api/admin/users), scoped down to
-// one gender's worth of rooms and gated behind its own revocable right.
+// students of their whole faculty, either gender — the same promotion the
+// dekan can already do from Talabalar (/api/admin/users), gated behind its
+// own revocable right.
 export async function PATCH(request: NextRequest) {
   try {
     const scoped = await requireCouncilChair(request, 'captains.manage')
     if (scoped.error) return scoped.error
-    const { serviceSupabase, faculty, gender } = scoped
+    const { serviceSupabase, faculty } = scoped
 
     const body = await request.json()
     const studentId = typeof body?.studentId === 'string' ? body.studentId : ''
@@ -20,8 +20,8 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Fail closed: a raisi may only promote/demote within their own
-    // faculty + gender scope, never reach into another building or gender —
-    // re-verified here, not just trusted from the client-sent list.
+    // faculty, never reach into another building — re-verified here, not
+    // just trusted from the client-sent list.
     const { data: target, error: targetError } = await serviceSupabase
       .from('users')
       .select('id, role, status, faculty, gender, assigned_floor, is_floor_captain')
@@ -31,9 +31,9 @@ export async function PATCH(request: NextRequest) {
     if (targetError || !target || target.role !== 'talaba' || target.status !== 'active') {
       return NextResponse.json({ error: 'Talaba topilmadi' }, { status: 404 })
     }
-    if ((target.faculty ?? '').toLowerCase() !== faculty.toLowerCase() || target.gender !== gender) {
+    if ((target.faculty ?? '').toLowerCase() !== faculty.toLowerCase()) {
       return NextResponse.json(
-        { error: 'Boshqa fakultet yoki jinsdagi talabani boshqarib bo‘lmaydi' },
+        { error: 'Boshqa fakultetdagi talabani boshqarib bo‘lmaydi' },
         { status: 403 },
       )
     }
@@ -48,11 +48,14 @@ export async function PATCH(request: NextRequest) {
 
       // Demoting the previous captain of this (faculty, floor, gender) slot
       // and writing this student's own is_floor_captain happens atomically
-      // in the RPC (see 202607280012) — same one /api/admin/users uses.
+      // in the RPC (see 202607280012) — same one /api/admin/users uses. The
+      // slot is keyed on the TARGET's own gender, not the raisi's — a raisi
+      // now manages both genders, so their own gender is no longer a valid
+      // proxy for which floor/gender slot this promotion belongs to.
       const { error: promoteError } = await serviceSupabase.rpc('promote_floor_captain', {
         p_user_id: studentId,
         p_assigned_floor: target.assigned_floor,
-        p_gender: gender,
+        p_gender: target.gender,
         p_is_captain: true,
       })
       if (promoteError) {

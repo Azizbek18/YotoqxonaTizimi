@@ -21,8 +21,7 @@ function hoursLeft(expiresAt: string) {
 /**
  * Kengash raisi's own "story" composer — same 24h image-story channel as
  * dekan/tarbiyachi (`features/stories/*`), restyled for the dark leader
- * command console. Reaches only the raisi's own gender across the faculty
- * (`announcement_stories.target_gender`), unlike dekan's whole-faculty reach.
+ * command console. Reaches the whole faculty, both genders, same as dekan's.
  */
 export default function StoryManager({ isLight, canManage }: { isLight: boolean; canManage: boolean }) {
   const [stories, setStories] = useState<StaffStory[]>([])

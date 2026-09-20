@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   try {
     const scoped = await requireCouncilChair(request, 'council.announcements')
     if (scoped.error) return scoped.error
-    const { caller, serviceSupabase, faculty, gender } = scoped
+    const { caller, serviceSupabase, faculty } = scoped
 
     const body = await request.json()
     const title = typeof body?.title === 'string' ? body.title.trim() : ''
@@ -55,11 +55,11 @@ export async function POST(request: NextRequest) {
         text,
         type: type || 'Yangilik',
         audience: 'council',
-        // Stamped faculty + gender, no floor — reaches every same-gender
-        // student in the faculty, not one building floor.
+        // Stamped faculty only, no floor, no gender — reaches every
+        // student in the faculty (both genders), not one building floor.
         faculty,
         target_floor: null,
-        target_gender: gender,
+        target_gender: null,
         created_by: caller.id,
         is_published: true,
       })

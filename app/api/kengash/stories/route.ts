@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   try {
     const scoped = await requireCouncilChair(request, 'council.announcements')
     if (scoped.error) return scoped.error
-    const { caller, faculty, gender } = scoped
+    const { caller, faculty } = scoped
 
     const throttle = await checkRateLimit(`raisi-story:${caller.id}`, 20, 60_000)
     if (!throttle.allowed) {
@@ -88,15 +88,15 @@ export async function POST(request: NextRequest) {
           image_url: imageUrl,
           image_path: path,
         },
-        gender,
+        null,
       )
     } catch (createError) {
       await supabase.storage.from(BUCKET).remove([path])
       throw createError
     }
 
-    // Deliver to the raisi's own gender only within the faculty — after() so
-    // a broadcast failure never blocks the publish response.
+    // Deliver to the whole faculty, both genders — after() so a broadcast
+    // failure never blocks the publish response.
     after(() => broadcastStory(story))
 
     return NextResponse.json({ story }, { status: 201 })

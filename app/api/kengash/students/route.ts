@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireCouncilChair } from '@/server/auth/council'
 
-// A council chair's scope is their own gender across the WHOLE faculty
-// (every floor, every building the faculty holds a room in) — not one
-// floor, the way a sardor is scoped. `faculty` + `gender` are resolved and
-// validated in requireCouncilChair; a faculty-less or gender-less raisi is
-// rejected there, never silently widened.
+// A council chair's scope is the WHOLE faculty, both genders (every floor,
+// every building the faculty holds a room in) — not one floor, the way a
+// sardor is scoped. `faculty` is resolved and validated in
+// requireCouncilChair; a faculty-less raisi is rejected there, never
+// silently widened.
 //
 // `?role=captain` narrows the same scope to just the floor captains (a
-// raisi represents every sardor in their gender too, not only ordinary
+// raisi represents every sardor in the faculty, not only ordinary
 // residents) — same auth, same query shape, one extra filter.
 export async function GET(req: NextRequest) {
   try {
     const scoped = await requireCouncilChair(req, 'students.view')
     if (scoped.error) return scoped.error
-    const { serviceSupabase, faculty, gender } = scoped
+    const { serviceSupabase, faculty } = scoped
     const captainsOnly = req.nextUrl.searchParams.get('role') === 'captain'
 
     let query = serviceSupabase
@@ -23,7 +23,6 @@ export async function GET(req: NextRequest) {
       .eq('role', 'talaba')
       .eq('status', 'active')
       .ilike('faculty', faculty)
-      .eq('gender', gender)
       // Off-campus (KV-talaba) students never have a dorm room or floor —
       // unlike a sardor's list, this one has no floor filter to implicitly
       // exclude them, so without this they show up as "xonasiz" here
@@ -69,7 +68,7 @@ export async function GET(req: NextRequest) {
       tushuntirishCount: counts.get(s.id)?.tushuntirish ?? 0,
     }))
 
-    return NextResponse.json({ ok: true, students: withCounts, gender })
+    return NextResponse.json({ ok: true, students: withCounts })
   } catch (error: unknown) {
     console.error('Council chair students GET failed:', error)
     return NextResponse.json({ error: 'Server xatoligi' }, { status: 500 })

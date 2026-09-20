@@ -7,8 +7,8 @@
  *   - `sardor`     — a floor captain   -> `users.captain_permissions`
  *     (a captain is a student with `users.is_floor_captain`, not a staff role)
  *   - `raisi`      — a council chair   -> `users.council_chair_permissions`
- *     (a student with `users.is_council_chair`; scoped to their own gender
- *     across the whole faculty, not one floor)
+ *     (a student with `users.is_council_chair`; scoped to the whole
+ *     faculty, both genders, not one floor)
  *
  * **An absent key means allowed.** The stored object only ever records what
  * has been taken away, so an empty `{}` is a fully-privileged member. This is
@@ -82,11 +82,11 @@ export const PERMISSION_LABELS: Record<PermissionKey, { title: string; hint: str
   },
   'council.announcements': {
     title: "E'lon va story yozish",
-    hint: "O'z jinsi bo'yicha butun fakultet talabalariga e'lon va story yuborish",
+    hint: "Butun fakultet talabalariga (ikkala jinsga) e'lon va story yuborish",
   },
   'captains.manage': {
     title: 'Sardor tayinlash',
-    hint: "O'z jinsi bo'yicha talabalarni qavat sardori etib tayinlash yoki olib tashlash",
+    hint: 'Fakultet talabalarini qavat sardori etib tayinlash yoki olib tashlash',
   },
 }
 

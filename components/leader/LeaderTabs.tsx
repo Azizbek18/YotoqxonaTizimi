@@ -1,9 +1,10 @@
 'use client'
 
+import React from 'react'
 import { motion } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
 import type { LeaderRole } from './leader-theme'
-import { leaderTheme } from './leader-theme'
+import { getLeaderTheme } from './leader-theme'
 
 export interface LeaderTab {
   key: string
@@ -13,47 +14,54 @@ export interface LeaderTab {
 }
 
 /**
- * Pill tab bar with a sliding active background (framer-motion `layoutId`)
- * instead of the old static className swap — the highlight glides between
- * tabs rather than jump-cutting. Tabs the caller omits (a revoked
- * permission) simply aren't in `tabs`, same as before.
+ * Modern pill tab bar with sliding active indicator, counts, and .no-shelf support.
  */
 export default function LeaderTabs({
   role,
   tabs,
   active,
   onChange,
+  isLight,
 }: {
   role: LeaderRole
   tabs: LeaderTab[]
   active: string
   onChange: (key: string) => void
+  isLight?: boolean
 }) {
-  const t = leaderTheme[role]
+  const t = getLeaderTheme(role, isLight)
+
   return (
-    <div className="flex w-full gap-1.5 overflow-x-auto no-scrollbar rounded-2xl border border-white/10 bg-white/[0.03] p-1.5 backdrop-blur-xl sm:w-fit">
+    <div className="no-shelf flex w-full gap-1.5 overflow-x-auto no-scrollbar rounded-2xl border border-white/15 bg-slate-900/70 p-1.5 backdrop-blur-xl shadow-lg sm:w-fit">
       {tabs.map((tab) => {
         const isActive = tab.key === active
         const Icon = tab.icon
         return (
           <button
             key={tab.key}
+            type="button"
             onClick={() => onChange(tab.key)}
-            className={`relative shrink-0 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-colors duration-200 ${
-              isActive ? 'text-white' : 'text-slate-400 hover:text-slate-200'
+            className={`no-shelf cursor-pointer relative shrink-0 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${
+              isActive ? 'text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
             }`}
           >
             {isActive && (
               <motion.span
-                layoutId="leader-tab-pill"
-                className={`absolute inset-0 rounded-xl ${t.gradient}`}
+                layoutId={`leader-tab-pill-${role}`}
+                className={`absolute inset-0 rounded-xl ${t.gradient} shadow-md shadow-purple-950/40 border border-white/20`}
                 transition={{ type: 'spring', stiffness: 420, damping: 34 }}
               />
             )}
             <span className="relative z-10 flex items-center gap-2">
-              <Icon size={14} />
-              {tab.label}
-              {tab.count !== undefined && <span className="opacity-80">({tab.count})</span>}
+              <Icon size={14} className={isActive ? 'text-white' : 'text-slate-400'} />
+              <span>{tab.label}</span>
+              {tab.count !== undefined && (
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  isActive ? 'bg-white/20 text-white' : 'bg-white/10 text-slate-400'
+                }`}>
+                  {tab.count}
+                </span>
+              )}
             </span>
           </button>
         )

@@ -1,10 +1,13 @@
 'use client'
 
 import React, { useEffect, useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
+import Image from 'next/image'
 import {
   Users, Megaphone, Search, Clock,
-  Trash2, Plus, Building2, Phone, Mail,
+  Trash2, Plus, Building2, Phone, PhoneCall, Mail,
   ShieldCheck, X, ClipboardCheck, ChevronRight, ShieldHalf,
+  DoorClosed, GraduationCap,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
@@ -23,7 +26,8 @@ import LeaderTabs, { type LeaderTab } from '@/components/leader/LeaderTabs'
 import SectionHeading from '@/components/leader/SectionHeading'
 import EmptyState from '@/components/leader/EmptyState'
 import ModalShell from '@/components/leader/ModalShell'
-import { glassCard, leaderTheme } from '@/components/leader/leader-theme'
+import { glassCard, getLeaderTheme, type LeaderTheme } from '@/components/leader/leader-theme'
+import { usePanelTheme } from '@/components/leader/PanelThemeContext'
 
 interface Student {
   id: string
@@ -65,8 +69,221 @@ function initialsOf(name: string) {
   return name?.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase() || 'ST'
 }
 
+function SardorStudentCard({
+  student,
+  isLight,
+}: {
+  student: Student
+  isLight: boolean
+}) {
+  const [fullScreen, setFullScreen] = useState(false)
+
+  return (
+    <motion.div
+      variants={cardIn}
+      className={`no-shelf group relative flex flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl border transition-all duration-300 hover:-translate-y-1 p-3.5 sm:p-4.5 ${
+        isLight
+          ? 'border-slate-200/90 bg-white/95 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:border-purple-300 hover:bg-white hover:shadow-[0_12px_32px_rgba(147,51,234,0.08)]'
+          : 'border-white/10 bg-slate-900/60 shadow-[0_8px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl hover:border-purple-500/30 hover:bg-slate-900/90 hover:shadow-[0_12px_36px_rgba(147,51,234,0.12)]'
+      }`}
+    >
+      {/* Soft corner ambient aura */}
+      <div
+        className={`pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full blur-[45px] transition-opacity group-hover:opacity-100 opacity-50 ${
+          isLight ? 'bg-purple-200/50' : 'bg-purple-600/15'
+        }`}
+      />
+
+      {/* Top section: Avatar + Primary Identity */}
+      <div className="relative z-10 flex items-start gap-3 min-w-0">
+        {/* Avatar with smooth zoom or gradient initials */}
+        <div
+          onClick={() => student.avatar_url && setFullScreen(true)}
+          className={`no-shelf relative h-11 w-11 sm:h-12 sm:w-12 shrink-0 overflow-hidden rounded-2xl ring-1.5 transition-all duration-200 ${
+            student.avatar_url ? 'cursor-zoom-in group-hover:ring-purple-400' : ''
+          } ${
+            isLight
+              ? 'ring-slate-200/90 bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 text-white shadow-xs'
+              : 'ring-white/15 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white shadow-md shadow-black/40'
+          }`}
+        >
+          {student.avatar_url ? (
+            <Image
+              src={student.avatar_url}
+              alt={student.full_name}
+              fill
+              sizes="48px"
+              unoptimized
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xs sm:text-sm font-black tracking-tight">
+              {initialsOf(student.full_name)}
+            </div>
+          )}
+        </div>
+
+        {/* Name & Room Pill */}
+        <div className="min-w-0 flex-1 space-y-1">
+          <h4
+            className={`font-black text-sm sm:text-base tracking-tight leading-snug truncate transition-colors ${
+              isLight
+                ? 'text-slate-900 group-hover:text-purple-600'
+                : 'text-white group-hover:text-purple-300'
+            }`}
+            title={student.full_name}
+          >
+            {student.full_name}
+          </h4>
+
+          {/* Room Badge */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-bold border transition-colors ${
+                student.room_number
+                  ? isLight
+                    ? 'bg-purple-50 text-purple-700 border-purple-200/80 shadow-xs'
+                    : 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                  : isLight
+                    ? 'bg-slate-100 text-slate-500 border-slate-200'
+                    : 'bg-white/5 text-slate-400 border-white/10'
+              }`}
+            >
+              <DoorClosed size={11} className="shrink-0" />
+              <span>{student.room_number ? `${student.room_number}-xona` : 'Xonasiz'}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Middle section: Academic Badges Grid (Course, Group, Faculty) */}
+      <div className={`relative z-10 my-3 pt-3 border-t flex flex-wrap items-center gap-1.5 text-xs ${
+        isLight ? 'border-slate-100' : 'border-white/5'
+      }`}>
+        {student.course && (
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
+              isLight
+                ? 'bg-blue-50 text-blue-700 border-blue-200/80'
+                : 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+            }`}
+          >
+            <GraduationCap size={11} className="shrink-0" />
+            <span>{student.course}-kurs</span>
+          </span>
+        )}
+
+        {student.group && (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
+              isLight
+                ? 'bg-slate-100 text-slate-700 border-slate-200'
+                : 'bg-white/5 text-slate-300 border-white/10'
+            }`}
+          >
+            {student.group}
+          </span>
+        )}
+
+        {student.faculty && (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-medium border truncate max-w-[170px] sm:max-w-[220px] ${
+              isLight
+                ? 'bg-slate-100/80 text-slate-600 border-slate-200'
+                : 'bg-white/[0.03] text-slate-400 border-white/5'
+            }`}
+            title={student.faculty}
+          >
+            {student.faculty}
+          </span>
+        )}
+      </div>
+
+      {/* Bottom section: Quick Actions (Call & Email) */}
+      <div className={`relative z-10 flex items-center justify-between gap-2 pt-2.5 border-t ${
+        isLight ? 'border-slate-100' : 'border-white/5'
+      }`}>
+        {student.phone_number ? (
+          <a
+            href={`tel:${student.phone_number.replace(/[^\d+]/g, '')}`}
+            title={`Qo‘ng‘iroq: ${student.phone_number}`}
+            className={`no-shelf cursor-pointer flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl h-8.5 px-3 text-xs font-bold transition-all active:scale-95 shadow-xs whitespace-nowrap ${
+              isLight
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
+                : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 hover:border-emerald-500/40'
+            }`}
+          >
+            <PhoneCall size={12} className="shrink-0" />
+            <span>Qo‘ng‘iroq</span>
+          </a>
+        ) : (
+          <div className={`flex-1 py-1 text-left text-[11px] italic font-medium ${
+            isLight ? 'text-slate-400' : 'text-slate-500'
+          }`}>
+            Tel raqam yo‘q
+          </div>
+        )}
+
+        <a
+          href={`mailto:${student.email}`}
+          title={`Email: ${student.email}`}
+          className={`no-shelf cursor-pointer inline-flex items-center justify-center h-8.5 w-8.5 shrink-0 rounded-xl border transition-all active:scale-95 shadow-xs ${
+            isLight
+              ? 'border-slate-200 bg-slate-100/90 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+              : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          <Mail size={13} />
+        </a>
+      </div>
+
+      {/* Portal full screen avatar modal */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {fullScreen && student.avatar_url && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setFullScreen(false)}
+              className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/90 p-4 backdrop-blur-md"
+            >
+              <motion.div
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.85, opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="relative aspect-square w-full max-w-lg overflow-hidden rounded-3xl ring-1 ring-white/20 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Image
+                  src={student.avatar_url}
+                  alt={student.full_name}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </motion.div>
+              <button
+                type="button"
+                onClick={() => setFullScreen(false)}
+                className="no-shelf absolute right-6 top-6 rounded-full p-2 text-white/70 transition-colors hover:text-white hover:bg-white/10"
+                aria-label="Yopish"
+              >
+                <X size={28} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+    </motion.div>
+  )
+}
+
 export default function SardorDashboard() {
   const router = useRouter()
+  const panelTheme = usePanelTheme()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [students, setStudents] = useState<Student[]>([])
   const [elonlar, setElonlar] = useState<Elon[]>([])
@@ -99,7 +316,8 @@ export default function SardorDashboard() {
   // matching tab/action here, matching what the API already answers 403 for.
   const { allows, permissions } = useMyCaptainPermissions()
 
-  const t = leaderTheme.sardor
+  const isLight = panelTheme.theme === 'light'
+  const t = getLeaderTheme('sardor', isLight)
 
   // Load Dashboard Data
   const loadDashboardData = async () => {
@@ -292,7 +510,7 @@ export default function SardorDashboard() {
   if (!mounted || loading) {
     return (
       <div className="relative min-h-screen bg-[#070b13]">
-        <LeaderBackdrop role="sardor" />
+        <LeaderBackdrop role="sardor" isLight={isLight} />
         <div className="relative z-10 px-4 py-8 sm:px-6 lg:px-8">
           <SkelPage />
         </div>
@@ -310,9 +528,9 @@ export default function SardorDashboard() {
   ]
 
   return (
-    <div className="relative min-h-screen bg-[#070b13] text-white">
-      <LeaderBackdrop role="sardor" />
-      <div className="relative z-10 mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen min-w-0 overflow-x-clip bg-[#070b13] text-white">
+      <LeaderBackdrop role="sardor" isLight={isLight} />
+      <div className="relative z-10 mx-auto min-w-0 max-w-6xl space-y-5 px-3 py-5 min-[360px]:px-4 min-[360px]:py-6 sm:space-y-6 sm:px-6 sm:py-8 lg:px-8">
         <LeaderHeader
           role="sardor"
           icon={ShieldHalf}
@@ -325,15 +543,16 @@ export default function SardorDashboard() {
             { icon: Megaphone, value: elonlar.length, label: "E'lonlar" },
             { icon: Clock, value: `${dutyFilled}/7`, label: 'Navbatchi kun' },
           ]}
+          themeToggle={{ theme: panelTheme.theme, onToggle: panelTheme.toggleTheme }}
         />
 
         {/* Yo'qlama quick action */}
         {allows('attendance.mark') && (
           <Link
             href="/sardor/yoqlama"
-            className={`group flex items-center gap-4 overflow-hidden rounded-2xl border p-4 transition-all ${t.softBorder} ${t.soft} hover:brightness-110`}
+            className={`group no-shelf cursor-pointer flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl border p-3 min-[360px]:gap-4 min-[360px]:p-4 transition-all active:scale-[0.99] ${t.softBorder} ${t.soft} hover:brightness-110`}
           >
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white ${t.gradient}`}>
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white min-[360px]:h-12 min-[360px]:w-12 ${t.gradient}`}>
               <ClipboardCheck size={22} />
             </div>
             <div className="min-w-0 flex-1">
@@ -344,7 +563,7 @@ export default function SardorDashboard() {
           </Link>
         )}
 
-        <LeaderTabs role="sardor" tabs={tabs} active={activeTab} onChange={(k) => setActiveTab(k as typeof activeTab)} />
+        <LeaderTabs role="sardor" tabs={tabs} active={activeTab} onChange={(k) => setActiveTab(k as typeof activeTab)} isLight={isLight} />
 
         {/* Main Tab Panels */}
         <AnimatePresence mode="wait">
@@ -357,13 +576,19 @@ export default function SardorDashboard() {
               className="space-y-6"
             >
               <div className="relative w-full max-w-md">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 size-4 transition-colors ${
+                  isLight ? 'text-slate-400' : 'text-slate-500'
+                }`} />
                 <input
                   type="text"
                   placeholder="Ism, xona yoki guruh bo'yicha qidirish..."
                   value={studentSearch}
                   onChange={(e) => setStudentSearch(e.target.value)}
-                  className="w-full border rounded-2xl py-3.5 pl-11 pr-4 bg-white/5 border-white/5 text-white placeholder:text-gray-500 focus:border-purple-500/30 outline-none text-xs sm:text-sm transition-all"
+                  className={`w-full border rounded-2xl py-3 pl-10 pr-4 outline-none text-xs sm:text-sm transition-all shadow-xs ${
+                    isLight
+                      ? 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-purple-400 focus:ring-2 focus:ring-purple-100'
+                      : 'bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/30'
+                  }`}
                 />
               </div>
 
@@ -372,68 +597,14 @@ export default function SardorDashboard() {
                   variants={listStagger}
                   initial="hidden"
                   animate="show"
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5"
                 >
                   {filteredStudents.map((student) => (
-                    <motion.div
-                      key={student.id}
-                      variants={cardIn}
-                      className={`${glassCard({ hover: true })} flex flex-col justify-between gap-5 p-5`}
-                    >
-                      <div className={`pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full blur-[50px] ${t.auroraA}`} />
-                      <div className="relative z-10 flex items-start gap-4">
-                        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-base font-bold ${t.softBorder} ${t.soft} ${t.text}`}>
-                          {initialsOf(student.full_name)}
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="truncate text-base font-black tracking-tight leading-tight text-white">{student.full_name}</h4>
-                          <p className={`mt-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider ${t.textSoft}`}>
-                            <Building2 size={10} /> Xona #{student.room_number || 'Biriktirilmagan'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="relative z-10 space-y-2 border-t border-white/5 pt-4 text-xs text-slate-400">
-                        <div className="flex justify-between">
-                          <span>Fakultet:</span>
-                          <span className="max-w-[160px] truncate font-bold text-white">{student.faculty || '—'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Guruh:</span>
-                          <span className="font-bold text-white">{student.group || '—'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Kurs:</span>
-                          <span className="font-bold text-white">{student.course || '—'}-kurs</span>
-                        </div>
-                      </div>
-
-                      <div className="relative z-10 flex gap-2 border-t border-white/5 pt-4">
-                        {student.phone_number ? (
-                          <a
-                            href={`tel:${student.phone_number}`}
-                            className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition-all ${t.softBorder} ${t.soft} ${t.text} hover:brightness-110`}
-                          >
-                            <Phone size={12} />
-                            Qo&apos;ng&apos;iroq qilish
-                          </a>
-                        ) : (
-                          <div className="flex-1 py-2.5 text-center text-[10px] italic font-semibold text-slate-500">
-                            Telefon raqami yo&apos;q
-                          </div>
-                        )}
-                        <a
-                          href={`mailto:${student.email}`}
-                          className="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 p-2.5 text-slate-300 transition-all hover:bg-white/10"
-                        >
-                          <Mail size={12} />
-                        </a>
-                      </div>
-                    </motion.div>
+                    <SardorStudentCard key={student.id} student={student} isLight={isLight} />
                   ))}
                 </motion.div>
               ) : (
-                <EmptyState role="sardor" icon={Users} title="Hech qanday talaba topilmadi" />
+                <EmptyState role="sardor" icon={Users} title="Hech qanday talaba topilmadi" isLight={isLight} />
               )}
             </motion.div>
           ) : activeTab === 'elonlar' ? (
@@ -451,7 +622,7 @@ export default function SardorDashboard() {
                   allows('floor.announcements') && (
                     <button
                       onClick={() => setNewElonOpen(true)}
-                      className={`flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl px-5 py-3 text-xs font-black uppercase tracking-wider text-white transition-all duration-300 sm:w-auto ${t.gradient} hover:brightness-110`}
+                      className={`no-shelf cursor-pointer flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl px-5 py-3 text-xs font-black uppercase tracking-wider text-white transition-all duration-300 active:scale-95 sm:w-auto ${t.gradient} hover:brightness-110`}
                     >
                       <Plus size={16} />
                       Yangi E&apos;lon
@@ -494,7 +665,7 @@ export default function SardorDashboard() {
                         {allows('floor.announcements') && (
                           <button
                             onClick={() => handleDeleteElon(elon.id)}
-                            className="flex shrink-0 items-center justify-center self-end rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-rose-400 transition-all hover:bg-rose-500/20 md:self-center"
+                            className="no-shelf cursor-pointer flex shrink-0 items-center justify-center self-end rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-rose-400 transition-all hover:bg-rose-500/20 active:scale-95 md:self-center"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -504,7 +675,7 @@ export default function SardorDashboard() {
                   })}
                 </motion.div>
               ) : (
-                <EmptyState role="sardor" icon={Megaphone} title="Hozircha hech qanday e'lon chop etilmagan" />
+                <EmptyState role="sardor" icon={Megaphone} title="Hozircha hech qanday e'lon chop etilmagan" isLight={isLight} />
               )}
             </motion.div>
           ) : (
@@ -523,7 +694,7 @@ export default function SardorDashboard() {
                     <button
                       onClick={handleSaveDuty}
                       disabled={savingDuty}
-                      className={`flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl px-5 py-3 text-xs font-black uppercase tracking-wider text-white transition-all duration-300 disabled:opacity-55 sm:w-auto ${t.gradient} hover:brightness-110`}
+                      className={`no-shelf cursor-pointer flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl px-5 py-3 text-xs font-black uppercase tracking-wider text-white transition-all duration-300 disabled:opacity-55 active:scale-95 sm:w-auto ${t.gradient} hover:brightness-110`}
                     >
                       <ShieldCheck size={16} />
                       {savingDuty ? 'Saqlanmoqda...' : 'Jadvalni Saqlash'}
@@ -671,8 +842,9 @@ export default function SardorDashboard() {
                       setActiveSelectDay(null);
                       setActiveSelectAdmin(false);
                     }}
+                    isLight={isLight}
                   >
-                    <div className="max-h-[300px] space-y-2 overflow-y-auto pr-2">
+                    <div className="max-h-[300px] min-w-0 space-y-2 overflow-y-auto pr-1 min-[360px]:pr-2">
                       {students.map((student) => {
                         const isAdded = activeSelectAdmin
                           ? dutyAdmins.some(a => a.id === student.id)
@@ -703,15 +875,17 @@ export default function SardorDashboard() {
                             className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-all ${
                               isAdded
                                 ? 'cursor-not-allowed border-transparent bg-white/[0.02] opacity-40'
-                                : `border-white/5 bg-white/5 hover:bg-white/10 hover:${t.softBorder}`
+                                : isLight
+                                  ? 'border-slate-200 bg-slate-50/80 hover:bg-white hover:border-purple-300 shadow-xs'
+                                  : `border-white/5 bg-white/5 hover:bg-white/10 hover:${t.softBorder}`
                             }`}
                           >
-                            <div>
-                              <p className="text-xs font-extrabold text-white">{student.full_name}</p>
-                              <p className="mt-0.5 text-[10px] font-semibold text-slate-500">Xona #{student.room_number || '—'} · Guruh: {student.group || '—'}</p>
+                            <div className="min-w-0 flex-1">
+                              <p className={`truncate text-xs font-extrabold ${isLight ? 'text-slate-900' : 'text-white'}`}>{student.full_name}</p>
+                              <p className={`mt-0.5 truncate text-[10px] font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Xona #{student.room_number || '—'} · Guruh: {student.group || '—'}</p>
                             </div>
                             {isAdded && (
-                              <span className={`rounded-md border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${t.softBorder} ${t.soft} ${t.text}`}>
+                              <span className={`ml-2 shrink-0 rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider min-[360px]:px-2 ${t.softBorder} ${t.soft} ${t.text}`}>
                                 Qo&apos;shilgan
                               </span>
                             )}
@@ -735,6 +909,7 @@ export default function SardorDashboard() {
               title="Yangi E'lon Chop Etish"
               description={`Ushbu e'lon faqat ${profile?.assigned_floor}-qavat ${genderLabel.toLowerCase()} talabalariga yuboriladi.`}
               onClose={() => setNewElonOpen(false)}
+              isLight={isLight}
             >
               <form onSubmit={handleCreateElon} className="space-y-4">
                 <div className="space-y-1.5">
@@ -776,7 +951,7 @@ export default function SardorDashboard() {
                   />
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-white/5">
+                <div className="flex flex-col gap-2 pt-4 border-t border-white/5 min-[360px]:flex-row min-[360px]:gap-3">
                   <button
                     type="button"
                     onClick={() => setNewElonOpen(false)}

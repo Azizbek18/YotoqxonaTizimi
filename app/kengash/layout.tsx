@@ -1,11 +1,12 @@
 import React from 'react'
-import ForceDarkTheme from '@/components/leader/ForceDarkTheme'
+import { PanelThemeProvider } from '@/components/leader/PanelThemeContext'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#070b13]">
-      <ForceDarkTheme />
-      {children}
-    </div>
+    <PanelThemeProvider storageKey="kengash-panel-theme">
+      <div className="min-h-screen bg-[#070b13]">
+        {children}
+      </div>
+    </PanelThemeProvider>
   )
 }

@@ -37,3 +37,29 @@ export function deleteStaffStory(id: string) {
     "Yangilikni o'chirib bo'lmadi",
   )
 }
+
+export async function fetchCouncilStories(): Promise<StaffStory[]> {
+  const result = await apiRequest<StaffStoriesPayload>(
+    '/api/kengash/stories',
+    undefined,
+    "Yangiliklarni yuklab bo'lmadi",
+  )
+  return result.stories
+}
+
+export async function createCouncilStory(form: FormData): Promise<StaffStory> {
+  const result = await apiRequest<{ story: StaffStory }>(
+    '/api/kengash/stories',
+    { method: 'POST', body: form },
+    "Yangilikni joylab bo'lmadi",
+  )
+  return result.story
+}
+
+export function deleteCouncilStory(id: string) {
+  return apiRequest<{ ok: true }>(
+    `/api/kengash/stories?id=${encodeURIComponent(id)}`,
+    { method: 'DELETE' },
+    "Yangilikni o'chirib bo'lmadi",
+  )
+}

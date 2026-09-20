@@ -61,18 +61,22 @@ export function parseStoryInput(value: unknown): StoryInput {
 export function createStoryService(repository: StoryRepository = createStoryRepository()) {
   return {
     /** Signed-out or faculty-less reader → empty list, never an error. */
-    async listForStudent(facultyValue: string | null): Promise<Story[]> {
+    async listForStudent(facultyValue: string | null, gender?: string | null): Promise<Story[]> {
       const faculty = facultyValue?.trim()
       if (!faculty) return []
-      const rows = await repository.listActiveByFaculty(faculty)
+      const rows = gender
+        ? await repository.listActiveByFaculty(faculty, gender)
+        : await repository.listActiveByFaculty(faculty)
       return rows.map(toStory)
     },
 
-    async listAuthored(facultyValue: string | null): Promise<StaffStory[]> {
+    /** `authorId`, when given, narrows to that poster's own stories (a kengash raisi manages only their own). */
+    async listAuthored(facultyValue: string | null, authorId?: string): Promise<StaffStory[]> {
       const faculty = facultyValue?.trim()
       if (!faculty) throw new ApiError(403, 'Xodim fakulteti biriktirilmagan')
       const rows = await repository.listActiveByFaculty(faculty)
-      return rows.map((row) => ({ ...toStory(row), created_by: row.created_by }))
+      const scoped = authorId ? rows.filter((row) => row.created_by === authorId) : rows
+      return scoped.map((row) => ({ ...toStory(row), created_by: row.created_by }))
     },
 
     async create(
@@ -80,6 +84,7 @@ export function createStoryService(repository: StoryRepository = createStoryRepo
       authorName: string | null,
       facultyValue: string | null,
       value: unknown,
+      targetGender: string | null = null,
     ): Promise<AnnouncementStoryRow> {
       const faculty = facultyValue?.trim().toLocaleLowerCase()
       if (!faculty) throw new ApiError(403, 'Xodim fakulteti biriktirilmagan')
@@ -92,6 +97,7 @@ export function createStoryService(repository: StoryRepository = createStoryRepo
         image_url: input.image_url,
         link_url: input.link_url,
         faculty,
+        target_gender: targetGender,
         created_by: creatorId,
         author_name: authorName?.trim() || null,
       })

@@ -19,12 +19,12 @@ beforeEach(() => vi.clearAllMocks())
 
 describe('GET /api/stories', () => {
   it('returns the faculty-scoped active stories for the student', async () => {
-    requireActiveStudent.mockResolvedValue({ student: { id: 'u1', faculty: 'amit' } })
+    requireActiveStudent.mockResolvedValue({ student: { id: 'u1', faculty: 'amit', gender: 'male' } })
     listForStudent.mockResolvedValue([{ id: 's1' }])
     const res = await GET(req())
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ stories: [{ id: 's1' }] })
-    expect(listForStudent).toHaveBeenCalledWith('amit')
+    expect(listForStudent).toHaveBeenCalledWith('amit', 'male')
   })
 
   it('stays reachable for a blacklisted student', async () => {

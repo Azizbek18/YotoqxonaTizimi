@@ -36,7 +36,7 @@ export async function broadcastStory(
   repository: StoryRepository = createStoryRepository(),
 ) {
   try {
-    const studentIds = await repository.listActiveStudentIdsByFaculty(story.faculty)
+    const studentIds = await repository.listActiveStudentIdsByFaculty(story.faculty, story.target_gender)
     if (studentIds.length === 0) return
 
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')

@@ -81,8 +81,8 @@ export const PERMISSION_LABELS: Record<PermissionKey, { title: string; hint: str
     hint: 'Qavat tozalik navbatchiligini tuzish',
   },
   'council.announcements': {
-    title: "E'lon yozish",
-    hint: "O'z jinsi bo'yicha butun fakultet talabalariga e'lon yuborish",
+    title: "E'lon va story yozish",
+    hint: "O'z jinsi bo'yicha butun fakultet talabalariga e'lon va story yuborish",
   },
   'captains.manage': {
     title: 'Sardor tayinlash',

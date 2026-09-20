@@ -6,7 +6,7 @@ import { getApiError } from '@/server/http/api-error'
 export async function GET(request: NextRequest) {
   try {
     const { student } = await requireActiveStudent(request, { allowBlacklisted: true })
-    const stories = await createStoryService().listForStudent(student.faculty)
+    const stories = await createStoryService().listForStudent(student.faculty, student.gender)
     return NextResponse.json({ stories })
   } catch (error) {
     console.error('Stories GET xato:', error)

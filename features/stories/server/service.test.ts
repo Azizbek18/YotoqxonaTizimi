@@ -15,6 +15,7 @@ const row = (overrides: Partial<AnnouncementStoryRow> = {}): AnnouncementStoryRo
   image_url: 'https://cdn.example/a.jpg',
   link_url: null,
   faculty: 'amit',
+  target_gender: null,
   created_by: 'staff-1',
   author_name: 'Tarbiyachi Ismi',
   created_at: '2026-09-06T10:00:00Z',

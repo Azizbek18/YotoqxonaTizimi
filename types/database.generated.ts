@@ -313,6 +313,8 @@ export type AnnouncementStoryRow = {
   image_url: string
   link_url: string | null
   faculty: string
+  /** NULL = whole faculty (dekan/tarbiyachi); set = one gender only (kengash raisi). */
+  target_gender: string | null
   created_by: string | null
   author_name: string | null
   created_at: string

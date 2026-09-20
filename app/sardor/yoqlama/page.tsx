@@ -9,7 +9,7 @@ import { getSafeUser, getAuthHeaders } from '@/lib/auth-session'
 import AttendanceBoard from '@/components/attendance/AttendanceBoard'
 import type { AttendanceState, RosterView } from '@/features/attendance/types'
 import LeaderBackdrop from '@/components/leader/LeaderBackdrop'
-import { leaderTheme } from '@/components/leader/leader-theme'
+import { getLeaderTheme } from '@/components/leader/leader-theme'
 
 export default function SardorYoqlamaPage() {
   const router = useRouter()
@@ -109,22 +109,22 @@ export default function SardorYoqlamaPage() {
   // moot now that this page is permanently dark (leader-theme shell), but
   // kept since AttendanceBoard itself may still be reached from a
   // light-mode-aware panel elsewhere.
-  const t = leaderTheme.sardor
+  const t = getLeaderTheme('sardor')
   return (
-    <div className="relative min-h-screen bg-[#070b13] text-slate-200">
+    <div className="relative min-h-screen min-w-0 overflow-x-clip bg-[#070b13] text-slate-200">
       <LeaderBackdrop role="sardor" />
-      <div className="relative z-10 mx-auto max-w-3xl px-4 py-6">
+      <div className="relative z-10 mx-auto min-w-0 max-w-3xl px-3 py-4 min-[360px]:px-4 min-[360px]:py-6">
         <Link href="/sardor/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-black uppercase tracking-wider text-slate-400 backdrop-blur-xl transition-colors hover:bg-white/10 hover:text-white">
           <ArrowLeft size={14} /> Panel
         </Link>
 
-        <div className="mb-6 flex items-center gap-3">
-          <div className={`flex h-11 w-11 items-center justify-center rounded-2xl text-white ${t.gradient}`}>
+        <div className="mb-5 flex min-w-0 items-center gap-3 min-[360px]:mb-6">
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white min-[360px]:h-11 min-[360px]:w-11 min-[360px]:rounded-2xl ${t.gradient}`}>
             <ClipboardCheck size={20} />
           </div>
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-white">Yo‘qlama</h1>
-            <p className="text-xs text-slate-400">O‘z qavatingizdagi talabalarni belgilang</p>
+          <div className="min-w-0">
+            <h1 className="text-lg font-black tracking-tight text-white min-[360px]:text-xl">Yo‘qlama</h1>
+            <p className="text-[11px] leading-relaxed text-slate-400 min-[360px]:text-xs">O‘z qavatingizdagi talabalarni belgilang</p>
           </div>
         </div>
 
@@ -135,7 +135,7 @@ export default function SardorYoqlamaPage() {
         ) : view ? (
           <AttendanceBoard view={view} onMark={mark} onClose={closeSession} busy={busy} />
         ) : (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center backdrop-blur-xl">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-center backdrop-blur-xl min-[360px]:p-8">
             <p className="text-sm text-slate-300">Hozircha ochiq yo‘qlama yo‘q.</p>
             <button
               type="button"

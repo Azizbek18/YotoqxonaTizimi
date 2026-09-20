@@ -58,22 +58,22 @@ export default function AttendanceBoard({
   const closed = session.status !== 'open'
 
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 space-y-4 min-[360px]:space-y-5">
       {/* summary */}
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+      <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-3 min-[360px]:p-4 sm:p-5">
+        <div className="flex min-w-0 items-center justify-between gap-2 min-[360px]:gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 min-[360px]:text-[11px]">
               <CalendarClock size={13} />
               {session.kind === 'nightly' ? 'Kechki yo‘qlama' : 'Tekshiruv'}
               {session.floor != null && <span>· {session.floor}-qavat</span>}
               {session.gender && <span>· {session.gender === 'male' ? 'yigitlar' : 'qizlar'}</span>}
             </div>
-            <p className="mt-1 text-2xl font-black text-white tabular-nums">
+            <p className="mt-1 text-xl font-black text-white tabular-nums min-[360px]:text-2xl">
               {summary.present}<span className="text-slate-500">/{summary.total}</span>
               <span className="ml-2 text-sm font-semibold text-slate-400">hozir</span>
             </p>
-            <p className="mt-0.5 text-xs text-slate-400">
+            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-400 min-[360px]:text-xs">
               {summary.excused} ruxsat · {summary.absent} yo‘q · {summary.unmarked} belgilanmagan
             </p>
           </div>
@@ -86,13 +86,13 @@ export default function AttendanceBoard({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
         <StateLegend />
         {canWrite && (
           <button
             type="button"
             onClick={() => setFilter((f) => (f === 'all' ? 'todo' : 'all'))}
-            className="shrink-0 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-300 hover:bg-white/5"
+            className="w-full shrink-0 rounded-lg border border-white/10 px-2.5 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-300 hover:bg-white/5 sm:w-auto sm:py-1.5"
           >
             {filter === 'all' ? 'Faqat qolganlar' : 'Hammasi'}
           </button>
@@ -132,7 +132,7 @@ export default function AttendanceBoard({
                         {r.selfDistanceM != null ? `${r.selfDistanceM} m` : 'GPS'}
                       </span>
                     )}
-                    <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide">{STATE_META[r.state].label}</span>
+                    <span className="hidden shrink-0 text-[10px] font-bold uppercase tracking-wide min-[360px]:inline">{STATE_META[r.state].label}</span>
                   </button>
                 ))}
               </div>

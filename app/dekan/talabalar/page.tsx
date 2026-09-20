@@ -2410,7 +2410,7 @@ export default function DekanStudentsPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setFullScreenImage(null)}
-            className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/95 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-[rgba(0,0,0,0.95)] p-4 backdrop-blur-sm"
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}

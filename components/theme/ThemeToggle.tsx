@@ -2,11 +2,21 @@
 
 import { motion } from 'framer-motion'
 import { Moon, Sun } from 'lucide-react'
-import { useThemeStore } from '@/lib/stores/theme-store'
+import { useThemeStore, type ThemeMode } from '@/lib/stores/theme-store'
 
-export default function ThemeToggle() {
-  const theme = useThemeStore((state) => state.theme)
-  const toggleTheme = useThemeStore((state) => state.toggleTheme)
+/**
+ * Reads/writes the app-wide theme store by default. Pass `theme`+`onToggle`
+ * to control it from elsewhere instead — used by panels (Sardor) that keep
+ * their own theme separate from the shared store, see `PanelThemeContext`.
+ */
+export default function ThemeToggle({
+  theme: themeProp,
+  onToggle,
+}: { theme?: ThemeMode; onToggle?: () => void } = {}) {
+  const storeTheme = useThemeStore((state) => state.theme)
+  const storeToggle = useThemeStore((state) => state.toggleTheme)
+  const theme = themeProp ?? storeTheme
+  const toggleTheme = onToggle ?? storeToggle
   const isLight = theme === 'light'
 
   return (

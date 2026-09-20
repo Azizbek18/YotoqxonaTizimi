@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import type { LeaderRole } from './leader-theme'
-import { leaderTheme } from './leader-theme'
+import { getLeaderTheme } from './leader-theme'
 
 /**
  * Two slow-drifting blurred gradient blobs behind the whole panel — the
@@ -11,8 +11,8 @@ import { leaderTheme } from './leader-theme'
  * triggers layout), fixed + pointer-events-none, so it never affects scroll,
  * input, or the mobile-perf budget the rest of the app holds to.
  */
-export default function LeaderBackdrop({ role }: { role: LeaderRole }) {
-  const t = leaderTheme[role]
+export default function LeaderBackdrop({ role, isLight }: { role: LeaderRole; isLight?: boolean }) {
+  const t = getLeaderTheme(role, isLight)
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
       <motion.div

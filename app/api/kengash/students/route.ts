@@ -24,6 +24,11 @@ export async function GET(req: NextRequest) {
       .eq('status', 'active')
       .ilike('faculty', faculty)
       .eq('gender', gender)
+      // Off-campus (KV-talaba) students never have a dorm room or floor —
+      // unlike a sardor's list, this one has no floor filter to implicitly
+      // exclude them, so without this they show up as "xonasiz" here
+      // (reported: a real KV-talaba read as a data bug in the raisi's list).
+      .eq('is_off_campus', false)
     if (captainsOnly) query = query.eq('is_floor_captain', true)
 
     const { data: students, error: studentsError } = await query.order('full_name', { ascending: true })

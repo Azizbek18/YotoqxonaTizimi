@@ -14,6 +14,7 @@ type StudentIdentity = {
   role: string | null
   status: string | null
   faculty: string | null
+  gender: string | null
   blacklisted: boolean | null
 }
 
@@ -54,7 +55,7 @@ export async function requireActiveStudent(
   const user = await requireUser(request)
   const { data: student, error } = await getServiceSupabase()
     .from('users')
-    .select('id, full_name, email, role, status, faculty, blacklisted')
+    .select('id, full_name, email, role, status, faculty, gender, blacklisted')
     .eq('id', user.id)
     .maybeSingle()
 

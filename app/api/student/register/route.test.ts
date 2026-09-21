@@ -252,15 +252,36 @@ describe('POST /api/student/register', () => {
     })
   })
 
-  it('both parents absent → rejected (need at least one contact)', async () => {
+  it('both parents absent → accepted, both markers stored, no parent phones', async () => {
+    const capture: { userInsert?: Record<string, unknown> } = {}
+    getServiceSupabase.mockReturnValue(
+      makeSupabase(
+        { permit_requests: [APPROVED_FOREIGN_PERMIT], users: [{ data: null, error: null }] },
+        capture,
+      ),
+    )
+    const response = await POST(req(foreignBody({
+      noFather: true, noMother: true, father_phone: '', mother_phone: '',
+      father_workplace: '', mother_workplace: '',
+    })))
+    expect(response.status).toBe(200)
+    expect(capture.userInsert).toMatchObject({
+      father_phone: null,
+      father_workplace: "Vafot etgan yoki aloqa yo'q",
+      mother_phone: null,
+      mother_workplace: "Vafot etgan yoki aloqa yo'q",
+    })
+  })
+
+  it('present parent with a missing phone → rejected', async () => {
     getServiceSupabase.mockReturnValue(
       makeSupabase({ permit_requests: [APPROVED_FOREIGN_PERMIT] }),
     )
     const response = await POST(req(foreignBody({
-      noFather: true, noMother: true, father_phone: '', mother_phone: '',
+      noFather: true, father_phone: '', noMother: false, mother_phone: '',
     })))
     expect(response.status).toBe(400)
-    expect((await response.json()).error).toMatch(/ota yoki ona telefon/i)
+    expect((await response.json()).error).toMatch(/telefon/i)
   })
 
   it('malformed permit name: accepts the wizard-corrected F.I.Sh and writes it back onto the permit', async () => {

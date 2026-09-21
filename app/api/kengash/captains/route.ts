@@ -39,9 +39,9 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (isCaptain) {
-      if (!target.assigned_floor) {
+      if (!target.assigned_floor || !target.gender) {
         return NextResponse.json(
-          { error: "Sardor tayinlash uchun talabaga xona/qavat biriktirilgan bo'lishi shart" },
+          { error: "Sardor tayinlash uchun talabaga xona/qavat va jins biriktirilgan bo'lishi shart" },
           { status: 400 },
         )
       }

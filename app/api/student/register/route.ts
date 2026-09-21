@@ -84,9 +84,9 @@ export async function POST(request: NextRequest) {
     const birthDate = text(body, 'birthDate', 10)
     const entryDate = text(body, 'entryDate', 10)
 
-    // A parent may be marked absent (deceased / no contact). Then that parent's
-    // workplace/phone are not required; the name is kept if given, and the
-    // workplace carries a marker so the dekan sees why it's blank.
+    // A parent may be marked absent (deceased / no contact) — both may be.
+    // Then that parent's workplace/phone are not required; the name is kept if
+    // given, and the workplace carries a marker so the dekan sees why it's blank.
     const NO_PARENT_MARKER = "Vafot etgan yoki aloqa yo'q"
     const noFather = body.noFather === true
     const noMother = body.noMother === true
@@ -133,9 +133,12 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       )
     }
-    if (!isPlausibleInternationalPhone(fatherPhone) && !isPlausibleInternationalPhone(motherPhone)) {
+    // Each parent that is present must have a plausible phone. Both may be
+    // absent (orphan / no contact) — then no parent phone is required and the
+    // student's own number is the contact.
+    if ((!noFather && !isPlausibleInternationalPhone(fatherPhone)) || (!noMother && !isPlausibleInternationalPhone(motherPhone))) {
       return NextResponse.json(
-        { error: 'Kamida bitta ota yoki ona telefon raqamini kiriting.' },
+        { error: 'Ota va ona telefon raqamini to‘liq kiriting (yoki «yo‘q» deb belgilang).' },
         { status: 400 },
       )
     }

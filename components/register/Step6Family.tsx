@@ -65,12 +65,9 @@ export default function Step6Family({ data, onChange, onNext, onBack, stepNumber
       phone // Bu talabaning o'z raqami (oldingi qadamdan kelgan)
     } = data;
 
-    // Kamida bitta ota-ona (yoki qonuniy vakil) bilan bog'lana olish kerak.
-    if (noFather && noMother) {
-      return show3DToast('error', "Kamida bittasi — ota yoki ona — ma'lumotini to'liq kiriting.");
-    }
-
-    // Har bir mavjud ota-ona uchun F.I.O + ish joyi + telefon to'liq.
+    // Ikkala ota-ona ham yo'q bo'lishi mumkin (yetim / aloqa yo'q) — bunda
+    // hech qanday qo'shimcha kontakt talab qilinmaydi, talaba o'z raqami bilan
+    // davom etadi. Faqat mavjud ota-ona uchun F.I.O + ish joyi + telefon to'liq.
     if (!noFather) {
       if (!isValidFullName(father_full_name)) return show3DToast('error', "Otangizning F.I.O to'liq kiriting (3 ta so'z)!");
       if (!father_workplace?.trim()) return show3DToast('error', "Otangizning ish joyini kiriting!");
@@ -216,7 +213,7 @@ function ParentSection(p: ParentSectionProps) {
 
       {p.absent ? (
         <p className={`text-[10px] leading-relaxed ml-1 ${p.isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-          Ish joyi va telefon so&apos;ralmaydi. Kamida bitta ota yoki ona ma&apos;lumoti to&apos;liq bo&apos;lishi kerak.
+          Ish joyi va telefon so&apos;ralmaydi. Bilsangiz F.I.O ni yozib qoldiring.
         </p>
       ) : (
         // Stacked, not a 2-column grid: PhoneField's dial-code select

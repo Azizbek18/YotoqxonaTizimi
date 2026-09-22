@@ -23,7 +23,19 @@ async function withKidRetry<T extends { error: { message?: string } | null }>(
 
 type CreateAuthUserResult =
   | { data: { user: { id: string; email: string } }; error: null }
-  | { data: { user: null }; error: { message: string } }
+  | { data: { user: null }; error: { message: string; status?: number; code?: string } }
+
+const CREATE_RETRY_DELAYS_MS = [250, 750]
+
+function isRetryableCreateFailure(status: number, message: string) {
+  return status >= 500 || isTransientKidError(message)
+}
+
+export function isDuplicateAuthUserError(error: { message?: string; code?: string } | null) {
+  if (!error) return false
+  return error.code === 'email_exists'
+    || /already (?:been )?registered|already exists|email.*exists/i.test(error.message ?? '')
+}
 
 // supabase-js's auth.admin.createUser() fails against this project's
 // `sb_secret_...`-format service key when called through Next.js's patched
@@ -38,19 +50,59 @@ export async function createAuthUserSafely(
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) throw new Error('NEXT_PUBLIC_SUPABASE_URL yoki SUPABASE_SERVICE_ROLE_KEY topilmadi')
 
-  return withKidRetry(async () => {
-    const response = await fetch(`${url}/auth/v1/admin/users`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ email, password, email_confirm: true, user_metadata: userMetadata }),
-      cache: 'no-store',
-    })
-    const body = await response.json().catch(() => ({}))
-    if (!response.ok) {
-      return { data: { user: null }, error: { message: body.msg || body.error_description || body.error || "Foydalanuvchi yaratib bo'lmadi" } }
+  let lastError: { message: string; status?: number; code?: string } = {
+    message: "Foydalanuvchi yaratib bo'lmadi",
+  }
+
+  for (let attempt = 0; attempt <= CREATE_RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      const response = await fetch(`${url}/auth/v1/admin/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ email, password, email_confirm: true, user_metadata: userMetadata }),
+        cache: 'no-store',
+      })
+      const body = await response.json().catch(() => ({})) as Record<string, unknown>
+      if (response.ok) return { data: { user: body as { id: string; email: string } }, error: null }
+
+      lastError = {
+        message: String(body.msg || body.error_description || body.error || lastError.message),
+        status: response.status,
+        code: typeof body.code === 'string' ? body.code : undefined,
+      }
+      if (!isRetryableCreateFailure(response.status, lastError.message)) break
+    } catch (error) {
+      // A request can reach GoTrue but lose its response. Retrying makes the
+      // operation idempotent from the caller's perspective; if the first call
+      // actually succeeded, GoTrue answers the retry with email_exists and the
+      // registration route safely reconciles that orphaned Auth row.
+      lastError = {
+        message: error instanceof Error ? error.message : 'Supabase Auth bilan aloqa uzildi',
+        code: 'auth_network_error',
+      }
     }
-    return { data: { user: body }, error: null }
-  })
+
+    if (attempt < CREATE_RETRY_DELAYS_MS.length) {
+      await new Promise((resolve) => setTimeout(resolve, CREATE_RETRY_DELAYS_MS[attempt]))
+    }
+  }
+
+  return { data: { user: null }, error: lastError }
+}
+
+export async function findAuthUserByEmailSafely(email: string) {
+  const supabase = getServiceSupabase()
+  const normalizedEmail = email.trim().toLowerCase()
+
+  for (let page = 1; page <= 100; page++) {
+    const { data, error } = await withKidRetry(() => supabase.auth.admin.listUsers({ page, perPage: 1000 }))
+    if (error) return { user: null, error }
+    const user = data.users.find((candidate) => candidate.email?.trim().toLowerCase() === normalizedEmail)
+    if (user) return { user, error: null }
+    if (data.users.length < 1000) break
+  }
+
+  return { user: null, error: null }
 }
 
 export async function deleteAuthUserSafely(id: string) {

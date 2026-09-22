@@ -22,7 +22,13 @@ import { cyrillicToLatin } from '@/lib/transliterate'
 import { writeAuditLog } from '@/lib/audit-log'
 import { extractFloor } from '@/lib/floor'
 import { createDormRepository } from '@/features/dorms/server/repository'
-import { createAuthUserSafely, deleteAuthUserSafely, updateAuthUserPasswordSafely } from '@/lib/supabase-admin-auth'
+import {
+  createAuthUserSafely,
+  deleteAuthUserSafely,
+  findAuthUserByEmailSafely,
+  isDuplicateAuthUserError,
+  updateAuthUserPasswordSafely,
+} from '@/lib/supabase-admin-auth'
 
 function text(body: Record<string, unknown>, key: string, maxLength = 200) {
   return String(body[key] ?? '').trim().slice(0, maxLength)
@@ -249,15 +255,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true }, { status: 200 })
     }
 
-    const { data: authData, error: authError } = await createAuthUserSafely(
+    let { data: authData, error: authError } = await createAuthUserSafely(
       email,
       password,
       { role: 'talaba', registration_pending: true },
     )
+
+    // If GoTrue created the user but the response was lost, the retry returns
+    // email_exists while public.users is still empty. Only reclaim an Auth row
+    // that carries our own pending-registration marker; never reset an
+    // unrelated existing account merely because it uses the permit email.
+    if (authError && isDuplicateAuthUserError(authError)) {
+      const { user: orphanedAuthUser, error: lookupError } = await findAuthUserByEmailSafely(email)
+      const isOurOrphan = orphanedAuthUser?.user_metadata?.registration_pending === true
+        && orphanedAuthUser.user_metadata?.role === 'talaba'
+
+      if (!lookupError && orphanedAuthUser && isOurOrphan) {
+        const { data: profileForAuth, error: profileForAuthError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', orphanedAuthUser.id)
+          .maybeSingle()
+        if (profileForAuthError) throw profileForAuthError
+
+        if (!profileForAuth) {
+          const { error: passwordRecoveryError } = await updateAuthUserPasswordSafely(orphanedAuthUser.id, password)
+          if (!passwordRecoveryError) {
+            authData = { user: { id: orphanedAuthUser.id, email } }
+            authError = null
+          }
+        }
+      }
+    }
+
     if (authError || !authData.user) {
+      console.error('Student Auth user creation failed:', {
+        status: authError?.status,
+        code: authError?.code,
+        message: authError?.message,
+      })
       return NextResponse.json(
-        { error: 'Bu email bilan akkaunt mavjud yoki akkaunt yaratib bo‘lmadi.' },
-        { status: 409 },
+        {
+          error: isDuplicateAuthUserError(authError)
+            ? 'Bu email bilan akkaunt avval yaratilgan. Tizimga kirishga yoki parolni tiklashga urinib ko‘ring.'
+            : 'Akkaunt xizmati vaqtincha javob bermadi. Iltimos, yana bir marta urinib ko‘ring.',
+        },
+        { status: isDuplicateAuthUserError(authError) ? 409 : 503 },
       )
     }
 

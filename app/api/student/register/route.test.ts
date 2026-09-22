@@ -5,6 +5,8 @@ const checkRateLimit = vi.fn()
 const getServiceSupabase = vi.fn()
 const createAuthUserSafely = vi.fn()
 const deleteAuthUserSafely = vi.fn()
+const findAuthUserByEmailSafely = vi.fn()
+const isDuplicateAuthUserError = vi.fn((error: { code?: string } | null) => error?.code === 'email_exists')
 const updateAuthUserPasswordSafely = vi.fn()
 
 vi.mock('@/lib/security', () => ({
@@ -16,6 +18,8 @@ vi.mock('@/lib/audit-log', () => ({ writeAuditLog: vi.fn() }))
 vi.mock('@/lib/supabase-admin-auth', () => ({
   createAuthUserSafely,
   deleteAuthUserSafely,
+  findAuthUserByEmailSafely,
+  isDuplicateAuthUserError,
   updateAuthUserPasswordSafely,
 }))
 
@@ -103,6 +107,7 @@ describe('POST /api/student/register', () => {
     vi.clearAllMocks()
     checkRateLimit.mockResolvedValue({ allowed: true })
     createAuthUserSafely.mockResolvedValue({ data: { user: { id: 'new-user-1' } }, error: null })
+    findAuthUserByEmailSafely.mockResolvedValue({ user: null, error: null })
     updateAuthUserPasswordSafely.mockResolvedValue({ error: null })
   })
 
@@ -326,5 +331,56 @@ describe('POST /api/student/register', () => {
     expect(body).toEqual({ ok: true })
     expect(updateAuthUserPasswordSafely).toHaveBeenCalledWith('existing-1', GOOD_PASSWORD)
     expect(createAuthUserSafely).not.toHaveBeenCalled()
+  })
+
+  it('recovers an orphaned pending Auth user after an ambiguous create response', async () => {
+    const capture: { userInsert?: Record<string, unknown> } = {}
+    getServiceSupabase.mockReturnValue(
+      makeSupabase(
+        {
+          permit_requests: [APPROVED_FOREIGN_PERMIT],
+          users: [
+            { data: null, error: null },
+            { data: null, error: null },
+          ],
+        },
+        capture,
+      ),
+    )
+    createAuthUserSafely.mockResolvedValue({
+      data: { user: null },
+      error: { message: 'A user with this email already exists', status: 422, code: 'email_exists' },
+    })
+    findAuthUserByEmailSafely.mockResolvedValue({
+      user: {
+        id: 'orphan-auth-1',
+        email: 'murat@example.com',
+        user_metadata: { role: 'talaba', registration_pending: true },
+      },
+      error: null,
+    })
+
+    const response = await POST(req(foreignBody()))
+
+    expect(response.status).toBe(200)
+    expect(updateAuthUserPasswordSafely).toHaveBeenCalledWith('orphan-auth-1', GOOD_PASSWORD)
+    expect(capture.userInsert).toMatchObject({ id: 'orphan-auth-1', email: 'murat@example.com' })
+  })
+
+  it('returns a retryable service error instead of falsely claiming the email exists', async () => {
+    getServiceSupabase.mockReturnValue(
+      makeSupabase({ permit_requests: [APPROVED_FOREIGN_PERMIT], users: [{ data: null, error: null }] }),
+    )
+    createAuthUserSafely.mockResolvedValue({
+      data: { user: null },
+      error: { message: 'fetch failed', code: 'auth_network_error' },
+    })
+
+    const response = await POST(req(foreignBody()))
+    const body = await response.json()
+
+    expect(response.status).toBe(503)
+    expect(body.error).toMatch(/vaqtincha/i)
+    expect(body.error).not.toMatch(/email bilan akkaunt mavjud/i)
   })
 })

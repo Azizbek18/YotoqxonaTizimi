@@ -8,6 +8,7 @@ const deleteAuthUserSafely = vi.fn()
 const findAuthUserByEmailSafely = vi.fn()
 const isDuplicateAuthUserError = vi.fn((error: { code?: string } | null) => error?.code === 'email_exists')
 const updateAuthUserPasswordSafely = vi.fn()
+const revokeOtherUserSessions = vi.fn()
 
 vi.mock('@/lib/security', () => ({
   checkRateLimit,
@@ -15,6 +16,7 @@ vi.mock('@/lib/security', () => ({
 }))
 vi.mock('@/lib/server-supabase', () => ({ getServiceSupabase }))
 vi.mock('@/lib/audit-log', () => ({ writeAuditLog: vi.fn() }))
+vi.mock('@/lib/auth-devices', () => ({ revokeOtherUserSessions }))
 vi.mock('@/lib/supabase-admin-auth', () => ({
   createAuthUserSafely,
   deleteAuthUserSafely,
@@ -31,7 +33,11 @@ const GOOD_PASSWORD = 'Abcdef123456!x'
 // result from `results[table]` (shift one per call).
 function makeSupabase(
   results: Record<string, unknown[]>,
-  capture: { userInsert?: Record<string, unknown>; permitUpdate?: Record<string, unknown> } = {},
+  capture: {
+    userInsert?: Record<string, unknown>
+    userUpdate?: Record<string, unknown>
+    permitUpdate?: Record<string, unknown>
+  } = {},
 ) {
   const builder = (table: string) => {
     const chain: Record<string, unknown> = {}
@@ -43,6 +49,7 @@ function makeSupabase(
     }
     chain.update = (row: Record<string, unknown>) => {
       if (table === 'permit_requests') capture.permitUpdate = row
+      if (table === 'users') capture.userUpdate = row
       return { eq: async () => results[`${table}:update`]?.shift() ?? { error: null } }
     }
     return chain
@@ -109,6 +116,7 @@ describe('POST /api/student/register', () => {
     createAuthUserSafely.mockResolvedValue({ data: { user: { id: 'new-user-1' } }, error: null })
     findAuthUserByEmailSafely.mockResolvedValue({ user: null, error: null })
     updateAuthUserPasswordSafely.mockResolvedValue({ error: null })
+    revokeOtherUserSessions.mockResolvedValue(0)
   })
 
   it('stale client hint: missing JSHSHIR still selects the foreign flow, bails at course', async () => {
@@ -382,5 +390,60 @@ describe('POST /api/student/register', () => {
     expect(response.status).toBe(503)
     expect(body.error).toMatch(/vaqtincha/i)
     expect(body.error).not.toMatch(/email bilan akkaunt mavjud/i)
+  })
+
+  it('converts a mistaken KV-talaba account on the permit email instead of failing with email_exists', async () => {
+    // Prod 2026-09-23: approved dorm applicants who had first used the
+    // off-campus KV form got "Bu email bilan akkaunt avval yaratilgan" — the
+    // KV row has no passport, so the passport lookup missed it.
+    const capture: { userInsert?: Record<string, unknown>; userUpdate?: Record<string, unknown> } = {}
+    getServiceSupabase.mockReturnValue(
+      makeSupabase(
+        {
+          permit_requests: [APPROVED_FOREIGN_PERMIT],
+          users: [
+            { data: null, error: null },
+            { data: { id: 'kv-1', role: 'talaba', is_off_campus: true, passport_series: null }, error: null },
+          ],
+        },
+        capture,
+      ),
+    )
+
+    const response = await POST(req(foreignBody()))
+
+    expect(response.status).toBe(200)
+    expect(createAuthUserSafely).not.toHaveBeenCalled()
+    expect(capture.userInsert).toBeUndefined()
+    expect(capture.userUpdate).toMatchObject({
+      passport_series: 'A1234567',
+      jshshir: null,
+      is_off_campus: false,
+      off_campus_verified_by: null,
+      status: 'pending',
+      room_number: '12',
+      dorm_id: 'dorm-amit-1',
+    })
+    expect(capture.userUpdate).not.toHaveProperty('id')
+    expect(updateAuthUserPasswordSafely).toHaveBeenCalledWith('kv-1', GOOD_PASSWORD)
+    expect(revokeOtherUserSessions).toHaveBeenCalledWith('kv-1', null)
+  })
+
+  it('still 409s when the permit email belongs to a real (non-KV) account', async () => {
+    getServiceSupabase.mockReturnValue(
+      makeSupabase({
+        permit_requests: [APPROVED_FOREIGN_PERMIT],
+        users: [
+          { data: null, error: null },
+          { data: { id: 'other-1', role: 'talaba', is_off_campus: false, passport_series: 'B7654321' }, error: null },
+        ],
+      }),
+    )
+
+    const response = await POST(req(foreignBody()))
+
+    expect(response.status).toBe(409)
+    expect(updateAuthUserPasswordSafely).not.toHaveBeenCalled()
+    expect(createAuthUserSafely).not.toHaveBeenCalled()
   })
 })

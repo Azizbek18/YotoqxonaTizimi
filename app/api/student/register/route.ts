@@ -22,6 +22,7 @@ import { cyrillicToLatin } from '@/lib/transliterate'
 import { writeAuditLog } from '@/lib/audit-log'
 import { extractFloor } from '@/lib/floor'
 import { createDormRepository } from '@/features/dorms/server/repository'
+import { revokeOtherUserSessions } from '@/lib/auth-devices'
 import {
   createAuthUserSafely,
   deleteAuthUserSafely,
@@ -255,6 +256,139 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true }, { status: 200 })
     }
 
+    // The permit carries the dorm the dekan assigned into. Fall back to the
+    // faculty's dorm if an old permit predates the dorm column — a roomed
+    // student must always end up with a dorm_id (enforce_dorm_id_when_roomed).
+    let dormId: string | null = permit.dorm_id ?? null
+    let assignedFloor: number | null = null
+    if (permit.room_number) {
+      if (!dormId) {
+        dormId = await createDormRepository().facultyDormId(permit.faculty)
+      }
+      // A blocked-layout dorm reuses the same room numbers on every floor of
+      // every block (e.g. room "2" exists once per block per floor), so this
+      // lookup must match on block too or it's ambiguous across the whole
+      // building. An ambiguous match previously failed .maybeSingle() with an
+      // unchecked error, silently falling through to extractFloor() — a
+      // formula only valid for simple (non-blocked) dorms — which always
+      // resolves a small room number like "2" to floor 1, regardless of which
+      // real floor/block the permit was assigned to.
+      let layoutQuery = supabase
+        .from('floor_room_layout')
+        .select('floor_number')
+        .eq('room_number', permit.room_number)
+      if (dormId) layoutQuery = layoutQuery.eq('dorm_id', dormId)
+      layoutQuery = permit.block
+        ? layoutQuery.eq('block', permit.block)
+        : layoutQuery.is('block', null)
+      const { data: layoutRow, error: layoutError } = await layoutQuery.maybeSingle()
+      if (layoutError) throw layoutError
+      assignedFloor = layoutRow?.floor_number ?? extractFloor(permit.room_number)
+    }
+
+    // Foreign (imtiyozli) students don't enter a UZ address — origin comes from
+    // the permit. Domestic students fill region/district/mahalla in the wizard.
+    const isForeign = applicationType === 'imtiyozli'
+
+    const profile = {
+      email,
+      full_name: fullName,
+      middle_name: middleName || null,
+      region: isForeign ? (permit.origin_region || null) : (text(body, 'region', 120) || null),
+      district: isForeign ? null : (text(body, 'district', 120) || null),
+      mahalla: isForeign ? null : (text(body, 'mahalla', 160) || null),
+      country: isForeign ? (permit.origin_country || null) : null,
+      passport_series: passport,
+      jshshir: applicationType === 'imtiyozli' ? null : jshshir,
+      passport_date: passportDate,
+      birth_date: birthDate,
+      faculty: permit.faculty,
+      direction: permit.direction,
+      course: permit.course,
+      nationality: text(body, 'nationality', 80) || null,
+      study_type: permit.study_type ?? (text(body, 'study_type', 40) || null),
+      gender: permit.gender,
+      phone_number: phone,
+      father_full_name: cyrillicToLatin(text(body, 'father_full_name', 160)) || null,
+      father_workplace: noFather ? NO_PARENT_MARKER : (text(body, 'father_workplace', 200) || null),
+      father_phone: fatherPhone || null,
+      mother_full_name: cyrillicToLatin(text(body, 'mother_full_name', 160)) || null,
+      mother_workplace: noMother ? NO_PARENT_MARKER : (text(body, 'mother_workplace', 200) || null),
+      mother_phone: motherPhone || null,
+      room_number: permit.room_number,
+      dorm_id: permit.room_number ? dormId : null,
+      block: permit.room_number ? (permit.block ?? null) : null,
+      assigned_floor: assignedFloor,
+      entry_date: entryDate,
+      role: 'talaba',
+      status: 'pending',
+    }
+
+    // A dorm applicant who first (by mistake) used the off-campus KV-talaba
+    // form already owns an Auth account + an `is_off_campus` users row under
+    // this very email, but with no passport — so the passport lookup above
+    // misses it and createAuthUser fails with email_exists ("Bu email bilan
+    // akkaunt avval yaratilgan"). The approved permit matched above (passport
+    // + email + name + faculty) is the same bar a fresh account needs, so
+    // convert that KV row into this dorm registration in place.
+    const { data: offCampusUser, error: offCampusError } = await supabase
+      .from('users')
+      .select('id, role, is_off_campus, passport_series')
+      .eq('email', email)
+      .maybeSingle()
+    if (offCampusError) throw offCampusError
+
+    if (offCampusUser) {
+      const isMistakenKvAccount = offCampusUser.role === 'talaba'
+        && offCampusUser.is_off_campus === true
+        && !offCampusUser.passport_series
+      if (!isMistakenKvAccount) {
+        return NextResponse.json(
+          { error: 'Bu email bilan akkaunt avval yaratilgan. Tizimga kirishga yoki parolni tiklashga urinib ko‘ring.' },
+          { status: 409 },
+        )
+      }
+
+      const { error: convertError } = await supabase
+        .from('users')
+        .update({
+          ...profile,
+          is_off_campus: false,
+          off_campus_verified_by: null,
+          off_campus_verified_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', offCampusUser.id)
+      if (convertError) {
+        console.error('KV-talaba → dorm conversion failed:', convertError)
+        return NextResponse.json({ error: 'Akkauntni yangilab bo‘lmadi.' }, { status: 409 })
+      }
+
+      // The row is now a pending dorm student, so a failure here is
+      // recoverable: a retry takes the "same pending student" path above.
+      const { error: pwError } = await updateAuthUserPasswordSafely(offCampusUser.id, password)
+      if (pwError) {
+        console.error('Converted KV-talaba password update failed:', pwError)
+        return NextResponse.json({ error: 'Akkauntni yangilab bo‘lmadi.' }, { status: 409 })
+      }
+      // Whoever holds the old KV password must not stay signed in to what is
+      // now a dorm account.
+      await revokeOtherUserSessions(offCampusUser.id, null).catch((error) => {
+        console.error('Converted KV-talaba session revoke failed:', error)
+      })
+
+      await reconcilePermitName()
+      await writeAuditLog({
+        eventType: 'student.registration',
+        status: 'success',
+        ipAddress: ip,
+        actorUserId: offCampusUser.id,
+        targetRole: 'talaba',
+        details: { stage: 'converted_from_kv_talaba' },
+      })
+      return NextResponse.json({ ok: true }, { status: 200 })
+    }
+
     let { data: authData, error: authError } = await createAuthUserSafely(
       email,
       password,
@@ -304,73 +438,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // The permit carries the dorm the dekan assigned into. Fall back to the
-    // faculty's dorm if an old permit predates the dorm column — a roomed
-    // student must always end up with a dorm_id (enforce_dorm_id_when_roomed).
-    let dormId: string | null = permit.dorm_id ?? null
-    let assignedFloor: number | null = null
-    if (permit.room_number) {
-      if (!dormId) {
-        dormId = await createDormRepository().facultyDormId(permit.faculty)
-      }
-      // A blocked-layout dorm reuses the same room numbers on every floor of
-      // every block (e.g. room "2" exists once per block per floor), so this
-      // lookup must match on block too or it's ambiguous across the whole
-      // building. An ambiguous match previously failed .maybeSingle() with an
-      // unchecked error, silently falling through to extractFloor() — a
-      // formula only valid for simple (non-blocked) dorms — which always
-      // resolves a small room number like "2" to floor 1, regardless of which
-      // real floor/block the permit was assigned to.
-      let layoutQuery = supabase
-        .from('floor_room_layout')
-        .select('floor_number')
-        .eq('room_number', permit.room_number)
-      if (dormId) layoutQuery = layoutQuery.eq('dorm_id', dormId)
-      layoutQuery = permit.block
-        ? layoutQuery.eq('block', permit.block)
-        : layoutQuery.is('block', null)
-      const { data: layoutRow, error: layoutError } = await layoutQuery.maybeSingle()
-      if (layoutError) throw layoutError
-      assignedFloor = layoutRow?.floor_number ?? extractFloor(permit.room_number)
-    }
-
-    // Foreign (imtiyozli) students don't enter a UZ address — origin comes from
-    // the permit. Domestic students fill region/district/mahalla in the wizard.
-    const isForeign = applicationType === 'imtiyozli'
-
     const { error: insertError } = await supabase.from('users').insert({
       id: authData.user.id,
-      email,
-      full_name: fullName,
-      middle_name: middleName || null,
-      region: isForeign ? (permit.origin_region || null) : (text(body, 'region', 120) || null),
-      district: isForeign ? null : (text(body, 'district', 120) || null),
-      mahalla: isForeign ? null : (text(body, 'mahalla', 160) || null),
-      country: isForeign ? (permit.origin_country || null) : null,
-      passport_series: passport,
-      jshshir: applicationType === 'imtiyozli' ? null : jshshir,
-      passport_date: passportDate,
-      birth_date: birthDate,
-      faculty: permit.faculty,
-      direction: permit.direction,
-      course: permit.course,
-      nationality: text(body, 'nationality', 80) || null,
-      study_type: permit.study_type ?? (text(body, 'study_type', 40) || null),
-      gender: permit.gender,
-      phone_number: phone,
-      father_full_name: cyrillicToLatin(text(body, 'father_full_name', 160)) || null,
-      father_workplace: noFather ? NO_PARENT_MARKER : (text(body, 'father_workplace', 200) || null),
-      father_phone: fatherPhone || null,
-      mother_full_name: cyrillicToLatin(text(body, 'mother_full_name', 160)) || null,
-      mother_workplace: noMother ? NO_PARENT_MARKER : (text(body, 'mother_workplace', 200) || null),
-      mother_phone: motherPhone || null,
-      room_number: permit.room_number,
-      dorm_id: permit.room_number ? dormId : null,
-      block: permit.room_number ? (permit.block ?? null) : null,
-      assigned_floor: assignedFloor,
-      entry_date: entryDate,
-      role: 'talaba',
-      status: 'pending',
+      ...profile,
     })
 
     if (insertError) {

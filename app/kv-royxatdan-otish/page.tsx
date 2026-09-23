@@ -197,6 +197,18 @@ export default function KvRoyxatdanOtish() {
               </div>
             </div>
           )}
+          {stepIndex === 0 && (
+            <div className={`mb-4 p-3 rounded-2xl border text-[11px] leading-relaxed ${
+              isLight ? 'bg-amber-50/90 border-amber-300 text-amber-950' : 'bg-amber-500/10 border-amber-500/30 text-amber-100'
+            }`}>
+              <p className="font-bold">Yotoqxonaga ariza topshirganmisiz? Bu forma siz uchun emas.</p>
+              <p className="mt-0.5 opacity-90">
+                Arizangiz tasdiqlangach{' '}
+                <Link href="/register" className="font-bold underline underline-offset-2">Ro‘yxatdan o‘tish</Link>
+                {' '}sahifasidan o‘ting — aks holda email band bo‘lib qoladi.
+              </p>
+            </div>
+          )}
 
           {/* Stepper with Step Names */}
           <StepProgress current={stepIndex + 1} total={TOTAL_STEPS} stepNames={STEP_NAMES} />

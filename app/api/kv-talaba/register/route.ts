@@ -87,6 +87,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Bu email allaqachon ro'yxatdan o'tgan" }, { status: 409 })
     }
 
+    // Dorm applicants kept landing here by mistake ("Kvartira hisobi" on the
+    // landing page) — the KV account then squats their permit email and the
+    // real /register wizard fails with "Bu email bilan akkaunt avval
+    // yaratilgan". Anyone with a live dorm application must use /register.
+    const { data: dormPermit, error: dormPermitError } = await supabase
+      .from('permit_requests')
+      .select('status')
+      .ilike('email', email)
+      .neq('status', 'rejected')
+      .limit(1)
+      .maybeSingle()
+    if (dormPermitError) throw dormPermitError
+    if (dormPermit) {
+      return NextResponse.json({
+        ok: false,
+        code: 'dorm_permit_exists',
+        error: dormPermit.status === 'approved'
+          ? "Bu email bilan yotoqxona arizangiz tasdiqlangan. Kvartira ro'yxati siz uchun emas — «Ro'yxatdan o'tish» (/register) orqali o'ting."
+          : "Bu email bilan yotoqxonaga ariza topshirgansiz. Kvartira ro'yxati siz uchun emas — arizangiz tasdiqlangach «Ro'yxatdan o'tish» (/register) orqali o'ting.",
+      }, { status: 409 })
+    }
+
     const { data: authData, error: authError } = await createAuthUserSafely(email, password, { role: 'talaba' })
     if (authError || !authData.user) {
       return NextResponse.json({ ok: false, error: "Ro'yxatdan o'tishda xatolik" }, { status: 400 })

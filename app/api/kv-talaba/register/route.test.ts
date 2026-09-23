@@ -2,18 +2,27 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const insert = vi.fn()
 const emailMaybeSingle = vi.fn()
+const permitMaybeSingle = vi.fn()
 const createAuthUserSafely = vi.fn()
 const deleteAuthUserSafely = vi.fn()
 const checkRateLimit = vi.fn()
 
 vi.mock('@/lib/server-supabase', () => ({
   getServiceSupabase: () => ({
-    from: () => ({
-      insert,
-      select: () => ({
-        ilike: () => ({ maybeSingle: () => emailMaybeSingle() }),
-      }),
-    }),
+    from: (table: string) => table === 'permit_requests'
+      ? {
+          select: () => ({
+            ilike: () => ({
+              neq: () => ({ limit: () => ({ maybeSingle: () => permitMaybeSingle() }) }),
+            }),
+          }),
+        }
+      : {
+          insert,
+          select: () => ({
+            ilike: () => ({ maybeSingle: () => emailMaybeSingle() }),
+          }),
+        },
   }),
 }))
 vi.mock('@/lib/supabase-admin-auth', () => ({
@@ -59,6 +68,7 @@ describe('POST /api/kv-talaba/register', () => {
     createAuthUserSafely.mockResolvedValue({ data: { user: { id: 'new-id' } }, error: null })
     insert.mockResolvedValue({ error: null })
     emailMaybeSingle.mockResolvedValue({ data: null })
+    permitMaybeSingle.mockResolvedValue({ data: null, error: null })
   })
 
   it('inserts an active, off-campus, room-less talaba row with a composed full name — no dekan approval gate', async () => {
@@ -94,11 +104,17 @@ describe('POST /api/kv-talaba/register', () => {
     }))
   })
 
-  it('never touches permit_requests — no permit lookup for this flow', async () => {
-    // Sanity: the mocked Supabase client has no permit_requests handling at
-    // all, so a successful 200 here already proves the route never queried it.
+  it('409s a dorm applicant (live permit on this email) before touching Auth', async () => {
+    // Dorm applicants kept creating a KV account by mistake; it then squatted
+    // their permit email and the real /register wizard hit email_exists.
+    permitMaybeSingle.mockResolvedValue({ data: { status: 'approved' }, error: null })
     const response = await POST(request(VALID))
-    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(response.status).toBe(409)
+    expect(body.code).toBe('dorm_permit_exists')
+    expect(body.error).toMatch(/register/)
+    expect(createAuthUserSafely).not.toHaveBeenCalled()
+    expect(insert).not.toHaveBeenCalled()
   })
 
   it('400s when the direction does not belong to the chosen faculty', async () => {

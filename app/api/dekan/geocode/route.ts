@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireActiveStaff } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
 import { geocodeSearch } from '@/lib/geocode'
+import { checkRateLimit } from '@/lib/security'
 
 export const runtime = 'nodejs'
 
@@ -12,7 +13,10 @@ export const runtime = 'nodejs'
 // used as an open geocoding relay.
 export async function GET(request: NextRequest) {
   try {
-    await requireActiveStaff(request, ['dekan', 'admin'])
+    const { user } = await requireActiveStaff(request, ['dekan', 'admin'])
+    if (!(await checkRateLimit(`geocode:${user.id}`, 30, 60_000)).allowed) {
+      return NextResponse.json({ error: "Juda ko'p qidiruv. Birozdan keyin urinib ko'ring." }, { status: 429 })
+    }
     const q = request.nextUrl.searchParams.get('q')?.trim() ?? ''
     const results = await geocodeSearch(q)
     return NextResponse.json({ results })

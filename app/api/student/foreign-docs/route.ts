@@ -45,27 +45,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "So'rov formati noto'g'ri" }, { status: 400 })
     }
 
-    const service = createForeignDocsService()
-    const doc = await service.saveForStudent(student.id, input)
-
+    // Validate the file BEFORE touching the row, so a rejected upload never
+    // leaves new metadata pointing at the old (or no) file.
     const file = form.get('file')
+    let upload: { buffer: Buffer; mime: NonNullable<ReturnType<typeof detectPermitFileMimeType>> } | null = null
     if (file instanceof File && file.size > 0) {
       const { maxUploadSizeMb } = await createAppSettingsService().get()
       const limit = Math.min(maxUploadSizeMb * 1024 * 1024, MAX_UPLOAD_SIZE_BYTES)
       if (file.size < 16 || file.size > limit) {
-        return NextResponse.json(
-          { error: `Fayl hajmi ${maxUploadSizeMb} MB dan oshmasligi kerak`, doc },
-          { status: 400 },
-        )
+        return NextResponse.json({ error: `Fayl hajmi ${maxUploadSizeMb} MB dan oshmasligi kerak` }, { status: 400 })
       }
       const buffer = Buffer.from(await file.arrayBuffer())
       const mime = detectPermitFileMimeType(buffer)
       if (!mime) {
-        return NextResponse.json(
-          { error: 'Faqat JPG, PNG, WEBP yoki PDF qabul qilinadi', doc },
-          { status: 400 },
-        )
+        return NextResponse.json({ error: 'Faqat JPG, PNG, WEBP yoki PDF qabul qilinadi' }, { status: 400 })
       }
+      upload = { buffer, mime }
+    }
+
+    const service = createForeignDocsService()
+    const doc = await service.saveForStudent(student.id, input)
+
+    if (upload) {
+      const { buffer, mime } = upload
       const supabase = getServiceSupabase()
       const folder = folderFor(student.id, doc.id)
       const path = `${folder}/${randomUUID()}.${PERMIT_FILE_RULES[mime].extension}`

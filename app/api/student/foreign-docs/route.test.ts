@@ -122,15 +122,14 @@ describe('POST /api/student/foreign-docs', () => {
     expect(mocks.storageUpload).not.toHaveBeenCalled()
   })
 
-  it('400s an oversized file (keeps the already-saved doc in the response)', async () => {
+  it('400s an oversized file without saving the metadata', async () => {
     const bigFile = new File([new Uint8Array(5 * 1024 * 1024)], 'p.jpg')
     const form = new Map<string, unknown>([['payload', JSON.stringify({ docType: 'passport' })], ['file', bigFile]])
     mocks.readMultipartForm.mockResolvedValue(form)
     mocks.saveForStudent.mockResolvedValue({ id: VALID_DOC_ID, hasFile: false })
     const res = await POST(req('https://example.test/api/student/foreign-docs', { method: 'POST' }))
     expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.doc.id).toBe(VALID_DOC_ID)
+    expect(mocks.saveForStudent).not.toHaveBeenCalled()
     expect(mocks.storageUpload).not.toHaveBeenCalled()
   })
 
@@ -141,6 +140,7 @@ describe('POST /api/student/foreign-docs', () => {
     mocks.saveForStudent.mockResolvedValue({ id: VALID_DOC_ID, hasFile: false })
     const res = await POST(req('https://example.test/api/student/foreign-docs', { method: 'POST' }))
     expect(res.status).toBe(400)
+    expect(mocks.saveForStudent).not.toHaveBeenCalled()
     expect(mocks.storageUpload).not.toHaveBeenCalled()
   })
 

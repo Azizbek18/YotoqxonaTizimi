@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireActiveStudent } from '@/server/auth/guards'
 import { getApiError } from '@/server/http/api-error'
 import { geocodeSearch, geocodeReverse } from '@/lib/geocode'
+import { checkRateLimit } from '@/lib/security'
 
 export const runtime = 'nodejs'
 
@@ -13,7 +14,11 @@ export const runtime = 'nodejs'
 //                    the map once a place is picked/dragged/clicked.
 export async function GET(request: NextRequest) {
   try {
-    await requireActiveStudent(request)
+    const { user } = await requireActiveStudent(request)
+    // Nominatim allows ~1 req/s per app — one account must not burn it.
+    if (!(await checkRateLimit(`geocode:${user.id}`, 30, 60_000)).allowed) {
+      return NextResponse.json({ error: "Juda ko'p qidiruv. Birozdan keyin urinib ko'ring." }, { status: 429 })
+    }
 
     const lat = request.nextUrl.searchParams.get('lat')
     const lng = request.nextUrl.searchParams.get('lng')

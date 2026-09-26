@@ -26,6 +26,42 @@ type StaffInsert = {
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/
 
+type Supabase = ReturnType<typeof getServiceSupabase>
+
+// Read an invite WITHOUT consuming it, so a typo in the form (bad email,
+// missing gender, taken faculty) doesn't burn a one-time code. The atomic
+// claim_staff_invite call still re-checks everything right before the
+// account is created.
+async function peekInvite(supabase: Supabase, codeHash: string) {
+  const { data, error } = await supabase
+    .from('staff_invites')
+    .select('faculty, role, email, max_uses, use_count')
+    .eq('code_hash', codeHash)
+    .is('revoked_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle()
+  if (error) throw error
+  if (!data || (data.max_uses !== null && data.use_count >= data.max_uses)) return null
+  return data
+}
+
+// Give a claimed use back when account creation fails after the claim.
+// Optimistic (compare-and-set on use_count) — a concurrent claim just makes
+// this a no-op, which errs on the side of the code staying spent.
+async function releaseInvite(supabase: Supabase, codeHash: string) {
+  try {
+    const { data } = await supabase.from('staff_invites').select('id, use_count').eq('code_hash', codeHash).maybeSingle()
+    if (!data || data.use_count < 1) return
+    await supabase
+      .from('staff_invites')
+      .update({ use_count: data.use_count - 1 })
+      .eq('id', data.id)
+      .eq('use_count', data.use_count)
+  } catch (error) {
+    console.error('Staff invite release failed:', error)
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request)
@@ -63,16 +99,9 @@ export async function POST(request: Request) {
       // Tarbiyachi kodi bir fakultet + bir emailga bog'langan
       // (claimed.faculty, claimed.email). Umumiy dekan kodida ikkalasi ham
       // null — dekan fakultet va emailni formada kiritadi.
-      const { data: claim, error: claimError } = await supabase.rpc('claim_staff_invite', {
-        p_code_hash: hashInviteCode(inviteCode),
-      })
-      const claimed = Array.isArray(claim) ? claim[0] : claim
-      if (claimError || !claimed) {
-        const taken = /already registered/i.test(claimError?.message ?? '')
-        return NextResponse.json(
-          { ok: false, error: taken ? "Bu email allaqachon ro'yxatdan o'tgan" : 'Taklif kodi yaroqsiz yoki muddati tugagan' },
-          { status: taken ? 409 : 403 },
-        )
+      const claimed = await peekInvite(supabase, hashInviteCode(inviteCode))
+      if (!claimed) {
+        return NextResponse.json({ ok: false, error: 'Taklif kodi yaroqsiz yoki muddati tugagan' }, { status: 403 })
       }
       role = String(claimed.role)
       const claimedFaculty = claimed.faculty ? String(claimed.faculty).trim() : ''
@@ -159,8 +188,23 @@ export async function POST(request: Request) {
       }
     }
 
+    // Every form check passed — only now spend the invite (atomic re-check).
+    const inviteHash = inviteCode ? hashInviteCode(inviteCode) : null
+    if (inviteHash) {
+      const { data: claim, error: claimError } = await supabase.rpc('claim_staff_invite', { p_code_hash: inviteHash })
+      const claimedNow = Array.isArray(claim) ? claim[0] : claim
+      if (claimError || !claimedNow) {
+        const taken = /already registered/i.test(claimError?.message ?? '')
+        return NextResponse.json(
+          { ok: false, error: taken ? "Bu email allaqachon ro'yxatdan o'tgan" : 'Taklif kodi yaroqsiz yoki muddati tugagan' },
+          { status: taken ? 409 : 403 },
+        )
+      }
+    }
+
     const { data: authData, error: authError } = await createAuthUserSafely(email, password, { role })
     if (authError || !authData.user) {
+      if (inviteHash) await releaseInvite(supabase, inviteHash)
       return NextResponse.json({ ok: false, error: "Ro'yxatdan o'tishda xatolik" }, { status: 400 })
     }
 
@@ -169,6 +213,7 @@ export async function POST(request: Request) {
 
     if (userError) {
       await deleteAuthUserSafely(authData.user.id)
+      if (inviteHash) await releaseInvite(supabase, inviteHash)
       if (userError.code === '23505') {
         // Partial unique index staff_one_active_dekan_per_faculty — someone
         // else registered as this faculty's dekan in the meantime.

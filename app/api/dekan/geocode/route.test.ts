@@ -3,11 +3,13 @@ import { NextRequest } from 'next/server'
 import { ApiError } from '@/server/http/api-error'
 
 const mocks = vi.hoisted(() => ({
+  checkRateLimit: vi.fn(),
   requireActiveStaff: vi.fn(),
   geocodeSearch: vi.fn(),
 }))
 
 vi.mock('@/server/auth/guards', () => ({ requireActiveStaff: mocks.requireActiveStaff }))
+vi.mock('@/lib/security', () => ({ checkRateLimit: mocks.checkRateLimit }))
 vi.mock('@/lib/geocode', () => ({ geocodeSearch: mocks.geocodeSearch }))
 
 const { GET } = await import('./route')
@@ -18,7 +20,8 @@ function req(url: string) {
 
 beforeEach(() => {
   vi.resetAllMocks()
-  mocks.requireActiveStaff.mockResolvedValue({ staff: { id: 'staff1', role: 'dekan' } })
+  mocks.requireActiveStaff.mockResolvedValue({ staff: { id: 'staff1', role: 'dekan' }, user: { id: 'staff1' } })
+  mocks.checkRateLimit.mockResolvedValue({ allowed: true, remaining: 29 })
 })
 
 describe('GET /api/dekan/geocode', () => {
@@ -51,5 +54,12 @@ describe('GET /api/dekan/geocode', () => {
     const res = await GET(req('https://example.test/api/dekan/geocode?q=Toshkent'))
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ results: [{ name: 'Toshkent', lat: 41.3, lng: 69.2 }] })
+  })
+
+  it('429s once the per-user search budget is spent', async () => {
+    mocks.checkRateLimit.mockResolvedValue({ allowed: false, remaining: 0 })
+    const res = await GET(req('https://example.test/api/dekan/geocode?q=Toshkent'))
+    expect(res.status).toBe(429)
+    expect(mocks.geocodeSearch).not.toHaveBeenCalled()
   })
 })

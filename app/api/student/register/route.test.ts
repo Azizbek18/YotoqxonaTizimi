@@ -166,23 +166,23 @@ describe('POST /api/student/register', () => {
     })
   })
 
-  it('blocked-layout dorm: resolves the real floor from floor_room_layout by block, not the simple-dorm formula', async () => {
+  it('blocked-layout dorm: trusts permit.assigned_floor instead of re-querying floor_room_layout', async () => {
     // Regression for the bug found investigating cross-gender rooming in a
     // blocked-layout dorm: room numbers repeat on every floor of every
-    // block, so a lookup that ignores `block` is ambiguous and used to fall
-    // through (silently) to extractFloor()'s rooms-per-floor formula, which
-    // always resolved a small room number to floor 1 — regardless of which
-    // real floor the permit was actually assigned to.
+    // block, so a floor_room_layout lookup scoped to just room_number +
+    // dorm_id + block still matches every floor and is ambiguous.
+    // assign_permit_room_atomic already resolves and stores the real floor
+    // on the permit at assignment time, so the route must trust that value
+    // instead of re-deriving it.
     const capture: { userInsert?: Record<string, unknown> } = {}
     getServiceSupabase.mockReturnValue(
       makeSupabase(
         {
           permit_requests: [{
-            data: { ...APPROVED_FOREIGN_PERMIT.data, room_number: '2', block: 'A' },
+            data: { ...APPROVED_FOREIGN_PERMIT.data, room_number: '2', block: 'A', assigned_floor: 12 },
             error: null,
           }],
           users: [{ data: null, error: null }],
-          floor_room_layout: [{ data: { floor_number: 12 }, error: null }],
         },
         capture,
       ),
@@ -196,6 +196,38 @@ describe('POST /api/student/register', () => {
       block: 'A',
       assigned_floor: 12,
     })
+  })
+
+  it('blocked-layout dorm: an ambiguous floor_room_layout match (multiple floors share the room number) does not 500 when permit.assigned_floor is trusted', async () => {
+    // Regression for the exact prod failure: floor_room_layout.maybeSingle()
+    // errors (PGRST116) when more than one row matches. That table is never
+    // even queried once permit.assigned_floor is present.
+    const capture: { userInsert?: Record<string, unknown> } = {}
+    const layoutQuery = vi.fn()
+    getServiceSupabase.mockReturnValue({
+      from: (table: string) => {
+        if (table === 'floor_room_layout') {
+          layoutQuery()
+          throw new Error('floor_room_layout should not be queried when permit.assigned_floor is set')
+        }
+        return makeSupabase(
+          {
+            permit_requests: [{
+              data: { ...APPROVED_FOREIGN_PERMIT.data, room_number: '3', block: 'A', assigned_floor: 11 },
+              error: null,
+            }],
+            users: [{ data: null, error: null }],
+          },
+          capture,
+        ).from(table)
+      },
+    })
+
+    const response = await POST(req(foreignBody()))
+
+    expect(response.status).toBe(200)
+    expect(layoutQuery).not.toHaveBeenCalled()
+    expect(capture.userInsert).toMatchObject({ room_number: '3', block: 'A', assigned_floor: 11 })
   })
 
   it('simple-layout dorm: no floor_room_layout row falls back to the rooms-per-floor formula', async () => {

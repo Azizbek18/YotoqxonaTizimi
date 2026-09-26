@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react'
 import {
   Mail,
-  Phone,
   PhoneCall,
   RotateCcw,
   UserCog,
@@ -13,11 +12,8 @@ import {
   Plus,
   ShieldCheck,
   CheckCircle2,
-  Clock,
   Check,
   Layers,
-  Sparkles,
-  AlertCircle,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
@@ -26,17 +22,12 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchStaffAccounts } from '@/features/staff-accounts/client/api'
 import { fetchStaffInvites, createStaffInvite, revokeStaffInvite } from '@/features/staff-invites/client/api'
 import type { StaffInviteRow } from '@/features/staff-invites/types'
-import { adminUI, adminStatusChip, type AdminStatusTone } from '@/lib/admin-ui'
+import { adminUI } from '@/lib/admin-ui'
 import type { ManagedStaffRole, StaffAccountRow } from '@/features/staff-accounts/types'
 
 const ROLE_LABELS: Record<ManagedStaffRole, string> = {
   admin: 'Admin',
   tarbiyachi: 'Tarbiyachi',
-}
-
-const ROLE_TONE: Record<ManagedStaffRole, AdminStatusTone> = {
-  admin: 'danger',
-  tarbiyachi: 'info',
 }
 
 const initialInviteForm = { email: '', label: '', expiryDays: '14' }

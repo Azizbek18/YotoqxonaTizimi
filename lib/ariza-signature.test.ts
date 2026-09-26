@@ -87,3 +87,33 @@ describe('verifyArizaRecord — tamper detection', () => {
     expect(r.valid).toBe(false)
   })
 })
+
+describe('signing key rotation', () => {
+  it('keeps legacy service-role signatures valid after ARIZA_SIGNING_SECRET is introduced', () => {
+    const legacy = signAriza(binding) // made with SUPABASE_SERVICE_ROLE_KEY
+    process.env.ARIZA_SIGNING_SECRET = 'dedicated-ariza-secret'
+    try {
+      const fresh = signAriza(binding)
+      expect(fresh).not.toBe(legacy)
+      expect(verifyArizaSignature(binding, fresh)).toBe(true)
+      expect(verifyArizaSignature(binding, legacy)).toBe(true)
+    } finally {
+      delete process.env.ARIZA_SIGNING_SECRET
+    }
+  })
+
+  it('verifies with ARIZA_SIGNING_SECRET_LEGACY once the service-role key has been rotated', () => {
+    const original = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const legacy = signAriza(binding)
+    process.env.ARIZA_SIGNING_SECRET_LEGACY = original
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'rotated-service-role-key'
+    try {
+      expect(verifyArizaSignature(binding, legacy)).toBe(true)
+      delete process.env.ARIZA_SIGNING_SECRET_LEGACY
+      expect(verifyArizaSignature(binding, legacy)).toBe(false)
+    } finally {
+      process.env.SUPABASE_SERVICE_ROLE_KEY = original
+      delete process.env.ARIZA_SIGNING_SECRET_LEGACY
+    }
+  })
+})

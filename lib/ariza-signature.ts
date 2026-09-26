@@ -1,5 +1,5 @@
 import 'server-only'
-import { createHash, createHmac, timingSafeEqual } from 'crypto'
+import { createHash, createHmac, randomInt, timingSafeEqual } from 'crypto'
 
 // A permanent, tamper-evident electronic signature for a student application
 // (arizalar.type in {'ariza','tushuntirish'}). Unlike lib/receipt-claim.ts
@@ -14,11 +14,31 @@ import { createHash, createHmac, timingSafeEqual } from 'crypto'
 //   2. signature = HMAC(secret, hash | student_id | signed_at | verify_code).
 //      Edit the hash (or any bound field) and the HMAC no longer verifies.
 // The secret is an env var, never stored in the DB.
+//
+// Signatures are permanent, so the key must outlive any credential rotation.
+// New signatures use ARIZA_SIGNING_SECRET when set; historical ones were made
+// with SUPABASE_SERVICE_ROLE_KEY. Verification accepts every configured key,
+// so before rotating the service-role key put its old value in
+// ARIZA_SIGNING_SECRET_LEGACY — otherwise every older signature stops
+// verifying.
+
+function deriveKey(secret: string): Buffer {
+  return createHmac('sha256', secret).update('ariza-signature:v1').digest()
+}
 
 function signingKey(): Buffer {
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!secret) throw new Error('SUPABASE_SERVICE_ROLE_KEY topilmadi')
-  return createHmac('sha256', secret).update('ariza-signature:v1').digest()
+  const secret = process.env.ARIZA_SIGNING_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!secret) throw new Error('ARIZA_SIGNING_SECRET / SUPABASE_SERVICE_ROLE_KEY topilmadi')
+  return deriveKey(secret)
+}
+
+function verificationKeys(): Buffer[] {
+  const secrets = [
+    process.env.ARIZA_SIGNING_SECRET,
+    process.env.ARIZA_SIGNING_SECRET_LEGACY,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+  ].filter((value): value is string => Boolean(value))
+  return [...new Set(secrets)].map(deriveKey)
 }
 
 /**
@@ -52,7 +72,8 @@ const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no I/O/0/1
 
 /** Human-friendly, unambiguous verification code: `YT-8F3K-2Q9D`. */
 export function makeVerifyCode(): string {
-  const pick = () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]
+  // CSPRNG: the code is the public lookup key for a signed document.
+  const pick = () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]
   const block = () => Array.from({ length: 4 }, pick).join('')
   return `YT-${block()}-${block()}`
 }
@@ -79,18 +100,23 @@ function canonicalInstant(value: string): string {
   return Number.isNaN(d.getTime()) ? value : d.toISOString()
 }
 
-export function signAriza(binding: SignatureBinding): string {
+function signingPayload(binding: SignatureBinding): string {
   const at = canonicalInstant(binding.signedAt)
-  const payload = `${binding.contentHash}|${binding.studentId}|${at}|${binding.verifyCode}`
-  return createHmac('sha256', signingKey()).update(payload).digest('base64url')
+  return `${binding.contentHash}|${binding.studentId}|${at}|${binding.verifyCode}`
+}
+
+export function signAriza(binding: SignatureBinding): string {
+  return createHmac('sha256', signingKey()).update(signingPayload(binding)).digest('base64url')
 }
 
 export function verifyArizaSignature(binding: SignatureBinding, signature: unknown): boolean {
   if (typeof signature !== 'string' || !signature) return false
-  const expected = signAriza(binding)
   const a = Buffer.from(signature)
-  const b = Buffer.from(expected)
-  return a.length === b.length && timingSafeEqual(a, b)
+  const payload = signingPayload(binding)
+  return verificationKeys().some((key) => {
+    const b = Buffer.from(createHmac('sha256', key).update(payload).digest('base64url'))
+    return a.length === b.length && timingSafeEqual(a, b)
+  })
 }
 
 /**

@@ -67,15 +67,23 @@ function renderText({ heading, paragraphs, cta }: Omit<MailInput, 'to' | 'subjec
   return parts.join('\n')
 }
 
-// Returns whether Resend accepted the message. Existing callers ignore the
-// value (fire-and-forget); the permit-document delivery uses it to decide
-// whether to fall back to Telegram. `ok: false` also covers "not configured"
-// so an unconfigured environment falls through to the other channel.
-export async function sendMail({
-  to, subject, heading, paragraphs, cta, attachments,
-}: MailInput): Promise<{ ok: boolean }> {
+interface RenderedMail {
+  to: string
+  subject: string
+  html: string
+  text: string
+  attachments?: { filename: string; content: string }[]
+}
+
+// Resend bepul rejasi kuniga 100 ta xat. Limit tugagach (429) har bir xat
+// uchun Resend'ni qayta urib vaqt yo'qotmaslik uchun shu instansiyada bir
+// muddat chetlab o'tamiz — xat darhol zaxira SMTP'ga ketadi.
+const RESEND_QUOTA_BACKOFF_MS = 30 * 60_000
+let resendBlockedUntil = 0
+
+async function sendViaResend(mail: RenderedMail): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey || !to) return { ok: false }
+  if (!apiKey || Date.now() < resendBlockedUntil) return false
 
   try {
     const response = await fetch(RESEND_ENDPOINT, {
@@ -86,22 +94,112 @@ export async function sendMail({
       },
       body: JSON.stringify({
         from: process.env.MAIL_FROM || DEFAULT_FROM,
-        to: [to],
-        subject,
-        html: renderHtml({ heading, paragraphs, cta }),
-        text: renderText({ heading, paragraphs, cta }),
-        ...(attachments?.length ? { attachments } : {}),
+        to: [mail.to],
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
+        ...(mail.attachments?.length ? { attachments: mail.attachments } : {}),
       }),
     })
     if (!response.ok) {
-      console.error('Resend sendMail error:', response.status, await response.text())
-      return { ok: false }
+      const detail = await response.text()
+      if (response.status === 429 && detail.includes('quota')) {
+        resendBlockedUntil = Date.now() + RESEND_QUOTA_BACKOFF_MS
+      }
+      console.error('Resend sendMail error:', response.status, detail)
+      return false
     }
-    return { ok: true }
+    return true
   } catch (error) {
     console.error('Resend sendMail failed:', error)
-    return { ok: false }
+    return false
   }
+}
+
+// Zaxira kanallar — bepul SMTP hisoblar (masalan Gmail ilova paroli bilan,
+// kuniga ~500 ta; yoki Brevo SMTP, kuniga 300 ta). Ketma-ket sinaladi:
+// SMTP_HOST/PORT/USER/PASS/FROM, keyin SMTP_2_*, SMTP_3_*.
+interface SmtpAccount {
+  label: string
+  host: string
+  port: number
+  user: string
+  pass: string
+  from: string
+}
+
+function smtpAccounts(): SmtpAccount[] {
+  const accounts: SmtpAccount[] = []
+  for (const prefix of ['SMTP', 'SMTP_2', 'SMTP_3']) {
+    const host = process.env[`${prefix}_HOST`]?.trim()
+    const user = process.env[`${prefix}_USER`]?.trim()
+    // Gmail ilova paroli bo'shliqlar bilan ko'rsatiladi — ularni olib tashlaymiz.
+    const pass = process.env[`${prefix}_PASS`]?.replace(/\s+/g, '')
+    if (!host || !user || !pass) continue
+    accounts.push({
+      label: prefix,
+      host,
+      port: Number(process.env[`${prefix}_PORT`]) || 465,
+      user,
+      pass,
+      from: process.env[`${prefix}_FROM`]?.trim() || `Yotoqxona tizimi <${user}>`,
+    })
+  }
+  return accounts
+}
+
+async function sendViaSmtp(account: SmtpAccount, mail: RenderedMail): Promise<boolean> {
+  try {
+    const { createTransport } = await import('nodemailer')
+    const transport = createTransport({
+      host: account.host,
+      port: account.port,
+      secure: account.port === 465,
+      auth: { user: account.user, pass: account.pass },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
+    })
+    await transport.sendMail({
+      from: account.from,
+      to: mail.to,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      attachments: mail.attachments?.map((file) => ({
+        filename: file.filename,
+        content: file.content,
+        encoding: 'base64',
+      })),
+    })
+    return true
+  } catch (error) {
+    console.error(`SMTP sendMail failed (${account.label}):`, error instanceof Error ? error.message : error)
+    return false
+  }
+}
+
+// Returns whether any provider accepted the message. Existing callers ignore
+// the value (fire-and-forget); the permit-document delivery and the email
+// code route use it. `ok: false` also covers "not configured" so an
+// unconfigured environment falls through to the other channel.
+export async function sendMail({
+  to, subject, heading, paragraphs, cta, attachments,
+}: MailInput): Promise<{ ok: boolean }> {
+  if (!to) return { ok: false }
+  const mail: RenderedMail = {
+    to,
+    subject,
+    html: renderHtml({ heading, paragraphs, cta }),
+    text: renderText({ heading, paragraphs, cta }),
+    attachments,
+  }
+
+  if (await sendViaResend(mail)) return { ok: true }
+  for (const account of smtpAccounts()) {
+    if (await sendViaSmtp(account, mail)) return { ok: true }
+  }
+  return { ok: false }
 }
 
 function appUrl(path: string) {

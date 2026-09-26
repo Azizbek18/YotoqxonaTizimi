@@ -5,7 +5,7 @@ import { sendStudentTelegram } from '@/lib/student-telegram'
 import { notifyDormStaffNewAriza } from '@/lib/staff-telegram'
 import { sendArizaSignedEmail } from '@/lib/email'
 import { cyrillicToLatin } from '@/lib/transliterate'
-import { permitFacultyLabel } from '@/lib/faculties'
+import { normalizeFaculty, permitFacultyLabel } from '@/lib/faculties'
 import { composeArizaFullText } from '@/lib/student-ariza-template'
 import {
   buildArizaSnapshot,
@@ -59,6 +59,17 @@ type ArizaRowLite = {
 }
 
 export function createApplicationService(repository: ApplicationRepository = createApplicationRepository()) {
+  // Staff see signature evidence only for their own faculties' applications
+  // (null = global superadmin). Out of scope reads as not-found.
+  async function staffScopedAriza(arizaId: string, staffFaculties: string[] | null | undefined) {
+    const ariza = await repository.arizaById(arizaId)
+    if (!ariza) return null
+    if (staffFaculties === null) return ariza
+    const faculty = normalizeFaculty(ariza.faculty ?? null)
+    const allowed = (staffFaculties ?? []).map((f) => normalizeFaculty(f)).filter(Boolean)
+    return faculty && allowed.includes(faculty) ? ariza : null
+  }
+
   async function signAndFinalise(
     ariza: ArizaRowLite,
     signer: { name: string; email: string | null },
@@ -367,7 +378,9 @@ export function createApplicationService(repository: ApplicationRepository = cre
         title: typeof snap.title === 'string' ? snap.title : null,
         type: typeof snap.type === 'string' ? snap.type : null,
         code: sig.verify_code,
-        signatureImage: sig.signature_image ?? null,
+        // No signatureImage: anyone holding the code reaches this, and a
+        // handwritten signature is reusable PII. Its hash is already bound
+        // into the verified snapshot.
       }
     },
 
@@ -390,12 +403,16 @@ export function createApplicationService(repository: ApplicationRepository = cre
     },
 
     /** Everything needed to (re)generate the signed PDF. Student can only see
-     *  their own; staff see any. */
-    async documentData(arizaIdValue: string | null, opts: { studentId?: string } = {}) {
+     *  their own; staff only their faculties' (`staffFaculties`, null = global
+     *  superadmin). */
+    async documentData(
+      arizaIdValue: string | null,
+      opts: { studentId?: string; staffFaculties?: string[] | null } = {},
+    ) {
       const arizaId = text(arizaIdValue, 80, true)
       const owned = opts.studentId
         ? await repository.getOwned(opts.studentId, arizaId)
-        : await repository.arizaById(arizaId)
+        : await staffScopedAriza(arizaId, opts.staffFaculties)
       if (!owned) throw new ApiError(404, 'Ariza topilmadi')
       const sig = await repository.signatureByAriza(arizaId)
       if (!sig) throw new ApiError(404, 'Bu ariza imzolanmagan')
@@ -413,9 +430,9 @@ export function createApplicationService(repository: ApplicationRepository = cre
     },
 
     /** Staff panel: the full evidence bundle for one application. */
-    async staffSignature(arizaIdValue: string | null) {
+    async staffSignature(arizaIdValue: string | null, staffFaculties: string[] | null) {
       const arizaId = text(arizaIdValue, 80, true)
-      const ariza = await repository.arizaById(arizaId)
+      const ariza = await staffScopedAriza(arizaId, staffFaculties)
       if (!ariza) throw new ApiError(404, 'Ariza topilmadi')
       const sig = await repository.signatureByAriza(arizaId)
       if (!sig) {

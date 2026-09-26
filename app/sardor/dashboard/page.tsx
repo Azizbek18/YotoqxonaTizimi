@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import {
   Users, Megaphone, Search, Clock,
-  Trash2, Plus, Building2, Phone, PhoneCall, Mail,
+  Trash2, Plus, PhoneCall, Mail,
   ShieldCheck, X, ClipboardCheck, ChevronRight, ShieldHalf,
   DoorClosed, GraduationCap,
 } from 'lucide-react'
@@ -26,7 +26,7 @@ import LeaderTabs, { type LeaderTab } from '@/components/leader/LeaderTabs'
 import SectionHeading from '@/components/leader/SectionHeading'
 import EmptyState from '@/components/leader/EmptyState'
 import ModalShell from '@/components/leader/ModalShell'
-import { glassCard, getLeaderTheme, type LeaderTheme } from '@/components/leader/leader-theme'
+import { glassCard, getLeaderTheme } from '@/components/leader/leader-theme'
 import { usePanelTheme } from '@/components/leader/PanelThemeContext'
 
 interface Student {

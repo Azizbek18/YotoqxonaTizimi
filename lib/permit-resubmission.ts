@@ -17,8 +17,10 @@ type MatchedRow = {
 
 export type PermitResubmission =
   | { action: 'insert' }
-  | { action: 'reopen'; rowId: string; oldPermitPath: string | null }
-  | { action: 'edit_pending'; rowId: string; oldPermitPath: string | null }
+  // ownerEmail: the email already on the row — the caller must hold proof
+  // of THAT inbox before overwriting the application (see lib/email-proof).
+  | { action: 'reopen'; rowId: string; oldPermitPath: string | null; ownerEmail: string }
+  | { action: 'edit_pending'; rowId: string; oldPermitPath: string | null; ownerEmail: string }
   | { action: 'conflict'; message: string }
   // The identity was rejected twice and auto-blocked — the caller sends the
   // "final rejection" notification and refuses the submission.
@@ -86,7 +88,12 @@ export async function classifyPermitResubmission(
   // they upload a new one — its document. Only reachable when the caller
   // explicitly asks to edit; a plain re-submit still gets the conflict below.
   if (identityRow.status === 'pending' && opts.allowPendingEdit) {
-    return { action: 'edit_pending', rowId: identityRow.id, oldPermitPath: identityRow.permit_url || null }
+    return {
+      action: 'edit_pending',
+      rowId: identityRow.id,
+      oldPermitPath: identityRow.permit_url || null,
+      ownerEmail: identityRow.email,
+    }
   }
   if (identityRow.status !== 'rejected') {
     return {
@@ -101,5 +108,10 @@ export async function classifyPermitResubmission(
   if (identityRow.blocked) {
     return { action: 'blocked', rowId: identityRow.id }
   }
-  return { action: 'reopen', rowId: identityRow.id, oldPermitPath: identityRow.permit_url || null }
+  return {
+    action: 'reopen',
+    rowId: identityRow.id,
+    oldPermitPath: identityRow.permit_url || null,
+    ownerEmail: identityRow.email,
+  }
 }

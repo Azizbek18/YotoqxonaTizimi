@@ -35,6 +35,13 @@ vi.mock('@/lib/server-supabase', () => ({
   }),
 }))
 
+const emailProof = vi.hoisted(() => ({ ok: true }))
+vi.mock('@/lib/email-proof', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/email-proof')>()),
+  hasEmailProof: () => emailProof.ok,
+}))
+beforeEach(() => { emailProof.ok = true })
+
 const { POST } = await import('./route')
 
 function req(body: unknown) {
@@ -118,5 +125,14 @@ describe('POST /api/permit-requests/cancel', () => {
     const res = await POST(req(validYollanma))
     expect(res.status).toBe(200)
     expect(mocks.storageRemove).not.toHaveBeenCalled()
+  })
+})
+
+describe('email ownership proof', () => {
+  it('401s without a valid proof for the email', async () => {
+    emailProof.ok = false
+    const res = await POST(req(validYollanma))
+    expect(res.status).toBe(401)
+    expect((await res.json()).code).toBe('EMAIL_PROOF_REQUIRED')
   })
 })

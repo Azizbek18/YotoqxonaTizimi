@@ -5,6 +5,8 @@ const upsert = vi.fn()
 const emailMaybeSingle = vi.fn()      // .from('staff').select('id').eq('email', …)
 const dekanMaybeSingle = vi.fn()      // .from('staff').select('id').eq('role','dekan')…
 const rpc = vi.fn()
+const invitePeek = vi.fn()            // .from('staff_invites').select(…)…maybeSingle() — non-consuming read
+const inviteUpdate = vi.fn()          // releaseInvite's compare-and-set
 const deleteAuthUserSafely = vi.fn()
 const createAuthUserSafely = vi.fn()
 const checkRateLimit = vi.fn()
@@ -19,12 +21,28 @@ function selectBuilder() {
   return b
 }
 
+function inviteBuilder() {
+  const b = {
+    eq: () => b,
+    is: () => b,
+    gt: () => b,
+    maybeSingle: () => invitePeek(),
+  }
+  return b
+}
+
+function updateBuilder(patch: unknown) {
+  const b = { eq: () => b, then: (resolve: (v: unknown) => void) => resolve(inviteUpdate(patch)) }
+  return b
+}
+
 vi.mock('@/lib/server-supabase', () => ({
   getServiceSupabase: () => ({
-    from: () => ({
+    from: (table: string) => ({
       insert,
       upsert,
-      select: () => selectBuilder(),
+      select: () => (table === 'staff_invites' ? inviteBuilder() : selectBuilder()),
+      update: (patch: unknown) => updateBuilder(patch),
     }),
     rpc: (...args: unknown[]) => rpc(...args),
   }),
@@ -85,6 +103,8 @@ describe('POST /api/staff/register', () => {
     emailMaybeSingle.mockResolvedValue({ data: null })
     dekanMaybeSingle.mockResolvedValue({ data: null })
     rpc.mockResolvedValue({ data: [{ faculty: 'kimyo', role: 'tarbiyachi', email: 'tarbiyachi@example.com' }], error: null })
+    invitePeek.mockResolvedValue({ data: { faculty: 'kimyo', role: 'tarbiyachi', email: 'tarbiyachi@example.com', max_uses: 1, use_count: 0 }, error: null })
+    inviteUpdate.mockReturnValue({ error: null })
   })
 
   describe('dekan self-registration (env keys)', () => {
@@ -133,10 +153,25 @@ describe('POST /api/staff/register', () => {
       const response = await POST(request(noGender))
       expect(response.status).toBe(400)
       expect(createAuthUserSafely).not.toHaveBeenCalled()
+      // A form mistake must not burn the one-time code.
+      expect(rpc).not.toHaveBeenCalled()
+    })
+
+    it('gives the claimed use back when Auth account creation fails', async () => {
+      createAuthUserSafely.mockResolvedValue({ data: { user: null }, error: { message: 'smtp down' } })
+      // 1st read: the non-consuming peek; 2nd: releaseInvite, after the claim bumped use_count.
+      invitePeek
+        .mockResolvedValueOnce({ data: { faculty: 'kimyo', role: 'tarbiyachi', email: 'tarbiyachi@example.com', max_uses: 1, use_count: 0 }, error: null })
+        .mockResolvedValueOnce({ data: { id: 'inv-1', use_count: 1 }, error: null })
+      const response = await POST(request(INVITE_REG))
+      expect(response.status).toBe(400)
+      expect(rpc).toHaveBeenCalledWith('claim_staff_invite', expect.anything())
+      expect(inviteUpdate).toHaveBeenCalledWith({ use_count: 0 })
     })
 
     it('403s an invalid or expired invite before creating any account', async () => {
       rpc.mockResolvedValue({ data: null, error: { code: 'P0001', message: 'Invalid or expired staff invite' } })
+      invitePeek.mockResolvedValue({ data: null, error: null })
       const response = await POST(request(INVITE_REG))
       expect(response.status).toBe(403)
       expect(createAuthUserSafely).not.toHaveBeenCalled()
@@ -159,6 +194,7 @@ describe('POST /api/staff/register', () => {
     it('seeds an app_settings row for a newly-registered dekan\'s faculty', async () => {
       // A faculty-bound dekan code (email typed on the form, faculty from the code).
       rpc.mockResolvedValue({ data: [{ faculty: 'fizika', role: 'dekan', email: null }], error: null })
+      invitePeek.mockResolvedValue({ data: { faculty: 'fizika', role: 'dekan', email: null, max_uses: 1, use_count: 0 }, error: null })
       const response = await POST(request({ ...INVITE_REG, email: 'dekan@example.com' }))
       expect(response.status).toBe(200)
       expect(upsert).toHaveBeenCalledWith({ faculty: 'fizika' }, { onConflict: 'faculty', ignoreDuplicates: true })
@@ -176,6 +212,7 @@ describe('POST /api/staff/register', () => {
 
     beforeEach(() => {
       rpc.mockResolvedValue({ data: [{ faculty: null, role: 'dekan', email: null }], error: null })
+      invitePeek.mockResolvedValue({ data: { faculty: null, role: 'dekan', email: null, max_uses: null, use_count: 3 }, error: null })
     })
 
     it('binds the account to the faculty the dean picked on the form', async () => {

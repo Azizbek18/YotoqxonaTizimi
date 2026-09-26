@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+import { EMAIL_PROOF_REQUIRED, hasEmailProof } from '@/lib/email-proof'
 import {
   PERMIT_FILE_RULES,
   buildFullName,
@@ -168,6 +169,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         error: "Arizangiz universitet ishchi guruhi tomonidan ko‘rib chiqilib rad etilgan va qayta ko‘rib chiqilmaydi. Batafsil ma’lumot uchun fakultet dekanatiga murojaat qiling.",
       }, { status: 403 })
+    }
+    // Overwriting an existing application: passport (+JShSHIR) are not
+    // secrets, so the caller must prove the inbox already on the row — and
+    // keep it, or a proven stranger's email could take the row over.
+    if (outcome.action === 'edit_pending' || outcome.action === 'reopen') {
+      if (email !== outcome.ownerEmail.trim().toLowerCase()) {
+        return NextResponse.json({
+          error: 'Avvalgi arizangizdagi email bilan yuboring. Emailni o‘zgartirish kerak bo‘lsa, dekanatga murojaat qiling.',
+        }, { status: 409 })
+      }
+      if (!hasEmailProof(form.get('emailProof'), outcome.ownerEmail)) {
+        return NextResponse.json(EMAIL_PROOF_REQUIRED, { status: 401 })
+      }
     }
     // A fresh application (or a rejected one being redone) must carry a
     // signature; an in-place typo fix on a still-pending row keeps the

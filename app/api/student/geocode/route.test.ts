@@ -3,12 +3,14 @@ import { NextRequest } from 'next/server'
 import { ApiError } from '@/server/http/api-error'
 
 const mocks = vi.hoisted(() => ({
+  checkRateLimit: vi.fn(),
   requireActiveStudent: vi.fn(),
   geocodeSearch: vi.fn(),
   geocodeReverse: vi.fn(),
 }))
 
 vi.mock('@/server/auth/guards', () => ({ requireActiveStudent: mocks.requireActiveStudent }))
+vi.mock('@/lib/security', () => ({ checkRateLimit: mocks.checkRateLimit }))
 vi.mock('@/lib/geocode', () => ({ geocodeSearch: mocks.geocodeSearch, geocodeReverse: mocks.geocodeReverse }))
 
 const { GET } = await import('./route')
@@ -19,7 +21,8 @@ function req(url: string) {
 
 beforeEach(() => {
   vi.resetAllMocks()
-  mocks.requireActiveStudent.mockResolvedValue({ student: { id: 's1' } })
+  mocks.requireActiveStudent.mockResolvedValue({ student: { id: 's1' }, user: { id: 's1' } })
+  mocks.checkRateLimit.mockResolvedValue({ allowed: true, remaining: 29 })
 })
 
 describe('GET /api/student/geocode', () => {
@@ -56,5 +59,12 @@ describe('GET /api/student/geocode', () => {
     mocks.geocodeReverse.mockRejectedValue(new Error('nominatim down'))
     const res = await GET(req('https://example.test/api/student/geocode?lat=41.3&lng=69.2'))
     expect(res.status).toBe(500)
+  })
+
+  it('429s once the per-user search budget is spent', async () => {
+    mocks.checkRateLimit.mockResolvedValue({ allowed: false, remaining: 0 })
+    const res = await GET(req('https://example.test/api/student/geocode?q=Toshkent'))
+    expect(res.status).toBe(429)
+    expect(mocks.geocodeSearch).not.toHaveBeenCalled()
   })
 })

@@ -10,6 +10,8 @@ import { supabase } from '@/lib/supabase'
 import { getPasswordPolicyError } from '@/lib/password-policy'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
+import EmailProofDialog from '@/components/auth/EmailProofDialog'
+import { fetchWithEmailProof } from '@/features/email-verification/client'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import StepProgress from '@/components/register/StepProgress'
 import Step1Name from '@/components/kv-register/Step1Name'
@@ -56,7 +58,10 @@ export default function KvRoyxatdanOtish() {
 
     setLoading(true)
     try {
-      const response = await fetch('/api/kv-talaba/register', {
+      // The account is active immediately, so the email must be the student's
+      // own — a code goes to it before the account is created.
+      const email = data.email.trim().toLowerCase()
+      const response = await fetchWithEmailProof(email, (emailProof) => fetch('/api/kv-talaba/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -74,8 +79,10 @@ export default function KvRoyxatdanOtish() {
           hemisStudentId: data.hemisStudentId,
           password,
           confirmPassword,
+          emailProof,
         }),
-      })
+      }))
+      if (!response) return
       const result: { ok: boolean; error?: string } = await response.json()
       if (!response.ok || !result.ok) throw new Error(result.error ?? "Ro'yxatdan o'tishda xatolik")
 
@@ -253,6 +260,7 @@ export default function KvRoyxatdanOtish() {
         </div>
       </div>
       <DeveloperContactLink />
+      <EmailProofDialog />
     </main>
   )
 }

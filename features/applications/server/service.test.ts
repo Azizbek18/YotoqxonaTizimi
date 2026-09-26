@@ -123,6 +123,7 @@ describe('createApplicationService — signing', () => {
     const code = created.receipt!.verifyCode
     const ok = await createApplicationService(repo).verifyByCode(code)
     expect(ok).toMatchObject({ valid: true, signedBy: PROFILE.full_name })
+    expect(ok).not.toHaveProperty('signatureImage')
 
     ;(store.signature as Record<string, unknown>).content_snapshot = {
       ...((store.signature as Record<string, unknown>).content_snapshot as Record<string, unknown>),
@@ -211,13 +212,23 @@ describe('createApplicationService — signing', () => {
   it('staffSignature: unsigned vs signed', async () => {
     const { repo, store } = fakeRepo()
     store.ariza = { id: 'ariza-1', status: 'pending', title: 'A', type: 'ariza' }
-    expect(await createApplicationService(repo).staffSignature('ariza-1')).toMatchObject({ signed: false })
+    expect(await createApplicationService(repo).staffSignature('ariza-1', null)).toMatchObject({ signed: false })
 
     await createApplicationService(repo).create('stu-1', {
       type: 'ariza', title: 'A', text: 'm', status: 'pending', signature: sig(),
     })
-    const s = await createApplicationService(repo).staffSignature('ariza-1')
+    const s = await createApplicationService(repo).staffSignature('ariza-1', null)
     expect(s).toMatchObject({ signed: true })
     expect((s as { signature: { valid: boolean } }).signature.valid).toBe(true)
+  })
+
+  it('staffSignature / documentData: another faculty reads as not-found', async () => {
+    const { repo, store } = fakeRepo()
+    store.ariza = { id: 'ariza-1', status: 'pending', title: 'A', type: 'ariza', faculty: 'amit' }
+    const service = createApplicationService(repo)
+    await expect(service.staffSignature('ariza-1', ['iqtisodiyot'])).rejects.toMatchObject({ status: 404 })
+    await expect(service.documentData('ariza-1', { staffFaculties: ['iqtisodiyot'] }))
+      .rejects.toMatchObject({ status: 404 })
+    await expect(service.staffSignature('ariza-1', ['amit'])).resolves.toMatchObject({ signed: false })
   })
 })

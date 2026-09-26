@@ -34,6 +34,13 @@ vi.mock('@/lib/security', () => ({
   getClientIp: () => '127.0.0.1',
 }))
 
+const emailProof = vi.hoisted(() => ({ ok: true }))
+vi.mock('@/lib/email-proof', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/email-proof')>()),
+  hasEmailProof: () => emailProof.ok,
+}))
+beforeEach(() => { emailProof.ok = true })
+
 const { POST } = await import('./route')
 
 function request(body: Record<string, unknown>) {
@@ -153,6 +160,17 @@ describe('POST /api/kv-talaba/register', () => {
     checkRateLimit.mockResolvedValue({ allowed: false, remaining: 0 })
     const response = await POST(request(VALID))
     expect(response.status).toBe(429)
+    expect(createAuthUserSafely).not.toHaveBeenCalled()
+  })
+})
+
+describe('email ownership proof', () => {
+  it('401s without a valid proof for the email', async () => {
+    emailProof.ok = false
+    checkRateLimit.mockResolvedValue({ allowed: true, remaining: 4 })
+    const res = await POST(request(VALID))
+    expect(res.status).toBe(401)
+    expect((await res.json()).code).toBe('EMAIL_PROOF_REQUIRED')
     expect(createAuthUserSafely).not.toHaveBeenCalled()
   })
 })

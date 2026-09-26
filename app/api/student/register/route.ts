@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+import { EMAIL_PROOF_REQUIRED, hasEmailProof } from '@/lib/email-proof'
 import { getPasswordPolicyError } from '@/lib/password-policy'
 import {
   buildFullName,
@@ -158,10 +159,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: passwordError }, { status: 400 })
     }
 
+    // Choosing the account password must be tied to the permit's inbox —
+    // passport + email + JShSHIR alone are not secrets.
+    if (!hasEmailProof(body.emailProof, email)) {
+      return NextResponse.json(EMAIL_PROOF_REQUIRED, { status: 401 })
+    }
+
     const supabase = getServiceSupabase()
     let permitQuery = supabase
       .from('permit_requests')
-      .select('id, email, full_name, gender, faculty, direction, course, room_number, dorm_id, block, status, origin_country, origin_region, study_type, application_type')
+      .select('id, email, full_name, gender, faculty, direction, course, room_number, dorm_id, block, assigned_floor, status, origin_country, origin_region, study_type, application_type')
       .eq('passport_series', passport)
       .eq('email', email)
       .eq('application_type', applicationType)
@@ -265,25 +272,30 @@ export async function POST(request: NextRequest) {
       if (!dormId) {
         dormId = await createDormRepository().facultyDormId(permit.faculty)
       }
-      // A blocked-layout dorm reuses the same room numbers on every floor of
-      // every block (e.g. room "2" exists once per block per floor), so this
-      // lookup must match on block too or it's ambiguous across the whole
-      // building. An ambiguous match previously failed .maybeSingle() with an
-      // unchecked error, silently falling through to extractFloor() — a
-      // formula only valid for simple (non-blocked) dorms — which always
-      // resolves a small room number like "2" to floor 1, regardless of which
-      // real floor/block the permit was assigned to.
-      let layoutQuery = supabase
-        .from('floor_room_layout')
-        .select('floor_number')
-        .eq('room_number', permit.room_number)
-      if (dormId) layoutQuery = layoutQuery.eq('dorm_id', dormId)
-      layoutQuery = permit.block
-        ? layoutQuery.eq('block', permit.block)
-        : layoutQuery.is('block', null)
-      const { data: layoutRow, error: layoutError } = await layoutQuery.maybeSingle()
-      if (layoutError) throw layoutError
-      assignedFloor = layoutRow?.floor_number ?? extractFloor(permit.room_number)
+      // assign_permit_room_atomic already resolves and stores the real floor
+      // on the permit at assignment time — required for a blocked-layout dorm,
+      // where the same room number repeats on every floor of a block, so a
+      // room_number + dorm_id + block lookup alone still matches every floor
+      // (previously threw on .maybeSingle() with multiple rows, a 500 at the
+      // final registration step). Trust that stored value when present.
+      if (permit.assigned_floor != null) {
+        assignedFloor = permit.assigned_floor
+      } else {
+        // Simple (non-blocked) dorms never get assigned_floor written onto the
+        // permit — room numbers are unique per building there, so this lookup
+        // stays unambiguous.
+        let layoutQuery = supabase
+          .from('floor_room_layout')
+          .select('floor_number')
+          .eq('room_number', permit.room_number)
+        if (dormId) layoutQuery = layoutQuery.eq('dorm_id', dormId)
+        layoutQuery = permit.block
+          ? layoutQuery.eq('block', permit.block)
+          : layoutQuery.is('block', null)
+        const { data: layoutRow, error: layoutError } = await layoutQuery.maybeSingle()
+        if (layoutError) throw layoutError
+        assignedFloor = layoutRow?.floor_number ?? extractFloor(permit.room_number)
+      }
     }
 
     // Foreign (imtiyozli) students don't enter a UZ address — origin comes from

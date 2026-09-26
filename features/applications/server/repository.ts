@@ -99,7 +99,7 @@ export function createApplicationRepository() {
 
     async arizaById(id: string) {
       const { data, error } = await supabase
-        .from('arizalar').select('id, title, type, text, student_name, status').eq('id', id).maybeSingle()
+        .from('arizalar').select('id, title, type, text, student_name, status, faculty').eq('id', id).maybeSingle()
       if (error) throw error
       return data
     },

@@ -238,3 +238,22 @@ describe('runNightlyCron', () => {
     expect(r.autoCloseExpired).toHaveBeenCalledWith(DORM)
   })
 })
+
+describe('history', () => {
+  const resident: AttendanceActor = {
+    userId: 's1', role: 'talaba', dormId: DORM, faculties: ['amit'], floor: null, gender: null, canWrite: false,
+  }
+
+  it('refuses a plain resident and a sardor', async () => {
+    const r = repo()
+    await expect(createAttendanceService(r as never).history(resident, 's2')).rejects.toMatchObject({ status: 403 })
+    await expect(createAttendanceService(r as never).history(sardor, 's2')).rejects.toMatchObject({ status: 403 })
+    expect(r.studentHistory).not.toHaveBeenCalled()
+  })
+
+  it('reads only sessions of the actor’s own building', async () => {
+    const r = repo()
+    await createAttendanceService(r as never).history(tarbiyachi, 's2')
+    expect(r.studentHistory).toHaveBeenCalledWith('s2', DORM, expect.any(Number))
+  })
+})

@@ -303,7 +303,7 @@ export function createAttendanceRepository() {
       return data ?? []
     },
 
-    async studentHistory(studentId: string, limit: number) {
+    async studentHistory(studentId: string, dormId: string, limit: number) {
       const { data, error } = await supabase
         .from('attendance_records')
         .select('state, session_id')
@@ -317,6 +317,7 @@ export function createAttendanceRepository() {
         .from('attendance_sessions')
         .select('id, scheduled_for, kind, status')
         .in('id', rows.map((r) => r.session_id))
+        .eq('dorm_id', dormId)
       const byId = new Map((sessions ?? []).map((s) => [s.id, s]))
       return rows
         .map((r) => {

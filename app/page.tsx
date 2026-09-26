@@ -9,6 +9,7 @@ import {
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { Skel } from '@/components/ui/skeletons';
 import { useThemeStore } from '@/lib/stores/theme-store';
+import { clearEmailProof, getStoredEmailProof } from '@/features/email-verification/client';
 import { appFont as baloo2 } from '@/lib/app-font';
 
 interface PermitRequest {
@@ -44,13 +45,16 @@ export default function Home() {
     const jshshir = sessionStorage.getItem('student_permit_jshshir');
     const email = sessionStorage.getItem('student_permit_email');
     const applicationType = sessionStorage.getItem('student_permit_type') === 'imtiyozli' ? 'imtiyozli' : 'yollanma';
-    if (passport && email && (applicationType === 'imtiyozli' || jshshir)) {
+    // Only a proof already earned on the status page is used here — the
+    // landing page never pops a code dialog on load.
+    const emailProof = email ? getStoredEmailProof(email) : null;
+    if (passport && email && emailProof && (applicationType === 'imtiyozli' || jshshir)) {
       if (!silent) setCheckingPermit(true);
       try {
         const response = await fetch('/api/permit-requests/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ passportSeries: passport, jshshir, email, applicationType }),
+          body: JSON.stringify({ passportSeries: passport, jshshir, email, applicationType, emailProof }),
         });
         const result = await response.json();
 
@@ -87,6 +91,7 @@ export default function Home() {
       sessionStorage.removeItem('student_permit_jshshir');
       sessionStorage.removeItem('student_permit_email');
       sessionStorage.removeItem('student_permit_type');
+      clearEmailProof();
       setPermitRequest(null);
     }
   };

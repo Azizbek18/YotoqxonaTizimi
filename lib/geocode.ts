@@ -23,9 +23,10 @@ type NominatimReverseRow = {
 }
 
 const USER_AGENT = 'meningyotoqxonam.uz (dorm/address location picker)'
+const MAX_QUERY_LENGTH = 200
 
 export async function geocodeSearch(query: string): Promise<GeocodeResult[]> {
-  const q = query.trim()
+  const q = query.trim().slice(0, MAX_QUERY_LENGTH)
   if (q.length < 3) return []
 
   const url = new URL('https://nominatim.openstreetmap.org/search')

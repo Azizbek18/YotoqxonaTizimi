@@ -1,15 +1,14 @@
 'use client'
 
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useCallback, useEffect, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
   Users, Megaphone, Search, Clock,
-  Trash2, Plus, Phone, PhoneCall, Mail, X,
+  Trash2, Plus, PhoneCall, Mail, X,
   FileText, MessageSquareWarning, ShieldHalf,
-  Building2, DoorClosed, Snowflake, Crown,
-  ShieldCheck, Check, ExternalLink, Layers, Sparkles, AlertCircle,
+  Building2, DoorClosed, Snowflake, Crown, Sparkles,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getSafeUser, getAuthHeaders } from '@/lib/auth-session'
@@ -25,11 +24,10 @@ import { directionLabel } from '@/lib/directions'
 import LeaderBackdrop from '@/components/leader/LeaderBackdrop'
 import LeaderHeader from '@/components/leader/LeaderHeader'
 import LeaderTabs, { type LeaderTab } from '@/components/leader/LeaderTabs'
-import SectionHeading from '@/components/leader/SectionHeading'
 import EmptyState from '@/components/leader/EmptyState'
 import ModalShell from '@/components/leader/ModalShell'
 import KengashStoryManager from '@/components/kengash/StoryManager'
-import { glassCard, getLeaderTheme, accentChip, type AccentColor } from '@/components/leader/leader-theme'
+import { getLeaderTheme, accentChip, type AccentColor } from '@/components/leader/leader-theme'
 import { usePanelTheme } from '@/components/leader/PanelThemeContext'
 
 interface Student {
@@ -503,7 +501,7 @@ export default function KengashDashboard() {
     setStudentSearch('')
   }
 
-  const applyStudentFilters = (list: Student[]) => {
+  const applyStudentFilters = useCallback((list: Student[]) => {
     const q = studentSearch.trim().toLowerCase()
     return list.filter((s) => {
       if (q) {
@@ -517,10 +515,10 @@ export default function KengashDashboard() {
       if (filterDirection !== 'all' && s.direction !== filterDirection) return false
       return true
     })
-  }
+  }, [studentSearch, filterFloor, filterCourse, filterDirection])
 
-  const filteredStudents = useMemo(() => applyStudentFilters(students), [students, studentSearch, filterFloor, filterCourse, filterDirection])
-  const filteredCaptains = useMemo(() => applyStudentFilters(captains), [captains, studentSearch, filterFloor, filterCourse, filterDirection])
+  const filteredStudents = useMemo(() => applyStudentFilters(students), [students, applyStudentFilters])
+  const filteredCaptains = useMemo(() => applyStudentFilters(captains), [captains, applyStudentFilters])
 
   // Rooms Data Hook — a raisi's scope is the whole faculty building, both
   // genders' floors included (no gender filter here anymore).

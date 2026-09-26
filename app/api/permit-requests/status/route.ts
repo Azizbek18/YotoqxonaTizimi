@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+import { EMAIL_PROOF_REQUIRED, hasEmailProof } from '@/lib/email-proof'
 import {
   isValidEmail,
   isValidForeignIdNumber,
@@ -24,6 +25,7 @@ export async function POST(request: NextRequest) {
       jshshir?: unknown
       email?: unknown
       applicationType?: unknown
+      emailProof?: unknown
     } | null
     const applicationType = body?.applicationType === 'imtiyozli' ? 'imtiyozli' : 'yollanma'
     const passport = applicationType === 'imtiyozli'
@@ -40,6 +42,12 @@ export async function POST(request: NextRequest) {
           ? 'Pasport/ID yoki email formati noto‘g‘ri.'
           : 'Pasport, JShSHIR yoki email formati noto‘g‘ri.',
       }, { status: 400 })
+    }
+
+    // passport + email (+ JShSHIR) are not secrets — the caller must also
+    // prove they own the inbox before seeing or changing the application.
+    if (!hasEmailProof(body?.emailProof, email)) {
+      return NextResponse.json(EMAIL_PROOF_REQUIRED, { status: 401 })
     }
 
     const supabase = getServiceSupabase()

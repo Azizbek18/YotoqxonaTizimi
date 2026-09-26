@@ -57,21 +57,14 @@ describe('GET /api/student/foreign-docs/file', () => {
   it('passes isStaff: false for a plain student', async () => {
     mocks.getForFileAccess.mockResolvedValue({ filePath: 'foreign-docs/u1/doc1/x.jpg' })
     await GET(req(`https://example.test/api/student/foreign-docs/file?id=${VALID_DOC_ID}`))
-    expect(mocks.getForFileAccess).toHaveBeenCalledWith(VALID_DOC_ID, { userId: 'u1', isStaff: false })
+    expect(mocks.getForFileAccess).toHaveBeenCalledWith(VALID_DOC_ID, { userId: 'u1' })
   })
 
-  it('passes isStaff: true for an active dekan/admin', async () => {
+  it('never grants staff access here — even an active dekan is owner-only on this route', async () => {
     mocks.staffMaybeSingle.mockResolvedValue({ data: { role: 'dekan', status: 'active' }, error: null })
     mocks.getForFileAccess.mockResolvedValue({ filePath: 'foreign-docs/u1/doc1/x.jpg' })
     await GET(req(`https://example.test/api/student/foreign-docs/file?id=${VALID_DOC_ID}`))
-    expect(mocks.getForFileAccess).toHaveBeenCalledWith(VALID_DOC_ID, { userId: 'u1', isStaff: true })
-  })
-
-  it('does not treat an inactive/suspended staff row as staff', async () => {
-    mocks.staffMaybeSingle.mockResolvedValue({ data: { role: 'dekan', status: 'suspended' }, error: null })
-    mocks.getForFileAccess.mockResolvedValue({ filePath: 'foreign-docs/u1/doc1/x.jpg' })
-    await GET(req(`https://example.test/api/student/foreign-docs/file?id=${VALID_DOC_ID}`))
-    expect(mocks.getForFileAccess).toHaveBeenCalledWith(VALID_DOC_ID, { userId: 'u1', isStaff: false })
+    expect(mocks.getForFileAccess).toHaveBeenCalledWith(VALID_DOC_ID, { userId: 'u1' })
   })
 
   it('500s when Supabase Storage fails to sign the URL', async () => {

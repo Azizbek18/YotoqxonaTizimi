@@ -215,8 +215,12 @@ export function createAttendanceService(
     },
 
     async history(actor: AttendanceActor, studentId: string) {
-      if (actor.role === 'sardor') throw new ApiError(403, 'Faqat tarbiyachi yoki dekan')
-      const rows = await repo.studentHistory(studentId, HISTORY_LIMIT)
+      // Staff only, and only sessions of the actor's own building — a plain
+      // resident must not read a neighbour's attendance by id.
+      if (actor.role !== 'tarbiyachi' && actor.role !== 'dekan') {
+        throw new ApiError(403, 'Faqat tarbiyachi yoki dekan')
+      }
+      const rows = await repo.studentHistory(studentId, actor.dormId, HISTORY_LIMIT)
       return rows.map((r) => ({ date: r.scheduled_for, state: r.state, kind: r.kind }))
     },
 

@@ -3,6 +3,7 @@ import { bindPermitTelegramChat, formatPermitTelegramMessage } from '@/lib/permi
 import { bindStudentTelegramChat } from '@/lib/student-telegram'
 import { sendTelegramChatMessage } from '@/lib/telegram'
 import { deliverPermitDocumentsSafely } from '@/lib/permit-documents'
+import { safeEqual } from '@/lib/security'
 
 type TelegramUpdate = {
   message?: {
@@ -16,7 +17,7 @@ export const runtime = 'nodejs'
 export async function POST(request: Request) {
   const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET
   const suppliedSecret = request.headers.get('x-telegram-bot-api-secret-token')
-  if (!expectedSecret || suppliedSecret !== expectedSecret) {
+  if (!expectedSecret || !safeEqual(expectedSecret, suppliedSecret ?? undefined)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

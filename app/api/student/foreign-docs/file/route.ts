@@ -7,7 +7,7 @@ import { createForeignDocsService } from '@/features/foreign-docs/server/service
 const BUCKET = 'permits'
 
 // Xorijiy talaba hujjati fayli xususiy `permits` bucketda — faqat egasi yoki
-// faol dekan/superadmin qisqa muddatli signed URL orqali ochadi.
+// qisqa muddatli signed URL orqali ochadi (dekan — /api/dekan/foreign-docs/file).
 export async function GET(request: NextRequest) {
   try {
     const user = await getRequestUser(request)
@@ -19,18 +19,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Noto'g'ri identifikator" }, { status: 400 })
     }
 
-    const supabase = getServiceSupabase()
-    const { data: staff } = await supabase
-      .from('staff')
-      .select('role, status')
-      .eq('id', user.id)
-      .maybeSingle()
-    const isStaff = staff?.status === 'active' && (staff.role === 'dekan' || staff.role === 'admin')
+    // Owner-only: staff open files through the faculty-scoped
+    // /api/dekan/foreign-docs/file endpoint.
+    const { filePath } = await createForeignDocsService().getForFileAccess(id, { userId: user.id })
 
-    const { filePath } = await createForeignDocsService().getForFileAccess(id, {
-      userId: user.id,
-      isStaff: Boolean(isStaff),
-    })
+    const supabase = getServiceSupabase()
 
     const { data, error } = await supabase.storage
       .from(BUCKET)

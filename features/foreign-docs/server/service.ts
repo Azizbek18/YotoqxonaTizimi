@@ -185,11 +185,19 @@ export function createForeignDocsService(
 
     async getForFileAccess(
       id: string,
-      requester: { userId: string; isStaff: boolean },
+      // staffFaculty: set only for dekan/superadmin access — the file must
+      // belong to a student of that faculty (passport/visa scans must not
+      // leak across faculties). Without it only the owner may open the file.
+      requester: { userId: string; staffFaculty?: string | null },
     ): Promise<{ filePath: string; studentId: string }> {
       const doc = await repository.getById(id)
       if (!doc || !doc.file_path) throw new ApiError(404, 'Fayl topilmadi')
-      if (!requester.isStaff && doc.student_id !== requester.userId) {
+      if (requester.staffFaculty) {
+        const context = await repository.findStudentContext(doc.student_id)
+        if (!context || normalizeFaculty(context.faculty) !== normalizeFaculty(requester.staffFaculty)) {
+          throw new ApiError(403, 'Ruxsat berilmadi')
+        }
+      } else if (doc.student_id !== requester.userId) {
         throw new ApiError(403, 'Ruxsat berilmadi')
       }
       return { filePath: doc.file_path, studentId: doc.student_id }

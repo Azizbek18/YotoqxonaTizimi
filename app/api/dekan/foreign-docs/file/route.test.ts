@@ -26,7 +26,7 @@ function req(url: string) {
 
 beforeEach(() => {
   vi.resetAllMocks()
-  mocks.requireActiveStaff.mockResolvedValue({ user: { id: 'staff1' } })
+  mocks.requireActiveStaff.mockResolvedValue({ user: { id: 'staff1' }, staff: { id: 'staff1', faculty: 'amit' } })
   mocks.createSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://signed.example/x' }, error: null })
 })
 
@@ -67,6 +67,16 @@ describe('GET /api/dekan/foreign-docs/file', () => {
     const res = await GET(req(`https://example.test/api/dekan/foreign-docs/file?id=${VALID_DOC_ID}`))
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ url: 'https://signed.example/x' })
-    expect(mocks.getForFileAccess).toHaveBeenCalledWith(VALID_DOC_ID, { userId: 'staff1', isStaff: true })
+    expect(mocks.getForFileAccess).toHaveBeenCalledWith(VALID_DOC_ID, { userId: 'staff1', staffFaculty: 'amit' })
+  })
+
+  it('asks a global superadmin to pick a faculty before opening a file', async () => {
+    mocks.requireActiveStaff.mockResolvedValue({
+      user: { id: 'sa' },
+      staff: { id: 'sa', faculty: null, superadminGlobal: true },
+    })
+    const res = await GET(req(`https://example.test/api/dekan/foreign-docs/file?id=${VALID_DOC_ID}`))
+    expect(res.status).toBe(400)
+    expect(mocks.getForFileAccess).not.toHaveBeenCalled()
   })
 })

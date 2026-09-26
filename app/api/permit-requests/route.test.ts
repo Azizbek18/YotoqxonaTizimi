@@ -123,6 +123,24 @@ describe('POST /api/permit-requests — Ariza/Tilxat maydonlari', () => {
     expect(body.error).toMatch(/Yo.?llanma fayli topilmadi/i)
   })
 
+  it('mavjud arizani qayta ochish email isbotisiz 401 qaytaradi', async () => {
+    classifyPermitResubmission.mockResolvedValue({
+      action: 'reopen', rowId: 'p1', oldPermitPath: '2026/old.pdf', ownerEmail: 'talaba@example.com',
+    })
+    const response = await POST(request(baseFields()))
+    expect(response.status).toBe(401)
+    expect((await response.json()).code).toBe('EMAIL_PROOF_REQUIRED')
+  })
+
+  it('begona email bilan mavjud arizani egallab bo‘lmaydi (409)', async () => {
+    classifyPermitResubmission.mockResolvedValue({
+      action: 'edit_pending', rowId: 'p1', oldPermitPath: '2026/old.pdf', ownerEmail: 'victim@example.com',
+    })
+    const response = await POST(request(baseFields({ mode: 'edit' })))
+    expect(response.status).toBe(409)
+    expect((await response.json()).error).toMatch(/Avvalgi arizangizdagi email/i)
+  })
+
   it('imzosiz yangi ariza 400 qaytaradi', async () => {
     classifyPermitResubmission.mockResolvedValue({ action: 'insert' })
     const fields = baseFields()

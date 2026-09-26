@@ -23,6 +23,8 @@ import { directionsForFaculty } from '@/lib/directions'
 import { getPassportFormatError, isValidJoinedFullName, isValidJshshir, isValidPassport, normalizeJshshir, normalizeNameWhitespace, normalizePassport, UZ_ORIGIN_REGIONS } from '@/lib/permit-validation'
 import { cyrillicToLatin } from '@/lib/transliterate'
 import { prepareAiAnalysisFile, prepareUploadFile } from '@/lib/prepare-upload'
+import EmailProofDialog from '@/components/auth/EmailProofDialog'
+import { fetchWithEmailProof } from '@/features/email-verification/client'
 
 interface Particle {
   id: number
@@ -698,10 +700,13 @@ export default function RuxsatnomaYuborish() {
       if (signatureImage) submission.append('studentSignature', signatureImage)
       if (aiClaim) submission.append('aiClaim', aiClaim)
 
-      const submitResponse = await fetch('/api/permit-requests', {
-        method: 'POST',
-        body: submission,
-      })
+      // A fresh application needs no code; reopening/editing an existing one
+      // does (the server answers EMAIL_PROOF_REQUIRED and the dialog opens).
+      const submitResponse = await fetchWithEmailProof(cleanEmail, (emailProof) => {
+        submission.set('emailProof', emailProof)
+        return fetch('/api/permit-requests', { method: 'POST', body: submission })
+      }, { lazy: true })
+      if (!submitResponse) throw new Error('Arizani yangilash uchun emailingizni tasdiqlang.')
       const submitResult = await submitResponse.json()
       if (!submitResponse.ok) {
         throw new Error(submitResult.error || 'Arizani saqlashda xatolik yuz berdi')
@@ -2236,6 +2241,7 @@ export default function RuxsatnomaYuborish() {
       </div>
 
       <DeveloperContactLink />
+      <EmailProofDialog />
     </div>
   )
 }

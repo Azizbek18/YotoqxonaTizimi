@@ -47,7 +47,7 @@ describe('classifyPermitResubmission', () => {
 
   it('own rejected row, no other collision → reopen it', async () => {
     const result = await classifyPermitResubmission(fakeSupabase([row({ id: 'p1', status: 'rejected' })]), yollanma)
-    expect(result).toEqual({ action: 'reopen', rowId: 'p1', oldPermitPath: '2026/old.pdf' })
+    expect(result).toEqual({ action: 'reopen', rowId: 'p1', oldPermitPath: '2026/old.pdf', ownerEmail: 'a@x.uz' })
   })
 
   it('own rejected row that is blocked (rejected twice) → blocked, not reopen', async () => {
@@ -67,7 +67,7 @@ describe('classifyPermitResubmission', () => {
     const result = await classifyPermitResubmission(
       fakeSupabase([row({ id: 'p1', status: 'pending' })]), yollanma, { allowPendingEdit: true },
     )
-    expect(result).toEqual({ action: 'edit_pending', rowId: 'p1', oldPermitPath: '2026/old.pdf' })
+    expect(result).toEqual({ action: 'edit_pending', rowId: 'p1', oldPermitPath: '2026/old.pdf', ownerEmail: 'a@x.uz' })
   })
 
   it('allowPendingEdit does NOT bypass an approved row', async () => {
@@ -114,6 +114,6 @@ describe('classifyPermitResubmission', () => {
   it('imtiyozli (no jshshir): rejected row matched on the ID number → reopen', async () => {
     const rows = [row({ id: 'im1', status: 'rejected', jshshir: null, application_type: 'imtiyozli', passport_series: 'FA99887766' })]
     const result = await classifyPermitResubmission(fakeSupabase(rows), { passport: 'FA99887766', jshshir: null, email: 'a@x.uz' })
-    expect(result).toEqual({ action: 'reopen', rowId: 'im1', oldPermitPath: '2026/old.pdf' })
+    expect(result).toEqual({ action: 'reopen', rowId: 'im1', oldPermitPath: '2026/old.pdf', ownerEmail: 'a@x.uz' })
   })
 })

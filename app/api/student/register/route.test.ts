@@ -25,6 +25,13 @@ vi.mock('@/lib/supabase-admin-auth', () => ({
   updateAuthUserPasswordSafely,
 }))
 
+const emailProof = vi.hoisted(() => ({ ok: true }))
+vi.mock('@/lib/email-proof', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/email-proof')>()),
+  hasEmailProof: () => emailProof.ok,
+}))
+beforeEach(() => { emailProof.ok = true })
+
 const { POST } = await import('./route')
 
 const GOOD_PASSWORD = 'Abcdef123456!x'
@@ -477,5 +484,14 @@ describe('POST /api/student/register', () => {
     expect(response.status).toBe(409)
     expect(updateAuthUserPasswordSafely).not.toHaveBeenCalled()
     expect(createAuthUserSafely).not.toHaveBeenCalled()
+  })
+})
+
+describe('email ownership proof', () => {
+  it('401s without a valid proof for the email', async () => {
+    emailProof.ok = false
+    const res = await POST(req(foreignBody()))
+    expect(res.status).toBe(401)
+    expect((await res.json()).code).toBe('EMAIL_PROOF_REQUIRED')
   })
 })

@@ -11,6 +11,8 @@ import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
 import TelegramPermitConnect from '@/components/TelegramPermitConnect'
+import EmailProofDialog from '@/components/auth/EmailProofDialog'
+import { fetchWithEmailProof } from '@/features/email-verification/client'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import {
   getForeignIdFormatError,
@@ -114,11 +116,12 @@ function StatusCheckContent() {
     if (!result) return
     setCancelBusy('cancel')
     try {
-      const res = await fetch('/api/permit-requests/cancel', {
+      const res = await fetchWithEmailProof(email, (emailProof) => fetch('/api/permit-requests/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passportSeries, jshshir, email, applicationType: result.application_type }),
-      })
+        body: JSON.stringify({ passportSeries, jshshir, email, applicationType: result.application_type, emailProof }),
+      }))
+      if (!res) return
       const payload = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(payload.error || 'Bekor qilishda xatolik yuz berdi')
       setCancelledOk(true)
@@ -143,11 +146,16 @@ function StatusCheckContent() {
       const cleanJshshir = type === 'imtiyozli' ? '' : normalizeJshshir(pin)
       const cleanEmail = applicantEmail.trim().toLowerCase()
 
-      const response = await fetch('/api/permit-requests/status', {
+      // Only the inbox owner may see the application — a code goes to the email first.
+      const response = await fetchWithEmailProof(cleanEmail, (emailProof) => fetch('/api/permit-requests/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passportSeries: cleanPassport, jshshir: cleanJshshir, email: cleanEmail, applicationType: type }),
-      })
+        body: JSON.stringify({ passportSeries: cleanPassport, jshshir: cleanJshshir, email: cleanEmail, applicationType: type, emailProof }),
+      }))
+      if (!response) {
+        setSearched(false)
+        return
+      }
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Qidirishda xatolik yuz berdi')
       const data = payload.data ? { ...payload.data, passport_series: cleanPassport, jshshir: cleanJshshir } : null
@@ -614,6 +622,7 @@ export default function RuxsatnomaTekshirish() {
     }>
       <StatusCheckContent />
       <DeveloperContactLink />
+      <EmailProofDialog />
     </Suspense>
   )
 }

@@ -33,6 +33,8 @@ import {
   stripPlaceholderNameTokens,
 } from '@/lib/permit-validation'
 import { cyrillicToLatin } from '@/lib/transliterate'
+import EmailProofDialog from '@/components/auth/EmailProofDialog'
+import { fetchWithEmailProof } from '@/features/email-verification/client'
 
 const STUDY_TYPES = [
   { value: 'grant', label: "Davlat granti" },
@@ -275,7 +277,13 @@ export default function ImtiyozliAriza() {
       submission.append('originRegion', originRegion.trim())
       if (signatureImage) submission.append('studentSignature', signatureImage)
 
-      const response = await fetch('/api/imtiyozli-requests', { method: 'POST', body: submission })
+      // A fresh application needs no code; reopening/editing an existing one
+      // does (the server answers EMAIL_PROOF_REQUIRED and the dialog opens).
+      const response = await fetchWithEmailProof(email.trim().toLowerCase(), (emailProof) => {
+        submission.set('emailProof', emailProof)
+        return fetch('/api/imtiyozli-requests', { method: 'POST', body: submission })
+      }, { lazy: true })
+      if (!response) throw new Error('Arizani yangilash uchun emailingizni tasdiqlang.')
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Arizani saqlashda xatolik yuz berdi')
 
@@ -803,6 +811,7 @@ export default function ImtiyozliAriza() {
         }
       `}} />
       <DeveloperContactLink />
+      <EmailProofDialog />
 
       <SignatureCaptureModal
         open={signModalOpen}

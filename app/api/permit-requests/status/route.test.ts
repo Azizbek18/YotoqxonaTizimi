@@ -12,6 +12,13 @@ vi.mock('@/lib/security', () => ({ checkRateLimit: mocks.checkRateLimit, getClie
 vi.mock('@/lib/permit-telegram', () => ({ issuePermitTelegramLinkSafely: mocks.issuePermitTelegramLinkSafely }))
 vi.mock('@/lib/server-supabase', () => ({ getServiceSupabase: () => ({ from: mocks.from }) }))
 
+const emailProof = vi.hoisted(() => ({ ok: true }))
+vi.mock('@/lib/email-proof', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/email-proof')>()),
+  hasEmailProof: () => emailProof.ok,
+}))
+beforeEach(() => { emailProof.ok = true })
+
 const { POST } = await import('./route')
 
 type Result = { data?: unknown; error?: unknown; count?: number }
@@ -130,5 +137,14 @@ describe('POST /api/permit-requests/status', () => {
     const body = await res.json()
     expect(body.data.queuePosition).toBeUndefined()
     expect(body.data.queueTotal).toBeUndefined()
+  })
+})
+
+describe('email ownership proof', () => {
+  it('401s without a valid proof for the email', async () => {
+    emailProof.ok = false
+    const res = await POST(req(validYollanma))
+    expect(res.status).toBe(401)
+    expect((await res.json()).code).toBe('EMAIL_PROOF_REQUIRED')
   })
 })

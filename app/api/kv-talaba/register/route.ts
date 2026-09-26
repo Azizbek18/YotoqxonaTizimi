@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { createAuthUserSafely, deleteAuthUserSafely } from '@/lib/supabase-admin-auth'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+import { EMAIL_PROOF_REQUIRED, hasEmailProof } from '@/lib/email-proof'
 import { getPasswordPolicyError } from '@/lib/password-policy'
 import { isPermitFacultyValue } from '@/lib/faculties'
 import { directionBelongsToFaculty, normalizeDirection } from '@/lib/directions'
@@ -78,6 +79,12 @@ export async function POST(request: Request) {
         { ok: false, error: password !== confirmPassword ? 'Parollar bir xil emas' : passwordError },
         { status: 400 },
       )
+    }
+
+    // The account lands active immediately, so the email must be proven —
+    // otherwise anyone can squat someone else's address.
+    if (!hasEmailProof(body.emailProof, email)) {
+      return NextResponse.json({ ok: false, ...EMAIL_PROOF_REQUIRED }, { status: 401 })
     }
 
     const supabase = getServiceSupabase()

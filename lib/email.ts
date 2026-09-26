@@ -349,3 +349,17 @@ export async function sendRoomAssignedEmail(to: string, fullName: string, roomNu
     cta: { label: 'Shaxsiy kabinet', url: appUrl('/talaba/dashboard') },
   })
 }
+
+/** Email egaligini tasdiqlash kodi (lib/email-proof.ts). */
+export async function sendEmailVerificationCode(to: string, code: string) {
+  return sendMail({
+    to,
+    subject: `Tasdiqlash kodi: ${code}`,
+    heading: 'Emailingizni tasdiqlang',
+    paragraphs: [
+      `Tasdiqlash kodingiz: ${code}`,
+      'Kod 10 daqiqa amal qiladi. Uni saytdagi oynaga kiriting.',
+      'Agar bu kodni siz so‘ramagan bo‘lsangiz, xatni e’tiborsiz qoldiring — kodni hech kimga bermang.',
+    ],
+  })
+}

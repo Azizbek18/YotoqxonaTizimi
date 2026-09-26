@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
+import { EMAIL_PROOF_REQUIRED, hasEmailProof } from '@/lib/email-proof'
 import { getPasswordPolicyError } from '@/lib/password-policy'
 import {
   buildFullName,
@@ -156,6 +157,12 @@ export async function POST(request: NextRequest) {
     const passwordError = getPasswordPolicyError(password)
     if (passwordError) {
       return NextResponse.json({ error: passwordError }, { status: 400 })
+    }
+
+    // Choosing the account password must be tied to the permit's inbox —
+    // passport + email + JShSHIR alone are not secrets.
+    if (!hasEmailProof(body.emailProof, email)) {
+      return NextResponse.json(EMAIL_PROOF_REQUIRED, { status: 401 })
     }
 
     const supabase = getServiceSupabase()

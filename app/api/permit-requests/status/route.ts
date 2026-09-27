@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
-import { EMAIL_PROOF_REQUIRED, hasEmailProof } from '@/lib/email-proof'
 import {
-  isValidEmail,
   isValidForeignIdNumber,
   isValidJshshir,
   isValidPassport,
@@ -13,6 +11,12 @@ import {
 } from '@/lib/permit-validation'
 import { issuePermitTelegramLinkSafely } from '@/lib/permit-telegram'
 
+// Read-only: the applicant's own passport + JShSHIR is enough to see their
+// application's status. This used to also demand proof of the on-file email
+// (a code first) — dropped because the dekan reviews every submission by
+// hand anyway, and the code step was mailing (and failing to deliver) far
+// more often than it was catching anything. Actions that CHANGE the row —
+// cancel (/api/permit-requests/cancel), edit, register — still require it.
 export async function POST(request: NextRequest) {
   const throttle = await checkRateLimit(`permit-status:${getClientIp(request)}`, 15, 10 * 60_000)
   if (!throttle.allowed) {
@@ -23,47 +27,31 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null) as {
       passportSeries?: unknown
       jshshir?: unknown
-      email?: unknown
       applicationType?: unknown
-      emailProof?: unknown
     } | null
     const applicationType = body?.applicationType === 'imtiyozli' ? 'imtiyozli' : 'yollanma'
     const passport = applicationType === 'imtiyozli'
       ? normalizeForeignIdNumber(body?.passportSeries)
       : normalizePassport(body?.passportSeries)
     const jshshir = normalizeJshshir(body?.jshshir)
-    const email = String(body?.email ?? '').trim().toLowerCase().slice(0, 254)
     const identityIsValid = applicationType === 'imtiyozli'
       ? isValidForeignIdNumber(passport)
       : isValidPassport(passport) && isValidJshshir(jshshir)
-    if (!identityIsValid || !isValidEmail(email)) {
+    if (!identityIsValid) {
       return NextResponse.json({
-        error: applicationType === 'imtiyozli'
-          ? 'Pasport/ID yoki email formati noto‘g‘ri.'
-          : 'Pasport, JShSHIR yoki email formati noto‘g‘ri.',
+        error: applicationType === 'imtiyozli' ? 'Pasport/ID formati noto‘g‘ri.' : 'Pasport yoki JShSHIR formati noto‘g‘ri.',
       }, { status: 400 })
-    }
-
-    // passport + email (+ JShSHIR) are not secrets — the caller must also
-    // prove they own the inbox before seeing or changing the application.
-    if (!hasEmailProof(body?.emailProof, email)) {
-      return NextResponse.json(EMAIL_PROOF_REQUIRED, { status: 401 })
     }
 
     const supabase = getServiceSupabase()
     let query = supabase
       .from('permit_requests')
-      .select('id, full_name, status, room_number, reject_reason, blocked, created_at, faculty, phone, gender, direction, course, application_type, relative_phone, study_type, origin_country, origin_region')
+      .select('id, email, full_name, status, room_number, reject_reason, blocked, created_at, faculty, phone, gender, direction, course, application_type, relative_phone, study_type, origin_country, origin_region')
       .eq('passport_series', passport)
-      .eq('email', email)
       .eq('application_type', applicationType)
+    query = applicationType === 'imtiyozli' ? query.is('jshshir', null) : query.eq('jshshir', jshshir)
 
-    query = applicationType === 'imtiyozli'
-      ? query.is('jshshir', null)
-      : query.eq('jshshir', jshshir)
-
-    const { data, error } = await query
-      .maybeSingle()
+    const { data, error } = await query.maybeSingle()
     if (error) throw error
 
     if (!data) {
@@ -92,15 +80,17 @@ export async function POST(request: NextRequest) {
 
     // Whitelist the fields the applicant's own status check actually needs,
     // rather than forwarding the raw row. Everything past application_type
-    // is the applicant's own submitted data, echoed back only to a caller
-    // who already proved the passport + email: /register prefills the
-    // signup wizard from it, and the status page prefills the submit form
-    // when the applicant pulls a pending request back to edit it.
+    // is the applicant's own submitted data — email included, now that
+    // reaching this far only takes the passport + JShSHIR they submitted it
+    // with: /register prefills the signup wizard from it, and the status
+    // page prefills the submit form when the applicant pulls a pending
+    // request back to edit it.
     const telegram = await issuePermitTelegramLinkSafely(data.id)
     return NextResponse.json({
       data: {
         id: data.id,
         full_name: data.full_name,
+        email: data.email,
         status: data.status,
         room_number: data.room_number,
         reject_reason: data.reject_reason,

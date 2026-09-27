@@ -12,13 +12,6 @@ vi.mock('@/lib/security', () => ({ checkRateLimit: mocks.checkRateLimit, getClie
 vi.mock('@/lib/permit-telegram', () => ({ issuePermitTelegramLinkSafely: mocks.issuePermitTelegramLinkSafely }))
 vi.mock('@/lib/server-supabase', () => ({ getServiceSupabase: () => ({ from: mocks.from }) }))
 
-const emailProof = vi.hoisted(() => ({ ok: true }))
-vi.mock('@/lib/email-proof', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/email-proof')>()),
-  hasEmailProof: () => emailProof.ok,
-}))
-beforeEach(() => { emailProof.ok = true })
-
 const { POST } = await import('./route')
 
 type Result = { data?: unknown; error?: unknown; count?: number }
@@ -75,13 +68,9 @@ function req(body: unknown) {
   })
 }
 
-const validYollanma = {
-  passportSeries: 'AB1234567',
-  jshshir: '12345678901234',
-  email: 'student@example.com',
-}
+const validYollanma = { passportSeries: 'AB1234567', jshshir: '12345678901234' }
 
-describe('POST /api/permit-requests/status', () => {
+describe('POST /api/permit-requests/status (read-only, no email proof)', () => {
   it('429s when the lookup rate limit is exceeded', async () => {
     mocks.checkRateLimit.mockResolvedValue({ allowed: false })
     const res = await POST(req(validYollanma))
@@ -89,13 +78,13 @@ describe('POST /api/permit-requests/status', () => {
     expect(mocks.from).not.toHaveBeenCalled()
   })
 
-  it('400s an invalid passport/jshshir/email combination', async () => {
-    const res = await POST(req({ passportSeries: 'bad', jshshir: '1', email: 'not-an-email' }))
+  it('400s an invalid passport/jshshir combination', async () => {
+    const res = await POST(req({ passportSeries: 'bad', jshshir: '1' }))
     expect(res.status).toBe(400)
   })
 
   it('400s an invalid imtiyozli identity', async () => {
-    const res = await POST(req({ applicationType: 'imtiyozli', passportSeries: '', email: 'not-an-email' }))
+    const res = await POST(req({ applicationType: 'imtiyozli', passportSeries: '' }))
     expect(res.status).toBe(400)
   })
 
@@ -105,17 +94,29 @@ describe('POST /api/permit-requests/status', () => {
     expect(res.status).toBe(500)
   })
 
-  it('returns data: null when nothing matches (no data leak on a wrong guess)', async () => {
+  it('returns data: null when nothing matches — no proof needed to learn that much', async () => {
     state.main = { data: null, error: null }
     const res = await POST(req(validYollanma))
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ data: null })
   })
 
+  it('returns the full record — including email — from passport+JShSHIR alone, immediately', async () => {
+    state.main = {
+      data: { id: 'perm1', email: 'onfile@example.com', full_name: 'Aliyev Ali', status: 'approved', faculty: 'amit' },
+      error: null,
+    }
+    const res = await POST(req(validYollanma))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data.email).toBe('onfile@example.com')
+    expect(body.data.status).toBe('approved')
+  })
+
   it('returns queue position for a pending permit', async () => {
     state.main = {
       data: {
-        id: 'perm1', full_name: 'Aliyev Ali', status: 'pending', faculty: 'amit',
+        id: 'perm1', email: 'onfile@example.com', full_name: 'Aliyev Ali', status: 'pending', faculty: 'amit',
         created_at: '2026-01-01T00:00:00Z',
       },
       error: null,
@@ -131,20 +132,11 @@ describe('POST /api/permit-requests/status', () => {
   })
 
   it('omits queue info for a non-pending permit', async () => {
-    state.main = { data: { id: 'perm1', full_name: 'Aliyev Ali', status: 'approved', faculty: 'amit' }, error: null }
+    state.main = { data: { id: 'perm1', email: 'onfile@example.com', full_name: 'Aliyev Ali', status: 'approved', faculty: 'amit' }, error: null }
     const res = await POST(req(validYollanma))
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.data.queuePosition).toBeUndefined()
     expect(body.data.queueTotal).toBeUndefined()
-  })
-})
-
-describe('email ownership proof', () => {
-  it('401s without a valid proof for the email', async () => {
-    emailProof.ok = false
-    const res = await POST(req(validYollanma))
-    expect(res.status).toBe(401)
-    expect((await res.json()).code).toBe('EMAIL_PROOF_REQUIRED')
   })
 })

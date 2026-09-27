@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Search, CheckCircle2, XCircle, CreditCard, Mail,
+  Search, CheckCircle2, XCircle, CreditCard,
   HelpCircle, AlertTriangle, ChevronRight, ChevronLeft, House, LogIn
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -12,13 +12,11 @@ import ThemeToggle from '@/components/theme/ThemeToggle'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
 import TelegramPermitConnect from '@/components/TelegramPermitConnect'
 import EmailProofDialog from '@/components/auth/EmailProofDialog'
-import { fetchWithEmailProof } from '@/features/email-verification/client'
+import { ensureChallengeProof } from '@/features/email-verification/client'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import {
-  getEmailTypoSuggestion,
   getForeignIdFormatError,
   getPassportFormatError,
-  isValidEmail,
   isValidForeignIdNumber,
   isValidJshshir,
   isValidPassport,
@@ -69,7 +67,6 @@ function StatusCheckContent() {
   // Input states
   const [passportSeries, setPassportSeries] = useState('')
   const [jshshir, setJshshir] = useState('')
-  const [email, setEmail] = useState('')
   const [applicationType, setApplicationType] = useState<ApplicationType>('yollanma')
   const [focusedField, setFocusedField] = useState<string | null>(null)
 
@@ -96,7 +93,7 @@ function StatusCheckContent() {
         mode: 'edit',
         passport: passportSeries,
         jshshir,
-        email,
+        email: result.email,
         applicationType: result.application_type,
         fullName: result.full_name,
         phone: result.phone ?? '',
@@ -113,18 +110,39 @@ function StatusCheckContent() {
     router.push(result.application_type === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish')
   }
 
+  // Cancel is destructive, so unlike viewing it still proves control of the
+  // inbox on file — the code goes there, never to something typed here.
   const runCancel = async () => {
     if (!result) return
     setCancelBusy('cancel')
     try {
-      const res = await fetchWithEmailProof(email, (emailProof) => fetch('/api/permit-requests/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passportSeries, jshshir, email, applicationType: result.application_type, emailProof }),
-      }))
-      if (!res) return
-      const payload = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(payload.error || 'Bekor qilishda xatolik yuz berdi')
+      const attemptCancel = async (proof?: { email: string; proof: string }) => {
+        const res = await fetch('/api/permit-requests/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            passportSeries, jshshir, applicationType: result.application_type,
+            ...(proof ? { email: proof.email, emailProof: proof.proof } : {}),
+          }),
+        })
+        return { res, body: await res.json().catch(() => ({})) }
+      }
+
+      const first = await attemptCancel()
+      if (!first.body.requiresEmailProof) throw new Error(first.body.error || 'Bekor qilishda xatolik yuz berdi')
+
+      const proofResult = await ensureChallengeProof(
+        { challenge: first.body.challenge, devCode: first.body.devCode },
+        async () => {
+          const retry = await attemptCancel()
+          if (!retry.body.requiresEmailProof) throw new Error(retry.body.error || 'Kodni yuborib bo‘lmadi.')
+          return { challenge: retry.body.challenge, devCode: retry.body.devCode }
+        },
+      )
+      if (!proofResult) return
+
+      const final = await attemptCancel(proofResult)
+      if (!final.res.ok) throw new Error(final.body.error || 'Bekor qilishda xatolik yuz berdi')
       setCancelledOk(true)
       setResult(null)
     } catch (err) {
@@ -135,7 +153,8 @@ function StatusCheckContent() {
     }
   }
 
-  const handleSearch = useCallback(async (passport: string, pin: string, applicantEmail: string, type: ApplicationType) => {
+  // Read-only, so no email/code needed — passport + JShSHIR alone finds it.
+  const handleSearch = useCallback(async (passport: string, pin: string, type: ApplicationType) => {
     setLoading(true)
     setSearched(true)
     setResult(null)
@@ -145,18 +164,12 @@ function StatusCheckContent() {
     try {
       const cleanPassport = type === 'imtiyozli' ? normalizeForeignIdNumber(passport) : normalizePassport(passport)
       const cleanJshshir = type === 'imtiyozli' ? '' : normalizeJshshir(pin)
-      const cleanEmail = applicantEmail.trim().toLowerCase()
 
-      // Only the inbox owner may see the application — a code goes to the email first.
-      const response = await fetchWithEmailProof(cleanEmail, (emailProof) => fetch('/api/permit-requests/status', {
+      const response = await fetch('/api/permit-requests/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passportSeries: cleanPassport, jshshir: cleanJshshir, email: cleanEmail, applicationType: type, emailProof }),
-      }))
-      if (!response) {
-        setSearched(false)
-        return
-      }
+        body: JSON.stringify({ passportSeries: cleanPassport, jshshir: cleanJshshir, applicationType: type }),
+      })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Qidirishda xatolik yuz berdi')
       const data = payload.data ? { ...payload.data, passport_series: cleanPassport, jshshir: cleanJshshir } : null
@@ -166,7 +179,7 @@ function StatusCheckContent() {
         if (typeof window !== 'undefined') {
           // sessionStorage, not localStorage — see app/page.tsx for why.
           sessionStorage.setItem('student_permit_passport', cleanPassport)
-          sessionStorage.setItem('student_permit_email', cleanEmail)
+          sessionStorage.setItem('student_permit_email', data.email)
           sessionStorage.setItem('student_permit_type', type)
           if (type === 'imtiyozli') sessionStorage.removeItem('student_permit_jshshir')
           else sessionStorage.setItem('student_permit_jshshir', cleanJshshir)
@@ -183,28 +196,27 @@ function StatusCheckContent() {
   }, [])
 
   // Restore only from this tab's session storage. National ID fields never
-  // appear in URLs, referrers, browser history or server access logs.
+  // appear in URLs, referrers, browser history or server access logs. Only
+  // prefills the form — a code now costs a real send, so revisiting this
+  // page never fires one on its own; the applicant clicks "Tekshirish".
   useEffect(() => {
     const restoreId = window.setTimeout(() => {
       const passportValue = sessionStorage.getItem('student_permit_passport') ?? ''
       const jshshirValue = sessionStorage.getItem('student_permit_jshshir') ?? ''
-      const emailValue = sessionStorage.getItem('student_permit_email') ?? ''
       const typeValue: ApplicationType = sessionStorage.getItem('student_permit_type') === 'imtiyozli' ? 'imtiyozli' : 'yollanma'
-      if (passportValue && emailValue && (typeValue === 'imtiyozli' || jshshirValue)) {
+      if (passportValue && (typeValue === 'imtiyozli' || jshshirValue)) {
         setPassportSeries(passportValue)
         setJshshir(jshshirValue)
-        setEmail(emailValue)
         setApplicationType(typeValue)
-        handleSearch(passportValue, jshshirValue, emailValue, typeValue)
       }
     }, 0)
     return () => window.clearTimeout(restoreId)
-  }, [handleSearch])
+  }, [])
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!passportSeries || !email || (applicationType === 'yollanma' && !jshshir)) {
-      showToast(applicationType === 'imtiyozli' ? "Pasport/ID va emailni kiriting!" : "Pasport, JShSHIR va email ma'lumotlarini kiriting!")
+    if (!passportSeries || (applicationType === 'yollanma' && !jshshir)) {
+      showToast(applicationType === 'imtiyozli' ? "Pasport/ID raqamini kiriting!" : "Pasport va JShSHIR ma'lumotlarini kiriting!")
       return
     }
     const passportError = applicationType === 'imtiyozli'
@@ -214,11 +226,7 @@ function StatusCheckContent() {
       showToast(passportError)
       return
     }
-    if (!isValidEmail(email)) {
-      showToast("Email formati noto'g'ri.")
-      return
-    }
-    handleSearch(passportSeries, jshshir, email, applicationType)
+    handleSearch(passportSeries, jshshir, applicationType)
   }
 
   // Back to the form without re-fetching — lets someone fix a typo (wrong
@@ -233,7 +241,6 @@ function StatusCheckContent() {
   // Form and result are two distinct steps, never shown together: the
   // result only replaces the form once a check has actually finished.
   const showResult = searched && !loading
-  const emailSuggestion = getEmailTypoSuggestion(email)
 
   return (
     <div className={`min-h-screen flex items-center justify-center p-3 sm:p-6 relative overflow-x-hidden ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100 text-slate-900' : 'bg-[#020617] text-white'}`}>
@@ -260,8 +267,8 @@ function StatusCheckContent() {
               {showResult
                 ? "Arizangizning joriy holati"
                 : applicationType === 'imtiyozli'
-                  ? "Xorijiy/imtiyozli arizadagi pasport yoki ID va email orqali holatni tekshiring."
-                  : "Pasport, JShSHIR va arizada koʻrsatilgan email orqali yoʻllanma holatini tekshiring."}
+                  ? "Xorijiy/imtiyozli arizadagi pasport yoki ID raqamini kiriting."
+                  : "Pasport va JShSHIR raqamini kiriting."}
             </p>
           </div>
 
@@ -353,48 +360,6 @@ function StatusCheckContent() {
                 </div>
               </div>
             </div>}
-            <div className="space-y-1">
-              <div className="flex justify-between items-center ml-2">
-                <label className={`text-[9px] font-black uppercase tracking-widest block ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>Arizadagi email</label>
-                {isValidEmail(email) && (
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
-                )}
-              </div>
-              <div className={`cyber-border ${focusedField === 'email' ? 'focused' : ''}`}>
-                <div className="cyber-input-inner relative">
-                  <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === 'email' ? 'text-blue-400 scale-110 drop-shadow-[0_0_8px_#3b82f6]' : 'text-slate-500'}`}>
-                    <Mail size={16} />
-                  </div>
-                  {focusedField === 'email' && (
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-500/10 blur-[6px] pointer-events-none" />
-                  )}
-                  <input
-                    type="email"
-                    name="email"
-                    autoComplete="email"
-                    maxLength={254}
-                    value={email}
-                    onFocus={() => setFocusedField('email')}
-                    onBlur={() => setFocusedField(null)}
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="talaba@example.com"
-                    className={`w-full bg-transparent py-2.5 sm:py-3 pr-4 pl-12 rounded-xl text-base outline-none transition-colors duration-300 font-sans ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'}`}
-                    required
-                  />
-                </div>
-              </div>
-              {/* Catches "gmial.com"-style typos before a real code gets
-                  mailed to a domain the student didn't mean to type. */}
-              {emailSuggestion && (
-                <button
-                  type="button"
-                  onClick={() => setEmail(emailSuggestion)}
-                  className="px-2 text-[10px] font-semibold leading-relaxed text-amber-500 hover:text-amber-400 text-left"
-                >
-                  Nazarda tutdingizmi: <span className="underline">{emailSuggestion}</span>?
-                </button>
-              )}
-            </div>
 
             <button
               type="submit"
@@ -515,7 +480,7 @@ function StatusCheckContent() {
                               try {
                                 sessionStorage.setItem(
                                   'permit_resubmit',
-                                  JSON.stringify({ passport: passportSeries, jshshir, email, applicationType: result.application_type }),
+                                  JSON.stringify({ passport: passportSeries, jshshir, email: result.email, applicationType: result.application_type }),
                                 )
                               } catch { /* private mode — user just retypes */ }
                             }}

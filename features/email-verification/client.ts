@@ -61,17 +61,29 @@ export function sendEmailCode(email: string) {
   return postJson<{ challenge: string; devCode?: string }>('/api/email-verification/send', { email: normalize(email) })
 }
 
-export async function verifyEmailCode(challenge: string, code: string): Promise<string> {
+type ProofResult = { email: string; proof: string }
+
+async function verifyEmailCode(challenge: string, code: string): Promise<ProofResult> {
   const result = await postJson<StoredProof>('/api/email-verification/verify', { challenge, code })
   storeProof({ email: result.email, proof: result.proof, expiresAt: result.expiresAt })
-  return result.proof
+  return { email: result.email, proof: result.proof }
 }
 
 // ── Dialog bridge ─────────────────────────────────────────────────────────
-// A tiny external store: ensureEmailProof() parks a pending request here and
-// the dialog (useSyncExternalStore) renders it.
+// A tiny external store: ensureEmailProof()/ensureChallengeProof() park a
+// pending request here and the dialog (useSyncExternalStore) renders it.
 
-type PendingRequest = { email: string; resolve: (proof: string | null) => void }
+type PendingRequest =
+  | { kind: 'email'; email: string; resolve: (result: ProofResult | null) => void }
+  | {
+      kind: 'challenge'
+      challenge: string
+      devCode?: string
+      // Repeats whatever request produced the first challenge, for "qayta
+      // yuborish" — the caller never learns the email either way.
+      onResend: () => Promise<{ challenge: string; devCode?: string }>
+      resolve: (result: ProofResult | null) => void
+    }
 
 let pending: PendingRequest | null = null
 const listeners = new Set<() => void>()
@@ -87,23 +99,44 @@ export function subscribeEmailProofRequest(listener: () => void) {
   }
 }
 
-export function getEmailProofRequest(): string | null {
-  return pending?.email ?? null
+export function getPendingEmailProofRequest(): PendingRequest | null {
+  return pending
 }
 
-export function settleEmailProofRequest(proof: string | null) {
+export function settleEmailProofRequest(result: ProofResult | null) {
   const current = pending
   pending = null
   emit()
-  current?.resolve(proof)
+  current?.resolve(result)
 }
+
+export { verifyEmailCode }
 
 export function ensureEmailProof(email: string): Promise<string | null> {
   const stored = getStoredEmailProof(email)
   if (stored) return Promise.resolve(stored)
+  const target = normalize(email)
   return new Promise((resolve) => {
     pending?.resolve(null)
-    pending = { email: normalize(email), resolve }
+    pending = { kind: 'email', email: target, resolve: (result) => resolve(result?.proof ?? null) }
+    emit()
+  })
+}
+
+/**
+ * Like ensureEmailProof, but for a flow where the SERVER — not the caller —
+ * decided which email to mail a code to (e.g. "whatever's on file for this
+ * record", never an address typed into a form) and already sent the first
+ * one. The caller only ever sees `challenge`/`devCode`, never the address;
+ * it learns the real email only once the code is verified.
+ */
+export function ensureChallengeProof(
+  initial: { challenge: string; devCode?: string },
+  onResend: () => Promise<{ challenge: string; devCode?: string }>,
+): Promise<ProofResult | null> {
+  return new Promise((resolve) => {
+    pending?.resolve(null)
+    pending = { kind: 'challenge', challenge: initial.challenge, devCode: initial.devCode, onResend, resolve }
     emit()
   })
 }

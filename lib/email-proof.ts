@@ -1,5 +1,5 @@
 import 'server-only'
-import { createHmac, randomBytes, randomInt, timingSafeEqual } from 'crypto'
+import { createCipheriv, createDecipheriv, createHmac, randomBytes, randomInt, timingSafeEqual } from 'crypto'
 
 // Proof that the caller controls an email inbox — the missing piece behind
 // every public applicant flow (permit status/edit/cancel, /register,
@@ -12,6 +12,11 @@ import { createHmac, randomBytes, randomInt, timingSafeEqual } from 'crypto'
 // A verified code is exchanged for a short-lived `proof` token that the
 // protected endpoints check against the email they are about to act on.
 // Brute force is bounded by the rate limits in the send/verify routes.
+//
+// The payload itself is AES-256-GCM ENCRYPTED, not just base64 — some
+// callers (permit-status's identity-only lookup) hand the challenge to a
+// caller who must NOT learn which email it's for until they've entered the
+// code. Plain base64 would leak it to anyone who decoded the string.
 
 export const CODE_TTL_MS = 10 * 60_000
 export const PROOF_TTL_MS = 2 * 60 * 60_000
@@ -25,6 +30,14 @@ function key(): Buffer {
   return createHmac('sha256', secret).update('email-proof:v1').digest()
 }
 
+// Same secret, a different label — an independent-looking key without a
+// second value to manage.
+function encKey(): Buffer {
+  const secret = process.env.EMAIL_PROOF_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!secret) throw new Error('EMAIL_PROOF_SECRET / SUPABASE_SERVICE_ROLE_KEY topilmadi')
+  return createHmac('sha256', secret).update('email-proof:v1:enc').digest()
+}
+
 function mac(value: string): string {
   return createHmac('sha256', key()).update(value).digest('base64url')
 }
@@ -36,12 +49,20 @@ function sameMac(a: string, b: string): boolean {
 }
 
 function encode(payload: object): string {
-  return Buffer.from(JSON.stringify(payload)).toString('base64url')
+  const iv = randomBytes(12)
+  const cipher = createCipheriv('aes-256-gcm', encKey(), iv)
+  const data = Buffer.concat([cipher.update(JSON.stringify(payload), 'utf8'), cipher.final()])
+  return Buffer.concat([iv, cipher.getAuthTag(), data]).toString('base64url')
 }
 
 function decode<T>(value: string): T | null {
   try {
-    return JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as T
+    const raw = Buffer.from(value, 'base64url')
+    if (raw.length < 28) return null // shorter than iv(12) + authTag(16)
+    const decipher = createDecipheriv('aes-256-gcm', encKey(), raw.subarray(0, 12))
+    decipher.setAuthTag(raw.subarray(12, 28))
+    const plain = Buffer.concat([decipher.update(raw.subarray(28)), decipher.final()])
+    return JSON.parse(plain.toString('utf8')) as T
   } catch {
     return null
   }

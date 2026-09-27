@@ -31,18 +31,22 @@ describe('email challenge', () => {
     expect(verifyEmailChallenge(challenge, code, now + CODE_TTL_MS + 1)).toBeNull()
   })
 
-  it('rejects a challenge whose email was swapped', () => {
+  it('rejects a tampered payload (also proves the email is not just base64 — a bit-flip must break decryption, not merely the signature)', () => {
     const { code, challenge } = issueEmailChallenge('ali@example.com')
     const [payload, sig] = challenge.split('.')
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'))
-    const forged = Buffer.from(JSON.stringify({ ...data, e: 'victim@example.com' })).toString('base64url')
-    expect(verifyEmailChallenge(`${forged}.${sig}`, code)).toBeNull()
+    const bytes = Buffer.from(payload, 'base64url')
+    bytes[bytes.length - 1] ^= 0xff // flip the last ciphertext byte
+    const tampered = bytes.toString('base64url')
+    expect(verifyEmailChallenge(`${tampered}.${sig}`, code)).toBeNull()
+    expect(readEmailChallenge(`${tampered}.${sig}`)).toBeNull()
   })
 
-  it('exposes the nonce for attempt limiting', () => {
+  it('exposes the nonce for attempt limiting, but never the email in a form readable without the server secret', () => {
     const { challenge } = issueEmailChallenge('ali@example.com')
     expect(readEmailChallenge(challenge)).toMatchObject({ email: 'ali@example.com', expired: false })
     expect(readEmailChallenge('garbage')).toBeNull()
+    const [payload] = challenge.split('.')
+    expect(Buffer.from(payload, 'base64url').toString('utf8')).not.toContain('ali@example.com')
   })
 })
 

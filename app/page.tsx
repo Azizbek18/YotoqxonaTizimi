@@ -9,7 +9,7 @@ import {
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { Skel } from '@/components/ui/skeletons';
 import { useThemeStore } from '@/lib/stores/theme-store';
-import { clearEmailProof, getStoredEmailProof } from '@/features/email-verification/client';
+import { clearEmailProof } from '@/features/email-verification/client';
 import { appFont as baloo2 } from '@/lib/app-font';
 
 interface PermitRequest {
@@ -43,18 +43,15 @@ export default function Home() {
     // of leaking the last applicant's status to the next visitor forever.
     const passport = sessionStorage.getItem('student_permit_passport');
     const jshshir = sessionStorage.getItem('student_permit_jshshir');
-    const email = sessionStorage.getItem('student_permit_email');
     const applicationType = sessionStorage.getItem('student_permit_type') === 'imtiyozli' ? 'imtiyozli' : 'yollanma';
-    // Only a proof already earned on the status page is used here — the
-    // landing page never pops a code dialog on load.
-    const emailProof = email ? getStoredEmailProof(email) : null;
-    if (passport && email && emailProof && (applicationType === 'imtiyozli' || jshshir)) {
+    // Read-only status check — passport + JShSHIR alone is enough, no code.
+    if (passport && (applicationType === 'imtiyozli' || jshshir)) {
       if (!silent) setCheckingPermit(true);
       try {
         const response = await fetch('/api/permit-requests/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ passportSeries: passport, jshshir, email, applicationType, emailProof }),
+          body: JSON.stringify({ passportSeries: passport, jshshir, applicationType }),
         });
         const result = await response.json();
 

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, AlertTriangle, FileSignature, Loader2, MailCheck, SearchX } from 'lucide-react'
+import { CheckCircle, AlertTriangle, FileSignature, Loader2, SearchX } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
@@ -20,7 +20,7 @@ import StepProgress from '@/components/register/StepProgress'
 import { buildSteps, type ApplicationType, type WizardStepProps } from '@/components/register/wizardSteps'
 import { initialData, RegisterData } from '@/components/register/types'
 
-type PermitState = 'loading' | 'loaded' | 'missing' | 'unverified'
+type PermitState = 'loading' | 'loaded' | 'missing'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -64,22 +64,17 @@ export default function RegisterPage() {
       // (foreign) applicant has no JShSHIR, so look them up as imtiyozli
       // whenever one isn't in this tab's storage.
       const lookupType: ApplicationType = restoredType === 'imtiyozli' || !jshshir ? 'imtiyozli' : 'yollanma'
-      // The permit (and the right to set this account's password) belongs to
-      // whoever controls the permit email — prove it with a mailed code.
-      fetchWithEmailProof(email, (emailProof) => fetch('/api/permit-requests/status', {
+      // Read-only prefill — passport + JShSHIR alone is enough to look up the
+      // approved permit. Setting the account's actual password is the
+      // sensitive step, and /api/student/register still proves the email
+      // for that separately.
+      fetch('/api/permit-requests/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passportSeries, jshshir, email, applicationType: lookupType, emailProof }),
-      }))
-        .then((res) => {
-          if (!res) {
-            setPermitState('unverified')
-            return undefined
-          }
-          return res.ok ? res.json() : null
-        })
+        body: JSON.stringify({ passportSeries, jshshir, applicationType: lookupType }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
         .then((payload) => {
-          if (payload === undefined) return
           const permit = payload?.data
           if (!permit || permit.status !== 'approved') {
             setPermitState('missing')
@@ -295,27 +290,6 @@ export default function RegisterPage() {
               <div className="min-h-70 flex flex-col items-center justify-center gap-3 text-center">
                 <Loader2 className={`animate-spin ${isLight ? 'text-blue-500' : 'text-blue-400'}`} size={28} />
                 <p className={`text-xs font-semibold ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Arizangiz tekshirilmoqda…</p>
-              </div>
-            )}
-
-            {permitState === 'unverified' && (
-              <div className="min-h-70 flex flex-col items-center justify-center gap-4 text-center py-6">
-                <div className={`p-3 rounded-2xl ${isLight ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-500/10 text-indigo-400'}`}>
-                  <MailCheck size={26} />
-                </div>
-                <div>
-                  <h2 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Emailingizni tasdiqlang</h2>
-                  <p className={`mt-1 text-[11px] leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                    Ro&apos;yxatdan o&apos;tish uchun arizadagi emailingizga yuborilgan 6 xonali kodni kiritishingiz kerak.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-indigo-500/25"
-                >
-                  Kodni yuborish
-                </button>
               </div>
             )}
 

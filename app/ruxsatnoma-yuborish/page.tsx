@@ -20,7 +20,7 @@ import SignatureCaptureModal from '@/components/applications/SignatureCaptureMod
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
 import { directionsForFaculty } from '@/lib/directions'
-import { getPassportFormatError, isValidJoinedFullName, isValidJshshir, isValidPassport, normalizeJshshir, normalizeNameWhitespace, normalizePassport, UZ_ORIGIN_REGIONS } from '@/lib/permit-validation'
+import { getEmailTypoSuggestion, getPassportFormatError, isValidJoinedFullName, isValidJshshir, isValidPassport, normalizeJshshir, normalizeNameWhitespace, normalizePassport, UZ_ORIGIN_REGIONS } from '@/lib/permit-validation'
 import { cyrillicToLatin } from '@/lib/transliterate'
 import { prepareAiAnalysisFile, prepareUploadFile } from '@/lib/prepare-upload'
 import EmailProofDialog from '@/components/auth/EmailProofDialog'
@@ -1338,6 +1338,15 @@ export default function RuxsatnomaYuborish() {
                                 />
                               </div>
                             </div>
+                            {getEmailTypoSuggestion(email) && (
+                              <button
+                                type="button"
+                                onClick={() => setEmail(getEmailTypoSuggestion(email)!)}
+                                className="px-2 text-[10px] font-semibold text-amber-500 hover:text-amber-400 text-left"
+                              >
+                                Nazarda tutdingizmi: <span className="underline">{getEmailTypoSuggestion(email)}</span>?
+                              </button>
+                            )}
                           </div>
 
                           {/* Phone */}

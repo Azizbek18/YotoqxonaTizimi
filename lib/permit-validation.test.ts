@@ -3,6 +3,7 @@ import {
   PERMIT_FILE_RULES,
   buildFullName,
   detectPermitFileMimeType,
+  getEmailTypoSuggestion,
   getNamePartError,
   hasAllowedSignature,
   isPlausibleInternationalPhone,
@@ -65,6 +66,17 @@ describe('permit validation', () => {
     expect(isPlausibleInternationalPhone('+998 (90) 123-45-67')).toBe(true)
     expect(isPlausibleInternationalPhone('abcdefg')).toBe(false)
     expect(isPlausibleInternationalPhone('+12')).toBe(false)
+  })
+
+  it('suggests a fix for a mistyped common email domain', () => {
+    expect(getEmailTypoSuggestion('talaba@gmial.com')).toBe('talaba@gmail.com')
+    expect(getEmailTypoSuggestion('talaba@gmail.con')).toBe('talaba@gmail.com')
+    expect(getEmailTypoSuggestion('talaba@gnail.com')).toBe('talaba@gmail.com')
+    expect(getEmailTypoSuggestion('talaba@mail.rue')).toBe('talaba@mail.ru')
+    // Already-correct or unrelated domains never get a suggestion.
+    expect(getEmailTypoSuggestion('talaba@gmail.com')).toBeNull()
+    expect(getEmailTypoSuggestion('talaba@nuu.uz')).toBeNull()
+    expect(getEmailTypoSuggestion('not-an-email')).toBeNull()
   })
 
   it('keeps exactly fourteen JShShIR digits', () => {

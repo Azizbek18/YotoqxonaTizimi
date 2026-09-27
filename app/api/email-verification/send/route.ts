@@ -3,6 +3,7 @@ import { checkRateLimit, getClientIp } from '@/lib/security'
 import { isValidEmail } from '@/lib/permit-validation'
 import { issueEmailChallenge, normalizeProofEmail } from '@/lib/email-proof'
 import { sendEmailVerificationCode } from '@/lib/email'
+import { domainAcceptsMail } from '@/lib/email-domain'
 
 // Step 1 of email-ownership proof: mail a 6-digit code, hand the caller the
 // signed challenge. Never reveals whether an account/permit uses the email.
@@ -11,6 +12,17 @@ export async function POST(request: NextRequest) {
   const email = normalizeProofEmail(body?.email)
   if (!isValidEmail(email)) {
     return NextResponse.json({ error: 'Email formati noto‘g‘ri.' }, { status: 400 })
+  }
+
+  // Reject a domain that can't receive mail at all before spending a real
+  // Resend/SMTP send on it — doesn't count against the attempt limits below,
+  // so a typo never eats into the budget for the correct retry.
+  const domain = email.slice(email.lastIndexOf('@') + 1)
+  if (!(await domainAcceptsMail(domain))) {
+    return NextResponse.json(
+      { error: 'Bu email domeni topilmadi. Manzilni tekshirib qayta kiriting (masalan @gmail.com to‘g‘ri yozilganiga ishonch hosil qiling).' },
+      { status: 400 },
+    )
   }
 
   const ip = getClientIp(request)

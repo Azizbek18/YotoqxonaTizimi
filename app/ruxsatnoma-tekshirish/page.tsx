@@ -15,6 +15,7 @@ import EmailProofDialog from '@/components/auth/EmailProofDialog'
 import { fetchWithEmailProof } from '@/features/email-verification/client'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import {
+  getEmailTypoSuggestion,
   getForeignIdFormatError,
   getPassportFormatError,
   isValidEmail,
@@ -232,6 +233,7 @@ function StatusCheckContent() {
   // Form and result are two distinct steps, never shown together: the
   // result only replaces the form once a check has actually finished.
   const showResult = searched && !loading
+  const emailSuggestion = getEmailTypoSuggestion(email)
 
   return (
     <div className={`min-h-screen flex items-center justify-center p-3 sm:p-6 relative overflow-x-hidden ${isLight ? 'bg-linear-to-br from-slate-50 to-slate-100 text-slate-900' : 'bg-[#020617] text-white'}`}>
@@ -381,6 +383,17 @@ function StatusCheckContent() {
                   />
                 </div>
               </div>
+              {/* Catches "gmial.com"-style typos before a real code gets
+                  mailed to a domain the student didn't mean to type. */}
+              {emailSuggestion && (
+                <button
+                  type="button"
+                  onClick={() => setEmail(emailSuggestion)}
+                  className="px-2 text-[10px] font-semibold leading-relaxed text-amber-500 hover:text-amber-400 text-left"
+                >
+                  Nazarda tutdingizmi: <span className="underline">{emailSuggestion}</span>?
+                </button>
+              )}
             </div>
 
             <button

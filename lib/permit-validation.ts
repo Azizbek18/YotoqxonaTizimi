@@ -69,6 +69,59 @@ export function isValidEmail(input: unknown) {
   return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
+// Domains a mistyped email most often was meant to be — CIS/Uzbekistan
+// traffic skews heavily toward these, unlike a university or work address.
+const COMMON_EMAIL_DOMAINS = [
+  'gmail.com', 'mail.ru', 'yandex.ru', 'yandex.com', 'icloud.com',
+  'outlook.com', 'hotmail.com', 'yahoo.com', 'bk.ru', 'list.ru',
+  'inbox.ru', 'rambler.ru', 'protonmail.com', 'live.com', 'mail.com',
+]
+
+// Levenshtein + adjacent-transposition ("gmial" -> "gmail") in one pass —
+// covers the typos people actually make while staying a single cheap pass.
+function editDistance(a: string, b: string): number {
+  const rows = a.length + 1
+  const cols = b.length + 1
+  const d: number[][] = Array.from({ length: rows }, () => new Array(cols).fill(0))
+  for (let i = 0; i < rows; i++) d[i][0] = i
+  for (let j = 0; j < cols; j++) d[0][j] = j
+  for (let i = 1; i < rows; i++) {
+    for (let j = 1; j < cols; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost)
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1)
+      }
+    }
+  }
+  return d[a.length][b.length]
+}
+
+/**
+ * "Nazarda tutdingizmi ...?" hint for a likely-mistyped domain (gmial.com,
+ * gmail.con, ya.ru). Returns the corrected email, or null when the domain is
+ * already known or too far from any common one — a wrong guess costs more
+ * trust than a missed typo saves, so this stays conservative.
+ */
+export function getEmailTypoSuggestion(input: unknown): string | null {
+  const value = String(input ?? '').trim().toLowerCase()
+  const at = value.lastIndexOf('@')
+  if (at < 1) return null
+  const domain = value.slice(at + 1)
+  if (!domain || COMMON_EMAIL_DOMAINS.includes(domain)) return null
+
+  let best: { domain: string; distance: number } | null = null
+  for (const candidate of COMMON_EMAIL_DOMAINS) {
+    const distance = editDistance(domain, candidate)
+    if (distance > 0 && distance <= 2 && (!best || distance < best.distance)) {
+      best = { domain: candidate, distance }
+    }
+  }
+  // A 2-edit match on a short domain is more likely a coincidence than a typo.
+  if (!best || (best.distance === 2 && domain.length < 6)) return null
+  return value.slice(0, at + 1) + best.domain
+}
+
 export function isPlausibleInternationalPhone(input: unknown) {
   const value = String(input ?? '').trim()
   if (!/^\+?[\d\s()-]+$/.test(value)) return false

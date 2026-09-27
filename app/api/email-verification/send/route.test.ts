@@ -6,10 +6,12 @@ process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'test-secret-key-for-email-proof'
 const mocks = vi.hoisted(() => ({
   checkRateLimit: vi.fn(),
   sendEmailVerificationCode: vi.fn(),
+  domainAcceptsMail: vi.fn(),
 }))
 
 vi.mock('@/lib/security', () => ({ checkRateLimit: mocks.checkRateLimit, getClientIp: () => '127.0.0.1' }))
 vi.mock('@/lib/email', () => ({ sendEmailVerificationCode: mocks.sendEmailVerificationCode }))
+vi.mock('@/lib/email-domain', () => ({ domainAcceptsMail: mocks.domainAcceptsMail }))
 
 const { POST } = await import('./route')
 const { verifyEmailChallenge } = await import('@/lib/email-proof')
@@ -22,6 +24,7 @@ beforeEach(() => {
   vi.resetAllMocks()
   mocks.checkRateLimit.mockResolvedValue({ allowed: true, remaining: 2 })
   mocks.sendEmailVerificationCode.mockResolvedValue({ ok: true })
+  mocks.domainAcceptsMail.mockResolvedValue(true)
 })
 
 describe('POST /api/email-verification/send', () => {
@@ -38,6 +41,15 @@ describe('POST /api/email-verification/send', () => {
   it('400s a malformed email', async () => {
     const res = await POST(req({ email: 'nope' }))
     expect(res.status).toBe(400)
+    expect(mocks.sendEmailVerificationCode).not.toHaveBeenCalled()
+  })
+
+  it("400s a domain that can't receive mail, without touching the send budget", async () => {
+    mocks.domainAcceptsMail.mockResolvedValue(false)
+    const res = await POST(req({ email: 'ali@gmial.com' }))
+    expect(res.status).toBe(400)
+    expect(mocks.domainAcceptsMail).toHaveBeenCalledWith('gmial.com')
+    expect(mocks.checkRateLimit).not.toHaveBeenCalled()
     expect(mocks.sendEmailVerificationCode).not.toHaveBeenCalled()
   })
 

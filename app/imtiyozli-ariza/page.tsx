@@ -23,6 +23,7 @@ import { prepareUploadFile } from '@/lib/prepare-upload'
 import PhoneField from '@/components/ui/PhoneField'
 import {
   buildFullName,
+  getEmailTypoSuggestion,
   getForeignIdFormatError,
   getNamePartError,
   isPlausibleInternationalPhone,
@@ -526,6 +527,11 @@ export default function ImtiyozliAriza() {
                       className={`w-full border p-3 pl-11 rounded-xl text-sm outline-none transition-all ${isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200' : 'bg-slate-900/30 border-white/15 text-white focus:border-amber-500/50'}`} />
                   </div>
                   {email && !isValidEmail(email) && <p className="ml-2 text-[10px] font-bold text-rose-500">Email formati noto‘g‘ri.</p>}
+                  {getEmailTypoSuggestion(email) && (
+                    <button type="button" onClick={() => setEmail(getEmailTypoSuggestion(email)!)} className="ml-2 text-[10px] font-bold text-amber-500 hover:text-amber-400">
+                      Nazarda tutdingizmi: <span className="underline">{getEmailTypoSuggestion(email)}</span>?
+                    </button>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Telefon raqamingiz</label>

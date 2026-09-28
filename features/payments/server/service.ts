@@ -16,7 +16,8 @@ import {
   validatePaymentReview,
 } from '../domain/validation'
 import { createPaymentRepository, type PaymentRepository } from './repository'
-import { sendPushForUser, sendPushWithoutBreaking } from '@/lib/push-notifications'
+import { sendPushWithoutBreaking } from '@/lib/push-notifications'
+import { notifyStudent } from '@/lib/notify-student'
 
 type StudentForPayment = { id: string; full_name: string | null; faculty?: string | null }
 
@@ -63,7 +64,7 @@ export function createPaymentService(repository: PaymentRepository = createPayme
         byStudent.set(row.student_id, current)
       }
       await Promise.all([...byStudent.entries()].map(([studentId, payments]) =>
-        sendPushWithoutBreaking(() => sendPushForUser(studentId, {
+        sendPushWithoutBreaking(() => notifyStudent(studentId, {
           title: review.status === 'approved' ? 'To‘lov tasdiqlandi ✅' : 'To‘lov qaytarildi',
           body: review.status === 'approved'
             ? `${payments.map((payment) => payment.month).join(', ')} oylari uchun to‘lov qabul qilindi.`

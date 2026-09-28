@@ -268,6 +268,16 @@ export type PushSubscriptionRow = {
   updated_at: string
 }
 
+export type FcmTokenRow = {
+  id: number
+  token: string
+  user_id: string
+  platform: string
+  enabled: boolean
+  created_at: string
+  updated_at: string
+}
+
 export type AttendanceSessionRow = {
   id: string
   dorm_id: string
@@ -363,6 +373,7 @@ export interface Database {
       permit_documents: Table<PermitDocumentRow>
       student_telegram_links: Table<StudentTelegramLinkRow>
       push_subscriptions: Table<PushSubscriptionRow>
+      fcm_tokens: Table<FcmTokenRow>
       attendance_sessions: Table<AttendanceSessionRow>
       attendance_records: Table<AttendanceRecordRow>
       cleaning_schedule: Table<{

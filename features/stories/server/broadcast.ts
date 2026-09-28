@@ -1,6 +1,6 @@
 import 'server-only'
 import { sendTelegramPhoto } from '@/lib/telegram'
-import { sendPushForUsers } from '@/lib/push-notifications'
+import { notifyStudents } from '@/lib/notify-student'
 import type { AnnouncementStoryRow } from '@/types/database.generated'
 import { createStoryRepository, type StoryRepository } from './repository'
 
@@ -66,16 +66,16 @@ export async function broadcastStory(
       console.error('broadcastStory: Telegram fan-out failed:', error)
     }
 
-    // --- Web Push ---
+    // --- Web Push + FCM ---
     try {
-      await sendPushForUsers(studentIds, {
+      await notifyStudents(studentIds, {
         title: story.title,
         body: story.caption || 'Yangi yangilik joylandi',
         url: '/talaba/dashboard',
         tag: 'story',
       })
     } catch (error) {
-      console.error('broadcastStory: Web Push fan-out failed:', error)
+      console.error('broadcastStory: push fan-out failed:', error)
     }
   } catch (error) {
     console.error('broadcastStory failed:', error)

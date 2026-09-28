@@ -1,6 +1,7 @@
 import 'server-only'
 import { sendStudentTelegram } from '@/lib/student-telegram'
-import { sendPushForUser, sendPushWithoutBreaking } from '@/lib/push-notifications'
+import { sendPushWithoutBreaking } from '@/lib/push-notifications'
+import { notifyStudent } from '@/lib/notify-student'
 import { sendForeignDocReminderEmail } from '@/lib/email'
 import { sendTelegramChatMessage } from '@/lib/telegram'
 import { getDekanTelegramChatId } from '@/lib/dekan-telegram'
@@ -42,7 +43,7 @@ export async function runForeignDocReminders(
   repository: ForeignDocsRepository = createForeignDocsRepository(),
   deps: {
     sendStudentTelegram: typeof sendStudentTelegram
-    sendPush: typeof sendPushForUser
+    sendPush: typeof notifyStudent
     sendEmail: typeof sendForeignDocReminderEmail
     sendDekanTelegram: (faculty: string, text: string) => Promise<boolean>
     resolveStudentEmail: (studentId: string) => Promise<string | null>
@@ -143,7 +144,7 @@ export async function runForeignDocReminders(
 function defaultDeps() {
   return {
     sendStudentTelegram,
-    sendPush: sendPushForUser,
+    sendPush: notifyStudent,
     sendEmail: sendForeignDocReminderEmail,
     async sendDekanTelegram(faculty: string, text: string) {
       try {

@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const sendPushForUser = vi.fn<(userId: string, message: unknown) => Promise<void>>(async () => {})
 vi.mock('@/lib/push-notifications', () => ({
-  sendPushForUser: (userId: string, message: unknown) => sendPushForUser(userId, message),
   sendPushWithoutBreaking: async (fn: () => Promise<unknown>) => { await fn() },
+}))
+vi.mock('@/lib/notify-student', () => ({
+  notifyStudent: (userId: string, message: unknown) => sendPushForUser(userId, message),
 }))
 
 const { createAttendanceService } = await import('./service')

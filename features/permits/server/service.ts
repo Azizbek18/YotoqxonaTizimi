@@ -13,7 +13,8 @@ import type { DekanOverview } from '../types'
 import { createPermitAdminRepository, type PermitAdminRepository } from './repository'
 import { notifyPermitTelegram } from '@/lib/permit-telegram'
 import { notifyPermitBlocked } from '@/lib/permit-blocklist'
-import { sendPushForPermit, sendPushWithoutBreaking } from '@/lib/push-notifications'
+import { sendPushWithoutBreaking } from '@/lib/push-notifications'
+import { notifyPermit } from '@/lib/notify-student'
 
 function sameFaculty(value: string | null, faculty: string) {
   return (value ?? '').trim().toLocaleLowerCase() === faculty.trim().toLocaleLowerCase()
@@ -27,7 +28,7 @@ async function notifyTelegramWithoutBreakingDecision(request: Awaited<ReturnType
     // A Telegram outage must never roll back a dean's database decision.
     console.error('Permit Telegram notification failed:', error)
   }
-  await sendPushWithoutBreaking(() => sendPushForPermit(request.id, {
+  await sendPushWithoutBreaking(() => notifyPermit(request.id, {
     title: request.status === 'approved'
       ? 'Arizangiz tasdiqlandi! 🎉'
       : request.status === 'rejected'
@@ -373,7 +374,7 @@ export function createPermitAdminService(
       if (!request) throw new ApiError(409, 'Bu yo\'llanma allaqachon ko\'rib chiqilgan')
       if (blockNow) {
         await notifyPermitBlocked(id)
-        await sendPushWithoutBreaking(() => sendPushForPermit(id, {
+        await sendPushWithoutBreaking(() => notifyPermit(id, {
           title: 'Ariza bo‘yicha yakuniy javob',
           body: 'Universitet ishchi guruhi arizangizni rad etdi. Ariza qayta ko‘rib chiqilmaydi.',
           url: '/ruxsatnoma-tekshirish',

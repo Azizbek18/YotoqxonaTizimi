@@ -141,6 +141,27 @@ if (process.env.TELEGRAM_ADMIN_CHAT_ID
   process.exit(1)
 }
 
+// FCM (native Flutter app push) is optional until the app ships — once any
+// one of the three Firebase service-account vars is set, require and
+// validate the complete trio so a deployment cannot silently half-configure
+// it (lib/fcm.ts's configureFcm() only activates once all three are present,
+// but a typo'd/placeholder value should fail loudly here instead).
+if (process.env.FIREBASE_PROJECT_ID || process.env.FIREBASE_CLIENT_EMAIL || process.env.FIREBASE_PRIVATE_KEY) {
+  if (isPlaceholderValue(process.env.FIREBASE_PROJECT_ID)) {
+    console.error('FIREBASE_PROJECT_ID is required when FCM push is enabled.')
+    process.exit(1)
+  }
+  if (!/^[^@\s]+@[^@\s]+\.iam\.gserviceaccount\.com$/.test((process.env.FIREBASE_CLIENT_EMAIL ?? '').trim())) {
+    console.error('FIREBASE_CLIENT_EMAIL must be a Firebase service account email.')
+    process.exit(1)
+  }
+  const privateKey = (process.env.FIREBASE_PRIVATE_KEY ?? '').trim()
+  if (isPlaceholderValue(privateKey) || !privateKey.replace(/\\n/g, '\n').includes('BEGIN PRIVATE KEY')) {
+    console.error('FIREBASE_PRIVATE_KEY must be the service account PEM key (with \\n-escaped newlines).')
+    process.exit(1)
+  }
+}
+
 // Cron secrets are optional (the GitHub Actions workflow skips itself when
 // unset), but a placeholder value would let an unauthenticated caller run the
 // job — reject those explicitly.

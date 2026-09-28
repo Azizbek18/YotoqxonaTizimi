@@ -6,7 +6,7 @@ const sendTelegramPhoto = vi.fn<(...a: unknown[]) => Promise<boolean>>().mockRes
 const sendPushForUsers = vi.fn<(...a: unknown[]) => Promise<void>>().mockResolvedValue(undefined)
 
 vi.mock('@/lib/telegram', () => ({ sendTelegramPhoto: (...a: unknown[]) => sendTelegramPhoto(...a) }))
-vi.mock('@/lib/push-notifications', () => ({ sendPushForUsers: (...a: unknown[]) => sendPushForUsers(...a) }))
+vi.mock('@/lib/notify-student', () => ({ notifyStudents: (...a: unknown[]) => sendPushForUsers(...a) }))
 
 const { broadcastStory } = await import('./broadcast')
 import type { StoryRepository } from './repository'

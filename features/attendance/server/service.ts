@@ -7,7 +7,8 @@ import {
   isWithinAttendanceWindow,
   tashkentDateString,
 } from '@/lib/tashkent-time'
-import { sendPushForUser, sendPushWithoutBreaking } from '@/lib/push-notifications'
+import { sendPushWithoutBreaking } from '@/lib/push-notifications'
+import { notifyStudent } from '@/lib/notify-student'
 import { createAttendanceRepository, type AttendanceRepository, type ResidentRow } from './repository'
 import type {
   AttendanceActor,
@@ -339,7 +340,7 @@ export function createAttendanceService(
         opened.push(row.id)
 
         await Promise.all(residents.map((r) =>
-          sendPushWithoutBreaking(() => sendPushForUser(r.id, {
+          sendPushWithoutBreaking(() => notifyStudent(r.id, {
             title: 'Yo‘qlama boshlandi',
             body: `${dorm.attendance_close_time} gacha yotoqxonada ekanligingizni tasdiqlang.`,
             url: '/talaba/yoqlama',

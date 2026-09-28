@@ -18,7 +18,8 @@ vi.mock('@/lib/permit-blocklist', () => ({ notifyPermitBlocked }))
 
 const sendPushForPermit = vi.fn(async () => {})
 const sendPushWithoutBreaking = vi.fn(async (fn: () => unknown) => { await fn() })
-vi.mock('@/lib/push-notifications', () => ({ sendPushForPermit, sendPushWithoutBreaking }))
+vi.mock('@/lib/push-notifications', () => ({ sendPushWithoutBreaking }))
+vi.mock('@/lib/notify-student', () => ({ notifyPermit: sendPushForPermit }))
 
 const { createPermitAdminService } = await import('./service')
 

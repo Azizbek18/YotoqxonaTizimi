@@ -11,6 +11,7 @@ import type {
   StudentProfileRow,
   StudentScope,
   StudentWarningLevel,
+  UnregisteredPermitRow,
 } from '../types'
 import { STUDENT_SCOPES } from '../types'
 import type { PaymentStatus } from '@/features/payments/types'
@@ -44,6 +45,10 @@ export function createFacultyStudentsService(
         ? (scopeValue as StudentScope)
         : 'placed'
       return (await repository.listStudentProfiles(requireFaculty(facultyValue), scope)) as StudentProfileRow[]
+    },
+
+    async listUnregistered(facultyValue: string | null): Promise<UnregisteredPermitRow[]> {
+      return (await repository.listUnregisteredApprovedPermits(requireFaculty(facultyValue))) as UnregisteredPermitRow[]
     },
 
     async listPayments(facultyValue: string | null): Promise<FacultyPaymentRecord[]> {

@@ -1,7 +1,7 @@
 'use client'
 
 import { isRoommate } from '@/lib/roommates'
-import { studentsInDorm } from '@/features/faculty-students/domain/dorm-scope'
+import { permitsInDorm, studentsInDorm } from '@/features/faculty-students/domain/dorm-scope'
 import { fetchDekanDorm } from '@/features/dorms/client/api'
 import type { DekanDorm } from '@/features/dorms/types'
 
@@ -51,6 +51,7 @@ import {
   deleteFacultyStudent,
   fetchFacultyPayments,
   fetchFacultyStudents,
+  fetchUnregisteredStudents,
   sendStudentWarning,
   setStudentBlacklist,
   setStudentCouncilChair,
@@ -61,6 +62,7 @@ import type {
   FacultyPaymentRecord,
   StudentProfileRow,
   StudentWarningLevel,
+  UnregisteredPermitRow,
 } from '@/features/faculty-students/types'
 import {
   APPROVED_PAYMENT_STATUSES,
@@ -105,7 +107,7 @@ const WARNING_DOT_CLASSES: Record<WarningTone, string> = {
 
 const HUJJAT_LABELS = ['Passport seriya', 'JSHSHIR', 'Passport sanasi', 'Hudud', 'Millati', 'Jinsi']
 
-type FolderKey = 'all' | 'roomless' | 'debtor' | 'paid' | 'male' | 'female' | 'captain' | 'warned' | 'blacklisted'
+type FolderKey = 'all' | 'unregistered' | 'roomless' | 'debtor' | 'paid' | 'male' | 'female' | 'captain' | 'warned' | 'blacklisted'
 
 // Editable fields, grouped to match the read-only detail tabs. Room / floor /
 // warnings / status are intentionally not here — see FacultyStudentPatch in
@@ -198,6 +200,14 @@ export default function DekanStudentsPage() {
   const [loading, setLoading] = useState(true)
   const [allPayments, setPayments] = useState<FacultyPaymentRecord[]>([])
   const [paymentsLoading, setPaymentsLoading] = useState(true)
+  // Approved yo'llanma egalari, hali ro'yxatdan o'tmaganlar — dekan ba'zilariga
+  // xona bergan, shuning uchun ular yotoqxonadagi o'rinni band qiladi.
+  const [allUnregistered, setUnregistered] = useState<UnregisteredPermitRow[]>([])
+  const [unregisteredLoading, setUnregisteredLoading] = useState(true)
+  const unregistered = useMemo(
+    () => permitsInDorm(allUnregistered, dormsLoading || dormsError ? undefined : activeDormId),
+    [allUnregistered, activeDormId, dormsLoading, dormsError],
+  )
   const students = useMemo(
     () => studentsInDorm(allStudents, dormsLoading || dormsError ? undefined : activeDormId),
     [allStudents, activeDormId, dormsLoading, dormsError],
@@ -318,6 +328,18 @@ export default function DekanStudentsPage() {
     }
   }, [])
 
+  const loadUnregistered = useCallback(async () => {
+    try {
+      setUnregisteredLoading(true)
+      setUnregistered(await fetchUnregisteredStudents())
+    } catch (error) {
+      console.error("Ro'yxatdan o'tmaganlarni yuklashda xato:", error)
+      toast.error(error instanceof Error ? error.message : "Ro'yxatdan o'tmagan talabalarni yuklab bo'lmadi")
+    } finally {
+      setUnregisteredLoading(false)
+    }
+  }, [])
+
   const loadPayments = useCallback(async () => {
     try {
       setPaymentsLoading(true)
@@ -347,9 +369,10 @@ export default function DekanStudentsPage() {
 
   const refreshAll = useCallback(() => {
     void loadStudents()
+    void loadUnregistered()
     void loadPayments()
     void loadSettings()
-  }, [loadStudents, loadPayments, loadSettings])
+  }, [loadStudents, loadUnregistered, loadPayments, loadSettings])
 
   const loadDorms = useCallback(async () => {
     setDormsLoading(true)
@@ -394,6 +417,14 @@ export default function DekanStudentsPage() {
     refreshAll()
     void loadDorms()
   }, [refreshAll, loadDorms])
+
+  // Dashboard "Ro'yxatdan o'tmaganlar" card: /…/talabalar?folder=unregistered
+  // opens straight on that folder (read once, on mount).
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('folder') === 'unregistered') {
+      setActiveFolder('unregistered')
+    }
+  }, [])
 
   // Deep link from the room map ("Talaba kabinetini ochish"):
   // /…/talabalar?student=<id> auto-opens that student's detail once the list
@@ -795,6 +826,7 @@ export default function DekanStudentsPage() {
 
   const folders: { key: FolderKey; label: string; count: number | null }[] = [
     { key: 'all', label: 'Barchasi', count: students.length },
+    { key: 'unregistered', label: "Ro'yxatdan o'tmagan", count: unregisteredLoading ? null : unregistered.length },
     { key: 'roomless', label: 'Xonasiz', count: roomlessCount },
     { key: 'debtor', label: 'Qarzdor', count: debtorCount },
     { key: 'paid', label: "To'lagan", count: paidCount },
@@ -804,6 +836,90 @@ export default function DekanStudentsPage() {
     { key: 'warned', label: 'Ogohlantirilgan', count: warnedCount },
     { key: 'blacklisted', label: 'Chetlatilgan', count: blacklistedCount },
   ]
+
+  const unregisteredVisible = unregistered.filter((row) => {
+    const query = searchTerm.trim().toLowerCase()
+    const room = filterRoom.trim().toLowerCase()
+    return (!query || row.full_name.toLowerCase().includes(query) || (row.email ?? '').toLowerCase().includes(query))
+      && (!room || (row.room_number ?? '').toLowerCase().includes(room))
+  })
+
+  const renderUnregistered = () => {
+    if (unregisteredLoading || dormsLoading) {
+      return (
+        <div className="space-y-2 p-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 rounded-xl px-2 py-2.5">
+              <Skel className="h-9 w-9 shrink-0 rounded-lg" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Skel className="h-3.5 w-2/3" />
+                <Skel className="h-2.5 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )
+    }
+    const withRoom = unregistered.filter((row) => row.room_number).length
+    return (
+      <div className="pb-2">
+        <div className={`mx-2 my-2 rounded-xl border px-3 py-2 text-[11px] leading-snug ${
+          isLight ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+        }`}>
+          Yo&apos;llanmasi tasdiqlangan, lekin sayt orqali hali ro&apos;yxatdan o&apos;tmaganlar.
+          Ulardan <b>{withRoom} tasiga</b> xona berilgan (o&apos;rin band), qolgan {unregistered.length - withRoom} tasi xonasiz.
+          Ro&apos;yxatdan o&apos;tgach avtomatik shu xonaga joylashadi.
+        </div>
+        {unregisteredVisible.length === 0 ? (
+          <div className={`p-8 text-center text-xs ${ui.faint}`}>
+            {unregistered.length === 0 ? "Bu bo'limda ro'yxatdan o'tmagan talaba yo'q" : 'Talaba topilmadi'}
+          </div>
+        ) : unregisteredVisible.map((row) => {
+          const accent = genderAccent(row.gender)
+          const dorm = dorms.find((d) => d.dormId === row.dorm_id)
+          return (
+            <div
+              key={row.id}
+              className={`mx-1.5 my-1 flex w-[calc(100%-12px)] items-center gap-2.5 rounded-xl border p-2.5 ${
+                isLight ? 'border-slate-200/70 bg-white' : 'border-slate-800 bg-slate-800/40'
+              }`}
+            >
+              <div className="relative shrink-0">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl border text-[11px] font-black ${
+                  isLight ? 'border-slate-200 bg-slate-100 text-slate-600' : 'border-slate-700 bg-slate-800 text-slate-300'
+                }`}>
+                  {getInitials(row.full_name)}
+                </div>
+                <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ${isLight ? 'ring-white' : 'ring-slate-900'} ${accent.dot}`} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`truncate text-xs font-bold leading-tight ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>{row.full_name}</p>
+                <p className={`mt-0.5 truncate text-[10px] ${ui.faint}`}>
+                  {[row.direction, row.course ? `${row.course}-kurs` : null, row.phone].filter(Boolean).join(' • ') || '—'}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                {row.room_number ? (
+                  <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-black ${
+                    isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/15 text-emerald-300'
+                  }`}>
+                    {dorm ? `${dorm.number}-yot. ` : ''}{row.room_number}-xona
+                  </span>
+                ) : (
+                  <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-black ${
+                    isLight ? 'bg-slate-200 text-slate-600' : 'bg-slate-700 text-slate-300'
+                  }`}>Xonasiz</span>
+                )}
+                <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-black ${
+                  isLight ? 'bg-amber-100 text-amber-800' : 'bg-amber-500/15 text-amber-300'
+                }`}>Ro&apos;yxatdan o&apos;tmagan</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
 
   const cardSurface = ui.card
   const infoTileSurface = isLight ? 'bg-slate-100 text-slate-500' : 'bg-slate-800/40 text-slate-400'
@@ -1076,7 +1192,7 @@ export default function DekanStudentsPage() {
 
           {/* List items */}
           <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto py-1">
-            {loading || dormsLoading ? (
+            {activeFolder === 'unregistered' ? renderUnregistered() : loading || dormsLoading ? (
               <div className="space-y-2 p-2">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-3 rounded-xl px-2 py-2.5">

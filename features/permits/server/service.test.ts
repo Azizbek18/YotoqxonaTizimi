@@ -414,17 +414,37 @@ describe('permit admin service — overview', () => {
     const deps = capacityDeps([{ room_number: '22', capacity: 4, frozen: false }])
     const service = createPermitAdminService(repository({ load }), deps)
     const first = await service.overview('fizika', 'd12')
-    expect(first.requests).toHaveLength(0)
+    // 'waiting' has no building and no room yet -> visible on every tab.
+    expect(first.requests.map((row) => row.id)).toEqual(['waiting'])
+    expect(first.dashboard.pendingCount).toBe(1)
     expect(first.usersWithRooms.map((row) => row.id)).toEqual(['u1'])
     expect(first.dashboard).toMatchObject({ activeStudentsCount: 1, totalOccupiedBeds: 1, availableBeds: 4, freeBeds: 3 })
     expect(deps.roomLayout.listAllRooms).toHaveBeenCalledWith('fizika', 'd12')
     expect(deps.appSettings.get).toHaveBeenCalledWith('fizika', 'd12')
     const second = await service.overview('fizika', 'd3')
-    expect(second.requests.map((row) => row.id)).toEqual(['linked', 'reserved'])
+    expect(second.requests.map((row) => row.id)).toEqual(['linked', 'reserved', 'waiting'])
     expect(second.dashboard).toMatchObject({ totalOccupiedBeds: 2, freeBeds: 2 })
     const unassigned = await service.overview('fizika', null)
     expect(unassigned.requests.map((row) => row.id)).toEqual(['waiting'])
     expect(unassigned.dashboard).toMatchObject({ pendingCount: 1, totalOccupiedBeds: 0, availableBeds: 0, freeBeds: 0 })
+  })
+
+  it('counts approved permits nobody has registered from, and how many already hold a room', async () => {
+    const user = { id: 'u1', role: 'talaba', status: 'active', faculty: 'fizika', full_name: 'Ali',
+      passport_series: 'A', jshshir: 'JA', phone_number: null, gender: 'male', direction: null,
+      course: 1, room_number: '22', dorm_id: 'd12', block: null, assigned_floor: 2, warning_count: 0, blacklisted: false }
+    const load = vi.fn(async () => ({ users: [user],
+      permits: [
+        permit({ id: 'reg', passport_series: 'A', jshshir: 'JA', dorm_id: 'd12', room_number: '22', status: 'approved' }),
+        permit({ id: 'roomed', passport_series: 'B', jshshir: 'JB', dorm_id: 'd12', room_number: '23', status: 'approved' }),
+        permit({ id: 'roomless', passport_series: 'C', jshshir: 'JC', dorm_id: null, room_number: null, status: 'approved' }),
+        permit({ id: 'waiting', passport_series: 'D', jshshir: 'JD', dorm_id: null, status: 'pending' }),
+      ] }))
+    const deps = capacityDeps([{ room_number: '22', capacity: 4, frozen: false }, { room_number: '23', capacity: 4, frozen: false }])
+    const { dashboard } = await createPermitAdminService(repository({ load }), deps).overview('fizika', 'd12')
+    // 'reg' has an account (drop), 'roomed' + 'roomless' are unregistered.
+    expect(dashboard.unregisteredCount).toBe(2)
+    expect(dashboard.unregisteredWithRoomCount).toBe(1)
   })
 
   it('keeps occupancy and floor placement separate for repeated room numbers in blocked buildings', async () => {

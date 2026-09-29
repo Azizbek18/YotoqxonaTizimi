@@ -136,3 +136,22 @@ export type SetCouncilChairInput = {
   studentId: string
   isChair: boolean
 }
+
+// An approved yo'llanma whose person has not created an account yet. The
+// dekan may already have given them a room (permit_requests.room_number), so
+// they occupy a bed although they are not in the registered-students list.
+export type UnregisteredPermitRow = {
+  id: string
+  full_name: string
+  gender: string | null
+  phone: string | null
+  email: string | null
+  direction: string | null
+  course: number | null
+  application_type: string | null
+  room_number: string | null
+  dorm_id: string | null
+  block: string | null
+  assigned_floor: number | null
+  created_at: string
+}

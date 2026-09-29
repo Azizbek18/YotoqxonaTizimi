@@ -16,12 +16,47 @@ export function createFacultyStudentsRepository() {
         .select(`${STUDENT_PROFILE_COLUMNS}, dorm_id, block`)
         .eq('role', 'talaba')
         .eq('status', 'active')
+        .eq('is_off_campus', false)
         .ilike('faculty', faculty)
       if (scope === 'placed') query = query.not('room_number', 'is', null)
       if (scope === 'roomless') query = query.is('room_number', null)
       const { data, error } = await query.order('full_name', { ascending: true })
       if (error) throw error
       return data ?? []
+    },
+
+    // Approved yo'llanmalar nobody has registered from yet. A permit is
+    // "registered" once a users row shares its passport_series or JSHSHIR
+    // (both unique) — same match the dashboard occupancy count uses. Includes
+    // permits that already hold a room: those are beds in use that the
+    // registered-students list cannot show.
+    async listUnregisteredApprovedPermits(faculty: string) {
+      const [permitsResult, usersResult] = await Promise.all([
+        supabase
+          .from('permit_requests')
+          .select('id, full_name, gender, phone, email, direction, course, application_type, room_number, dorm_id, block, assigned_floor, passport_series, jshshir, created_at')
+          .eq('status', 'approved')
+          .ilike('faculty', faculty)
+          .order('full_name', { ascending: true }),
+        supabase
+          .from('users')
+          .select('passport_series, jshshir')
+          .eq('role', 'talaba')
+          .ilike('faculty', faculty),
+      ])
+      if (permitsResult.error) throw permitsResult.error
+      if (usersResult.error) throw usersResult.error
+      const passports = new Set((usersResult.data ?? []).map((u) => u.passport_series).filter(Boolean))
+      const jshshirs = new Set((usersResult.data ?? []).map((u) => u.jshshir).filter(Boolean))
+      return (permitsResult.data ?? [])
+        .filter((p) => !(p.passport_series && passports.has(p.passport_series))
+          && !(p.jshshir && jshshirs.has(p.jshshir)))
+        .map((p) => ({
+          id: p.id, full_name: p.full_name, gender: p.gender, phone: p.phone, email: p.email,
+          direction: p.direction, course: p.course, application_type: p.application_type,
+          room_number: p.room_number, dorm_id: p.dorm_id, block: p.block,
+          assigned_floor: p.assigned_floor, created_at: p.created_at,
+        }))
     },
 
     // Every active student of the faculty, id column only — the payments
@@ -33,6 +68,7 @@ export function createFacultyStudentsRepository() {
         .select('id')
         .eq('role', 'talaba')
         .eq('status', 'active')
+        .eq('is_off_campus', false)
         .ilike('faculty', faculty)
       if (error) throw error
       return (data ?? []).map((row) => String(row.id))

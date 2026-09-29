@@ -21,6 +21,7 @@ export function createPermitAdminRepository() {
           .from('users')
           .select('id, full_name, passport_series, jshshir, phone_number, gender, faculty, direction, course, room_number, dorm_id, block, assigned_floor, warning_count, blacklisted, role, status')
           .eq('role', 'talaba')
+          .eq('is_off_campus', false)
           .ilike('faculty', faculty),
       ])
       if (permitsResult.error) throw permitsResult.error

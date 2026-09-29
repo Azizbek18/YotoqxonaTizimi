@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react'
 import DormTabs from '@/components/dekan/DormTabs'
 import { useDormTabs } from '@/lib/hooks/useDormTabs'
-import { studentsInDorm } from '@/features/faculty-students/domain/dorm-scope'
+import { permitsInDorm } from '@/features/faculty-students/domain/dorm-scope'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { downloadXlsx } from '@/lib/spreadsheet-export'
@@ -119,7 +119,7 @@ function ArizalarContent() {
   const dormScope = useDormTabs({ globalView: true })
   const [allRequests, setRequests] = useState<PermitRequest[]>([])
   const requests = useMemo(
-    () => (dormScope.global ? allRequests : studentsInDorm(allRequests, dormScope.dormId)),
+    () => (dormScope.global ? allRequests : permitsInDorm(allRequests, dormScope.dormId)),
     [allRequests, dormScope.global, dormScope.dormId],
   )
   const [loading, setLoading] = useState(true)

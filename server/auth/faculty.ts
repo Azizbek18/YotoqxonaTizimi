@@ -82,10 +82,10 @@ export async function resolveCallerFaculty(userId: string): Promise<string> {
  * just the staff's own faculty when they have no dorm yet, so a
  * single-faculty building behaves exactly as before.
  */
-export async function staffDormFaculties(
+export async function staffDormId(
   staffId: string,
   fallbackFaculty: string | null | undefined,
-): Promise<string[]> {
+): Promise<string | null> {
   const supabase = getServiceSupabase()
   const fallback = requireStaffFaculty(fallbackFaculty)
 
@@ -108,6 +108,16 @@ export async function staffDormFaculties(
       .maybeSingle()
     dormId = link?.dorm_id ?? null
   }
+  return dormId
+}
+
+export async function staffDormFaculties(
+  staffId: string,
+  fallbackFaculty: string | null | undefined,
+): Promise<string[]> {
+  const supabase = getServiceSupabase()
+  const fallback = requireStaffFaculty(fallbackFaculty)
+  const dormId = await staffDormId(staffId, fallbackFaculty)
 
   if (dormId) {
     const { data } = await supabase

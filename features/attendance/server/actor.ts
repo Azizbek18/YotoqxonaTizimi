@@ -24,7 +24,7 @@ export async function resolveAttendanceActor(request: Request): Promise<Attendan
 
   const { data: student } = await supabase
     .from('users')
-    .select('role, status, is_floor_captain, assigned_floor, gender, faculty, captain_permissions')
+    .select('role, status, is_floor_captain, assigned_floor, gender, faculty, captain_permissions, dorm_id')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -42,7 +42,7 @@ export async function resolveAttendanceActor(request: Request): Promise<Attendan
     }
     const faculty = normalizeFaculty(student.faculty)
     if (!faculty) throw new ApiError(403, 'Fakultet biriktirilmagan')
-    const dormId = await repo.dormIdForFaculty(faculty)
+    const dormId = student.dorm_id ?? (await repo.dormIdForFaculty(faculty))
     if (!dormId) throw new ApiError(409, 'Yotoqxona hali sozlanmagan — dekanga murojaat qiling', 'DORM_NOT_SET')
     return {
       userId: user.id,
@@ -63,7 +63,7 @@ export async function resolveAttendanceActor(request: Request): Promise<Attendan
   if (student?.role === 'talaba' && student.status === 'active') {
     const faculty = normalizeFaculty(student.faculty)
     if (!faculty) throw new ApiError(403, 'Fakultet biriktirilmagan')
-    const dormId = await repo.dormIdForFaculty(faculty)
+    const dormId = student.dorm_id ?? (await repo.dormIdForFaculty(faculty))
     if (!dormId) throw new ApiError(409, 'Yotoqxona hali sozlanmagan', 'DORM_NOT_SET')
     return {
       userId: user.id,

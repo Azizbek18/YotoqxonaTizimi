@@ -48,7 +48,7 @@ export function createAttendanceService(
   repo: AttendanceRepository = createAttendanceRepository(),
 ) {
   async function residentsForActor(actor: AttendanceActor): Promise<ResidentRow[]> {
-    return repo.residents(actor.faculties, {
+    return repo.residents(actor.dormId, actor.faculties, {
       floor: actor.role === 'sardor' ? actor.floor : undefined,
       gender: actor.role === 'sardor' ? actor.gender : (actor.gender ?? undefined),
     })
@@ -271,7 +271,9 @@ export function createAttendanceService(
 
     // ---- 2-bosqich: talaba joylashuv bilan tasdiqi ----
     async checkin(userId: string, faculty: string, coords: unknown): Promise<CheckinResult> {
-      const dormId = await repo.dormIdForFaculty(faculty)
+      // The student's OWN building — a faculty can live in several, and its
+      // primary one is not necessarily where this student sleeps.
+      const dormId = (await repo.studentDormId(userId)) ?? (await repo.dormIdForFaculty(faculty))
       if (!dormId) return { status: 'no_session' }
       const dorm = await repo.dorm(dormId)
       if (!dorm) return { status: 'no_session' }
@@ -293,7 +295,7 @@ export function createAttendanceService(
       const state: 'present' | 'absent' = distance <= dorm.checkin_radius_m ? 'present' : 'absent'
 
       // Ensure a row exists (cron seeds it, but be defensive).
-      await repo.seedRecords(session.id, await repo.residents(await repo.facultiesForDorm(dormId), {}))
+      await repo.seedRecords(session.id, await repo.residents(dormId, await repo.facultiesForDorm(dormId), {}))
 
       const { applied, current } = await repo.applySelfCheckin({
         sessionId: session.id,
@@ -335,7 +337,7 @@ export function createAttendanceService(
         if (!created) continue
 
         const faculties = await repo.facultiesForDorm(dorm.id)
-        const residents = await repo.residents(faculties, {})
+        const residents = await repo.residents(dorm.id, faculties, {})
         await repo.seedRecords(row.id, residents)
         opened.push(row.id)
 

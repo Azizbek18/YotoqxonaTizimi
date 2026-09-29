@@ -40,6 +40,16 @@ export function createAttendanceRepository() {
       return data?.dorm_id ?? null
     },
 
+    // The building a student is actually housed in (users.dorm_id) — null
+    // for someone with no room, who then falls back to their faculty's
+    // primary building.
+    async studentDormId(userId: string): Promise<string | null> {
+      const { data, error } = await supabase
+        .from('users').select('dorm_id').eq('id', userId).maybeSingle()
+      if (error) throw error
+      return data?.dorm_id ?? null
+    },
+
     async facultiesForDorm(dormId: string): Promise<string[]> {
       const { data, error } = await supabase
         .from('faculty_dorm').select('faculty').eq('dorm_id', dormId)
@@ -64,9 +74,12 @@ export function createAttendanceRepository() {
       return (data ?? []) as DormAttendanceConfig[]
     },
 
-    // Active housed residents for a building, optionally narrowed to one
-    // floor / gender (a sardor's scope).
+    // Active housed residents of ONE building, optionally narrowed to one
+    // floor / gender (a sardor's scope). `dormId` is required and filtered on
+    // users.dorm_id: a faculty can live in several buildings, so filtering by
+    // faculty alone put other buildings' students on this building's roll.
     async residents(
+      dormId: string,
       faculties: string[],
       opts: { floor?: number | null; gender?: string | null } = {},
     ): Promise<ResidentRow[]> {
@@ -75,6 +88,8 @@ export function createAttendanceRepository() {
         .select('id, full_name, avatar_url, room_number, assigned_floor, gender, faculty')
         .eq('role', 'talaba')
         .eq('status', 'active')
+        .eq('is_off_campus', false)
+        .eq('dorm_id', dormId)
         .in('faculty', faculties)
         .not('assigned_floor', 'is', null)
       if (opts.floor != null) query = query.eq('assigned_floor', opts.floor)

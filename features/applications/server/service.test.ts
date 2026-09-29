@@ -254,9 +254,10 @@ describe('createApplicationService — signing', () => {
 
 describe('createApplicationService — tarbiyachi writes a tushuntirish xati on a student’s behalf', () => {
   const STAFF = { id: 'staff-1', fullName: 'Tarbiyachi Salimov' }
+  const SCOPE = { faculties: ['amit'], dormId: 'dorm-12' }
   const STUDENT = {
     id: 'stu-1', full_name: 'Aliyev Vali Akmal oʻgʻli', email: 'aliyev@example.com', faculty: 'amit',
-    direction: 'amaliy-matematika', course: 3, room_number: '305', status: 'active', is_off_campus: false,
+    direction: 'amaliy-matematika', course: 3, room_number: '305', status: 'active', is_off_campus: false, dorm_id: 'dorm-12',
   }
   const body = (over: Record<string, unknown> = {}) => ({
     studentId: 'stu-1',
@@ -273,7 +274,7 @@ describe('createApplicationService — tarbiyachi writes a tushuntirish xati on 
 
   it('signs the letter with the student’s drawn signature and freezes who recorded it', async () => {
     const { repo, store } = repoFor()
-    const res = await createApplicationService(repo).createExplanationOnBehalf(STAFF, ['amit'], body())
+    const res = await createApplicationService(repo).createExplanationOnBehalf(STAFF, SCOPE, body())
     expect(res.success).toBe(true)
     expect(res.explanationCount).toBe(1)
     expect(res.red).toBe(false)
@@ -286,7 +287,7 @@ describe('createApplicationService — tarbiyachi writes a tushuntirish xati on 
   it('sends the letter by Telegram to the student and to the tarbiyachi, not to the dekan yet', async () => {
     vi.clearAllMocks()
     const { repo } = repoFor()
-    const res = await createApplicationService(repo).createExplanationOnBehalf(STAFF, ['amit'], body())
+    const res = await createApplicationService(repo).createExplanationOnBehalf(STAFF, SCOPE, body())
     expect(tg.sendStudentTelegram).toHaveBeenCalledTimes(1)
     expect(tg.sendTelegramChatMessage).toHaveBeenCalledTimes(1) // the tarbiyachi's own copy
     expect(tg.dekanChatIdsForFaculty).not.toHaveBeenCalled()
@@ -298,7 +299,7 @@ describe('createApplicationService — tarbiyachi writes a tushuntirish xati on 
   it('the 3rd signed letter turns the student red and tells the dekan(s)', async () => {
     vi.clearAllMocks()
     const { repo } = repoFor({ explanationCount: vi.fn(async () => 3) })
-    const res = await createApplicationService(repo).createExplanationOnBehalf(STAFF, ['amit'], body())
+    const res = await createApplicationService(repo).createExplanationOnBehalf(STAFF, SCOPE, body())
     expect(res.red).toBe(true)
     expect(tg.dekanChatIdsForFaculty).toHaveBeenCalledWith('amit')
     expect(res.telegram.dekansNotified).toBe(2)
@@ -309,44 +310,52 @@ describe('createApplicationService — tarbiyachi writes a tushuntirish xati on 
     vi.clearAllMocks()
     tg.getStaffTelegramChatId.mockResolvedValueOnce('')
     const { repo, store } = repoFor()
-    const res = await createApplicationService(repo).createExplanationOnBehalf(STAFF, ['amit'], body())
+    const res = await createApplicationService(repo).createExplanationOnBehalf(STAFF, SCOPE, body())
     expect(res.telegram.staff).toBe('not_set')
     expect(store.signature).toBeTruthy()
   })
 
   it('refuses a KV (off-campus) student', async () => {
     const { repo } = repoFor({ getStudentForStaff: vi.fn(async () => ({ ...STUDENT, is_off_campus: true })) })
-    await expect(createApplicationService(repo).createExplanationOnBehalf(STAFF, ['amit'], body()))
+    await expect(createApplicationService(repo).createExplanationOnBehalf(STAFF, SCOPE, body()))
       .rejects.toMatchObject({ status: 409 })
   })
 
   it('refuses a student who lives in another building', async () => {
     const { repo } = repoFor()
-    await expect(createApplicationService(repo).createExplanationOnBehalf(STAFF, ['kimyo'], body()))
+    await expect(createApplicationService(repo).createExplanationOnBehalf(STAFF, { faculties: ['kimyo'], dormId: null }, body()))
+      .rejects.toMatchObject({ status: 403 })
+  })
+
+  it('refuses a student of the same faculty who is housed in ANOTHER building', async () => {
+    const { repo } = repoFor({ getStudentForStaff: vi.fn(async () => ({ ...STUDENT, dorm_id: 'dorm-3' })) })
+    await expect(createApplicationService(repo).createExplanationOnBehalf(STAFF, SCOPE, body()))
+      .rejects.toMatchObject({ status: 403 })
+    await expect(createApplicationService(repo).explanationContext(SCOPE, 'stu-1'))
       .rejects.toMatchObject({ status: 403 })
   })
 
   it('refuses an inactive account and an unknown student', async () => {
     const inactive = repoFor({ getStudentForStaff: vi.fn(async () => ({ ...STUDENT, status: 'pending' })) })
-    await expect(createApplicationService(inactive.repo).createExplanationOnBehalf(STAFF, ['amit'], body()))
+    await expect(createApplicationService(inactive.repo).createExplanationOnBehalf(STAFF, SCOPE, body()))
       .rejects.toMatchObject({ status: 409 })
     const missing = repoFor({ getStudentForStaff: vi.fn(async () => null) })
-    await expect(createApplicationService(missing.repo).createExplanationOnBehalf(STAFF, ['amit'], body()))
+    await expect(createApplicationService(missing.repo).createExplanationOnBehalf(STAFF, SCOPE, body()))
       .rejects.toMatchObject({ status: 404 })
   })
 
   it('needs the student’s drawn signature and a real reason', async () => {
     const { repo } = repoFor()
     const svc = createApplicationService(repo)
-    await expect(svc.createExplanationOnBehalf(STAFF, ['amit'], body({ signature: { typedName: 'x', attested: true } })))
+    await expect(svc.createExplanationOnBehalf(STAFF, SCOPE, body({ signature: { typedName: 'x', attested: true } })))
       .rejects.toMatchObject({ status: 400 })
-    await expect(svc.createExplanationOnBehalf(STAFF, ['amit'], body({ incidentText: 'qisqa' })))
+    await expect(svc.createExplanationOnBehalf(STAFF, SCOPE, body({ incidentText: 'qisqa' })))
       .rejects.toMatchObject({ status: 400 })
   })
 
   it('explanationContext gives the picked student’s details, the letter count and the red flag', async () => {
     const { repo } = repoFor({ explanationCount: vi.fn(async () => 3) })
-    const ctx = await createApplicationService(repo).explanationContext(['amit'], 'stu-1')
+    const ctx = await createApplicationService(repo).explanationContext(SCOPE, 'stu-1')
     expect(ctx.student).toMatchObject({ fullName: STUDENT.full_name, room: '305', course: 3 })
     expect(ctx.explanationCount).toBe(3)
     expect(ctx.red).toBe(true)

@@ -38,6 +38,7 @@ const openSession = {
 function repo(overrides: Record<string, unknown> = {}) {
   return {
     dormIdForFaculty: vi.fn(async () => DORM),
+    studentDormId: vi.fn(async () => null),
     facultiesForDorm: vi.fn(async () => ['amit', 'biologiya']),
     dorm: vi.fn(async () => ({
       id: DORM, number: '1', name: 'TTJ 1', floor_count: 9,
@@ -257,5 +258,43 @@ describe('history', () => {
     const r = repo()
     await createAttendanceService(r as never).history(tarbiyachi, 's2')
     expect(r.studentHistory).toHaveBeenCalledWith('s2', DORM, expect.any(Number))
+  })
+})
+
+describe('building scope — a faculty can live in several buildings', () => {
+  it('reads the roll of the actor’s own building only', async () => {
+    const r = repo()
+    await createAttendanceService(r as never).roster(tarbiyachi, 'sess-1')
+    // dormId is the first argument of residents(): never a faculty-only query
+    expect(r.residents).toHaveBeenCalledWith(DORM, expect.any(Array), expect.anything())
+  })
+
+  it('the nightly cron seeds each building with its own residents', async () => {
+    const r = repo({
+      enabledDorms: vi.fn(async () => [{
+        id: DORM, number: '1', name: '', floor_count: 9, latitude: 41.311, longitude: 69.240,
+        checkin_radius_m: 1000, attendance_enabled: true, attendance_open_time: '21:00', attendance_close_time: '23:00',
+      }]),
+    })
+    await createAttendanceService(r as never).runNightlyCron(new Date('2026-09-01T16:10:00Z'))
+    expect(r.residents).toHaveBeenCalledWith(DORM, expect.any(Array), expect.anything())
+  })
+
+  it('a student checks in against the building they are housed in, not the faculty’s primary', async () => {
+    const OTHER = 'dorm-3'
+    const r = repo({
+      studentDormId: vi.fn(async () => OTHER),
+      openSessions: vi.fn(async () => [{ ...openSession, dorm_id: OTHER }]),
+    })
+    await createAttendanceService(r as never).checkin('s1', 'amit', { lat: 41.3111, lng: 69.2401, accuracy: 25 })
+    expect(r.dorm).toHaveBeenCalledWith(OTHER)
+    expect(r.openSessions).toHaveBeenCalledWith(OTHER)
+    expect(r.dormIdForFaculty).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the faculty’s primary building for a student with no dorm yet', async () => {
+    const r = repo()
+    await createAttendanceService(r as never).checkin('s1', 'amit', { lat: 41.3111, lng: 69.2401, accuracy: 25 })
+    expect(r.dormIdForFaculty).toHaveBeenCalledWith('amit')
   })
 })

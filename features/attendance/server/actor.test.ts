@@ -172,3 +172,30 @@ describe('resolveAttendanceActor', () => {
     })
   })
 })
+
+describe('a captain / resident is scoped to the building they are housed in', () => {
+  it('a floor captain uses their own dorm_id, not the faculty’s primary building', async () => {
+    mocks.getRequestUser.mockResolvedValue({ id: 'u1' })
+    mocks.usersMaybeSingle.mockResolvedValue({
+      data: {
+        role: 'talaba', status: 'active', is_floor_captain: true, assigned_floor: 3, gender: 'male',
+        faculty: 'amit', captain_permissions: {}, dorm_id: 'dorm3',
+      },
+      error: null,
+    })
+    mocks.dormIdForFaculty.mockResolvedValue('dorm12') // the faculty's primary
+    const actor = await resolveAttendanceActor(req())
+    expect(actor.dormId).toBe('dorm3')
+  })
+
+  it('an ordinary resident uses their own dorm_id too', async () => {
+    mocks.getRequestUser.mockResolvedValue({ id: 'u2' })
+    mocks.usersMaybeSingle.mockResolvedValue({
+      data: { role: 'talaba', status: 'active', is_floor_captain: false, faculty: 'amit', dorm_id: 'dorm3' },
+      error: null,
+    })
+    mocks.dormIdForFaculty.mockResolvedValue('dorm12')
+    const actor = await resolveAttendanceActor(req())
+    expect(actor.dormId).toBe('dorm3')
+  })
+})

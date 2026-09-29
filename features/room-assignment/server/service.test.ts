@@ -15,7 +15,7 @@ vi.mock('@/lib/permit-documents', () => ({ deliverPermitDocumentsSafely }))
 
 const { createRoomAssignmentService } = await import('./service')
 
-function student(overrides: Partial<{ id: string; faculty: string; gender: string | null; room_number: string | null; block: string | null; assigned_floor: number | null; role: string; email: string; full_name: string; passport_series: string | null; jshshir: string | null }> = {}) {
+function student(overrides: Partial<{ id: string; faculty: string; gender: string | null; room_number: string | null; block: string | null; assigned_floor: number | null; role: string; email: string; full_name: string; passport_series: string | null; jshshir: string | null; is_off_campus: boolean }> = {}) {
   return {
     id: 'student-1',
     faculty: 'IT',
@@ -28,6 +28,7 @@ function student(overrides: Partial<{ id: string; faculty: string; gender: strin
     full_name: 'Talaba Ism',
     passport_series: 'AA1234567',
     jshshir: '12345678901234',
+    is_off_campus: false,
     ...overrides,
   }
 }
@@ -110,6 +111,14 @@ describe('room assignment service', () => {
     expect(result).toEqual({ success: true })
     expect(repo.assignRoomAtomic).toHaveBeenCalledWith('student-1', '101', 4)
     expect(sendRoomAssignedEmail).toHaveBeenCalledWith('student@example.com', 'Talaba Ism', '101')
+  })
+
+  it('rejects a KV (off-campus) student — never placed in a dorm', async () => {
+    const repo = repository({ findStudent: vi.fn(async () => student({ is_off_campus: true })) })
+
+    await expect(createRoomAssignmentService(repo).assignRoom('IT', { studentId: 'student-1', roomNumber: '101' }))
+      .rejects.toMatchObject({ status: 409 })
+    expect(repo.assignRoomAtomic).not.toHaveBeenCalled()
   })
 
   it('rejects a student from another faculty', async () => {

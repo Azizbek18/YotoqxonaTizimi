@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
       .from('users')
       .select('id, full_name, email, phone_number, faculty, direction, course, group, room_number, assigned_floor, avatar_url, gender, status, warning_count, created_at')
       .eq('role', 'talaba')
+      .eq('is_off_campus', false)
       .in('faculty', dormFaculties)
       .order('created_at', { ascending: false })
 

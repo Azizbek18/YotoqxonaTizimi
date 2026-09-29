@@ -18,6 +18,8 @@ export function createRoomAssignmentRepository() {
         .select('id, full_name, gender, room_number, course, direction')
         .eq('role', 'talaba')
         .eq('status', 'active')
+        // KV-talabalar (kvartirada turadi) yotoqxonaga joylashtirilmaydi.
+        .eq('is_off_campus', false)
         .ilike('faculty', faculty)
         .is('room_number', null)
         .order('full_name', { ascending: true })
@@ -27,7 +29,7 @@ export function createRoomAssignmentRepository() {
     async findStudent(id: string) {
       const { data, error } = await supabase
         .from('users')
-        .select('id, faculty, gender, room_number, block, assigned_floor, role, email, full_name, passport_series, jshshir')
+        .select('id, faculty, gender, room_number, block, assigned_floor, role, email, full_name, passport_series, jshshir, is_off_campus')
         .eq('id', id)
         .maybeSingle()
       if (error) throw error

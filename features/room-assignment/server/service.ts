@@ -188,6 +188,10 @@ export function createRoomAssignmentService(repository: RoomAssignmentRepository
       const student = await repository.findStudent(studentId)
       if (!student) throw new ApiError(404, 'Talaba topilmadi')
       if (student.role !== 'talaba') throw new ApiError(403, "Faqat talaba akkountlarini joylashtirish mumkin")
+      // KV-talaba (kvartirada turadi) yotoqxona hisobiga kirmaydi — na xona, na bino.
+      if ((student as { is_off_campus?: boolean | null }).is_off_campus === true) {
+        throw new ApiError(409, "Bu talaba kvartirada turadi (KV-talaba) — yotoqxonaga joylashtirib bo'lmaydi")
+      }
       if (!sameFaculty(student.faculty, faculty)) throw new ApiError(403, 'Boshqa fakultet talabasini joylashtirib bo\'lmaydi')
 
       if (!roomNumber) {

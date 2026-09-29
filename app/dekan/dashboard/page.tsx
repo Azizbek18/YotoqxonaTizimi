@@ -25,7 +25,8 @@ import {
   ArrowRight,
   Layers,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  UserX,
 } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useDekanScope } from '@/lib/hooks/useDekanScope'
@@ -45,6 +46,8 @@ interface DashboardStats {
   rejectedCount: number
   registeredCount: number
   activeStudentsCount: number
+  unregisteredCount: number
+  unregisteredWithRoomCount: number
   totalOccupiedBeds: number
   availableBeds: number
   freeBeds: number
@@ -79,6 +82,8 @@ export default function DekanDashboard() {
     rejectedCount: 0,
     registeredCount: 0,
     activeStudentsCount: 0,
+    unregisteredCount: 0,
+    unregisteredWithRoomCount: 0,
     totalOccupiedBeds: 0,
     availableBeds: 0,
     freeBeds: 0,
@@ -112,6 +117,8 @@ export default function DekanDashboard() {
         rejectedCount: dashboard.rejectedCount,
         registeredCount: dashboard.registeredCount,
         activeStudentsCount: dashboard.activeStudentsCount,
+        unregisteredCount: dashboard.unregisteredCount,
+        unregisteredWithRoomCount: dashboard.unregisteredWithRoomCount,
         totalOccupiedBeds: dashboard.totalOccupiedBeds,
         availableBeds: dashboard.availableBeds,
         freeBeds: dashboard.freeBeds,
@@ -162,6 +169,15 @@ export default function DekanDashboard() {
       icon: Users,
       description: "Tizimda ro'yxatdan o'tganlar",
       link: `${base}/xonalar`,
+    },
+    {
+      title: "Ro'yxatdan o'tmaganlar",
+      value: stats.unregisteredCount,
+      icon: UserX,
+      description: `${stats.unregisteredWithRoomCount} tasiga xona berilgan · hali hisob ochmagan`,
+      link: `${base}/talabalar`,
+      // Opens the Talabalar page straight on the "Ro'yxatdan o'tmagan" folder.
+      folder: 'unregistered',
     },
     {
       title: 'Bo‘sh o‘rinlar',
@@ -252,7 +268,7 @@ export default function DekanDashboard() {
       )}
 
       {/* Stat cards */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${isTarbiyachi ? 'lg:grid-cols-2' : 'lg:grid-cols-4'}`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${isTarbiyachi ? 'lg:grid-cols-2' : 'lg:grid-cols-3 xl:grid-cols-5'}`}>
         {statCards.map((card, idx) => (
           <motion.div
             key={idx}
@@ -261,7 +277,14 @@ export default function DekanDashboard() {
             transition={{ delay: idx * 0.05, duration: 0.25 }}
           >
             <Link
-              href={`${card.link}${!dormScope.global && dormScope.dormId ? `?dormId=${encodeURIComponent(dormScope.dormId)}` : dormScope.dormId === null ? '?dormId=unassigned' : ''}`}
+              href={(() => {
+                const params = new URLSearchParams()
+                if ('folder' in card && card.folder) params.set('folder', card.folder)
+                if (!dormScope.global && dormScope.dormId) params.set('dormId', dormScope.dormId)
+                else if (dormScope.dormId === null) params.set('dormId', 'unassigned')
+                const query = params.toString()
+                return query ? `${card.link}?${query}` : card.link
+              })()}
               className={`group relative block overflow-hidden rounded-2xl border p-5 ${ui.card} ${ui.hoverLift}`}
             >
               <span className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 to-violet-500 opacity-0 transition-opacity group-hover:opacity-100" />

@@ -78,7 +78,10 @@ export function createPermitAdminService(
       const permits = rawPermits.map((permit) => {
         const linked = userByPassport.get(permit.passport_series) ?? (permit.jshshir ? userByJshshir.get(permit.jshshir) : undefined)
         return { ...permit, dorm_id: linked ? linked.dorm_id ?? null : permit.dorm_id ?? null }
-      }).filter((permit) => inScope(permit.dorm_id))
+      // A permit with no building AND no room yet (pending / not yet placed)
+      // belongs to no dorm — it must stay visible whichever building tab the
+      // dekan is on, or "Kutilayotgan arizalar" reads 0 on every real tab.
+      }).filter((permit) => inScope(permit.dorm_id) || (permit.dorm_id == null && !permit.room_number))
       const requests = permits.map((permit) => {
         const linked = userByPassport.get(permit.passport_series) ?? userByJshshir.get(permit.jshshir)
         return { ...permit, warning_count: linked?.warning_count ?? 0, blacklisted: linked?.blacklisted ?? false }
@@ -209,6 +212,12 @@ export function createPermitAdminService(
           rejectedCount: permits.filter((permit) => permit.status === 'rejected').length,
           registeredCount: permits.filter((permit) => permit.status === 'registered').length,
           activeStudentsCount: students.filter((user) => user.status === 'active').length,
+          unregisteredCount: permits.filter(
+            (permit) => permit.status === 'approved'
+              && !userByPassport.has(permit.passport_series)
+              && !(permit.jshshir && userByJshshir.has(permit.jshshir)),
+          ).length,
+          unregisteredWithRoomCount: approvedPermitsWithRooms.length,
           totalOccupiedBeds: usersWithRooms.length + approvedPermitsWithRooms.length,
           availableBeds,
           freeBeds,
@@ -271,6 +280,8 @@ export function createPermitAdminService(
           rejectedCount: sum((d) => d.rejectedCount),
           registeredCount: sum((d) => d.registeredCount),
           activeStudentsCount: sum((d) => d.activeStudentsCount),
+          unregisteredCount: sum((d) => d.unregisteredCount),
+          unregisteredWithRoomCount: sum((d) => d.unregisteredWithRoomCount),
           totalOccupiedBeds: sum((d) => d.totalOccupiedBeds),
           availableBeds: sum((d) => d.availableBeds),
           freeBeds: sum((d) => d.freeBeds),

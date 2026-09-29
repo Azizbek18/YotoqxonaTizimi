@@ -53,6 +53,10 @@ export type DekanOverview = {
     rejectedCount: number
     registeredCount: number
     activeStudentsCount: number
+    /** Approved yo'llanmalar whose holder has no account yet (room given or not). */
+    unregisteredCount: number
+    /** ...of which already hold a room, i.e. occupy a bed. */
+    unregisteredWithRoomCount: number
     /** Students + approved-permit reservations holding a room, this faculty's scope. */
     totalOccupiedBeds: number
     /** Beds in non-frozen rooms on this dekan's floors (per-room capacity applied). */

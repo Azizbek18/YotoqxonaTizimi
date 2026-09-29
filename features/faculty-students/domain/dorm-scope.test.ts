@@ -21,3 +21,17 @@ describe('student directory building scope', () => {
     expect(studentsInDorm(rows, 'unknown')).toEqual([])
   })
 })
+
+describe('permitsInDorm', () => {
+  const permits = [
+    { id: 'a', dorm_id: 'd12', room_number: '1' },
+    { id: 'b', dorm_id: 'd3', room_number: '2' },
+    { id: 'pending', dorm_id: null, room_number: null },
+  ]
+  it('keeps unplaced permits visible on every building tab', async () => {
+    const { permitsInDorm } = await import('./dorm-scope')
+    expect(permitsInDorm(permits, 'd12').map((p) => p.id)).toEqual(['a', 'pending'])
+    expect(permitsInDorm(permits, 'd3').map((p) => p.id)).toEqual(['b', 'pending'])
+    expect(permitsInDorm(permits, undefined)).toEqual([])
+  })
+})

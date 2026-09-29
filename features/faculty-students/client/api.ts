@@ -11,12 +11,18 @@ import type {
   SetFloorCaptainInput,
   StudentProfileRow,
   StudentScope,
+  UnregisteredPermitRow,
 } from '../types'
 
 export async function fetchFacultyStudents(scope: StudentScope = 'placed') {
   const result = await requestJson<{ students: StudentProfileRow[] }>(
     `/api/dekan/students/directory?scope=${scope}`,
   )
+  return result.students
+}
+
+export async function fetchUnregisteredStudents() {
+  const result = await requestJson<{ students: UnregisteredPermitRow[] }>('/api/dekan/students/unregistered')
   return result.students
 }
 

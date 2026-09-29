@@ -25,6 +25,24 @@ export function createFacultyStudentsRepository() {
       return data ?? []
     },
 
+    // Signed tushuntirish xatlari per student, for the red 3-letter flag. A
+    // letter leaves 'draft' only once its signature exists, so != 'draft'
+    // means signed. One query for the faculty, counted in memory.
+    async explanationCountsByStudent(faculty: string): Promise<Map<string, number>> {
+      const { data, error } = await supabase
+        .from('arizalar')
+        .select('student_id')
+        .eq('type', 'tushuntirish')
+        .neq('status', 'draft')
+        .ilike('faculty', faculty)
+      if (error) throw error
+      const counts = new Map<string, number>()
+      for (const row of data ?? []) {
+        if (row.student_id) counts.set(row.student_id, (counts.get(row.student_id) ?? 0) + 1)
+      }
+      return counts
+    },
+
     // Approved yo'llanmalar nobody has registered from yet. A permit is
     // "registered" once a users row shares its passport_series or JSHSHIR
     // (both unique) — same match the dashboard occupancy count uses. Includes

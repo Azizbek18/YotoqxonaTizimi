@@ -44,7 +44,12 @@ export function createFacultyStudentsService(
       const scope = STUDENT_SCOPES.includes(scopeValue as StudentScope)
         ? (scopeValue as StudentScope)
         : 'placed'
-      return (await repository.listStudentProfiles(requireFaculty(facultyValue), scope)) as StudentProfileRow[]
+      const faculty = requireFaculty(facultyValue)
+      const [rows, counts] = await Promise.all([
+        repository.listStudentProfiles(faculty, scope),
+        repository.explanationCountsByStudent(faculty),
+      ])
+      return rows.map((row) => ({ ...row, explanation_count: counts.get(String(row.id)) ?? 0 })) as unknown as StudentProfileRow[]
     },
 
     async listUnregistered(facultyValue: string | null): Promise<UnregisteredPermitRow[]> {

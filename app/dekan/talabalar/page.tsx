@@ -2,6 +2,7 @@
 
 import { isRoommate } from '@/lib/roommates'
 import { permitsInDorm, studentsInDorm } from '@/features/faculty-students/domain/dorm-scope'
+import { EXPLANATION_RED_THRESHOLD, isExplanationRed } from '@/features/applications/domain/explanation'
 import { fetchDekanDorm } from '@/features/dorms/client/api'
 import type { DekanDorm } from '@/features/dorms/types'
 
@@ -107,7 +108,7 @@ const WARNING_DOT_CLASSES: Record<WarningTone, string> = {
 
 const HUJJAT_LABELS = ['Passport seriya', 'JSHSHIR', 'Passport sanasi', 'Hudud', 'Millati', 'Jinsi']
 
-type FolderKey = 'all' | 'unregistered' | 'roomless' | 'debtor' | 'paid' | 'male' | 'female' | 'captain' | 'warned' | 'blacklisted'
+type FolderKey = 'all' | 'unregistered' | 'red' | 'roomless' | 'debtor' | 'paid' | 'male' | 'female' | 'captain' | 'warned' | 'blacklisted'
 
 // Editable fields, grouped to match the read-only detail tabs. Room / floor /
 // warnings / status are intentionally not here — see FacultyStudentPatch in
@@ -488,6 +489,8 @@ export default function DekanStudentsPage() {
         matchesFolder = normalizeGender(student.gender) === activeFolder
       } else if (activeFolder === 'captain') {
         matchesFolder = Boolean(student.is_floor_captain)
+      } else if (activeFolder === 'red') {
+        matchesFolder = isExplanationRed(student.explanation_count)
       } else if (activeFolder === 'warned') {
         matchesFolder = (student.warning_count ?? 0) > 0
       } else if (activeFolder === 'paid' || activeFolder === 'debtor') {
@@ -765,6 +768,7 @@ export default function DekanStudentsPage() {
   const blacklistedCount = students.filter((student) => student.blacklisted).length
   const maleCount = students.filter((student) => normalizeGender(student.gender) === 'male').length
   const femaleCount = students.filter((student) => normalizeGender(student.gender) === 'female').length
+  const redCount = students.filter((student) => isExplanationRed(student.explanation_count)).length
   const warnedCount = students.filter((student) => (student.warning_count ?? 0) > 0).length
   const captainCount = students.filter((student) => student.is_floor_captain).length
 
@@ -833,6 +837,7 @@ export default function DekanStudentsPage() {
     { key: 'male', label: "O'g'il", count: maleCount },
     { key: 'female', label: 'Qiz', count: femaleCount },
     { key: 'captain', label: 'Sardorlar', count: captainCount },
+    { key: 'red', label: `Qizil (${EXPLANATION_RED_THRESHOLD}+ xat)`, count: redCount },
     { key: 'warned', label: 'Ogohlantirilgan', count: warnedCount },
     { key: 'blacklisted', label: 'Chetlatilgan', count: blacklistedCount },
   ]
@@ -1283,6 +1288,16 @@ export default function DekanStudentsPage() {
                           {student.full_name}
                         </p>
                         <span className="flex shrink-0 items-center gap-1">
+                          {isExplanationRed(student.explanation_count) && (
+                            <span
+                              title={`${student.explanation_count} ta tushuntirish xati`}
+                              className={`rounded px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${
+                                statusChip('danger', isLight).chip
+                              }`}
+                            >
+                              {student.explanation_count} xat
+                            </span>
+                          )}
                           {student.blacklisted && (
                             <span
                               className={`rounded px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${
@@ -1487,6 +1502,11 @@ export default function DekanStudentsPage() {
                       {selectedStudent.blacklisted && (
                         <span className={`shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 text-[10px] font-black ${statusChip('danger', isLight).chip}`}>
                           Chetlatilgan
+                        </span>
+                      )}
+                      {isExplanationRed(selectedStudent.explanation_count) && (
+                        <span className={`shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 text-[10px] font-black ${statusChip('danger', isLight).chip}`}>
+                          Qizil: {selectedStudent.explanation_count} ta tushuntirish xati
                         </span>
                       )}
                     </div>

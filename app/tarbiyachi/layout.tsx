@@ -21,6 +21,7 @@ import {
   ChevronRight,
   LogOut,
   UserCog,
+  FileSignature,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -51,6 +52,7 @@ const NAV = [
   { label: '3D Xonalar', caption: 'Qavat tarxi', href: '/tarbiyachi/3d-xonalar', icon: Layers3 },
   { label: 'Talabalar', caption: 'Yotoqxona aholisi', href: '/tarbiyachi/talabalar', icon: Users, permission: 'students.view' },
   { label: 'Arizalar', caption: 'Talaba murojaatlari', href: '/tarbiyachi/arizalar', icon: ClipboardList, permission: 'applications.review' },
+  { label: 'Tushuntirish xati', caption: 'Talaba nomidan', href: '/tarbiyachi/tushuntirish', icon: FileSignature, permission: 'explanations.write' },
   { label: 'Yo‘qlama', caption: 'Kunlik nazorat', href: '/tarbiyachi/yoqlama', icon: ClipboardCheck, permission: 'attendance.manage' },
   { label: 'To‘lovlar', caption: 'Chek tasdiqlash', href: '/tarbiyachi/tolovlar', icon: Wallet, permission: 'payments.review' },
   { label: 'E‘lonlar', caption: 'Talabalarga', href: '/tarbiyachi/elonlar', icon: Megaphone, permission: 'announcements.manage' },

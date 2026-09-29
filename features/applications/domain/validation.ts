@@ -92,3 +92,42 @@ export function parseStudentApplication(value: unknown): CreateStudentApplicatio
     aiGenerated: Boolean(input.aiGenerated),
   }
 }
+
+export type StaffExplanationInput = {
+  studentId: string
+  title: string
+  recipient: 'rektor' | 'prorektor' | 'dekan'
+  incidentText: string
+  signatureImage: string
+}
+
+const EXPLANATION_MIN_CHARS = 10
+
+/** Body of POST /api/staff/explanations — a tarbiyachi writes the letter on a
+ *  student's behalf; the student signs on the tarbiyachi's screen. */
+export function parseStaffExplanation(value: unknown): StaffExplanationInput {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new ApiError(400, "Ma'lumotlar noto'g'ri")
+  }
+  const s = value as Record<string, unknown>
+  const studentId = text(s.studentId, 80, true)
+  const incidentText = text(s.incidentText, 8000, true)
+  if (incidentText.length < EXPLANATION_MIN_CHARS) {
+    throw new ApiError(400, 'Sababni batafsilroq yozing')
+  }
+  const recipient = s.recipient === undefined ? 'dekan' : s.recipient
+  if (!isArizaRecipient(recipient)) throw new ApiError(400, 'Kimning nomiga yozilishini tanlang')
+
+  const sig = parseSignatureInput(s.signature)
+  if (!sig?.attested) throw new ApiError(400, 'Talaba imzosini tasdiqlang')
+  if (!sig.image) throw new ApiError(400, "Talaba imzo qo'yishi kerak")
+  if (sig.image.length > MAX_SIGNATURE_IMAGE_CHARS) throw new ApiError(413, 'Imzo rasmi juda katta')
+
+  return {
+    studentId,
+    title: text(s.title, 200) || 'Tushuntirish xati',
+    recipient,
+    incidentText,
+    signatureImage: sig.image,
+  }
+}

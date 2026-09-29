@@ -150,9 +150,17 @@ describe('POST /api/ai/tahlil', () => {
     expect(res.status).toBe(403)
   })
 
-  it('403s a dekan — receipt review (and its AI check) is the tarbiyachi’s job', async () => {
+  it('allows the dekan of the payment’s own faculty (they review receipts at /dekan/tolovlar)', async () => {
+    mocks.aiVisionJson.mockResolvedValue(aiResult())
     mocks.getRequestUser.mockResolvedValue({ id: 'dekan1' })
     tableState.staff.maybeSingle = { data: { role: 'dekan', status: 'active', faculty: 'amit' }, error: null }
+    const res = await POST(req({ paymentId: 'pay1' }))
+    expect(res.status).toBe(200)
+  })
+
+  it('403s a dekan of another faculty', async () => {
+    mocks.getRequestUser.mockResolvedValue({ id: 'dekan2' })
+    tableState.staff.maybeSingle = { data: { role: 'dekan', status: 'active', faculty: 'kimyo' }, error: null }
     const res = await POST(req({ paymentId: 'pay1' }))
     expect(res.status).toBe(403)
   })

@@ -13,9 +13,17 @@ export function submitStudentPayment(form: FormData) {
   return requestJson<SubmitPaymentResult>('/api/student/payments', { method: 'POST', body: form })
 }
 
+// The receipt-review body is shared by the tarbiyachi and dekan panels; each
+// has its own faculty-scoped endpoint, chosen by which panel's URL we are in.
+function reviewPaymentsEndpoint() {
+  return typeof window !== 'undefined' && window.location.pathname.startsWith('/dekan')
+    ? '/api/dekan/payments'
+    : '/api/tarbiyachi/payments'
+}
+
 export async function fetchAdminPayments(studentId?: string) {
   const query = studentId ? `?studentId=${encodeURIComponent(studentId)}` : ''
-  const result = await requestJson<{ payments: PaymentRecord[] }>(`/api/tarbiyachi/payments${query}`)
+  const result = await requestJson<{ payments: PaymentRecord[] }>(`${reviewPaymentsEndpoint()}${query}`)
   return result.payments
 }
 
@@ -25,7 +33,7 @@ export async function fetchAdminPaymentSummary(): Promise<PaymentSummary> {
     if (!authHeaders.Authorization) {
       return { waitingCount: 0 }
     }
-    return await requestJson<PaymentSummary>('/api/tarbiyachi/payments?summary=1')
+    return await requestJson<PaymentSummary>(`${reviewPaymentsEndpoint()}?summary=1`)
   } catch {
     return { waitingCount: 0 }
   }
@@ -45,7 +53,7 @@ export function reviewAdminPayments(input: {
   status: Extract<PaymentStatus, 'approved' | 'rejected'>
   message: string
 }) {
-  return requestJson<{ ok: true }>('/api/tarbiyachi/payments', {
+  return requestJson<{ ok: true }>(reviewPaymentsEndpoint(), {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),

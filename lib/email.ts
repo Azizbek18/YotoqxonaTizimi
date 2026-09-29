@@ -1,4 +1,5 @@
 import 'server-only'
+import { writeAuditLog } from '@/lib/audit-log'
 
 // Resend REST API — SDK o'rniga to'g'ridan-to'g'ri fetch ishlatiladi, chunki
 // bizga faqat bitta endpoint kerak. lib/telegram.ts bilan bir xil qoida:
@@ -81,9 +82,9 @@ interface RenderedMail {
 const RESEND_QUOTA_BACKOFF_MS = 30 * 60_000
 let resendBlockedUntil = 0
 
-async function sendViaResend(mail: RenderedMail): Promise<boolean> {
+async function sendViaResend(mail: RenderedMail): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey || Date.now() < resendBlockedUntil) return false
+  if (!apiKey || Date.now() < resendBlockedUntil) return { ok: false, error: 'skipped (no key or quota backoff)' }
 
   try {
     const response = await fetch(RESEND_ENDPOINT, {
@@ -107,12 +108,12 @@ async function sendViaResend(mail: RenderedMail): Promise<boolean> {
         resendBlockedUntil = Date.now() + RESEND_QUOTA_BACKOFF_MS
       }
       console.error('Resend sendMail error:', response.status, detail)
-      return false
+      return { ok: false, error: `${response.status}: ${detail.slice(0, 200)}` }
     }
-    return true
+    return { ok: true }
   } catch (error) {
     console.error('Resend sendMail failed:', error)
-    return false
+    return { ok: false, error: error instanceof Error ? error.message : String(error) }
   }
 }
 
@@ -148,7 +149,7 @@ function smtpAccounts(): SmtpAccount[] {
   return accounts
 }
 
-async function sendViaSmtp(account: SmtpAccount, mail: RenderedMail): Promise<boolean> {
+async function sendViaSmtp(account: SmtpAccount, mail: RenderedMail): Promise<{ ok: boolean; error?: string }> {
   try {
     const { createTransport } = await import('nodemailer')
     const transport = createTransport({
@@ -172,10 +173,11 @@ async function sendViaSmtp(account: SmtpAccount, mail: RenderedMail): Promise<bo
         encoding: 'base64',
       })),
     })
-    return true
+    return { ok: true }
   } catch (error) {
-    console.error(`SMTP sendMail failed (${account.label}):`, error instanceof Error ? error.message : error)
-    return false
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`SMTP sendMail failed (${account.label}):`, message)
+    return { ok: false, error: message }
   }
 }
 
@@ -183,6 +185,25 @@ async function sendViaSmtp(account: SmtpAccount, mail: RenderedMail): Promise<bo
 // the value (fire-and-forget); the permit-document delivery and the email
 // code route use it. `ok: false` also covers "not configured" so an
 // unconfigured environment falls through to the other channel.
+// Diagnostika: har bir yuborish urinishi qaysi provayder, qaysi qabul
+// qiluvchi domen va qanday xato bilan tugagani — email/kod hech qachon
+// yozilmaydi. Muammoni hal qilish uchun ("hammaga ham bormayapti") avval
+// aynan qaysi domenlarda qaysi provayder qulayotganini bilish kerak edi,
+// buning uchun yozuv umuman yo'q edi (faqat Vercel konsol logi, ko'rib
+// bo'lmaydi).
+async function logSendOutcome(
+  to: string,
+  ok: boolean,
+  attempts: { provider: string; ok: boolean; error?: string }[],
+) {
+  const domain = to.slice(to.lastIndexOf('@') + 1).toLowerCase() || 'unknown'
+  await writeAuditLog({
+    eventType: 'email.send',
+    status: ok ? 'success' : 'error',
+    details: { domain, attempts },
+  })
+}
+
 export async function sendMail({
   to, subject, heading, paragraphs, cta, attachments,
 }: MailInput): Promise<{ ok: boolean }> {
@@ -195,10 +216,25 @@ export async function sendMail({
     attachments,
   }
 
-  if (await sendViaResend(mail)) return { ok: true }
-  for (const account of smtpAccounts()) {
-    if (await sendViaSmtp(account, mail)) return { ok: true }
+  const attempts: { provider: string; ok: boolean; error?: string }[] = []
+
+  const resendResult = await sendViaResend(mail)
+  attempts.push({ provider: 'resend', ...resendResult })
+  if (resendResult.ok) {
+    await logSendOutcome(to, true, attempts)
+    return { ok: true }
   }
+
+  for (const account of smtpAccounts()) {
+    const smtpResult = await sendViaSmtp(account, mail)
+    attempts.push({ provider: `smtp:${account.label}`, ...smtpResult })
+    if (smtpResult.ok) {
+      await logSendOutcome(to, true, attempts)
+      return { ok: true }
+    }
+  }
+
+  await logSendOutcome(to, false, attempts)
   return { ok: false }
 }
 

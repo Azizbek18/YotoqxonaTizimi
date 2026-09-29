@@ -8,8 +8,6 @@ import { CheckCircle, AlertTriangle, FileSignature, Loader2, SearchX } from 'luc
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import DeveloperContactLink from '@/components/DeveloperContactLink'
-import EmailProofDialog from '@/components/auth/EmailProofDialog'
-import { fetchWithEmailProof } from '@/features/email-verification/client'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { appFont as baloo2 } from '@/lib/app-font'
 import { supabase } from '@/lib/supabase'
@@ -175,7 +173,10 @@ export default function RegisterPage() {
       const passportSeriesClean = data.passportSeries.toUpperCase().replace(/\s/g, '')
       const jshshirClean = data.jshshir.trim()
 
-      const response = await fetchWithEmailProof(userEmail, (emailProof) => fetch('/api/student/register', {
+      // No email-ownership code here — the dekan already verified this
+      // applicant's identity against their permit documents before
+      // approving, which is a stronger check than a mailbox code.
+      const response = await fetch('/api/student/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -185,10 +186,8 @@ export default function RegisterPage() {
           passportSeries: passportSeriesClean,
           jshshir: jshshirClean,
           applicationType,
-          emailProof,
         }),
-      }))
-      if (!response) return
+      })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.error || "Ro'yxatdan o'tishda xatolik")
 
@@ -359,7 +358,6 @@ export default function RegisterPage() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 10px; }
       `}</style>
       <DeveloperContactLink />
-      <EmailProofDialog />
     </main>
   )
 }

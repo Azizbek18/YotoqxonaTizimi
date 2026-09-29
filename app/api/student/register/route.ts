@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
-import { EMAIL_PROOF_REQUIRED, hasEmailProof } from '@/lib/email-proof'
 import { getPasswordPolicyError } from '@/lib/password-policy'
 import {
   buildFullName,
@@ -159,12 +158,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: passwordError }, { status: 400 })
     }
 
-    // Choosing the account password must be tied to the permit's inbox —
-    // passport + email + JShSHIR alone are not secrets.
-    if (!hasEmailProof(body.emailProof, email)) {
-      return NextResponse.json(EMAIL_PROOF_REQUIRED, { status: 401 })
-    }
-
+    // Email-ownership proof (email-proof.ts) is deliberately NOT required
+    // here: the dekan already verified this applicant's identity against
+    // their permit documents before approving, which is a stronger check
+    // than a mailbox code. KV-talaba (features/... /kv-talaba/register) has
+    // no such review and still requires it.
     const supabase = getServiceSupabase()
     let permitQuery = supabase
       .from('permit_requests')

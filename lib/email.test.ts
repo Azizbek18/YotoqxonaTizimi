@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ smtpSend: vi.fn(), createTransport: vi.fn() }))
+const mocks = vi.hoisted(() => ({ smtpSend: vi.fn(), createTransport: vi.fn(), writeAuditLog: vi.fn() }))
 vi.mock('nodemailer', () => ({ createTransport: mocks.createTransport }))
+vi.mock('@/lib/audit-log', () => ({ writeAuditLog: mocks.writeAuditLog }))
 
 const fetchMock = vi.fn()
 
@@ -68,8 +69,21 @@ describe('sendMail provider chain', () => {
 
     expect(await sendEmailVerificationCode('a@b.uz', '123456')).toEqual({ ok: true })
     expect(mocks.createTransport).toHaveBeenLastCalledWith(expect.objectContaining({ host: 'smtp-relay.brevo.com', port: 587, secure: false }))
+    expect(mocks.writeAuditLog).toHaveBeenLastCalledWith(expect.objectContaining({
+      eventType: 'email.send',
+      status: 'success',
+      details: expect.objectContaining({
+        domain: 'b.uz',
+        attempts: [
+          { provider: 'resend', ok: false, error: expect.any(String) },
+          { provider: 'smtp:SMTP', ok: false, error: '454 daily limit' },
+          { provider: 'smtp:SMTP_2', ok: true },
+        ],
+      }),
+    }))
 
     mocks.smtpSend.mockRejectedValue(new Error('down'))
     expect(await sendEmailVerificationCode('a@b.uz', '123456')).toEqual({ ok: false })
+    expect(mocks.writeAuditLog).toHaveBeenLastCalledWith(expect.objectContaining({ eventType: 'email.send', status: 'error' }))
   })
 })

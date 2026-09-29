@@ -1,8 +1,9 @@
 import 'server-only'
 import { ApiError } from '@/server/http/api-error'
-import { sendTelegramAdminMessage } from '@/lib/telegram'
+import { sendTelegramAdminMessage, sendTelegramChatMessage } from '@/lib/telegram'
 import { sendStudentTelegram } from '@/lib/student-telegram'
-import { notifyDormStaffNewAriza } from '@/lib/staff-telegram'
+import { dekanChatIdsForFaculty, getStaffTelegramChatId, notifyDormStaffNewAriza } from '@/lib/staff-telegram'
+import { writeAuditLog } from '@/lib/audit-log'
 import { sendArizaSignedEmail } from '@/lib/email'
 import { cyrillicToLatin } from '@/lib/transliterate'
 import { normalizeFaculty, permitFacultyLabel } from '@/lib/faculties'
@@ -17,8 +18,10 @@ import {
   verifyArizaRecord,
 } from '@/lib/ariza-signature'
 import type { ApplicationListKind } from '../types'
+import { EXPLANATION_RED_THRESHOLD } from '../domain/explanation'
 import {
   parseFormalAriza,
+  parseStaffExplanation,
   parseSignatureInput,
   parseStudentApplication,
   type SignatureInput,
@@ -45,6 +48,32 @@ function nameKey(value: unknown): string {
   return cyrillicToLatin(String(value ?? '')).toUpperCase().replace(/[^A-ZА-Я]/g, '')
 }
 
+function escapeHtml(value: string) {
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+}
+
+function truncate(value: string, max: number) {
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value
+}
+
+// A tarbiyachi may act only for an active DORM student of a faculty living in
+// their building — never a KV (off-campus) student, never another building's.
+function assertStaffMaySpeakFor(
+  profile: { faculty: string | null; status: string | null; is_off_campus: boolean | null } | null | undefined,
+  dormFaculties: string[],
+): void {
+  if (!profile) throw new ApiError(404, 'Talaba topilmadi')
+  if (profile.is_off_campus === true) {
+    throw new ApiError(409, 'Bu talaba kvartirada turadi (KV-talaba) — yotoqxona tushuntirish xati yozilmaydi')
+  }
+  if (profile.status !== 'active') throw new ApiError(409, 'Talaba hisobi faol emas')
+  const faculty = normalizeFaculty(profile.faculty ?? null)
+  const allowed = dormFaculties.map((f) => normalizeFaculty(f)).filter(Boolean)
+  if (!faculty || !allowed.includes(faculty)) {
+    throw new ApiError(403, 'Bu talaba sizning yotoqxonangizda yashamaydi')
+  }
+}
+
 type ArizaRowLite = {
   id: string
   student_id: string | null
@@ -56,6 +85,18 @@ type ArizaRowLite = {
   type: string | null
   reason: string | null
   text: string
+}
+
+async function sendStudentLetterTelegram(
+  studentId: string,
+  html: string,
+  replyMarkup?: Parameters<typeof sendStudentTelegram>[2] extends infer O ? (O extends { replyMarkup?: infer R } ? R : never) : never,
+): Promise<boolean> {
+  try {
+    return await sendStudentTelegram(studentId, html, { parseMode: 'HTML', ...(replyMarkup ? { replyMarkup } : {}) })
+  } catch {
+    return false
+  }
 }
 
 export function createApplicationService(repository: ApplicationRepository = createApplicationRepository()) {
@@ -76,6 +117,9 @@ export function createApplicationService(repository: ApplicationRepository = cre
     signatureInput: SignatureInput | null,
     evidence: SignatureEvidence,
     extraSnapshot: Record<string, unknown> = {},
+    // notify:false = the caller sends its own Telegram messages (the
+    // tarbiyachi-on-behalf flow); the e-mail copy is still sent.
+    opts: { notify?: boolean } = {},
   ) {
     const profileName = signer.name
     if (!signatureInput || !signatureInput.attested) {
@@ -149,12 +193,14 @@ export function createApplicationService(repository: ApplicationRepository = cre
 
     // Heads-up to the dorm's staff (tarbiyachi / dekan) who opted in with a
     // personal Telegram chat — best-effort, never blocks the submission.
-    void notifyDormStaffNewAriza({
-      studentName: ariza.student_name ?? profileName,
-      faculty: ariza.faculty,
-      kind: (ariza.type === 'tushuntirish' ? 'tushuntirish' : 'ariza'),
-      title: ariza.title,
-    })
+    if (opts.notify !== false) {
+      void notifyDormStaffNewAriza({
+        studentName: ariza.student_name ?? profileName,
+        faculty: ariza.faculty,
+        kind: (ariza.type === 'tushuntirish' ? 'tushuntirish' : 'ariza'),
+        title: ariza.title,
+      })
+    }
 
     // Timestamped out-of-band copies — both channels when available.
     const notice = { title: ariza.title ?? '', type: ariza.type ?? 'ariza', verifyCode, signedAt }
@@ -162,7 +208,7 @@ export function createApplicationService(repository: ApplicationRepository = cre
       await sendArizaSignedEmail(signer.email, profileName, notice)
         .catch(() => { /* best-effort — the signature already stands */ })
     }
-    if (ariza.student_id) {
+    if (ariza.student_id && opts.notify !== false) {
       const kind = notice.type === 'tushuntirish' ? 'Tushuntirish' : 'Ariza'
       const when = new Date(signedAt).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' })
       await sendStudentTelegram(
@@ -299,6 +345,182 @@ export function createApplicationService(repository: ApplicationRepository = cre
         application: result.application,
         receipt: result.receipt,
         compose,
+      }
+    },
+
+
+    /** Everything the tarbiyachi's "tushuntirish xati" screen shows once a
+     *  student is picked: their details (so nothing is typed by hand), how
+     *  many letters they already have, and whether they are already red. */
+    async explanationContext(dormFaculties: string[], studentIdValue: unknown) {
+      const studentId = text(studentIdValue, 80, true)
+      const profile = await repository.getStudentForStaff(studentId)
+      assertStaffMaySpeakFor(profile, dormFaculties)
+      const faculty = profile!.faculty ?? ''
+      const [ttjNumber, dekanName, explanationCount, recent] = await Promise.all([
+        repository.ttjNumberForFaculty(faculty),
+        repository.dekanNameForFaculty(faculty),
+        repository.explanationCount(studentId),
+        repository.recentExplanations(studentId, 5),
+      ])
+      return {
+        success: true as const,
+        student: {
+          id: profile!.id,
+          fullName: profile!.full_name ?? '',
+          faculty,
+          facultyLabel: permitFacultyLabel(faculty) || faculty,
+          direction: profile!.direction ?? null,
+          course: profile!.course ?? null,
+          room: profile!.room_number ?? null,
+        },
+        ttjNumber: ttjNumber ?? '',
+        dekanName,
+        explanationCount,
+        red: explanationCount >= EXPLANATION_RED_THRESHOLD,
+        recent,
+      }
+    },
+
+    /** A tarbiyachi writes a tushuntirish xati on a student's behalf: the
+     *  student's details come from their profile, the tarbiyachi types only
+     *  the reason, and the STUDENT signs on the tarbiyachi's screen. It is
+     *  then exactly a student-signed letter (same hash + HMAC), with the
+     *  recording tarbiyachi frozen into the signed snapshot. */
+    async createExplanationOnBehalf(
+      staff: { id: string; fullName: string },
+      dormFaculties: string[],
+      value: unknown,
+      evidence: SignatureEvidence = { ip: null, userAgent: null },
+    ) {
+      const input = parseStaffExplanation(value)
+      const profile = await repository.getStudentForStaff(input.studentId)
+      assertStaffMaySpeakFor(profile, dormFaculties)
+      const student = profile!
+
+      const facultyLabel = permitFacultyLabel(student.faculty ?? '') || (student.faculty ?? '')
+      const [dekanName, ttjNumber] = await Promise.all([
+        input.recipient === 'dekan' ? repository.dekanNameForFaculty(student.faculty ?? '') : Promise.resolve(null),
+        repository.ttjNumberForFaculty(student.faculty ?? ''),
+      ])
+      const compose = {
+        kind: 'tushuntirish' as const,
+        recipient: input.recipient,
+        fullName: student.full_name ?? '',
+        facultyLabel,
+        course: student.course ?? 1,
+        ttjNumber: ttjNumber ?? '',
+        room: student.room_number ?? '',
+        incidentText: input.incidentText,
+        dekanName,
+      }
+      const fullText = composeArizaFullText(compose)
+
+      const created = await repository.create({
+        student_id: student.id,
+        student_name: student.full_name,
+        faculty: student.faculty,
+        direction: student.direction,
+        course: student.course ?? 1,
+        title: input.title,
+        type: 'tushuntirish',
+        reason: input.incidentText.slice(0, 4000),
+        text: fullText,
+        level: 'info',
+        status: 'draft',
+        ai_generated: false,
+        date: new Date().toISOString(),
+      })
+
+      const result = await signAndFinalise(
+        created as ArizaRowLite,
+        { name: student.full_name ?? '', email: student.email ?? null },
+        { typedName: student.full_name ?? '', attested: true, image: input.signatureImage },
+        evidence,
+        { formal: compose, recordedBy: { staffId: staff.id, staffName: staff.fullName, role: 'tarbiyachi' } },
+        { notify: false },
+      )
+
+      const explanationCount = await repository.explanationCount(student.id)
+      const red = explanationCount >= EXPLANATION_RED_THRESHOLD
+      const verifyCode = result.receipt.verifyCode
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+
+      const letter = escapeHtml(truncate(fullText, 3300))
+      const verifyButton = appUrl
+        ? { inline_keyboard: [[{ text: 'Imzoni tekshirish', url: `${appUrl}/ariza-tekshirish?code=${encodeURIComponent(verifyCode)}` }]] }
+        : undefined
+
+      // Best-effort, all three: a Telegram outage must never undo a letter
+      // the student has already signed.
+      const studentSent = sendStudentLetterTelegram(student.id, [
+        '📄 <b>Tushuntirish xati rasmiylashtirildi</b>',
+        '',
+        `Tarbiyachi <b>${escapeHtml(staff.fullName)}</b> nomingizdan tushuntirish xatini yozdi va siz imzo qo‘ydingiz.`,
+        '',
+        letter,
+        '',
+        `Tekshiruv kodi: <code>${verifyCode}</code>`,
+        'Agar bu xatni siz imzolamagan bo‘lsangiz — darhol dekanatga xabar bering.',
+      ].join('\n'), verifyButton)
+
+      const staffSent = (async (): Promise<'sent' | 'not_set' | 'failed'> => {
+        try {
+          const chatId = await getStaffTelegramChatId(staff.id)
+          if (!chatId) return 'not_set'
+          const ok = await sendTelegramChatMessage(chatId, [
+            `✅ <b>Tushuntirish xati saqlandi</b> (${explanationCount}-xat)`,
+            `👤 <b>${escapeHtml(student.full_name ?? '')}</b>`,
+            '',
+            letter,
+            '',
+            `Tekshiruv kodi: <code>${verifyCode}</code>`,
+          ].join('\n'), { parseMode: 'HTML', replyMarkup: verifyButton })
+          return ok ? 'sent' : 'failed'
+        } catch {
+          return 'failed'
+        }
+      })()
+
+      // Third (or later) letter: tell the dekan(s) of the student's faculty.
+      const dekansNotified = red
+        ? (async () => {
+            const chatIds = await dekanChatIdsForFaculty(student.faculty)
+            const link = appUrl ? `${appUrl}/dekan/talabalar?student=${encodeURIComponent(student.id)}` : null
+            const text = [
+              '🔴 <b>Qizil holat: ko‘p tushuntirish xati</b>',
+              '',
+              `👤 <b>${escapeHtml(student.full_name ?? '')}</b>`,
+              `🎓 ${escapeHtml(facultyLabel)}${student.room_number ? ` · ${escapeHtml(student.room_number)}-xona` : ''}`,
+              `📝 ${explanationCount} ta tushuntirish xati yozgan (chegara: ${EXPLANATION_RED_THRESHOLD}).`,
+              `Tarbiyachi: ${escapeHtml(staff.fullName)}`,
+            ].join('\n')
+            const sent = await Promise.all(chatIds.map((chatId) =>
+              sendTelegramChatMessage(chatId, text, {
+                parseMode: 'HTML',
+                ...(link ? { replyMarkup: { inline_keyboard: [[{ text: 'Talabani ochish', url: link }]] } } : {}),
+              }).catch(() => false)))
+            return sent.filter(Boolean).length
+          })().catch(() => 0)
+        : Promise.resolve(0)
+
+      const [studentTelegram, staffTelegram, dekanTelegram] = await Promise.all([studentSent, staffSent, dekansNotified])
+
+      await writeAuditLog({
+        eventType: 'ariza.tushuntirish_on_behalf',
+        status: 'success',
+        actorUserId: staff.id,
+        targetRole: 'talaba',
+        details: { studentId: student.id, arizaId: (created as ArizaRowLite).id, verifyCode, explanationCount, red },
+      })
+
+      return {
+        success: true as const,
+        application: result.application,
+        receipt: result.receipt,
+        explanationCount,
+        red,
+        telegram: { student: studentTelegram, staff: staffTelegram, dekansNotified: dekanTelegram },
       }
     },
 

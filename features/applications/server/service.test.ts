@@ -2,7 +2,25 @@ import { describe, expect, it, vi } from 'vitest'
 
 process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'test-secret-key-for-applications-service'
 
-vi.mock('@/lib/telegram', () => ({ sendTelegramAdminMessage: vi.fn(async () => {}) }))
+const tg = vi.hoisted(() => ({
+  sendTelegramChatMessage: vi.fn(async () => true),
+  sendStudentTelegram: vi.fn(async () => true),
+  getStaffTelegramChatId: vi.fn(async () => '111'),
+  dekanChatIdsForFaculty: vi.fn(async () => ['900', '901']),
+  notifyDormStaffNewAriza: vi.fn(async () => {}),
+  writeAuditLog: vi.fn(async () => {}),
+}))
+vi.mock('@/lib/telegram', () => ({
+  sendTelegramAdminMessage: vi.fn(async () => {}),
+  sendTelegramChatMessage: tg.sendTelegramChatMessage,
+}))
+vi.mock('@/lib/student-telegram', () => ({ sendStudentTelegram: tg.sendStudentTelegram }))
+vi.mock('@/lib/staff-telegram', () => ({
+  getStaffTelegramChatId: tg.getStaffTelegramChatId,
+  dekanChatIdsForFaculty: tg.dekanChatIdsForFaculty,
+  notifyDormStaffNewAriza: tg.notifyDormStaffNewAriza,
+}))
+vi.mock('@/lib/audit-log', () => ({ writeAuditLog: tg.writeAuditLog }))
 vi.mock('@/lib/email', () => ({ sendArizaSignedEmail: vi.fn(async () => {}) }))
 
 const { createApplicationService } = await import('./service')
@@ -230,5 +248,108 @@ describe('createApplicationService — signing', () => {
     await expect(service.documentData('ariza-1', { staffFaculties: ['iqtisodiyot'] }))
       .rejects.toMatchObject({ status: 404 })
     await expect(service.staffSignature('ariza-1', ['amit'])).resolves.toMatchObject({ signed: false })
+  })
+})
+
+
+describe('createApplicationService — tarbiyachi writes a tushuntirish xati on a student’s behalf', () => {
+  const STAFF = { id: 'staff-1', fullName: 'Tarbiyachi Salimov' }
+  const STUDENT = {
+    id: 'stu-1', full_name: 'Aliyev Vali Akmal oʻgʻli', email: 'aliyev@example.com', faculty: 'amit',
+    direction: 'amaliy-matematika', course: 3, room_number: '305', status: 'active', is_off_campus: false,
+  }
+  const body = (over: Record<string, unknown> = {}) => ({
+    studentId: 'stu-1',
+    incidentText: 'Telefonim o‘chib qolgan edi, yo‘qlamaga chiqa olmadim.',
+    signature: { typedName: STUDENT.full_name, attested: true, image: PNG },
+    ...over,
+  })
+  const repoFor = (over: Record<string, unknown> = {}) => fakeRepo({
+    getStudentForStaff: vi.fn(async () => STUDENT),
+    explanationCount: vi.fn(async () => 1),
+    recentExplanations: vi.fn(async () => []),
+    ...over,
+  } as unknown as Partial<ApplicationRepository>)
+
+  it('signs the letter with the student’s drawn signature and freezes who recorded it', async () => {
+    const { repo, store } = repoFor()
+    const res = await createApplicationService(repo).createExplanationOnBehalf(STAFF, ['amit'], body())
+    expect(res.success).toBe(true)
+    expect(res.explanationCount).toBe(1)
+    expect(res.red).toBe(false)
+    expect((store.ariza as Record<string, unknown>).type).toBe('tushuntirish')
+    const snapshot = (store.signature as Record<string, unknown>).content_snapshot as Record<string, unknown>
+    expect(snapshot.recordedBy).toMatchObject({ staffId: 'staff-1', role: 'tarbiyachi' })
+    expect(res.receipt.verifyCode).toMatch(/^YT-/)
+  })
+
+  it('sends the letter by Telegram to the student and to the tarbiyachi, not to the dekan yet', async () => {
+    vi.clearAllMocks()
+    const { repo } = repoFor()
+    const res = await createApplicationService(repo).createExplanationOnBehalf(STAFF, ['amit'], body())
+    expect(tg.sendStudentTelegram).toHaveBeenCalledTimes(1)
+    expect(tg.sendTelegramChatMessage).toHaveBeenCalledTimes(1) // the tarbiyachi's own copy
+    expect(tg.dekanChatIdsForFaculty).not.toHaveBeenCalled()
+    expect(res.telegram).toMatchObject({ student: true, staff: 'sent', dekansNotified: 0 })
+    // The default per-ariza pings are suppressed: this flow sends its own.
+    expect(tg.notifyDormStaffNewAriza).not.toHaveBeenCalled()
+  })
+
+  it('the 3rd signed letter turns the student red and tells the dekan(s)', async () => {
+    vi.clearAllMocks()
+    const { repo } = repoFor({ explanationCount: vi.fn(async () => 3) })
+    const res = await createApplicationService(repo).createExplanationOnBehalf(STAFF, ['amit'], body())
+    expect(res.red).toBe(true)
+    expect(tg.dekanChatIdsForFaculty).toHaveBeenCalledWith('amit')
+    expect(res.telegram.dekansNotified).toBe(2)
+    expect(tg.writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'ariza.tushuntirish_on_behalf' }))
+  })
+
+  it('reports when the tarbiyachi has no Telegram chat set (the letter is still saved)', async () => {
+    vi.clearAllMocks()
+    tg.getStaffTelegramChatId.mockResolvedValueOnce('')
+    const { repo, store } = repoFor()
+    const res = await createApplicationService(repo).createExplanationOnBehalf(STAFF, ['amit'], body())
+    expect(res.telegram.staff).toBe('not_set')
+    expect(store.signature).toBeTruthy()
+  })
+
+  it('refuses a KV (off-campus) student', async () => {
+    const { repo } = repoFor({ getStudentForStaff: vi.fn(async () => ({ ...STUDENT, is_off_campus: true })) })
+    await expect(createApplicationService(repo).createExplanationOnBehalf(STAFF, ['amit'], body()))
+      .rejects.toMatchObject({ status: 409 })
+  })
+
+  it('refuses a student who lives in another building', async () => {
+    const { repo } = repoFor()
+    await expect(createApplicationService(repo).createExplanationOnBehalf(STAFF, ['kimyo'], body()))
+      .rejects.toMatchObject({ status: 403 })
+  })
+
+  it('refuses an inactive account and an unknown student', async () => {
+    const inactive = repoFor({ getStudentForStaff: vi.fn(async () => ({ ...STUDENT, status: 'pending' })) })
+    await expect(createApplicationService(inactive.repo).createExplanationOnBehalf(STAFF, ['amit'], body()))
+      .rejects.toMatchObject({ status: 409 })
+    const missing = repoFor({ getStudentForStaff: vi.fn(async () => null) })
+    await expect(createApplicationService(missing.repo).createExplanationOnBehalf(STAFF, ['amit'], body()))
+      .rejects.toMatchObject({ status: 404 })
+  })
+
+  it('needs the student’s drawn signature and a real reason', async () => {
+    const { repo } = repoFor()
+    const svc = createApplicationService(repo)
+    await expect(svc.createExplanationOnBehalf(STAFF, ['amit'], body({ signature: { typedName: 'x', attested: true } })))
+      .rejects.toMatchObject({ status: 400 })
+    await expect(svc.createExplanationOnBehalf(STAFF, ['amit'], body({ incidentText: 'qisqa' })))
+      .rejects.toMatchObject({ status: 400 })
+  })
+
+  it('explanationContext gives the picked student’s details, the letter count and the red flag', async () => {
+    const { repo } = repoFor({ explanationCount: vi.fn(async () => 3) })
+    const ctx = await createApplicationService(repo).explanationContext(['amit'], 'stu-1')
+    expect(ctx.student).toMatchObject({ fullName: STUDENT.full_name, room: '305', course: 3 })
+    expect(ctx.explanationCount).toBe(3)
+    expect(ctx.red).toBe(true)
+    expect(ctx.ttjNumber).toBe('12')
   })
 })

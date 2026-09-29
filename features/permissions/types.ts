@@ -26,6 +26,7 @@ export const TARBIYACHI_PERMISSIONS = [
   'announcements.manage',
   'attendance.manage',
   'applications.review',
+  'explanations.write',
 ] as const
 
 export const SARDOR_PERMISSIONS = [
@@ -63,6 +64,10 @@ export const PERMISSION_LABELS: Record<PermissionKey, { title: string; hint: str
   'attendance.manage': {
     title: "Yo'qlama ochish va belgilash",
     hint: "Kunlik yo'qlamani ochish, belgilash va yakunlash",
+  },
+  'explanations.write': {
+    title: 'Talaba nomidan tushuntirish xati yozish',
+    hint: "Talabani tanlab, sababini kiritib, imzosini olib tushuntirish xati rasmiylashtirish",
   },
   'applications.review': {
     title: "Arizalarni ko'rib chiqish",

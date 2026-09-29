@@ -16,6 +16,46 @@ export function createApplicationRepository() {
       return data
     },
 
+    // A dorm student as a staff member sees them when writing a letter on
+    // their behalf — includes the flags the scope checks need.
+    async getStudentForStaff(studentId: string) {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, full_name, email, faculty, direction, course, room_number, status, is_off_campus')
+        .eq('id', studentId)
+        .eq('role', 'talaba')
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+
+    // Signed tushuntirish xatlari: a letter only leaves 'draft' once its
+    // signature row exists (see signAndFinalise), so status != 'draft' means
+    // "signed and submitted". This is the count the 3-letter red flag uses.
+    async explanationCount(studentId: string): Promise<number> {
+      const { count, error } = await supabase
+        .from('arizalar')
+        .select('id', { count: 'exact', head: true })
+        .eq('student_id', studentId)
+        .eq('type', 'tushuntirish')
+        .neq('status', 'draft')
+      if (error) throw error
+      return count ?? 0
+    },
+
+    async recentExplanations(studentId: string, limit = 5) {
+      const { data, error } = await supabase
+        .from('arizalar')
+        .select('id, title, date, status')
+        .eq('student_id', studentId)
+        .eq('type', 'tushuntirish')
+        .neq('status', 'draft')
+        .order('date', { ascending: false })
+        .limit(limit)
+      if (error) throw error
+      return data ?? []
+    },
+
     // The dekan-configured official dormitory number, resolved via the
     // faculty's building (dorms.ttj_name, falling back to dorms.number).
     async ttjNumberForFaculty(faculty: string): Promise<string | null> {

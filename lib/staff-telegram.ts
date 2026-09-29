@@ -64,6 +64,25 @@ export async function staffChatIdsForFaculty(faculty: string | null): Promise<st
   }
 }
 
+/** Personal Telegram chats of the faculty's active dekan(lar) only. Best-effort. */
+export async function dekanChatIdsForFaculty(faculty: string | null): Promise<string[]> {
+  const canonical = (faculty ?? '').trim()
+  if (!canonical) return []
+  try {
+    const { data, error } = await getServiceSupabase()
+      .from('staff')
+      .select('telegram_chat_id')
+      .eq('status', 'active')
+      .eq('role', 'dekan')
+      .ilike('faculty', canonical)
+    if (error) throw error
+    return (data ?? []).map((row) => normalizeStaffChatId(row.telegram_chat_id)).filter((id) => id.length > 0)
+  } catch (error) {
+    console.error('dekanChatIdsForFaculty failed:', error)
+    return []
+  }
+}
+
 function escapeHtml(value: string) {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
 }

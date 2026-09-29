@@ -33,6 +33,8 @@ export type StudentProfileRow = {
   is_floor_captain: boolean | null
   is_council_chair: boolean | null
   warning_count: number | null
+  /** Signed tushuntirish xatlari — 3+ flags the student red (see applications/domain/explanation). */
+  explanation_count: number
   blacklisted: boolean | null
   birth_date: string | null
   nationality: string | null

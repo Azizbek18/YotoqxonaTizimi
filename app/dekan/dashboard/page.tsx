@@ -162,6 +162,14 @@ export default function DekanDashboard() {
       link: `${base}/arizalar`,
       // Permit metrics — the tarbiyachi panel has no Yo'llanmalar section.
       permitOnly: true,
+      color: {
+        gradient: 'from-indigo-500 to-violet-600',
+        topBar: 'from-indigo-500 to-violet-600',
+        iconShadow: 'shadow-indigo-500/20',
+        hoverBorder: 'hover:border-indigo-300 dark:hover:border-indigo-500/40',
+        hoverGlow: 'group-hover:shadow-[0_8px_25px_-5px_rgba(99,102,241,0.15)]',
+        arrowColor: 'text-indigo-500 dark:text-indigo-400',
+      },
     },
     {
       title: 'Faol talabalar',
@@ -169,6 +177,14 @@ export default function DekanDashboard() {
       icon: Users,
       description: "Tizimda ro'yxatdan o'tganlar",
       link: `${base}/xonalar`,
+      color: {
+        gradient: 'from-indigo-500 to-violet-600',
+        topBar: 'from-indigo-500 to-violet-600',
+        iconShadow: 'shadow-indigo-500/20',
+        hoverBorder: 'hover:border-indigo-300 dark:hover:border-indigo-500/40',
+        hoverGlow: 'group-hover:shadow-[0_8px_25px_-5px_rgba(99,102,241,0.15)]',
+        arrowColor: 'text-indigo-500 dark:text-indigo-400',
+      },
     },
     {
       title: "Ro'yxatdan o'tmaganlar",
@@ -178,6 +194,14 @@ export default function DekanDashboard() {
       link: `${base}/talabalar`,
       // Opens the Talabalar page straight on the "Ro'yxatdan o'tmagan" folder.
       folder: 'unregistered',
+      color: {
+        gradient: 'from-indigo-500 to-violet-600',
+        topBar: 'from-indigo-500 to-violet-600',
+        iconShadow: 'shadow-indigo-500/20',
+        hoverBorder: 'hover:border-indigo-300 dark:hover:border-indigo-500/40',
+        hoverGlow: 'group-hover:shadow-[0_8px_25px_-5px_rgba(99,102,241,0.15)]',
+        arrowColor: 'text-indigo-500 dark:text-indigo-400',
+      },
     },
     {
       title: 'Bo‘sh o‘rinlar',
@@ -185,6 +209,14 @@ export default function DekanDashboard() {
       icon: Home,
       description: `${occupancyRate}% bandlik · ${occupiedInAvailable}/${totalBedsCapacity} band${stats.frozenRoomCount > 0 ? ` · ${stats.frozenRoomCount} muzlatilgan` : ''}`,
       link: `${base}/xonalar`,
+      color: {
+        gradient: 'from-indigo-500 to-violet-600',
+        topBar: 'from-indigo-500 to-violet-600',
+        iconShadow: 'shadow-indigo-500/20',
+        hoverBorder: 'hover:border-indigo-300 dark:hover:border-indigo-500/40',
+        hoverGlow: 'group-hover:shadow-[0_8px_25px_-5px_rgba(99,102,241,0.15)]',
+        arrowColor: 'text-indigo-500 dark:text-indigo-400',
+      },
     },
     {
       title: 'Tasdiqlangan yo‘llanmalar',
@@ -193,6 +225,14 @@ export default function DekanDashboard() {
       description: 'Tasdiqlangan jami arizalar',
       link: `${base}/arizalar`,
       permitOnly: true,
+      color: {
+        gradient: 'from-indigo-500 to-violet-600',
+        topBar: 'from-indigo-500 to-violet-600',
+        iconShadow: 'shadow-indigo-500/20',
+        hoverBorder: 'hover:border-indigo-300 dark:hover:border-indigo-500/40',
+        hoverGlow: 'group-hover:shadow-[0_8px_25px_-5px_rgba(99,102,241,0.15)]',
+        arrowColor: 'text-indigo-500 dark:text-indigo-400',
+      },
     },
   ].filter((card) => !(isTarbiyachi && card.permitOnly))
 
@@ -275,6 +315,7 @@ export default function DekanDashboard() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.05, duration: 0.25 }}
+            className="flex h-full"
           >
             <Link
               href={(() => {
@@ -285,21 +326,40 @@ export default function DekanDashboard() {
                 const query = params.toString()
                 return query ? `${card.link}?${query}` : card.link
               })()}
-              className={`group relative block overflow-hidden rounded-2xl border p-5 ${ui.card} ${ui.hoverLift}`}
+              className={`group relative flex flex-col justify-between w-full h-full overflow-hidden rounded-2xl border p-4.5 transition-all duration-200 ${ui.card} ${card.color.hoverBorder} ${card.color.hoverGlow} hover:-translate-y-1`}
             >
-              <span className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 to-violet-500 opacity-0 transition-opacity group-hover:opacity-100" />
-              <div className="flex items-start justify-between">
-                <div className="min-w-0">
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${ui.muted}`}>{card.title}</p>
-                  <h3 className={`mt-2 text-3xl font-bold leading-none tracking-tight ${ui.strong}`}>{card.value}</h3>
+              {/* Top ambient color strip on hover */}
+              <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${card.color.topBar} opacity-0 transition-opacity duration-200 group-hover:opacity-100`} />
+
+              <div>
+                {/* Header row: Title + Themed Squircle Icon */}
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-[11px] font-bold uppercase tracking-wider leading-snug line-clamp-2 ${ui.muted}`}>
+                      {card.title}
+                    </p>
+                  </div>
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${card.color.gradient} text-white shadow-md ${card.color.iconShadow} transition-transform duration-200 group-hover:scale-105`}>
+                    <card.icon size={19} strokeWidth={2.2} />
+                  </div>
                 </div>
-                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${ui.accentTile}`}>
-                  <card.icon size={20} strokeWidth={2.2} />
+
+                {/* Counter value */}
+                <div className="mt-2.5">
+                  <h3 className={`text-2xl sm:text-3xl font-black leading-none tracking-tight tabular-nums ${ui.strong}`}>
+                    {card.value}
+                  </h3>
                 </div>
               </div>
-              <div className="mt-4 flex items-center justify-between">
-                <p className={`text-[10px] font-medium ${ui.faint}`}>{card.description}</p>
-                <ArrowRight size={13} className={`shrink-0 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100 ${ui.accentText}`} />
+
+              {/* Bottom footer: Aligned metadata description + Animated arrow */}
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 min-h-[38px]">
+                <p className={`text-[10.5px] font-medium leading-tight line-clamp-2 ${ui.muted}`}>
+                  {card.description}
+                </p>
+                <div className={`shrink-0 p-1 rounded-lg opacity-0 -translate-x-1 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200 ${card.color.arrowColor}`}>
+                  <ArrowRight size={14} strokeWidth={2.5} />
+                </div>
               </div>
             </Link>
           </motion.div>

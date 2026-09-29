@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPaymentService } from '@/features/payments/server/service'
-import { requireActiveStaff, requireStaffPermission } from '@/server/auth/guards'
-import { staffDormFaculties } from '@/server/auth/faculty'
+import { requireActiveStaff } from '@/server/auth/guards'
+import { requirePickedFaculty } from '@/server/auth/faculty'
 import { getApiError } from '@/server/http/api-error'
 
-// Payment review — the tarbiyachi's job. They are responsible for every
-// student in their dorm building, across every faculty living there
-// (shared-dorm tenancy, P4). The dekan reviews their own faculty's receipts
-// through /api/dekan/payments (same service, scoped to one faculty).
+// Payment review for the dekan — the same list / summary / approve-reject
+// the tarbiyachi has at /api/tarbiyachi/payments, but scoped to the dekan's
+// OWN faculty (a superadmin acts on the faculty they picked). The shared
+// /dekan/tolovlar page picks this endpoint by URL prefix.
 export async function GET(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['tarbiyachi'])
-    requireStaffPermission(staff, 'payments.review')
-    const faculties = await staffDormFaculties(staff.id, staff.faculty)
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
+    const faculties = [requirePickedFaculty(staff)]
     const service = createPaymentService()
     if (request.nextUrl.searchParams.get('summary') === '1') {
       return NextResponse.json(await service.getSummary(faculties))
@@ -23,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
     return NextResponse.json({ payments: await service.listAll(faculties, studentId) })
   } catch (error) {
-    console.error('Admin payments GET error:', error)
+    console.error('Dekan payments GET error:', error)
     const response = getApiError(error, 'To‘lovlarni yuklab bo‘lmadi')
     return NextResponse.json(response.body, { status: response.status })
   }
@@ -31,14 +30,13 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { staff } = await requireActiveStaff(request, ['tarbiyachi'])
-    requireStaffPermission(staff, 'payments.review')
-    const faculties = await staffDormFaculties(staff.id, staff.faculty)
+    const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
+    const faculties = [requirePickedFaculty(staff)]
     const body = await request.json().catch(() => null)
     if (!body) return NextResponse.json({ error: 'Noto‘g‘ri so‘rov' }, { status: 400 })
     return NextResponse.json(await createPaymentService().review(faculties, body))
   } catch (error) {
-    console.error('Admin payments PATCH error:', error)
+    console.error('Dekan payments PATCH error:', error)
     const response = getApiError(error, 'To‘lov holatini yangilab bo‘lmadi')
     return NextResponse.json(response.body, { status: response.status })
   }

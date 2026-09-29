@@ -12,7 +12,7 @@ import { normalizeFaculty } from '@/lib/faculties'
 
 // Who may run the AI check: the payment's own student, a superadmin, and the
 // tarbiyachi who actually reviews receipts — scoped to the faculties living
-// in their building. Receipt review moved from the retired admin panel to
+// in their building — and the dekan, scoped to their own faculty. Receipt review moved from the retired admin panel to
 // /tarbiyachi/tolovlar (which re-exports that page), but this endpoint still
 // admitted `admin` only, so the reviewer looking at the receipt got a 403
 // from the very button the page offers them.
@@ -36,7 +36,10 @@ async function canAnalyzePayment(userId: string, studentId: string, paymentFacul
   if (staff.role === 'admin') return true
 
   const faculty = normalizeFaculty(paymentFaculty)
-  if (!faculty || staff.role !== 'tarbiyachi') return false
+  if (!faculty) return false
+  // The dekan reviews receipts of their own faculty too (/dekan/tolovlar).
+  if (staff.role === 'dekan') return normalizeFaculty(staff.faculty) === faculty
+  if (staff.role !== 'tarbiyachi') return false
   // Same scope the tarbiyachi's own payment list uses: every faculty living
   // in their building, not just their own.
   const faculties = await staffDormFaculties(userId, staff.faculty)

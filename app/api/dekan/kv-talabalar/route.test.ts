@@ -4,7 +4,6 @@ import { ApiError } from '@/server/http/api-error'
 
 const requireActiveStaff = vi.fn()
 const requirePickedFaculty = vi.fn()
-const deleteAuthUserSafely = vi.fn()
 
 // A chainable Supabase query stub: every builder method returns `this`, and
 // the chain resolves to `terminal` when a terminal method is called or when
@@ -31,9 +30,8 @@ const from = vi.fn(() => makeChain())
 vi.mock('@/server/auth/guards', () => ({ requireActiveStaff: (...a: unknown[]) => requireActiveStaff(...a) }))
 vi.mock('@/server/auth/faculty', () => ({ requirePickedFaculty: (...a: unknown[]) => requirePickedFaculty(...a) }))
 vi.mock('@/lib/server-supabase', () => ({ getServiceSupabase: () => ({ from }) }))
-vi.mock('@/lib/supabase-admin-auth', () => ({ deleteAuthUserSafely: (...a: unknown[]) => deleteAuthUserSafely(...a) }))
 
-const { GET, PATCH } = await import('./route')
+const { GET } = await import('./route')
 
 const DEKAN = { id: 'dekan-1', role: 'dekan', status: 'active', faculty: 'amit' }
 
@@ -80,34 +78,5 @@ describe('GET /api/dekan/kv-talabalar', () => {
     await GET(req('GET'))
     const ilikeCall = calls.find((c) => c.method === 'ilike')
     expect(ilikeCall?.args).toEqual(['faculty', 'amit'])
-  })
-})
-
-describe('PATCH /api/dekan/kv-talabalar', () => {
-  it('approves a pending row and stamps dekan verification', async () => {
-    terminal = { data: { id: 's1', faculty: 'amit', status: 'pending', is_off_campus: true }, error: null }
-    const res = await PATCH(req('PATCH', { id: 's1', action: 'approve' }))
-    expect(res.status).toBe(200)
-    const updateCall = calls.find((c) => c.method === 'update')
-    expect(updateCall?.args[0]).toMatchObject({ status: 'active', off_campus_verified_by: 'dekan' })
-  })
-
-  it('rejects by deleting the profile row and the Auth user', async () => {
-    terminal = { data: { id: 's1', faculty: 'amit', status: 'pending', is_off_campus: true }, error: null }
-    const res = await PATCH(req('PATCH', { id: 's1', action: 'reject' }))
-    expect(res.status).toBe(200)
-    expect(calls.some((c) => c.method === 'delete')).toBe(true)
-    expect(deleteAuthUserSafely).toHaveBeenCalledWith('s1')
-  })
-
-  it('404s when the row is not pending (already decided, or another faculty)', async () => {
-    terminal = { data: null, error: null }
-    const res = await PATCH(req('PATCH', { id: 'ghost', action: 'approve' }))
-    expect(res.status).toBe(404)
-  })
-
-  it('400s an unknown action', async () => {
-    const res = await PATCH(req('PATCH', { id: 's1', action: 'delete-everything' }))
-    expect(res.status).toBe(400)
   })
 })

@@ -58,10 +58,13 @@ function truncate(value: string, max: number) {
 
 // A tarbiyachi may act only for an active DORM student of a faculty living in
 // their building — never a KV (off-campus) student, never another building's.
+export type StaffDormScope = { faculties: string[]; dormId: string | null }
+
 function assertStaffMaySpeakFor(
-  profile: { faculty: string | null; status: string | null; is_off_campus: boolean | null } | null | undefined,
-  dormFaculties: string[],
+  profile: { faculty: string | null; status: string | null; is_off_campus: boolean | null; dorm_id?: string | null } | null | undefined,
+  scope: StaffDormScope,
 ): void {
+  const dormFaculties = scope.faculties
   if (!profile) throw new ApiError(404, 'Talaba topilmadi')
   if (profile.is_off_campus === true) {
     throw new ApiError(409, 'Bu talaba kvartirada turadi (KV-talaba) — yotoqxona tushuntirish xati yozilmaydi')
@@ -70,6 +73,10 @@ function assertStaffMaySpeakFor(
   const faculty = normalizeFaculty(profile.faculty ?? null)
   const allowed = dormFaculties.map((f) => normalizeFaculty(f)).filter(Boolean)
   if (!faculty || !allowed.includes(faculty)) {
+    throw new ApiError(403, 'Bu talaba sizning yotoqxonangizda yashamaydi')
+  }
+  // Same faculty, but housed in another building.
+  if (scope.dormId && profile.dorm_id !== scope.dormId) {
     throw new ApiError(403, 'Bu talaba sizning yotoqxonangizda yashamaydi')
   }
 }
@@ -352,10 +359,10 @@ export function createApplicationService(repository: ApplicationRepository = cre
     /** Everything the tarbiyachi's "tushuntirish xati" screen shows once a
      *  student is picked: their details (so nothing is typed by hand), how
      *  many letters they already have, and whether they are already red. */
-    async explanationContext(dormFaculties: string[], studentIdValue: unknown) {
+    async explanationContext(scope: StaffDormScope, studentIdValue: unknown) {
       const studentId = text(studentIdValue, 80, true)
       const profile = await repository.getStudentForStaff(studentId)
-      assertStaffMaySpeakFor(profile, dormFaculties)
+      assertStaffMaySpeakFor(profile, scope)
       const faculty = profile!.faculty ?? ''
       const [ttjNumber, dekanName, explanationCount, recent] = await Promise.all([
         repository.ttjNumberForFaculty(faculty),
@@ -389,13 +396,13 @@ export function createApplicationService(repository: ApplicationRepository = cre
      *  recording tarbiyachi frozen into the signed snapshot. */
     async createExplanationOnBehalf(
       staff: { id: string; fullName: string },
-      dormFaculties: string[],
+      scope: StaffDormScope,
       value: unknown,
       evidence: SignatureEvidence = { ip: null, userAgent: null },
     ) {
       const input = parseStaffExplanation(value)
       const profile = await repository.getStudentForStaff(input.studentId)
-      assertStaffMaySpeakFor(profile, dormFaculties)
+      assertStaffMaySpeakFor(profile, scope)
       const student = profile!
 
       const facultyLabel = permitFacultyLabel(student.faculty ?? '') || (student.faculty ?? '')

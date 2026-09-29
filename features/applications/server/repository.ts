@@ -21,7 +21,7 @@ export function createApplicationRepository() {
     async getStudentForStaff(studentId: string) {
       const { data, error } = await supabase
         .from('users')
-        .select('id, full_name, email, faculty, direction, course, room_number, status, is_off_campus')
+        .select('id, full_name, email, faculty, direction, course, room_number, status, is_off_campus, dorm_id')
         .eq('id', studentId)
         .eq('role', 'talaba')
         .maybeSingle()

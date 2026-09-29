@@ -4,12 +4,13 @@ const mocks = vi.hoisted(() => ({
   getRequestUser: vi.fn(),
   findStaffRowByIdentity: vi.fn(),
   staffDormFaculties: vi.fn(),
+  staffDormId: vi.fn(),
 }))
 
 vi.mock('@/lib/server-auth', () => ({ getRequestUser: mocks.getRequestUser }))
 vi.mock('@/lib/server-supabase', () => ({ getServiceSupabase: () => ({}) }))
 vi.mock('@/lib/auth-tables', () => ({ findStaffRowByIdentity: mocks.findStaffRowByIdentity }))
-vi.mock('@/server/auth/faculty', () => ({ staffDormFaculties: mocks.staffDormFaculties }))
+vi.mock('@/server/auth/faculty', () => ({ staffDormFaculties: mocks.staffDormFaculties, staffDormId: mocks.staffDormId }))
 
 const { requireScopedTarbiyachi } = await import('./tarbiyachi')
 
@@ -73,11 +74,13 @@ describe('requireScopedTarbiyachi', () => {
     mocks.getRequestUser.mockResolvedValue({ id: 'u1', email: 'x@example.com' })
     mocks.findStaffRowByIdentity.mockResolvedValue({ id: 'u1', role: 'tarbiyachi', status: 'active', faculty: 'AMIT' })
     mocks.staffDormFaculties.mockResolvedValue(['amit', 'iqtisodiyot'])
+    mocks.staffDormId.mockResolvedValue('dorm12')
     const result = await requireScopedTarbiyachi(req())
     expect('error' in result).toBe(false)
     if (!('error' in result)) {
       expect(result.faculty).toBe('amit')
       expect(result.dormFaculties).toEqual(['amit', 'iqtisodiyot'])
+      expect(result.dormId).toBe('dorm12')
     }
   })
 })

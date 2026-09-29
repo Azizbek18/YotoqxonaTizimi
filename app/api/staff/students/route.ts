@@ -9,15 +9,18 @@ export async function GET(req: NextRequest) {
   try {
     const scoped = await requireScopedTarbiyachi(req)
     if (scoped.error) return scoped.error
-    const { serviceSupabase, faculty, dormFaculties } = scoped
+    const { serviceSupabase, faculty, dormFaculties, dormId } = scoped
 
-    // A tarbiyachi sees every student living in their dorm — all faculties.
-    const { data: students, error: studentsError } = await serviceSupabase
+    // A tarbiyachi sees every student living in THEIR building — all faculties
+    // sharing it, but not the same faculties' students housed in another one.
+    let query = serviceSupabase
       .from('users')
       .select('id, full_name, email, phone_number, faculty, direction, course, group, room_number, assigned_floor, avatar_url, gender, status, warning_count, created_at')
       .eq('role', 'talaba')
       .eq('is_off_campus', false)
       .in('faculty', dormFaculties)
+    if (dormId) query = query.eq('dorm_id', dormId)
+    const { data: students, error: studentsError } = await query
       .order('created_at', { ascending: false })
 
     if (studentsError) {

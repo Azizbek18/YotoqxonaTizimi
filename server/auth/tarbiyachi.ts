@@ -4,7 +4,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import { getRequestUser } from '@/lib/server-auth'
 import { findStaffRowByIdentity } from '@/lib/auth-tables'
 import { normalizeFaculty } from '@/lib/faculties'
-import { staffDormFaculties } from '@/server/auth/faculty'
+import { staffDormFaculties, staffDormId } from '@/server/auth/faculty'
 
 export type ScopedTarbiyachi = {
   id: string
@@ -48,6 +48,11 @@ export async function requireScopedTarbiyachi(request: NextRequest) {
   }
 
   const dormFaculties = await staffDormFaculties(staffUser.id, staffUser.faculty)
+  // The tarbiyachi's OWN building. A faculty can live in several buildings,
+  // so `dormFaculties` alone would also pull in students housed elsewhere —
+  // student lists must filter on this as well (null = building not set up
+  // yet, then only the faculty scope applies).
+  const dormId = await staffDormId(staffUser.id, staffUser.faculty)
 
-  return { staffUser, serviceSupabase, faculty, dormFaculties } as const
+  return { staffUser, serviceSupabase, faculty, dormFaculties, dormId } as const
 }

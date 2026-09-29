@@ -385,7 +385,7 @@ export default function DekanXonalarMap() {
     setBalanceWarn(null)
     setAssigningId(studentId)
     try {
-      const res = await assignStudentRoom({ studentId, roomNumber: selectedRoom.roomNumber, source, dormId: activeDormId })
+      const res = await assignStudentRoom({ studentId, roomNumber: selectedRoom.roomNumber, source, dormId: activeDormId ?? primaryDormId })
       toast.success(
         source === 'permit'
           ? "Xona biriktirildi — talaba ro'yxatdan o'tganda shu xonaga joylashadi"

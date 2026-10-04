@@ -438,6 +438,14 @@ export async function POST(request: NextRequest) {
         code: authError?.code,
         message: authError?.message,
       })
+      // Supabase's leaked-password (HIBP) check rejects passwords that look
+      // fine to our own strength meter; that is a user-fixable 422, not an outage.
+      if (authError?.status === 422 && /weak|known|easy to guess|pwned|password/i.test(authError.message ?? '')) {
+        return NextResponse.json(
+          { error: 'Bu parol juda keng tarqalgan va xavfsiz emas. Iltimos, boshqa, noyobroq parol tanlang.' },
+          { status: 400 },
+        )
+      }
       return NextResponse.json(
         {
           error: isDuplicateAuthUserError(authError)

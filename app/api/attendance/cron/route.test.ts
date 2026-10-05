@@ -3,6 +3,11 @@ import { NextRequest } from 'next/server'
 
 const mocks = vi.hoisted(() => ({
   runNightlyCron: vi.fn(),
+  runDekanCron: vi.fn(),
+}))
+
+vi.mock('@/features/attendance/server/dekan-service', () => ({
+  createDekanAttendanceService: () => ({ runCron: mocks.runDekanCron }),
 }))
 
 vi.mock('@/features/attendance/server/service', () => ({
@@ -54,9 +59,18 @@ describe('POST /api/attendance/cron', () => {
 
   it('runs the nightly cron with a valid secret', async () => {
     mocks.runNightlyCron.mockResolvedValue({ opened: 1, closed: 2 })
+    mocks.runDekanCron.mockResolvedValue({ started: 0, closed: 0, reminded: 0 })
     const res = await POST(req({ authorization: 'Bearer super-secret-cron-token' }))
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ ok: true, opened: 1, closed: 2 })
+    expect(await res.json()).toEqual({ ok: true, opened: 1, closed: 2, dekan: { started: 0, closed: 0, reminded: 0 } })
+  })
+
+  it('a failing dekan cron never takes the nightly cron down', async () => {
+    mocks.runNightlyCron.mockResolvedValue({ opened: 1 })
+    mocks.runDekanCron.mockRejectedValue(new Error('dekan boom'))
+    const res = await POST(req({ authorization: 'Bearer super-secret-cron-token' }))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true, opened: 1, dekan: { error: true } })
   })
 
   it('GET is wired to the same handler for Vercel Cron', () => {

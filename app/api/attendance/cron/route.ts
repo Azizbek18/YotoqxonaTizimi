@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { safeEqual } from '@/lib/security'
 import { createAttendanceService } from '@/features/attendance/server/service'
+import { createDekanAttendanceService } from '@/features/attendance/server/dekan-service'
 
-// GitHub Actions ~ har 15 daqiqada chaqiradi. Har binoning yo'qlama oynasi
+// GitHub Actions ~ har 5 daqiqada chaqiradi (dekan yo'qlamasi eslatmalari uchun). Har binoning yo'qlama oynasi
 // ochilganda kechki sessiya yaratadi + talabalarga push yuboradi; muddati
 // o'tgan sessiyalarni yopadi. Idempotent.
 export async function POST(request: NextRequest) {
@@ -14,7 +15,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await createAttendanceService().runNightlyCron()
-    return NextResponse.json({ ok: true, ...result })
+    // Dekan roll-calls are an independent system: a failure in one must not
+    // stop the other, so each is guarded separately.
+    const dekan = await Promise.resolve().then(() => createDekanAttendanceService().runCron()).catch((error) => {
+      console.error('Dekan attendance cron failed:', error)
+      return { error: true as const }
+    })
+    return NextResponse.json({ ok: true, ...result, dekan })
   } catch (error) {
     console.error('Attendance cron failed:', error)
     return NextResponse.json({ error: 'cron failed' }, { status: 500 })

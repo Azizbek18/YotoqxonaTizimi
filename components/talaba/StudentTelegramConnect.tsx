@@ -48,7 +48,7 @@ export default function StudentTelegramConnect({ isLight }: { isLight: boolean }
           </p>
           <p className={`text-[11px] leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
             {status.linked
-              ? 'Yuborgan har bir imzolangan arizangiz nusxasi shu botga keladi.'
+              ? 'Imzolangan arizalar nusxasi va yo‘qlama eslatmalari shu botga keladi.'
               : 'Tugmani bosing va botda bir marta START ni bosing. Keyin imzolangan arizalaringiz PDF nusxasi shu yerga tushadi.'}
           </p>
         </div>

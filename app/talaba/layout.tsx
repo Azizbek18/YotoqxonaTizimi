@@ -18,6 +18,7 @@ import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchStudentProfile, uploadStudentAvatar } from '@/features/profile/client/api'
 import { createStudentApplication, fetchStudentApplications } from '@/features/applications/client/api'
+import TelegramLinkGate from '@/components/talaba/TelegramLinkGate'
 import SignArizaModal from '@/components/applications/SignArizaModal'
 import { useArizaSigning } from '@/lib/hooks/useArizaSigning'
 import { fetchStudentAnnouncements } from '@/features/announcements/client/api'
@@ -618,6 +619,9 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
       )}
 
       {/* --- 8. MANDATORY PROFILE SETUP MODAL FOR FIRST TIME USERS --- */}
+      {/* Shown only once the avatar step is done, so the two blocking dialogs never stack. */}
+      {mounted && profile !== null && !isProfileIncomplete && <TelegramLinkGate isLight={isLight} />}
+
       {isProfileIncomplete && typeof document !== 'undefined' && createPortal(
         <ProfileSetupModal profile={profile} onComplete={refreshProfileData} isLight={isLight} />,
         document.body

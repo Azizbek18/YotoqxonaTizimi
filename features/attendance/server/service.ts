@@ -9,7 +9,8 @@ import {
 } from '@/lib/tashkent-time'
 import { sendPushWithoutBreaking } from '@/lib/push-notifications'
 import { notifyStudent } from '@/lib/notify-student'
-import { createAttendanceRepository, type AttendanceRepository, type ResidentRow } from './repository'
+import { createAttendanceRepository, type AttendanceRepository, type LegacySessionRow, type ResidentRow } from './repository'
+import { createDekanAttendanceRepository, type DekanAttendanceRepository } from './dekan-repository'
 import type {
   AttendanceActor,
   AttendanceState,
@@ -18,7 +19,9 @@ import type {
   RosterRoom,
   RosterView,
 } from '../types'
-import type { AttendanceRecordRow, AttendanceSessionRow } from '@/types/database.generated'
+import type { AttendanceRecordRow } from '@/types/database.generated'
+
+type AttendanceSessionRow = LegacySessionRow
 
 const HISTORY_LIMIT = 30
 
@@ -46,7 +49,13 @@ function sessionMatchesActor(session: AttendanceSessionRow, actor: AttendanceAct
 
 export function createAttendanceService(
   repo: AttendanceRepository = createAttendanceRepository(),
+  dekanRepo?: DekanAttendanceRepository,
 ) {
+  // Lazy: only the student check-in / summary paths touch dekan sessions, and
+  // unit tests of the legacy flow should not need a database for them.
+  let dekanRepoInstance = dekanRepo
+  const dekan = () => (dekanRepoInstance ??= createDekanAttendanceRepository())
+
   async function residentsForActor(actor: AttendanceActor): Promise<ResidentRow[]> {
     return repo.residents(actor.dormId, actor.faculties, {
       floor: actor.role === 'sardor' ? actor.floor : undefined,
@@ -206,6 +215,20 @@ export function createAttendanceService(
     /** Dashboard tile: the dorm's latest session and its counts. */
     async summary(actor: AttendanceActor) {
       const open = (await repo.openSessions(actor.dormId)).filter((s) => sessionMatchesActor(s, actor))
+
+      // A plain resident's "Men yotoqxonadaman" screen also lights up for a
+      // roll-call their own dekan opened — for THEIR dorm and THEIR faculty
+      // only. Staff dashboards never include dekan sessions.
+      if (actor.role === 'talaba') {
+        const faculty = actor.faculties[0]
+        const dekanOpen = faculty ? await dekan().openForStudent(actor.dormId, faculty, new Date()) : null
+        if (open.length === 0 && !dekanOpen) return { hasOpen: false as const }
+        const closes = [...open.map((s) => s.closes_at), ...(dekanOpen ? [dekanOpen.closes_at] : [])]
+        closes.sort()
+        const records = (await Promise.all(open.map((s) => repo.records(s.id)))).flat()
+        return { hasOpen: true as const, closesAt: closes[closes.length - 1], summary: summarise(records) }
+      }
+
       if (open.length === 0) return { hasOpen: false as const }
       const records = (await Promise.all(open.map((s) => repo.records(s.id)))).flat()
       return {
@@ -279,9 +302,11 @@ export function createAttendanceService(
       if (!dorm) return { status: 'no_session' }
 
       const open = (await repo.openSessions(dormId)).filter((s) => s.kind === 'nightly' || s.floor_number == null)
-      const session = open[0]
-      if (!session) return { status: 'no_session' }
-      if (new Date(session.closes_at).getTime() < Date.now()) return { status: 'no_session' }
+      const nightly = open.find((s) => new Date(s.closes_at).getTime() >= Date.now()) ?? null
+      // The dekan's own roll-call for this student's dorm + faculty, if one
+      // is running. Matched on BOTH — never another faculty's or dorm's.
+      const dekanSession = await dekan().openForStudent(dormId, faculty, new Date())
+      if (!nightly && !dekanSession) return { status: 'no_session' }
 
       if (dorm.latitude == null || dorm.longitude == null) return { status: 'unavailable' }
 
@@ -294,18 +319,40 @@ export function createAttendanceService(
       const distance = haversineMeters(point, { lat: dorm.latitude, lng: dorm.longitude })
       const state: 'present' | 'absent' = distance <= dorm.checkin_radius_m ? 'present' : 'absent'
 
-      // Ensure a row exists (cron seeds it, but be defensive).
-      await repo.seedRecords(session.id, await repo.residents(dormId, await repo.facultiesForDorm(dormId), {}))
-
-      const { applied, current } = await repo.applySelfCheckin({
-        sessionId: session.id,
+      const audit = {
         studentId: userId,
         state,
         selfLat: point.lat,
         selfLng: point.lng,
         selfAccuracyM: accuracy,
         selfDistanceM: distance,
-      })
+      }
+
+      let applied = false
+      let current: AttendanceState = state
+
+      if (nightly) {
+        // Ensure a row exists (cron seeds it, but be defensive).
+        await repo.seedRecords(nightly.id, await repo.residents(dormId, await repo.facultiesForDorm(dormId), {}))
+        const r = await repo.applySelfCheckin({ sessionId: nightly.id, ...audit })
+        applied = applied || r.applied
+        if (!r.applied) current = r.current
+      }
+
+      if (dekanSession) {
+        // Only if the student really is a roll-call resident of this exact
+        // dorm + faculty; otherwise their tap must not create a stray row.
+        const resident = await dekan().residentOf(userId, dormId, faculty)
+        if (resident) {
+          await repo.seedRecords(dekanSession.id, [resident])
+          const r = await repo.applySelfCheckin({ sessionId: dekanSession.id, ...audit })
+          applied = applied || r.applied
+          if (!r.applied && !nightly) current = r.current
+        } else if (!nightly) {
+          return { status: 'no_session' }
+        }
+      }
+
       if (!applied) return { status: 'already', state: current }
       return state === 'present'
         ? { status: 'present', distanceM: distance }

@@ -144,7 +144,7 @@ const Custom3DSelect = ({ label, value, options, onChange, icon: Icon, placehold
                     />
                   </div>
                 )}
-                <div className="max-h-45 overflow-y-auto p-1.5 custom-scrollbar">
+                <div className="max-h-60 overflow-y-auto overscroll-contain p-1.5 custom-scrollbar">
                   {allowCustom && q && !exact && (
                     <button
                       type="button"
@@ -312,6 +312,7 @@ export default function Step5Address({ data, onChange, onNext, onBack, stepNumbe
           onChange={handleRegionChange}
           isLight={isLight}
           disabled={isLoadingData}
+          searchable
         />
 
         <AnimatePresence mode="wait">

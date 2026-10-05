@@ -191,6 +191,24 @@ describe('create', () => {
   })
 })
 
+describe('overview', () => {
+  it('lists dorms of the faculty only and hides a roll-call cancelled before it opened', async () => {
+    const t = setup()
+    const { session } = await t.service.create(scope, { dormId: D1, startsAt: min(120), closesAt: min(180) })
+    await t.service.close(scope, session.id) // cancelled while still scheduled
+    const view = await t.service.overview(scope)
+    expect(view.dorms.map((d) => d.id).sort()).toEqual([D1, D2].sort())
+    expect(view.dorms.every((d) => d.active === null)).toBe(true)
+    expect(view.recent).toEqual([])
+  })
+
+  it("never shows another faculty's dorm", async () => {
+    const t = setup()
+    const view = await t.service.overview({ userId: 'dekan-2', faculty: 'iqtisodiyot' })
+    expect(view.dorms.map((d) => d.id)).toEqual([D1])
+  })
+})
+
 describe('roster / close isolation', () => {
   it("404s another faculty's session (no existence leak)", async () => {
     const t = setup()

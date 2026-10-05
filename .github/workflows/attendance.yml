@@ -9,9 +9,10 @@ name: Yo'qlama cron
 # Setup: add ATTENDANCE_CRON_SECRET as a repo secret (Settings → Secrets and
 # variables → Actions) with the same value as the Vercel project env var.
 
+# The schedule now lives in Supabase pg_cron (job 'attendance-cron', every 5 min):
+# GitHub's scheduler only fired every few hours in practice. This workflow stays
+# as a manual trigger (workflow_dispatch).
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions: {}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireActiveStudent } from '@/server/auth/guards'
-import { getStudentTelegramLink } from '@/lib/student-telegram'
+import { getStudentTelegramLink, isStudentTelegramLinked } from '@/lib/student-telegram'
 import { getApiError } from '@/server/http/api-error'
 
 // The student's Telegram binding state + a fresh /start deep link if not
@@ -12,6 +12,11 @@ async function handle(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // ?check=1 — poll-safe: reports the binding without rotating the link.
+    if (request.nextUrl.searchParams.get('check') === '1') {
+      const { student } = await requireActiveStudent(request)
+      return NextResponse.json({ linked: await isStudentTelegramLinked(student.id) })
+    }
     return await handle(request)
   } catch (error) {
     const r = getApiError(error, 'Telegram holatini yuklab bo‘lmadi')

@@ -3,6 +3,14 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import type { AttendanceRecordRow, AttendanceSessionRow } from '@/types/database.generated'
 import type { AttendanceState } from '../types'
 
+// The nightly/adhoc flow (sardor + tarbiyachi) must NEVER see a dekan
+// session — those are faculty-scoped and live in dekan-repository.ts. Every
+// legacy query below excludes kind='dekan' so the two systems cannot mix.
+export type LegacySessionRow = Omit<AttendanceSessionRow, 'kind' | 'status'> & {
+  kind: 'nightly' | 'adhoc'
+  status: 'open' | 'closed' | 'auto_closed'
+}
+
 export type DormAttendanceConfig = {
   id: string
   number: string
@@ -99,22 +107,23 @@ export function createAttendanceRepository() {
       return (data ?? []) as ResidentRow[]
     },
 
-    async openSessions(dormId: string): Promise<AttendanceSessionRow[]> {
+    async openSessions(dormId: string): Promise<LegacySessionRow[]> {
       const { data, error } = await supabase
         .from('attendance_sessions')
         .select('*')
         .eq('dorm_id', dormId)
         .eq('status', 'open')
+        .neq('kind', 'dekan')
         .order('opened_at', { ascending: false })
       if (error) throw error
-      return (data ?? []) as AttendanceSessionRow[]
+      return (data ?? []) as LegacySessionRow[]
     },
 
-    async sessionById(id: string): Promise<AttendanceSessionRow | null> {
+    async sessionById(id: string): Promise<LegacySessionRow | null> {
       const { data, error } = await supabase
-        .from('attendance_sessions').select('*').eq('id', id).maybeSingle()
+        .from('attendance_sessions').select('*').eq('id', id).neq('kind', 'dekan').maybeSingle()
       if (error) throw error
-      return (data as AttendanceSessionRow) ?? null
+      return (data as LegacySessionRow) ?? null
     },
 
     // Nightly sessions dedupe on (dorm, date, kind, gender, floor) via a
@@ -128,7 +137,7 @@ export function createAttendanceRepository() {
       floor: number | null
       openedBy: string | null
       closesAt: string
-    }): Promise<{ row: AttendanceSessionRow; created: boolean }> {
+    }): Promise<{ row: LegacySessionRow; created: boolean }> {
       const { data, error } = await supabase
         .from('attendance_sessions')
         .insert({
@@ -142,7 +151,7 @@ export function createAttendanceRepository() {
         })
         .select('*')
         .single()
-      if (!error) return { row: data as AttendanceSessionRow, created: true }
+      if (!error) return { row: data as LegacySessionRow, created: true }
       if (error.code !== '23505') throw error
 
       let q = supabase
@@ -154,7 +163,7 @@ export function createAttendanceRepository() {
       q = input.floor != null ? q.eq('floor_number', input.floor) : q.is('floor_number', null)
       const { data: existing, error: fetchErr } = await q.maybeSingle()
       if (fetchErr) throw fetchErr
-      return { row: existing as AttendanceSessionRow, created: false }
+      return { row: existing as LegacySessionRow, created: false }
     },
 
     // Bulk-seed unmarked records for every resident; existing rows untouched.
@@ -333,6 +342,7 @@ export function createAttendanceRepository() {
         .select('id, scheduled_for, kind, status')
         .in('id', rows.map((r) => r.session_id))
         .eq('dorm_id', dormId)
+        .neq('kind', 'dekan')
       const byId = new Map((sessions ?? []).map((s) => [s.id, s]))
       return rows
         .map((r) => {

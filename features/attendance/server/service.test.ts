@@ -70,6 +70,10 @@ function repo(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => vi.clearAllMocks())
 
+// The legacy flow's student check-in also asks for the student's own dekan
+// roll-call; none is running in these cases.
+const noDekan = { openForStudent: async () => null, residentOf: async () => null }
+
 describe('roster', () => {
   it('groups residents by room and counts states', async () => {
     const r = repo()
@@ -160,34 +164,34 @@ describe('openAdhoc', () => {
 describe('checkin', () => {
   it('marks present inside the radius', async () => {
     const r = repo()
-    const res = await createAttendanceService(r as never).checkin('s1', 'amit', { lat: 41.3111, lng: 69.2401, accuracy: 25 })
+    const res = await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.3111, lng: 69.2401, accuracy: 25 })
     expect(res).toMatchObject({ status: 'present' })
     expect(r.applySelfCheckin).toHaveBeenCalledWith(expect.objectContaining({ state: 'present' }))
   })
 
   it('marks outside beyond the radius', async () => {
     const r = repo()
-    const res = await createAttendanceService(r as never).checkin('s1', 'amit', { lat: 41.40, lng: 69.35, accuracy: 30 })
+    const res = await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.40, lng: 69.35, accuracy: 30 })
     expect(res).toMatchObject({ status: 'outside' })
     expect((res as { distanceM: number }).distanceM).toBeGreaterThan(1000)
   })
 
   it('asks for a retry when accuracy is poor', async () => {
     const r = repo()
-    const res = await createAttendanceService(r as never).checkin('s1', 'amit', { lat: 41.311, lng: 69.24, accuracy: 5000 })
+    const res = await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.311, lng: 69.24, accuracy: 5000 })
     expect(res).toEqual({ status: 'retry' })
     expect(r.applySelfCheckin).not.toHaveBeenCalled()
   })
 
   it('returns no_session when nothing is open', async () => {
     const r = repo({ openSessions: vi.fn(async () => []) })
-    expect(await createAttendanceService(r as never).checkin('s1', 'amit', { lat: 41.311, lng: 69.24, accuracy: 20 }))
+    expect(await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.311, lng: 69.24, accuracy: 20 }))
       .toEqual({ status: 'no_session' })
   })
 
   it('does not overwrite a mark a human already made', async () => {
     const r = repo({ applySelfCheckin: vi.fn(async () => ({ applied: false, current: 'present' })) })
-    const res = await createAttendanceService(r as never).checkin('s1', 'amit', { lat: 41.311, lng: 69.24, accuracy: 20 })
+    const res = await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.311, lng: 69.24, accuracy: 20 })
     expect(res).toEqual({ status: 'already', state: 'present' })
   })
 
@@ -196,7 +200,7 @@ describe('checkin', () => {
       id: DORM, number: '1', name: '', floor_count: 9, latitude: null, longitude: null,
       checkin_radius_m: 1000, attendance_enabled: true, attendance_open_time: '21:00', attendance_close_time: '23:00',
     })) })
-    expect(await createAttendanceService(r as never).checkin('s1', 'amit', { lat: 41.311, lng: 69.24, accuracy: 20 }))
+    expect(await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.311, lng: 69.24, accuracy: 20 }))
       .toEqual({ status: 'unavailable' })
   })
 })
@@ -286,7 +290,7 @@ describe('building scope — a faculty can live in several buildings', () => {
       studentDormId: vi.fn(async () => OTHER),
       openSessions: vi.fn(async () => [{ ...openSession, dorm_id: OTHER }]),
     })
-    await createAttendanceService(r as never).checkin('s1', 'amit', { lat: 41.3111, lng: 69.2401, accuracy: 25 })
+    await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.3111, lng: 69.2401, accuracy: 25 })
     expect(r.dorm).toHaveBeenCalledWith(OTHER)
     expect(r.openSessions).toHaveBeenCalledWith(OTHER)
     expect(r.dormIdForFaculty).not.toHaveBeenCalled()
@@ -294,7 +298,7 @@ describe('building scope — a faculty can live in several buildings', () => {
 
   it('falls back to the faculty’s primary building for a student with no dorm yet', async () => {
     const r = repo()
-    await createAttendanceService(r as never).checkin('s1', 'amit', { lat: 41.3111, lng: 69.2401, accuracy: 25 })
+    await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.3111, lng: 69.2401, accuracy: 25 })
     expect(r.dormIdForFaculty).toHaveBeenCalledWith('amit')
   })
 })

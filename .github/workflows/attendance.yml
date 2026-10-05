@@ -1,7 +1,9 @@
 name: Yo'qlama cron
 
 # Opens the nightly attendance session in each dorm's configured window and
-# pushes residents; auto-closes expired sessions. The endpoint is idempotent,
+# pushes residents; auto-closes expired sessions. Also drives the dekan
+# roll-calls: opens scheduled ones and sends the 10-minute Telegram/email
+# reminders (hence every 5 minutes — GitHub may delay a run by a few). The endpoint is idempotent,
 # so a missed or doubled run is harmless.
 #
 # Setup: add ATTENDANCE_CRON_SECRET as a repo secret (Settings → Secrets and
@@ -9,7 +11,7 @@ name: Yo'qlama cron
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions: {}

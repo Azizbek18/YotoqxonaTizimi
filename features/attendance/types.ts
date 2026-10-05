@@ -78,3 +78,52 @@ export type StudentAttendanceHistory = {
   state: AttendanceState
   kind: 'nightly' | 'adhoc'
 }
+
+// ---- Dekan yo'qlamasi (kind='dekan') ----------------------------------
+// One session = ONE faculty's residents of ONE dorm. Nothing here is shared
+// with the nightly/adhoc (sardor + tarbiyachi) types above.
+
+export type DekanSessionStatus = 'scheduled' | 'open' | 'closed' | 'auto_closed'
+
+export type DekanSessionInfo = {
+  id: string
+  dormId: string
+  dormLabel: string
+  status: DekanSessionStatus
+  startsAt: string
+  closesAt: string
+  closedAt: string | null
+  reminderCount: number
+  summary: AttendanceSummary
+}
+
+export type DekanDormCard = {
+  id: string
+  label: string
+  residentCount: number
+  /** False until the dekan sets the building's GPS point in Sozlamalar. */
+  hasGeo: boolean
+  active: DekanSessionInfo | null
+}
+
+export type DekanOverview = {
+  dorms: DekanDormCard[]
+  recent: DekanSessionInfo[]
+}
+
+export type DekanRosterResident = {
+  id: string
+  fullName: string
+  roomNumber: string
+  floor: number | null
+  phone: string | null
+  /** 'excused' is never produced by the dekan flow. */
+  state: 'present' | 'absent' | 'unmarked'
+  selfDistanceM: number | null
+  markedAt: string | null
+}
+
+export type DekanRosterView = {
+  session: DekanSessionInfo
+  residents: DekanRosterResident[]
+}

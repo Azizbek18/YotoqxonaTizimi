@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       if (student) {
         await sendTelegramChatMessage(
           String(chatId),
-          `🔔 <b>Telegram ulandi</b>\n\nHurmatli <b>${student.name.replaceAll('<', '&lt;')}</b>, endi yuborgan arizalaringiz nusxasi shu botga keladi.`,
+          `🔔 <b>Telegram ulandi</b>\n\nHurmatli <b>${student.name.replaceAll('<', '&lt;')}</b>, endi yuborgan arizalaringiz nusxasi va <b>yo‘qlama eslatmalari</b> shu botga keladi.`,
           {
             parseMode: 'HTML',
             replyMarkup: { inline_keyboard: [[{ text: 'Arizalarim', url: `${process.env.NEXT_PUBLIC_APP_URL}/talaba/arizalar` }]] },

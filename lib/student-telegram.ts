@@ -17,6 +17,19 @@ function botUsername() {
 
 export type StudentTelegramStatus = { linked: boolean; url: string | null }
 
+/** Binding state ONLY — never issues a link. Safe to poll: getStudentTelegramLink
+ *  rotates the deep-link token on every call, which would invalidate a link the
+ *  student has just opened in Telegram. */
+export async function isStudentTelegramLinked(studentId: string): Promise<boolean> {
+  const { data, error } = await getServiceSupabase()
+    .from('student_telegram_links')
+    .select('chat_id')
+    .eq('student_id', studentId)
+    .maybeSingle()
+  if (error) throw error
+  return data?.chat_id != null
+}
+
 /** Current binding + a fresh deep link if not linked yet. */
 export async function getStudentTelegramLink(studentId: string): Promise<StudentTelegramStatus> {
   const username = botUsername()

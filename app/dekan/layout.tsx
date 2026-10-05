@@ -19,6 +19,7 @@ import {
   FileSpreadsheet,
   Bell,
   Building2,
+  ClipboardCheck,
   ClipboardList,
   Settings,
   ShieldAlert,
@@ -93,7 +94,7 @@ export default function DekanLayout({
   // keeps only the genuinely cross-faculty views (Bosh nazorat, Yotoqxonalar,
   // Dashboard); everything operational needs one faculty to act on.
   const SINGLE_FACULTY_PATHS = [
-    '/dekan/3d-xonalar', '/dekan/xonalar', '/dekan/blok-xonalar', '/dekan/sozlamalar',
+    '/dekan/3d-xonalar', '/dekan/xonalar', '/dekan/blok-xonalar', '/dekan/sozlamalar', '/dekan/yoqlama',
     '/dekan/talabalar', '/dekan/murojaatlar', '/dekan/viza-nazorati',
     '/dekan/xodimlar', '/dekan/elonlar', '/dekan/hisobotlar',
   ]
@@ -218,6 +219,7 @@ export default function DekanLayout({
       { label: 'Talabalar', caption: isSuperadmin ? 'Fakultetlararo boshqaruv' : op('Fakultet talabalari'), href: isSuperadmin ? '/dekan/talabalar-global' : '/dekan/talabalar', icon: Users },
       { label: 'To‘lovlar', caption: op('Chek tasdiqlash'), href: '/dekan/tolovlar', icon: Wallet },
       { label: 'KV talabalar', caption: op('Ijarada turuvchi talabalar'), href: '/dekan/kv-talabalar', icon: Home },
+      { label: 'Yo‘qlama', caption: op('Vaqt belgilab tekshirish'), href: '/dekan/yoqlama', icon: ClipboardCheck },
       { label: 'Viza nazorati', caption: op('Xorijiy va boshqa viloyat talabalari'), href: '/dekan/viza-nazorati', icon: Stamp },
       // Faculty-admin tools. The page bodies are the /admin/* implementations
       // (re-exported under /dekan/*), so they render inside THIS panel's chrome.

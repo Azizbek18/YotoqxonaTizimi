@@ -282,7 +282,7 @@ export type AttendanceSessionRow = {
   id: string
   dorm_id: string
   scheduled_for: string
-  kind: 'nightly' | 'adhoc'
+  kind: 'nightly' | 'adhoc' | 'dekan'
   gender: 'male' | 'female' | null
   floor_number: number | null
   opened_by: string | null
@@ -290,8 +290,15 @@ export type AttendanceSessionRow = {
   closes_at: string
   closed_by: string | null
   closed_at: string | null
-  status: 'open' | 'closed' | 'auto_closed'
+  status: 'scheduled' | 'open' | 'closed' | 'auto_closed'
   created_at: string
+  // kind='dekan' only (migration 202610050000): the session belongs to ONE
+  // faculty's residents of ONE dorm. NULL for nightly/adhoc.
+  faculty: string | null
+  starts_at: string | null
+  reminder_interval_min: number
+  last_reminded_at: string | null
+  reminder_count: number
 }
 
 export type AttendanceRecordRow = {

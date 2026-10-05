@@ -38,6 +38,7 @@ export type StudentProfileRow = {
   blacklisted: boolean | null
   birth_date: string | null
   nationality: string | null
+  country: string | null
   study_type: string | null
   entry_date: string | null
   region: string | null

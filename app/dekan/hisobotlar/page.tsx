@@ -16,6 +16,7 @@ import {
   FileText,
   Filter,
   FilterX,
+  Globe2,
   Home,
   RotateCcw,
   Search,
@@ -48,6 +49,7 @@ import {
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { genderLabel, normalizeGender } from '@/lib/gender'
 import { directionLabel, normalizeDirection } from '@/lib/directions'
+import { citizenshipOf, type Citizenship } from '@/lib/citizenship'
 import { dekanUI } from '@/lib/dekan-ui'
 import { Skel } from '@/components/dekan/Skeletons'
 
@@ -58,6 +60,7 @@ type Filters = {
   search: string
   placement: PlacementFilter
   gender: string
+  citizenship: '' | Citizenship
   pay: PayFilter
   nationality: string
   course: string
@@ -73,6 +76,7 @@ const EMPTY_FILTERS: Filters = {
   search: '',
   placement: '',
   gender: '',
+  citizenship: '',
   pay: '',
   nationality: '',
   course: '',
@@ -89,6 +93,11 @@ const PAY_FILTER_LABELS: Record<Exclude<PayFilter, ''>, string> = {
   debtor: "Qarzdorlar (to'liq to'lamaganlar)",
   unpaid: "Umuman to'lov qilmaganlar",
   waiting: 'Tasdiqlanmagan cheki borlar',
+}
+
+const CITIZENSHIP_LABELS: Record<Citizenship, string> = {
+  uzbek: "O'zbekiston talabalari",
+  foreign: 'Xorijiy talabalar',
 }
 
 const PLACEMENT_FILTER_LABELS: Record<Exclude<PlacementFilter, ''>, string> = {
@@ -187,7 +196,10 @@ export default function DekanReportsPage() {
     [layoutFloors, students, studentFloor, floorsLoaded, dormScope.activeDorm?.layoutKind]
   )
 
-  const filteredStudents = useMemo(() => {
+  // Everything except the citizenship filter: the two dedicated export
+  // buttons (xorijiy / O'zbekiston) slice this same set, so they respect
+  // every other active filter no matter which citizenship is selected.
+  const baseFiltered = useMemo(() => {
     const query = filters.search.trim().toLowerCase()
 
     return students.filter((student) => {
@@ -220,11 +232,27 @@ export default function DekanReportsPage() {
     })
   }, [students, filters, paySummaries, studentFloor])
 
+  const filteredStudents = useMemo(
+    () => (filters.citizenship
+      ? baseFiltered.filter((student) => citizenshipOf(student.country) === filters.citizenship)
+      : baseFiltered),
+    [baseFiltered, filters.citizenship],
+  )
+  const foreignSelected = useMemo(
+    () => baseFiltered.filter((student) => citizenshipOf(student.country) === 'foreign'),
+    [baseFiltered],
+  )
+  const uzbekSelected = useMemo(
+    () => baseFiltered.filter((student) => citizenshipOf(student.country) === 'uzbek'),
+    [baseFiltered],
+  )
+
   const activeFilterChips = useMemo(() => {
     const chips: { key: keyof Filters; label: string }[] = []
     if (filters.search) chips.push({ key: 'search', label: `Qidiruv: ${filters.search}` })
     if (filters.placement) chips.push({ key: 'placement', label: PLACEMENT_FILTER_LABELS[filters.placement] })
     if (filters.gender) chips.push({ key: 'gender', label: filters.gender === 'male' ? "O'g'il bolalar" : 'Qiz bolalar' })
+    if (filters.citizenship) chips.push({ key: 'citizenship', label: CITIZENSHIP_LABELS[filters.citizenship] })
     if (filters.pay) chips.push({ key: 'pay', label: PAY_FILTER_LABELS[filters.pay] })
     if (filters.nationality) chips.push({ key: 'nationality', label: `Millati: ${filters.nationality}` })
     if (filters.course) chips.push({ key: 'course', label: `${filters.course}-kurs` })
@@ -251,8 +279,9 @@ export default function DekanReportsPage() {
 
   const clearFilter = (key: keyof Filters) => setFilters((prev) => ({ ...prev, [key]: EMPTY_FILTERS[key] }))
 
-  const fileSlug = () => {
+  const fileSlug = (citizenship: '' | Citizenship = filters.citizenship) => {
     const parts: string[] = []
+    if (citizenship) parts.push(citizenship === 'foreign' ? 'xorijiy' : 'ozbekiston')
     if (filters.placement) parts.push(filters.placement === 'placed' ? 'joylashgan' : 'xonasiz')
     if (filters.pay) parts.push(filters.pay)
     if (filters.gender) parts.push(filters.gender === 'male' ? 'ogil' : 'qiz')
@@ -265,18 +294,19 @@ export default function DekanReportsPage() {
     return `talabalar${suffix}_${new Date().toISOString().slice(0, 10)}`
   }
 
-  const exportTable = async (format: 'excel' | 'csv') => {
-    if (filteredStudents.length === 0) {
+  const exportTable = async (format: 'excel' | 'csv', citizenship?: Citizenship) => {
+    const rows = citizenship ? (citizenship === 'foreign' ? foreignSelected : uzbekSelected) : filteredStudents
+    if (rows.length === 0) {
       toast.error("Tanlangan filtrlar bo'yicha talaba topilmadi")
       return
     }
     const toastId = toast.loading("Fayl tayyorlanmoqda...")
     try {
-      const { headers, rawRows, displayRows, merges } = buildStudentReportTable(filteredStudents, floorOf)
+      const { headers, rawRows, displayRows, merges } = buildStudentReportTable(rows, floorOf)
 
       if (format === 'excel') {
         await downloadXlsx({
-          filename: `${fileSlug()}.xlsx`,
+          filename: `${fileSlug(citizenship ?? filters.citizenship)}.xlsx`,
           sheetName: 'Hisobot',
           headers,
           rows: displayRows,
@@ -286,7 +316,7 @@ export default function DekanReportsPage() {
         return
       }
 
-      downloadTextFile(`${fileSlug()}.csv`, buildStudentReportCsv(headers, rawRows), 'text/csv;charset=utf-8;')
+      downloadTextFile(`${fileSlug(citizenship ?? filters.citizenship)}.csv`, buildStudentReportCsv(headers, rawRows), 'text/csv;charset=utf-8;')
       toast.success('CSV fayl yuklab olindi', { id: toastId })
     } catch (error) {
       console.error('Eksport xatosi:', error)
@@ -310,6 +340,11 @@ export default function DekanReportsPage() {
     () => students.filter((s) => normalizeGender(s.gender) === 'female').length,
     [students]
   )
+  const foreignCount = useMemo(
+    () => students.filter((s) => citizenshipOf(s.country) === 'foreign').length,
+    [students]
+  )
+  const uzbekCount = students.length - foreignCount
   const captainCount = useMemo(
     () => students.filter((s) => s.is_floor_captain).length,
     [students]
@@ -354,6 +389,20 @@ export default function DekanReportsPage() {
       icon: UsersRound,
       isActive: filters.gender === 'female',
       toggle: () => setFilters((prev) => ({ ...EMPTY_FILTERS, gender: prev.gender === 'female' ? '' : 'female' })),
+    },
+    {
+      label: 'Xorijiy talabalar',
+      count: foreignCount,
+      icon: Globe2,
+      isActive: filters.citizenship === 'foreign',
+      toggle: () => setFilters((prev) => ({ ...EMPTY_FILTERS, citizenship: prev.citizenship === 'foreign' ? '' : 'foreign' })),
+    },
+    {
+      label: "O'zbekiston talabalari",
+      count: uzbekCount,
+      icon: Users,
+      isActive: filters.citizenship === 'uzbek',
+      toggle: () => setFilters((prev) => ({ ...EMPTY_FILTERS, citizenship: prev.citizenship === 'uzbek' ? '' : 'uzbek' })),
     },
     {
       label: 'Qavat sardorlari',
@@ -636,6 +685,21 @@ export default function DekanReportsPage() {
                 ),
               },
               {
+                label: 'Fuqaroligi',
+                node: (
+                  <CustomSelect
+                    value={filters.citizenship}
+                    onChange={(v) => setFilter('citizenship', v as '' | Citizenship)}
+                    className={inputCls}
+                    options={[
+                      { value: '', label: `Barchasi (${students.length})` },
+                      { value: 'uzbek', label: `${CITIZENSHIP_LABELS.uzbek} (${uzbekCount})` },
+                      { value: 'foreign', label: `${CITIZENSHIP_LABELS.foreign} (${foreignCount})` },
+                    ]}
+                  />
+                ),
+              },
+              {
                 label: "To'lov holati",
                 node: (
                   <CustomSelect
@@ -798,65 +862,97 @@ export default function DekanReportsPage() {
       </div>
 
       {/* ── Selection Summary & Export Action Card ────────── */}
-      <div className={`rounded-3xl border p-5 sm:p-6 backdrop-blur-xl ${ui.card} shadow-sm space-y-4`}>
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-          <div className="flex flex-wrap items-center gap-6">
-            <div className="flex items-center gap-3.5">
-              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${ui.accentTile}`}>
-                <FileSpreadsheet size={22} strokeWidth={2.2} />
-              </div>
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <span className={`text-2xl sm:text-3xl font-black tracking-tight ${ui.strong}`}>
-                    {loading ? '...' : filteredStudents.length}
-                  </span>
-                  <span className={`text-xs font-semibold ${ui.muted}`}>
-                    / {students.length} ta talaba
-                  </span>
-                </div>
-                <p className={`text-[11px] font-semibold text-slate-500 dark:text-slate-400`}>
-                  {selectedRoomlessCount > 0
-                    ? `${filteredStudents.length - selectedRoomlessCount} xonada • ${selectedRoomlessCount} xonasiz`
-                    : "Barcha saralanganlar xonaga biriktirilgan"}
-                </p>
-              </div>
+      <div className={`rounded-3xl border p-5 sm:p-6 backdrop-blur-xl ${ui.card} shadow-sm space-y-5`}>
+        {/* Summary tiles */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className={`flex items-center gap-3.5 rounded-2xl border p-4 ${isLight ? 'bg-slate-50/70 border-slate-200/80' : 'bg-slate-900/40 border-slate-800'}`}>
+            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${ui.accentTile}`}>
+              <Users size={20} strokeWidth={2.2} />
             </div>
-
-            {selectionDebt !== null && selectionDebt > 0 && (
-              <div className="flex items-center gap-3.5 border-l pl-6 dark:border-slate-800 border-slate-200">
-                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${statusChipInline(isLight)}`}>
-                  <AlertTriangle size={20} />
-                </div>
-                <div>
-                  <span className={`text-2xl sm:text-3xl font-black tracking-tight ${ui.strong}`}>
-                    {formatSum(selectionDebt)}
-                  </span>
-                  <p className={`text-[11px] font-semibold text-amber-600 dark:text-amber-400`}>
-                    Saralanganlarning jami qarzdorligi
-                  </p>
-                </div>
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl font-black tabular-nums tracking-tight ${ui.strong}`}>
+                  {loading ? '...' : filteredStudents.length}
+                </span>
+                <span className={`text-xs font-semibold ${ui.muted}`}>/ {students.length} ta talaba</span>
               </div>
-            )}
+              <p className={`truncate text-[11px] font-semibold ${ui.muted}`}>
+                {selectedRoomlessCount > 0
+                  ? `${filteredStudents.length - selectedRoomlessCount} xonada • ${selectedRoomlessCount} xonasiz`
+                  : 'Barcha saralanganlar xonaga biriktirilgan'}
+              </p>
+            </div>
           </div>
 
-          {/* Export action buttons */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className={`flex items-center gap-3.5 rounded-2xl border p-4 ${isLight ? 'bg-slate-50/70 border-slate-200/80' : 'bg-slate-900/40 border-slate-800'}`}>
+            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${statusChipInline(isLight)}`}>
+              <AlertTriangle size={20} />
+            </div>
+            <div className="min-w-0">
+              <span className={`block truncate text-2xl font-black tabular-nums tracking-tight ${ui.strong}`}>
+                {selectionDebt !== null ? formatSum(selectionDebt) : '—'}
+              </span>
+              <p className="truncate text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                Saralanganlarning jami qarzdorligi
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Export options */}
+        <div className="space-y-3">
+          <p className={`text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>
+            Excel eksport — fuqarolik bo&apos;yicha alohida fayl
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {([
+              { key: 'uzbek' as const, title: "O'zbekiston talabalari", count: uzbekSelected.length, icon: Users },
+              { key: 'foreign' as const, title: 'Xorijiy talabalar', count: foreignSelected.length, icon: Globe2 },
+            ]).map(({ key, title, count, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => exportTable('excel', key)}
+                disabled={loading || count === 0}
+                className={`no-shelf group flex items-center gap-3.5 rounded-2xl border p-4 text-left transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer ${
+                  isLight
+                    ? 'border-indigo-200 bg-indigo-50/60 hover:border-indigo-300 hover:bg-indigo-50'
+                    : 'border-indigo-500/30 bg-indigo-500/10 hover:border-indigo-400/50 hover:bg-indigo-500/15'
+                }`}
+              >
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${ui.accentTile}`}>
+                  <Icon size={20} strokeWidth={2.2} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className={`truncate text-sm font-extrabold ${ui.strong}`}>{title}</p>
+                  <p className={`text-[11px] font-semibold ${ui.muted}`}>
+                    <span className="tabular-nums">{count}</span> ta talaba • .xlsx
+                  </p>
+                </div>
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:translate-y-0.5 ${isLight ? 'bg-white text-indigo-600 border border-indigo-200' : 'bg-slate-900 text-indigo-300 border border-indigo-500/30'}`}>
+                  <Download size={16} strokeWidth={2.4} />
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 pt-1">
             <button
               type="button"
               onClick={() => exportTable('excel')}
               disabled={loading || filteredStudents.length === 0}
-              className="no-shelf inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs sm:text-sm font-extrabold uppercase tracking-wider text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-700/20 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+              className={`no-shelf inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer ${ui.btnGhost}`}
             >
-              <FileSpreadsheet size={18} />
-              <span>Excel yuklab olish ({filteredStudents.length})</span>
+              <FileSpreadsheet size={15} />
+              <span>Hammasi bitta Excelda ({filteredStudents.length})</span>
             </button>
             <button
               type="button"
               onClick={() => exportTable('csv')}
               disabled={loading || filteredStudents.length === 0}
-              className={`no-shelf inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer ${ui.btnGhost}`}
+              className={`no-shelf inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer ${ui.btnGhost}`}
             >
-              <Download size={16} />
+              <Download size={15} />
               <span>CSV</span>
             </button>
           </div>

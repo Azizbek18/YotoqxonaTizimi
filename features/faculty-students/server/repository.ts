@@ -3,7 +3,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import type { StudentScope, StudentWarningLevel } from '../types'
 
 const STUDENT_PROFILE_COLUMNS =
-  'id, full_name, middle_name, email, phone_number, avatar_url, gender, faculty, direction, course, status, room_number, assigned_floor, is_floor_captain, is_council_chair, warning_count, blacklisted, birth_date, nationality, study_type, entry_date, region, district, mahalla, passport_series, jshshir, passport_date, father_full_name, father_workplace, father_phone, mother_full_name, mother_workplace, mother_phone, created_at'
+  'id, full_name, middle_name, email, phone_number, avatar_url, gender, faculty, direction, course, status, room_number, assigned_floor, is_floor_captain, is_council_chair, warning_count, blacklisted, birth_date, nationality, country, study_type, entry_date, region, district, mahalla, passport_series, jshshir, passport_date, father_full_name, father_workplace, father_phone, mother_full_name, mother_workplace, mother_phone, created_at'
 
 export function createFacultyStudentsRepository() {
   const supabase = getServiceSupabase()

@@ -5,7 +5,9 @@ import { createPortal } from 'react-dom'
 import { Send, Loader2, BellRing } from 'lucide-react'
 import { getAuthHeaders } from '@/lib/auth-session'
 
-const POLL_MS = 4000
+// Every blocked student polls; keep it cheap (the prod plan has a tight compute
+// budget): 10 s, and never while the tab is in the background.
+const POLL_MS = 10_000
 
 // Blocks the student panel until the account is linked to the Telegram bot:
 // yo'qlama reminders go out ONLY on Telegram, so an unlinked student would
@@ -39,10 +41,15 @@ export default function TelegramLinkGate({ isLight }: { isLight: boolean }) {
 
   useEffect(() => {
     if (!blocked) return
-    const timer = setInterval(() => void check(), POLL_MS)
-    const onFocus = () => void check()
-    window.addEventListener('focus', onFocus)
-    return () => { clearInterval(timer); window.removeEventListener('focus', onFocus) }
+    const tick = () => { if (!document.hidden) void check() }
+    const timer = setInterval(tick, POLL_MS)
+    window.addEventListener('focus', tick)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', tick)
+      document.removeEventListener('visibilitychange', tick)
+    }
   }, [blocked, check])
 
   if (!blocked || !url || typeof document === 'undefined') return null

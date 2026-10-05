@@ -164,7 +164,10 @@ export function createDekanAttendanceService(
       }
       const recent: DekanSessionInfo[] = []
       for (const row of recentRows) {
-        recent.push(info(row, labels.get(row.dorm_id) ?? 'Yotoqxona', await summaryOf(row)))
+        const summary = await summaryOf(row)
+        // A roll-call cancelled before it ever opened has no records: not history.
+        if (summary.total === 0) continue
+        recent.push(info(row, labels.get(row.dorm_id) ?? 'Yotoqxona', summary))
       }
 
       return { dorms: cards, recent }

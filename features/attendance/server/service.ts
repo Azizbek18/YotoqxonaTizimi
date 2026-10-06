@@ -1,4 +1,5 @@
 import 'server-only'
+import { roomIdentity } from '@/lib/room-identity'
 import { ApiError } from '@/server/http/api-error'
 import { asCoordinate, haversineMeters } from '@/lib/geo'
 import {
@@ -60,6 +61,7 @@ export function createAttendanceService(
     return repo.residents(actor.dormId, actor.faculties, {
       floor: actor.role === 'sardor' ? actor.floor : undefined,
       gender: actor.role === 'sardor' ? actor.gender : (actor.gender ?? undefined),
+      block: actor.role === 'sardor' ? actor.block ?? null : undefined,
     })
   }
 
@@ -79,9 +81,12 @@ export function createAttendanceService(
     const roomMap = new Map<string, RosterRoom>()
     for (const resident of residents) {
       const rec = byStudent.get(resident.id)
-      const room = resident.room_number ?? '—'
-      if (!roomMap.has(room)) roomMap.set(room, { roomNumber: room, residents: [] })
-      roomMap.get(room)!.residents.push({
+      const room = resident.block
+        ? `${resident.block} · ${resident.assigned_floor}-qavat · ${resident.room_number}`
+        : resident.room_number ?? '—'
+      const key = roomIdentity({ ...resident, dorm_id: actor.dormId })
+      if (!roomMap.has(key)) roomMap.set(key, { roomNumber: room, residents: [] })
+      roomMap.get(key)!.residents.push({
         id: resident.id,
         fullName: resident.full_name ?? 'Talaba',
         avatarUrl: resident.avatar_url ?? null,

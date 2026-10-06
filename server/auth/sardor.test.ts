@@ -34,6 +34,12 @@ beforeEach(() => {
 })
 
 describe('requireFloorCaptain', () => {
+  it('rejects a captain whose physical building is missing instead of using the primary dorm', async () => {
+    mocks.getRequestUser.mockResolvedValue({ id: 'u1' })
+    mocks.maybeSingle.mockResolvedValue({ data: { id: 'u1', role: 'talaba', status: 'active',
+      is_floor_captain: true, faculty: 'amit', gender: 'male', assigned_floor: 1, room_number: '8', dorm_id: null }, error: null })
+    expect(errorOf(await requireFloorCaptain(req())).status).toBe(403)
+  })
   it('401s without a session', async () => {
     mocks.getRequestUser.mockResolvedValue(null)
     const result = await requireFloorCaptain(req())
@@ -98,7 +104,7 @@ describe('requireFloorCaptain', () => {
     mocks.maybeSingle.mockResolvedValue({
       data: {
         id: 'u1', role: 'talaba', status: 'active', is_floor_captain: true,
-        assigned_floor: 3, faculty: 'FIZIKA', captain_permissions: {},
+        assigned_floor: 3, faculty: 'FIZIKA', captain_permissions: {}, dorm_id: 'd1', block: null, room_number: '8', gender: 'male',
       },
       error: null,
     })

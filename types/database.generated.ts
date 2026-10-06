@@ -143,6 +143,8 @@ export type StudentTelegramLinkRow = {
 }
 
 export type AnnouncementRow = {
+  dorm_id: string | null
+  target_block: string | null
   id: string
   title: string
   text: string

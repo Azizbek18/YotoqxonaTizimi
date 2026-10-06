@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
     let query = serviceSupabase
       .from('users')
-      .select('id, full_name, email, phone_number, room_number, faculty, course, group, direction, avatar_url, gender, assigned_floor, is_floor_captain')
+      .select('id, full_name, email, phone_number, room_number, dorm_id, block, faculty, course, group, direction, avatar_url, gender, assigned_floor, is_floor_captain')
       .eq('role', 'talaba')
       .eq('status', 'active')
       .ilike('faculty', faculty)

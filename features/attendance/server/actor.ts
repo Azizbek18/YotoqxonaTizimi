@@ -24,7 +24,7 @@ export async function resolveAttendanceActor(request: Request): Promise<Attendan
 
   const { data: student } = await supabase
     .from('users')
-    .select('role, status, is_floor_captain, assigned_floor, gender, faculty, captain_permissions, dorm_id')
+    .select('role, status, is_floor_captain, assigned_floor, gender, faculty, captain_permissions, dorm_id, block')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -47,6 +47,7 @@ export async function resolveAttendanceActor(request: Request): Promise<Attendan
     return {
       userId: user.id,
       role: 'sardor',
+      block: student.block ?? null,
       dormId,
       faculties: [faculty],
       floor: student.assigned_floor,

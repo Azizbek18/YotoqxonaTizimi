@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const supabase = getServiceSupabase()
     const { data: profile } = await supabase
       .from('users')
-      .select('id, full_name, email, role, status, gender, room_number, faculty, assigned_floor')
+      .select('id, full_name, email, role, status, gender, room_number, faculty, assigned_floor, dorm_id, block')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -28,29 +28,21 @@ export async function GET(request: NextRequest) {
     // the same physical floor number — so a faculty-less profile gets an
     // empty roster, never the primary building's by default.
     const faculty = normalizeFaculty(profile.faculty)
-    if (!floor || !profile.gender || !faculty) {
+    if (!profile.dorm_id || !profile.room_number || !floor || !profile.gender || !faculty) {
       return NextResponse.json({ profile, floorCaptains: [], schedule: {}, admins: [] })
     }
 
-    const [captainsResult, scheduleResult] = await Promise.all([
-      supabase
-        .from('users')
-        .select('id, full_name, room_number, phone_number, avatar_url')
-        .eq('role', 'talaba')
-        .eq('status', 'active')
-        .eq('is_floor_captain', true)
-        .eq('faculty', faculty)
-        .eq('assigned_floor', floor)
-        .eq('gender', profile.gender),
-      supabase
-        .from('elonlar')
-        .select('text')
-        .eq('title', 'HAFTALIK_NAVBATCHILIK_JADVALI')
-        .eq('faculty', faculty)
-        .eq('target_floor', floor)
-        .eq('target_gender', profile.gender)
-        .maybeSingle(),
-    ])
+    let captainsQuery = supabase.from('users')
+      .select('id, full_name, room_number, phone_number, avatar_url')
+      .eq('role', 'talaba').eq('status', 'active').eq('is_floor_captain', true)
+      .eq('faculty', faculty).eq('assigned_floor', floor).eq('gender', profile.gender)
+      .eq('dorm_id', profile.dorm_id)
+    let scheduleQuery = supabase.from('elonlar').select('text')
+      .eq('title', 'HAFTALIK_NAVBATCHILIK_JADVALI').eq('faculty', faculty)
+      .eq('target_floor', floor).eq('target_gender', profile.gender).eq('dorm_id', profile.dorm_id)
+    captainsQuery = profile.block ? captainsQuery.eq('block', profile.block) : captainsQuery.is('block', null)
+    scheduleQuery = profile.block ? scheduleQuery.eq('target_block', profile.block) : scheduleQuery.is('target_block', null)
+    const [captainsResult, scheduleResult] = await Promise.all([captainsQuery, scheduleQuery.maybeSingle()])
     if (captainsResult.error || scheduleResult.error) {
       console.error('Duty schedule query error:', captainsResult.error ?? scheduleResult.error)
       return NextResponse.json({ error: 'Navbatchilik ma’lumotlarini yuklab bo‘lmadi' }, { status: 500 })

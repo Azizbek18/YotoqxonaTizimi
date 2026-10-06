@@ -82,6 +82,8 @@ export async function POST(request: NextRequest) {
         faculty,
         target_floor: captainFloor,
         target_gender: captainGender,
+        dorm_id: caller.dorm_id,
+        target_block: caller.block,
         created_by: caller.id,
         is_published: true
       })

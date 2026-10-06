@@ -25,6 +25,8 @@ export type DormAttendanceConfig = {
 }
 
 export type ResidentRow = {
+  dorm_id?: string | null
+  block?: string | null
   id: string
   full_name: string | null
   avatar_url: string | null
@@ -89,11 +91,11 @@ export function createAttendanceRepository() {
     async residents(
       dormId: string,
       faculties: string[],
-      opts: { floor?: number | null; gender?: string | null } = {},
+      opts: { floor?: number | null; gender?: string | null; block?: string | null } = {},
     ): Promise<ResidentRow[]> {
       let query = supabase
         .from('users')
-        .select('id, full_name, avatar_url, room_number, assigned_floor, gender, faculty')
+        .select('id, full_name, avatar_url, room_number, assigned_floor, gender, faculty, dorm_id, block')
         .eq('role', 'talaba')
         .eq('status', 'active')
         .eq('is_off_campus', false)
@@ -102,6 +104,7 @@ export function createAttendanceRepository() {
         .not('assigned_floor', 'is', null)
       if (opts.floor != null) query = query.eq('assigned_floor', opts.floor)
       if (opts.gender) query = query.eq('gender', opts.gender)
+      if (opts.block !== undefined) query = opts.block ? query.eq('block', opts.block) : query.is('block', null)
       const { data, error } = await query
       if (error) throw error
       return (data ?? []) as ResidentRow[]

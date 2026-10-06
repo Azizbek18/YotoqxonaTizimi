@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getRequestUser } from '@/lib/server-auth'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import { checkRateLimit, getClientIp } from '@/lib/security'
-import { isValidEmail, normalizeForeignIdNumber } from '@/lib/permit-validation'
+import { isStoredEmailShape, normalizeForeignIdNumber } from '@/lib/permit-validation'
 import { getSafePushEndpoint } from '@/lib/push-endpoint'
 
 type SubscribeBody = {
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     const passport = normalizeForeignIdNumber(body.permitBinding?.passport)
     const email = typeof body.permitBinding?.email === 'string' ? body.permitBinding.email.trim().toLowerCase() : ''
     if (!id || !passport || !email) return jsonError('Ariza bog‘lanishi topilmadi', 401)
-    if (!isValidEmail(email)) return jsonError('Email formati noto‘g‘ri', 400)
+    if (!isStoredEmailShape(email)) return jsonError('Email formati noto‘g‘ri', 400)
 
     const { data: permit, error } = await supabase
       .from('permit_requests')

@@ -5,7 +5,7 @@ import { EMAIL_PROOF_REQUIRED, hasEmailProof, issueEmailChallenge } from '@/lib/
 import { domainAcceptsMail } from '@/lib/email-domain'
 import { sendEmailVerificationCode } from '@/lib/email'
 import {
-  isValidEmail,
+  isStoredEmailShape,
   isValidForeignIdNumber,
   isValidJshshir,
   isValidPassport,
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Email + proof supplied — confirm it matches this row's on-file address.
-    if (!isValidEmail(rawEmail)) {
+    if (!isStoredEmailShape(rawEmail)) {
       return NextResponse.json({ error: 'Email formati noto‘g‘ri.' }, { status: 400 })
     }
     if (rawEmail !== permit.email || !hasEmailProof(body?.emailProof, rawEmail)) {

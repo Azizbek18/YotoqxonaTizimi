@@ -158,9 +158,12 @@ export default function ForgotPassword() {
                 <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mx-auto mb-6 border border-emerald-500/20">
                   <Sparkles size={32} className="animate-pulse" />
                 </div>
-                <h2 className="text-2xl font-black text-white uppercase mb-3" style={{ fontFamily: baloo2.style.fontFamily }}>Havola Yuborildi</h2>
-                <p className="text-slate-400 text-sm leading-relaxed mb-8 px-4">
-                  <span className="text-emerald-400">{email}</span> manziliga xat yubordik.
+                <h2 className="text-2xl font-black text-white uppercase mb-3" style={{ fontFamily: baloo2.style.fontFamily }}>So‘rov Qabul Qilindi</h2>
+                <p className="text-slate-400 text-sm leading-relaxed mb-3 px-4">
+                  Agar <span className="text-emerald-400">{email}</span> bilan hisob mavjud bo‘lsa, parolni tiklash havolasi yuboriladi.
+                </p>
+                <p className="text-slate-500 text-xs leading-relaxed mb-8 px-4">
+                  Xat 1–2 daqiqada keladi. Kelmasa, «Spam» papkasini tekshiring va ro‘yxatdan o‘tishda aynan shu emailni kiritganingizga ishonch hosil qiling.
                 </p>
                 <button onClick={() => setIsSent(false)} className="text-slate-500 text-[10px] font-black uppercase tracking-widest hover:text-emerald-400 transition-colors">
                   Boshqa email kiritish

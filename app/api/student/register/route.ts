@@ -73,18 +73,6 @@ export async function POST(request: NextRequest) {
       : normalizePassport(body.passportSeries)
     const jshshir = submittedJshshir
     const email = text(body, 'email', 254).toLowerCase()
-
-    // Per-email limit: dorm Wi-Fi / carrier NAT put many students behind one
-    // IP, so the IP bucket is generous and this one stops repeated guessing.
-    if (email) {
-      const emailThrottle = await checkRateLimit(`student-register-email:${email}`, 6, 15 * 60_000)
-      if (!emailThrottle.allowed) {
-        return NextResponse.json(
-          { error: 'Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.' },
-          { status: 429 },
-        )
-      }
-    }
     // Foreign names are self-reported and arrive ALL-CAPS / all-lowercase as
     // often as not — normalise the casing so the stored record and the signed
     // Ariza/Tilxat read cleanly. namesLikelyMatch is case-insensitive, so this
@@ -175,6 +163,19 @@ export async function POST(request: NextRequest) {
     // their permit documents before approving, which is a stronger check
     // than a mailbox code. KV-talaba (features/... /kv-talaba/register) has
     // no such review and still requires it.
+    // Dorm Wi-Fi / carrier NAT put many students behind one IP, so the IP
+    // bucket above is generous. What an attacker actually guesses is somebody's
+    // passport/ID, so cap verification attempts per identity. Keyed only after
+    // the format checks, so the key space is bounded to well-formed IDs and a
+    // student fixing typos in earlier steps never spends it.
+    const identityThrottle = await checkRateLimit(`student-register-id:${applicationType}:${passport}`, 10, 15 * 60_000)
+    if (!identityThrottle.allowed) {
+      return NextResponse.json(
+        { error: 'Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.' },
+        { status: 429 },
+      )
+    }
+
     const supabase = getServiceSupabase()
     let permitQuery = supabase
       .from('permit_requests')

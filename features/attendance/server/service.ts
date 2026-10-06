@@ -42,6 +42,10 @@ function sessionMatchesActor(session: AttendanceSessionRow, actor: AttendanceAct
   if (actor.role !== 'sardor') return true
   if (session.gender && session.gender !== actor.gender) return false
   if (session.floor_number != null && session.floor_number !== actor.floor) return false
+  // A blocked dorm has one captain per block per floor; a session opened for
+  // block A is not block B's. Sessions without a block (nightly, legacy) are
+  // dorm-wide and stay shared — the roster is still filtered by block.
+  if (session.block != null && session.block !== (actor.block ?? null)) return false
   return true
 }
 
@@ -147,6 +151,7 @@ export function createAttendanceService(
         kind: 'adhoc',
         gender: actor.role === 'sardor' ? actor.gender : actor.gender,
         floor: actor.role === 'sardor' ? actor.floor : null,
+        block: actor.role === 'sardor' ? actor.block ?? null : null,
         openedBy: actor.userId,
         closesAt: effectiveClose.toISOString(),
       })

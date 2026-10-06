@@ -287,6 +287,7 @@ export type AttendanceSessionRow = {
   kind: 'nightly' | 'adhoc'
   gender: 'male' | 'female' | null
   floor_number: number | null
+  block?: string | null
   opened_by: string | null
   opened_at: string
   closes_at: string

@@ -73,6 +73,15 @@ export function isValidEmail(input: unknown) {
     && /^[a-z0-9_%+-]+(?:\.[a-z0-9_%+-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(value)
 }
 
+// Shape check for looking up an address that is ALREADY stored (permit cancel,
+// push binding). isValidEmail is deliberately strict for new submissions, but
+// permits saved under the older looser regex must stay reachable — the lookup
+// still has to match the on-file value exactly, so this only guards junk input.
+export function isStoredEmailShape(input: unknown) {
+  const value = String(input ?? '').trim().toLowerCase()
+  return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
 // Domains a mistyped email most often was meant to be — CIS/Uzbekistan
 // traffic skews heavily toward these, unlike a university or work address.
 const COMMON_EMAIL_DOMAINS = [

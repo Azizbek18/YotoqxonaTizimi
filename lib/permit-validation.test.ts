@@ -7,6 +7,7 @@ import {
   getNamePartError,
   hasAllowedSignature,
   isPlausibleInternationalPhone,
+  isStoredEmailShape,
   isValidEmail,
   isValidForeignIdNumber,
   isValidJoinedFullName,
@@ -67,6 +68,14 @@ describe('permit validation', () => {
       expect(isValidEmail(bad)).toBe(false)
     }
     expect(isValidEmail('first.last+tag@mail.example.co.uk')).toBe(true)
+    // Lookups of an already-stored address must still reach permits saved
+    // under the older, looser rule — the on-file value is matched exactly.
+    for (const stored of ['a.@gmail.com', 'a..b@gmail.com', "o'neil@gmail.com", 'student.tm@example.com']) {
+      expect(isStoredEmailShape(stored)).toBe(true)
+    }
+    for (const junk of ['student@', 'no at sign', 'a b@gmail.com', '']) {
+      expect(isStoredEmailShape(junk)).toBe(false)
+    }
     expect(isPlausibleInternationalPhone('+993 65 123456')).toBe(true)
     expect(isPlausibleInternationalPhone('+998 (90) 123-45-67')).toBe(true)
     expect(isPlausibleInternationalPhone('abcdefg')).toBe(false)

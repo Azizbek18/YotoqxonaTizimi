@@ -70,6 +70,27 @@ function repo(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => vi.clearAllMocks())
 
+describe('block-scoped sessions', () => {
+  const blockSession = (block: string | null) => ({ ...openSession, id: `sess-${block}`, kind: 'adhoc' as const, gender: 'male' as const, floor_number: 3, block })
+
+  it('does not hand a block B captain the session opened for block A', async () => {
+    const r = repo({ sessionById: vi.fn(async () => blockSession('A')) })
+    await expect(createAttendanceService(r as never).roster({ ...sardor, block: 'B' }, 'sess-A'))
+      .rejects.toMatchObject({ status: 404 })
+  })
+  it('still serves the captain of the same block, and blockless sessions to everyone', async () => {
+    const same = repo({ sessionById: vi.fn(async () => blockSession('A')) })
+    await expect(createAttendanceService(same as never).roster({ ...sardor, block: 'A' }, 'sess-A')).resolves.toBeTruthy()
+    const shared = repo({ sessionById: vi.fn(async () => blockSession(null)) })
+    await expect(createAttendanceService(shared as never).roster({ ...sardor, block: 'B' }, 'sess-null')).resolves.toBeTruthy()
+  })
+  it('opens an ad-hoc session stamped with the captain block', async () => {
+    const r = repo()
+    await createAttendanceService(r as never).openAdhoc({ ...sardor, block: 'B' })
+    expect(r.upsertSession).toHaveBeenCalledWith(expect.objectContaining({ kind: 'adhoc', floor: 3, block: 'B' }))
+  })
+})
+
 describe('roster', () => {
   it('keeps the same room number in different blocks and floors separate', async () => {
     const r = repo({ residents: vi.fn(async () => [

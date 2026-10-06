@@ -3,7 +3,7 @@
 import 'leaflet/dist/leaflet.css'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type * as LeafletNS from 'leaflet'
-import { Search, LocateFixed, Loader2, X } from 'lucide-react'
+import { Search, LocateFixed, Loader2, X, Layers } from 'lucide-react'
 import { geocodePlace, type GeocodeResult } from '@/features/dorms/client/api'
 
 // Tashkent centre — the fallback view when the dorm has no coordinate yet.
@@ -19,10 +19,22 @@ const DEFAULT_CENTER: [number, number] = [41.311081, 69.240562]
 // light AND dark styles, so no CSS filter trick is needed either.
 const ESRI_BASE = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas'
 const ESRI_ATTRIBUTION = '&copy; Esri &mdash; Esri, HERE, Garmin, OpenStreetMap contributors'
+// The Canvas basemaps only have real tiles up to zoom 16; z17+ returns a grey
+// "Map data not yet available" placeholder. maxNativeZoom 16 makes Leaflet
+// upscale z16 instead of requesting those empty tiles. World_Imagery
+// (satellite) is real down to z19 — the better view for spotting a building.
 const TILES = {
-  light: { url: `${ESRI_BASE}/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}`, attribution: ESRI_ATTRIBUTION },
-  dark: { url: `${ESRI_BASE}/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`, attribution: ESRI_ATTRIBUTION },
+  light: { url: `${ESRI_BASE}/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}`, attribution: ESRI_ATTRIBUTION, maxNativeZoom: 16, maxZoom: 18 },
+  dark: { url: `${ESRI_BASE}/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`, attribution: ESRI_ATTRIBUTION, maxNativeZoom: 16, maxZoom: 18 },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; Esri &mdash; Maxar, Earthstar Geographics, and the GIS User Community',
+    maxNativeZoom: 19,
+    maxZoom: 19,
+  },
 }
+type TileDef = (typeof TILES)[keyof typeof TILES]
+const tileOptions = (t: TileDef) => ({ attribution: t.attribution, maxZoom: t.maxZoom, maxNativeZoom: t.maxNativeZoom })
 
 const PIN_HTML = `
 <span class="dlp-pin">
@@ -64,6 +76,9 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
   const [results, setResults] = useState<GeocodeResult[]>([])
   const [searching, setSearching] = useState(false)
   const [locating, setLocating] = useState(false)
+  // Satellite by default: it is the only free, key-less basemap that shows real
+  // buildings (Esri Canvas is a plain grey road drawing with no footprints).
+  const [satellite, setSatellite] = useState(true)
 
   const emit = useCallback((la: number, ln: number) => {
     const rla = Math.round(la * 1e6) / 1e6
@@ -101,7 +116,7 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
     } else {
       circleRef.current.setLatLng(pos)
     }
-    if (fly) map.flyTo(pos, Math.max(map.getZoom(), 16), { duration: 0.6 })
+    if (fly) map.flyTo(pos, Math.max(map.getZoom(), 17), { duration: 0.6 })
   }, [emit, radiusM])
 
   // Create the map once.
@@ -114,13 +129,13 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
       LRef.current = L
       const map = L.map(boxRef.current, {
         center: lat != null && lng != null ? [lat, lng] : DEFAULT_CENTER,
-        zoom: lat != null && lng != null ? 16 : 12,
+        zoom: lat != null && lng != null ? 17 : 12,
         zoomControl: true,
         attributionControl: true,
       })
       mapRef.current = map
-      const t = isLight ? TILES.light : TILES.dark
-      tileRef.current = L.tileLayer(t.url, { attribution: t.attribution, maxZoom: 18 }).addTo(map)
+      const t = TILES.satellite
+      tileRef.current = L.tileLayer(t.url, tileOptions(t)).addTo(map)
       map.on('click', (e: LeafletNS.LeafletMouseEvent) => {
         placePin(e.latlng.lat, e.latlng.lng, false)
         emit(e.latlng.lat, e.latlng.lng)
@@ -141,15 +156,16 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Swap tiles on theme change.
+  // Swap tiles on theme / satellite change.
   useEffect(() => {
     const L = LRef.current
     const map = mapRef.current
     if (!L || !map) return
     tileRef.current?.remove()
-    const t = isLight ? TILES.light : TILES.dark
-    tileRef.current = L.tileLayer(t.url, { attribution: t.attribution, maxZoom: 18 }).addTo(map)
-  }, [isLight])
+    const t = satellite ? TILES.satellite : isLight ? TILES.light : TILES.dark
+    tileRef.current = L.tileLayer(t.url, tileOptions(t)).addTo(map)
+    tileRef.current.bringToBack()
+  }, [isLight, satellite])
 
   // Live radius.
   useEffect(() => {
@@ -272,6 +288,17 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
         title="Mening joylashuvim"
       >
         {locating ? <Loader2 size={16} className="animate-spin" /> : <LocateFixed size={16} className="text-indigo-500" />}
+      </button>
+
+      {/* Satellite toggle */}
+      <button
+        type="button"
+        onClick={() => setSatellite((v) => !v)}
+        aria-pressed={satellite}
+        className={`no-shelf absolute right-3 bottom-[5.25rem] z-[500] flex h-10 items-center gap-1.5 rounded-xl border px-3 text-[11px] font-bold shadow-lg backdrop-blur ${field} ${satellite ? 'ring-2 ring-indigo-500' : ''}`}
+        title="Sun'iy yo'ldosh ko'rinishi"
+      >
+        <Layers size={15} className="text-indigo-500" /> {satellite ? 'Xarita' : 'Sputnik'}
       </button>
 
       {/* Coordinate chip */}

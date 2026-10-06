@@ -129,7 +129,7 @@ export function createAttendanceRepository() {
       return (data as LegacySessionRow) ?? null
     },
 
-    // Nightly sessions dedupe on (dorm, date, kind, gender, floor) via a
+    // Sessions dedupe on (dorm, date, kind, gender, floor, block) via a
     // functional unique index. PostgREST can't target that from onConflict,
     // so we insert and, on a 23505, return the row that already won.
     async upsertSession(input: {
@@ -138,9 +138,11 @@ export function createAttendanceRepository() {
       kind: 'nightly' | 'adhoc'
       gender: 'male' | 'female' | null
       floor: number | null
+      block?: string | null
       openedBy: string | null
       closesAt: string
     }): Promise<{ row: LegacySessionRow; created: boolean }> {
+      const block = input.block ?? null
       const { data, error } = await supabase
         .from('attendance_sessions')
         .insert({
@@ -149,6 +151,7 @@ export function createAttendanceRepository() {
           kind: input.kind,
           gender: input.gender,
           floor_number: input.floor,
+          block,
           opened_by: input.openedBy,
           closes_at: input.closesAt,
         })
@@ -164,6 +167,7 @@ export function createAttendanceRepository() {
         .eq('kind', input.kind)
       q = input.gender ? q.eq('gender', input.gender) : q.is('gender', null)
       q = input.floor != null ? q.eq('floor_number', input.floor) : q.is('floor_number', null)
+      q = block ? q.eq('block', block) : q.is('block', null)
       const { data: existing, error: fetchErr } = await q.maybeSingle()
       if (fetchErr) throw fetchErr
       return { row: existing as LegacySessionRow, created: false }

@@ -447,23 +447,43 @@ function StartPanel({
   onCreated: (s: DekanSessionInfo) => Promise<void>
 }) {
   const [mode, setMode] = useState<'now' | 'later'>('now')
-  const [start, setStart] = useState(() => toLocalInput(new Date(Date.now() + 30 * 60_000)))
-  const [end, setEnd] = useState(() => toLocalInput(new Date(Date.now() + 60 * 60_000)))
+  // Times the dekan has not typed stay RELATIVE ("now + 30 min", "start + 1 h")
+  // and are resolved when shown / submitted, so a form left open for an hour
+  // never offers an end time that has already passed.
+  const [customStart, setCustomStart] = useState<string | null>(null)
+  const [customEnd, setCustomEnd] = useState<string | null>(null)
+  const [duration, setDuration] = useState<number>(60)
+  const [nowMs, setNowMs] = useState(() => Date.now())
   const [busy, setBusy] = useState(false)
 
-  const base = () => (mode === 'later' && start ? new Date(start) : new Date())
-  const pickDuration = (min: number) => setEnd(toLocalInput(new Date(base().getTime() + min * 60_000)))
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 30_000)
+    return () => clearInterval(t)
+  }, [])
+
+  const startInput = customStart ?? toLocalInput(new Date(nowMs + 30 * 60_000))
+  const baseMs = mode === 'later' ? new Date(startInput).getTime() : nowMs
+  const endInput = customEnd ?? toLocalInput(new Date(baseMs + duration * 60_000))
+  const pickDuration = (min: number) => { setDuration(min); setCustomEnd(null) }
 
   const submit = async () => {
-    if (!end) { toast.error('Tugash vaqtini kiriting'); return }
+    // Resolve at click time, not at render time.
+    const startsAt = mode === 'later' ? new Date(startInput) : null
+    const closesAt = customEnd
+      ? new Date(customEnd)
+      : new Date((startsAt ? startsAt.getTime() : Date.now()) + duration * 60_000)
+    if (Number.isNaN(closesAt.getTime()) || (startsAt && Number.isNaN(startsAt.getTime()))) {
+      toast.error('Vaqtni to‘g‘ri kiriting')
+      return
+    }
     setBusy(true)
     try {
       const { session } = await api<{ session: DekanSessionInfo }>('/api/dekan/yoqlama', {
         method: 'POST',
         body: JSON.stringify({
           dormId: dorm.id,
-          startsAt: mode === 'later' ? new Date(start).toISOString() : null,
-          closesAt: new Date(end).toISOString(),
+          startsAt: startsAt ? startsAt.toISOString() : null,
+          closesAt: closesAt.toISOString(),
         }),
       })
       toast.success(session.status === 'open' ? 'Yo‘qlama boshlandi — talabalarga xabar ketdi' : 'Yo‘qlama rejalashtirildi')
@@ -520,12 +540,12 @@ function StartPanel({
         {mode === 'later' && (
           <label className="block">
             <span className={`mb-1 block text-[11px] font-bold uppercase tracking-wider ${ui.muted}`}>Boshlanish vaqti</span>
-            <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className={field} />
+            <input type="datetime-local" value={startInput} onChange={(e) => setCustomStart(e.target.value)} className={field} />
           </label>
         )}
         <label className={`block ${mode === 'now' ? 'sm:col-span-2' : ''}`}>
           <span className={`mb-1 block text-[11px] font-bold uppercase tracking-wider ${ui.muted}`}>Tugash vaqti</span>
-          <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className={field} />
+          <input type="datetime-local" value={endInput} onChange={(e) => setCustomEnd(e.target.value)} className={field} />
         </label>
       </div>
 
@@ -536,7 +556,8 @@ function StartPanel({
             key={m}
             type="button"
             onClick={() => pickDuration(m)}
-            className={`no-shelf rounded-lg px-2.5 py-1 text-xs font-bold ${ui.accentSoft}`}
+            aria-pressed={!customEnd && duration === m}
+            className={`no-shelf rounded-lg px-2.5 py-1 text-xs font-bold ${ui.accentSoft} ${!customEnd && duration === m ? `ring-2 ring-inset ${isLight ? 'ring-indigo-400' : 'ring-indigo-500/60'}` : ''}`}
           >
             {fmtDuration(m)}
           </button>

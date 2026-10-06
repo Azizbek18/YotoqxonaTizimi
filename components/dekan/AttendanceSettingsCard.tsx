@@ -39,8 +39,14 @@ export default function AttendanceSettingsCard({
 
   const inputCls = `rounded-lg border text-sm px-3 py-2 transition-colors ${ui.input} ${ui.ring}`
 
-  const latNum = lat.trim() === '' ? null : Number(lat)
-  const lngNum = lng.trim() === '' ? null : Number(lng)
+  // A half-typed value ("41.", "abc") is not a coordinate yet — pass null, not NaN.
+  const toCoord = (value: string) => {
+    if (value.trim() === '') return null
+    const n = Number(value)
+    return Number.isFinite(n) ? n : null
+  }
+  const latNum = toCoord(lat)
+  const lngNum = toCoord(lng)
   const radiusNum = Number(radius)
 
   const error = useMemo(() => {

@@ -158,7 +158,9 @@ function ResultView({ result, isLight, onRetry }: { result: CheckinResult; isLig
           <RefreshCw size={40} />
         </div>
         <h1 className="text-xl font-extrabold">Joylashuv aniq emas</h1>
-        <p className={`mt-2 max-w-xs text-sm ${muted}`}>Deraza yoniga borib qayta urinib ko‘ring.</p>
+        <p className={`mt-2 max-w-xs text-sm ${muted}`}>
+          Telefon sizning aniq joyingizni topa olmadi. Sozlamalarda «Aniq joylashuv» (Precise location) va GPS yoqilganini tekshiring, deraza yoniga yoki ochiq joyga chiqib qayta urinib ko‘ring.
+        </p>
         <RetryBtn onRetry={onRetry} isLight={isLight} />
       </>
     )

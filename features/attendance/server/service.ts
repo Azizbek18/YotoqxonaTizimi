@@ -40,6 +40,8 @@ function assertMarkerActor(actor: AttendanceActor): void {
   }
 }
 
+const MAX_RELIABLE_ACCURACY_M = 300
+
 function sessionMatchesActor(session: AttendanceSessionRow, actor: AttendanceActor): boolean {
   if (session.dorm_id !== actor.dormId) return false
   if (actor.role !== 'sardor') return true
@@ -324,9 +326,17 @@ export function createAttendanceService(
       const point = asCoordinate(body.lat, body.lng)
       const accuracy = Math.round(Number(body.accuracy))
       if (!point || !Number.isFinite(accuracy)) return { status: 'retry' }
-      if (accuracy > 2000) return { status: 'retry' }
+      // A coarse fix (Wi-Fi / cell / the phone's "approximate location", 1–2 km)
+      // says nothing about where the student is, so it must never produce a
+      // verdict — least of all "absent". Real GPS fixes here are ≤ ~240 m.
+      if (accuracy > MAX_RELIABLE_ACCURACY_M) return { status: 'retry' }
 
       const distance = haversineMeters(point, { lat: dorm.latitude, lng: dorm.longitude })
+      // The fix is a circle of `accuracy` metres around the reported point. If
+      // that circle still reaches into the radius we cannot say they are outside.
+      if (distance > dorm.checkin_radius_m && distance - accuracy <= dorm.checkin_radius_m) {
+        return { status: 'retry' }
+      }
       const state: 'present' | 'absent' = distance <= dorm.checkin_radius_m ? 'present' : 'absent'
 
       const audit = {

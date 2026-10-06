@@ -212,6 +212,28 @@ describe('checkin', () => {
     expect((res as { distanceM: number }).distanceM).toBeGreaterThan(1000)
   })
 
+  it('never records "absent" from a coarse (approximate-location) fix', async () => {
+    const r = repo()
+    // 2 km accuracy and far from the dorm: a Wi-Fi/cell guess, not evidence.
+    const res = await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.40, lng: 69.35, accuracy: 2000 })
+    expect(res).toEqual({ status: 'retry' })
+    expect(r.applySelfCheckin).not.toHaveBeenCalled()
+  })
+
+  it('asks for a retry when the accuracy circle still reaches into the radius', async () => {
+    const r = repo()
+    // ~1.1 km from the dorm (radius 1000 m) with a 250 m fix: could be inside.
+    const res = await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.321, lng: 69.24, accuracy: 250 })
+    expect(res).toEqual({ status: 'retry' })
+    expect(r.applySelfCheckin).not.toHaveBeenCalled()
+  })
+
+  it('still marks outside when a precise fix is clearly beyond the radius', async () => {
+    const r = repo()
+    const res = await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.321, lng: 69.24, accuracy: 20 })
+    expect(res).toMatchObject({ status: 'outside' })
+  })
+
   it('asks for a retry when accuracy is poor', async () => {
     const r = repo()
     const res = await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.311, lng: 69.24, accuracy: 5000 })

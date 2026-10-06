@@ -27,6 +27,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { useVisiblePoll } from '@/lib/hooks/useVisiblePoll'
 import { dekanUI, statusChip, type DekanStatusTone } from '@/lib/dekan-ui'
 import { Skel } from '@/components/ui/skeletons'
+import DayByDayAttendance from '@/components/dekan/DayByDayAttendance'
 import type {
   DekanDormCard,
   DekanOverview,
@@ -254,6 +255,20 @@ export default function DekanYoqlamaPage() {
             <div className="space-y-3">
               {Array.from({ length: 2 }).map((_, i) => <Skel key={i} className="h-28 rounded-2xl" />)}
             </div>
+          )}
+
+          {dorm && (
+            <DayByDayAttendance
+              key={dorm.id}
+              dormId={dorm.id}
+              dormLabel={dorm.label}
+              isLight={isLight}
+              onOpenSession={(id) => {
+                setPinnedId(id)
+                setRoster(null)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+            />
           )}
 
           <History

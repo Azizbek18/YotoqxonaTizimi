@@ -128,3 +128,40 @@ export type DekanRosterView = {
   session: DekanSessionInfo
   residents: DekanRosterResident[]
 }
+
+// ---- Dekan: kunlar bo'yicha ko'rinish -----------------------------------
+// Several days of the faculty's own roll-calls at once. A student's state for
+// a day is the best one across that day's sessions (present > absent >
+// unmarked); a day on which no roll-call ran has no cell at all.
+
+export type DekanHistoryState = 'present' | 'absent' | 'unmarked'
+
+export type DekanHistoryDay = {
+  /** Toshkent calendar date, YYYY-MM-DD. */
+  date: string
+  /** Newest first; the first one opens the day's roster. */
+  sessionIds: string[]
+  /** A roll-call of this day is still running. */
+  live: boolean
+  summary: AttendanceSummary
+}
+
+export type DekanHistoryStudent = {
+  id: string
+  fullName: string
+  roomNumber: string
+  floor: number | null
+  /** date -> state, only for days a roll-call covered this student. */
+  states: Record<string, DekanHistoryState>
+  present: number
+  absent: number
+  unmarked: number
+}
+
+export type DekanHistoryView = {
+  dormId: string | null
+  /** Newest first. Every day of the range, including days without a roll-call. */
+  dates: string[]
+  days: DekanHistoryDay[]
+  students: DekanHistoryStudent[]
+}

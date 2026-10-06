@@ -12,6 +12,10 @@ import { sendAttendanceReminders, type ReminderSender } from './dekan-notify'
 import type {
   AttendanceSummary,
   DekanDormCard,
+  DekanHistoryDay,
+  DekanHistoryState,
+  DekanHistoryStudent,
+  DekanHistoryView,
   DekanOverview,
   DekanRosterResident,
   DekanRosterView,
@@ -22,6 +26,8 @@ import type {
 export type DekanScope = { userId: string; faculty: string }
 
 const RECENT_LIMIT = 10
+const HISTORY_MAX_DAYS = 31
+const DAY_MS = 24 * 60 * 60_000
 const MIN_DURATION_MS = 10 * 60_000
 const MAX_DURATION_MS = 12 * 60 * 60_000
 const MAX_LEAD_MS = 14 * 24 * 60 * 60_000
@@ -37,6 +43,14 @@ export function dormLabel(d: Pick<DormBrief, 'number' | 'name'>): string {
   if (number && name) return `${number}-${name}`
   if (number) return `${number}-yotoqxona`
   return name || 'Yotoqxona'
+}
+
+const STATE_RANK: Record<DekanHistoryState, number> = { present: 2, absent: 1, unmarked: 0 }
+
+/** `YYYY-MM-DD` shifted by whole days (calendar arithmetic, no timezone drift). */
+function shiftDate(date: string, days: number): string {
+  const [y, m, d] = date.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d) + days * DAY_MS).toISOString().slice(0, 10)
 }
 
 function emptySummary(): AttendanceSummary {
@@ -171,6 +185,81 @@ export function createDekanAttendanceService(
       }
 
       return { dorms: cards, recent }
+    },
+
+    /**
+     * The last `days` days of this faculty's roll-calls (optionally one dorm):
+     * a per-day summary plus every student's state per day. Isolation is the
+     * faculty filter on the session query — records are only read for those.
+     */
+    async history(scope: DekanScope, input: { dormId?: string | null; days?: number }): Promise<DekanHistoryView> {
+      const days = Math.min(Math.max(Math.floor(input.days ?? 7) || 7, 1), HISTORY_MAX_DAYS)
+      const today = tashkentDateString(now())
+      const dates = Array.from({ length: days }, (_, i) => shiftDate(today, -i))
+      const dormId = input.dormId ?? null
+
+      const sessions = await drepo.sessionsInRange(scope.faculty, dormId, dates[dates.length - 1], today)
+      const records = sessions.length > 0 ? await drepo.recordsForSessions(sessions.map((s) => s.id)) : []
+
+      const dateOf = new Map(sessions.map((s) => [s.id, s.scheduled_for]))
+      const perDay = new Map<string, Map<string, DekanHistoryState>>()
+      for (const r of records) {
+        const date = dateOf.get(r.session_id)
+        if (!date) continue
+        const state: DekanHistoryState = r.state === 'present' || r.state === 'absent' ? r.state : 'unmarked'
+        const day = perDay.get(date) ?? new Map<string, DekanHistoryState>()
+        const prev = day.get(r.student_id)
+        if (!prev || STATE_RANK[state] > STATE_RANK[prev]) day.set(r.student_id, state)
+        perDay.set(date, day)
+      }
+
+      const nowMs = now().getTime()
+      const dayViews: DekanHistoryDay[] = dates.map((date) => {
+        const summary = emptySummary()
+        for (const state of perDay.get(date)?.values() ?? []) summary[state] += 1
+        summary.total = summary.present + summary.absent + summary.unmarked
+        const ofDay = sessions.filter((s) => s.scheduled_for === date)
+        return {
+          date,
+          sessionIds: ofDay.map((s) => s.id),
+          live: ofDay.some((s) => s.status === 'open' && new Date(s.closes_at).getTime() > nowMs),
+          summary,
+        }
+      })
+
+      const studentIds = [...new Set(records.map((r) => r.student_id))]
+      const contacts = new Map((await drepo.contacts(studentIds)).map((c) => [c.id, c]))
+      const lastRoom = new Map<string, { room: string; floor: number | null }>()
+      for (const r of records) {
+        if (!lastRoom.has(r.student_id)) lastRoom.set(r.student_id, { room: r.room_number, floor: r.floor_number })
+      }
+
+      const students: DekanHistoryStudent[] = studentIds.map((id) => {
+        const states: Record<string, DekanHistoryState> = {}
+        const row: DekanHistoryStudent = {
+          id,
+          fullName: contacts.get(id)?.full_name ?? 'Talaba',
+          roomNumber: contacts.get(id)?.room_number ?? lastRoom.get(id)?.room ?? '—',
+          floor: contacts.get(id)?.assigned_floor ?? lastRoom.get(id)?.floor ?? null,
+          states,
+          present: 0,
+          absent: 0,
+          unmarked: 0,
+        }
+        for (const [date, day] of perDay) {
+          const state = day.get(id)
+          if (!state) continue
+          states[date] = state
+          row[state] += 1
+        }
+        return row
+      })
+      students.sort((a, b) =>
+        a.roomNumber.localeCompare(b.roomNumber, 'uz', { numeric: true }) ||
+        a.fullName.localeCompare(b.fullName, 'uz'),
+      )
+
+      return { dormId, dates, days: dayViews, students }
     },
 
     /**

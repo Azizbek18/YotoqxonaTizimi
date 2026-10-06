@@ -24,11 +24,18 @@ function errorResponse(error: unknown, fallback: string) {
 
 // GET            — dorms of the faculty + active/recent sessions
 // GET ?sessionId — one session's live roster
+// GET ?history=1&days=7&dormId? — several days of this faculty's roll-calls
 export async function GET(request: NextRequest) {
   try {
     const scope = await resolveScope(request)
     const sessionId = request.nextUrl.searchParams.get('sessionId')?.trim()
     const service = createDekanAttendanceService()
+    if (request.nextUrl.searchParams.get('history')) {
+      const dormId = request.nextUrl.searchParams.get('dormId')?.trim() || null
+      if (dormId && !UUID.test(dormId)) return NextResponse.json({ error: 'dormId noto‘g‘ri' }, { status: 400 })
+      const days = Number(request.nextUrl.searchParams.get('days') ?? 7)
+      return NextResponse.json(await service.history(scope, { dormId, days }))
+    }
     if (sessionId) {
       if (!UUID.test(sessionId)) return NextResponse.json({ error: 'sessionId noto‘g‘ri' }, { status: 400 })
       return NextResponse.json(await service.roster(scope, sessionId))

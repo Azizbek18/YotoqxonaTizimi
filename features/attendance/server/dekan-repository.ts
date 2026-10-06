@@ -191,6 +191,44 @@ export function createDekanAttendanceRepository() {
       return (data ?? []) as DekanSessionRow[]
     },
 
+    /** This faculty's started roll-calls whose Toshkent date is in [from, to]. */
+    async sessionsInRange(
+      faculty: string,
+      dormId: string | null,
+      from: string,
+      to: string,
+    ): Promise<DekanSessionRow[]> {
+      let query = supabase
+        .from('attendance_sessions').select('*')
+        .eq('kind', 'dekan').eq('faculty', faculty)
+        .in('status', ['open', 'closed', 'auto_closed'])
+        .gte('scheduled_for', from)
+        .lte('scheduled_for', to)
+        .order('starts_at', { ascending: false })
+      if (dormId) query = query.eq('dorm_id', dormId)
+      const { data, error } = await query
+      if (error) throw error
+      return (data ?? []) as DekanSessionRow[]
+    },
+
+    /** Records of several sessions, past PostgREST's 1000-row page. */
+    async recordsForSessions(sessionIds: string[]): Promise<AttendanceRecordRow[]> {
+      const out: AttendanceRecordRow[] = []
+      for (const part of chunk(sessionIds, 10)) {
+        for (let from = 0; ; from += PAGE) {
+          const { data, error } = await supabase
+            .from('attendance_records').select('*')
+            .in('session_id', part)
+            .order('id')
+            .range(from, from + PAGE - 1)
+          if (error) throw error
+          out.push(...((data ?? []) as AttendanceRecordRow[]))
+          if ((data?.length ?? 0) < PAGE) break
+        }
+      }
+      return out
+    },
+
     async activeForFaculty(faculty: string): Promise<DekanSessionRow[]> {
       const { data, error } = await supabase
         .from('attendance_sessions').select('*')

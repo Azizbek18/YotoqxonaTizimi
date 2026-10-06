@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const scoped = await requireFloorCaptain(request)
     if (scoped.error) return scoped.error
-    const { caller, serviceSupabase } = scoped
+    const { caller, serviceSupabase, faculty } = scoped
 
     const { data: elonlar, error: elonError } = await serviceSupabase
       .from('elonlar')
@@ -24,7 +24,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'E’lonlarni yuklab bo‘lmadi' }, { status: 500 })
     }
 
-    const dutyRow = (elonlar ?? []).find((item) => item.title === 'HAFTALIK_NAVBATCHILIK_JADVALI') ?? null
+    const dutyRow = (elonlar ?? []).find((item) => item.title === 'HAFTALIK_NAVBATCHILIK_JADVALI'
+      && item.dorm_id === caller.dorm_id
+      && (item.target_block ?? null) === (caller.block ?? null)
+      && item.target_floor === caller.assigned_floor
+      && item.target_gender === caller.gender
+      && item.faculty === faculty) ?? null
     let dutySchedule = null
     if (dutyRow?.text) {
       try {

@@ -23,6 +23,10 @@ const eslintConfig = defineConfig([
     // Vercel CLI metadata plus any detached worktrees it keeps there — linting
     // those would double-report every finding against a stale copy of the repo.
     ".vercel/**",
+    // Flutter's compiled web bundle is generated output, not application
+    // source, and can be several megabytes of minified JavaScript.
+    "flutter_app/build/**",
+    "flutter_app/.dart_tool/**",
   ]),
 ]);
 

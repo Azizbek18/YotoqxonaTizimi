@@ -18,7 +18,7 @@ import CustomSelect from '@/components/ui/CustomSelect'
 import { SkelPage } from '@/components/ui/skeletons'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { useMyCouncilPermissions } from '@/lib/hooks/useMyCouncilPermissions'
-import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
+import { occupantsByPhysicalRoom, councilRoomLabel, type CouncilRoom } from '@/features/council/rooms'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 import { directionLabel } from '@/lib/directions'
 import LeaderBackdrop from '@/components/leader/LeaderBackdrop'
@@ -36,6 +36,8 @@ interface Student {
   email: string
   phone_number: string | null
   room_number: string | null
+  dorm_id: string | null
+  block: string | null
   faculty: string | null
   course: number | null
   group: string | null
@@ -365,6 +367,10 @@ export default function KengashDashboard() {
   const [activeTab, setActiveTab] = useState<'students' | 'captains' | 'rooms' | 'elonlar'>('students')
   const [activeFloor, setActiveFloor] = useState<number | null>(null)
   const [roomSearch, setRoomSearch] = useState('')
+  const [layoutRooms, setLayoutRooms] = useState<CouncilRoom[]>([])
+  const [roomsLoaded, setRoomsLoaded] = useState(false)
+  const [activeDormId, setActiveDormId] = useState('')
+  const [activeBlock, setActiveBlock] = useState('')
 
   const [studentSearch, setStudentSearch] = useState('')
   const [filterFloor, setFilterFloor] = useState('all')
@@ -407,6 +413,23 @@ export default function KengashDashboard() {
       const authHeader = await getAuthHeaders()
 
       await Promise.all([
+        (async () => {
+          setRoomsLoaded(false)
+          try {
+            const res = await fetch('/api/kengash/rooms', { headers: authHeader })
+            const result = await res.json()
+            if (!res.ok) {
+              if (result?.code === 'PERMISSION_REVOKED') return
+              throw new Error(result.error || 'Xonalarni yuklashda xato')
+            }
+            setLayoutRooms(result.rooms)
+            setActiveDormId((current) => result.rooms.some((r: CouncilRoom) => r.dorm_id === current)
+              ? current : result.rooms[0]?.dorm_id ?? '')
+          } catch (error) {
+            setLayoutRooms([])
+            toast.error(error instanceof Error ? error.message : 'Xonalarni yuklashda xato')
+          } finally { setRoomsLoaded(true) }
+        })(),
         (async () => {
           try {
             const res = await fetch('/api/kengash/students', { headers: authHeader })
@@ -520,27 +543,21 @@ export default function KengashDashboard() {
   const filteredStudents = useMemo(() => applyStudentFilters(students), [students, applyStudentFilters])
   const filteredCaptains = useMemo(() => applyStudentFilters(captains), [captains, applyStudentFilters])
 
-  // Rooms Data Hook — a raisi's scope is the whole faculty building, both
-  // genders' floors included (no gender filter here anymore).
-  const { floors, rooms: layoutRooms, loaded: roomsLoaded } = useRoomFloors()
-  const roomsInScope = layoutRooms
-
-  const occupantsByRoom = useMemo(() => {
-    const map = new Map<string, Student[]>()
-    for (const s of students) {
-      if (!s.room_number) continue
-      const list = map.get(s.room_number) ?? []
-      list.push(s)
-      map.set(s.room_number, list)
-    }
-    return map
-  }, [students])
+  const dormOptions = useMemo(() => [...new Map(layoutRooms.map((r) => [r.dorm_id, r.dormNumber])).entries()], [layoutRooms])
+  const blockOptions = useMemo(() => [...new Set(layoutRooms.filter((r) => r.dorm_id === activeDormId).map((r) => r.block ?? ''))], [layoutRooms, activeDormId])
+  const roomsInScope = useMemo(() => layoutRooms.filter((r) => r.dorm_id === activeDormId && (r.block ?? '') === activeBlock), [layoutRooms, activeDormId, activeBlock])
+  const floors = useMemo(() => [...new Set(roomsInScope.map((r) => r.floor))].sort((a, b) => a - b), [roomsInScope])
+  const occupantsByRoom = useMemo(() => occupantsByPhysicalRoom(students), [students])
+  const [selectedRoom, setSelectedRoom] = useState<CouncilRoom | null>(null)
 
   useEffect(() => {
-    if (activeFloor === null && floors.length > 0) setActiveFloor(floors[0])
-  }, [activeFloor, floors])
-
-  const [selectedRoom, setSelectedRoom] = useState<string | null>(null)
+    setActiveBlock((current) => blockOptions.includes(current) ? current : blockOptions[0] ?? '')
+    setSelectedRoom(null)
+  }, [activeDormId, blockOptions])
+  useEffect(() => {
+    setActiveFloor((current) => current !== null && floors.includes(current) ? current : floors[0] ?? null)
+    setSelectedRoom(null)
+  }, [floors])
 
   const roomsOnFloor = useMemo(() => {
     const q = roomSearch.trim().toLowerCase()
@@ -554,7 +571,7 @@ export default function KengashDashboard() {
     for (const r of roomsInScope) {
       const entry = map.get(r.floor) ?? { total: 0, occupied: 0 }
       entry.total += 1
-      if ((occupantsByRoom.get(r.roomNumber) ?? []).length > 0) entry.occupied += 1
+      if ((occupantsByRoom.get(r.key) ?? []).length > 0) entry.occupied += 1
       map.set(r.floor, entry)
     }
     return map
@@ -790,6 +807,13 @@ export default function KengashDashboard() {
                 </div>
               </div>
 
+              <div className="flex flex-wrap gap-3">
+                <CustomSelect value={activeDormId} onChange={setActiveDormId}
+                  options={dormOptions.map(([id, number]) => ({ value: id, label: `${number}-yotoqxona` }))} />
+                {blockOptions.some(Boolean) && <CustomSelect value={activeBlock} onChange={setActiveBlock}
+                  options={blockOptions.map((block) => ({ value: block, label: `${block}-blok` }))} />}
+              </div>
+
               {!roomsLoaded ? (
                 <EmptyState role="kengash" icon={Building2} title="Xonalar yuklanmoqda..." isLight={isLight} />
               ) : (
@@ -838,9 +862,9 @@ export default function KengashDashboard() {
                       className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3"
                     >
                       {roomsOnFloor.map((room) => {
-                        const occupants = occupantsByRoom.get(room.roomNumber) ?? []
+                        const occupants = occupantsByRoom.get(room.key) ?? []
                         const count = occupants.length
-                        const capacity = room.capacity ?? 4
+                        const capacity = room.capacity
                         const isFrozen = room.frozen
                         const hasCaptain = occupants.some((s) => s.is_floor_captain)
                         const isFull = count >= capacity
@@ -895,10 +919,10 @@ export default function KengashDashboard() {
 
                         return (
                           <motion.button
-                            key={room.roomNumber}
+                            key={room.key}
                             variants={rowIn}
                             type="button"
-                            onClick={() => setSelectedRoom(room.roomNumber)}
+                            onClick={() => setSelectedRoom(room)}
                             className={`no-shelf cursor-pointer group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-3.5 text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-95 ${statusStyles.border} ${statusStyles.bg} ${statusStyles.glow}`}
                           >
                             {/* Captain Crown Ribbon */}
@@ -1337,19 +1361,19 @@ export default function KengashDashboard() {
             <ModalShell
               role="kengash"
               icon={DoorClosed}
-              title={`${selectedRoom}-xona yashovchilari`}
-              description={`${(occupantsByRoom.get(selectedRoom) ?? []).length} nafar talaba istiqomat qilmoqda`}
+              title={`${selectedRoom.roomNumber}-xona yashovchilari`}
+              description={`${councilRoomLabel(selectedRoom)} · ${(occupantsByRoom.get(selectedRoom.key) ?? []).length} nafar talaba`}
               maxWidthClass="max-w-xl sm:max-w-2xl"
               isLight={isLight}
               onClose={() => setSelectedRoom(null)}
             >
-              {(occupantsByRoom.get(selectedRoom) ?? []).length === 0 ? (
+              {(occupantsByRoom.get(selectedRoom.key) ?? []).length === 0 ? (
                 <div className="py-8 text-center text-sm text-slate-400">
                   Bu xona hozircha bo‘sh
                 </div>
               ) : (
                 <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
-                  {(occupantsByRoom.get(selectedRoom) ?? []).map((person) => (
+                  {(occupantsByRoom.get(selectedRoom.key) ?? []).map((person) => (
                     <PersonRow
                       key={person.id}
                       person={person}

@@ -116,7 +116,7 @@ export default function AddressMapPicker({ isLight, onResolved }: Props) {
       })
       mapRef.current = map
       const t = isLight ? TILES.light : TILES.dark
-      tileRef.current = L.tileLayer(t.url, { attribution: t.attribution, maxZoom: 18 }).addTo(map)
+      tileRef.current = L.tileLayer(t.url, { attribution: t.attribution, maxZoom: 18, maxNativeZoom: 16 }).addTo(map)
       map.on('click', (e: LeafletNS.LeafletMouseEvent) => {
         placePin(e.latlng.lat, e.latlng.lng, false)
         void resolve(e.latlng.lat, e.latlng.lng)
@@ -141,7 +141,7 @@ export default function AddressMapPicker({ isLight, onResolved }: Props) {
     if (!L || !map) return
     tileRef.current?.remove()
     const t = isLight ? TILES.light : TILES.dark
-    tileRef.current = L.tileLayer(t.url, { attribution: t.attribution, maxZoom: 18 }).addTo(map)
+    tileRef.current = L.tileLayer(t.url, { attribution: t.attribution, maxZoom: 18, maxNativeZoom: 16 }).addTo(map)
   }, [isLight])
 
   const runSearch = useCallback(async () => {

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const scoped = await requireFloorCaptain(request)
     if (scoped.error) return scoped.error
-    const { caller, serviceSupabase } = scoped
+    const { caller, serviceSupabase, faculty } = scoped
 
     const { data: elonlar, error: elonError } = await serviceSupabase
       .from('elonlar')
@@ -24,7 +24,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'E’lonlarni yuklab bo‘lmadi' }, { status: 500 })
     }
 
-    const dutyRow = (elonlar ?? []).find((item) => item.title === 'HAFTALIK_NAVBATCHILIK_JADVALI') ?? null
+    // The rota is one shared row per floor scope whose created_by is whoever
+    // saved last, so it is found by scope, not by author — otherwise a newly
+    // appointed captain would not see the rota their predecessor saved.
+    let dutyRow: { id: string; text: string | null } | null = null
+    if (caller.dorm_id && caller.assigned_floor && caller.gender && faculty) {
+      let dutyQuery = serviceSupabase
+        .from('elonlar')
+        .select('id, text')
+        .eq('title', 'HAFTALIK_NAVBATCHILIK_JADVALI')
+        .eq('dorm_id', caller.dorm_id)
+        .eq('target_floor', caller.assigned_floor)
+        .eq('target_gender', caller.gender)
+        .eq('faculty', faculty)
+      dutyQuery = caller.block
+        ? dutyQuery.eq('target_block', caller.block)
+        : dutyQuery.is('target_block', null)
+      const { data: dutyData, error: dutyError } = await dutyQuery.maybeSingle()
+      if (dutyError) {
+        console.error('Captain duty schedule lookup failed:', dutyError)
+        return NextResponse.json({ error: 'E’lonlarni yuklab bo‘lmadi' }, { status: 500 })
+      }
+      dutyRow = dutyData
+    }
     let dutySchedule = null
     if (dutyRow?.text) {
       try {
@@ -82,6 +104,8 @@ export async function POST(request: NextRequest) {
         faculty,
         target_floor: captainFloor,
         target_gender: captainGender,
+        dorm_id: caller.dorm_id,
+        target_block: caller.block,
         created_by: caller.id,
         is_published: true
       })

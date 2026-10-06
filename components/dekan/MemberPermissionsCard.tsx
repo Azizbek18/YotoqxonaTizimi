@@ -174,11 +174,12 @@ export default function MemberPermissionsCard({ delay = 0 }: { delay?: number })
                         aria-checked={allowed}
                         disabled={busy}
                         onClick={() => void toggle(member, key)}
-                        className={`flex items-start gap-3 rounded-lg border p-3 text-left transition-colors disabled:opacity-60 ${
+                        className={`no-shelf flex items-start gap-3 rounded-lg border p-3 text-left transition-colors disabled:opacity-60 ${
                           allowed
                             ? isLight ? 'border-indigo-200 bg-white hover:bg-indigo-50/60' : 'border-indigo-500/25 bg-slate-900/50 hover:bg-indigo-500/10'
                             : isLight ? 'border-slate-200 bg-slate-100/70' : 'border-slate-700 bg-slate-900/30'
                         }`}
+                        style={{ boxShadow: 'none' }}
                       >
                         <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
                           allowed

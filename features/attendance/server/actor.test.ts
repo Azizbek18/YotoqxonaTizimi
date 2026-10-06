@@ -60,7 +60,7 @@ describe('resolveAttendanceActor', () => {
     const actor = await resolveAttendanceActor(req())
     expect(actor).toEqual({
       userId: 'u1', role: 'sardor', dormId: 'dorm1', faculties: ['amit'],
-      floor: 3, gender: 'male', canWrite: true,
+      floor: 3, gender: 'male', block: null, canWrite: true,
     })
   })
 

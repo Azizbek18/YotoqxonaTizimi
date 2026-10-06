@@ -39,8 +39,14 @@ export default function AttendanceSettingsCard({
 
   const inputCls = `rounded-lg border text-sm px-3 py-2 transition-colors ${ui.input} ${ui.ring}`
 
-  const latNum = lat.trim() === '' ? null : Number(lat)
-  const lngNum = lng.trim() === '' ? null : Number(lng)
+  // A half-typed value ("41.", "abc") is not a coordinate yet — pass null, not NaN.
+  const toCoord = (value: string) => {
+    if (value.trim() === '') return null
+    const n = Number(value)
+    return Number.isFinite(n) ? n : null
+  }
+  const latNum = toCoord(lat)
+  const lngNum = toCoord(lng)
   const radiusNum = Number(radius)
 
   const error = useMemo(() => {
@@ -193,7 +199,8 @@ export default function AttendanceSettingsCard({
             type="button"
             onClick={save}
             disabled={saving || !dirty || !!error}
-            className={`rounded-lg px-6 py-2.5 text-xs font-bold uppercase tracking-wider ${ui.accentSolid}`}
+            className={`no-shelf rounded-lg px-6 py-2.5 text-xs font-bold uppercase tracking-wider ${ui.accentSolid}`}
+            style={{ boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)' }}
           >
             {saving ? 'Saqlanmoqda…' : 'Yo‘qlama sozlamalarini saqlash'}
           </button>

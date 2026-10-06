@@ -117,7 +117,8 @@ export default function FloorManagerCard({
                   ? `${floorCount}-qavatda xonalar bor — avval ularni o'chiring`
                   : `${floorCount}-qavatni o'chirish`
             }
-            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors disabled:opacity-40 ${ui.btnGhost}`}
+            className={`no-shelf flex h-8 w-8 items-center justify-center rounded-lg border transition-colors disabled:opacity-40 ${ui.btnGhost}`}
+            style={{ boxShadow: 'none' }}
           >
             <Minus size={14} />
           </button>
@@ -129,7 +130,8 @@ export default function FloorManagerCard({
             disabled={busy || floorCount >= MAX_FLOORS}
             onClick={() => saveFloorCount(floorCount + 1)}
             title="Yuqoriga yangi qavat qo'shish"
-            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors disabled:opacity-40 ${ui.accentSolid}`}
+            className={`no-shelf flex h-8 w-8 items-center justify-center rounded-lg transition-colors disabled:opacity-40 ${ui.accentSolid}`}
+            style={{ boxShadow: '0 2px 6px rgba(79, 70, 229, 0.3)' }}
           >
             <Plus size={14} />
           </button>
@@ -191,7 +193,8 @@ export default function FloorManagerCard({
         <button
           type="button"
           onClick={() => setGeneratorOpen(true)}
-          className={`flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+          className={`no-shelf flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+          style={{ boxShadow: 'none' }}
         >
           <Wand2 size={13} />
           Xonalarni ommaviy yaratish

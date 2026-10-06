@@ -46,7 +46,7 @@ function validDate(value: string) {
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)
-  const throttle = await checkRateLimit(`student-register:${ip}`, 5, 15 * 60_000)
+  const throttle = await checkRateLimit(`student-register:${ip}`, 40, 15 * 60_000)
   if (!throttle.allowed) {
     return NextResponse.json(
       { error: 'Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.' },
@@ -73,6 +73,18 @@ export async function POST(request: NextRequest) {
       : normalizePassport(body.passportSeries)
     const jshshir = submittedJshshir
     const email = text(body, 'email', 254).toLowerCase()
+
+    // Per-email limit: dorm Wi-Fi / carrier NAT put many students behind one
+    // IP, so the IP bucket is generous and this one stops repeated guessing.
+    if (email) {
+      const emailThrottle = await checkRateLimit(`student-register-email:${email}`, 6, 15 * 60_000)
+      if (!emailThrottle.allowed) {
+        return NextResponse.json(
+          { error: 'Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.' },
+          { status: 429 },
+        )
+      }
+    }
     // Foreign names are self-reported and arrive ALL-CAPS / all-lowercase as
     // often as not — normalise the casing so the stored record and the signed
     // Ariza/Tilxat read cleanly. namesLikelyMatch is case-insensitive, so this
@@ -438,6 +450,12 @@ export async function POST(request: NextRequest) {
         code: authError?.code,
         message: authError?.message,
       })
+      if (authError?.code === 'validation_failed' || /unable to validate email/i.test(authError?.message ?? '')) {
+        return NextResponse.json(
+          { error: 'Arizadagi email manzili noto‘g‘ri yozilgan (masalan, ortiqcha nuqta). Dekanatga murojaat qilib, emailni to‘g‘rilatib oling.' },
+          { status: 422 },
+        )
+      }
       return NextResponse.json(
         {
           error: isDuplicateAuthUserError(authError)

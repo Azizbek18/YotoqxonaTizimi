@@ -92,6 +92,9 @@ export function createAnnouncementService(repository: AnnouncementRepository = c
             // transition (they can only be in the AMIT building today).
             return Boolean(
               userFloor
+              && Boolean(profile?.dorm_id)
+              && row.dorm_id === profile?.dorm_id
+              && (row.target_block ?? null) === (profile?.block ?? null)
               && sameFacultyCode(row.faculty, currentFaculty ?? PRIMARY_FACULTY)
               && (row.target_floor === null || row.target_floor === userFloor)
               && (row.target_gender === null || row.target_gender === userGender),

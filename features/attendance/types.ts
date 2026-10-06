@@ -3,6 +3,7 @@ export type AttendanceReason = 'unexcused' | 'excused'
 export type AttendanceActorRole = 'sardor' | 'tarbiyachi' | 'dekan' | 'talaba'
 
 export type AttendanceActor = {
+  block?: string | null
   userId: string
   role: AttendanceActorRole
   dormId: string

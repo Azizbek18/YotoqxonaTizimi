@@ -71,6 +71,21 @@ function repo(overrides: Record<string, unknown> = {}) {
 beforeEach(() => vi.clearAllMocks())
 
 describe('roster', () => {
+  it('keeps the same room number in different blocks and floors separate', async () => {
+    const r = repo({ residents: vi.fn(async () => [
+      { ...residents[0], room_number: '8', block: 'A', assigned_floor: 11 },
+      { ...residents[1], room_number: '8', block: 'A', assigned_floor: 12 },
+      { ...residents[2], room_number: '8', block: 'B', assigned_floor: 11 },
+    ]) })
+    const view = await createAttendanceService(r as never).roster(tarbiyachi, 'sess-1')
+    expect(view.rooms).toHaveLength(3)
+    expect(view.rooms.every((room) => room.residents.length === 1)).toBe(true)
+  })
+  it('limits the captain roster to their block', async () => {
+    const r = repo()
+    await createAttendanceService(r as never).roster({ ...sardor, block: 'B' }, 'sess-1')
+    expect(r.residents).toHaveBeenCalledWith(DORM, ['amit'], { floor: 3, gender: 'male', block: 'B' })
+  })
   it('groups residents by room and counts states', async () => {
     const r = repo()
     const view = await createAttendanceService(r as never).roster(sardor, 'sess-1')

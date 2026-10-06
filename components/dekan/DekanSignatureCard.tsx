@@ -88,7 +88,8 @@ export default function DekanSignatureCard({ isLight, delay = 0.09 }: { isLight:
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              className={`rounded-lg border px-4 py-2 text-xs font-bold uppercase tracking-wider ${ui.btnGhost}`}
+              className={`no-shelf rounded-lg border px-4 py-2 text-xs font-bold uppercase tracking-wider ${ui.btnGhost}`}
+              style={{ boxShadow: 'none' }}
             >
               Qayta chizish
             </button>
@@ -105,7 +106,8 @@ export default function DekanSignatureCard({ isLight, delay = 0.09 }: { isLight:
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              className={`rounded-lg px-5 py-2.5 text-xs font-bold uppercase tracking-wider ${ui.accentSolid}`}
+              className={`no-shelf rounded-lg px-5 py-2.5 text-xs font-bold uppercase tracking-wider ${ui.accentSolid}`}
+              style={{ boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)' }}
             >
               Imzo qo‘yish
             </button>

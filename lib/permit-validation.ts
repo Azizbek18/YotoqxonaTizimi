@@ -66,7 +66,11 @@ export function getForeignIdFormatError(input: unknown): string | null {
 
 export function isValidEmail(input: unknown) {
   const value = String(input ?? '').trim().toLowerCase()
-  return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  // Must be at least as strict as GoTrue's (Go net/mail) check: a looser
+  // regex let `name@gmail..com`, `name.@gmail.com` and Cyrillic look-alikes
+  // into permit_requests, and account creation then failed at /register.
+  return value.length <= 254
+    && /^[a-z0-9_%+-]+(?:\.[a-z0-9_%+-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(value)
 }
 
 // Domains a mistyped email most often was meant to be — CIS/Uzbekistan

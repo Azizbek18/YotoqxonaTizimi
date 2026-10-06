@@ -24,14 +24,18 @@ export async function GET(req: NextRequest) {
     // deriving a floor from the room number's digits, which only holds for
     // the assumed 30-rooms-per-floor numbering and breaks under a custom
     // layout).
-    const { data: students, error: studentsError } = await serviceSupabase
+    let query = serviceSupabase
       .from('users')
-      .select('id, full_name, email, phone_number, room_number, faculty, course, group, avatar_url, gender')
+      .select('id, full_name, email, phone_number, room_number, dorm_id, block, assigned_floor, faculty, course, group, avatar_url, gender')
       .eq('role', 'talaba')
       .eq('status', 'active')
       .eq('faculty', captainFaculty)
       .eq('gender', captainGender)
       .eq('assigned_floor', captainFloor)
+      .eq('dorm_id', caller.dorm_id)
+      .eq('is_off_campus', false)
+    query = caller.block ? query.eq('block', caller.block) : query.is('block', null)
+    const { data: students, error: studentsError } = await query
 
     if (studentsError) {
       console.error('Captain student lookup failed:', studentsError)

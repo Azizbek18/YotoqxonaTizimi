@@ -62,6 +62,11 @@ describe('permit validation', () => {
   it('validates email and international phone formats consistently', () => {
     expect(isValidEmail('student.tm@example.com')).toBe(true)
     expect(isValidEmail('student@')).toBe(false)
+    // Shapes that slipped into prod permits and that Supabase Auth rejects.
+    for (const bad of ['a@gmail..com', 'a.@gmail.com', '.a@gmail.com', 'a..b@gmail.com', 'a@gmail.com.', 'a&@gmail.com', 'аb@gmail.com', 'mä@gmail.com']) {
+      expect(isValidEmail(bad)).toBe(false)
+    }
+    expect(isValidEmail('first.last+tag@mail.example.co.uk')).toBe(true)
     expect(isPlausibleInternationalPhone('+993 65 123456')).toBe(true)
     expect(isPlausibleInternationalPhone('+998 (90) 123-45-67')).toBe(true)
     expect(isPlausibleInternationalPhone('abcdefg')).toBe(false)

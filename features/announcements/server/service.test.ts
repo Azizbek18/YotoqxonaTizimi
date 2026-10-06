@@ -28,6 +28,8 @@ function fakeRepository(overrides: Partial<AnnouncementRepository> = {}) {
       room_number: '12',
       gender: 'male',
       assigned_floor: 1,
+      dorm_id: 'd1',
+      block: null,
     })),
     listPublished: vi.fn(async () => [] as PublishedRow[]),
     listByFaculty: vi.fn(async () => []),
@@ -124,7 +126,16 @@ describe('listForUser audience filtering', () => {
 
   // The fake profile is faculty 'amit', floor 1, gender 'male'.
   const floorRow = (overrides: Partial<PublishedRow>) =>
-    row({ audience: 'floor', faculty: 'amit', target_floor: 1, target_gender: 'male', ...overrides })
+    row({ audience: 'floor', faculty: 'amit', dorm_id: 'd1', target_block: null, target_floor: 1, target_gender: 'male', ...overrides })
+
+  it('rejects same-faculty floor notices from another dorm, block or an unknown building', async () => {
+    const repository = fakeRepository({ listPublished: vi.fn(async () => [
+      floorRow({ id: 'own' }), floorRow({ id: 'other-dorm', dorm_id: 'd2' }),
+      floorRow({ id: 'other-block', target_block: 'A' }), floorRow({ id: 'unscoped', dorm_id: null }),
+    ]) })
+    const { elonlar } = await createAnnouncementService(repository).listForUser('student-1')
+    expect(elonlar.map((item) => item.id)).toEqual(['own'])
+  })
 
   it('delivers a floor notice to a student on that floor of that building', async () => {
     const repository = fakeRepository({ listPublished: vi.fn(async () => [floorRow({})]) })

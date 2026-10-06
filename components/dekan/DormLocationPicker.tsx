@@ -76,7 +76,9 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
   const [results, setResults] = useState<GeocodeResult[]>([])
   const [searching, setSearching] = useState(false)
   const [locating, setLocating] = useState(false)
-  const [satellite, setSatellite] = useState(false)
+  // Satellite by default: it is the only free, key-less basemap that shows real
+  // buildings (Esri Canvas is a plain grey road drawing with no footprints).
+  const [satellite, setSatellite] = useState(true)
 
   const emit = useCallback((la: number, ln: number) => {
     const rla = Math.round(la * 1e6) / 1e6
@@ -114,7 +116,7 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
     } else {
       circleRef.current.setLatLng(pos)
     }
-    if (fly) map.flyTo(pos, Math.max(map.getZoom(), 16), { duration: 0.6 })
+    if (fly) map.flyTo(pos, Math.max(map.getZoom(), 17), { duration: 0.6 })
   }, [emit, radiusM])
 
   // Create the map once.
@@ -127,12 +129,12 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
       LRef.current = L
       const map = L.map(boxRef.current, {
         center: lat != null && lng != null ? [lat, lng] : DEFAULT_CENTER,
-        zoom: lat != null && lng != null ? 16 : 12,
+        zoom: lat != null && lng != null ? 17 : 12,
         zoomControl: true,
         attributionControl: true,
       })
       mapRef.current = map
-      const t = isLight ? TILES.light : TILES.dark
+      const t = TILES.satellite
       tileRef.current = L.tileLayer(t.url, tileOptions(t)).addTo(map)
       map.on('click', (e: LeafletNS.LeafletMouseEvent) => {
         placePin(e.latlng.lat, e.latlng.lng, false)

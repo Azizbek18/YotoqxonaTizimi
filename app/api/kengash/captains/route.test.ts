@@ -54,7 +54,7 @@ describe('PATCH /api/kengash/captains', () => {
 
   it('promotes via the atomic promote_floor_captain RPC, keyed on the TARGET’s own gender (a raisi manages both genders)', async () => {
     const maybeSingle = vi.fn().mockResolvedValue({
-      data: { id: 's-1', role: 'talaba', status: 'active', faculty: 'amit', gender: 'female', assigned_floor: 4, is_floor_captain: false },
+      data: { id: 's-1', role: 'talaba', status: 'active', faculty: 'amit', dorm_id: 'd1', block: null, room_number: '8', gender: 'female', assigned_floor: 4, is_floor_captain: false },
       error: null,
     })
     const from = vi.fn(() => ({ select: () => ({ eq: () => ({ maybeSingle }) }) }))

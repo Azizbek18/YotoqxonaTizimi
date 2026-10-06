@@ -11,7 +11,7 @@ export function createAnnouncementRepository() {
     async findAudienceProfile(userId: string) {
       const { data, error } = await supabase
         .from('users')
-        .select('faculty, room_number, gender, assigned_floor')
+        .select('faculty, room_number, gender, assigned_floor, dorm_id, block')
         .eq('id', userId)
         .maybeSingle()
       if (error) throw error
@@ -20,7 +20,7 @@ export function createAnnouncementRepository() {
     async listPublished() {
       const { data, error } = await supabase
         .from('elonlar')
-        .select('id, title, text, type, audience, faculty, is_published, created_at, published_at, created_by, target_floor, target_gender')
+        .select('id, title, text, type, audience, faculty, is_published, created_at, published_at, created_by, target_floor, target_gender, dorm_id, target_block')
         .eq('is_published', true)
         .neq('title', 'HAFTALIK_NAVBATCHILIK_JADVALI')
         .order('published_at', { ascending: false })

@@ -7,7 +7,24 @@ vi.mock('@/server/auth/sardor', () => ({
   requireFloorCaptain: (...args: unknown[]) => requireFloorCaptain(...args),
 }))
 
-const { PATCH } = await import('./route')
+const { GET, PATCH } = await import('./route')
+
+it('reads the current physical duty schedule after a captain moves building or block', async () => {
+  const title = 'HAFTALIK_NAVBATCHILIK_JADVALI'
+  const current = { id: 'current', title, faculty: 'amit', dorm_id: 'd2', target_block: 'B', target_floor: 3, target_gender: 'male', text: '{"schedule":{"current":[]},"admins":[]}' }
+  const old = [
+    { ...current, id: 'other-building', dorm_id: 'd1' },
+    { ...current, id: 'other-block', target_block: 'A' },
+    { ...current, id: 'other-floor', target_floor: 2 },
+    { ...current, id: 'other-gender', target_gender: 'female' },
+    { ...current, id: 'other-faculty', faculty: 'fizika' },
+  ]
+  requireFloorCaptain.mockResolvedValue({ faculty: 'amit', caller: { id: 'cap', dorm_id: 'd2', block: 'B', assigned_floor: 3, gender: 'male' },
+    serviceSupabase: { from: () => ({ select: () => ({ eq: () => ({ order: async () => ({ data: [...old, current], error: null }) }) }) }) } })
+  const response = await GET(new NextRequest('http://localhost/api/sardor/elonlar'))
+  expect(response.status).toBe(200)
+  expect((await response.json()).dutySchedule).toEqual({ id: 'current', schedule: { current: [] }, admins: [] })
+})
 
 describe('PATCH /api/sardor/elonlar', () => {
   beforeEach(() => {

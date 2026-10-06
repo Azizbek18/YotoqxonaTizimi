@@ -14,6 +14,8 @@ export type FloorCaptain = {
   assigned_floor: number | null
   gender: string | null
   faculty: string | null
+  dorm_id: string
+  block: string | null
   captain_permissions?: unknown
 }
 
@@ -33,7 +35,7 @@ export async function requireFloorCaptain(request: NextRequest, permission?: Sar
   const serviceSupabase = getServiceSupabase()
   const { data: caller, error } = await serviceSupabase
     .from('users')
-    .select('id, full_name, role, status, is_floor_captain, assigned_floor, gender, faculty, captain_permissions')
+    .select('id, full_name, role, status, is_floor_captain, assigned_floor, gender, faculty, captain_permissions, dorm_id, block, room_number, is_off_campus')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -57,5 +59,9 @@ export async function requireFloorCaptain(request: NextRequest, permission?: Sar
     return { error: NextResponse.json({ error: 'Fakultet biriktirilmagan' }, { status: 403 }) } as const
   }
 
+  if (!caller.dorm_id || !caller.room_number || caller.is_off_campus
+    || !caller.assigned_floor || !['male', 'female'].includes(caller.gender ?? '')) {
+    return { error: NextResponse.json({ error: 'Sardorning yotoqxona, xona, qavat yoki jinsi belgilanmagan' }, { status: 403 }) } as const
+  }
   return { caller: caller as FloorCaptain, serviceSupabase, faculty } as const
 }

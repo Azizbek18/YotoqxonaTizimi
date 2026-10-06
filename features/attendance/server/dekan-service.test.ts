@@ -102,6 +102,12 @@ function setup(opts: { students?: Student[]; geo?: boolean } = {}) {
       return { row, conflict: false }
     }),
     records: vi.fn(async (id: string) => [...(records.get(id)?.values() ?? [])]),
+    sessionsInRange: vi.fn(async (faculty: string, dorm: string | null, from: string, to: string) =>
+      sessions.filter((s) =>
+        s.faculty === faculty && (!dorm || s.dorm_id === dorm) && s.status !== 'scheduled'
+        && String(s.scheduled_for) >= from && String(s.scheduled_for) <= to)),
+    recordsForSessions: vi.fn(async (ids: string[]) =>
+      ids.flatMap((id) => [...(records.get(id)?.values() ?? [])].map((r) => ({ ...r, session_id: id })))),
     promote: vi.fn(async (id: string) => {
       const s = sessions.find((x) => x.id === id && x.status === 'scheduled')
       if (!s) return null
@@ -134,6 +140,64 @@ function setup(opts: { students?: Student[]; geo?: boolean } = {}) {
   })
   return { service, repo, drepo, send, sent, sessions, records, students }
 }
+
+describe('history (kunlar bo‘yicha)', () => {
+  const rec = (id: string, state: string) => ({ student_id: id, state, room_number: '1', floor_number: 1, self_distance_m: null, marked_at: null })
+  const addSession = (t: ReturnType<typeof setup>, id: string, date: string, status: string, faculty = 'amit', dorm = D1) => {
+    t.sessions.push({
+      id, dorm_id: dorm, faculty, status, scheduled_for: date, starts_at: `${date}T16:00:00Z`,
+      closes_at: `${date}T18:00:00Z`, closed_at: null, last_reminded_at: null, reminder_count: 0,
+    })
+  }
+
+  it('summarises each day, keeps days without a roll-call empty and takes the best state per student', async () => {
+    const t = setup()
+    addSession(t, 'a', '2026-10-05', 'closed')
+    addSession(t, 'b', '2026-10-05', 'auto_closed') // a second roll-call the same evening
+    addSession(t, 'c', '2026-10-03', 'closed')
+    t.records.set('a', new Map([['s1', rec('s1', 'unmarked')], ['s2', rec('s2', 'absent')]]))
+    t.records.set('b', new Map([['s1', rec('s1', 'present')], ['s2', rec('s2', 'unmarked')]]))
+    t.records.set('c', new Map([['s1', rec('s1', 'absent')]]))
+
+    const view = await t.service.history(scope, { days: 4 })
+
+    expect(view.dates).toEqual(['2026-10-05', '2026-10-04', '2026-10-03', '2026-10-02'])
+    expect(view.days.map((d) => d.summary.total)).toEqual([2, 0, 1, 0])
+    expect(view.days[0].summary).toMatchObject({ present: 1, absent: 1, unmarked: 0 })
+    expect(view.days[0].sessionIds.sort()).toEqual(['a', 'b'])
+    const s1 = view.students.find((s) => s.id === 's1')!
+    expect(s1.states).toEqual({ '2026-10-05': 'present', '2026-10-03': 'absent' })
+    expect(s1).toMatchObject({ present: 1, absent: 1, unmarked: 0 })
+    expect(view.students.find((s) => s.id === 's2')!.states['2026-10-05']).toBe('absent')
+  })
+
+  it('only ever reads this faculty, optionally narrowed to one dorm, and clamps the range', async () => {
+    const t = setup()
+    addSession(t, 'mine', '2026-10-05', 'closed')
+    addSession(t, 'other-faculty', '2026-10-05', 'closed', 'iqtisodiyot')
+    addSession(t, 'other-dorm', '2026-10-05', 'closed', 'amit', D2)
+    t.records.set('mine', new Map([['s1', rec('s1', 'present')]]))
+    t.records.set('other-faculty', new Map([['x1', rec('x1', 'present')]]))
+    t.records.set('other-dorm', new Map([['y1', rec('y1', 'present')]]))
+
+    const all = await t.service.history(scope, { days: 1000 })
+    expect(all.dates).toHaveLength(31)
+    expect(all.students.map((s) => s.id).sort()).toEqual(['s1', 'y1'])
+
+    const one = await t.service.history(scope, { dormId: D1, days: 7 })
+    expect(one.students.map((s) => s.id)).toEqual(['s1'])
+  })
+
+  it('reports a running roll-call as live', async () => {
+    const t = setup()
+    t.sessions.push({
+      id: 'now', dorm_id: D1, faculty: 'amit', status: 'open', scheduled_for: '2026-10-05',
+      starts_at: min(-10), closes_at: min(50), closed_at: null, last_reminded_at: null, reminder_count: 0,
+    })
+    t.records.set('now', new Map([['s1', rec('s1', 'unmarked')]]))
+    expect((await t.service.history(scope, { days: 1 })).days[0].live).toBe(true)
+  })
+})
 
 describe('create', () => {
   it('starts now: open session seeded with ONLY this faculty + dorm', async () => {

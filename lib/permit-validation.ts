@@ -66,6 +66,19 @@ export function getForeignIdFormatError(input: unknown): string | null {
 
 export function isValidEmail(input: unknown) {
   const value = String(input ?? '').trim().toLowerCase()
+  // Must be at least as strict as GoTrue's (Go net/mail) check: a looser
+  // regex let `name@gmail..com`, `name.@gmail.com` and Cyrillic look-alikes
+  // into permit_requests, and account creation then failed at /register.
+  return value.length <= 254
+    && /^[a-z0-9_%+-]+(?:\.[a-z0-9_%+-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(value)
+}
+
+// Shape check for looking up an address that is ALREADY stored (permit cancel,
+// push binding). isValidEmail is deliberately strict for new submissions, but
+// permits saved under the older looser regex must stay reachable — the lookup
+// still has to match the on-file value exactly, so this only guards junk input.
+export function isStoredEmailShape(input: unknown) {
+  const value = String(input ?? '').trim().toLowerCase()
   return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 

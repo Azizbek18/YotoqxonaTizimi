@@ -10,6 +10,7 @@ import {
   detectPermitFileMimeType,
   getNamePartError,
   isPlausibleInternationalPhone,
+  isValidEmail,
   isValidJoinedFullName,
   isValidJshshir,
   isValidPassport,
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
     if (nameError) {
       return NextResponse.json({ error: nameError }, { status: 400 })
     }
-    if (!/^\S+@\S+\.\S+$/.test(email) || phone.length < 7) {
+    if (!isValidEmail(email) || phone.length < 7) {
       return NextResponse.json({ error: 'Shaxsiy ma’lumotlar to‘liq yoki to‘g‘ri kiritilmagan.' }, { status: 400 })
     }
     if (

@@ -46,7 +46,7 @@ function validDate(value: string) {
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)
-  const throttle = await checkRateLimit(`student-register:${ip}`, 5, 15 * 60_000)
+  const throttle = await checkRateLimit(`student-register:${ip}`, 40, 15 * 60_000)
   if (!throttle.allowed) {
     return NextResponse.json(
       { error: 'Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.' },
@@ -163,6 +163,20 @@ export async function POST(request: NextRequest) {
     // their permit documents before approving, which is a stronger check
     // than a mailbox code. KV-talaba (features/... /kv-talaba/register) has
     // no such review and still requires it.
+
+    // Dorm Wi-Fi / carrier NAT put many students behind one IP, so the IP
+    // bucket above is generous. What an attacker actually guesses is somebody's
+    // passport/ID, so cap verification attempts per identity. Keyed only after
+    // the format checks, so the key space is bounded to well-formed IDs and a
+    // student fixing typos in earlier steps never spends it.
+    const identityThrottle = await checkRateLimit(`student-register-id:${applicationType}:${passport}`, 10, 15 * 60_000)
+    if (!identityThrottle.allowed) {
+      return NextResponse.json(
+        { error: 'Juda ko‘p urinish. Keyinroq qayta urinib ko‘ring.' },
+        { status: 429 },
+      )
+    }
+
     const supabase = getServiceSupabase()
     let permitQuery = supabase
       .from('permit_requests')
@@ -444,6 +458,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: 'Bu parol juda keng tarqalgan va xavfsiz emas. Iltimos, boshqa, noyobroq parol tanlang.' },
           { status: 400 },
+        )
+      }
+      if (authError?.code === 'validation_failed' || /unable to validate email/i.test(authError?.message ?? '')) {
+        return NextResponse.json(
+          { error: 'Arizadagi email manzili noto‘g‘ri yozilgan (masalan, ortiqcha nuqta). Dekanatga murojaat qilib, emailni to‘g‘rilatib oling.' },
+          { status: 422 },
         )
       }
       return NextResponse.json(

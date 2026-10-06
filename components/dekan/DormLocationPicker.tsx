@@ -91,6 +91,8 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
     const L = LRef.current
     const map = mapRef.current
     if (!L || !map) return
+    // Half-typed manual entry ("41.", "-", letters) arrives as NaN; Leaflet throws on it.
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return
     const pos = L.latLng(la, ln)
     if (!markerRef.current) {
       markerRef.current = L.marker(pos, {
@@ -125,11 +127,12 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
     ;(async () => {
       const mod = await import('leaflet')
       const L = ((mod as { default?: typeof LeafletNS }).default ?? mod) as typeof LeafletNS
+      const hasCoord = Number.isFinite(lat) && Number.isFinite(lng)
       if (cancelled || !boxRef.current || mapRef.current) return
       LRef.current = L
       const map = L.map(boxRef.current, {
-        center: lat != null && lng != null ? [lat, lng] : DEFAULT_CENTER,
-        zoom: lat != null && lng != null ? 17 : 12,
+        center: hasCoord ? [lat as number, lng as number] : DEFAULT_CENTER,
+        zoom: hasCoord ? 17 : 12,
         zoomControl: true,
         attributionControl: true,
       })
@@ -140,7 +143,7 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
         placePin(e.latlng.lat, e.latlng.lng, false)
         emit(e.latlng.lat, e.latlng.lng)
       })
-      if (lat != null && lng != null) placePin(lat, lng, false)
+      if (hasCoord) placePin(lat as number, lng as number, false)
       // The card animates in; Leaflet needs a nudge once its box has size.
       setTimeout(() => map.invalidateSize(), 60)
       setReady(true)
@@ -177,7 +180,7 @@ export default function DormLocationPicker({ isLight, lat, lng, radiusM, onChang
   useEffect(() => {
     if (!ready) return
     if (echoRef.current && near(echoRef.current.lat, lat) && near(echoRef.current.lng, lng)) return
-    if (lat != null && lng != null) placePin(lat, lng, true)
+    if (lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)) placePin(lat, lng, true)
   }, [lat, lng, ready, placePin])
 
   const runSearch = useCallback(async () => {

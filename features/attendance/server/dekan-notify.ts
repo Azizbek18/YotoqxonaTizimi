@@ -12,6 +12,8 @@ export type ReminderInfo = {
   dormLabel: string
   closesAt: Date
   round: number
+  /** Telegram only — the caller already sent the push for this round. */
+  skipPush?: boolean
 }
 
 export type ReminderSender = (targets: ReminderTarget[], info: ReminderInfo) => Promise<{ attempted: number }>
@@ -59,7 +61,7 @@ export const sendAttendanceReminders: ReminderSender = async (targets, info) => 
   await pool(targets, CONCURRENCY, async (t) => {
     const jobs: Promise<unknown>[] = []
 
-    jobs.push(
+    if (!info.skipPush) jobs.push(
       sendPushWithoutBreaking(() =>
         notifyStudent(t.id, {
           title: info.round <= 1 ? 'Yo‘qlama boshlandi' : 'Yo‘qlama: tasdiqlamadingiz',

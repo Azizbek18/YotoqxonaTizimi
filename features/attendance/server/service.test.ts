@@ -327,12 +327,13 @@ describe('runNightlyReminders', () => {
     }), { claimNightlyReminder })
   }
 
-  it('first tick only starts the clock (start push already went out)', async () => {
+  it('first round goes out right away, Telegram-only (start push already sent)', async () => {
     const r = base(null)
     const out = await createAttendanceService(r as never, dekanRepo as never).runNightlyReminders(NOW)
-    expect(out.reminded).toBe(0)
+    expect(out.reminded).toBe(1)
     expect(r.claimNightlyReminder).toHaveBeenCalled()
-    expect(sendReminders).not.toHaveBeenCalled()
+    expect(sendReminders).toHaveBeenCalledTimes(1)
+    expect(sendReminders.mock.calls[0][1]).toMatchObject({ round: 1, skipPush: true })
   })
 
   it('reminds only unconfirmed residents once 5 minutes have passed', async () => {
@@ -342,6 +343,7 @@ describe('runNightlyReminders', () => {
     expect(sendReminders).toHaveBeenCalledTimes(1)
     const targets = sendReminders.mock.calls[0][0] as { id: string; chatId: string | null }[]
     expect(targets).toEqual([{ id: 's2', chatId: '555' }])
+    expect(sendReminders.mock.calls[0][1]).toMatchObject({ skipPush: false })
   })
 
   it('does nothing before the interval is up', async () => {

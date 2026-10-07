@@ -443,8 +443,8 @@ export function createAttendanceService(
     /**
      * Every NIGHTLY_REMINDER_INTERVAL_MIN minutes, Telegram + push to each
      * resident of an open nightly session who has not confirmed yet. The
-     * start push is sent by runNightlyCron, so a session's first tick only
-     * starts the clock. Best-effort per dorm: one failure never stops the rest.
+     * first round (right after the session opens) is Telegram-only, because
+     * runNightlyCron already sent the start push. Best-effort per dorm: one failure never stops the rest.
      */
     async runNightlyReminders(now: Date = new Date()) {
       const result = { reminded: 0 }
@@ -456,8 +456,6 @@ export function createAttendanceService(
             const last = session.last_reminded_at ? new Date(session.last_reminded_at).getTime() : null
             if (last != null && now.getTime() < last + REMINDER_INTERVAL_MS - REMINDER_SLACK_MS) continue
             if (!(await repo.claimNightlyReminder(session, now))) continue
-            if (last == null) continue // start push already went out; clock starts now
-
             const unmarked = (await repo.records(session.id)).filter((r) => r.state === 'unmarked')
             if (unmarked.length === 0) continue
             const ids = unmarked.map((r) => r.student_id)
@@ -469,6 +467,8 @@ export function createAttendanceService(
                 dormLabel: dormLabel(dorm),
                 closesAt: new Date(session.closes_at),
                 round: session.reminder_count + 1,
+                // runNightlyCron already pushed the start; the first round adds Telegram only.
+                skipPush: last == null,
               },
             )
             result.reminded += 1

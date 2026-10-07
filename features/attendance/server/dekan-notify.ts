@@ -12,6 +12,8 @@ export type ReminderInfo = {
   dormLabel: string
   closesAt: Date
   round: number
+  /** Telegram only — the caller already sent the push for this round. */
+  skipPush?: boolean
 }
 
 export type ReminderSender = (targets: ReminderTarget[], info: ReminderInfo) => Promise<{ attempted: number }>
@@ -59,7 +61,7 @@ export const sendAttendanceReminders: ReminderSender = async (targets, info) => 
   await pool(targets, CONCURRENCY, async (t) => {
     const jobs: Promise<unknown>[] = []
 
-    jobs.push(
+    if (!info.skipPush) jobs.push(
       sendPushWithoutBreaking(() =>
         notifyStudent(t.id, {
           title: info.round <= 1 ? 'Yo‘qlama boshlandi' : 'Yo‘qlama: tasdiqlamadingiz',
@@ -88,4 +90,46 @@ export const sendAttendanceReminders: ReminderSender = async (targets, info) => 
   })
 
   return { attempted: targets.length }
+}
+
+export type CaptainAlert = {
+  captainId: string
+  chatId: string | null
+  floor: number
+  minutesLeft: number
+  /** "Ali V. (305)" lines, one per student who has not confirmed. */
+  students: string[]
+}
+
+/** Push + Telegram to ONE floor captain: who on their floor has not confirmed. */
+export async function sendCaptainAlert(alert: CaptainAlert): Promise<void> {
+  const head = `${alert.floor}-qavat: ${alert.students.length} talaba tasdiqlamadi`
+  const preview = alert.students.slice(0, 4).join(', ') + (alert.students.length > 4 ? '…' : '')
+  const jobs: Promise<unknown>[] = [
+    sendPushWithoutBreaking(() =>
+      notifyStudent(alert.captainId, {
+        title: head,
+        body: `Yo‘qlama tugashiga ~${alert.minutesLeft} daqiqa. ${preview}`,
+        url: '/sardor/yoqlama',
+        tag: `captain-attendance-${alert.minutesLeft}`,
+      }),
+    ),
+  ]
+  if (alert.chatId) {
+    const shown = alert.students.slice(0, 40)
+    const more = alert.students.length - shown.length
+    const link = appUrl('/sardor/yoqlama')
+    jobs.push(
+      sendTelegramChatMessage(
+        alert.chatId,
+        [
+          `⏰ ${head}`,
+          `Yo‘qlama tugashiga ~${alert.minutesLeft} daqiqa qoldi.`,
+          shown.map((n) => `• ${n}`).join('\n') + (more > 0 ? `\n… va yana ${more} ta` : ''),
+        ].join('\n\n'),
+        link ? { replyMarkup: { inline_keyboard: [[{ text: 'Yo‘qlamani ochish', url: link }]] } } : {},
+      ),
+    )
+  }
+  await Promise.allSettled(jobs)
 }

@@ -9,7 +9,11 @@ vi.mock('@/lib/notify-student', () => ({
 }))
 
 const sendReminders = vi.fn(async (_targets: unknown, _info: unknown) => ({ attempted: 0 }))
-vi.mock('./dekan-notify', () => ({ sendAttendanceReminders: (t: unknown, i: unknown) => sendReminders(t, i) }))
+const sendCaptain = vi.fn(async (_a: unknown) => undefined)
+vi.mock('./dekan-notify', () => ({
+  sendAttendanceReminders: (t: unknown, i: unknown) => sendReminders(t, i),
+  sendCaptainAlert: (a: unknown) => sendCaptain(a),
+}))
 
 const { createAttendanceService } = await import('./service')
 import type { AttendanceActor } from '../types'
@@ -327,12 +331,13 @@ describe('runNightlyReminders', () => {
     }), { claimNightlyReminder })
   }
 
-  it('first tick only starts the clock (start push already went out)', async () => {
+  it('first round goes out right away, Telegram-only (start push already sent)', async () => {
     const r = base(null)
     const out = await createAttendanceService(r as never, dekanRepo as never).runNightlyReminders(NOW)
-    expect(out.reminded).toBe(0)
+    expect(out.reminded).toBe(1)
     expect(r.claimNightlyReminder).toHaveBeenCalled()
-    expect(sendReminders).not.toHaveBeenCalled()
+    expect(sendReminders).toHaveBeenCalledTimes(1)
+    expect(sendReminders.mock.calls[0][1]).toMatchObject({ round: 1, skipPush: true })
   })
 
   it('reminds only unconfirmed residents once 5 minutes have passed', async () => {
@@ -342,6 +347,7 @@ describe('runNightlyReminders', () => {
     expect(sendReminders).toHaveBeenCalledTimes(1)
     const targets = sendReminders.mock.calls[0][0] as { id: string; chatId: string | null }[]
     expect(targets).toEqual([{ id: 's2', chatId: '555' }])
+    expect(sendReminders.mock.calls[0][1]).toMatchObject({ skipPush: false })
   })
 
   it('does nothing before the interval is up', async () => {
@@ -359,6 +365,72 @@ describe('runNightlyReminders', () => {
     const late = base('2026-09-01T16:50:00Z')
     await createAttendanceService(late as never, dekanRepo as never).runNightlyReminders(new Date('2026-09-01T18:30:00Z'))
     expect(late.claimNightlyReminder).not.toHaveBeenCalled()
+  })
+})
+
+describe('runCaptainAlerts', () => {
+  const dorm = {
+    id: DORM, number: '1', name: '', floor_count: 9, latitude: 41.311, longitude: 69.240,
+    checkin_radius_m: 1000, attendance_enabled: true, attendance_open_time: '21:00', attendance_close_time: '23:00',
+  }
+  const CLOSE = '2026-09-01T18:00:00Z'
+  const at = (iso: string) => new Date(iso)
+  const people = [
+    { id: 'a', full_name: 'Ali', room_number: '305', assigned_floor: 3, gender: 'male', block: null },
+    { id: 'b', full_name: 'Vali', room_number: '312', assigned_floor: 3, gender: 'male', block: null },
+    { id: 'c', full_name: 'Guli', room_number: '401', assigned_floor: 4, gender: 'male', block: null },
+    { id: 'd', full_name: 'Sara', room_number: '306', assigned_floor: 3, gender: 'female', block: null },
+  ]
+  const captain = { id: 'cap3', full_name: 'Sardor', assigned_floor: 3, gender: 'male', block: null, captain_permissions: null }
+  const dekanRepo = { telegramChats: async () => new Map([['cap3', '999']]) }
+  const mk = (extra: Record<string, unknown> = {}, claim = true) => {
+    const claimAlertSlot = vi.fn(async () => claim)
+    return Object.assign(repo({
+      enabledDorms: vi.fn(async () => [dorm]),
+      openSessions: vi.fn(async () => [{ ...openSession, closes_at: CLOSE }]),
+      records: vi.fn(async () => [
+        { student_id: 'a', state: 'unmarked' }, { student_id: 'b', state: 'present' },
+        { student_id: 'c', state: 'unmarked' }, { student_id: 'd', state: 'unmarked' },
+      ]),
+      residents: vi.fn(async () => people),
+      captainsOf: vi.fn(async () => [captain]),
+      claimAlertSlot,
+      ...extra,
+    }), { claimAlertSlot })
+  }
+
+  it('tells the captain only about unconfirmed students of their own floor + gender', async () => {
+    const r = mk()
+    const out = await createAttendanceService(r as never, dekanRepo as never).runCaptainAlerts(at('2026-09-01T17:50:00Z'))
+    expect(out.alerted).toBe(1)
+    expect(sendCaptain).toHaveBeenCalledWith(expect.objectContaining({
+      captainId: 'cap3', chatId: '999', floor: 3, minutesLeft: 10, students: ['Ali (305)'],
+    }))
+  })
+
+  it('sends once per window, and again at ~5 minutes', async () => {
+    const r = mk({}, false)
+    await createAttendanceService(r as never, dekanRepo as never).runCaptainAlerts(at('2026-09-01T17:50:00Z'))
+    expect(sendCaptain).not.toHaveBeenCalled()
+
+    const r5 = mk()
+    await createAttendanceService(r5 as never, dekanRepo as never).runCaptainAlerts(at('2026-09-01T17:55:00Z'))
+    expect(r5.claimAlertSlot).toHaveBeenCalledWith('sess-1:5')
+    expect(sendCaptain).toHaveBeenCalledWith(expect.objectContaining({ minutesLeft: 5 }))
+  })
+
+  it('is silent outside the last 10 minutes and when nobody is missing', async () => {
+    await createAttendanceService(mk() as never, dekanRepo as never).runCaptainAlerts(at('2026-09-01T17:40:00Z'))
+    await createAttendanceService(mk() as never, dekanRepo as never).runCaptainAlerts(at('2026-09-01T18:01:00Z'))
+    const none = mk({ records: vi.fn(async () => [{ student_id: 'a', state: 'present' }]) })
+    await createAttendanceService(none as never, dekanRepo as never).runCaptainAlerts(at('2026-09-01T17:50:00Z'))
+    expect(sendCaptain).not.toHaveBeenCalled()
+  })
+
+  it('skips a captain whose marking right was revoked', async () => {
+    const revoked = mk({ captainsOf: vi.fn(async () => [{ ...captain, captain_permissions: { 'attendance.mark': false } }]) })
+    await createAttendanceService(revoked as never, dekanRepo as never).runCaptainAlerts(at('2026-09-01T17:50:00Z'))
+    expect(sendCaptain).not.toHaveBeenCalled()
   })
 })
 

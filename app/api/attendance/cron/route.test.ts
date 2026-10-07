@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   runNightlyCron: vi.fn(),
   runDekanCron: vi.fn(),
   runNightlyReminders: vi.fn(),
+  runCaptainAlerts: vi.fn(),
 }))
 
 vi.mock('@/features/attendance/server/dekan-service', () => ({
@@ -12,7 +13,7 @@ vi.mock('@/features/attendance/server/dekan-service', () => ({
 }))
 
 vi.mock('@/features/attendance/server/service', () => ({
-  createAttendanceService: () => ({ runNightlyCron: mocks.runNightlyCron, runNightlyReminders: mocks.runNightlyReminders }),
+  createAttendanceService: () => ({ runNightlyCron: mocks.runNightlyCron, runNightlyReminders: mocks.runNightlyReminders, runCaptainAlerts: mocks.runCaptainAlerts }),
 }))
 
 const { POST, GET } = await import('./route')

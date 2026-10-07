@@ -24,6 +24,15 @@ export type DormAttendanceConfig = {
   attendance_close_time: string
 }
 
+export type CaptainRow = {
+  id: string
+  full_name: string | null
+  assigned_floor: number
+  gender: string | null
+  block: string | null
+  captain_permissions: unknown
+}
+
 export type ResidentRow = {
   dorm_id?: string | null
   block?: string | null
@@ -213,6 +222,35 @@ export function createAttendanceRepository() {
       const { data, error } = await q.select('id')
       if (error) throw error
       return (data?.length ?? 0) > 0
+    },
+
+    /** Active floor captains housed in this building. */
+    async captainsOf(dormId: string): Promise<CaptainRow[]> {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, full_name, assigned_floor, gender, block, captain_permissions')
+        .eq('role', 'talaba').eq('status', 'active').eq('is_floor_captain', true)
+        .eq('dorm_id', dormId)
+        .not('assigned_floor', 'is', null)
+      if (error) throw error
+      return (data ?? []) as CaptainRow[]
+    },
+
+    /**
+     * One-shot slot for an alert key (durable across cron runs/instances, no
+     * migration: a security_audit_logs row). false = already sent.
+     */
+    async claimAlertSlot(key: string): Promise<boolean> {
+      const { data, error } = await supabase
+        .from('security_audit_logs').select('id')
+        .eq('event_type', 'attendance.captain_alert').eq('details->>key', key).limit(1)
+      if (error) throw error
+      if (data && data.length > 0) return false
+      const { error: insertError } = await supabase
+        .from('security_audit_logs')
+        .insert({ event_type: 'attendance.captain_alert', status: 'success', details: { key } })
+      if (insertError) throw insertError
+      return true
     },
 
     /** One student's own record states in the given sessions (no seeding). */

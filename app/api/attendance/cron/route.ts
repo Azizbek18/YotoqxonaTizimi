@@ -26,7 +26,12 @@ export async function POST(request: NextRequest) {
       console.error('Nightly attendance reminders failed:', error)
       return { error: true as const }
     })
-    return NextResponse.json({ ok: true, ...result, dekan, reminders })
+    // Separate last-10-minutes list for each floor captain (their own floor only).
+    const captains = await Promise.resolve().then(() => createAttendanceService().runCaptainAlerts()).catch((error) => {
+      console.error('Captain attendance alerts failed:', error)
+      return { error: true as const }
+    })
+    return NextResponse.json({ ok: true, ...result, dekan, reminders, captains })
   } catch (error) {
     console.error('Attendance cron failed:', error)
     return NextResponse.json({ error: 'cron failed' }, { status: 500 })

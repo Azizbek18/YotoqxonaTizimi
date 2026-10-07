@@ -10,10 +10,11 @@ import {
 } from '@/lib/tashkent-time'
 import { sendPushWithoutBreaking } from '@/lib/push-notifications'
 import { notifyStudent } from '@/lib/notify-student'
+import { can } from '@/features/permissions/types'
 import { createAttendanceRepository, type AttendanceRepository, type LegacySessionRow, type ResidentRow } from './repository'
 import { createDekanAttendanceRepository, type DekanAttendanceRepository } from './dekan-repository'
 import { dormLabel } from './dekan-service'
-import { sendAttendanceReminders } from './dekan-notify'
+import { sendAttendanceReminders, sendCaptainAlert } from './dekan-notify'
 import type {
   AttendanceActor,
   AttendanceState,
@@ -48,6 +49,12 @@ export const NIGHTLY_REMINDER_INTERVAL_MIN = 5
 const REMINDER_INTERVAL_MS = NIGHTLY_REMINDER_INTERVAL_MIN * 60_000
 // The cron ticks every ~5 minutes; a little slack keeps a tick from skipping a round.
 const REMINDER_SLACK_MS = 60_000
+// Floor captains get their own list this many minutes before close (cron
+// ticks ~5 min apart, so each window is wide enough to catch exactly one tick).
+const CAPTAIN_ALERT_WINDOWS = [
+  { minutes: 10, fromMs: 6 * 60_000, toMs: 11 * 60_000 },
+  { minutes: 5, fromMs: 0, toMs: 6 * 60_000 },
+] as const
 
 function sessionMatchesActor(session: AttendanceSessionRow, actor: AttendanceActor): boolean {
   if (session.dorm_id !== actor.dormId) return false
@@ -269,6 +276,63 @@ export function createAttendanceService(
       }
     },
 
+    /**
+     * Last-10-minutes alert to each floor captain, separate from the students'
+     * reminders: who on THEIR floor (floor + gender + block) has not confirmed.
+     * Sent at ~10 and ~5 minutes before close, once per window, only when
+     * someone is still unconfirmed. Push + Telegram, best-effort.
+     */
+    async runCaptainAlerts(now: Date = new Date()) {
+      const result = { alerted: 0 }
+      for (const dorm of await repo.enabledDorms()) {
+        try {
+          const sessions = (await repo.openSessions(dorm.id)).filter((s) => s.kind === 'nightly')
+          for (const session of sessions) {
+            const left = new Date(session.closes_at).getTime() - now.getTime()
+            const window = CAPTAIN_ALERT_WINDOWS.find((w) => left > w.fromMs && left <= w.toMs)
+            if (!window) continue
+
+            const unmarked = (await repo.records(session.id)).filter((r) => r.state === 'unmarked')
+            if (unmarked.length === 0) continue
+            if (!(await repo.claimAlertSlot(`${session.id}:${window.minutes}`))) continue
+
+            const captains = (await repo.captainsOf(dorm.id))
+              .filter((c) => can(c.captain_permissions, 'attendance.mark'))
+            if (captains.length === 0) continue
+            const [residents, chats] = await Promise.all([
+              repo.residents(dorm.id, await repo.facultiesForDorm(dorm.id), {}),
+              dekan().telegramChats(captains.map((c) => c.id)),
+            ])
+            const unmarkedIds = new Set(unmarked.map((r) => r.student_id))
+
+            for (const captain of captains) {
+              // Same scope the captain marks in: floor + gender + block.
+              const mine = residents.filter((r) =>
+                unmarkedIds.has(r.id)
+                && r.assigned_floor === captain.assigned_floor
+                && r.gender === captain.gender
+                && (r.block ?? null) === (captain.block ?? null))
+              if (mine.length === 0) continue
+              const students = mine
+                .map((r) => `${r.full_name ?? 'Talaba'}${r.room_number ? ` (${r.room_number})` : ''}`)
+                .sort((a, b) => a.localeCompare(b))
+              await sendCaptainAlert({
+                captainId: captain.id,
+                chatId: chats.get(captain.id) ?? null,
+                floor: captain.assigned_floor,
+                minutesLeft: window.minutes,
+                students,
+              })
+              result.alerted += 1
+            }
+          }
+        } catch (error) {
+          console.error('Captain attendance alert failed:', dorm.id, error)
+        }
+      }
+      return result
+    },
+
     async history(actor: AttendanceActor, studentId: string) {
       // Staff only, and only sessions of the actor's own building — a plain
       // resident must not read a neighbour's attendance by id.
@@ -443,8 +507,8 @@ export function createAttendanceService(
     /**
      * Every NIGHTLY_REMINDER_INTERVAL_MIN minutes, Telegram + push to each
      * resident of an open nightly session who has not confirmed yet. The
-     * start push is sent by runNightlyCron, so a session's first tick only
-     * starts the clock. Best-effort per dorm: one failure never stops the rest.
+     * first round (right after the session opens) is Telegram-only, because
+     * runNightlyCron already sent the start push. Best-effort per dorm: one failure never stops the rest.
      */
     async runNightlyReminders(now: Date = new Date()) {
       const result = { reminded: 0 }
@@ -456,8 +520,6 @@ export function createAttendanceService(
             const last = session.last_reminded_at ? new Date(session.last_reminded_at).getTime() : null
             if (last != null && now.getTime() < last + REMINDER_INTERVAL_MS - REMINDER_SLACK_MS) continue
             if (!(await repo.claimNightlyReminder(session, now))) continue
-            if (last == null) continue // start push already went out; clock starts now
-
             const unmarked = (await repo.records(session.id)).filter((r) => r.state === 'unmarked')
             if (unmarked.length === 0) continue
             const ids = unmarked.map((r) => r.student_id)
@@ -469,6 +531,8 @@ export function createAttendanceService(
                 dormLabel: dormLabel(dorm),
                 closesAt: new Date(session.closes_at),
                 round: session.reminder_count + 1,
+                // runNightlyCron already pushed the start; the first round adds Telegram only.
+                skipPush: last == null,
               },
             )
             result.reminded += 1

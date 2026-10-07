@@ -200,8 +200,24 @@ export function createDekanAttendanceService(
       const dates = Array.from({ length: days }, (_, i) => shiftDate(today, -i))
       const dormId = input.dormId ?? null
 
-      const sessions = await drepo.sessionsInRange(scope.faculty, dormId, dates[dates.length - 1], today)
-      const records = sessions.length > 0 ? await drepo.recordsForSessions(sessions.map((s) => s.id)) : []
+      const from = dates[dates.length - 1]
+      const dekanSessions = await drepo.sessionsInRange(scope.faculty, dormId, from, today)
+
+      // The automatic nightly roll-call also counts: the dekan should see it
+      // without starting one by hand. It spans every faculty of a dorm, so it is
+      // limited to dorms this faculty lives in and to this faculty's students.
+      const { counts } = await facultyDorms(scope.faculty)
+      const nightlyDorms = dormId ? (counts.has(dormId) ? [dormId] : []) : [...counts.keys()]
+      const nightlySessions = await drepo.nightlySessionsInRange(nightlyDorms, from, today)
+      const sessions = [...dekanSessions, ...nightlySessions]
+      const nightlyIds = new Set(nightlySessions.map((s) => s.id))
+
+      const allRecords = sessions.length > 0 ? await drepo.recordsForSessions(sessions.map((s) => s.id)) : []
+      const nightlyStudents = await drepo.facultyStudentIds(
+        scope.faculty,
+        [...new Set(allRecords.filter((r) => nightlyIds.has(r.session_id)).map((r) => r.student_id))],
+      )
+      const records = allRecords.filter((r) => !nightlyIds.has(r.session_id) || nightlyStudents.has(r.student_id))
 
       const dateOf = new Map(sessions.map((s) => [s.id, s.scheduled_for]))
       const perDay = new Map<string, Map<string, DekanHistoryState>>()
@@ -223,7 +239,9 @@ export function createDekanAttendanceService(
         const ofDay = sessions.filter((s) => s.scheduled_for === date)
         return {
           date,
-          sessionIds: ofDay.map((s) => s.id),
+          // Only the dekan's own roll-calls open a roster; the nightly one is counted, not opened.
+          sessionIds: ofDay.filter((s) => !nightlyIds.has(s.id)).map((s) => s.id),
+          nightly: ofDay.some((s) => nightlyIds.has(s.id)),
           live: ofDay.some((s) => s.status === 'open' && new Date(s.closes_at).getTime() > nowMs),
           summary,
         }

@@ -211,6 +211,34 @@ export function createDekanAttendanceRepository() {
       return (data ?? []) as DekanSessionRow[]
     },
 
+    /**
+     * The automatic NIGHTLY roll-calls of these dorms in [from, to]. They cover
+     * every faculty of a dorm, so the caller must keep only its own students.
+     */
+    async nightlySessionsInRange(dormIds: string[], from: string, to: string): Promise<DekanSessionRow[]> {
+      if (dormIds.length === 0) return []
+      const { data, error } = await supabase
+        .from('attendance_sessions').select('*')
+        .eq('kind', 'nightly').in('dorm_id', dormIds)
+        .in('status', ['open', 'closed', 'auto_closed'])
+        .gte('scheduled_for', from).lte('scheduled_for', to)
+        .order('opened_at', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as DekanSessionRow[]
+    },
+
+    /** Which of these students belong to the faculty. */
+    async facultyStudentIds(faculty: string, studentIds: string[]): Promise<Set<string>> {
+      const out = new Set<string>()
+      for (const part of chunk(studentIds, ID_CHUNK)) {
+        const { data, error } = await supabase
+          .from('users').select('id').eq('faculty', faculty).in('id', part)
+        if (error) throw error
+        for (const row of data ?? []) out.add(row.id)
+      }
+      return out
+    },
+
     /** Records of several sessions, past PostgREST's 1000-row page. */
     async recordsForSessions(sessionIds: string[]): Promise<AttendanceRecordRow[]> {
       const out: AttendanceRecordRow[] = []

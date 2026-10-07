@@ -106,6 +106,12 @@ function setup(opts: { students?: Student[]; geo?: boolean } = {}) {
       sessions.filter((s) =>
         s.faculty === faculty && (!dorm || s.dorm_id === dorm) && s.status !== 'scheduled'
         && String(s.scheduled_for) >= from && String(s.scheduled_for) <= to)),
+    nightlySessionsInRange: vi.fn(async (dorms: string[], from: string, to: string) =>
+      sessions.filter((s) =>
+        s.kind === 'nightly' && dorms.includes(s.dorm_id)
+        && String(s.scheduled_for) >= from && String(s.scheduled_for) <= to)),
+    facultyStudentIds: vi.fn(async (faculty: string, ids: string[]) =>
+      new Set(students.filter((s) => s.faculty === faculty && ids.includes(s.id)).map((s) => s.id))),
     recordsForSessions: vi.fn(async (ids: string[]) =>
       ids.flatMap((id) => [...(records.get(id)?.values() ?? [])].map((r) => ({ ...r, session_id: id })))),
     promote: vi.fn(async (id: string) => {
@@ -196,6 +202,51 @@ describe('history (kunlar bo‘yicha)', () => {
     })
     t.records.set('now', new Map([['s1', rec('s1', 'unmarked')]]))
     expect((await t.service.history(scope, { days: 1 })).days[0].live).toBe(true)
+  })
+})
+
+describe('history includes the automatic nightly roll-call', () => {
+  const rec = (id: string, state: string) => ({ student_id: id, state, room_number: '1', floor_number: 1, self_distance_m: null, marked_at: null })
+  const addNightly = (t: ReturnType<typeof setup>, id: string, date: string, dorm = D1) => {
+    t.sessions.push({
+      id, dorm_id: dorm, faculty: null as never, kind: 'nightly', status: 'closed', scheduled_for: date,
+      starts_at: null as never, closes_at: `${date}T18:00:00Z`, closed_at: null, last_reminded_at: null, reminder_count: 0,
+    })
+  }
+
+  it('counts the nightly roll-call for the dekan, only for this faculty students', async () => {
+    const t = setup()
+    addNightly(t, 'night', '2026-10-05')
+    // The nightly roll covers the whole dorm: AMIT's s1/s2 and another faculty's x1.
+    t.records.set('night', new Map([['s1', rec('s1', 'present')], ['s2', rec('s2', 'unmarked')], ['x1', rec('x1', 'present')]]))
+
+    const view = await t.service.history(scope, { days: 1 })
+
+    expect(view.days[0]).toMatchObject({ nightly: true, sessionIds: [] })
+    expect(view.days[0].summary).toMatchObject({ present: 1, unmarked: 1, total: 2 })
+    expect(view.students.map((s) => s.id).sort()).toEqual(['s1', 's2'])
+  })
+
+  it('ignores nightly roll-calls of dorms the faculty does not live in', async () => {
+    const t = setup()
+    addNightly(t, 'elsewhere', '2026-10-05', 'dorm-other')
+    t.records.set('elsewhere', new Map([['s1', rec('s1', 'present')]]))
+    const view = await t.service.history(scope, { days: 1 })
+    expect(view.days[0]).toMatchObject({ nightly: false, summary: { total: 0 } })
+  })
+
+  it('merges with the dekan own roll-call, which stays openable', async () => {
+    const t = setup()
+    addNightly(t, 'night', '2026-10-05')
+    t.sessions.push({
+      id: 'mine', dorm_id: D1, faculty: 'amit', status: 'closed', scheduled_for: '2026-10-05',
+      starts_at: '2026-10-05T16:00:00Z', closes_at: '2026-10-05T18:00:00Z', closed_at: null, last_reminded_at: null, reminder_count: 0,
+    })
+    t.records.set('night', new Map([['s1', rec('s1', 'unmarked')], ['s2', rec('s2', 'present')]]))
+    t.records.set('mine', new Map([['s1', rec('s1', 'present')]]))
+    const day = (await t.service.history(scope, { days: 1 })).days[0]
+    expect(day).toMatchObject({ nightly: true, sessionIds: ['mine'] })
+    expect(day.summary).toMatchObject({ present: 2, total: 2 })
   })
 })
 

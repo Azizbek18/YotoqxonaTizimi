@@ -141,6 +141,8 @@ export type DekanHistoryDay = {
   date: string
   /** Newest first; the first one opens the day's roster. */
   sessionIds: string[]
+  /** The automatic nightly roll-call ran this day (counted in `summary`, not openable). */
+  nightly: boolean
   /** A roll-call of this day is still running. */
   live: boolean
   summary: AttendanceSummary

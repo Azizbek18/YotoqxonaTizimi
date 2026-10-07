@@ -237,7 +237,7 @@ export default function DekanYoqlamaPage() {
           />
 
           {dorm && !viewId && (
-            <StartPanel key={dorm.id} dorm={dorm} ui={ui} isLight={isLight} onCreated={onCreated} />
+            <StartPanel dorm={dorm} ui={ui} isLight={isLight} onCreated={onCreated} />
           )}
 
           {viewId && roster && roster.session.id === viewId && (
@@ -455,6 +455,15 @@ function StartPanel({
   const [duration, setDuration] = useState<number>(60)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [busy, setBusy] = useState(false)
+
+  // One panel for whichever dorm tab is selected. It used to be re-created with
+  // key={dorm.id}, which left the previous dorm's form behind in the DOM
+  // (stacked duplicate forms), so reset the per-dorm inputs here instead.
+  const [formDormId, setFormDormId] = useState(dorm.id)
+  if (formDormId !== dorm.id) {
+    setFormDormId(dorm.id)
+    setMode('now'); setCustomStart(null); setCustomEnd(null); setDuration(60)
+  }
 
   useEffect(() => {
     const t = setInterval(() => setNowMs(Date.now()), 30_000)

@@ -44,6 +44,14 @@ async function pool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>
  * dead chat never stops the rest, and a provider outage never
  * fails the cron run.
  */
+/** "You are confirmed" receipt to the student's Telegram, best-effort. */
+export async function sendCheckinConfirmation(chatId: string, now: Date = new Date()): Promise<void> {
+  await sendTelegramChatMessage(
+    chatId,
+    `✅ Yo‘qlamada «bor» deb belgilandingiz.\n\nSoat ${hm(now)} da yotoqxonada ekanligingiz tasdiqlandi.`,
+  )
+}
+
 export const sendAttendanceReminders: ReminderSender = async (targets, info) => {
   const closeTime = hm(info.closesAt)
   const link = appUrl('/talaba/yoqlama')

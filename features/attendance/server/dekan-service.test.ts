@@ -360,7 +360,7 @@ describe('runCron', () => {
     expect(t.send).not.toHaveBeenCalled()
   })
 
-  it('sends a reminder only once the 10-minute interval is up', async () => {
+  it('sends a reminder only once the 5-minute interval is up', async () => {
     const t = setup()
     await t.service.create(scope, { dormId: D1, closesAt: min(90) })
     // Just created (round 1 already queued by the route): nothing is due yet.

@@ -22,7 +22,13 @@ export default function TalabaYoqlamaPage() {
       const headers = await getAuthHeaders()
       const res = await fetch('/api/attendance/summary', { headers, cache: 'no-store' })
       const data = await res.json()
-      setPhase(res.ok && data.hasOpen ? 'idle' : 'no_session')
+      if (res.ok && data.hasOpen && (data.myState === 'present' || data.myState === 'excused')) {
+        // Already confirmed — show it again after a reload instead of the button.
+        setResult({ status: 'already', state: data.myState })
+        setPhase('done')
+      } else {
+        setPhase(res.ok && data.hasOpen ? 'idle' : 'no_session')
+      }
     } catch {
       setPhase('no_session')
     } finally {
@@ -52,8 +58,13 @@ export default function TalabaYoqlamaPage() {
               accuracy: pos.coords.accuracy,
             }),
           })
-          const data = (await res.json()) as CheckinResult
-          setResult(data)
+          const data = (await res.json().catch(() => null)) as (CheckinResult & { error?: string }) | null
+          // A 4xx/5xx body is { error }, not a CheckinResult — never show it as a verdict.
+          if (!res.ok || !data || typeof data.status !== 'string') {
+            setResult({ status: 'unavailable' })
+          } else {
+            setResult(data)
+          }
         } catch {
           setResult({ status: 'unavailable' })
         } finally {
@@ -123,7 +134,18 @@ export default function TalabaYoqlamaPage() {
 
 function ResultView({ result, isLight, onRetry }: { result: CheckinResult; isLight: boolean; onRetry: () => void }) {
   const muted = isLight ? 'text-slate-500' : 'text-slate-400'
-  if (result.status === 'present' || (result.status === 'already' && result.state === 'present')) {
+  if (result.status === 'no_session') {
+    return (
+      <>
+        <div className={`mb-4 flex h-16 w-16 items-center justify-center rounded-full ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-white/5 text-slate-500'}`}>
+          <MapPin size={26} />
+        </div>
+        <h1 className="text-lg font-extrabold">Hozircha yo‘qlama yo‘q</h1>
+        <p className={`mt-1.5 text-sm ${muted}`}>Yo‘qlama boshlanganda sizga xabar keladi.</p>
+      </>
+    )
+  }
+  if (result.status === 'present' || (result.status === 'already' && (result.state === 'present' || result.state === 'excused'))) {
     return (
       <>
         <div className="mb-5 flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">

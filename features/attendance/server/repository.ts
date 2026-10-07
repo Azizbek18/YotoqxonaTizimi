@@ -200,6 +200,31 @@ export function createAttendanceRepository() {
       return (data ?? []) as AttendanceRecordRow[]
     },
 
+    /**
+     * Claim a nightly session's next reminder. Compare-and-set on
+     * last_reminded_at, so two overlapping cron runs can never both send.
+     */
+    async claimNightlyReminder(session: LegacySessionRow, now: Date): Promise<boolean> {
+      let q = supabase
+        .from('attendance_sessions')
+        .update({ last_reminded_at: now.toISOString(), reminder_count: session.reminder_count + 1 })
+        .eq('id', session.id).eq('kind', 'nightly').eq('status', 'open')
+      q = session.last_reminded_at ? q.eq('last_reminded_at', session.last_reminded_at) : q.is('last_reminded_at', null)
+      const { data, error } = await q.select('id')
+      if (error) throw error
+      return (data?.length ?? 0) > 0
+    },
+
+    /** One student's own record states in the given sessions (no seeding). */
+    async studentStates(studentId: string, sessionIds: string[]): Promise<AttendanceState[]> {
+      if (sessionIds.length === 0) return []
+      const { data, error } = await supabase
+        .from('attendance_records').select('state')
+        .eq('student_id', studentId).in('session_id', sessionIds)
+      if (error) throw error
+      return (data ?? []).map((r) => r.state as AttendanceState)
+    },
+
     async setRecordState(input: {
       sessionId: string
       studentId: string

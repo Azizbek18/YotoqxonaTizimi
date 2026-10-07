@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server'
 const mocks = vi.hoisted(() => ({
   runNightlyCron: vi.fn(),
   runDekanCron: vi.fn(),
+  runNightlyReminders: vi.fn(),
 }))
 
 vi.mock('@/features/attendance/server/dekan-service', () => ({
@@ -11,7 +12,7 @@ vi.mock('@/features/attendance/server/dekan-service', () => ({
 }))
 
 vi.mock('@/features/attendance/server/service', () => ({
-  createAttendanceService: () => ({ runNightlyCron: mocks.runNightlyCron }),
+  createAttendanceService: () => ({ runNightlyCron: mocks.runNightlyCron, runNightlyReminders: mocks.runNightlyReminders }),
 }))
 
 const { POST, GET } = await import('./route')
@@ -60,9 +61,10 @@ describe('POST /api/attendance/cron', () => {
   it('runs the nightly cron with a valid secret', async () => {
     mocks.runNightlyCron.mockResolvedValue({ opened: 1, closed: 2 })
     mocks.runDekanCron.mockResolvedValue({ started: 0, closed: 0, reminded: 0 })
+    mocks.runNightlyReminders.mockResolvedValue({ reminded: 0 })
     const res = await POST(req({ authorization: 'Bearer super-secret-cron-token' }))
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ ok: true, opened: 1, closed: 2, dekan: { started: 0, closed: 0, reminded: 0 } })
+    expect(await res.json()).toEqual({ ok: true, opened: 1, closed: 2, dekan: { started: 0, closed: 0, reminded: 0 }, reminders: { reminded: 0 } })
   })
 
   it('a failing dekan cron never takes the nightly cron down', async () => {

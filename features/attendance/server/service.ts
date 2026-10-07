@@ -12,6 +12,8 @@ import { sendPushWithoutBreaking } from '@/lib/push-notifications'
 import { notifyStudent } from '@/lib/notify-student'
 import { createAttendanceRepository, type AttendanceRepository, type LegacySessionRow, type ResidentRow } from './repository'
 import { createDekanAttendanceRepository, type DekanAttendanceRepository } from './dekan-repository'
+import { dormLabel } from './dekan-service'
+import { sendAttendanceReminders } from './dekan-notify'
 import type {
   AttendanceActor,
   AttendanceState,
@@ -41,6 +43,11 @@ function assertMarkerActor(actor: AttendanceActor): void {
 }
 
 const MAX_RELIABLE_ACCURACY_M = 300
+
+export const NIGHTLY_REMINDER_INTERVAL_MIN = 5
+const REMINDER_INTERVAL_MS = NIGHTLY_REMINDER_INTERVAL_MIN * 60_000
+// The cron ticks every ~5 minutes; a little slack keeps a tick from skipping a round.
+const REMINDER_SLACK_MS = 60_000
 
 function sessionMatchesActor(session: AttendanceSessionRow, actor: AttendanceActor): boolean {
   if (session.dorm_id !== actor.dormId) return false
@@ -238,7 +245,19 @@ export function createAttendanceService(
         const closes = [...open.map((s) => s.closes_at), ...(dekanOpen ? [dekanOpen.closes_at] : [])]
         closes.sort()
         const records = (await Promise.all(open.map((s) => repo.records(s.id)))).flat()
-        return { hasOpen: true as const, closesAt: closes[closes.length - 1], summary: summarise(records) }
+        // The student's OWN verdict, so the screen can say "you are confirmed"
+        // after a reload instead of offering the button again.
+        const mineIds = [
+          ...open.filter((s) => s.kind === 'nightly' || s.floor_number == null).map((s) => s.id),
+          ...(dekanOpen ? [dekanOpen.id] : []),
+        ]
+        const states = await repo.studentStates(actor.userId, mineIds)
+        const myState: AttendanceState | null =
+          states.includes('present') ? 'present'
+          : states.includes('absent') ? 'absent'
+          : states.includes('excused') ? 'excused'
+          : states.length > 0 ? 'unmarked' : null
+        return { hasOpen: true as const, closesAt: closes[closes.length - 1], summary: summarise(records), myState }
       }
 
       if (open.length === 0) return { hasOpen: false as const }
@@ -419,6 +438,46 @@ export function createAttendanceService(
       }
 
       return { openedSessions: opened.length }
+    },
+
+    /**
+     * Every NIGHTLY_REMINDER_INTERVAL_MIN minutes, Telegram + push to each
+     * resident of an open nightly session who has not confirmed yet. The
+     * start push is sent by runNightlyCron, so a session's first tick only
+     * starts the clock. Best-effort per dorm: one failure never stops the rest.
+     */
+    async runNightlyReminders(now: Date = new Date()) {
+      const result = { reminded: 0 }
+      for (const dorm of await repo.enabledDorms()) {
+        try {
+          const sessions = (await repo.openSessions(dorm.id))
+            .filter((s) => s.kind === 'nightly' && new Date(s.closes_at).getTime() > now.getTime())
+          for (const session of sessions) {
+            const last = session.last_reminded_at ? new Date(session.last_reminded_at).getTime() : null
+            if (last != null && now.getTime() < last + REMINDER_INTERVAL_MS - REMINDER_SLACK_MS) continue
+            if (!(await repo.claimNightlyReminder(session, now))) continue
+            if (last == null) continue // start push already went out; clock starts now
+
+            const unmarked = (await repo.records(session.id)).filter((r) => r.state === 'unmarked')
+            if (unmarked.length === 0) continue
+            const ids = unmarked.map((r) => r.student_id)
+            const [contacts, chats] = await Promise.all([dekan().contacts(ids), dekan().telegramChats(ids)])
+            await sendAttendanceReminders(
+              contacts.map((c) => ({ ...c, chatId: chats.get(c.id) ?? null })),
+              {
+                sessionId: session.id,
+                dormLabel: dormLabel(dorm),
+                closesAt: new Date(session.closes_at),
+                round: session.reminder_count + 1,
+              },
+            )
+            result.reminded += 1
+          }
+        } catch (error) {
+          console.error('Nightly attendance reminder failed:', dorm.id, error)
+        }
+      }
+      return result
     },
   }
 }

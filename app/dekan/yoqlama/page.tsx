@@ -567,7 +567,7 @@ function StartPanel({
       <div className={`mt-5 flex items-start gap-2.5 rounded-xl border p-3 text-xs ${ui.inset} ${ui.body}`}>
         <Send size={15} className={`mt-0.5 shrink-0 ${ui.accentText}`} />
         <span>
-          Boshlangach, tasdiqlamagan talabalarga <b>har 10 daqiqada</b> Telegram orqali eslatma boradi.
+          Boshlangach, tasdiqlamagan talabalarga <b>har 5 daqiqada</b> Telegram orqali eslatma boradi.
           Tugagach «Bosmagan» talabalar ro‘yxatini Excelga yuklab olasiz.
         </span>
       </div>

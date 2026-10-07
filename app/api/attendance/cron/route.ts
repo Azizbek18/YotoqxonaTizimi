@@ -21,7 +21,12 @@ export async function POST(request: NextRequest) {
       console.error('Dekan attendance cron failed:', error)
       return { error: true as const }
     })
-    return NextResponse.json({ ok: true, ...result, dekan })
+    // Nightly reminders (every 5 min to unconfirmed residents) are best-effort too.
+    const reminders = await Promise.resolve().then(() => createAttendanceService().runNightlyReminders()).catch((error) => {
+      console.error('Nightly attendance reminders failed:', error)
+      return { error: true as const }
+    })
+    return NextResponse.json({ ok: true, ...result, dekan, reminders })
   } catch (error) {
     console.error('Attendance cron failed:', error)
     return NextResponse.json({ error: 'cron failed' }, { status: 500 })

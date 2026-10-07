@@ -8,6 +8,9 @@ vi.mock('@/lib/notify-student', () => ({
   notifyStudent: (userId: string, message: unknown) => sendPushForUser(userId, message),
 }))
 
+const sendReminders = vi.fn(async (_targets: unknown, _info: unknown) => ({ attempted: 0 }))
+vi.mock('./dekan-notify', () => ({ sendAttendanceReminders: (t: unknown, i: unknown) => sendReminders(t, i) }))
+
 const { createAttendanceService } = await import('./service')
 import type { AttendanceActor } from '../types'
 
@@ -301,6 +304,61 @@ describe('runNightlyCron', () => {
     const r = repo({ enabledDorms: vi.fn(async () => [dormAt('21:00')]) })
     await createAttendanceService(r as never).runNightlyCron(midWindow)
     expect(r.autoCloseExpired).toHaveBeenCalledWith(DORM)
+  })
+})
+
+describe('runNightlyReminders', () => {
+  const dorm = {
+    id: DORM, number: '1', name: '', floor_count: 9, latitude: 41.311, longitude: 69.240,
+    checkin_radius_m: 1000, attendance_enabled: true, attendance_open_time: '21:00', attendance_close_time: '23:00',
+  }
+  const NOW = new Date('2026-09-01T17:00:00Z')
+  const dekanRepo = {
+    contacts: async (ids: string[]) => ids.map((id) => ({ id })),
+    telegramChats: async () => new Map([['s2', '555']]),
+  }
+  const sess = (last: string | null) => ({ ...openSession, closes_at: '2026-09-01T18:00:00Z', last_reminded_at: last, reminder_count: last ? 1 : 0 })
+  const base = (last: string | null, claim = true) => {
+    const claimNightlyReminder = vi.fn(async () => claim)
+    return Object.assign(repo({
+      enabledDorms: vi.fn(async () => [dorm]),
+      openSessions: vi.fn(async () => [sess(last)]),
+      claimNightlyReminder,
+    }), { claimNightlyReminder })
+  }
+
+  it('first tick only starts the clock (start push already went out)', async () => {
+    const r = base(null)
+    const out = await createAttendanceService(r as never, dekanRepo as never).runNightlyReminders(NOW)
+    expect(out.reminded).toBe(0)
+    expect(r.claimNightlyReminder).toHaveBeenCalled()
+    expect(sendReminders).not.toHaveBeenCalled()
+  })
+
+  it('reminds only unconfirmed residents once 5 minutes have passed', async () => {
+    const r = base('2026-09-01T16:55:00Z')
+    const out = await createAttendanceService(r as never, dekanRepo as never).runNightlyReminders(NOW)
+    expect(out.reminded).toBe(1)
+    expect(sendReminders).toHaveBeenCalledTimes(1)
+    const targets = sendReminders.mock.calls[0][0] as { id: string; chatId: string | null }[]
+    expect(targets).toEqual([{ id: 's2', chatId: '555' }])
+  })
+
+  it('does nothing before the interval is up', async () => {
+    const r = base('2026-09-01T16:58:00Z')
+    const out = await createAttendanceService(r as never, dekanRepo as never).runNightlyReminders(NOW)
+    expect(out.reminded).toBe(0)
+    expect(r.claimNightlyReminder).not.toHaveBeenCalled()
+  })
+
+  it('skips when another run claimed the round, and after the window closed', async () => {
+    const lost = base('2026-09-01T16:50:00Z', false)
+    await createAttendanceService(lost as never, dekanRepo as never).runNightlyReminders(NOW)
+    expect(sendReminders).not.toHaveBeenCalled()
+
+    const late = base('2026-09-01T16:50:00Z')
+    await createAttendanceService(late as never, dekanRepo as never).runNightlyReminders(new Date('2026-09-01T18:30:00Z'))
+    expect(late.claimNightlyReminder).not.toHaveBeenCalled()
   })
 })
 

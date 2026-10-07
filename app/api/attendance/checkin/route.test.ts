@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   checkRateLimit: vi.fn(),
   getClientIp: vi.fn(),
   checkin: vi.fn(),
+  telegramChats: vi.fn(),
+  sendCheckinConfirmation: vi.fn(),
 }))
 
 vi.mock('@/server/auth/guards', () => ({ requireActiveStudent: mocks.requireActiveStudent }))
@@ -14,6 +16,11 @@ vi.mock('@/lib/security', () => ({ checkRateLimit: mocks.checkRateLimit, getClie
 vi.mock('@/features/attendance/server/service', () => ({
   createAttendanceService: () => ({ checkin: mocks.checkin }),
 }))
+
+vi.mock('@/features/attendance/server/dekan-repository', () => ({
+  createDekanAttendanceRepository: () => ({ telegramChats: mocks.telegramChats }),
+}))
+vi.mock('@/features/attendance/server/dekan-notify', () => ({ sendCheckinConfirmation: mocks.sendCheckinConfirmation }))
 
 const { POST } = await import('./route')
 
@@ -82,5 +89,25 @@ describe('POST /api/attendance/checkin', () => {
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ status: 'checked_in' })
     expect(mocks.checkin).toHaveBeenCalledWith('s1', 'amit', { lat: 41.3, lng: 69.2, accuracy: 15 })
+  })
+
+  it('sends a Telegram receipt when the student is marked present', async () => {
+    mocks.checkin.mockResolvedValue({ status: 'present', distanceM: 10 })
+    mocks.telegramChats.mockResolvedValue(new Map([['s1', '777']]))
+    const res = await POST(req({ lat: 41.3, lng: 69.2, accuracy: 15 }))
+    expect(res.status).toBe(200)
+    expect(mocks.sendCheckinConfirmation).toHaveBeenCalledWith('777')
+  })
+
+  it('no receipt for non-present results, and a Telegram failure never fails the check-in', async () => {
+    mocks.checkin.mockResolvedValue({ status: 'outside', distanceM: 900 })
+    await POST(req({ lat: 41.3, lng: 69.2, accuracy: 15 }))
+    expect(mocks.sendCheckinConfirmation).not.toHaveBeenCalled()
+
+    mocks.checkin.mockResolvedValue({ status: 'present', distanceM: 10 })
+    mocks.telegramChats.mockRejectedValue(new Error('tg down'))
+    const res = await POST(req({ lat: 41.3, lng: 69.2, accuracy: 15 }))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ status: 'present', distanceM: 10 })
   })
 })

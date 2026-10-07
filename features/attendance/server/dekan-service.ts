@@ -36,6 +36,8 @@ const START_NOW_SLACK_MS = 90_000
 // GitHub's scheduler runs a few minutes apart; the claim below is a
 // compare-and-set, so a small slack only avoids skipping a round.
 const REMINDER_SLACK_MS = 60_000
+// Fixed for every roll-call (the stored reminder_interval_min is no longer read).
+const REMINDER_INTERVAL_MS = 5 * 60_000
 
 export function dormLabel(d: Pick<DormBrief, 'number' | 'name'>): string {
   const number = String(d.number ?? '').trim()
@@ -414,7 +416,7 @@ export function createDekanAttendanceService(
           continue
         }
         const last = open.last_reminded_at ? new Date(open.last_reminded_at).getTime() : 0
-        const dueAt = last + open.reminder_interval_min * 60_000 - REMINDER_SLACK_MS
+        const dueAt = last + REMINDER_INTERVAL_MS - REMINDER_SLACK_MS
         if (current.getTime() < dueAt) continue
         const round = open.reminder_count + 1
         if (!(await drepo.claimReminder(open, current))) continue

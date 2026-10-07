@@ -83,7 +83,7 @@ export default function DayByDayAttendance({
   useEffect(() => { setView(null); void load() }, [load])
   useEffect(() => { setLimit(PAGE_SIZE) }, [query, onlyMissed, dormId, days])
 
-  const ranDays = useMemo(() => view?.days.filter((d) => d.sessionIds.length > 0).length ?? 0, [view])
+  const ranDays = useMemo(() => view?.days.filter((d) => d.sessionIds.length > 0 || d.nightly).length ?? 0, [view])
 
   const rows = useMemo(() => {
     if (!view) return []
@@ -263,7 +263,8 @@ function DayStrip({
     <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
       {view.days.map((day) => {
         const { short, weekday } = dateParts(day.date)
-        const ran = day.sessionIds.length > 0
+        const ran = day.sessionIds.length > 0 || day.nightly
+        const openable = day.sessionIds.length > 0
         const pct = percent(day)
         const body = (
           <>
@@ -285,6 +286,7 @@ function DayStrip({
                   {day.summary.present} / {day.summary.total}
                   {day.summary.unmarked > 0 && ` · ${day.summary.unmarked} bosmagan`}
                 </p>
+                {day.nightly && <p className={`mt-1 text-[10px] font-semibold ${ui.faint}`}>Kechki yo‘qlama</p>}
               </>
             ) : (
               <p className={`mt-3 text-[11px] ${ui.faint}`}>Yo‘qlama yo‘q</p>
@@ -292,7 +294,7 @@ function DayStrip({
           </>
         )
         const base = `no-shelf w-[8.5rem] shrink-0 rounded-xl border p-3 text-left ${ui.inset}`
-        return ran ? (
+        return openable ? (
           <button
             key={day.date}
             type="button"
@@ -303,7 +305,7 @@ function DayStrip({
             {body}
           </button>
         ) : (
-          <div key={day.date} className={`${base} opacity-70`}>{body}</div>
+          <div key={day.date} className={`${base} ${ran ? '' : 'opacity-70'}`}>{body}</div>
         )
       })}
     </div>

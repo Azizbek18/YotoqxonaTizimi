@@ -166,6 +166,14 @@ describe('mark', () => {
       .rejects.toMatchObject({ status: 409 })
   })
 
+  it('never lets a sardor or tarbiyachi close a roll-call (dekan only)', async () => {
+    const r = repo()
+    const svc = createAttendanceService(r as never)
+    await expect(svc.close(sardor, 'sess-1')).rejects.toMatchObject({ status: 403 })
+    await expect(svc.close({ ...sardor, role: 'tarbiyachi' } as AttendanceActor, 'sess-1')).rejects.toMatchObject({ status: 403 })
+    expect(r.closeSession).not.toHaveBeenCalled()
+  })
+
   it('forbids a read-only dekan from marking', async () => {
     await expect(createAttendanceService(repo() as never).mark(dekan, 'sess-1', 's1', 'present'))
       .rejects.toMatchObject({ status: 403 })

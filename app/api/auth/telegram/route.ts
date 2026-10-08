@@ -83,13 +83,6 @@ export async function POST(request: NextRequest) {
     const email = authUser?.user?.email
     if (authUserError || !email) throw authUserError ?? new Error('Auth user has no email')
 
-    // Mint a one-time token for this user and redeem it immediately through the
-    // cookie-writing server client: it creates a real auth session (so the
-    // live-session checks pass) and sets the same cookies as a password login.
-    const { data: linkData, error: generateError } = await service.auth.admin.generateLink({ type: 'magiclink', email })
-    const tokenHash = linkData?.properties?.hashed_token
-    if (generateError || !tokenHash) throw generateError ?? new Error('generateLink returned no token')
-
     const response = NextResponse.json({ ok: true, role: 'talaba' })
     const supabase = createServerClient(supabaseUrl, anonKey, {
       cookies: {
@@ -101,7 +94,20 @@ export async function POST(request: NextRequest) {
         },
       },
     })
-    const { error: verifyError } = await supabase.auth.verifyOtp({ type: 'magiclink', token_hash: tokenHash })
+
+    // Mint a one-time token for this user and redeem it immediately through the
+    // cookie-writing server client: it creates a real auth session (so the
+    // live-session checks pass) and sets the same cookies as a password login.
+    // A user has ONE such token at a time, so a concurrent launch can invalidate
+    // ours between mint and redeem — retry (a few times) with a fresh one.
+    let verifyError: Error | null = null
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data: linkData, error: generateError } = await service.auth.admin.generateLink({ type: 'magiclink', email })
+      const tokenHash = linkData?.properties?.hashed_token
+      if (generateError || !tokenHash) throw generateError ?? new Error('generateLink returned no token')
+      ;({ error: verifyError } = await supabase.auth.verifyOtp({ type: 'magiclink', token_hash: tokenHash }))
+      if (!verifyError) break
+    }
     if (verifyError) throw verifyError
 
     await writeAuditLog({ eventType: 'telegram_login', status: 'success', ipAddress: ip, actorUserId: studentId, targetRole: 'talaba' })

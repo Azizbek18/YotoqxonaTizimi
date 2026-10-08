@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { getServiceSupabase } from '@/lib/server-supabase'
-import { sendTelegramChatMessage } from '@/lib/telegram'
+import { openInAppButton, sendTelegramChatMessage } from '@/lib/telegram'
 import { permitFacultyLabel } from '@/lib/faculties'
 
 // Numeric chat id (groups are negative) or an @public_channel handle —
@@ -84,7 +84,7 @@ export async function notifyDekanNewPermit(notice: NewPermitNotice): Promise<boo
     return await sendTelegramChatMessage(chatId, formatNewPermitTelegramMessage(notice), {
       parseMode: 'HTML',
       replyMarkup: {
-        inline_keyboard: [[{ text: 'Dekan paneli', url: `${process.env.NEXT_PUBLIC_APP_URL}/dekan/arizalar` }]],
+        inline_keyboard: [[openInAppButton('Dekan paneli', `${process.env.NEXT_PUBLIC_APP_URL}/dekan/arizalar`)]],
       },
     })
   } catch (error) {

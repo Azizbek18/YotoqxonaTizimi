@@ -1,6 +1,17 @@
 import 'server-only'
 
-type InlineKeyboard = { inline_keyboard: Array<Array<{ text: string; url: string }>> }
+type InlineButton = { text: string; url: string } | { text: string; web_app: { url: string } }
+type InlineKeyboard = { inline_keyboard: InlineButton[][] }
+
+/**
+ * A button that opens `url` inside Telegram as a Mini App (in-app webview)
+ * instead of leaving to the browser. Telegram only accepts https URLs for
+ * web_app buttons and rejects the WHOLE message otherwise, so anything else
+ * (e.g. http://localhost in dev) degrades to a plain link button.
+ */
+export function openInAppButton(text: string, url: string): InlineButton {
+  return url.startsWith('https://') ? { text, web_app: { url } } : { text, url }
+}
 
 type SendOptions = { replyMarkup?: InlineKeyboard; parseMode?: 'HTML' }
 

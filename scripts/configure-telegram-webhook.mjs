@@ -35,4 +35,14 @@ await api('setWebhook', {
   drop_pending_updates: false,
 })
 
+// Persistent menu button next to the message box: opens the site as a Mini App.
+// Logged-out users land on /login; staff are redirected to their own panel.
+await api('setChatMenuButton', {
+  menu_button: {
+    type: 'web_app',
+    text: 'Yotoqxona',
+    web_app: { url: new URL('/talaba/dashboard', appUrl).toString() },
+  },
+})
+
 console.log(`Telegram webhook tayyor: @${bot.username} -> ${new URL('/api/telegram/webhook', appUrl)}`)

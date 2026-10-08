@@ -1,7 +1,7 @@
 import 'server-only'
 import { notifyStudent } from '@/lib/notify-student'
 import { sendPushWithoutBreaking } from '@/lib/push-notifications'
-import { sendTelegramChatMessage } from '@/lib/telegram'
+import { openInAppButton, sendTelegramChatMessage } from '@/lib/telegram'
 import { tashkentNow } from '@/lib/tashkent-time'
 import type { StudentContact } from './dekan-repository'
 
@@ -81,7 +81,7 @@ export const sendAttendanceReminders: ReminderSender = async (targets, info) => 
         sendTelegramChatMessage(
           t.chatId,
           text,
-          link ? { replyMarkup: { inline_keyboard: [[{ text: 'Yotoqxonadaman ✅', url: link }]] } } : {},
+          link ? { replyMarkup: { inline_keyboard: [[openInAppButton('Yotoqxonadaman ✅', link)]] } } : {},
         ),
       )
     }
@@ -127,7 +127,7 @@ export async function sendCaptainAlert(alert: CaptainAlert): Promise<void> {
           `Yo‘qlama tugashiga ~${alert.minutesLeft} daqiqa qoldi.`,
           shown.map((n) => `• ${n}`).join('\n') + (more > 0 ? `\n… va yana ${more} ta` : ''),
         ].join('\n\n'),
-        link ? { replyMarkup: { inline_keyboard: [[{ text: 'Yo‘qlamani ochish', url: link }]] } } : {},
+        link ? { replyMarkup: { inline_keyboard: [[openInAppButton('Yo‘qlamani ochish', link)]] } } : {},
       ),
     )
   }

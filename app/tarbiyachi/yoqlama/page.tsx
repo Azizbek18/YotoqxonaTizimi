@@ -196,22 +196,6 @@ export default function TarbiyachiYoqlamaPage() {
     }
   }, [view, applyLocal, loadRoster, scheduleReload])
 
-  const closeSession = async () => {
-    if (!view) return
-    setBusy(true)
-    try {
-      const headers = { ...(await getAuthHeaders()), 'Content-Type': 'application/json' }
-      const res = await fetch('/api/attendance/close', {
-        method: 'POST', headers, body: JSON.stringify({ sessionId: view.session.id }),
-      })
-      if (!res.ok) throw new Error((await res.json()).error || 'Yopilmadi')
-      toast.success('Yo‘qlama yakunlandi')
-      await bootstrap()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Yopilmadi')
-    } finally { setBusy(false) }
-  }
-
   const resolveFlag = async (recordId: string, action: 'warn' | 'dismiss') => {
     try {
       const headers = { ...(await getAuthHeaders()), 'Content-Type': 'application/json' }
@@ -612,21 +596,6 @@ export default function TarbiyachiYoqlamaPage() {
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={closeSession}
-                disabled={busy}
-                className={`no-shelf inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all active:scale-95 shadow-sm shrink-0 ${
-                  totalUnmarked > 0
-                    ? isLight
-                      ? 'border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
-                      : 'border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700'
-                    : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-emerald-500/25 font-black'
-                }`}
-              >
-                {busy ? <Loader2 size={14} className="animate-spin" /> : <ClipboardCheck size={15} />}
-                <span>{busy ? 'Yakunlanmoqda…' : 'Yo‘qlamani yakunlash'}</span>
-              </button>
             </div>
           </motion.div>
         )}

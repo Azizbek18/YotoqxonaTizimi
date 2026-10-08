@@ -230,12 +230,12 @@ export function createAttendanceService(
     },
 
     async close(actor: AttendanceActor, sessionId: string) {
-      if (!actor.canWrite) throw new ApiError(403, 'Sizda yopish huquqi yo‘q')
-      const session = await repo.sessionById(sessionId)
-      if (!session || !sessionMatchesActor(session, actor)) throw new ApiError(404, 'Sessiya topilmadi')
-      if (session.status !== 'open') return { ok: true as const, already: true }
-      await repo.closeSession(sessionId, 'closed', actor.userId)
-      return { ok: true as const, already: false }
+      // Only the dekan may stop a roll-call (via the dekan service). A single
+      // sardor closing the shared nightly session locked every other floor out,
+      // so neither sardor nor tarbiyachi can end one — it auto-closes at its time.
+      void actor
+      void sessionId
+      throw new ApiError(403, 'Yo‘qlamani faqat dekan to‘xtata oladi')
     },
 
     /** Dashboard tile: the dorm's latest session and its counts. */

@@ -86,24 +86,6 @@ export default function SardorYoqlamaPage() {
     }
   }
 
-  const closeSession = async () => {
-    if (!view) return
-    setBusy(true)
-    try {
-      const headers = { ...(await getAuthHeaders()), 'Content-Type': 'application/json' }
-      const res = await fetch('/api/attendance/close', {
-        method: 'POST', headers, body: JSON.stringify({ sessionId: view.session.id }),
-      })
-      if (!res.ok) throw new Error((await res.json()).error || 'Yopilmadi')
-      toast.success('Yo‘qlama yakunlandi')
-      await bootstrap()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Yopilmadi')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   // text-slate-200, not -100: the light-mode override in globals.css only
   // lists text-{slate,gray,…}-{200..700}, so an inherited -100 stayed pale —
   // moot now that this page is permanently dark (leader-theme shell), but
@@ -133,7 +115,7 @@ export default function SardorYoqlamaPage() {
         ) : error ? (
           <div className="rounded-2xl border border-rose-500/25 bg-rose-500/10 p-5 text-sm text-rose-200">{error}</div>
         ) : view ? (
-          <AttendanceBoard view={view} onMark={mark} onClose={closeSession} busy={busy} />
+          <AttendanceBoard view={view} onMark={mark} busy={busy} />
         ) : (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-center backdrop-blur-xl min-[360px]:p-8">
             <p className="text-sm text-slate-300">Hozircha ochiq yo‘qlama yo‘q.</p>

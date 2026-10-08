@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const { sendTelegramAdminMessage, sendTelegramPhoto } = await import('./telegram')
+const { openInAppButton, sendTelegramAdminMessage, sendTelegramPhoto } = await import('./telegram')
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -56,5 +56,21 @@ describe('sendTelegramPhoto', () => {
     expect(url).toContain('/sendPhoto')
     const body = JSON.parse(String(init.body))
     expect(body).toMatchObject({ chat_id: '123', photo: 'https://cdn/x.jpg', caption: '<b>hi</b>', parse_mode: 'HTML' })
+  })
+})
+
+describe('openInAppButton', () => {
+  it('opens https URLs as a Mini App', () => {
+    expect(openInAppButton('Ochish', 'https://example.uz/a')).toEqual({
+      text: 'Ochish',
+      web_app: { url: 'https://example.uz/a' },
+    })
+  })
+
+  it('falls back to a plain link for non-https URLs (Telegram rejects them in web_app)', () => {
+    expect(openInAppButton('Ochish', 'http://localhost:3000/a')).toEqual({
+      text: 'Ochish',
+      url: 'http://localhost:3000/a',
+    })
   })
 })

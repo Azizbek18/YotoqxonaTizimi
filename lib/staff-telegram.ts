@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { getServiceSupabase } from '@/lib/server-supabase'
-import { sendTelegramChatMessage } from '@/lib/telegram'
+import { openInAppButton, sendTelegramChatMessage } from '@/lib/telegram'
 import { permitFacultyLabel } from '@/lib/faculties'
 
 // Numeric chat id (personal chats are positive, groups negative) or an
@@ -119,7 +119,7 @@ export async function notifyDormStaffNewAriza(notice: NewArizaNotice): Promise<v
       chatIds.map((chatId) =>
         sendTelegramChatMessage(chatId, message, {
           parseMode: 'HTML',
-          replyMarkup: { inline_keyboard: [[{ text: 'Tarbiyachi paneli', url }]] },
+          replyMarkup: { inline_keyboard: [[openInAppButton('Tarbiyachi paneli', url)]] },
         }).catch(() => false),
       ),
     )

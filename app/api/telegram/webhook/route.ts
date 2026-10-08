@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { bindPermitTelegramChat, formatPermitTelegramMessage } from '@/lib/permit-telegram'
 import { bindStudentTelegramChat } from '@/lib/student-telegram'
-import { sendTelegramChatMessage } from '@/lib/telegram'
+import { openInAppButton, sendTelegramChatMessage } from '@/lib/telegram'
 import { deliverPermitDocumentsSafely } from '@/lib/permit-documents'
 import { safeEqual } from '@/lib/security'
 
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
           `🔔 <b>Telegram ulandi</b>\n\nHurmatli <b>${student.name.replaceAll('<', '&lt;')}</b>, endi yuborgan arizalaringiz nusxasi va <b>yo‘qlama eslatmalari</b> shu botga keladi.`,
           {
             parseMode: 'HTML',
-            replyMarkup: { inline_keyboard: [[{ text: 'Arizalarim', url: `${process.env.NEXT_PUBLIC_APP_URL}/talaba/arizalar` }]] },
+            replyMarkup: { inline_keyboard: [[openInAppButton('Arizalarim', `${process.env.NEXT_PUBLIC_APP_URL}/talaba/arizalar`)]] },
           },
         )
         return NextResponse.json({ ok: true })

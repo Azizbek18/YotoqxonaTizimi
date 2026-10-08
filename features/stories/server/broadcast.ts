@@ -1,5 +1,5 @@
 import 'server-only'
-import { sendTelegramPhoto } from '@/lib/telegram'
+import { openInAppButton, sendTelegramPhoto } from '@/lib/telegram'
 import { notifyStudents } from '@/lib/notify-student'
 import type { AnnouncementStoryRow } from '@/types/database.generated'
 import { createStoryRepository, type StoryRepository } from './repository'
@@ -42,7 +42,7 @@ export async function broadcastStory(
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
     const replyMarkup = appUrl
       ? {
-          inline_keyboard: [[{ text: 'Yangiliklarni ochish', url: `${appUrl}/talaba/dashboard` }]],
+          inline_keyboard: [[openInAppButton('Yangiliklarni ochish', `${appUrl}/talaba/dashboard`)]],
         }
       : undefined
     const text = caption(story)

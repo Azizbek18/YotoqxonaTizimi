@@ -45,6 +45,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import ChangeEmailModal from '@/components/dekan/ChangeEmailModal'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { Skel } from '@/components/dekan/Skeletons'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -52,6 +53,7 @@ import {
   deleteFacultyStudent,
   fetchFacultyPayments,
   fetchFacultyStudents,
+  changeStudentEmail,
   fetchUnregisteredStudents,
   sendStudentWarning,
   setStudentBlacklist,
@@ -269,6 +271,8 @@ export default function DekanStudentsPage() {
   const [sendingWarning, setSendingWarning] = useState(false)
 
   const [blacklistModalOpen, setBlacklistModalOpen] = useState(false)
+  // Email-change dialog: a registered student, or an approved permit holder who hasn't registered.
+  const [emailTarget, setEmailTarget] = useState<{ kind: 'student' | 'permit'; id: string; name: string; email: string | null } | null>(null)
   const [blacklistReason, setBlacklistReason] = useState('')
   const [blacklistBusy, setBlacklistBusy] = useState(false)
 
@@ -610,6 +614,20 @@ export default function DekanStudentsPage() {
     }
   }
 
+  const handleChangeEmail = async (email: string) => {
+    if (!emailTarget) return
+    const target = emailTarget
+    const result = await changeStudentEmail({ target: target.kind, id: target.id, email })
+    if (target.kind === 'student') {
+      setStudents((prev) => prev.map((student) => (student.id === target.id ? { ...student, email: result.email } : student)))
+      setSelectedStudent((prev) => (prev && prev.id === target.id ? { ...prev, email: result.email } : prev))
+    } else {
+      setUnregistered((prev) => prev.map((row) => (row.id === target.id ? { ...row, email: result.email } : row)))
+    }
+    toast.success('Email yangilandi')
+    setEmailTarget(null)
+  }
+
   const handleToggleBlacklist = async () => {
     if (!selectedStudent || blacklistBusy) return
     const next = !selectedStudent.blacklisted
@@ -902,6 +920,20 @@ export default function DekanStudentsPage() {
                 <p className={`mt-0.5 truncate text-[10px] ${ui.faint}`}>
                   {[row.direction, row.course ? `${row.course}-kurs` : null, row.phone].filter(Boolean).join(' • ') || '—'}
                 </p>
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <p className={`min-w-0 truncate text-[10px] ${ui.faint}`}>{row.email || "Email yo'q"}</p>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => setEmailTarget({ kind: 'permit', id: row.id, name: row.full_name, email: row.email ?? null })}
+                      aria-label={`${row.full_name} emailini o'zgartirish`}
+                      title="Emailni o'zgartirish"
+                      className={`no-shelf inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold transition-colors ${ui.accentSoft}`}
+                    >
+                      <Edit2 size={10} /> Email
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
                 {row.room_number ? (
@@ -1571,6 +1603,16 @@ export default function DekanStudentsPage() {
                                 >
                                   <Edit2 size={14} />
                                   Tahrirlash
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setActionsMenuOpen(false)
+                                    setEmailTarget({ kind: 'student', id: selectedStudent.id, name: selectedStudent.full_name, email: selectedStudent.email ?? null })
+                                  }}
+                                  className={`no-shelf flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors ${ui.body} ${isLight ? 'hover:bg-slate-100 hover:text-slate-900' : 'hover:bg-slate-800 hover:text-white'}`}
+                                >
+                                  <Mail size={14} />
+                                  Emailni o&apos;zgartirish
                                 </button>
                                 <button
                                   onClick={() => { setActionsMenuOpen(false); openWarningModal() }}
@@ -2334,6 +2376,15 @@ export default function DekanStudentsPage() {
       </ConfirmModal>
 
       {/* Blacklist / reinstate modal */}
+      <ChangeEmailModal
+        isOpen={emailTarget !== null}
+        name={emailTarget?.name ?? ''}
+        currentEmail={emailTarget?.email ?? null}
+        registered={emailTarget?.kind === 'student'}
+        onClose={() => setEmailTarget(null)}
+        onSubmit={handleChangeEmail}
+      />
+
       <ConfirmModal
         isOpen={blacklistModalOpen}
         title={selectedStudent?.blacklisted ? 'Chetlatishni bekor qilish' : 'Yotoqxonadan chetlatish'}

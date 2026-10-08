@@ -5,6 +5,12 @@ import type { StudentScope, StudentWarningLevel } from '../types'
 const STUDENT_PROFILE_COLUMNS =
   'id, full_name, middle_name, email, phone_number, avatar_url, gender, faculty, direction, course, status, room_number, assigned_floor, is_floor_captain, is_council_chair, warning_count, blacklisted, birth_date, nationality, country, study_type, entry_date, region, district, mahalla, passport_series, jshshir, passport_date, father_full_name, father_workplace, father_phone, mother_full_name, mother_workplace, mother_phone, created_at'
 
+// ilike treats `_` and `%` as wildcards; an address like a_b@x.uz must match
+// literally, so escape them (and the escape char) before building the pattern.
+function escapeLike(value: string) {
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`)
+}
+
 export function createFacultyStudentsRepository() {
   const supabase = getServiceSupabase()
   return {
@@ -110,6 +116,94 @@ export function createFacultyStudentsRepository() {
         .maybeSingle()
       if (error) throw error
       return data
+    },
+
+    // Rows the email-change flow needs: who the person is, which faculty owns
+    // them, and the identifiers that tie a permit to an account.
+    async findStudentForEmail(id: string) {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, full_name, email, faculty, role, jshshir')
+        .eq('id', id)
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+
+    async findPermitForEmail(id: string) {
+      const { data, error } = await supabase
+        .from('permit_requests')
+        .select('id, full_name, email, faculty, status, jshshir, passport_series')
+        .eq('id', id)
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+
+    // True when a registered account already carries this passport/JSHSHIR.
+    async accountExistsForPermit(permit: { jshshir: string | null; passport_series: string | null }) {
+      const checks = []
+      if (permit.jshshir) checks.push(supabase.from('users').select('id').eq('jshshir', permit.jshshir).limit(1))
+      if (permit.passport_series) checks.push(supabase.from('users').select('id').eq('passport_series', permit.passport_series).limit(1))
+      for (const result of await Promise.all(checks)) {
+        if (result.error) throw result.error
+        if ((result.data ?? []).length > 0) return true
+      }
+      return false
+    },
+
+    // Is the address held by anyone other than the person being changed?
+    // ilike with the pattern escaped, so `_` / `%` in an address stay literal.
+    async emailTaken(email: string, except: { userId?: string; permitIds?: string[] }) {
+      const pattern = escapeLike(email)
+      const [users, permits] = await Promise.all([
+        supabase.from('users').select('id').ilike('email', pattern).limit(5),
+        supabase.from('permit_requests').select('id').ilike('email', pattern).limit(5),
+      ])
+      if (users.error) throw users.error
+      if (permits.error) throw permits.error
+      const skipPermits = new Set(except.permitIds ?? [])
+      return (users.data ?? []).some((row) => String(row.id) !== except.userId)
+        || (permits.data ?? []).some((row) => !skipPermits.has(String(row.id)))
+    },
+
+    // Every permit row that belongs to this account (same JSHSHIR or the old
+    // address), so a registered student's applications follow their new email.
+    async permitIdsForAccount(jshshir: string | null, oldEmail: string | null) {
+      const ids = new Set<string>()
+      if (jshshir) {
+        const { data, error } = await supabase.from('permit_requests').select('id').eq('jshshir', jshshir)
+        if (error) throw error
+        for (const row of data ?? []) ids.add(String(row.id))
+      }
+      if (oldEmail) {
+        const pattern = escapeLike(oldEmail)
+        const { data, error } = await supabase.from('permit_requests').select('id').ilike('email', pattern)
+        if (error) throw error
+        for (const row of data ?? []) ids.add(String(row.id))
+      }
+      return [...ids]
+    },
+
+    async setUserEmail(id: string, email: string) {
+      const { data, error } = await supabase
+        .from('users')
+        .update({ email, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('role', 'talaba')
+        .select('id')
+        .maybeSingle()
+      if (error) throw error
+      return Boolean(data)
+    },
+
+    async setPermitEmails(ids: string[], email: string) {
+      if (ids.length === 0) return
+      const { error } = await supabase
+        .from('permit_requests')
+        .update({ email, updated_at: new Date().toISOString() })
+        .in('id', ids)
+      if (error) throw error
     },
 
     // Bar / un-bar a student. Blacklisting frees their bed too — room,

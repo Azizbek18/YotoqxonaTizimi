@@ -2,6 +2,8 @@
 
 import { apiRequest as requestJson } from '@/lib/api-client'
 import type {
+  ChangeEmailInput,
+  ChangeEmailResult,
   FacultyPaymentRecord,
   SendWarningInput,
   SendWarningResult,
@@ -29,6 +31,16 @@ export async function fetchUnregisteredStudents() {
 export async function fetchFacultyPayments() {
   const result = await requestJson<{ payments: FacultyPaymentRecord[] }>('/api/dekan/students/payments')
   return result.payments
+}
+
+// Replace a student's (or an unregistered permit holder's) email. Dekan /
+// superadmin only — the route 403s everyone else.
+export function changeStudentEmail(input: ChangeEmailInput) {
+  return requestJson<ChangeEmailResult>('/api/dekan/students/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
 }
 
 export function sendStudentWarning(input: SendWarningInput) {

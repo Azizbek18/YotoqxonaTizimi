@@ -4,7 +4,9 @@ import { sendStudentBlacklistEmail, sendStudentWarningEmail } from '@/lib/email'
 import { sendPushWithoutBreaking } from '@/lib/push-notifications'
 import { notifyStudent } from '@/lib/notify-student'
 import { writeAuditLog } from '@/lib/audit-log'
+import { isDuplicateAuthUserError, updateAuthUserEmailSafely } from '@/lib/supabase-admin-auth'
 import type {
+  ChangeEmailResult,
   FacultyPaymentRecord,
   SendWarningResult,
   SetBlacklistResult,
@@ -20,6 +22,8 @@ import { createFacultyStudentsRepository, type FacultyStudentsRepository } from 
 const WARNING_LEVELS = new Set<StudentWarningLevel>(['info', 'warning'])
 const MESSAGE_MIN = 5
 const MESSAGE_MAX = 1000
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const EMAIL_MAX = 254
 
 const WARNING_TITLES: Record<StudentWarningLevel, string> = {
   info: 'Eslatma (dekan)',
@@ -122,6 +126,94 @@ export function createFacultyStudentsService(
       }))
 
       return { ok: true as const, level, warningCount: Number(result.new_warning_count) }
+    },
+
+    // Replace a person's email — the fix for "wrong address typed at ariza time",
+    // which would otherwise be a hand-run SQL edit. Dekan/superadmin only, and
+    // only inside their own faculty.
+    async changeEmail(
+      facultyValue: string | null,
+      value: unknown,
+      actorId: string | null = null,
+    ): Promise<ChangeEmailResult> {
+      const faculty = requireFaculty(facultyValue)
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, "So'rov noto'g'ri")
+      const input = value as Record<string, unknown>
+
+      const target = input.target === 'student' || input.target === 'permit' ? input.target : null
+      if (!target) throw new ApiError(400, "So'rov noto'g'ri")
+      const id = typeof input.id === 'string' ? input.id.trim() : ''
+      if (!id) throw new ApiError(400, 'Talaba tanlanmagan')
+      const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : ''
+      if (!email || email.length > EMAIL_MAX || !EMAIL_PATTERN.test(email)) {
+        throw new ApiError(400, "Email manzili noto'g'ri")
+      }
+
+      if (target === 'permit') {
+        const permit = await repository.findPermitForEmail(id)
+        if (!permit) throw new ApiError(404, 'Ariza topilmadi')
+        if (!sameFaculty(permit.faculty, faculty)) {
+          throw new ApiError(403, "Boshqa fakultet talabasining emailini o'zgartirib bo'lmaydi")
+        }
+        if (permit.status !== 'approved') {
+          throw new ApiError(409, "Faqat tasdiqlangan, hali ro'yxatdan o'tmagan ariza emailini shu yerdan o'zgartirish mumkin")
+        }
+        if (await repository.accountExistsForPermit({ jshshir: permit.jshshir, passport_series: permit.passport_series })) {
+          throw new ApiError(409, "Talaba ro'yxatdan o'tgan — emailni talaba kartasidan o'zgartiring")
+        }
+        if ((permit.email ?? '').trim().toLowerCase() === email) return { ok: true as const, email }
+        if (await repository.emailTaken(email, { permitIds: [id] })) {
+          throw new ApiError(409, 'Bu email boshqa foydalanuvchida bor')
+        }
+        await repository.setPermitEmails([id], email)
+        await writeAuditLog({
+          eventType: 'student.email_change',
+          status: 'success',
+          actorUserId: actorId,
+          targetRole: 'yollanma',
+          details: { target, permitId: id, faculty, from: permit.email, to: email },
+        })
+        return { ok: true as const, email }
+      }
+
+      const student = await repository.findStudentForEmail(id)
+      if (!student) throw new ApiError(404, 'Talaba topilmadi')
+      if (student.role !== 'talaba') throw new ApiError(403, "Faqat talaba emailini o'zgartirish mumkin")
+      if (!sameFaculty(student.faculty, faculty)) {
+        throw new ApiError(403, "Boshqa fakultet talabasining emailini o'zgartirib bo'lmaydi")
+      }
+      const oldEmail = student.email ?? null
+      if ((oldEmail ?? '').trim().toLowerCase() === email) return { ok: true as const, email }
+
+      const permitIds = await repository.permitIdsForAccount(student.jshshir ?? null, oldEmail)
+      if (await repository.emailTaken(email, { userId: id, permitIds })) {
+        throw new ApiError(409, 'Bu email boshqa foydalanuvchida bor')
+      }
+
+      // Sign-in email first: it is the one a duplicate can still reject. The
+      // profile + permit rows follow; if they fail the Auth change is undone so
+      // the account never ends up with a login address its profile disagrees with.
+      const auth = await updateAuthUserEmailSafely(id, email)
+      if (auth.error) {
+        if (isDuplicateAuthUserError(auth.error)) throw new ApiError(409, 'Bu email boshqa foydalanuvchida bor')
+        throw new ApiError(502, "Kirish emailini yangilab bo'lmadi, keyinroq urinib ko'ring")
+      }
+      try {
+        if (!(await repository.setUserEmail(id, email))) throw new ApiError(404, 'Talaba topilmadi')
+        await repository.setPermitEmails(permitIds, email)
+      } catch (error) {
+        if (oldEmail) await updateAuthUserEmailSafely(id, oldEmail)
+        throw error
+      }
+
+      await writeAuditLog({
+        eventType: 'student.email_change',
+        status: 'success',
+        actorUserId: actorId,
+        targetRole: 'talaba',
+        details: { target, studentId: id, faculty, from: oldEmail, to: email },
+      })
+      return { ok: true as const, email }
     },
 
     async setBlacklist(

@@ -158,3 +158,22 @@ export type UnregisteredPermitRow = {
   assigned_floor: number | null
   created_at: string
 }
+
+/**
+ * Replace a person's email. `student` = a registered account (sign-in email +
+ * profile + their permit rows); `permit` = an approved yo'llanma holder who has
+ * not registered yet (permit row only — the registration wizard and its OTP
+ * use this address).
+ */
+export type ChangeEmailTarget = 'student' | 'permit'
+
+export type ChangeEmailInput = {
+  target: ChangeEmailTarget
+  id: string
+  email: string
+}
+
+export type ChangeEmailResult = {
+  ok: true
+  email: string
+}

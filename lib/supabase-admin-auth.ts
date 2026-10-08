@@ -135,3 +135,36 @@ export async function updateAuthUserPasswordSafely(
     return { error: null }
   })
 }
+
+// Change the sign-in email of an existing Auth user. Admin PUT updates the
+// auth.users row and its email identity together and skips the confirmation
+// round-trip (email_confirm), so the new address works immediately. Raw REST
+// for the same reason as the helpers above; a duplicate address comes back as
+// an `email_exists` error the caller can map to a 409.
+export async function updateAuthUserEmailSafely(
+  id: string,
+  email: string,
+): Promise<{ error: { message?: string; code?: string } | null }> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) throw new Error('NEXT_PUBLIC_SUPABASE_URL yoki SUPABASE_SERVICE_ROLE_KEY topilmadi')
+
+  return withKidRetry(async () => {
+    const response = await fetch(`${url}/auth/v1/admin/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ email, email_confirm: true }),
+      cache: 'no-store',
+    })
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({})) as Record<string, unknown>
+      return {
+        error: {
+          message: String(body.msg || body.error_description || body.error || "Emailni yangilab bo'lmadi"),
+          code: typeof body.code === 'string' ? body.code : undefined,
+        },
+      }
+    }
+    return { error: null }
+  })
+}

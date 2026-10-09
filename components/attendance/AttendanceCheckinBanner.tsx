@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { MapPin, ChevronRight } from 'lucide-react'
-import { getAuthHeaders } from '@/lib/auth-session'
+import { fetchAttendanceSummary } from '@/features/attendance/client/summary'
 
 // Shown on the student dashboard only while a yo'qlama session is open for
 // their building. Renders nothing otherwise.
@@ -14,10 +14,8 @@ export default function AttendanceCheckinBanner({ isLight }: { isLight: boolean 
     let alive = true
     ;(async () => {
       try {
-        const headers = await getAuthHeaders()
-        const res = await fetch('/api/attendance/summary', { headers, cache: 'no-store' })
-        const data = await res.json()
-        if (alive && res.ok && data.hasOpen) setClosesAt(data.closesAt ?? null)
+        const data = await fetchAttendanceSummary()
+        if (alive && data.ok && data.hasOpen) setClosesAt(data.closesAt ?? null)
       } catch { /* silent — a missing dorm / config just hides the banner */ }
     })()
     return () => { alive = false }
@@ -29,6 +27,7 @@ export default function AttendanceCheckinBanner({ isLight }: { isLight: boolean 
   return (
     <Link
       href="/talaba/yoqlama"
+      prefetch={false}
       // Opts out of the global talaba-ui "button shelf" CSS (app/talaba/layout.tsx)
       // — that rule repaints ANY colored <a class="bg-emerald-...">  as a
       // branded purple/cyan CTA button, which clobbered this plain info

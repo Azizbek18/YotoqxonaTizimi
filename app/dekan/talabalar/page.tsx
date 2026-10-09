@@ -23,7 +23,9 @@ import {
   Copy,
   CreditCard,
   DollarSign,
+  Download,
   Edit2,
+  Loader2,
   FileText,
   GraduationCap,
   Home,
@@ -46,6 +48,8 @@ import {
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import ChangeEmailModal from '@/components/dekan/ChangeEmailModal'
+import UnregisteredPermitDetail from '@/components/dekan/UnregisteredPermitDetail'
+import { downloadUnregisteredXlsx } from '@/features/faculty-students/client/unregistered-export'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { Skel } from '@/components/dekan/Skeletons'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -271,6 +275,9 @@ export default function DekanStudentsPage() {
   const [sendingWarning, setSendingWarning] = useState(false)
 
   const [blacklistModalOpen, setBlacklistModalOpen] = useState(false)
+  // Right-hand panel in the "Ro'yxatdan o'tmagan" folder: the opened permit holder.
+  const [selectedPermit, setSelectedPermit] = useState<UnregisteredPermitRow | null>(null)
+  const [exportingUnregistered, setExportingUnregistered] = useState(false)
   // Email-change dialog: a registered student, or an approved permit holder who hasn't registered.
   const [emailTarget, setEmailTarget] = useState<{ kind: 'student' | 'permit'; id: string; name: string; email: string | null } | null>(null)
   const [blacklistReason, setBlacklistReason] = useState('')
@@ -410,6 +417,14 @@ export default function DekanStudentsPage() {
     setSearchTerm('')
     setFilterRoom('')
   }
+
+  // Leaving the folder, or a reload/dorm switch dropping the row, closes the permit panel.
+  useEffect(() => {
+    if (!selectedPermit) return
+    if (activeFolder !== 'unregistered' || !unregistered.some((row) => row.id === selectedPermit.id)) {
+      setSelectedPermit(null)
+    }
+  }, [activeFolder, unregistered, selectedPermit])
 
   // A reload may move the open student to a different building.
   useEffect(() => {
@@ -623,6 +638,7 @@ export default function DekanStudentsPage() {
       setSelectedStudent((prev) => (prev && prev.id === target.id ? { ...prev, email: result.email } : prev))
     } else {
       setUnregistered((prev) => prev.map((row) => (row.id === target.id ? { ...row, email: result.email } : row)))
+      setSelectedPermit((prev) => (prev && prev.id === target.id ? { ...prev, email: result.email } : prev))
     }
     toast.success('Email yangilandi')
     setEmailTarget(null)
@@ -867,6 +883,29 @@ export default function DekanStudentsPage() {
       && (!room || (row.room_number ?? '').toLowerCase().includes(room))
   })
 
+  // "12-yot. " prefix for a permit's building (blank when it can't be resolved).
+  const dormNumberLabel = (dormId: string | null) => {
+    const dorm = dorms.find((d) => d.dormId === dormId)
+    return dorm ? `${dorm.number}-yot. ` : ''
+  }
+
+  const handleExportUnregistered = async () => {
+    if (exportingUnregistered || unregisteredVisible.length === 0) return
+    setExportingUnregistered(true)
+    try {
+      await downloadUnregisteredXlsx(unregisteredVisible, (dormId) => {
+        const dorm = dorms.find((d) => d.dormId === dormId)
+        return dorm ? `${dorm.number}-yotoqxona` : ''
+      })
+      toast.success('Excel fayl yuklab olindi')
+    } catch (error) {
+      console.error("Ro'yxatdan o'tmaganlarni eksport qilishda xato:", error)
+      toast.error("Excel faylni yaratib bo'lmadi")
+    } finally {
+      setExportingUnregistered(false)
+    }
+  }
+
   const renderUnregistered = () => {
     if (unregisteredLoading || dormsLoading) {
       return (
@@ -893,54 +932,71 @@ export default function DekanStudentsPage() {
           Ulardan <b>{withRoom} tasiga</b> xona berilgan (o&apos;rin band), qolgan {unregistered.length - withRoom} tasi xonasiz.
           Ro&apos;yxatdan o&apos;tgach avtomatik shu xonaga joylashadi.
         </div>
+        <div className="mx-2 mb-2 flex items-center justify-between gap-2">
+          <span className={`text-[11px] font-bold ${ui.muted}`}>
+            {unregisteredVisible.length === unregistered.length
+              ? `${unregistered.length} ta`
+              : `${unregisteredVisible.length} / ${unregistered.length} ta`}
+          </span>
+          <button
+            type="button"
+            onClick={() => void handleExportUnregistered()}
+            disabled={unregisteredVisible.length === 0 || exportingUnregistered}
+            className={`no-shelf inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-colors disabled:opacity-50 ${ui.accentSoft}`}
+          >
+            {exportingUnregistered ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+            Excel yuklab olish
+          </button>
+        </div>
         {unregisteredVisible.length === 0 ? (
           <div className={`p-8 text-center text-xs ${ui.faint}`}>
             {unregistered.length === 0 ? "Bu bo'limda ro'yxatdan o'tmagan talaba yo'q" : 'Talaba topilmadi'}
           </div>
         ) : unregisteredVisible.map((row) => {
           const accent = genderAccent(row.gender)
-          const dorm = dorms.find((d) => d.dormId === row.dorm_id)
+          const isActive = selectedPermit?.id === row.id
           return (
             <div
               key={row.id}
-              className={`mx-1.5 my-1 flex w-[calc(100%-12px)] items-center gap-2.5 rounded-xl border p-2.5 ${
-                isLight ? 'border-slate-200/70 bg-white' : 'border-slate-800 bg-slate-800/40'
+              role="button"
+              tabIndex={0}
+              aria-pressed={isActive}
+              onClick={() => setSelectedPermit(row)}
+              onKeyDown={(event) => {
+                if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                  event.preventDefault()
+                  setSelectedPermit(row)
+                }
+              }}
+              className={`mx-1.5 my-1 w-[calc(100%-12px)] cursor-pointer rounded-xl border p-2.5 text-left transition-colors ${
+                isActive
+                  ? isLight ? 'border-indigo-300 bg-indigo-50' : 'border-indigo-500/50 bg-indigo-500/10'
+                  : isLight ? 'border-slate-200/70 bg-white hover:bg-slate-50' : 'border-slate-800 bg-slate-800/40 hover:bg-slate-800/70'
               }`}
             >
-              <div className="relative shrink-0">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl border text-[11px] font-black ${
-                  isLight ? 'border-slate-200 bg-slate-100 text-slate-600' : 'border-slate-700 bg-slate-800 text-slate-300'
-                }`}>
-                  {getInitials(row.full_name)}
+              <div className="flex items-start gap-2.5">
+                <div className="relative shrink-0">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl border text-[11px] font-black ${
+                    isLight ? 'border-slate-200 bg-slate-100 text-slate-600' : 'border-slate-700 bg-slate-800 text-slate-300'
+                  }`}>
+                    {getInitials(row.full_name)}
+                  </div>
+                  <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ${isLight ? 'ring-white' : 'ring-slate-900'} ${accent.dot}`} />
                 </div>
-                <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ${isLight ? 'ring-white' : 'ring-slate-900'} ${accent.dot}`} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className={`truncate text-xs font-bold leading-tight ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>{row.full_name}</p>
-                <p className={`mt-0.5 truncate text-[10px] ${ui.faint}`}>
-                  {[row.direction, row.course ? `${row.course}-kurs` : null, row.phone].filter(Boolean).join(' • ') || '—'}
-                </p>
-                <div className="mt-0.5 flex items-center gap-1.5">
-                  <p className={`min-w-0 truncate text-[10px] ${ui.faint}`}>{row.email || "Email yo'q"}</p>
-                  {!readOnly && (
-                    <button
-                      type="button"
-                      onClick={() => setEmailTarget({ kind: 'permit', id: row.id, name: row.full_name, email: row.email ?? null })}
-                      aria-label={`${row.full_name} emailini o'zgartirish`}
-                      title="Emailni o'zgartirish"
-                      className={`no-shelf inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold transition-colors ${ui.accentSoft}`}
-                    >
-                      <Edit2 size={10} /> Email
-                    </button>
-                  )}
+                <div className="min-w-0 flex-1">
+                  <p className={`break-words text-xs font-bold leading-snug ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>{row.full_name}</p>
+                  <p className={`mt-0.5 break-words text-[10px] ${ui.faint}`}>
+                    {[directionLabel(row.direction), row.course ? `${row.course}-kurs` : null, row.phone].filter(Boolean).join(' • ') || '—'}
+                  </p>
+                  <p className={`mt-0.5 break-all text-[10px] ${ui.faint}`}>{row.email || "Email yo'q"}</p>
                 </div>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-[50px]">
                 {row.room_number ? (
                   <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-black ${
                     isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/15 text-emerald-300'
                   }`}>
-                    {dorm ? `${dorm.number}-yot. ` : ''}{row.room_number}-xona
+                    {dormNumberLabel(row.dorm_id)}{row.room_number}-xona
                   </span>
                 ) : (
                   <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-black ${
@@ -950,6 +1006,20 @@ export default function DekanStudentsPage() {
                 <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-black ${
                   isLight ? 'bg-amber-100 text-amber-800' : 'bg-amber-500/15 text-amber-300'
                 }`}>Ro&apos;yxatdan o&apos;tmagan</span>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setEmailTarget({ kind: 'permit', id: row.id, name: row.full_name, email: row.email ?? null })
+                    }}
+                    aria-label={`${row.full_name} emailini o'zgartirish`}
+                    title="Emailni o'zgartirish"
+                    className={`no-shelf ml-auto inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold transition-colors ${ui.accentSoft}`}
+                  >
+                    <Edit2 size={10} /> Email
+                  </button>
+                )}
               </div>
             </div>
           )
@@ -1145,7 +1215,7 @@ export default function DekanStudentsPage() {
         <div
           className={`col-span-12 h-full min-h-0 border-r md:col-span-4 lg:col-span-4 xl:col-span-3 ${
             isLight ? 'border-slate-200/80 bg-slate-50/50' : 'border-slate-800 bg-slate-900/50'
-          } ${selectedStudent ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}
+          } ${selectedStudent || selectedPermit ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}
         >
           {/* Search inputs */}
           <div className={`p-3 space-y-2 border-b ${isLight ? 'border-slate-200/80' : 'border-slate-800'}`}>
@@ -1408,9 +1478,20 @@ export default function DekanStudentsPage() {
         <div
           className={`col-span-12 h-full min-h-0 overflow-hidden md:col-span-8 lg:col-span-8 xl:col-span-9 ${
             isLight ? 'bg-slate-50/70' : 'bg-slate-950/70'
-          } ${!selectedStudent ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}
+          } ${!selectedStudent && !selectedPermit ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}
         >
-          {!selectedStudent ? (
+          {selectedPermit ? (
+            <UnregisteredPermitDetail
+              row={selectedPermit}
+              dormLabel={(() => {
+                const dorm = dorms.find((d) => d.dormId === selectedPermit.dorm_id)
+                return dorm ? `${dorm.number}-yotoqxona` : ''
+              })()}
+              readOnly={readOnly}
+              onBack={() => setSelectedPermit(null)}
+              onChangeEmail={() => setEmailTarget({ kind: 'permit', id: selectedPermit.id, name: selectedPermit.full_name, email: selectedPermit.email ?? null })}
+            />
+          ) : !selectedStudent ? (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
               <div className={`mb-4 rounded-3xl p-6 border ${
                 isLight ? 'bg-white border-slate-200/80 text-slate-400 shadow-xs' : 'bg-slate-900 border-slate-800 text-slate-500'

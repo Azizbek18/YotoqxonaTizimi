@@ -148,10 +148,18 @@ export type UnregisteredPermitRow = {
   full_name: string
   gender: string | null
   phone: string | null
+  relative_phone: string | null
   email: string | null
+  faculty: string | null
   direction: string | null
   course: number | null
+  study_type: string | null
   application_type: string | null
+  origin_region: string | null
+  origin_country: string | null
+  ai_review: string | null
+  passport_series: string | null
+  jshshir: string | null
   room_number: string | null
   dorm_id: string | null
   block: string | null

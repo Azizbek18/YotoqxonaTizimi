@@ -4,10 +4,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Send, Loader2, BellRing } from 'lucide-react'
 import { getAuthHeaders } from '@/lib/auth-session'
+import { gatePollDelay } from './telegram-gate-poll'
 
-// Every blocked student polls; keep it cheap (the prod plan has a tight compute
-// budget): 10 s, and never while the tab is in the background.
-const POLL_MS = 10_000
+// Every blocked student polls, and each check is a serverless invocation on a
+// tight compute budget — so it backs off (30 s → 3 min), never runs in a
+// background tab, and re-checks at once when the student returns from Telegram.
+// See telegram-gate-poll.ts.
 
 // Blocks the student panel until the account is linked to the Telegram bot:
 // yo'qlama reminders go out ONLY on Telegram, so an unlinked student would
@@ -41,14 +43,41 @@ export default function TelegramLinkGate({ isLight }: { isLight: boolean }) {
 
   useEffect(() => {
     if (!blocked) return
-    const tick = () => { if (!document.hidden) void check() }
-    const timer = setInterval(tick, POLL_MS)
-    window.addEventListener('focus', tick)
-    document.addEventListener('visibilitychange', tick)
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let attempt = 0
+    let checking = false
+    let disposed = false
+    const clear = () => {
+      if (timer !== null) { clearTimeout(timer); timer = null }
+    }
+    // Self-scheduling with back-off; nothing is scheduled while the tab is hidden.
+    const schedule = () => {
+      clear()
+      if (disposed || document.hidden) return
+      timer = setTimeout(() => { timer = null; void run() }, gatePollDelay(attempt))
+    }
+    const run = async () => {
+      if (checking || disposed || document.hidden) return
+      checking = true
+      try { await check() } finally { checking = false }
+      attempt += 1
+      schedule()
+    }
+    // Back from Telegram (or the tab became visible): check now, restart the back-off.
+    const wake = () => {
+      clear()
+      if (document.hidden) return
+      attempt = 0
+      void run()
+    }
+    schedule()
+    window.addEventListener('focus', wake)
+    document.addEventListener('visibilitychange', wake)
     return () => {
-      clearInterval(timer)
-      window.removeEventListener('focus', tick)
-      document.removeEventListener('visibilitychange', tick)
+      disposed = true
+      clear()
+      window.removeEventListener('focus', wake)
+      document.removeEventListener('visibilitychange', wake)
     }
   }, [blocked, check])
 

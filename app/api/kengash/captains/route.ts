@@ -24,7 +24,7 @@ export async function PATCH(request: NextRequest) {
     // just trusted from the client-sent list.
     const { data: target, error: targetError } = await serviceSupabase
       .from('users')
-      .select('id, role, status, faculty, gender, assigned_floor, is_floor_captain, dorm_id, block, room_number, is_off_campus')
+      .select('id, role, status, faculty, gender, assigned_floor, is_floor_captain, dorm_id, block, room_number, is_off_campus, blacklisted')
       .eq('id', studentId)
       .maybeSingle()
 
@@ -39,6 +39,9 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (isCaptain) {
+      if (target.blacklisted) {
+        return NextResponse.json({ error: 'Chetlatilgan talabani sardor qilib bo‘lmaydi' }, { status: 400 })
+      }
       if (!target.dorm_id || !target.room_number || target.is_off_campus || !target.assigned_floor || !target.gender || !['male', 'female'].includes(target.gender)) {
         return NextResponse.json(
           { error: "Sardor tayinlash uchun talabaga xona/qavat va jins biriktirilgan bo'lishi shart" },

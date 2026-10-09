@@ -49,14 +49,25 @@ describe('POST /api/email-verification/send', () => {
     const res = await POST(req({ email: 'ali@gmial.com' }))
     expect(res.status).toBe(400)
     expect(mocks.domainAcceptsMail).toHaveBeenCalledWith('gmial.com')
-    expect(mocks.checkRateLimit).not.toHaveBeenCalled()
+    // Only the separate, generous DNS-lookup throttle is consulted — never the
+    // per-IP / per-email send limits a typo must not eat into.
+    const keys = mocks.checkRateLimit.mock.calls.map(([key]) => key as string)
+    expect(keys).toEqual(['email-proof-dns:ip:127.0.0.1'])
+    expect(mocks.sendEmailVerificationCode).not.toHaveBeenCalled()
+  })
+
+  it('429s without any DNS lookup once the per-IP lookup budget is spent', async () => {
+    mocks.checkRateLimit.mockImplementation(async (key: string) =>
+      key.startsWith('email-proof-dns:') ? { allowed: false, remaining: 0 } : { allowed: true, remaining: 2 })
+    const res = await POST(req({ email: 'ali@example.com' }))
+    expect(res.status).toBe(429)
+    expect(mocks.domainAcceptsMail).not.toHaveBeenCalled()
     expect(mocks.sendEmailVerificationCode).not.toHaveBeenCalled()
   })
 
   it('429s when the per-email send budget is spent', async () => {
-    mocks.checkRateLimit
-      .mockResolvedValueOnce({ allowed: true, remaining: 5 })
-      .mockResolvedValueOnce({ allowed: false, remaining: 0 })
+    mocks.checkRateLimit.mockImplementation(async (key: string) =>
+      key.startsWith('email-proof-send:email:') ? { allowed: false, remaining: 0 } : { allowed: true, remaining: 5 })
     const res = await POST(req({ email: 'ali@example.com' }))
     expect(res.status).toBe(429)
     expect(mocks.sendEmailVerificationCode).not.toHaveBeenCalled()

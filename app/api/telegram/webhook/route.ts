@@ -4,6 +4,7 @@ import { bindStudentTelegramChat } from '@/lib/student-telegram'
 import { openInAppButton, sendTelegramChatMessage } from '@/lib/telegram'
 import { deliverPermitDocumentsSafely } from '@/lib/permit-documents'
 import { safeEqual } from '@/lib/security'
+import { sendPermitTelegramLinkedEmail } from '@/lib/email'
 
 type TelegramUpdate = {
   message?: {
@@ -76,6 +77,13 @@ export async function POST(request: Request) {
     // their signed Ariza + Tilxat is still waiting — send it now via Telegram.
     if (permit.status === 'approved') {
       void deliverPermitDocumentsSafely(permit.id)
+      // Tell the on-file inbox: if a stranger claimed this chat, only the
+      // real applicant can notice. Best-effort — never fails the webhook.
+      if (permit.email) {
+        void sendPermitTelegramLinkedEmail(String(permit.email), String(permit.full_name ?? '')).catch((error) => {
+          console.error('Permit Telegram-linked notice failed:', error)
+        })
+      }
     }
     return NextResponse.json({ ok: true })
   } catch (error) {

@@ -18,6 +18,15 @@ export async function POST(request: NextRequest) {
   // Resend/SMTP send on it — doesn't count against the attempt limits below,
   // so a typo never eats into the budget for the correct retry.
   const domain = email.slice(email.lastIndexOf('@') + 1)
+  // The DNS lookup is free for the caller (no mail is sent), so bound it per IP
+  // on its own — generously, so a few typos never block the retry.
+  const dnsThrottle = await checkRateLimit(`email-proof-dns:ip:${getClientIp(request)}`, 30, 15 * 60_000)
+  if (!dnsThrottle.allowed) {
+    return NextResponse.json(
+      { error: 'Juda ko‘p urinish. Bir necha daqiqadan keyin qayta urinib ko‘ring.' },
+      { status: 429 },
+    )
+  }
   if (!(await domainAcceptsMail(domain))) {
     return NextResponse.json(
       { error: 'Bu email domeni topilmadi. Manzilni tekshirib qayta kiriting (masalan @gmail.com to‘g‘ri yozilganiga ishonch hosil qiling).' },

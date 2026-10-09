@@ -52,6 +52,20 @@ describe('PATCH /api/kengash/captains', () => {
     expect(response.status).toBe(400)
   })
 
+  it('refuses to appoint a blacklisted resident as a floor captain', async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: { id: 's-1', role: 'talaba', status: 'active', faculty: 'amit', dorm_id: 'd1', block: null, room_number: '8', gender: 'male', assigned_floor: 4, is_floor_captain: false, is_off_campus: false, blacklisted: true },
+      error: null,
+    })
+    const from = vi.fn(() => ({ select: () => ({ eq: () => ({ maybeSingle }) }) }))
+    const rpc = vi.fn().mockResolvedValue({ error: null })
+    requireCouncilChair.mockResolvedValue({ serviceSupabase: { from, rpc }, faculty: 'amit' })
+
+    const response = await PATCH(patchRequest({ studentId: 's-1', isCaptain: true }))
+    expect(response.status).toBe(400)
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
   it('promotes via the atomic promote_floor_captain RPC, keyed on the TARGET’s own gender (a raisi manages both genders)', async () => {
     const maybeSingle = vi.fn().mockResolvedValue({
       data: { id: 's-1', role: 'talaba', status: 'active', faculty: 'amit', dorm_id: 'd1', block: null, room_number: '8', gender: 'female', assigned_floor: 4, is_floor_captain: false },

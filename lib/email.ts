@@ -258,6 +258,25 @@ export async function sendSessionsRevokedEmail(to: string, fullName: string, cou
 }
 
 /**
+ * A Telegram chat just claimed this applicant's approved permit (their signed
+ * documents are about to be delivered there). The applicant is the only person
+ * who can tell whether it was them — a stranger who knows their passport +
+ * JShSHIR could otherwise do it silently.
+ */
+export async function sendPermitTelegramLinkedEmail(to: string, fullName: string) {
+  await sendMail({
+    to,
+    subject: 'Xavfsizlik: arizangiz Telegram botga ulandi',
+    heading: `${fullName || 'Hurmatli abituriyent'}, arizangiz Telegram botga ulandi`,
+    paragraphs: [
+      'Tasdiqlangan arizangiz hozirgina Telegram botga ulandi. Endi ariza holati va hujjatlaringiz shu Telegram akkauntga ham yuboriladi.',
+      'Agar buni siz qilmagan bo‘lsangiz, zudlik bilan fakultet dekanatiga murojaat qiling.',
+    ],
+    cta: { label: 'Ariza holatini ochish', url: appUrl('/ruxsatnoma-tekshirish') },
+  })
+}
+
+/**
  * Talaba arizani elektron imzolagach — vaqti belgilangan tashqi nusxa.
  * Bu xat "men yozmaganman" bahsida dalil bo'ladi.
  */

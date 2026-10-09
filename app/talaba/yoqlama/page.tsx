@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, MapPin, Check, X, Loader2, RefreshCw } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { getAuthHeaders } from '@/lib/auth-session'
+import { clearAttendanceSummary, fetchAttendanceSummary } from '@/features/attendance/client/summary'
 import type { CheckinResult } from '@/features/attendance/types'
 
 type Phase = 'idle' | 'locating' | 'sending' | 'done' | 'no_session'
@@ -19,15 +20,13 @@ export default function TalabaYoqlamaPage() {
   const checkSession = useCallback(async () => {
     setChecking(true)
     try {
-      const headers = await getAuthHeaders()
-      const res = await fetch('/api/attendance/summary', { headers, cache: 'no-store' })
-      const data = await res.json()
-      if (res.ok && data.hasOpen && (data.myState === 'present' || data.myState === 'excused')) {
+      const data = await fetchAttendanceSummary()
+      if (data.ok && data.hasOpen && (data.myState === 'present' || data.myState === 'excused')) {
         // Already confirmed — show it again after a reload instead of the button.
         setResult({ status: 'already', state: data.myState })
         setPhase('done')
       } else {
-        setPhase(res.ok && data.hasOpen ? 'idle' : 'no_session')
+        setPhase(data.ok && data.hasOpen ? 'idle' : 'no_session')
       }
     } catch {
       setPhase('no_session')
@@ -69,6 +68,7 @@ export default function TalabaYoqlamaPage() {
           setResult({ status: 'unavailable' })
         } finally {
           submitting.current = false
+          clearAttendanceSummary()
           setPhase('done')
         }
       },
@@ -86,7 +86,7 @@ export default function TalabaYoqlamaPage() {
   return (
     <div className={`min-h-screen ${isLight ? 'bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900' : 'bg-[#020617] text-white'}`}>
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 py-8">
-        <Link href="/talaba/dashboard" className={`inline-flex w-fit items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-black uppercase tracking-wider ${isLight ? 'border-slate-300 text-slate-600' : 'border-white/10 text-slate-400'}`}>
+        <Link href="/talaba/dashboard" prefetch={false} className={`inline-flex w-fit items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-black uppercase tracking-wider ${isLight ? 'border-slate-300 text-slate-600' : 'border-white/10 text-slate-400'}`}>
           <ArrowLeft size={14} /> Asosiy
         </Link>
 

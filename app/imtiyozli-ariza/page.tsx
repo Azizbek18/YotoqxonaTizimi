@@ -422,7 +422,7 @@ export default function ImtiyozliAriza() {
         <ThemeToggle />
       </div>
       <div className="absolute top-4 left-4 z-20 print:hidden">
-        <Link href="/ariza-yuborish" className={`flex items-center gap-2 text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-xl transition-all border ${isLight ? 'bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100 shadow-xs' : 'bg-[#0f172a]/80 border-white/5 text-slate-400 hover:bg-white/5'}`}>
+        <Link prefetch={false} href="/ariza-yuborish" className={`flex items-center gap-2 text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-xl transition-all border ${isLight ? 'bg-white/80 border-slate-200 text-slate-700 hover:bg-slate-100 shadow-xs' : 'bg-[#0f172a]/80 border-white/5 text-slate-400 hover:bg-white/5'}`}>
           <ArrowLeft size={14} /> <span>Orqaga</span>
         </Link>
       </div>
@@ -794,7 +794,7 @@ export default function ImtiyozliAriza() {
           </AnimatePresence>
 
           <div className="text-center pt-4 mt-4 border-t border-slate-700/10 dark:border-white/5">
-            <Link href="/ruxsatnoma-tekshirish" className="text-xs font-black uppercase tracking-wider text-blue-500 hover:underline flex items-center justify-center gap-1.5">
+            <Link prefetch={false} href="/ruxsatnoma-tekshirish" className="text-xs font-black uppercase tracking-wider text-blue-500 hover:underline flex items-center justify-center gap-1.5">
               <FileText size={12} />
               <span>Ariza holatini tekshirish</span>
             </Link>

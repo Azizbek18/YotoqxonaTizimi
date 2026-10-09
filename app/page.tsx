@@ -232,7 +232,7 @@ export default function Home() {
 
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <ThemeToggle />
-          <Link
+          <Link prefetch={false}
             href={studentEntryHref}
             className={`px-3 sm:px-5 py-2 sm:py-2.5 rounded-2xl border text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 active:scale-95 shadow-md whitespace-nowrap ${
               isLight
@@ -274,7 +274,7 @@ export default function Home() {
 
         {/* Featured Guide Banner */}
         <div className="mx-auto w-full max-w-4xl pt-1 sm:pt-2">
-          <Link
+          <Link prefetch={false}
             href="/yotoqxona"
             className="group flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl bg-white/95 dark:bg-[#0b1120]/90 border-blue-200/90 dark:border-blue-500/30 hover:border-blue-400 dark:hover:border-blue-400/60 shadow-lg shadow-blue-500/10 dark:shadow-black/40"
           >
@@ -312,7 +312,7 @@ export default function Home() {
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
               {/* 1. Ariza yuborish */}
-              <Link
+              <Link prefetch={false}
                 href="/ariza-yuborish"
                 className={`group relative p-4 sm:p-5 rounded-2xl border text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between ${
                   isLight
@@ -343,7 +343,7 @@ export default function Home() {
               </Link>
 
               {/* 2. Holatni tekshirish */}
-              <Link
+              <Link prefetch={false}
                 href="/ruxsatnoma-tekshirish"
                 className={`group relative p-4 sm:p-5 rounded-2xl border text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between ${
                   isLight
@@ -374,7 +374,7 @@ export default function Home() {
               </Link>
 
               {/* 3. Kvartira hisobi */}
-              <Link
+              <Link prefetch={false}
                 href="/kv-royxatdan-otish"
                 className={`group relative p-4 sm:p-5 rounded-2xl border text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between ${
                   isLight
@@ -612,7 +612,7 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
-                    <Link
+                    <Link prefetch={false}
                       href={permitRequest.application_type === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'}
                       className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-black text-xs uppercase tracking-wider text-center transition-all shadow-lg shadow-rose-500/20 active:scale-[0.98] border border-white/10"
                     >
@@ -642,7 +642,7 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
-                    <Link
+                    <Link prefetch={false}
                       href="/register"
                       className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98] border border-white/10"
                     >
@@ -672,7 +672,7 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2 relative z-10">
-                    <Link
+                    <Link prefetch={false}
                       href="/login?student=1"
                       className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-slate-950 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-sky-500/20 border border-white/10"
                     >
@@ -752,7 +752,7 @@ export default function Home() {
                   </p>
                 </div>
 
-                <Link
+                <Link prefetch={false}
                   href="/login"
                   className={`w-full mt-7 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-md bg-gradient-to-r ${role.gradient} text-white shadow-blue-500/15 hover:opacity-95 active:scale-[0.98]`}
                 >

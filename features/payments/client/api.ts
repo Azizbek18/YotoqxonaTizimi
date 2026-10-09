@@ -2,15 +2,24 @@
 
 import { getAuthHeaders } from '@/lib/auth-session'
 import { apiRequest as requestJson } from '@/lib/api-client'
+import { ClientCache } from '@/lib/client-cache'
 import type { PaymentRecord, PaymentSummary, PaymentStatus, SubmitPaymentResult } from '../types'
 
-export async function fetchStudentPayments() {
-  const result = await requestJson<{ payments: PaymentRecord[] }>('/api/student/payments')
-  return result.payments
+// The student's own payments: read on dashboard/tolova visits, changed only by
+// their own upload (which clears the cache) or a staff review (visible within the TTL).
+const studentPaymentsCache = new ClientCache<PaymentRecord[]>(30_000)
+
+export function fetchStudentPayments() {
+  return studentPaymentsCache.get('mine', async () => {
+    const result = await requestJson<{ payments: PaymentRecord[] }>('/api/student/payments')
+    return result.payments
+  })
 }
 
 export function submitStudentPayment(form: FormData) {
-  return requestJson<SubmitPaymentResult>('/api/student/payments', { method: 'POST', body: form })
+  return studentPaymentsCache.invalidateAround(
+    requestJson<SubmitPaymentResult>('/api/student/payments', { method: 'POST', body: form }),
+  )
 }
 
 // The receipt-review body is shared by the tarbiyachi and dekan panels; each

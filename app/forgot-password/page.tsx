@@ -95,7 +95,7 @@ export default function ForgotPassword() {
         className="relative z-10 w-full max-w-100"
       >
         <div className={`backdrop-blur-3xl border rounded-[2.5rem] p-6 sm:p-10 shadow-2xl ${isLight ? 'bg-white/80 border-slate-200' : 'bg-slate-900/60 border-emerald-500/10'}`}>
-          <Link href="/login" className={`inline-flex items-center gap-2 transition-colors mb-8 text-[10px] font-black uppercase tracking-[0.2em] group ${isLight ? 'text-slate-600 hover:text-slate-700' : 'text-emerald-600/60 hover:text-emerald-400'}`}>
+          <Link prefetch={false} href="/login" className={`inline-flex items-center gap-2 transition-colors mb-8 text-[10px] font-black uppercase tracking-[0.2em] group ${isLight ? 'text-slate-600 hover:text-slate-700' : 'text-emerald-600/60 hover:text-emerald-400'}`}>
             <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
             Kirishga qaytish
           </Link>

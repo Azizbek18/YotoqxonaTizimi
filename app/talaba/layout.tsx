@@ -338,6 +338,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
               inert <div>. */}
           <Link
             href="/talaba/profil"
+            prefetch={false}
             aria-label="Profil"
             aria-current={pathname.startsWith('/talaba/profil') ? 'page' : undefined}
             className={`group flex items-center gap-2 sm:gap-3 min-w-0 flex-1 -my-1 py-1 pr-2 rounded-2xl transition-colors ${
@@ -449,10 +450,14 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
           {/* Inner Glossy Glow */}
           <div className={`absolute inset-0 rounded-3xl sm:rounded-4xl pointer-events-none ${isLight ? 'bg-linear-to-b from-white to-transparent' : 'bg-linear-to-b from-white/5 to-transparent'}`} />
 
+          {/* prefetch={false}: every tab here is a dynamic page, so Next's viewport
+              prefetch fired a serverless invocation per tab on EVERY page load
+              (Vercel Hobby compute budget). Each route has a loading.tsx, so a
+              tap still shows its skeleton immediately. */}
           {NAV.map((item) => {
             const isActive = pathname.startsWith(item.href)
             return (
-              <Link key={item.href} href={item.href} aria-label={item.label} aria-current={isActive ? 'page' : undefined} className="relative shrink-0 flex-1 min-w-0 group">
+              <Link key={item.href} href={item.href} prefetch={false} aria-label={item.label} aria-current={isActive ? 'page' : undefined} className="relative shrink-0 flex-1 min-w-0 group">
                 <motion.div
                   whileTap={{ scale: 0.97 }}
                   /* min-h-[52px] keeps every tab above the 44pt/48dp touch

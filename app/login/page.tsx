@@ -277,7 +277,7 @@ function LoginContent() {
             >
               Kirish
             </button>
-            <Link
+            <Link prefetch={false}
               href="/register"
               className={`no-shelf cursor-pointer flex-1 py-2.5 sm:py-3 text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all ${
                 isLight
@@ -382,7 +382,7 @@ function LoginContent() {
           <div className="mt-5 sm:mt-6 text-center">
             <p className={`text-xs sm:text-sm font-semibold ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
               Parolni unutdingizmi?{' '}
-              <Link href="/forgot-password" className={`font-bold hover:underline ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}>
+              <Link prefetch={false} href="/forgot-password" className={`font-bold hover:underline ${isLight ? 'text-blue-600 hover:text-blue-700' : 'text-blue-400 hover:text-blue-300'}`}>
                 Tiklash
               </Link>
             </p>

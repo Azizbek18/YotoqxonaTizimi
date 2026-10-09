@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Send, Loader2, BellRing } from 'lucide-react'
 import { getAuthHeaders } from '@/lib/auth-session'
-import { gatePollDelay } from './telegram-gate-poll'
+import { supabase } from '@/lib/supabase'
+import { gatePollDelay, readLinkedFlag, writeLinkedFlag } from './telegram-gate-poll'
 
 // Every blocked student polls, and each check is a serverless invocation on a
 // tight compute budget — so it backs off (30 s → 3 min), never runs in a
@@ -24,10 +25,17 @@ export default function TelegramLinkGate({ isLight }: { isLight: boolean }) {
   // is never invalidated.
   const bootstrap = useCallback(async () => {
     try {
+      // Already known to be linked (this account, recently): no server call at all.
+      const { data: sessionData } = await supabase.auth.getSession()
+      const userId = sessionData.session?.user?.id ?? null
+      const storage = typeof window !== 'undefined' ? window.localStorage : null
+      if (userId && readLinkedFlag(storage, userId)) return
+
       const res = await fetch('/api/student/telegram-link', { headers: await getAuthHeaders(), cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) return
-      if (!data.linked && data.url) { setUrl(data.url); setBlocked(true) }
+      if (data.linked) { if (userId) writeLinkedFlag(storage, userId) }
+      else if (data.url) { setUrl(data.url); setBlocked(true) }
     } catch { /* fail open */ }
   }, [])
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { apiRequest } from '@/lib/api-client'
+import { ClientCache } from '@/lib/client-cache'
 import type {
   ForeignDoc,
   ForeignDocDashboardRow,
@@ -8,9 +9,15 @@ import type {
   ForeignDocStaffPatch,
 } from '../types'
 
-export async function fetchMyForeignDocs(): Promise<ForeignDoc[]> {
-  const result = await apiRequest<{ docs: ForeignDoc[] }>('/api/student/foreign-docs')
-  return result.docs
+// Re-read on every dashboard visit; only the student's own save/delete changes
+// it, and both clear the cache.
+const myDocsCache = new ClientCache<ForeignDoc[]>(60_000)
+
+export function fetchMyForeignDocs(): Promise<ForeignDoc[]> {
+  return myDocsCache.get('mine', async () => {
+    const result = await apiRequest<{ docs: ForeignDoc[] }>('/api/student/foreign-docs')
+    return result.docs
+  })
 }
 
 export type GeocodeResult = { name: string; lat: number; lng: number }
@@ -43,17 +50,21 @@ export async function saveForeignDoc(
   const form = new FormData()
   form.append('payload', JSON.stringify(input))
   if (file) form.append('file', file)
-  const result = await apiRequest<{ doc: ForeignDoc }>('/api/student/foreign-docs', {
-    method: 'POST',
-    body: form,
-  })
+  const result = await myDocsCache.invalidateAround(
+    apiRequest<{ doc: ForeignDoc }>('/api/student/foreign-docs', {
+      method: 'POST',
+      body: form,
+    }),
+  )
   return result.doc
 }
 
 export async function deleteForeignDoc(id: string): Promise<void> {
-  await apiRequest<{ ok: true }>(`/api/student/foreign-docs?id=${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  })
+  await myDocsCache.invalidateAround(
+    apiRequest<{ ok: true }>(`/api/student/foreign-docs?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
+  )
 }
 
 /** Hujjat faylining qisqa muddatli signed URL manzili (talaba). */

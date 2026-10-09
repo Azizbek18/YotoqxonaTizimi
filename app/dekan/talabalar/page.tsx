@@ -883,12 +883,6 @@ export default function DekanStudentsPage() {
       && (!room || (row.room_number ?? '').toLowerCase().includes(room))
   })
 
-  // "12-yot. " prefix for a permit's building (blank when it can't be resolved).
-  const dormNumberLabel = (dormId: string | null) => {
-    const dorm = dorms.find((d) => d.dormId === dormId)
-    return dorm ? `${dorm.number}-yot. ` : ''
-  }
-
   const handleExportUnregistered = async () => {
     if (exportingUnregistered || unregisteredVisible.length === 0) return
     setExportingUnregistered(true)
@@ -968,59 +962,37 @@ export default function DekanStudentsPage() {
                   setSelectedPermit(row)
                 }
               }}
-              className={`mx-1.5 my-1 w-[calc(100%-12px)] cursor-pointer rounded-xl border p-2.5 text-left transition-colors ${
+              className={`mx-1.5 my-0.5 flex w-[calc(100%-12px)] cursor-pointer items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition-colors ${
                 isActive
                   ? isLight ? 'border-indigo-300 bg-indigo-50' : 'border-indigo-500/50 bg-indigo-500/10'
-                  : isLight ? 'border-slate-200/70 bg-white hover:bg-slate-50' : 'border-slate-800 bg-slate-800/40 hover:bg-slate-800/70'
+                  : isLight ? 'border-transparent hover:bg-slate-100' : 'border-transparent hover:bg-slate-800/60'
               }`}
             >
-              <div className="flex items-start gap-2.5">
-                <div className="relative shrink-0">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl border text-[11px] font-black ${
-                    isLight ? 'border-slate-200 bg-slate-100 text-slate-600' : 'border-slate-700 bg-slate-800 text-slate-300'
-                  }`}>
-                    {getInitials(row.full_name)}
-                  </div>
-                  <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ${isLight ? 'ring-white' : 'ring-slate-900'} ${accent.dot}`} />
+              <div className="relative shrink-0">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full border text-[11px] font-black ${
+                  isLight ? 'border-slate-200 bg-slate-100 text-slate-600' : 'border-slate-700 bg-slate-800 text-slate-300'
+                }`}>
+                  {getInitials(row.full_name)}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className={`break-words text-xs font-bold leading-snug ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>{row.full_name}</p>
-                  <p className={`mt-0.5 break-words text-[10px] ${ui.faint}`}>
-                    {[directionLabel(row.direction), row.course ? `${row.course}-kurs` : null, row.phone].filter(Boolean).join(' • ') || '—'}
-                  </p>
-                  <p className={`mt-0.5 break-all text-[10px] ${ui.faint}`}>{row.email || "Email yo'q"}</p>
-                </div>
+                <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ${isLight ? 'ring-white' : 'ring-slate-900'} ${accent.dot}`} />
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-[50px]">
-                {row.room_number ? (
-                  <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-black ${
-                    isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/15 text-emerald-300'
-                  }`}>
-                    {dormNumberLabel(row.dorm_id)}{row.room_number}-xona
-                  </span>
-                ) : (
-                  <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-black ${
-                    isLight ? 'bg-slate-200 text-slate-600' : 'bg-slate-700 text-slate-300'
-                  }`}>Xonasiz</span>
-                )}
-                <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-black ${
-                  isLight ? 'bg-amber-100 text-amber-800' : 'bg-amber-500/15 text-amber-300'
-                }`}>Ro&apos;yxatdan o&apos;tmagan</span>
-                {!readOnly && (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      setEmailTarget({ kind: 'permit', id: row.id, name: row.full_name, email: row.email ?? null })
-                    }}
-                    aria-label={`${row.full_name} emailini o'zgartirish`}
-                    title="Emailni o'zgartirish"
-                    className={`no-shelf ml-auto inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold transition-colors ${ui.accentSoft}`}
-                  >
-                    <Edit2 size={10} /> Email
-                  </button>
-                )}
+              <div className="min-w-0 flex-1">
+                <p className={`break-words text-[13px] font-bold leading-snug ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>{row.full_name}</p>
+                <p className={`mt-0.5 truncate text-[11px] ${ui.faint}`}>
+                  {[directionLabel(row.direction), row.course ? `${row.course}-kurs` : null].filter(Boolean).join(' • ') || '—'}
+                </p>
               </div>
+              {row.room_number ? (
+                <span className={`shrink-0 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10px] font-black ${
+                  isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/15 text-emerald-300'
+                }`}>
+                  {row.room_number}-xona
+                </span>
+              ) : (
+                <span className={`shrink-0 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10px] font-black ${
+                  isLight ? 'bg-slate-200 text-slate-600' : 'bg-slate-700 text-slate-300'
+                }`}>Xonasiz</span>
+              )}
             </div>
           )
         })}

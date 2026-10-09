@@ -120,7 +120,7 @@ export default function KvRoyxatdanOtish() {
           <p className={`mt-2 text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
             Kvartirada yashovchi talaba sifatida tizimga kiritildingiz. Endi email va parolingiz orqali shaxsiy kabinetingizga kirishingiz mumkin.
           </p>
-          <Link href="/login" className="mt-6 inline-flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-blue-500/20 transition-all">
+          <Link prefetch={false} href="/login" className="mt-6 inline-flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-blue-500/20 transition-all">
             <ArrowLeft size={16} /> Tizimga kirish
           </Link>
         </div>
@@ -169,7 +169,7 @@ export default function KvRoyxatdanOtish() {
         <div className={`w-full rounded-3xl border p-5 sm:p-7 shadow-2xl backdrop-blur-2xl transition-all ${isLight ? 'bg-white/95 border-slate-200 shadow-slate-200/70' : 'border-white/10 bg-[#0b1120]/90 shadow-black/60'}`}>
           {/* Top Bar inside Card */}
           <div className="mb-4 flex items-center justify-between gap-2 pb-3 border-b border-slate-200/60 dark:border-white/5">
-            <Link
+            <Link prefetch={false}
               href="/ariza-yuborish"
               className={`inline-flex items-center gap-1.5 text-xs font-bold transition-colors ${
                 isLight ? 'text-slate-600 hover:text-blue-600' : 'text-slate-400 hover:text-white'
@@ -211,7 +211,7 @@ export default function KvRoyxatdanOtish() {
               <p className="font-bold">Yotoqxonaga ariza topshirganmisiz? Bu forma siz uchun emas.</p>
               <p className="mt-0.5 opacity-90">
                 Arizangiz tasdiqlangach{' '}
-                <Link href="/register" className="font-bold underline underline-offset-2">Ro‘yxatdan o‘tish</Link>
+                <Link prefetch={false} href="/register" className="font-bold underline underline-offset-2">Ro‘yxatdan o‘tish</Link>
                 {' '}sahifasidan o‘ting — aks holda email band bo‘lib qoladi.
               </p>
             </div>
@@ -253,7 +253,7 @@ export default function KvRoyxatdanOtish() {
 
           <p className={`mt-5 pt-4 border-t border-slate-200/60 dark:border-white/5 text-center text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
             Akkauntingiz bormi?{' '}
-            <Link href="/login" className="text-blue-600 font-bold hover:underline ml-1">
+            <Link prefetch={false} href="/login" className="text-blue-600 font-bold hover:underline ml-1">
               Tizimga kirish
             </Link>
           </p>

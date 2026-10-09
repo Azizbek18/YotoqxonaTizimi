@@ -1,10 +1,18 @@
 'use client'
 
 import { apiRequest } from '@/lib/api-client'
+import { ClientCache } from '@/lib/client-cache'
 import type { AnnouncementInput, AuthoredAnnouncement, StudentAnnouncementsPayload } from '../types'
 
+// The student layout (notification bell) and the e'lonlar/dashboard page both
+// read this on mount; share one request for a short window. The e'lonlar page's
+// own 90 s poll is longer than the TTL, so it still gets fresh data.
+const studentAnnouncementsCache = new ClientCache<StudentAnnouncementsPayload>(30_000)
+
 export function fetchStudentAnnouncements(): Promise<StudentAnnouncementsPayload> {
-  return apiRequest<StudentAnnouncementsPayload>('/api/elonlar', undefined, "E'lonlarni yuklab bo'lmadi")
+  return studentAnnouncementsCache.get('mine', () =>
+    apiRequest<StudentAnnouncementsPayload>('/api/elonlar', undefined, "E'lonlarni yuklab bo'lmadi"),
+  )
 }
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }

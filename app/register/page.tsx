@@ -271,7 +271,7 @@ export default function RegisterPage() {
         <div className={`flex flex-col max-h-[94vh] rounded-3xl sm:rounded-4xl border backdrop-blur-3xl shadow-2xl overflow-hidden ${isLight ? 'bg-white/90 border-slate-200' : 'bg-[#111827]/80 border-white/10'}`}>
           <div className={`p-4 sm:pt-8 sm:pb-4 pb-2 shrink-0 border-b ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5'}`}>
             <div className="flex gap-2.5 mb-4">
-              <Link href="/login" className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-xl border transition-colors ${isLight ? 'text-slate-500 hover:text-slate-700 bg-white border-slate-200' : 'text-slate-400 bg-white/5 border-white/10'}`}>Kirish</Link>
+              <Link prefetch={false} href="/login" className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-xl border transition-colors ${isLight ? 'text-slate-500 hover:text-slate-700 bg-white border-slate-200' : 'text-slate-400 bg-white/5 border-white/10'}`}>Kirish</Link>
               <button type="button" className={`flex-1 py-1.5 sm:py-3 text-center text-[10px] sm:text-sm font-bold rounded-xl border text-white bg-blue-600 ${isLight ? 'border-blue-700' : 'border-blue-500'}`}>Ro&apos;yxatdan o&apos;tish</button>
             </div>
 
@@ -345,7 +345,7 @@ export default function RegisterPage() {
           <div className="p-4 sm:p-8 pt-2 shrink-0">
             <p className="text-center text-[14px] sm:text-[12px] text-slate-500 border-t border-white/5 pt-3">
               Akkauntingiz bormi?{' '}
-              <Link href="/login?student=1" className="text-blue-500 font-bold hover:underline">Kirish</Link>
+              <Link prefetch={false} href="/login?student=1" className="text-blue-500 font-bold hover:underline">Kirish</Link>
             </p>
           </div>
         </div>

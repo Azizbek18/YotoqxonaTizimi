@@ -472,7 +472,7 @@ function StatusCheckContent() {
                           </p>
                         </div>
                         {!result.blocked && (
-                          <Link
+                          <Link prefetch={false}
                             href={result.application_type === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'}
                             onClick={() => {
                               // Carry the identity so the submit form is prefilled and
@@ -547,7 +547,7 @@ function StatusCheckContent() {
                       Arizangiz o&apos;chirildi. Xohlagan vaqtingizda qaytadan yuborishingiz mumkin.
                     </p>
                     <div className="pt-2">
-                      <Link href={applicationType === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'} className="text-xs font-bold text-blue-500 hover:underline">
+                      <Link prefetch={false} href={applicationType === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'} className="text-xs font-bold text-blue-500 hover:underline">
                         {applicationType === 'imtiyozli' ? 'Qaytadan xorijiy ariza yuborish →' : "Qaytadan yo'llanma yuborish →"}
                       </Link>
                     </div>
@@ -560,7 +560,7 @@ function StatusCheckContent() {
                       Kiritilgan pasport/ID ({passportSeries.toUpperCase()}){applicationType === 'yollanma' ? " va JShSHIR" : ''} bo&apos;yicha hech qanday ariza topilmadi. Ma&apos;lumotlar to&apos;g&apos;ri ekanini qayta tekshiring yoki yangi ariza yuboring.
                     </p>
                     <div className="pt-2">
-                      <Link href={applicationType === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'} className="text-xs font-bold text-blue-500 hover:underline">
+                      <Link prefetch={false} href={applicationType === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'} className="text-xs font-bold text-blue-500 hover:underline">
                         {applicationType === 'imtiyozli' ? 'Xorijiy ariza yuborish →' : "Yo'llanma yuklash →"}
                       </Link>
                     </div>
@@ -572,11 +572,11 @@ function StatusCheckContent() {
 
           {/* Footer Navigation */}
           <div className="flex justify-between items-center mt-6 border-t border-slate-700/20 dark:border-white/5 pt-4 text-xs font-bold">
-            <Link href="/" className="text-slate-500 hover:text-white flex items-center gap-1">
+            <Link prefetch={false} href="/" className="text-slate-500 hover:text-white flex items-center gap-1">
               <House size={14} />
               <span>Bosh sahifa</span>
             </Link>
-            <Link href={applicationType === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'} className="text-blue-500 hover:underline flex items-center gap-0.5">
+            <Link prefetch={false} href={applicationType === 'imtiyozli' ? '/imtiyozli-ariza' : '/ruxsatnoma-yuborish'} className="text-blue-500 hover:underline flex items-center gap-0.5">
               <span>{applicationType === 'imtiyozli' ? 'Xorijiy ariza' : "Yo'llanma yuborish"}</span>
               <ChevronRight size={14} />
             </Link>

@@ -1103,7 +1103,7 @@ export default function RuxsatnomaYuborish() {
 
         {/* Navigation and Sound settings */}
         <div className="flex justify-between items-center mb-3 sm:mb-4">
-          <Link 
+          <Link prefetch={false} 
             href="/"
             onClick={() => playSound('tab')}
             className={`flex items-center gap-2 text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-xl transition-all duration-300 border ${
@@ -2130,7 +2130,7 @@ export default function RuxsatnomaYuborish() {
 
                   {/* Status checking block link */}
                   <div className="text-center pt-2.5 border-t border-slate-700/10 dark:border-white/5">
-                    <Link
+                    <Link prefetch={false}
                       href="/ruxsatnoma-tekshirish"
                       onClick={() => playSound('tab')}
                       className="text-xs font-black uppercase tracking-wider text-blue-500 hover:text-blue-600 flex items-center justify-center gap-1.5 transition-all duration-300"

@@ -27,7 +27,7 @@ export default function ArizaTuriTanlash() {
         <ThemeToggle />
       </div>
       <div className="absolute top-4 left-4 z-20">
-        <Link
+        <Link prefetch={false}
           href="/"
           className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-xl transition-all border shadow-xs ${
             isLight
@@ -64,7 +64,7 @@ export default function ArizaTuriTanlash() {
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 items-stretch">
           {/* 1. O'zbekiston fuqarosi */}
-          <Link
+          <Link prefetch={false}
             href="/ruxsatnoma-yuborish"
             className={`group flex flex-col justify-between p-6 sm:p-7 rounded-3xl border backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl ${
               isLight
@@ -119,7 +119,7 @@ export default function ArizaTuriTanlash() {
           </Link>
 
           {/* 2. Xorijlik / Imtiyozli talaba */}
-          <Link
+          <Link prefetch={false}
             href="/imtiyozli-ariza"
             className={`group flex flex-col justify-between p-6 sm:p-7 rounded-3xl border backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl ${
               isLight
@@ -174,7 +174,7 @@ export default function ArizaTuriTanlash() {
           </Link>
 
           {/* 3. Kvartira / Ijarada turaman */}
-          <Link
+          <Link prefetch={false}
             href="/kv-royxatdan-otish"
             className={`group flex flex-col justify-between p-6 sm:p-7 rounded-3xl border backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl ${
               isLight
@@ -246,7 +246,7 @@ export default function ArizaTuriTanlash() {
               </p>
             </div>
           </div>
-          <Link
+          <Link prefetch={false}
             href="/ruxsatnoma-tekshirish"
             className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 transition-all shrink-0 w-full sm:w-auto"
           >

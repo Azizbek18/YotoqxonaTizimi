@@ -1,6 +1,7 @@
 'use client'
 
 import { apiRequest } from '@/lib/api-client'
+import { ClientCache } from '@/lib/client-cache'
 import type { ApplicationListKind, CreateStudentApplication, StudentApplication } from '../types'
 
 function request<T>(url: string, init?: RequestInit): Promise<T> {
@@ -19,40 +20,53 @@ export type ArizaReceipt = {
   studentName?: string | null
 }
 
+type ApplicationsPayload = { success: true; applications: StudentApplication[] }
+
+// The layout's notification bell and the dashboard/arizalar pages read these
+// lists on mount and on every tab switch. A short shared cache collapses the
+// repeats; every write below clears it so a just-sent ariza shows up at once.
+// 'chat' is polled for new messages, so it is never cached.
+const applicationsCache = new ClientCache<ApplicationsPayload>(20_000)
+
 export function fetchStudentApplications(kind: ApplicationListKind = 'documents', limit = 100) {
-  return request<{ success: true; applications: StudentApplication[] }>(
-    `/api/student/applications?kind=${kind}&limit=${limit}`,
-  )
+  const load = () => request<ApplicationsPayload>(`/api/student/applications?kind=${kind}&limit=${limit}`)
+  return kind === 'chat' ? load() : applicationsCache.get(`${kind}:${limit}`, load)
 }
 
 export function createStudentApplication(
   input: CreateStudentApplication & { signature?: SignatureInput },
 ) {
-  return request<{ success: true; application: StudentApplication; receipt?: ArizaReceipt }>(
-    '/api/student/applications',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    },
+  return applicationsCache.invalidateAround(
+    request<{ success: true; application: StudentApplication; receipt?: ArizaReceipt }>(
+      '/api/student/applications',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      },
+    ),
   )
 }
 
 export function submitStudentApplication(id: string | number, signature?: SignatureInput) {
-  return request<{ success: true; application: StudentApplication; receipt?: ArizaReceipt }>(
-    '/api/student/applications',
-    {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, signature }),
-    },
+  return applicationsCache.invalidateAround(
+    request<{ success: true; application: StudentApplication; receipt?: ArizaReceipt }>(
+      '/api/student/applications',
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, signature }),
+      },
+    ),
   )
 }
 
 export function deleteStudentApplication(id: string | number) {
-  return request<{ success: true }>(`/api/student/applications?id=${encodeURIComponent(String(id))}`, {
-    method: 'DELETE',
-  })
+  return applicationsCache.invalidateAround(
+    request<{ success: true }>(`/api/student/applications?id=${encodeURIComponent(String(id))}`, {
+      method: 'DELETE',
+    }),
+  )
 }
 
 export function fetchArizaReceipt(arizaId: string | number) {
@@ -95,13 +109,15 @@ export type ArizaDocumentData = {
 }
 
 export function submitFormalAriza(body: FormalArizaBody) {
-  return request<{ success: true; application: StudentApplication; receipt: ArizaReceipt; compose: Record<string, unknown> }>(
-    '/api/student/applications/formal',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    },
+  return applicationsCache.invalidateAround(
+    request<{ success: true; application: StudentApplication; receipt: ArizaReceipt; compose: Record<string, unknown> }>(
+      '/api/student/applications/formal',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    ),
   )
 }
 

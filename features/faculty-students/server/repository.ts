@@ -58,7 +58,7 @@ export function createFacultyStudentsRepository() {
       const [permitsResult, usersResult] = await Promise.all([
         supabase
           .from('permit_requests')
-          .select('id, full_name, gender, phone, email, direction, course, application_type, room_number, dorm_id, block, assigned_floor, passport_series, jshshir, created_at')
+          .select('id, full_name, gender, phone, relative_phone, email, faculty, direction, course, study_type, application_type, origin_region, origin_country, ai_review, room_number, dorm_id, block, assigned_floor, passport_series, jshshir, created_at')
           .eq('status', 'approved')
           .ilike('faculty', faculty)
           .order('full_name', { ascending: true }),
@@ -77,7 +77,10 @@ export function createFacultyStudentsRepository() {
           && !(p.jshshir && jshshirs.has(p.jshshir)))
         .map((p) => ({
           id: p.id, full_name: p.full_name, gender: p.gender, phone: p.phone, email: p.email,
-          direction: p.direction, course: p.course, application_type: p.application_type,
+          relative_phone: p.relative_phone, faculty: p.faculty, direction: p.direction, course: p.course,
+          study_type: p.study_type, application_type: p.application_type,
+          origin_region: p.origin_region, origin_country: p.origin_country, ai_review: p.ai_review,
+          passport_series: p.passport_series, jshshir: p.jshshir,
           room_number: p.room_number, dorm_id: p.dorm_id, block: p.block,
           assigned_floor: p.assigned_floor, created_at: p.created_at,
         }))

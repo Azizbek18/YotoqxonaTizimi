@@ -49,6 +49,12 @@ export function dormLabel(d: Pick<DormBrief, 'number' | 'name'>): string {
 
 const STATE_RANK: Record<DekanHistoryState, number> = { present: 3, home: 2, absent: 1, unmarked: 0 }
 
+/** Kechki sessiyani dekan sessiyasi shaklida ko'rsatish (starts_at = ochilgan vaqt). */
+function nightlyAsRow(row: DekanSessionRow): DekanSessionRow {
+  const raw = row as unknown as { opened_at: string }
+  return { ...row, faculty: '', starts_at: row.starts_at ?? raw.opened_at }
+}
+
 /** Yozuvdagi holatni dekan ko'rinishiga: uyga ketish arizasi bilan excused = 'home'. */
 function dekanState(r: { state: string; source: string | null }): DekanHistoryState {
   if (r.state === 'present' || r.state === 'absent') return r.state
@@ -104,9 +110,10 @@ export function createDekanAttendanceService(
     return s
   }
 
-  function info(session: DekanSessionRow, label: string, summary: AttendanceSummary): DekanSessionInfo {
+  function info(session: DekanSessionRow, label: string, summary: AttendanceSummary, kind: 'dekan' | 'nightly' = 'dekan'): DekanSessionInfo {
     return {
       id: session.id,
+      kind,
       dormId: session.dorm_id,
       dormLabel: label,
       status: session.status,
@@ -151,6 +158,41 @@ export function createDekanAttendanceService(
     })
   }
 
+  /** Kechki yo'qlama dekanga faqat o'z fakulteti talabalari kesimida, faqat ko'rish uchun. */
+  async function nightlyRoster(scope: DekanScope, sessionId: string): Promise<DekanRosterView> {
+    const { dorms } = await facultyDorms(scope.faculty)
+    const raw = await drepo.nightlyById(sessionId, dorms.map((d) => d.id))
+    if (!raw) throw new ApiError(404, 'Yo‘qlama topilmadi')
+    const session = nightlyAsRow(raw)
+    const dorm = dorms.find((d) => d.id === session.dorm_id)
+    const label = dorm ? dormLabel(dorm) : 'Yotoqxona'
+    const records = await drepo.records(session.id)
+    const mine = await drepo.facultyStudentIds(scope.faculty, records.map((r) => r.student_id))
+    const visible = records.filter((r) => mine.has(r.student_id))
+    const contacts = new Map((await drepo.contacts(visible.map((r) => r.student_id))).map((c) => [c.id, c]))
+    const rows: DekanRosterResident[] = visible.map((r) => {
+      const c = contacts.get(r.student_id)
+      return {
+        id: r.student_id,
+        fullName: c?.full_name ?? 'Talaba',
+        roomNumber: r.room_number || '—',
+        floor: r.floor_number,
+        phone: c?.phone_number ?? c?.phone ?? null,
+        state: dekanState(r),
+        selfDistanceM: r.self_distance_m,
+        markedAt: r.marked_at,
+      }
+    })
+    rows.sort((a, b) =>
+      a.roomNumber.localeCompare(b.roomNumber, 'uz', { numeric: true }) ||
+      a.fullName.localeCompare(b.fullName, 'uz'),
+    )
+    const summary = emptySummary()
+    for (const r of rows) summary[r.state === 'home' ? 'excused' : r.state] += 1
+    summary.total = rows.length
+    return { session: info(session, label, summary, 'nightly'), residents: rows }
+  }
+
   return {
     async overview(scope: DekanScope): Promise<DekanOverview> {
       const { counts, dorms } = await facultyDorms(scope.faculty)
@@ -191,6 +233,25 @@ export function createDekanAttendanceService(
         if (summary.total === 0) continue
         recent.push(info(row, labels.get(row.dorm_id) ?? 'Yotoqxona', summary))
       }
+
+      // Avtomatik kechki yo'qlamalar ham tarixda: shu fakultet talabalari kesimida.
+      const nightlyRows = (await drepo.recentNightly(dorms.map((d) => d.id), RECENT_LIMIT * 2))
+        .map(nightlyAsRow)
+      if (nightlyRows.length > 0) {
+        const records = await drepo.recordsForSessions(nightlyRows.map((r) => r.id))
+        const mine = await drepo.facultyStudentIds(scope.faculty, [...new Set(records.map((r) => r.student_id))])
+        for (const row of nightlyRows) {
+          const summary = emptySummary()
+          for (const r of records) {
+            if (r.session_id !== row.id || !mine.has(r.student_id)) continue
+            summary[r.state] += 1
+            summary.total += 1
+          }
+          if (summary.total === 0) continue
+          recent.push(info(row, labels.get(row.dorm_id) ?? 'Yotoqxona', summary, 'nightly'))
+        }
+      }
+      recent.sort((a, b) => b.startsAt.localeCompare(a.startsAt))
 
       return { dorms: cards, recent }
     },
@@ -354,7 +415,7 @@ export function createDekanAttendanceService(
 
     async roster(scope: DekanScope, sessionId: string): Promise<DekanRosterView> {
       const found = await drepo.sessionForFaculty(sessionId, scope.faculty)
-      if (!found) throw new ApiError(404, 'Yo‘qlama topilmadi')
+      if (!found) return nightlyRoster(scope, sessionId)
       const session = await settle(found)
       const [dorm] = await drepo.dorms([session.dorm_id])
       const label = dorm ? dormLabel(dorm) : 'Yotoqxona'

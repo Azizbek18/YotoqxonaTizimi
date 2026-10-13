@@ -38,8 +38,8 @@ function percent(day: DekanHistoryDay) {
   return expected <= 0 ? 0 : Math.round((day.summary.present / expected) * 100)
 }
 
-async function fetchHistory(dormId: string, days: number): Promise<DekanHistoryView> {
-  const res = await fetch(`/api/dekan/yoqlama?history=1&days=${days}&dormId=${dormId}`, {
+async function fetchHistory(url: string): Promise<DekanHistoryView> {
+  const res = await fetch(url, {
     headers: await getAuthHeaders(),
     cache: 'no-store',
   })
@@ -54,12 +54,15 @@ async function fetchHistory(dormId: string, days: number): Promise<DekanHistoryV
  * non-responders stand out. Export mirrors the grid.
  */
 export default function DayByDayAttendance({
-  dormId, dormLabel, isLight, onOpenSession,
+  dormId, dormLabel, isLight, onOpenSession, historyUrl,
 }: {
-  dormId: string
+  dormId?: string
   dormLabel: string
   isLight: boolean
-  onOpenSession: (sessionId: string) => void
+  /** Omitted for read-only viewers (tarbiyachi): day cards then do not open a roster. */
+  onOpenSession?: (sessionId: string) => void
+  /** Overrides the dekan endpoint, e.g. the tarbiyachi's `/api/attendance/period?days=N`. */
+  historyUrl?: (days: number) => string
 }) {
   const ui = dekanUI(isLight)
   const [days, setDays] = useState<(typeof RANGES)[number]>(7)
@@ -75,13 +78,13 @@ export default function DayByDayAttendance({
     setLoading(true)
     try {
       setError(null)
-      setView(await fetchHistory(dormId, days))
+      setView(await fetchHistory(historyUrl ? historyUrl(days) : `/api/dekan/yoqlama?history=1&days=${days}&dormId=${dormId}`))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Xatolik')
     } finally {
       setLoading(false)
     }
-  }, [dormId, days])
+  }, [dormId, days, historyUrl])
 
   useEffect(() => { setView(null); void load() }, [load])
   useEffect(() => { setLimit(PAGE_SIZE) }, [query, onlyMissed, dormId, days])
@@ -260,7 +263,7 @@ function DayStrip({
   view: DekanHistoryView
   isLight: boolean
   ui: UI
-  onOpen: (sessionId: string) => void
+  onOpen?: (sessionId: string) => void
 }) {
   const good = statusChip('success', isLight)
   return (
@@ -268,7 +271,7 @@ function DayStrip({
       {view.days.map((day) => {
         const { short, weekday } = dateParts(day.date)
         const ran = day.sessionIds.length > 0 || day.nightly
-        const openable = day.sessionIds.length > 0
+        const openable = !!onOpen && day.sessionIds.length > 0
         const pct = percent(day)
         const body = (
           <>
@@ -303,7 +306,7 @@ function DayStrip({
           <button
             key={day.date}
             type="button"
-            onClick={() => onOpen(day.sessionIds[0])}
+            onClick={() => onOpen?.(day.sessionIds[0])}
             title="Shu kun yo‘qlamasini ochish"
             className={`${base} transition-colors ${isLight ? 'hover:border-slate-300' : 'hover:border-slate-600'}`}
           >

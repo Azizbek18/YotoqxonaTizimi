@@ -227,6 +227,35 @@ export function createDekanAttendanceRepository() {
       return (data ?? []) as DekanSessionRow[]
     },
 
+    /**
+     * Every nightly and hand-opened (tarbiyachi) roll-call of ONE dorm in
+     * [from, to]. Rows only feed the per-day grid, so they are typed like the
+     * other history sessions.
+     */
+    async buildingSessionsInRange(dormId: string, from: string, to: string): Promise<DekanSessionRow[]> {
+      const { data, error } = await supabase
+        .from('attendance_sessions').select('*')
+        .eq('dorm_id', dormId)
+        .in('kind', ['nightly', 'adhoc'])
+        .in('status', ['open', 'closed', 'auto_closed'])
+        .gte('scheduled_for', from).lte('scheduled_for', to)
+        .order('opened_at', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as unknown as DekanSessionRow[]
+    },
+
+    /** Which of these students are of the given gender. */
+    async studentIdsOfGender(gender: string, studentIds: string[]): Promise<Set<string>> {
+      const out = new Set<string>()
+      for (const part of chunk(studentIds, ID_CHUNK)) {
+        const { data, error } = await supabase
+          .from('users').select('id').eq('gender', gender).in('id', part)
+        if (error) throw error
+        for (const row of data ?? []) out.add(row.id)
+      }
+      return out
+    },
+
     /** Avtomatik kechki yo'qlamalarning oxirgilari (yopilgan), berilgan binolar bo'yicha. */
     async recentNightly(dormIds: string[], limit: number): Promise<DekanSessionRow[]> {
       if (dormIds.length === 0) return []

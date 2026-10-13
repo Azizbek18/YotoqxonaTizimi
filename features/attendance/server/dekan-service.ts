@@ -9,6 +9,7 @@ import {
   type DormBrief,
 } from './dekan-repository'
 import { sendAttendanceReminders, type ReminderSender } from './dekan-notify'
+import type { AttendanceRecordRow } from '@/types/database.generated'
 import type {
   AttendanceSummary,
   DekanDormCard,
@@ -193,6 +194,84 @@ export function createDekanAttendanceService(
     return { session: info(session, label, summary, 'nightly'), residents: rows }
   }
 
+  /**
+   * Per-day summary + student x day grid from sessions and their records.
+   * `openableIds` marks sessions whose roster can be opened (a dekan's own
+   * roll-call); every other session is counted but shown as "kechki".
+   */
+  async function assembleHistory(input: {
+    dates: string[]
+    dormId: string | null
+    sessions: DekanSessionRow[]
+    openableIds: Set<string>
+    records: AttendanceRecordRow[]
+  }): Promise<DekanHistoryView> {
+    const { dates, dormId, sessions, openableIds, records } = input
+    const dateOf = new Map(sessions.map((s) => [s.id, s.scheduled_for]))
+    const perDay = new Map<string, Map<string, DekanHistoryState>>()
+    for (const r of records) {
+      const date = dateOf.get(r.session_id)
+      if (!date) continue
+      const state = dekanState(r)
+      const day = perDay.get(date) ?? new Map<string, DekanHistoryState>()
+      const prev = day.get(r.student_id)
+      if (!prev || STATE_RANK[state] > STATE_RANK[prev]) day.set(r.student_id, state)
+      perDay.set(date, day)
+    }
+
+    const nowMs = now().getTime()
+    const dayViews: DekanHistoryDay[] = dates.map((date) => {
+      const summary = emptySummary()
+      for (const state of perDay.get(date)?.values() ?? []) summary[state === 'home' ? 'excused' : state] += 1
+      summary.total = summary.present + summary.absent + summary.unmarked + summary.excused
+      const ofDay = sessions.filter((s) => s.scheduled_for === date)
+      return {
+        date,
+        // Only the dekan's own roll-calls open a roster; the nightly one is counted, not opened.
+        sessionIds: ofDay.filter((s) => openableIds.has(s.id)).map((s) => s.id),
+        nightly: ofDay.some((s) => !openableIds.has(s.id)),
+        live: ofDay.some((s) => s.status === 'open' && new Date(s.closes_at).getTime() > nowMs),
+        summary,
+      }
+    })
+
+    const studentIds = [...new Set(records.map((r) => r.student_id))]
+    const contacts = new Map((await drepo.contacts(studentIds)).map((c) => [c.id, c]))
+    const lastRoom = new Map<string, { room: string; floor: number | null }>()
+    for (const r of records) {
+      if (!lastRoom.has(r.student_id)) lastRoom.set(r.student_id, { room: r.room_number, floor: r.floor_number })
+    }
+
+    const students: DekanHistoryStudent[] = studentIds.map((id) => {
+      const states: Record<string, DekanHistoryState> = {}
+      const row: DekanHistoryStudent = {
+        id,
+        fullName: contacts.get(id)?.full_name ?? 'Talaba',
+        roomNumber: contacts.get(id)?.room_number ?? lastRoom.get(id)?.room ?? '—',
+        floor: contacts.get(id)?.assigned_floor ?? lastRoom.get(id)?.floor ?? null,
+        states,
+        present: 0,
+        absent: 0,
+        unmarked: 0,
+        home: 0,
+      }
+      for (const [date, day] of perDay) {
+        const state = day.get(id)
+        if (!state) continue
+        states[date] = state
+        row[state] += 1
+      }
+      return row
+    })
+    students.sort((a, b) =>
+      a.roomNumber.localeCompare(b.roomNumber, 'uz', { numeric: true }) ||
+      a.fullName.localeCompare(b.fullName, 'uz'),
+    )
+
+    return { dormId, dates, days: dayViews, students }
+
+  }
+
   return {
     async overview(scope: DekanScope): Promise<DekanOverview> {
       const { counts, dorms } = await facultyDorms(scope.faculty)
@@ -286,68 +365,26 @@ export function createDekanAttendanceService(
       )
       const records = allRecords.filter((r) => !nightlyIds.has(r.session_id) || nightlyStudents.has(r.student_id))
 
-      const dateOf = new Map(sessions.map((s) => [s.id, s.scheduled_for]))
-      const perDay = new Map<string, Map<string, DekanHistoryState>>()
-      for (const r of records) {
-        const date = dateOf.get(r.session_id)
-        if (!date) continue
-        const state = dekanState(r)
-        const day = perDay.get(date) ?? new Map<string, DekanHistoryState>()
-        const prev = day.get(r.student_id)
-        if (!prev || STATE_RANK[state] > STATE_RANK[prev]) day.set(r.student_id, state)
-        perDay.set(date, day)
-      }
+      return assembleHistory({ dates, dormId, sessions, openableIds: new Set(dekanSessions.map((x) => x.id)), records })
+    },
 
-      const nowMs = now().getTime()
-      const dayViews: DekanHistoryDay[] = dates.map((date) => {
-        const summary = emptySummary()
-        for (const state of perDay.get(date)?.values() ?? []) summary[state === 'home' ? 'excused' : state] += 1
-        summary.total = summary.present + summary.absent + summary.unmarked + summary.excused
-        const ofDay = sessions.filter((s) => s.scheduled_for === date)
-        return {
-          date,
-          // Only the dekan's own roll-calls open a roster; the nightly one is counted, not opened.
-          sessionIds: ofDay.filter((s) => !nightlyIds.has(s.id)).map((s) => s.id),
-          nightly: ofDay.some((s) => nightlyIds.has(s.id)),
-          live: ofDay.some((s) => s.status === 'open' && new Date(s.closes_at).getTime() > nowMs),
-          summary,
-        }
-      })
-
-      const studentIds = [...new Set(records.map((r) => r.student_id))]
-      const contacts = new Map((await drepo.contacts(studentIds)).map((c) => [c.id, c]))
-      const lastRoom = new Map<string, { room: string; floor: number | null }>()
-      for (const r of records) {
-        if (!lastRoom.has(r.student_id)) lastRoom.set(r.student_id, { room: r.room_number, floor: r.floor_number })
-      }
-
-      const students: DekanHistoryStudent[] = studentIds.map((id) => {
-        const states: Record<string, DekanHistoryState> = {}
-        const row: DekanHistoryStudent = {
-          id,
-          fullName: contacts.get(id)?.full_name ?? 'Talaba',
-          roomNumber: contacts.get(id)?.room_number ?? lastRoom.get(id)?.room ?? '—',
-          floor: contacts.get(id)?.assigned_floor ?? lastRoom.get(id)?.floor ?? null,
-          states,
-          present: 0,
-          absent: 0,
-          unmarked: 0,
-          home: 0,
-        }
-        for (const [date, day] of perDay) {
-          const state = day.get(id)
-          if (!state) continue
-          states[date] = state
-          row[state] += 1
-        }
-        return row
-      })
-      students.sort((a, b) =>
-        a.roomNumber.localeCompare(b.roomNumber, 'uz', { numeric: true }) ||
-        a.fullName.localeCompare(b.fullName, 'uz'),
-      )
-
-      return { dormId, dates, days: dayViews, students }
+    /**
+     * Tarbiyachi's multi-day view of ONE building: the automatic nightly and
+     * hand-opened roll-calls of the last `days` days, every resident's state
+     * per day. Read-only; nothing here opens a roster.
+     */
+    async buildingHistory(input: { dormId: string; gender?: string | null; days?: number }): Promise<DekanHistoryView> {
+      const days = Math.min(Math.max(Math.floor(input.days ?? 7) || 7, 1), HISTORY_MAX_DAYS)
+      const today = tashkentDateString(now())
+      const dates = Array.from({ length: days }, (_, i) => shiftDate(today, -i))
+      const sessions = await drepo.buildingSessionsInRange(input.dormId, dates[dates.length - 1], today)
+      const all = sessions.length > 0 ? await drepo.recordsForSessions(sessions.map((s) => s.id)) : []
+      // A tarbiyachi assigned to one gender only sees that gender's residents.
+      const allowed = input.gender
+        ? await drepo.studentIdsOfGender(input.gender, [...new Set(all.map((r) => r.student_id))])
+        : null
+      const records = allowed ? all.filter((r) => allowed.has(r.student_id)) : all
+      return assembleHistory({ dates, dormId: input.dormId, sessions, openableIds: new Set(), records })
     },
 
     /**

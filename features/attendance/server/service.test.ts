@@ -209,12 +209,12 @@ describe('activeSessions scope', () => {
 })
 
 describe('openAdhoc', () => {
-  it('needs write access and seeds records', async () => {
+  it('is closed to everyone — sessions open only on the dekan-set schedule', async () => {
     const r = repo()
-    await createAttendanceService(r as never).openAdhoc(tarbiyachi)
-    expect(r.upsertSession).toHaveBeenCalledWith(expect.objectContaining({ kind: 'adhoc', openedBy: 'tar-1' }))
-    expect(r.seedRecords).toHaveBeenCalled()
+    await expect(createAttendanceService(r as never).openAdhoc(tarbiyachi)).rejects.toMatchObject({ status: 403 })
     await expect(createAttendanceService(r as never).openAdhoc(dekan)).rejects.toMatchObject({ status: 403 })
+    expect(r.upsertSession).not.toHaveBeenCalled()
+    expect(r.seedRecords).not.toHaveBeenCalled()
   })
 })
 

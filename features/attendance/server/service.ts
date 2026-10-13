@@ -157,31 +157,15 @@ export function createAttendanceService(
       }))
     },
 
-    /** Start an unscheduled session for the actor's scope. */
+    /**
+     * Staff can no longer start a roll-call on demand: sessions open only at the
+     * time the dekan sets (cron) or through the dekan's own scheduled roll-call.
+     * A tarbiyachi opening one ad hoc made a second, near-empty session next to
+     * the real nightly one.
+     */
     async openAdhoc(actor: AttendanceActor) {
-      if (!actor.canWrite) throw new ApiError(403, 'Faqat tarbiyachi yo‘qlama ocha oladi')
-      const dorm = await repo.dorm(actor.dormId)
-      if (!dorm) throw new ApiError(409, 'Yotoqxona topilmadi')
-
-      const scheduledFor = tashkentDateString()
-      const closesAt = attendanceClosesAt(scheduledFor, dorm.attendance_open_time, dorm.attendance_close_time)
-      // An ad-hoc check now shouldn't already be past its computed close.
-      const effectiveClose = closesAt.getTime() > Date.now()
-        ? closesAt
-        : new Date(Date.now() + 2 * 60 * 60_000)
-
-      const { row } = await repo.upsertSession({
-        dormId: actor.dormId,
-        scheduledFor,
-        kind: 'adhoc',
-        gender: actor.role === 'sardor' ? actor.gender : actor.gender,
-        floor: actor.role === 'sardor' ? actor.floor : null,
-        block: actor.role === 'sardor' ? actor.block ?? null : null,
-        openedBy: actor.userId,
-        closesAt: effectiveClose.toISOString(),
-      })
-      await repo.seedRecords(row.id, await residentsForActor(actor))
-      return loadRoster(actor, row)
+      void actor
+      throw new ApiError(403, 'Yo‘qlama dekan belgilagan vaqtda avtomatik ochiladi')
     },
 
     async roster(actor: AttendanceActor, sessionId: string): Promise<RosterView> {

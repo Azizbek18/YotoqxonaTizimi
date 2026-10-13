@@ -13,7 +13,6 @@ import {
   Clock,
   ChevronDown,
   MapPin,
-  Loader2,
   Search,
   CheckCircle2,
   Home,
@@ -94,7 +93,6 @@ export default function TarbiyachiYoqlamaPage() {
   const { floorOf } = useRoomFloors()
 
   const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
   const [view, setView] = useState<RosterView | null>(null)
   const [flags, setFlags] = useState<Flag[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -140,20 +138,6 @@ export default function TarbiyachiYoqlamaPage() {
 
   useEffect(() => { void bootstrap() }, [bootstrap])
   useEffect(() => () => { if (reloadTimer.current) clearTimeout(reloadTimer.current) }, [])
-
-  const openSession = async () => {
-    setBusy(true)
-    try {
-      const headers = { ...(await getAuthHeaders()), 'Content-Type': 'application/json' }
-      const res = await fetch('/api/attendance/session', { method: 'POST', headers })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Yo‘qlamani ochib bo‘lmadi')
-      setView(data as RosterView)
-      toast.success('Yo‘qlama ochildi')
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Xatolik')
-    } finally { setBusy(false) }
-  }
 
   // Optimistic mark; the roster refetch is debounced so "mark the whole
   // floor" doesn't fire a reload per student.
@@ -430,18 +414,9 @@ export default function TarbiyachiYoqlamaPage() {
           </div>
           <h2 className={`text-lg font-bold ${ui.strong}`}>Hozircha ochiq yo‘qlama yo‘q</h2>
           <p className={`mx-auto mt-1.5 max-w-md text-sm ${ui.muted}`}>
-            Kechki yo‘qlama har kuni belgilangan vaqtda avtomatik ochiladi. Zarur bo‘lsa, hoziroq qo‘lda ochib
-            qavatma-qavat belgilashingiz mumkin.
+            Yo‘qlama dekan belgilagan vaqtda avtomatik ochiladi. Ochilgach, shu yerda qavatma-qavat
+            belgilashingiz mumkin.
           </p>
-          <button
-            type="button"
-            onClick={openSession}
-            disabled={busy}
-            className={`no-shelf mx-auto mt-5 flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold tracking-wide transition shadow-md active:scale-95 ${ui.accentSolid}`}
-          >
-            {busy ? <Loader2 size={16} className="animate-spin" /> : <ClipboardCheck size={16} />}
-            {busy ? 'Ochilmoqda…' : 'Yo‘qlama ochish'}
-          </button>
         </div>
       ) : (
         <>

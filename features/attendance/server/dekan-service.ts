@@ -47,7 +47,13 @@ export function dormLabel(d: Pick<DormBrief, 'number' | 'name'>): string {
   return name || 'Yotoqxona'
 }
 
-const STATE_RANK: Record<DekanHistoryState, number> = { present: 2, absent: 1, unmarked: 0 }
+const STATE_RANK: Record<DekanHistoryState, number> = { present: 3, home: 2, absent: 1, unmarked: 0 }
+
+/** Yozuvdagi holatni dekan ko'rinishiga: uyga ketish arizasi bilan excused = 'home'. */
+function dekanState(r: { state: string; source: string | null }): DekanHistoryState {
+  if (r.state === 'present' || r.state === 'absent') return r.state
+  return r.state === 'excused' && r.source === 'leave' ? 'home' : 'unmarked'
+}
 
 /** `YYYY-MM-DD` shifted by whole days (calendar arithmetic, no timezone drift). */
 function shiftDate(date: string, days: number): string {
@@ -224,7 +230,7 @@ export function createDekanAttendanceService(
       for (const r of records) {
         const date = dateOf.get(r.session_id)
         if (!date) continue
-        const state: DekanHistoryState = r.state === 'present' || r.state === 'absent' ? r.state : 'unmarked'
+        const state = dekanState(r)
         const day = perDay.get(date) ?? new Map<string, DekanHistoryState>()
         const prev = day.get(r.student_id)
         if (!prev || STATE_RANK[state] > STATE_RANK[prev]) day.set(r.student_id, state)
@@ -234,8 +240,8 @@ export function createDekanAttendanceService(
       const nowMs = now().getTime()
       const dayViews: DekanHistoryDay[] = dates.map((date) => {
         const summary = emptySummary()
-        for (const state of perDay.get(date)?.values() ?? []) summary[state] += 1
-        summary.total = summary.present + summary.absent + summary.unmarked
+        for (const state of perDay.get(date)?.values() ?? []) summary[state === 'home' ? 'excused' : state] += 1
+        summary.total = summary.present + summary.absent + summary.unmarked + summary.excused
         const ofDay = sessions.filter((s) => s.scheduled_for === date)
         return {
           date,
@@ -265,6 +271,7 @@ export function createDekanAttendanceService(
           present: 0,
           absent: 0,
           unmarked: 0,
+          home: 0,
         }
         for (const [date, day] of perDay) {
           const state = day.get(id)
@@ -379,7 +386,7 @@ export function createDekanAttendanceService(
             roomNumber: (session.status === 'open' ? c?.room_number : null) ?? (r.room_number || '—'),
             floor: (session.status === 'open' ? c?.assigned_floor : null) ?? r.floor_number,
             phone: c?.phone_number ?? c?.phone ?? null,
-            state: r.state === 'present' || r.state === 'absent' ? r.state : 'unmarked',
+            state: dekanState(r),
             selfDistanceM: r.self_distance_m,
             markedAt: r.marked_at,
           }
@@ -391,7 +398,7 @@ export function createDekanAttendanceService(
       }
 
       const summary = emptySummary()
-      for (const r of rows) summary[r.state] += 1
+      for (const r of rows) summary[r.state === 'home' ? 'excused' : r.state] += 1
       summary.total = rows.length
       return { session: info(session, label, summary), residents: rows }
     },

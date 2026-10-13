@@ -6,6 +6,7 @@ import { Home, Loader2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import AddressMapPicker from '@/components/talaba/foreign-docs/AddressMapPicker'
 import { updateStudentProfile } from '@/features/profile/client/api'
+import { fetchMyForeignDocs } from '@/features/foreign-docs/client/api'
 
 type Props = {
   isLight: boolean
@@ -38,6 +39,16 @@ export default function KvAddressModal({ isLight, initialAddress, initialCountry
         country: foreign ? country.trim() : null,
       })
       toast.success('Manzil saqlandi')
+      // Manzil o'zgargan bo'lsa, propiska eski manzilda qolmasligi kerak.
+      if (initialAddress && initialAddress.trim() !== address.trim()) {
+        void fetchMyForeignDocs()
+          .then((docs) => {
+            if (docs.some((d) => d.docType === 'registration' && d.status !== 'cancelled')) {
+              toast("Manzilingiz o'zgardi — propiskangizni ham yangi manzilga yangilashni unutmang.", { icon: '📌', duration: 7000 })
+            }
+          })
+          .catch(() => {})
+      }
       onSaved()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Manzilni saqlab bo'lmadi")

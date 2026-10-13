@@ -3,7 +3,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import type { ForeignStudentDocumentRow } from '@/types/database.generated'
 
 const DOC_COLUMNS =
-  'id, student_id, doc_type, number, issued_on, expires_on, status, registration_basis, address, file_path, note, verified_at, verified_by, created_by_role, created_at, updated_at'
+  'id, student_id, doc_type, number, issued_on, expires_on, status, registration_basis, address, landlord_name, landlord_phone, file_path, note, verified_at, verified_by, created_by_role, created_at, updated_at'
 
 // Talaba/xodim tomonidan yoziladigan maydonlar (id, student_id, audit
 // ustunlaridan tashqari).
@@ -17,6 +17,8 @@ export type DocWriteFields = Partial<
     | 'status'
     | 'registration_basis'
     | 'address'
+    | 'landlord_name'
+    | 'landlord_phone'
     | 'note'
     | 'file_path'
     | 'verified_at'
@@ -31,6 +33,7 @@ export type StudentContextRow = {
   course: number | null
   room_number: string | null
   dorm_id?: string | null
+  is_off_campus?: boolean | null
 }
 
 export type DashboardDocRow = ForeignStudentDocumentRow & { users: StudentContextRow | null }
@@ -133,7 +136,7 @@ export function createForeignDocsRepository() {
     async findStudentContext(studentId: string): Promise<StudentContextRow | null> {
       const { data, error } = await supabase
         .from('users')
-        .select('full_name, faculty, country, course, room_number')
+        .select('full_name, faculty, country, course, room_number, is_off_campus')
         .eq('id', studentId)
         .eq('role', 'talaba')
         .maybeSingle()

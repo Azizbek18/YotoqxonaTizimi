@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Plane, Home, Plus, Pencil, ShieldCheck, AlertTriangle, Loader2, ChevronRight } from 'lucide-react'
+import { Plane, Home, FileSignature, Plus, Pencil, ShieldCheck, AlertTriangle, Loader2, ChevronRight } from 'lucide-react'
 import { fetchMyForeignDocs } from '@/features/foreign-docs/client/api'
 import { DOC_STATUS_LABELS, type DocType, type ForeignDoc } from '@/features/foreign-docs/types'
 import { bucketTone, countdownLabel, ringProgress } from '@/features/foreign-docs/domain/presentation'
 import ForeignDocModal from './ForeignDocModal'
 
-type Props = { isLight: boolean; mode: 'foreign' | 'registration' }
+type Props = { isLight: boolean; mode: 'foreign' | 'registration'; showLease?: boolean }
 
 const TONE_CLASSES = {
   ok: { ring: '#10b981', text: 'text-emerald-500', chip: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25' },
@@ -68,8 +68,9 @@ function DocPanel({
   onAdd: () => void
 }) {
   const isVisa = docType === 'visa'
-  const Icon = isVisa ? Plane : Home
-  const label = isVisa ? 'Viza' : 'Propiska'
+  const isLease = docType === 'lease'
+  const Icon = isVisa ? Plane : isLease ? FileSignature : Home
+  const label = isVisa ? 'Viza' : isLease ? 'Ijara shartnomasi' : 'Propiska'
 
   if (!doc) {
     return (
@@ -146,7 +147,7 @@ function DocPanel({
  * ko'rsatilmaydi). O'zi ma'lumot yuklaydi; kim ko'rishi kerakligini
  * chaqiruvchi hal qiladi (features/foreign-docs/domain/eligibility.ts).
  */
-export default function ForeignDocsCard({ isLight, mode }: Props) {
+export default function ForeignDocsCard({ isLight, mode, showLease = false }: Props) {
   const [docs, setDocs] = useState<ForeignDoc[] | null>(null)
   const [modal, setModal] = useState<{ type: DocType; doc: ForeignDoc | null } | null>(null)
 
@@ -167,11 +168,11 @@ export default function ForeignDocsCard({ isLight, mode }: Props) {
       (docs ?? [])
         .filter((d) => d.docType === type && d.status !== 'cancelled')
         .sort((a, b) => b.expiresOn.localeCompare(a.expiresOn))[0] ?? null
-    return { visa: pick('visa'), registration: pick('registration') }
+    return { visa: pick('visa'), registration: pick('registration'), lease: pick('lease') }
   }, [docs])
 
   const worst = useMemo(() => {
-    const active = [current.visa, current.registration].filter(Boolean) as ForeignDoc[]
+    const active = [current.visa, current.registration, current.lease].filter(Boolean) as ForeignDoc[]
     if (active.length === 0) return null
     return active.reduce((a, b) => (a.daysLeft <= b.daysLeft ? a : b))
   }, [current])
@@ -196,7 +197,7 @@ export default function ForeignDocsCard({ isLight, mode }: Props) {
         </div>
         <div>
           <h3 className={`text-sm font-extrabold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-            {mode === 'foreign' ? 'Viza va propiska' : "Ro'yxatga olish (propiska)"}
+            {showLease ? (mode === 'foreign' ? 'Viza, propiska va ijara' : 'Propiska va ijara') : mode === 'foreign' ? 'Viza va propiska' : "Ro'yxatga olish (propiska)"}
           </h3>
           <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Muddat nazorati va eslatmalar</p>
         </div>
@@ -234,6 +235,15 @@ export default function ForeignDocsCard({ isLight, mode }: Props) {
             onEdit={() => setModal({ type: 'registration', doc: current.registration })}
             onAdd={() => setModal({ type: 'registration', doc: null })}
           />
+          {showLease && (
+            <DocPanel
+              isLight={isLight}
+              docType="lease"
+              doc={current.lease}
+              onEdit={() => setModal({ type: 'lease', doc: current.lease })}
+              onAdd={() => setModal({ type: 'lease', doc: null })}
+            />
+          )}
           <Link
             href="/talaba/hujjatlarim"
             data-student-button="plain"

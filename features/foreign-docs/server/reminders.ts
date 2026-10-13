@@ -74,8 +74,24 @@ export async function runForeignDocReminders(
     const docLabel = DOC_TYPE_LABELS[doc.doc_type]
     const dateText = fmtDate(doc.expires_on)
     const link = appUrl('/talaba/hujjatlarim')
-    const message =
-      d < 0
+    const isLease = doc.doc_type === 'lease'
+    const message = isLease
+      ? d < 0
+        ? `🚨 ${docLabel} muddati ${Math.abs(d)} kun oldin — ${dateText} da tugagan.
+
+Uy egasi bilan shartnomani zudlik bilan yangilang va yangi muddatni «Hujjatlarim» bo'limiga kiriting.
+
+${link}`
+        : d === 0
+          ? `⏰ ${docLabel} muddati BUGUN (${dateText}) tugaydi.
+
+Uy egasi bilan shartnomani uzaytiring va yangi muddatni kiriting:
+${link}`
+          : `⏰ ${docLabel} muddati tugashiga ${d} kun qoldi (${dateText}).
+
+Uy egasi bilan shartnomani oldindan uzaytiring. Yangilangach yangi muddatni «Hujjatlarim» bo'limiga kiriting:
+${link}`
+      : d < 0
         ? `🚨 ${docLabel} muddati ${Math.abs(d)} kun oldin — ${dateText} da tugagan.\n\nZudlik bilan universitet xalqaro bo'limi yoki fakultet dekanatiga murojaat qiling. Kechikish jarima va deportatsiya xavfini keltiradi.\n\n${link}`
         : d === 0
           ? `⏰ ${docLabel} muddati BUGUN (${dateText}) tugaydi.\n\nAgar hali yangilamagan bo'lsangiz — zudlik bilan xalqaro bo'limga murojaat qiling.\n\n${link}`
@@ -86,8 +102,8 @@ export async function runForeignDocReminders(
       deps.sendPush(doc.student_id, {
         title: d < 0 ? `${docLabel} muddati o'tgan 🚨` : `${docLabel}: ${countdownLabel(d)}`,
         body: d < 0
-          ? 'Zudlik bilan xalqaro bo‘lim yoki dekanatga murojaat qiling.'
-          : `Muddat: ${dateText}. Xalqaro bo‘limga murojaat qiling.`,
+          ? (isLease ? 'Uy egasi bilan shartnomani zudlik bilan yangilang.' : 'Zudlik bilan xalqaro bo‘lim yoki dekanatga murojaat qiling.')
+          : isLease ? `Muddat: ${dateText}. Shartnomani uzaytiring.` : `Muddat: ${dateText}. Xalqaro bo‘limga murojaat qiling.`,
         url: '/talaba/hujjatlarim',
         tag: `foreign-doc-${doc.id}`,
       }),
@@ -99,6 +115,7 @@ export async function runForeignDocReminders(
           docLabel,
           expiresOn: doc.expires_on,
           daysLeft: d,
+          kind: doc.doc_type,
         })
       } catch (error) {
         console.error('Foreign-doc reminder email failed:', error)

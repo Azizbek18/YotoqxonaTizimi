@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
-import { X, Plane, Home, Upload, FileText, Trash2, Loader2 } from 'lucide-react'
+import { X, Plane, Home, FileSignature, Upload, FileText, Trash2, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { prepareUploadFile } from '@/lib/prepare-upload'
 import { saveForeignDoc, deleteForeignDoc } from '@/features/foreign-docs/client/api'
+import { fetchStudentProfile } from '@/features/profile/client/api'
 import AddressMapPicker from './AddressMapPicker'
 import {
   DOC_STATUS_LABELS,
@@ -32,6 +33,9 @@ const STATUS_OPTIONS: DocStatus[] = ['active', 'renewing', 'cancelled']
 
 export default function ForeignDocModal({ open, isLight, docType, existing, onClose, onSaved }: Props) {
   const isVisa = docType === 'visa'
+  const isLease = docType === 'lease'
+  const [landlordName, setLandlordName] = useState('')
+  const [landlordPhone, setLandlordPhone] = useState('')
   const [number, setNumber] = useState('')
   const [issuedOn, setIssuedOn] = useState('')
   const [expiresOn, setExpiresOn] = useState('')
@@ -53,6 +57,8 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
     setBasis(existing?.registrationBasis ?? '')
     setAddress(existing?.address ?? '')
     setNote(existing?.note ?? '')
+    setLandlordName(existing?.landlordName ?? '')
+    setLandlordPhone(existing?.landlordPhone ?? '')
     setFile(null)
     setPreparingFile(false)
   }, [open, existing])
@@ -82,10 +88,24 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
     }
   }
 
+  // Yangi propiska/ijara: manzil KV-talabaning "Turgan manzil"idan oldindan
+  // to'ldiriladi (qayta yozish shart emas, o'zgartirsa bo'ladi).
+  useEffect(() => {
+    if (!open || existing || isVisa) return
+    let cancelled = false
+    fetchStudentProfile()
+      .then(({ profile }) => {
+        if (!cancelled && profile?.residence_address) setAddress((cur) => cur || profile.residence_address!)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [open, existing, isVisa])
+
   const title = useMemo(() => {
+    if (isLease) return existing ? 'Shartnomani yangilash' : 'Yangi ijara shartnomasi'
     const kind = isVisa ? 'viza' : 'propiska'
     return existing ? `${isVisa ? 'Viza' : 'Propiska'}ni yangilash` : `Yangi ${kind}`
-  }, [existing, isVisa])
+  }, [existing, isVisa, isLease])
 
   if (!open || typeof document === 'undefined') return null
 
@@ -97,7 +117,7 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
       toast.error('Amal qilish muddatini kiriting')
       return
     }
-    if (!isVisa && !basis) {
+    if (!isVisa && !isLease && !basis) {
       toast.error("Ro'yxatga qo'yish turini tanlang")
       return
     }
@@ -115,8 +135,10 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
           issuedOn: issuedOn || null,
           expiresOn,
           status,
-          registrationBasis: isVisa ? null : (basis || null),
+          registrationBasis: isVisa || isLease ? null : (basis || null),
           address: isVisa ? null : (address.trim() || null),
+          landlordName: isLease ? (landlordName.trim() || null) : null,
+          landlordPhone: isLease ? (landlordPhone.trim() || null) : null,
           note: note.trim() || null,
         },
         file,
@@ -173,7 +195,7 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
         <div className="flex justify-between items-center mb-5">
           <div className="flex items-center gap-2">
             <div className={`p-2 rounded-xl ${isLight ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/20 text-blue-300'}`}>
-              {isVisa ? <Plane size={20} /> : <Home size={20} />}
+              {isVisa ? <Plane size={20} /> : isLease ? <FileSignature size={20} /> : <Home size={20} />}
             </div>
             <h3 className="text-lg font-extrabold tracking-tight">{title}</h3>
           </div>
@@ -184,18 +206,18 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className={labelCls}>{isVisa ? 'Viza raqami' : "Ro'yxatga qo'yish (propiska) raqami"}</label>
+            <label className={labelCls}>{isVisa ? 'Viza raqami' : isLease ? 'Shartnoma raqami' : "Ro'yxatga qo'yish (propiska) raqami"}</label>
             <input
               type="text"
               value={number}
               onChange={(e) => setNumber(e.target.value)}
-              placeholder={isVisa ? 'Masalan: E1234567' : 'Masalan: 1234567890'}
+              placeholder={isVisa ? 'Masalan: E1234567' : isLease ? 'Masalan: 12/2026' : 'Masalan: 1234567890'}
               maxLength={60}
               className={fieldCls}
             />
           </div>
 
-          {!isVisa && (
+          {!isVisa && !isLease && (
             <div>
               <label className={labelCls}>Ro&apos;yxatga qo&apos;yish turi</label>
               <CustomSelect
@@ -229,10 +251,23 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
             />
           </div>
 
+          {isLease && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Uy egasi (ixtiyoriy)</label>
+                <input type="text" value={landlordName} onChange={(e) => setLandlordName(e.target.value)} maxLength={120} placeholder="F.I.Sh" className={fieldCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Uy egasi telefoni</label>
+                <input type="tel" value={landlordPhone} onChange={(e) => setLandlordPhone(e.target.value)} maxLength={30} placeholder="+998 90 123 45 67" className={fieldCls} />
+              </div>
+            </div>
+          )}
+
           {!isVisa && (
             <div>
               <label className={labelCls}>Manzil</label>
-              {!ttjSelected && (
+              {!ttjSelected && !isLease && (
                 <div className="mb-2">
                   <AddressMapPicker isLight={isLight} onResolved={(name) => setAddress(name)} />
                 </div>
@@ -241,7 +276,7 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
                 rows={2}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder={ttjSelected ? 'Yotoqxona nomi avtomatik qo‘yiladi' : "Yuqoridan xaritada belgilang yoki bu yerga qo'lda yozing"}
+                placeholder={ttjSelected ? 'Yotoqxona nomi avtomatik qo‘yiladi' : isLease ? 'Ijaraga olingan uy manzili' : "Yuqoridan xaritada belgilang yoki bu yerga qo'lda yozing"}
                 maxLength={300}
                 className={`${fieldCls} resize-none`}
               />
@@ -254,7 +289,7 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
           )}
 
           <div>
-            <label className={labelCls}>{isVisa ? 'Viza fayli' : 'Hujjat fayli'} (ixtiyoriy)</label>
+            <label className={labelCls}>{isVisa ? 'Viza fayli' : isLease ? 'Shartnoma fayli' : 'Hujjat fayli'} (ixtiyoriy)</label>
             <input
               ref={fileRef}
               type="file"

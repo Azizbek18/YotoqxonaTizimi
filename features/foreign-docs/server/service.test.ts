@@ -40,3 +40,31 @@ describe('getForFileAccess', () => {
       .rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe('lease documents', () => {
+  function leaseService(context: Record<string, unknown>) {
+    const insert = vi.fn(async (_id: string, fields: Record<string, unknown>) => ({
+      id: 'new', student_id: 'student1', created_by_role: 'talaba', file_path: null,
+      verified_at: null, created_at: '', updated_at: '', ...fields,
+    }))
+    const repository = { findStudentContext: vi.fn().mockResolvedValue(context), insert }
+    return { svc: createForeignDocsService(repository as never), insert }
+  }
+  const input = {
+    docType: 'lease' as const, expiresOn: '2030-01-01', address: 'Chilonzor 7', landlordName: 'Karim aka', landlordPhone: '+998901234567',
+  }
+
+  it('lets an off-campus student save a lease with landlord details', async () => {
+    const { svc, insert } = leaseService({ faculty: 'amit', is_off_campus: true })
+    const doc = await svc.saveForStudent('student1', input)
+    expect(insert).toHaveBeenCalledWith('student1', expect.objectContaining({
+      doc_type: 'lease', landlord_name: 'Karim aka', landlord_phone: '+998901234567', registration_basis: null,
+    }), 'talaba')
+    expect(doc.landlordName).toBe('Karim aka')
+  })
+
+  it('refuses a lease for a dorm student', async () => {
+    const { svc } = leaseService({ faculty: 'amit', is_off_campus: false })
+    await expect(svc.saveForStudent('student1', input)).rejects.toMatchObject({ status: 403 })
+  })
+})

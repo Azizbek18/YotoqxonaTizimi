@@ -85,7 +85,7 @@ export default function KvHome({ profile, isLight, onEditAddress }: { profile: K
         </button>
       </div>
 
-      <ForeignDocsCard mode={profile?.country ? 'foreign' : 'registration'} isLight={isLight} />
+      <ForeignDocsCard mode={profile?.country ? 'foreign' : 'registration'} isLight={isLight} showLease />
 
       <Link
         href="/talaba/elonlar"

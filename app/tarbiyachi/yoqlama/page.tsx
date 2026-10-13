@@ -25,6 +25,7 @@ import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { dekanUI } from '@/lib/dekan-ui'
 import { Skel } from '@/components/ui/skeletons'
 import LeavesPanel from '@/components/attendance/LeavesPanel'
+import DayByDayAttendance from '@/components/dekan/DayByDayAttendance'
 import type { AttendanceState, RosterView, RosterResident } from '@/features/attendance/types'
 
 type Flag = { recordId: string; studentId: string; roomNumber: string; note: string | null; sessionDate: string }
@@ -84,6 +85,8 @@ function useCountdown(iso: string | null) {
   const pad = (n: number) => String(n).padStart(2, '0')
   return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`
 }
+
+const periodUrl = (days: number) => `/api/attendance/period?days=${days}`
 
 export default function TarbiyachiYoqlamaPage() {
   const isLight = useThemeStore((s) => s.theme === 'light')
@@ -527,6 +530,8 @@ export default function TarbiyachiYoqlamaPage() {
               ))
             )}
           </div>
+
+          <DayByDayAttendance dormLabel="Yotoqxona" isLight={isLight} historyUrl={periodUrl} />
 
           <LeavesPanel isLight={isLight} />
 

@@ -114,6 +114,12 @@ function setup(opts: { students?: Student[]; geo?: boolean } = {}) {
       sessions.filter((s) =>
         s.kind === 'nightly' && dorms.includes(s.dorm_id)
         && String(s.scheduled_for) >= from && String(s.scheduled_for) <= to)),
+    buildingSessionsInRange: vi.fn(async (dorm: string, from: string, to: string) =>
+      sessions.filter((s) =>
+        s.dorm_id === dorm && (s.kind === 'nightly' || s.kind === 'adhoc')
+        && String(s.scheduled_for) >= from && String(s.scheduled_for) <= to)),
+    studentIdsOfGender: vi.fn(async (gender: string, ids: string[]) =>
+      new Set(ids.filter((id) => (id === 's2' ? 'female' : 'male') === gender))),
     facultyStudentIds: vi.fn(async (faculty: string, ids: string[]) =>
       new Set(students.filter((s) => s.faculty === faculty && ids.includes(s.id)).map((s) => s.id))),
     recordsForSessions: vi.fn(async (ids: string[]) =>
@@ -267,6 +273,40 @@ describe('history includes the automatic nightly roll-call', () => {
     const day = (await t.service.history(scope, { days: 1 })).days[0]
     expect(day).toMatchObject({ nightly: true, sessionIds: ['mine'] })
     expect(day.summary).toMatchObject({ present: 2, total: 2 })
+  })
+})
+
+describe('buildingHistory (tarbiyachi, kunlar bo‘yicha)', () => {
+  const rec = (id: string, state: string) => ({ student_id: id, state, room_number: '1', floor_number: 1, self_distance_m: null, marked_at: null })
+  const add = (t: ReturnType<typeof setup>, id: string, date: string, kind: string, dorm = D1) => {
+    t.sessions.push({
+      id, dorm_id: dorm, faculty: null as never, kind, status: 'closed', scheduled_for: date,
+      starts_at: null as never, closes_at: `${date}T18:00:00Z`, closed_at: null, last_reminded_at: null, reminder_count: 0,
+    })
+  }
+
+  it('shows the whole building (every faculty) across nightly + adhoc days, never opens a roster', async () => {
+    const t = setup()
+    add(t, 'night', '2026-10-05', 'nightly')
+    add(t, 'hand', '2026-10-05', 'adhoc')
+    add(t, 'other-dorm', '2026-10-05', 'nightly', D2)
+    t.records.set('night', new Map([['s1', rec('s1', 'unmarked')], ['x1', rec('x1', 'present')]]))
+    t.records.set('hand', new Map([['s1', rec('s1', 'present')]]))
+    t.records.set('other-dorm', new Map([['y1', rec('y1', 'present')]]))
+
+    const view = await t.service.buildingHistory({ dormId: D1, days: 2 })
+
+    expect(view.days[0]).toMatchObject({ nightly: true, sessionIds: [] })
+    expect(view.students.map((s) => s.id).sort()).toEqual(['s1', 'x1'])
+    expect(view.students.find((s) => s.id === 's1')!.states['2026-10-05']).toBe('present')
+  })
+
+  it("narrows to the tarbiyachi's gender when one is assigned", async () => {
+    const t = setup()
+    add(t, 'night', '2026-10-05', 'nightly')
+    t.records.set('night', new Map([['s1', rec('s1', 'present')], ['s2', rec('s2', 'present')]]))
+    const view = await t.service.buildingHistory({ dormId: D1, gender: 'female', days: 1 })
+    expect(view.students.map((s) => s.id)).toEqual(['s2'])
   })
 })
 

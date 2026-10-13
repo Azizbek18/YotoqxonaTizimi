@@ -65,6 +65,10 @@ export type UserRow = {
   off_campus_verified_by: string | null
   off_campus_verified_at: string | null
   hemis_student_id: string | null
+  // Where a KV-talaba lives (migration 20261013090000); coords only when map-picked.
+  residence_address: string | null
+  residence_lat: number | null
+  residence_lng: number | null
   assigned_floor: number | null
   warning_count: number | null
   blacklisted: boolean | null

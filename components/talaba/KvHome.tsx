@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { GraduationCap, Home, Megaphone, ChevronRight, Phone } from 'lucide-react'
+import { GraduationCap, Home, Megaphone, ChevronRight, Phone, MapPin, Pencil } from 'lucide-react'
 import ForeignDocsCard from '@/components/talaba/foreign-docs/ForeignDocsCard'
 import { directionLabel } from '@/lib/directions'
 import { permitFacultyLabel } from '@/lib/faculties'
@@ -14,12 +14,13 @@ type KvProfile = {
   group?: string | number
   phone_number?: string
   country?: string | null
+  residence_address?: string | null
 }
 
 // Kvartirada turuvchi (KV) talabaning bosh sahifasi. Yotoqxona modullari
 // (xona, navbatchilik, to'lov, yo'qlama, ariza) unga tegishli emas — asosiysi
 // viza (faqat xorijiy fuqaro) va propiska muddati nazorati.
-export default function KvHome({ profile, isLight }: { profile: KvProfile | null; isLight: boolean }) {
+export default function KvHome({ profile, isLight, onEditAddress }: { profile: KvProfile | null; isLight: boolean; onEditAddress: () => void }) {
   const card = isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.03]'
   const muted = isLight ? 'text-slate-500' : 'text-slate-400'
   const strong = isLight ? 'text-slate-900' : 'text-white'
@@ -63,6 +64,22 @@ export default function KvHome({ profile, isLight }: { profile: KvProfile | null
             )}
           </dl>
         )}
+      </div>
+
+      <div className={`flex items-start gap-3 rounded-2xl border p-4 ${card}`}>
+        <MapPin size={18} className={`mt-0.5 shrink-0 ${isLight ? 'text-sky-600' : 'text-sky-300'}`} />
+        <div className="min-w-0 flex-1">
+          <p className={`text-[10px] font-semibold uppercase ${muted}`}>Turgan manzil</p>
+          <p className={`mt-0.5 break-words text-sm font-bold ${strong}`}>{profile?.residence_address || '—'}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onEditAddress}
+          data-btn="secondary"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider"
+        >
+          <Pencil size={11} /> O‘zgartirish
+        </button>
       </div>
 
       <ForeignDocsCard mode={profile?.country ? 'foreign' : 'registration'} isLight={isLight} />

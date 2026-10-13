@@ -18,6 +18,7 @@ import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchStudentProfile, uploadStudentAvatar } from '@/features/profile/client/api'
 import { createStudentApplication, fetchStudentApplications } from '@/features/applications/client/api'
+import dynamic from 'next/dynamic'
 import KvHome from '@/components/talaba/KvHome'
 import TelegramLinkGate from '@/components/talaba/TelegramLinkGate'
 import SignArizaModal from '@/components/applications/SignArizaModal'
@@ -34,6 +35,9 @@ import { getSafeUser } from '@/lib/auth-session'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
 import { prepareUploadFile } from '@/lib/prepare-upload'
 import toast from 'react-hot-toast'
+
+// Leaflet faqat KV-talabaga kerak — qolganlar uchun bundle'ga kirmasin.
+const KvAddressModal = dynamic(() => import('@/components/talaba/KvAddressModal'), { ssr: false })
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 interface Profile {
@@ -55,6 +59,7 @@ interface Profile {
   direction?: string
   is_off_campus?: boolean | null
   country?: string | null
+  residence_address?: string | null
 }
 
 type NotificationLevel = 'info' | 'warning' | 'danger' | 'success'
@@ -136,6 +141,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
   const isHome = pathname === '/talaba/dashboard'
   const isKv = profile?.is_off_campus === true
   const navItems = isKv ? KV_NAV : NAV
+  const [editingAddress, setEditingAddress] = useState(false)
   const kvBlocked = isKv && KV_BLOCKED_PATHS.some((p) => pathname.startsWith(p))
   const [stories, setStories] = useState<Story[]>([])
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
@@ -301,6 +307,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
   // hamda mavjud qiymatni tasodifan almashtirmaydi — bu yerda faqat rasm
   // majburiy.
   const isProfileIncomplete = mounted && profile !== null && !profile.avatar_url
+  const kvNeedsAddress = mounted && isKv && !isProfileIncomplete && !profile?.residence_address
 
   if (!mounted) return null
 
@@ -450,7 +457,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
 
         {/* Page Content with Animation */}
         <PageTransition>
-          {kvBlocked ? null : isKv && isHome ? <KvHome profile={profile} isLight={isLight} /> : children}
+          {kvBlocked ? null : isKv && isHome ? <KvHome profile={profile} isLight={isLight} onEditAddress={() => setEditingAddress(true)} /> : children}
         </PageTransition>
       </main>
 
@@ -648,7 +655,20 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
 
       {/* --- 8. MANDATORY PROFILE SETUP MODAL FOR FIRST TIME USERS --- */}
       {/* Shown only once the avatar step is done, so the two blocking dialogs never stack. */}
-      {mounted && profile !== null && !isProfileIncomplete && <TelegramLinkGate isLight={isLight} />}
+      {/* KV-talaba: avatar → turgan manzil → Telegram. */}
+      {mounted && profile !== null && !isProfileIncomplete && !kvNeedsAddress && <TelegramLinkGate isLight={isLight} />}
+
+      {(kvNeedsAddress || editingAddress) && (
+        <KvAddressModal
+          isLight={isLight}
+          initialAddress={profile?.residence_address}
+          onClose={kvNeedsAddress ? undefined : () => setEditingAddress(false)}
+          onSaved={() => {
+            setEditingAddress(false)
+            void refreshProfileData()
+          }}
+        />
+      )}
 
       {isProfileIncomplete && typeof document !== 'undefined' && createPortal(
         <ProfileSetupModal profile={profile} onComplete={refreshProfileData} isLight={isLight} />,

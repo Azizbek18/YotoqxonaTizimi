@@ -72,3 +72,37 @@ describe('profile floor captain lookup', () => {
     expect(repository.findFloorCaptain).toHaveBeenCalledWith(5, 'male', expect.objectContaining({ id: 'student-id' }))
   })
 })
+
+describe('off-campus residence address', () => {
+  function kvRepository(isOffCampus: boolean) {
+    const repository = repositoryFor('', null)
+    ;(repository.findStudent as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'student-id', is_off_campus: isOffCampus })
+    ;(repository.updateStudent as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'student-id' })
+    return repository
+  }
+
+  it('saves address and map coordinates for a KV student', async () => {
+    const repository = kvRepository(true)
+    await createProfileService(repository).update('student-id', {
+      residenceAddress: ' Toshkent, Chilonzor 7 ', residenceLat: 41.3, residenceLng: 69.2,
+    })
+    expect(repository.updateStudent).toHaveBeenCalledWith('student-id', {
+      residence_address: 'Toshkent, Chilonzor 7', residence_lat: 41.3, residence_lng: 69.2,
+    })
+  })
+
+  it('stores null coordinates for a hand-typed address', async () => {
+    const repository = kvRepository(true)
+    await createProfileService(repository).update('student-id', { residenceAddress: 'Yunusobod 4-mavze' })
+    expect(repository.updateStudent).toHaveBeenCalledWith('student-id', {
+      residence_address: 'Yunusobod 4-mavze', residence_lat: null, residence_lng: null,
+    })
+  })
+
+  it('refuses a dorm student and a too-short address', async () => {
+    await expect(createProfileService(kvRepository(false)).update('student-id', { residenceAddress: 'Toshkent shahri' }))
+      .rejects.toMatchObject({ status: 403 })
+    await expect(createProfileService(kvRepository(true)).update('student-id', { residenceAddress: 'ab' }))
+      .rejects.toMatchObject({ status: 400 })
+  })
+})

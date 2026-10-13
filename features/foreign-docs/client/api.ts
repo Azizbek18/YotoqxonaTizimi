@@ -20,6 +20,17 @@ export function fetchMyForeignDocs(): Promise<ForeignDoc[]> {
   })
 }
 
+export type DocScan = { number: string | null; issuedOn: string | null; expiresOn: string | null; address: string | null }
+
+/** Rasmdan muddat/raqamni AI o'qiydi (hech narsa saqlanmaydi). null = o'qilmadi. */
+export async function scanForeignDoc(docType: ForeignDoc['docType'], file: File): Promise<DocScan | null> {
+  const form = new FormData()
+  form.append('docType', docType)
+  form.append('file', file)
+  const result = await apiRequest<{ scan: DocScan | null }>('/api/student/foreign-docs/scan', { method: 'POST', body: form })
+  return result.scan
+}
+
 export type GeocodeResult = { name: string; lat: number; lng: number }
 
 /** Free-text place search for the propiska address map picker (OSM

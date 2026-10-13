@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -33,6 +34,11 @@ import { dekanUI, statusChip } from '@/lib/dekan-ui'
 import { directionLabel } from '@/lib/directions'
 import { permitFacultyLabel } from '@/lib/faculties'
 import { genderAccent, genderLabel, normalizeGender } from '@/lib/gender'
+import KvOverview, { matchesKvQuickFilter, type KvQuickFilter } from '@/components/dekan/KvOverview'
+import KvCertificatePanel from '@/components/dekan/KvCertificatePanel'
+
+// Leaflet faqat shu sahifada kerak.
+const KvStudentsMap = dynamic(() => import('@/components/dekan/KvStudentsMap'), { ssr: false })
 
 type KvTalaba = {
   id: string
@@ -49,6 +55,8 @@ type KvTalaba = {
   residence_address?: string | null
   residence_lat?: number | null
   residence_lng?: number | null
+  docs_worst_days?: number | null
+  docs_count?: number
   status: string
   off_campus_verified_by?: string | null
   off_campus_verified_at?: string | null
@@ -122,6 +130,7 @@ export default function KvTalabalarPage() {
   const [direction, setDirection] = useState<'all' | string>('all')
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [viewMode, setViewMode] = useState<ViewMode>('cards')
+  const [quick, setQuick] = useState<KvQuickFilter>('all')
 
   // Selected student for detail modal
   const [selectedStudent, setSelectedStudent] = useState<KvTalaba | null>(null)
@@ -179,6 +188,7 @@ export default function KvTalabalarPage() {
       if (course !== 'all' && student.course !== course) return false
       if (gender !== 'all' && normalizeGender(student.gender) !== gender) return false
       if (direction !== 'all' && student.direction !== direction) return false
+      if (!matchesKvQuickFilter(student, quick)) return false
       if (!query) return true
       return [
         student.full_name,
@@ -205,15 +215,16 @@ export default function KvTalabalarPage() {
       }
       return 0
     })
-  }, [students, search, course, gender, direction, sortBy])
+  }, [students, search, course, gender, direction, sortBy, quick])
 
-  const filtering = search.trim() !== '' || course !== 'all' || gender !== 'all' || direction !== 'all'
+  const filtering = search.trim() !== '' || course !== 'all' || gender !== 'all' || direction !== 'all' || quick !== 'all'
 
   const resetFilters = () => {
     setSearch('')
     setCourse('all')
     setGender('all')
     setDirection('all')
+    setQuick('all')
     setSortBy('newest')
   }
 
@@ -349,6 +360,13 @@ export default function KvTalabalarPage() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* 1b. Muddat va manzil nazorati + ma'lumotnoma so'rovlari + xarita */}
+      <KvOverview students={students} active={quick} onSelect={setQuick} isLight={isLight} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <KvCertificatePanel isLight={isLight} />
+        <KvStudentsMap students={list} isLight={isLight} onOpen={(id) => setSelectedStudent(students.find((s) => s.id === id) ?? null)} />
       </div>
 
       {/* 2. Executive Academic Analytics Dashboard */}

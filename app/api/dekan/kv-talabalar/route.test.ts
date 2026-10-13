@@ -18,7 +18,7 @@ function makeChain() {
     if (method === 'maybeSingle') return Promise.resolve(terminal)
     return chain
   }
-  for (const m of ['select', 'update', 'delete', 'eq', 'ilike', 'order', 'maybeSingle']) {
+  for (const m of ['select', 'update', 'delete', 'eq', 'neq', 'in', 'ilike', 'order', 'maybeSingle']) {
     chain[m] = handler(m)
   }
   chain.then = (resolve: (v: unknown) => unknown) => resolve(terminal)

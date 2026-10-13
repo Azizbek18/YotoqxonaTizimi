@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
-import { X, Plane, Home, FileSignature, Upload, FileText, Trash2, Loader2 } from 'lucide-react'
+import { X, Plane, Home, FileSignature, Upload, FileText, Trash2, Loader2, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { prepareUploadFile } from '@/lib/prepare-upload'
-import { saveForeignDoc, deleteForeignDoc } from '@/features/foreign-docs/client/api'
+import { saveForeignDoc, deleteForeignDoc, scanForeignDoc } from '@/features/foreign-docs/client/api'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 import AddressMapPicker from './AddressMapPicker'
 import {
@@ -45,6 +45,7 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
   const [note, setNote] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [preparingFile, setPreparingFile] = useState(false)
+  const [scanning, setScanning] = useState(false)
   const [busy, setBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -81,6 +82,27 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
         return
       }
       setFile(prepared.file)
+      // Rasm bo'lsa — AI muddat/raqamni o'qib BO'SH maydonlarni to'ldiradi.
+      // Talaba o'zi kiritganini hech qachon bosib o'tmaymiz.
+      if (prepared.file.type.startsWith('image/')) {
+        setScanning(true)
+        try {
+          const scan = await scanForeignDoc(docType, prepared.file)
+          if (scan) {
+            if (scan.number) setNumber((cur) => cur || scan.number!)
+            if (scan.issuedOn) setIssuedOn((cur) => cur || scan.issuedOn!)
+            if (scan.expiresOn) setExpiresOn((cur) => cur || scan.expiresOn!)
+            if (scan.address && !isVisa) setAddress((cur) => cur || scan.address!)
+            toast.success("Rasmdan o'qildi — sana va raqamni tekshirib oling", { icon: '✨' })
+          } else {
+            toast("Rasmdan o'qib bo'lmadi — qo'lda kiriting", { icon: 'ℹ️' })
+          }
+        } catch {
+          // Skaner yordamchi: xato bo'lsa forma qo'lda to'ldiriladi.
+        } finally {
+          setScanning(false)
+        }
+      }
     } catch {
       toast.error("Faylni tayyorlab bo'lmadi. Boshqa fayl tanlang.")
     } finally {
@@ -299,15 +321,17 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
             />
             <button
               type="button"
-              disabled={preparingFile}
+              disabled={preparingFile || scanning}
               onClick={() => fileRef.current?.click()}
               className={`flex w-full items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors disabled:opacity-60 ${
                 isLight ? 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100' : 'border-white/10 bg-slate-900 text-slate-200 hover:bg-slate-800'
               }`}
             >
-              {preparingFile ? <Loader2 size={16} className="animate-spin" /> : file ? <FileText size={16} /> : <Upload size={16} />}
+              {preparingFile || scanning ? <Loader2 size={16} className="animate-spin" /> : file ? <FileText size={16} /> : <Upload size={16} />}
               <span className="truncate">
-                {preparingFile
+                {scanning
+                  ? "Rasm o'qilmoqda…"
+                  : preparingFile
                   ? 'Fayl tayyorlanmoqda…'
                   : file
                     ? file.name
@@ -316,6 +340,10 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
                       : 'Fayl tanlang (JPG / PNG / PDF)'}
               </span>
             </button>
+            <p className={`mt-1 flex items-center gap-1 text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+              <Sparkles size={10} className="shrink-0 text-amber-500" />
+              Rasm yuklasangiz, bo&apos;sh maydonlar (raqam, sana) avtomatik to&apos;ldiriladi — tekshirib oling.
+            </p>
           </div>
 
           <div>
@@ -349,7 +377,7 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
             </button>
             <button
               type="submit"
-              disabled={busy || preparingFile}
+              disabled={busy || preparingFile || scanning}
               className="flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-50"
             >
               {busy ? 'Saqlanmoqda...' : 'Saqlash'}

@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import {
   LayoutDashboard, Megaphone, ListOrdered, ShieldCheck,
-  UserCircle, Bell, Moon, Zap, Clock, CreditCard, FileText, Plane, BookOpen,
+  UserCircle, Bell, Moon, Zap, Clock, CreditCard, FileText, Plane, BookOpen, FileCheck2,
   X, AlertTriangle, CheckCircle2, AlertCircle, Upload, Sparkles,
   Code, Send, Phone, ExternalLink, Camera, ChevronRight
 } from 'lucide-react'
@@ -115,6 +115,7 @@ const NAV = [
 const KV_NAV = [
   { icon: LayoutDashboard, label: 'Asosiy', href: '/talaba/dashboard' },
   { icon: Plane, label: 'Hujjatlar', href: '/talaba/hujjatlarim' },
+  { icon: FileCheck2, label: "Ma'lumotnoma", href: '/talaba/malumotnoma' },
   { icon: BookOpen, label: "Yo'riqnoma", href: '/talaba/yoriqnoma' },
   { icon: Megaphone, label: "E'lonlar", href: '/talaba/elonlar' },
 ]

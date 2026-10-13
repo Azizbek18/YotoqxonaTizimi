@@ -366,6 +366,20 @@ export type ForeignStudentDocumentRow = {
   updated_at: string
 }
 
+export type CertificateRequestRow = {
+  id: string
+  student_id: string
+  purpose: 'ijara' | 'migratsiya' | 'bank' | 'boshqa'
+  purpose_note: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  number: string | null
+  decided_by: string | null
+  decided_by_name: string | null
+  decided_at: string | null
+  decision_note: string | null
+  created_at: string
+}
+
 export type ForeignDocumentReminderRow = {
   document_id: string
   milestone: number
@@ -378,6 +392,7 @@ export interface Database {
       users: Table<UserRow>
       foreign_student_documents: Table<ForeignStudentDocumentRow>
       foreign_document_reminders: Table<ForeignDocumentReminderRow>
+      student_certificate_requests: Table<CertificateRequestRow>
       staff: Table<StaffRow>
       arizalar: Table<ApplicationRow>
       ariza_signatures: Table<ArizaSignatureRow>

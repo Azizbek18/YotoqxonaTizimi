@@ -112,6 +112,7 @@ export default function MalumotnomaPage() {
           onChange={(v) => setPurpose(v as CertificatePurpose)}
           placeholder="Nima uchun kerak?"
           options={CERTIFICATE_PURPOSES.map((p) => ({ value: p, label: CERTIFICATE_PURPOSE_LABELS[p] }))}
+          plain
           className={`w-full rounded-xl border px-4 py-2.5 text-sm ${field}`}
         />
         {purpose === 'boshqa' && (

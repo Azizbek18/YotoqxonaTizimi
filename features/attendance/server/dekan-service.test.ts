@@ -87,6 +87,10 @@ function setup(opts: { students?: Student[]; geo?: boolean } = {}) {
       sessions.find((s) => s.dorm_id === dorm && s.faculty === faculty && s.status === 'open') ?? null),
     recentFor: vi.fn(async (faculty: string) =>
       sessions.filter((s) => s.faculty === faculty && s.status !== 'open' && s.status !== 'scheduled')),
+    recentNightly: vi.fn(async (dorms: string[]) =>
+      sessions.filter((s) => s.kind === 'nightly' && dorms.includes(s.dorm_id) && (s.status === 'closed' || s.status === 'auto_closed'))),
+    nightlyById: vi.fn(async (id: string, dorms: string[]) =>
+      sessions.find((s) => s.id === id && s.kind === 'nightly' && dorms.includes(s.dorm_id)) ?? null),
     activeForFaculty: vi.fn(async (faculty: string) =>
       sessions.filter((s) => s.faculty === faculty && (s.status === 'open' || s.status === 'scheduled'))),
     insertSession: vi.fn(async (i: { dormId: string; faculty: string; startsAt: string; closesAt: string; status: string; openedBy: string; reminded: boolean }) => {
@@ -331,6 +335,38 @@ describe('overview', () => {
     expect(view.dorms.map((d) => d.id).sort()).toEqual([D1, D2].sort())
     expect(view.dorms.every((d) => d.active === null)).toBe(true)
     expect(view.recent).toEqual([])
+  })
+
+  it('lists the automatic nightly roll-call in the history, counted for this faculty only, and opens it read-only', async () => {
+    const t = setup()
+    t.sessions.push({
+      id: 'n1', dorm_id: D1, faculty: null as never, kind: 'nightly', status: 'auto_closed', scheduled_for: '2026-10-05',
+      opened_at: '2026-10-05T16:00:00Z', starts_at: null as never, closes_at: '2026-10-05T18:00:00Z', closed_at: null,
+      last_reminded_at: null, reminder_count: 0,
+    })
+    const rec = (id: string, state: string) => ({ student_id: id, state, room_number: '1', floor_number: 1, self_distance_m: null, marked_at: null })
+    // s1/s2 are this faculty's, x1 is another faculty's resident of the same building.
+    t.records.set('n1', new Map([['s1', rec('s1', 'present')], ['s2', rec('s2', 'unmarked')], ['x1', rec('x1', 'present')]]))
+
+    const view = await t.service.overview(scope)
+    const night = view.recent.find((r) => r.id === 'n1')!
+    expect(night.kind).toBe('nightly')
+    expect(night.startsAt).toBe('2026-10-05T16:00:00Z')
+    expect(night.summary).toMatchObject({ present: 1, unmarked: 1, total: 2 })
+
+    const roster = await t.service.roster(scope, 'n1')
+    expect(roster.residents.map((r) => r.id).sort()).toEqual(['s1', 's2'])
+    expect(roster.session.kind).toBe('nightly')
+  })
+
+  it('404s a nightly roll-call of a building the faculty does not live in', async () => {
+    const t = setup()
+    t.sessions.push({
+      id: 'n2', dorm_id: 'other-dorm', faculty: null as never, kind: 'nightly', status: 'closed', scheduled_for: '2026-10-05',
+      opened_at: '2026-10-05T16:00:00Z', starts_at: null as never, closes_at: '2026-10-05T18:00:00Z', closed_at: null,
+      last_reminded_at: null, reminder_count: 0,
+    })
+    await expect(t.service.roster(scope, 'n2')).rejects.toMatchObject({ status: 404 })
   })
 
   it("never shows another faculty's dorm", async () => {

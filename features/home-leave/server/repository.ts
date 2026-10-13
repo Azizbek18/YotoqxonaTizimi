@@ -1,6 +1,7 @@
 import 'server-only'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import type { HomeLeaveRow } from '@/types/database.generated'
+import type { PostLeaveRecord } from '../domain'
 
 type LeaveStatusValue = HomeLeaveRow['status']
 type LeavePatch = Partial<HomeLeaveRow>
@@ -174,6 +175,47 @@ export function createHomeLeaveRepository() {
         .limit(300)
       if (error) throw error
       return (data ?? []) as unknown as LeaveWithStudent[]
+    },
+
+    /** Muddati tugagan, lekin hali "qaytdi" deb yopilmagan faol arizalar. */
+    async listEnded(today: string, faculty?: string): Promise<LeaveWithStudent[]> {
+      let query = supabase
+        .from('home_leaves')
+        .select(`${COLUMNS}, users!inner(${STUDENT_COLUMNS})`)
+        .eq('status', 'active')
+        .lt('ends_on', today)
+        .order('ends_on', { ascending: false })
+        .limit(500)
+      if (faculty) query = query.ilike('users.faculty', faculty)
+      const { data, error } = await query
+      if (error) throw error
+      return (data ?? []) as unknown as LeaveWithStudent[]
+    },
+
+    /** Talabalarning `afterDate` dan keyingi yo'qlama yozuvlari (holat + sessiya holati). */
+    async recordsAfter(studentIds: string[], afterDate: string): Promise<PostLeaveRecord[]> {
+      const out: PostLeaveRecord[] = []
+      for (let i = 0; i < studentIds.length; i += 100) {
+        const { data, error } = await supabase
+          .from('attendance_records')
+          .select('student_id, state, attendance_sessions!inner(scheduled_for, status)')
+          .in('student_id', studentIds.slice(i, i + 100))
+          .gt('attendance_sessions.scheduled_for', afterDate)
+        if (error) throw error
+        for (const r of (data ?? []) as unknown as {
+          student_id: string
+          state: string
+          attendance_sessions: { scheduled_for: string; status: string }
+        }[]) {
+          out.push({
+            student_id: r.student_id,
+            state: r.state,
+            scheduled_for: r.attendance_sessions.scheduled_for,
+            session_status: r.attendance_sessions.status,
+          })
+        }
+      }
+      return out
     },
 
     /** Ariza kuchga kirganda ochiq yo'qlamalardagi "belgilanmagan" yozuvni "Uyda" qiladi. */

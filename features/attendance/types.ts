@@ -88,6 +88,8 @@ export type DekanSessionStatus = 'scheduled' | 'open' | 'closed' | 'auto_closed'
 
 export type DekanSessionInfo = {
   id: string
+  /** 'nightly' = avtomatik kechki yo'qlama (faqat ko'rish uchun tarixda). */
+  kind?: 'dekan' | 'nightly'
   dormId: string
   dormLabel: string
   status: DekanSessionStatus

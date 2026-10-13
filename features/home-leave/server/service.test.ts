@@ -108,3 +108,29 @@ describe('home leave: finish, location and decisions', () => {
     expect(repository.markOpenSessions).toHaveBeenCalledWith('s1')
   })
 })
+
+describe('home leave: overdue', () => {
+  const ended = (id: string, studentId: string) => ({ ...ROW, id, student_id: studentId, ends_on: '2026-10-10', users: { full_name: 'Ali', faculty: 'amit', dorm_id: 'd1' } })
+
+  it('closes the leave of a student who is present after it ended and flags one missed in a closed roll-call', async () => {
+    const { service, repository } = build({
+      listEnded: vi.fn().mockResolvedValue([ended('a', 's1'), ended('b', 's2'), ended('c', 's3')]),
+      recordsAfter: vi.fn().mockResolvedValue([
+        { student_id: 's1', state: 'present', scheduled_for: '2026-10-11', session_status: 'closed' },
+        { student_id: 's2', state: 'unmarked', scheduled_for: '2026-10-11', session_status: 'auto_closed' },
+      ]),
+    })
+    const overdue = await service.findOverdue(undefined, NOW)
+    expect(overdue.map((l) => l.id)).toEqual(['b'])
+    expect(repository.update).toHaveBeenCalledWith('a', ['active'], expect.objectContaining({ status: 'returned' }))
+    expect(repository.update).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips the records query when nothing has ended', async () => {
+    const recordsAfter = vi.fn()
+    const { service } = build({ listEnded: vi.fn().mockResolvedValue([]), recordsAfter })
+    expect(await service.findOverdue(undefined, NOW)).toEqual([])
+    expect(recordsAfter).not.toHaveBeenCalled()
+  })
+})
+

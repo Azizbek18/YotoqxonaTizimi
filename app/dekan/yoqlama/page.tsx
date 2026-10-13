@@ -998,6 +998,9 @@ function History({
           >
             <span className={`text-sm font-bold ${ui.strong}`}>{fmtDateTime(s.startsAt)}</span>
             <span className={`text-xs ${ui.muted}`}>{s.dormLabel}</span>
+            <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${s.kind === 'nightly' ? (isLight ? 'bg-slate-100 text-slate-600' : 'bg-slate-700/60 text-slate-300') : (isLight ? 'bg-indigo-50 text-indigo-700' : 'bg-indigo-500/15 text-indigo-300')}`}>
+              {s.kind === 'nightly' ? 'Kechki' : 'Dekan'}
+            </span>
             <span className="ml-auto flex items-center gap-3 text-xs font-bold tabular-nums">
               <span className="text-emerald-600 dark:text-emerald-400">{s.summary.present} bor</span>
               <span className="text-rose-600 dark:text-rose-400">{s.summary.absent} yo‘q</span>

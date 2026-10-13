@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { distanceKm, initialLeaveStatus, leaveDays, leaveInEffect, parseLeaveInput } from './domain'
+import { classifyOverdue, distanceKm, initialLeaveStatus, leaveDays, leaveInEffect, parseLeaveInput } from './domain'
 
 const base = {
   destinationKind: 'qarindosh', destinationAddress: 'Samarqand, Urgut tumani', contactName: 'Aliyev Vali',
@@ -45,5 +45,33 @@ describe('leave rules', () => {
   it('measures distance', () => {
     expect(distanceKm({ lat: 41.31, lng: 69.24 }, { lat: 39.65, lng: 66.96 })).toBeGreaterThan(250)
     expect(distanceKm({ lat: 41.31, lng: 69.24 }, { lat: 41.31, lng: 69.24 })).toBe(0)
+  })
+})
+
+describe('classifyOverdue', () => {
+  const leaves = [
+    { id: 'a', student_id: 's1', ends_on: '2026-10-10' },
+    { id: 'b', student_id: 's2', ends_on: '2026-10-10' },
+    { id: 'c', student_id: 's3', ends_on: '2026-10-10' },
+  ]
+  const rec = (student_id: string, state: string, scheduled_for: string, session_status: string) => ({ student_id, state, scheduled_for, session_status })
+
+  it('marks a student returned once present in any roll-call after the leave ended', () => {
+    const out = classifyOverdue(leaves, [rec('s1', 'unmarked', '2026-10-11', 'closed'), rec('s1', 'present', '2026-10-12', 'closed')])
+    expect(out.returned.has('a')).toBe(true)
+    expect(out.overdue.has('a')).toBe(false)
+  })
+  it('flags overdue only after a roll-call after the leave CLOSED without the student present', () => {
+    const out = classifyOverdue(leaves, [
+      rec('s2', 'unmarked', '2026-10-11', 'auto_closed'),
+      rec('s3', 'unmarked', '2026-10-11', 'open'), // still running — no verdict yet
+    ])
+    expect(out.overdue.has('b')).toBe(true)
+    expect(out.overdue.has('c')).toBe(false)
+    expect(out.returned.size).toBe(0)
+  })
+  it('ignores roll-calls on or before the last leave day (the leave covered them)', () => {
+    const out = classifyOverdue(leaves, [rec('s2', 'excused', '2026-10-10', 'closed')])
+    expect(out.overdue.size).toBe(0)
   })
 })

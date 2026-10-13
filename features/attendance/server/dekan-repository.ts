@@ -227,6 +227,29 @@ export function createDekanAttendanceRepository() {
       return (data ?? []) as DekanSessionRow[]
     },
 
+    /** Avtomatik kechki yo'qlamalarning oxirgilari (yopilgan), berilgan binolar bo'yicha. */
+    async recentNightly(dormIds: string[], limit: number): Promise<DekanSessionRow[]> {
+      if (dormIds.length === 0) return []
+      const { data, error } = await supabase
+        .from('attendance_sessions').select('*')
+        .eq('kind', 'nightly').in('dorm_id', dormIds)
+        .in('status', ['closed', 'auto_closed'])
+        .order('scheduled_for', { ascending: false })
+        .limit(limit)
+      if (error) throw error
+      return (data ?? []) as DekanSessionRow[]
+    },
+
+    /** Bitta kechki yo'qlama — faqat shu binolardan bo'lsa. */
+    async nightlyById(id: string, dormIds: string[]): Promise<DekanSessionRow | null> {
+      if (dormIds.length === 0) return null
+      const { data, error } = await supabase
+        .from('attendance_sessions').select('*')
+        .eq('id', id).eq('kind', 'nightly').in('dorm_id', dormIds).maybeSingle()
+      if (error) throw error
+      return (data as DekanSessionRow) ?? null
+    },
+
     /** Which of these students belong to the faculty. */
     async facultyStudentIds(faculty: string, studentIds: string[]): Promise<Set<string>> {
       const out = new Set<string>()

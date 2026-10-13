@@ -61,6 +61,7 @@ export type HomeLeaveStaffRow = HomeLeave & {
   studentName: string
   roomNumber: string | null
   floor: number | null
+  faculty: string | null
   /** Ariza bugun amalda (starts..ends oralig'ida) ekanini. */
   inEffect: boolean
 }

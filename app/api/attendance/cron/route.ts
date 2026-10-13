@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { safeEqual } from '@/lib/security'
 import { createAttendanceService } from '@/features/attendance/server/service'
 import { createDekanAttendanceService } from '@/features/attendance/server/dekan-service'
+import { runLeaveOverdueAlerts } from '@/features/home-leave/server/overdue'
 
 // GitHub Actions ~ har 5 daqiqada chaqiradi (dekan yo'qlamasi eslatmalari uchun). Har binoning yo'qlama oynasi
 // ochilganda kechki sessiya yaratadi + talabalarga push yuboradi; muddati
@@ -31,7 +32,12 @@ export async function POST(request: NextRequest) {
       console.error('Captain attendance alerts failed:', error)
       return { error: true as const }
     })
-    return NextResponse.json({ ok: true, ...result, dekan, reminders, captains })
+    // Uyga ketib qaytmaganlar: dekanga ogohlantirish (best-effort, mustaqil).
+    const leaves = await Promise.resolve().then(() => runLeaveOverdueAlerts()).catch((error) => {
+      console.error('Leave overdue alerts failed:', error)
+      return { error: true as const }
+    })
+    return NextResponse.json({ ok: true, ...result, dekan, reminders, captains, leaves })
   } catch (error) {
     console.error('Attendance cron failed:', error)
     return NextResponse.json({ error: 'cron failed' }, { status: 500 })

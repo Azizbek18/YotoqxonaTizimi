@@ -6,7 +6,10 @@ const mocks = vi.hoisted(() => ({
   runDekanCron: vi.fn(),
   runNightlyReminders: vi.fn(),
   runCaptainAlerts: vi.fn(),
+  runLeaveOverdue: vi.fn(),
 }))
+
+vi.mock('@/features/home-leave/server/overdue', () => ({ runLeaveOverdueAlerts: mocks.runLeaveOverdue }))
 
 vi.mock('@/features/attendance/server/dekan-service', () => ({
   createDekanAttendanceService: () => ({ runCron: mocks.runDekanCron }),
@@ -74,6 +77,14 @@ describe('POST /api/attendance/cron', () => {
     const res = await POST(req({ authorization: 'Bearer super-secret-cron-token' }))
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ ok: true, opened: 1, dekan: { error: true } })
+  })
+
+  it('a failing leave-overdue check never takes the cron down', async () => {
+    mocks.runNightlyCron.mockResolvedValue({ opened: 1 })
+    mocks.runLeaveOverdue.mockRejectedValue(new Error('leaves boom'))
+    const res = await POST(req({ authorization: 'Bearer super-secret-cron-token' }))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, leaves: { error: true } })
   })
 
   it('GET is wired to the same handler for Vercel Cron', () => {

@@ -16,8 +16,10 @@ function appUrl(path: string): string {
 export async function GET(request: NextRequest) {
   try {
     const { staff } = await requireActiveStaff(request, ['dekan', 'admin'])
-    const leaves = await createHomeLeaveService().listForFaculty(requirePickedFaculty(staff))
-    return NextResponse.json({ leaves })
+    const faculty = requirePickedFaculty(staff)
+    const service = createHomeLeaveService()
+    const [leaves, overdue] = await Promise.all([service.listForFaculty(faculty), service.findOverdue(faculty)])
+    return NextResponse.json({ leaves, overdue })
   } catch (error) {
     console.error('Dekan home leaves GET error:', error)
     const r = getApiError(error, "Arizalarni yuklab bo'lmadi")

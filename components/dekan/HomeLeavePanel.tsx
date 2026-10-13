@@ -8,7 +8,8 @@ import { decideLeave, fetchFacultyLeaves } from '@/features/home-leave/client/ap
 import { LEAVE_KIND_LABELS, type HomeLeaveStaffRow } from '@/features/home-leave/types'
 
 function fmt(d: string): string {
-  return new Date(`${d}T00:00:00`).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short' })
+  const [, m, day] = d.split('-')
+  return `${day}.${m}`
 }
 
 /**

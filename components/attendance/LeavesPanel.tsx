@@ -18,7 +18,8 @@ const CALL_BUTTONS: { result: Exclude<LeaveCallResult, 'none'>; label: string; t
 ]
 
 function fmt(d: string): string {
-  return new Date(`${d}T00:00:00`).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short' })
+  const [, m, day] = d.split('-')
+  return `${day}.${m}`
 }
 
 /**

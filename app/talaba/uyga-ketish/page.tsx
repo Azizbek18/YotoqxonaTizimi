@@ -34,7 +34,10 @@ const KIND_OPTIONS = (Object.keys(LEAVE_KIND_LABELS) as LeaveDestinationKind[]).
 }))
 
 function formatRange(leave: HomeLeave): string {
-  const f = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short' })
+  const f = (d: string) => {
+    const [, m, day] = d.split('-')
+    return `${day}.${m}`
+  }
   return leave.startsOn === leave.endsOn ? f(leave.startsOn) : `${f(leave.startsOn)} — ${f(leave.endsOn)}`
 }
 
@@ -243,6 +246,7 @@ export default function UygaKetishPage() {
             onChange={(v) => setKind(v as LeaveDestinationKind)}
             placeholder="Tanlang"
             options={KIND_OPTIONS}
+            plain
             className={`w-full rounded-xl border px-4 py-2.5 text-sm ${field}`}
           />
           <p className={`mt-1 text-[11px] ${muted}`}>Uyingiz bo‘lishi shart emas — qarindosh yoki boshqa joy ham mumkin.</p>

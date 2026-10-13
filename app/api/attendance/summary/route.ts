@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const actor = await resolveAttendanceActor(request)
     const summary = await createAttendanceService().summary(actor)
     // Talaba uyga ketish arizasi amalda bo'lsa, ekran "Uyda" holatini ko'rsatadi.
-    if (actor.role === 'talaba') {
+    if (actor.role === 'talaba' || actor.role === 'sardor') {
       const onLeave = await createHomeLeaveService().isOnLeave(actor.userId).catch(() => false)
       return NextResponse.json({ ...summary, onLeave })
     }

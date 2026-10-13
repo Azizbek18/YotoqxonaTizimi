@@ -26,6 +26,8 @@ interface CustomSelectProps {
   triggerLabel?: React.ReactNode
   onFocus?: () => void
   onBlur?: () => void
+  /** Talaba panelidagi umumiy tugma bo'yog'idan chiqarish (o'z ranglari bilan ko'rinadi). */
+  plain?: boolean
 }
 
 export default function CustomSelect({
@@ -40,7 +42,9 @@ export default function CustomSelect({
   triggerLabel,
   onFocus,
   onBlur,
+  plain = false,
 }: CustomSelectProps) {
+  const plainAttr = plain ? { 'data-student-button': 'plain' } : {}
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
   const scopedFontFamily = useScopedFontFamily()
@@ -115,6 +119,7 @@ export default function CustomSelect({
       <button
         type="button"
         ref={triggerRef}
+        {...plainAttr}
         disabled={disabled}
         onClick={(e) => {
           e.stopPropagation()
@@ -164,6 +169,7 @@ export default function CustomSelect({
                     <button
                       key={opt.value}
                       type="button"
+                      {...plainAttr}
                       disabled={opt.disabled}
                       onClick={() => {
                         if (opt.disabled) return

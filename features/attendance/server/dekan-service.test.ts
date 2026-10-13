@@ -177,6 +177,22 @@ describe('history (kunlar bo‘yicha)', () => {
     expect(view.students.find((s) => s.id === 's2')!.states['2026-10-05']).toBe('absent')
   })
 
+  it('shows a student with a home-leave record as "home", counted apart from unmarked', async () => {
+    const t = setup()
+    addSession(t, 'a', '2026-10-05', 'closed')
+    t.records.set('a', new Map([
+      ['s1', { ...rec('s1', 'excused'), source: 'leave' }],
+      ['s2', rec('s2', 'present')],
+      ['s3', rec('s3', 'excused')], // excused without a leave stays unmarked for the dekan
+    ] as never))
+
+    const view = await t.service.history(scope, { days: 1 })
+
+    expect(view.students.find((s) => s.id === 's1')).toMatchObject({ states: { '2026-10-05': 'home' }, home: 1, unmarked: 0 })
+    expect(view.students.find((s) => s.id === 's3')!.states['2026-10-05']).toBe('unmarked')
+    expect(view.days[0].summary).toMatchObject({ present: 1, excused: 1, unmarked: 1, total: 3 })
+  })
+
   it('only ever reads this faculty, optionally narrowed to one dorm, and clamps the range', async () => {
     const t = setup()
     addSession(t, 'mine', '2026-10-05', 'closed')

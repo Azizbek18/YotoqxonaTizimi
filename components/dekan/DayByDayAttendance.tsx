@@ -20,6 +20,7 @@ const STATE_LABEL: Record<DekanHistoryState, string> = {
   present: 'Borman',
   absent: 'Yo‘q',
   unmarked: 'Bosmagan',
+  home: 'Uyda',
 }
 
 type UI = ReturnType<typeof dekanUI>
@@ -32,7 +33,9 @@ function dateParts(date: string) {
 }
 
 function percent(day: DekanHistoryDay) {
-  return day.summary.total === 0 ? 0 : Math.round((day.summary.present / day.summary.total) * 100)
+  // Uyda bo'lganlar kutilganlar qatoriga kirmaydi.
+  const expected = day.summary.total - day.summary.excused
+  return expected <= 0 ? 0 : Math.round((day.summary.present / expected) * 100)
 }
 
 async function fetchHistory(dormId: string, days: number): Promise<DekanHistoryView> {
@@ -103,7 +106,7 @@ export default function DayByDayAttendance({
       await downloadXlsx({
         filename: `yoqlama-kunlar-${dormLabel.replace(/\s+/g, '')}-${view.dates[view.dates.length - 1]}_${view.dates[0]}.xlsx`,
         sheetName: 'Kunlar bo‘yicha',
-        headers: ['№', 'F.I.Sh', 'Xona', ...view.dates.map((d) => dateParts(d).short), 'Borman', 'Yo‘q', 'Bosmagan'],
+        headers: ['№', 'F.I.Sh', 'Xona', ...view.dates.map((d) => dateParts(d).short), 'Borman', 'Yo‘q', 'Bosmagan', 'Uyda'],
         rows: view.students.map((s, i) => [
           i + 1,
           s.fullName,
@@ -112,6 +115,7 @@ export default function DayByDayAttendance({
           s.present,
           s.absent,
           s.unmarked,
+          s.home,
         ]),
       })
     } catch {
@@ -283,8 +287,9 @@ function DayStrip({
                   <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
                 </div>
                 <p className={`mt-1.5 text-[10px] tabular-nums ${ui.muted}`}>
-                  {day.summary.present} / {day.summary.total}
+                  {day.summary.present} / {day.summary.total - day.summary.excused}
                   {day.summary.unmarked > 0 && ` · ${day.summary.unmarked} bosmagan`}
+                  {day.summary.excused > 0 && ` · ${day.summary.excused} uyda`}
                 </p>
                 {day.nightly && <p className={`mt-1 text-[10px] font-semibold ${ui.faint}`}>Kechki yo‘qlama</p>}
               </>
@@ -318,6 +323,7 @@ const CELL: Record<DekanHistoryState, { dot: string; ring: string }> = {
   present: { dot: 'bg-emerald-500', ring: 'ring-emerald-500/30' },
   absent: { dot: 'bg-rose-500', ring: 'ring-rose-500/30' },
   unmarked: { dot: 'bg-amber-500', ring: 'ring-amber-500/30' },
+  home: { dot: 'bg-sky-500', ring: 'ring-sky-500/30' },
 }
 
 function Grid({
@@ -349,6 +355,7 @@ function Grid({
             <th className="px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Bor</th>
             <th className="px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Yo‘q</th>
             <th className="px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Bos.</th>
+            <th className="px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">Uyda</th>
           </tr>
         </thead>
         <tbody className={`divide-y ${ui.divide}`}>
@@ -380,6 +387,7 @@ function Grid({
               <td className="px-2 py-2 text-center font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{s.present}</td>
               <td className="px-2 py-2 text-center font-bold tabular-nums text-rose-600 dark:text-rose-400">{s.absent}</td>
               <td className="px-2 py-2 text-center font-bold tabular-nums text-amber-600 dark:text-amber-400">{s.unmarked}</td>
+              <td className="px-2 py-2 text-center font-bold tabular-nums text-sky-600 dark:text-sky-400">{s.home}</td>
             </tr>
           ))}
         </tbody>

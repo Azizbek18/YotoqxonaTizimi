@@ -118,8 +118,8 @@ export type DekanRosterResident = {
   roomNumber: string
   floor: number | null
   phone: string | null
-  /** 'excused' is never produced by the dekan flow. */
-  state: 'present' | 'absent' | 'unmarked'
+  /** 'home' = uyga ketish arizasi bilan "Uyda" (yozuvda excused + source 'leave'). */
+  state: 'present' | 'absent' | 'unmarked' | 'home'
   selfDistanceM: number | null
   markedAt: string | null
 }
@@ -134,7 +134,7 @@ export type DekanRosterView = {
 // a day is the best one across that day's sessions (present > absent >
 // unmarked); a day on which no roll-call ran has no cell at all.
 
-export type DekanHistoryState = 'present' | 'absent' | 'unmarked'
+export type DekanHistoryState = 'present' | 'absent' | 'unmarked' | 'home'
 
 export type DekanHistoryDay = {
   /** Toshkent calendar date, YYYY-MM-DD. */
@@ -158,6 +158,7 @@ export type DekanHistoryStudent = {
   present: number
   absent: number
   unmarked: number
+  home: number
 }
 
 export type DekanHistoryView = {

@@ -20,6 +20,7 @@ import {
   Search,
   Send,
   X,
+  Home,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getAuthHeaders } from '@/lib/auth-session'
@@ -48,6 +49,7 @@ const STATE_META: Record<RollState, { label: string; tone: DekanStatusTone; dot:
   present: { label: 'Borman', tone: 'success', dot: 'bg-emerald-400' },
   absent: { label: 'Yo‘q', tone: 'danger', dot: 'bg-rose-400' },
   unmarked: { label: 'Bosmagan', tone: 'warning', dot: 'bg-amber-400' },
+  home: { label: 'Uyda', tone: 'info', dot: 'bg-sky-400' },
 }
 
 /* ───────────────────────────── helpers ───────────────────────────── */
@@ -303,7 +305,9 @@ function Hero({
   const countdown = useCountdown(open ? roster!.session.closesAt : null)
   const s = roster && roster.session.status !== 'scheduled' ? roster.session.summary : null
   const answered = s ? s.present + s.absent : 0
-  const pct = s && s.total ? Math.round((answered / s.total) * 100) : 0
+  // Uyda bo'lganlar (excused) yo'qlamaga javob berishi shart emas — foizga kirmaydi.
+  const expected = s ? s.total - s.excused : 0
+  const pct = expected > 0 ? Math.round((answered / expected) * 100) : 0
 
   return (
     <div className="no-shelf relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 p-5 text-white shadow-xl shadow-indigo-950/20 sm:p-7">
@@ -353,12 +357,13 @@ function Hero({
 
       {s && (
         <div className="relative mt-6 flex flex-wrap items-center gap-4 sm:gap-6">
-          <Ring pct={pct} answered={answered} total={s.total} />
-          <div className="grid min-w-[240px] flex-1 grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <Ring pct={pct} answered={answered} total={expected} />
+          <div className="grid min-w-[240px] flex-1 grid-cols-2 gap-2.5 sm:grid-cols-5">
             {([
               ['Borman', s.present, 'bg-emerald-400'],
               ['Yo‘q', s.absent, 'bg-rose-400'],
               ['Bosmagan', s.unmarked, 'bg-amber-400'],
+              ['Uyda', s.excused, 'bg-sky-400'],
               ['Jami', s.total, 'bg-slate-300'],
             ] as const).map(([label, val, dot]) => (
               <div key={label} className="no-shelf rounded-2xl border border-white/20 bg-white/15 p-3 backdrop-blur-md transition-all hover:bg-white/20 sm:p-3.5">
@@ -760,6 +765,7 @@ function Board({
                 ['present', 'Borman', session.summary.present],
                 ['absent', 'Yo‘q', session.summary.absent],
                 ['unmarked', 'Bosmagan', session.summary.unmarked],
+                ['home', 'Uyda', session.summary.excused],
               ] as const).map(([key, label, count]) => (
                 <Pill key={key} active={filter === key} onClick={() => setFilter(key)} isLight={isLight} label={label} count={count} />
               ))}
@@ -958,7 +964,7 @@ function ResidentRow({ r, isLight, ui }: { r: DekanRosterResident; isLight: bool
         ) : null}
       </div>
       <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${chip.chip}`}>
-        {r.state === 'present' ? <Check size={11} strokeWidth={2.6} /> : r.state === 'absent' ? <X size={11} strokeWidth={2.6} /> : <span className={`h-1.5 w-1.5 rounded-full ${chip.dot}`} />}
+        {r.state === 'present' ? <Check size={11} strokeWidth={2.6} /> : r.state === 'absent' ? <X size={11} strokeWidth={2.6} /> : r.state === 'home' ? <Home size={11} strokeWidth={2.6} /> : <span className={`h-1.5 w-1.5 rounded-full ${chip.dot}`} />}
         {meta.label}
       </span>
     </div>
@@ -996,6 +1002,7 @@ function History({
               <span className="text-emerald-600 dark:text-emerald-400">{s.summary.present} bor</span>
               <span className="text-rose-600 dark:text-rose-400">{s.summary.absent} yo‘q</span>
               <span className="text-amber-600 dark:text-amber-400">{s.summary.unmarked} bosmagan</span>
+              {s.summary.excused > 0 && <span className="text-sky-600 dark:text-sky-400">{s.summary.excused} uyda</span>}
             </span>
           </button>
         ))}

@@ -8,12 +8,54 @@ import { getAuthHeaders } from '@/lib/auth-session'
 import { clearAttendanceSummary, fetchAttendanceSummary } from '@/features/attendance/client/summary'
 import type { CheckinResult } from '@/features/attendance/types'
 
+type Failure = 'no_response' | 'no_geolocation' | 'denied' | 'position' | 'timeout' | 'rate_limited' | 'auth' | 'server' | 'network'
+
+const FAILURE_COPY: Record<Failure, { title: string; body: string }> = {
+  no_response: {
+    title: 'Joylashuv javob bermadi',
+    body: 'Brauzer joylashuvni bermadi. Agar ruxsat oynasi chiqqan bo‘lsa «Ruxsat berish»ni bosing. Chiqmasa — telefonda GPS’ni yoqing va sahifani Chrome/Safari’da oching (Telegram ichki brauzeridan emas), so‘ng qayta urining.',
+  },
+  no_geolocation: {
+    title: 'Brauzer joylashuvni qo‘llamaydi',
+    body: 'Bu brauzerda joylashuv ishlamaydi. Sahifani Chrome yoki Safari’da oching (Telegram/Instagram ichki brauzeridan emas).',
+  },
+  denied: {
+    title: 'Joylashuvga ruxsat berilmagan',
+    body: 'Brauzer manzil satridagi qulf belgisini bosing → «Joylashuv» → «Ruxsat berish». Telefon sozlamalarida ham brauzer uchun joylashuv yoqilgan bo‘lsin, so‘ng qayta urinib ko‘ring.',
+  },
+  position: {
+    title: 'Joylashuv aniqlanmadi',
+    body: 'Telefonda GPS (Joylashuv) o‘chiq yoki signal yo‘q. GPS’ni yoqing, deraza yoniga yoki ochiq joyga chiqib qayta urinib ko‘ring.',
+  },
+  timeout: {
+    title: 'Joylashuv juda sekin aniqlandi',
+    body: 'GPS signali kech keldi. Ochiq joyga chiqing, «Aniq joylashuv» (Precise location) yoqilganini tekshirib, qayta urinib ko‘ring.',
+  },
+  rate_limited: {
+    title: 'Juda ko‘p urinish',
+    body: 'Qisqa vaqtda juda ko‘p marta bosdingiz. 10 daqiqadan keyin qayta urinib ko‘ring yoki qavat sardoriga ayting.',
+  },
+  auth: {
+    title: 'Hisobingiz tasdiqlanmadi',
+    body: 'Sessiyangiz tugagan yoki hisobingizga cheklov qo‘yilgan. Ilovadan chiqib qayta kiring; hal bo‘lmasa qavat sardoriga ayting.',
+  },
+  server: {
+    title: 'Server xatosi',
+    body: 'Serverda vaqtincha muammo bo‘ldi. Birozdan keyin qayta urinib ko‘ring yoki qavat sardoriga ayting — u sizni qo‘lda belgilaydi.',
+  },
+  network: {
+    title: 'Internet aloqasi yo‘q',
+    body: 'So‘rov serverga yetib bormadi. Internet (Wi‑Fi yoki mobil) ulanishini tekshirib, qayta urinib ko‘ring.',
+  },
+}
+
 type Phase = 'idle' | 'locating' | 'sending' | 'done' | 'no_session' | 'on_leave'
 
 export default function TalabaYoqlamaPage() {
   const isLight = useThemeStore((s) => s.theme === 'light')
   const [phase, setPhase] = useState<Phase>('idle')
   const [result, setResult] = useState<CheckinResult | null>(null)
+  const [failure, setFailure] = useState<Failure | null>(null)
   const [checking, setChecking] = useState(true)
   const submitting = useRef(false)
 
@@ -42,49 +84,92 @@ export default function TalabaYoqlamaPage() {
 
   const confirm = useCallback(() => {
     if (submitting.current) return
+    setFailure(null)
     if (!('geolocation' in navigator)) {
-      setResult({ status: 'unavailable' }); setPhase('done'); return
+      setResult({ status: 'unavailable' }); setFailure('no_geolocation'); setPhase('done'); return
     }
     submitting.current = true
     setPhase('locating')
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        setPhase('sending')
-        try {
-          const headers = { ...(await getAuthHeaders()), 'Content-Type': 'application/json' }
-          const res = await fetch('/api/attendance/checkin', {
-            method: 'POST', headers,
-            body: JSON.stringify({
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-              accuracy: pos.coords.accuracy,
-            }),
-          })
-          const data = (await res.json().catch(() => null)) as (CheckinResult & { error?: string }) | null
-          // A 4xx/5xx body is { error }, not a CheckinResult — never show it as a verdict.
-          if (!res.ok || !data || typeof data.status !== 'string') {
-            setResult({ status: 'unavailable' })
-          } else {
-            setResult(data)
-          }
-        } catch {
+
+    // Some browsers (in-app webviews, an unanswered permission prompt) never
+    // call back at all, and getCurrentPosition's own timeout only starts after
+    // permission is granted — so this guard is what keeps the screen from hanging.
+    let settled = false
+    const fail = (reason: Failure) => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(watchdog)
+      submitting.current = false
+      setResult({ status: 'unavailable' })
+      setFailure(reason)
+      setPhase('done')
+    }
+    const watchdog = window.setTimeout(() => fail('no_response'), 30_000)
+
+    const send = async (pos: GeolocationPosition) => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(watchdog)
+      setPhase('sending')
+      try {
+        const headers = { ...(await getAuthHeaders()), 'Content-Type': 'application/json' }
+        const res = await fetch('/api/attendance/checkin', {
+          method: 'POST', headers,
+          body: JSON.stringify({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+          }),
+        })
+        const data = (await res.json().catch(() => null)) as (CheckinResult & { error?: string }) | null
+        // A 4xx/5xx body is { error }, not a CheckinResult — never show it as a verdict.
+        if (!res.ok || !data || typeof data.status !== 'string') {
           setResult({ status: 'unavailable' })
-        } finally {
-          submitting.current = false
-          clearAttendanceSummary()
-          setPhase('done')
+          setFailure(
+            res.status === 429 ? 'rate_limited'
+            : res.status === 401 || res.status === 403 ? 'auth'
+            : 'server',
+          )
+        } else {
+          setResult(data)
         }
-      },
-      () => {
-        submitting.current = false
+      } catch {
         setResult({ status: 'unavailable' })
+        setFailure('network')
+      } finally {
+        submitting.current = false
+        clearAttendanceSummary()
         setPhase('done')
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    )
+      }
+    }
+
+    const locate = (highAccuracy: boolean) => {
+      navigator.geolocation.getCurrentPosition(
+        send,
+        (err) => {
+          if (err.code === err.PERMISSION_DENIED) return fail('denied')
+          // GPS could not get a fix in time: one more try with network location
+          // (the server rejects a coarse fix with its own clear message).
+          if (highAccuracy) return locate(false)
+          fail(err.code === err.TIMEOUT ? 'timeout' : 'position')
+        },
+        { enableHighAccuracy: highAccuracy, timeout: highAccuracy ? 15_000 : 10_000, maximumAge: 0 },
+      )
+    }
+
+    // A permission that is already blocked would otherwise fail silently on
+    // some browsers; say so right away.
+    const start = async () => {
+      try {
+        const status = await navigator.permissions?.query({ name: 'geolocation' as PermissionName })
+        if (status?.state === 'denied') return fail('denied')
+      } catch { /* Permissions API unsupported — just ask for the position */ }
+      if (!settled) locate(true)
+    }
+    void start()
   }, [])
 
-  const retry = () => { setResult(null); setPhase('idle') }
+  const retry = () => { setResult(null); setFailure(null); setPhase('idle') }
 
   return (
     <div className={`min-h-screen ${isLight ? 'bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900' : 'bg-[#020617] text-white'}`}>
@@ -124,7 +209,7 @@ export default function TalabaYoqlamaPage() {
               </p>
             </>
           ) : phase === 'done' && result ? (
-            <ResultView result={result} isLight={isLight} onRetry={retry} />
+            <ResultView result={result} failure={failure} isLight={isLight} onRetry={retry} />
           ) : (
             <>
               <div className={`mb-5 flex h-24 w-24 items-center justify-center rounded-full ${isLight ? 'bg-blue-50 text-blue-500' : 'bg-blue-500/10 text-blue-400'}`}>
@@ -152,7 +237,7 @@ export default function TalabaYoqlamaPage() {
   )
 }
 
-function ResultView({ result, isLight, onRetry }: { result: CheckinResult; isLight: boolean; onRetry: () => void }) {
+function ResultView({ result, failure, isLight, onRetry }: { result: CheckinResult; failure: Failure | null; isLight: boolean; onRetry: () => void }) {
   const muted = isLight ? 'text-slate-500' : 'text-slate-400'
   if (result.status === 'no_session') {
     return (
@@ -212,9 +297,11 @@ function ResultView({ result, isLight, onRetry }: { result: CheckinResult; isLig
       <div className={`mb-5 flex h-24 w-24 items-center justify-center rounded-full ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-white/5 text-slate-500'}`}>
         <MapPin size={40} />
       </div>
-      <h1 className="text-xl font-extrabold">Tasdiqlab bo‘lmadi</h1>
+      <h1 className="text-xl font-extrabold">{failure ? FAILURE_COPY[failure].title : 'Tasdiqlab bo‘lmadi'}</h1>
       <p className={`mt-2 max-w-xs text-sm ${muted}`}>
-        Joylashuvga ruxsat bering yoki qavat sardoriga ayting — u sizni qo‘lda belgilaydi.
+        {failure
+          ? FAILURE_COPY[failure].body
+          : 'Joylashuvga ruxsat bering yoki qavat sardoriga ayting — u sizni qo‘lda belgilaydi.'}
       </p>
       <RetryBtn onRetry={onRetry} isLight={isLight} />
     </>

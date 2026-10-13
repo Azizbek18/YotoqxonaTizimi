@@ -757,7 +757,7 @@ function FloorPanel({
     >
       {/* header */}
       <div
-        className={`flex flex-wrap items-center justify-between gap-3 p-3.5 sm:p-4 border-b ${
+        className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-2 p-3 sm:p-4 border-b ${
           isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-900/50 border-slate-800/80'
         }`}
       >
@@ -834,7 +834,7 @@ function FloorPanel({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="grid gap-3.5 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 p-2.5 min-[360px]:p-3 sm:grid-cols-2 sm:gap-3.5 sm:p-4 xl:grid-cols-3">
               {floor.rooms.map((room) => (
                 <RoomCard
                   key={room.roomNumber}
@@ -875,13 +875,13 @@ function RoomCard({
 
   return (
     <div
-      className={`no-shelf rounded-2xl border p-3.5 transition-all ${
+      className={`no-shelf min-w-0 rounded-2xl border p-3 sm:p-3.5 transition-all ${
         isLight
           ? 'bg-slate-50/70 border-slate-200/80 hover:border-slate-300'
           : 'bg-slate-900/50 border-slate-800/80 hover:border-slate-700'
       }`}
     >
-      <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-200/70 dark:border-slate-800/80">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 pb-2.5 mb-2.5 border-b border-slate-200/70 dark:border-slate-800/80">
         <div className="flex items-center gap-2">
           <DoorOpen size={15} className="text-indigo-600 dark:text-indigo-400" />
           <span className={`text-xs sm:text-sm font-black ${ui.strong}`}>
@@ -937,7 +937,7 @@ function ResidentRow({
 }) {
   return (
     <div
-      className={`flex items-center gap-2.5 p-1 rounded-xl transition-colors ${
+      className={`flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5 p-1 rounded-xl transition-colors ${
         pending ? 'opacity-50 pointer-events-none' : ''
       }`}
     >
@@ -951,8 +951,8 @@ function ResidentRow({
         {initials(r.fullName)}
       </div>
 
-      <div className="min-w-0 flex-1 truncate">
-        <span className={`block text-xs sm:text-sm font-semibold truncate ${ui.strong}`}>
+      <div className="min-w-0 flex-1 basis-28">
+        <span className={`block text-xs sm:text-sm font-semibold break-words line-clamp-2 ${ui.strong}`}>
           {r.fullName}
         </span>
         {r.source === 'self_location' && (
@@ -968,7 +968,7 @@ function ResidentRow({
 
       {r.source === 'leave' ? (
         <span
-          className={`no-shelf inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+          className={`no-shelf ml-auto inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
             isLight ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-sky-500/30 bg-sky-500/15 text-sky-300'
           }`}
           title="Uyga ketish arizasi bilan"
@@ -977,7 +977,7 @@ function ResidentRow({
         </span>
       ) : canWrite ? (
         <div
-          className={`no-shelf inline-flex items-center p-0.5 rounded-xl border gap-0.5 shrink-0 transition-colors ${
+          className={`no-shelf ml-auto inline-flex items-center p-0.5 rounded-xl border gap-0.5 shrink-0 transition-colors ${
             isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-950/70 border-slate-800/90'
           }`}
         >
@@ -1008,7 +1008,7 @@ function ResidentRow({
         </div>
       ) : (
         <span
-          className={`shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide border ${
+          className={`ml-auto shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide border ${
             isLight ? STATE_UI[r.state].softLight : STATE_UI[r.state].softDark
           }`}
         >

@@ -110,9 +110,9 @@ export default function AttendanceBoard({
           {filter === 'todo' ? 'Hamma tasdiqlandi 🎉' : 'Bu qavatda talaba yo‘q'}
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {shownRooms.map((room) => (
-            <div key={room.roomNumber} className="rounded-2xl border border-white/10 bg-white/5 p-3.5">
+            <div key={room.roomNumber} className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-3.5">
               <div className="mb-2.5 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-300">
                 <Home size={13} className="text-slate-500" />
                 {room.roomNumber}-xona

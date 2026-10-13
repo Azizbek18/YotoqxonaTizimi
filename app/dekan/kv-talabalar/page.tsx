@@ -45,6 +45,7 @@ type KvTalaba = {
   course: number | null
   group: string | null
   hemis_student_id: string | null
+  country?: string | null
   residence_address?: string | null
   residence_lat?: number | null
   residence_lng?: number | null
@@ -1265,6 +1266,13 @@ export default function KvTalabalarPage() {
                         <span className={`text-[10px] block ${ui.faint}`}>Fakultet</span>
                         <span className={`text-xs font-bold block ${ui.strong}`}>
                           {selectedStudent.faculty ? permitFacultyLabel(selectedStudent.faculty) : 'Fakultet ko‘rsatilmagan'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className={`text-[10px] block ${ui.faint}`}>Fuqaroligi</span>
+                        <span className={`text-xs font-bold block ${ui.strong}`}>
+                          {selectedStudent.country ? `Xorijiy — ${selectedStudent.country}` : "O'zbekiston"}
                         </span>
                       </div>
                     </div>

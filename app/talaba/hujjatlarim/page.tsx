@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Plane, Home, Plus, Pencil, FileText, ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react'
+import { Plane, Home, FileSignature, Plus, Pencil, FileText, ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -34,6 +34,8 @@ export default function HujjatlarimPage() {
   // fuqarosi → faqat propiska. Hali aniqlanmagan bo'lsa (yuklanmoqda)
   // "registration"ga ustunlik beramiz — Viza bo'limini keraksiz ko'rsatmaslik.
   const [mode, setMode] = useState<'foreign' | 'registration'>('registration')
+  // KV-talaba (kvartirada turadi) ijara shartnomasini ham kiritadi.
+  const [isKv, setIsKv] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -54,6 +56,7 @@ export default function HujjatlarimPage() {
         const [{ profile }, settings] = await Promise.all([fetchStudentProfile(), fetchAppSettings()])
         const resolved = resolveDocsMode({ country: profile?.country, region: profile?.region }, settings.homeRegions)
         if (resolved) setMode(resolved)
+        setIsKv(profile?.is_off_campus === true)
       } catch {
         // Yuklanmasa ham sahifa ishlashda davom etadi — default 'registration'.
       }
@@ -65,7 +68,7 @@ export default function HujjatlarimPage() {
       (docs ?? [])
         .filter((d) => d.docType === type)
         .sort((a, b) => b.expiresOn.localeCompare(a.expiresOn))
-    return { visa: byType('visa'), registration: byType('registration') }
+    return { visa: byType('visa'), registration: byType('registration'), lease: byType('lease') }
   }, [docs])
 
   const openFile = async (id: string) => {
@@ -123,6 +126,11 @@ export default function HujjatlarimPage() {
             </button>
           )}
         </div>
+        {(doc.landlordName || doc.landlordPhone) && (
+          <p className={`mt-2 text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+            Uy egasi: {[doc.landlordName, doc.landlordPhone].filter(Boolean).join(' · ')}
+          </p>
+        )}
         {doc.address && <p className={`mt-2 text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{doc.address}</p>}
         {doc.note && <p className={`mt-1 text-[11px] italic ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>{doc.note}</p>}
       </div>
@@ -130,7 +138,7 @@ export default function HujjatlarimPage() {
   }
 
   const section = (type: DocType, rows: ForeignDoc[]) => {
-    const Icon = type === 'visa' ? Plane : Home
+    const Icon = type === 'visa' ? Plane : type === 'lease' ? FileSignature : Home
     return (
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
@@ -173,6 +181,7 @@ export default function HujjatlarimPage() {
           {mode === 'foreign'
             ? "Viza va yashash joyida ro'yxatga qo'yish (propiska) muddatlari."
             : "Yashash joyida ro'yxatga qo'yish (propiska) muddati."}{' '}
+          {isKv && 'Ijara shartnomasi muddati ham shu yerda. '}
           Muddatga 30, 15, 10, 5, 3 va 0 kun qolganda Telegram, push va email orqali eslatma olasiz.
         </p>
       </div>
@@ -185,6 +194,7 @@ export default function HujjatlarimPage() {
         <>
           {mode === 'foreign' && section('visa', grouped.visa)}
           {section('registration', grouped.registration)}
+          {isKv && section('lease', grouped.lease)}
         </>
       )}
 

@@ -69,8 +69,11 @@ export default function KvHome({ profile, isLight, onEditAddress }: { profile: K
       <div className={`flex items-start gap-3 rounded-2xl border p-4 ${card}`}>
         <MapPin size={18} className={`mt-0.5 shrink-0 ${isLight ? 'text-sky-600' : 'text-sky-300'}`} />
         <div className="min-w-0 flex-1">
-          <p className={`text-[10px] font-semibold uppercase ${muted}`}>Turgan manzil</p>
+          <p className={`text-[10px] font-semibold uppercase ${muted}`}>Turgan manzil va fuqarolik</p>
           <p className={`mt-0.5 break-words text-sm font-bold ${strong}`}>{profile?.residence_address || '—'}</p>
+          <p className={`mt-1 text-xs font-semibold ${muted}`}>
+            {profile?.country ? `Xorijiy fuqaro — ${profile.country}` : "O'zbekiston fuqarosi"}
+          </p>
         </div>
         <button
           type="button"
@@ -82,7 +85,7 @@ export default function KvHome({ profile, isLight, onEditAddress }: { profile: K
         </button>
       </div>
 
-      <ForeignDocsCard mode={profile?.country ? 'foreign' : 'registration'} isLight={isLight} />
+      <ForeignDocsCard mode={profile?.country ? 'foreign' : 'registration'} isLight={isLight} showLease />
 
       <Link
         href="/talaba/elonlar"

@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import {
   LayoutDashboard, Megaphone, ListOrdered, ShieldCheck,
-  UserCircle, Bell, Moon, Zap, Clock, CreditCard, FileText, Plane,
+  UserCircle, Bell, Moon, Zap, Clock, CreditCard, FileText, Plane, BookOpen,
   X, AlertTriangle, CheckCircle2, AlertCircle, Upload, Sparkles,
   Code, Send, Phone, ExternalLink, Camera, ChevronRight
 } from 'lucide-react'
@@ -115,6 +115,7 @@ const NAV = [
 const KV_NAV = [
   { icon: LayoutDashboard, label: 'Asosiy', href: '/talaba/dashboard' },
   { icon: Plane, label: 'Hujjatlar', href: '/talaba/hujjatlarim' },
+  { icon: BookOpen, label: "Yo'riqnoma", href: '/talaba/yoriqnoma' },
   { icon: Megaphone, label: "E'lonlar", href: '/talaba/elonlar' },
 ]
 const KV_BLOCKED_PATHS = ['/talaba/navbat', '/talaba/tolova', '/talaba/arizalar', '/talaba/yoqlama', '/talaba/qoidalar']
@@ -662,6 +663,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
         <KvAddressModal
           isLight={isLight}
           initialAddress={profile?.residence_address}
+          initialCountry={profile?.country}
           onClose={kvNeedsAddress ? undefined : () => setEditingAddress(false)}
           onSaved={() => {
             setEditingAddress(false)

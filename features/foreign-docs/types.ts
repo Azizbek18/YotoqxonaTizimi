@@ -2,11 +2,11 @@
 // Bu fayl faqat sof tiplardan iborat (server-only emas): client ham,
 // domain helperlar ham, testlar ham import qiladi.
 
-export type DocType = 'visa' | 'registration'
+export type DocType = 'visa' | 'registration' | 'lease'
 export type DocStatus = 'active' | 'renewing' | 'cancelled'
 export type RegistrationBasis = 'mehmonxona' | 'ijara' | 'qarindosh' | 'ttj'
 
-export const DOC_TYPES: readonly DocType[] = ['visa', 'registration']
+export const DOC_TYPES: readonly DocType[] = ['visa', 'registration', 'lease']
 export const DOC_STATUSES: readonly DocStatus[] = ['active', 'renewing', 'cancelled']
 export const REGISTRATION_BASES: readonly RegistrationBasis[] = [
   'mehmonxona',
@@ -18,6 +18,7 @@ export const REGISTRATION_BASES: readonly RegistrationBasis[] = [
 export const DOC_TYPE_LABELS: Record<DocType, string> = {
   visa: 'Viza',
   registration: "Ro'yxatga qo'yish (propiska)",
+  lease: 'Ijara shartnomasi',
 }
 
 export const DOC_STATUS_LABELS: Record<DocStatus, string> = {
@@ -68,6 +69,8 @@ export type ForeignDoc = {
   status: DocStatus
   registrationBasis: RegistrationBasis | null
   address: string | null
+  landlordName: string | null
+  landlordPhone: string | null
   hasFile: boolean
   note: string | null
   verifiedAt: string | null
@@ -89,6 +92,8 @@ export type ForeignDocInput = {
   status?: DocStatus
   registrationBasis?: RegistrationBasis | null
   address?: string | null
+  landlordName?: string | null
+  landlordPhone?: string | null
   note?: string | null
 }
 
@@ -100,6 +105,8 @@ export type ForeignDocStaffPatch = Partial<{
   status: DocStatus
   registrationBasis: RegistrationBasis | null
   address: string | null
+  landlordName: string | null
+  landlordPhone: string | null
   note: string | null
   verified: boolean
 }>

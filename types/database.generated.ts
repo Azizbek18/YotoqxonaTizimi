@@ -348,13 +348,15 @@ export type AnnouncementStoryRow = {
 export type ForeignStudentDocumentRow = {
   id: string
   student_id: string
-  doc_type: 'visa' | 'registration'
+  doc_type: 'visa' | 'registration' | 'lease'
   number: string | null
   issued_on: string | null
   expires_on: string
   status: 'active' | 'renewing' | 'cancelled'
   registration_basis: 'mehmonxona' | 'ijara' | 'qarindosh' | 'ttj' | null
   address: string | null
+  landlord_name: string | null
+  landlord_phone: string | null
   file_path: string | null
   note: string | null
   verified_at: string | null

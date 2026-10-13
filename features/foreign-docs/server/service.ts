@@ -56,6 +56,8 @@ function mapRow(row: ForeignStudentDocumentRow, today: string): ForeignDoc {
     status: row.status,
     registrationBasis: row.registration_basis,
     address: row.address,
+    landlordName: row.landlord_name ?? null,
+    landlordPhone: row.landlord_phone ?? null,
     hasFile: Boolean(row.file_path),
     note: row.note,
     verifiedAt: row.verified_at,
@@ -76,6 +78,7 @@ async function toWriteFields(
   input: ForeignDocInput,
   faculty: string | null,
   isForeign: boolean,
+  isOffCampus = false,
 ): Promise<DocWriteFields> {
   const docType = input.docType
   if (!DOC_TYPES.includes(docType)) throw new ApiError(400, "Hujjat turi noto'g'ri")
@@ -83,6 +86,11 @@ async function toWriteFields(
   // (boshqa viloyatdan bo'lsa ham) faqat propiska (registration) qo'sha oladi.
   if (docType === 'visa' && !isForeign) {
     throw new ApiError(403, "Viza faqat xorijiy fuqarolik uchun — O'zbekiston fuqarosiga tegishli emas")
+  }
+
+  // Ijara shartnomasi faqat kvartirada turuvchi (KV) talabaga tegishli.
+  if (docType === 'lease' && !isOffCampus) {
+    throw new ApiError(403, 'Ijara shartnomasi faqat kvartirada turuvchi talaba uchun')
   }
 
   const expiresOn = String(input.expiresOn ?? '').trim()
@@ -123,10 +131,20 @@ async function toWriteFields(
       address = ttjName ? ttjName : null
     }
     fields.address = address
+    fields.landlord_name = null
+    fields.landlord_phone = null
+  } else if (docType === 'lease') {
+    // Ijara — manzil va uy egasi; "asos" tushunchasi yo'q.
+    fields.registration_basis = null
+    fields.address = optionalText(input.address, ADDRESS_MAX)
+    fields.landlord_name = optionalText(input.landlordName, 120)
+    fields.landlord_phone = optionalText(input.landlordPhone, 30)
   } else {
     // Viza — asos/manzil qatnashmaydi.
     fields.registration_basis = null
     fields.address = null
+    fields.landlord_name = null
+    fields.landlord_phone = null
   }
 
   return fields
@@ -152,7 +170,7 @@ export function createForeignDocsService(
     async saveForStudent(studentId: string, input: ForeignDocInput): Promise<ForeignDoc> {
       const context = await repository.findStudentContext(studentId)
       if (!context) throw new ApiError(404, 'Talaba profili topilmadi')
-      const fields = await toWriteFields(input, context.faculty, Boolean(context.country))
+      const fields = await toWriteFields(input, context.faculty, Boolean(context.country), context.is_off_campus === true)
       const today = tashkentToday()
 
       if (input.id) {
@@ -237,6 +255,8 @@ export function createForeignDocsService(
       if (patch.number !== undefined) fields.number = optionalText(patch.number, NUMBER_MAX)
       if (patch.note !== undefined) fields.note = optionalText(patch.note, NOTE_MAX)
       if (patch.address !== undefined) fields.address = optionalText(patch.address, ADDRESS_MAX)
+      if (patch.landlordName !== undefined) fields.landlord_name = optionalText(patch.landlordName, 120)
+      if (patch.landlordPhone !== undefined) fields.landlord_phone = optionalText(patch.landlordPhone, 30)
       if (patch.issuedOn !== undefined) {
         const value = patch.issuedOn ? String(patch.issuedOn).trim() : null
         if (value && !isValidDate(value)) throw new ApiError(400, "Berilgan sana noto'g'ri")
@@ -281,7 +301,7 @@ export function createForeignDocsService(
       if (normalizeFaculty(context.faculty) !== faculty) {
         throw new ApiError(403, 'Boshqa fakultet talabasiga hujjat qo‘shib bo‘lmaydi')
       }
-      const fields = await toWriteFields(input, context.faculty, Boolean(context.country))
+      const fields = await toWriteFields(input, context.faculty, Boolean(context.country), context.is_off_campus === true)
       const created = await repository.insert(studentId, fields, role)
       return mapRow(created, tashkentToday())
     },

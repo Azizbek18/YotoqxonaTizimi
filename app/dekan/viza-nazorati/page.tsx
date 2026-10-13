@@ -27,6 +27,7 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  FileSignature,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import CustomSelect from '@/components/ui/CustomSelect'
@@ -46,7 +47,7 @@ import {
 } from '@/features/foreign-docs/types'
 import { matchesMilestoneFilter, type MilestoneFilter } from '@/features/foreign-docs/domain/expiry'
 
-type DocTypeFilter = '' | 'visa' | 'registration'
+type DocTypeFilter = '' | 'visa' | 'registration' | 'lease'
 type VerifiedFilter = '' | 'yes' | 'no'
 
 const BUCKET_ORDER: ExpiryBucket[] = ['expired', 'critical', 'warning', 'soon', 'ok']
@@ -238,7 +239,7 @@ export default function VizaNazoratiPage() {
       r.faculty ?? '',
       r.course != null ? String(r.course) : '',
       r.roomNumber ?? '',
-      r.docType === 'visa' ? 'Viza' : 'Propiska',
+      r.docType === 'visa' ? 'Viza' : r.docType === 'lease' ? 'Ijara shartnomasi' : 'Propiska',
       r.number ?? '',
       fmtDate(r.issuedOn),
       fmtDate(r.expiresOn),
@@ -444,6 +445,17 @@ export default function VizaNazoratiPage() {
                 }`}
               >
                 <Home size={11} /> Propiska ({rows.filter((r) => r.docType === 'registration').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setDocType('lease')}
+                className={`no-shelf cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
+                  docType === 'lease'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : `${ui.muted} hover:text-slate-900 dark:hover:text-white`
+                }`}
+              >
+                <FileSignature size={11} /> Ijara ({rows.filter((r) => r.docType === 'lease').length})
               </button>
             </div>
 
@@ -707,8 +719,8 @@ export default function VizaNazoratiPage() {
                             ? 'bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200/50 dark:border-sky-800/50'
                             : 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/50'
                         }`}>
-                          {row.docType === 'visa' ? <Plane size={12} /> : <Home size={12} />}
-                          <span>{row.docType === 'visa' ? 'Viza' : 'Propiska'}</span>
+                          {row.docType === 'visa' ? <Plane size={12} /> : row.docType === 'lease' ? <FileSignature size={12} /> : <Home size={12} />}
+                          <span>{row.docType === 'visa' ? 'Viza' : row.docType === 'lease' ? 'Ijara' : 'Propiska'}</span>
                         </span>
                       </td>
 

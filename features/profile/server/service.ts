@@ -55,6 +55,16 @@ export function createProfileService(repository: ProfileRepository = createProfi
         updates.residence_lat = hasCoords ? lat : null
         updates.residence_lng = hasCoords ? lng : null
       }
+      if (input.country !== undefined) {
+        const country = optionalText(input.country ?? '', 60)
+        if (country && country.length < 3) throw new ApiError(400, 'Davlat nomini kiriting')
+        const current = await repository.findStudent(studentId)
+        if (!current) throw new ApiError(404, 'Talaba profili topilmadi')
+        if (current.is_off_campus !== true) {
+          throw new ApiError(403, 'Fuqarolikni faqat kvartirada turuvchi talaba o‘zgartira oladi')
+        }
+        updates.country = country ?? null
+      }
       if (Object.keys(updates).length === 0) {
         throw new ApiError(400, 'Yangilash uchun ruxsat etilgan ma’lumot topilmadi')
       }

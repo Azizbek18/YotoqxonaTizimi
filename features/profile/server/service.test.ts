@@ -106,3 +106,27 @@ describe('off-campus residence address', () => {
       .rejects.toMatchObject({ status: 400 })
   })
 })
+
+describe('off-campus citizenship edit', () => {
+  function kv(isOffCampus: boolean) {
+    const repository = repositoryFor('', null)
+    ;(repository.findStudent as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'student-id', is_off_campus: isOffCampus })
+    ;(repository.updateStudent as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'student-id' })
+    return repository
+  }
+
+  it('sets a country for a foreign KV student and clears it for an Uzbek one', async () => {
+    const repository = kv(true)
+    await createProfileService(repository).update('student-id', { country: ' Turkmaniston ' })
+    expect(repository.updateStudent).toHaveBeenLastCalledWith('student-id', { country: 'Turkmaniston' })
+    await createProfileService(repository).update('student-id', { country: null })
+    expect(repository.updateStudent).toHaveBeenLastCalledWith('student-id', { country: null })
+  })
+
+  it('refuses a dorm student and a too-short country', async () => {
+    await expect(createProfileService(kv(false)).update('student-id', { country: 'Turkmaniston' }))
+      .rejects.toMatchObject({ status: 403 })
+    await expect(createProfileService(kv(true)).update('student-id', { country: 'ab' }))
+      .rejects.toMatchObject({ status: 400 })
+  })
+})

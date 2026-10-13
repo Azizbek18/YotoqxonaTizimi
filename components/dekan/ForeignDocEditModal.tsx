@@ -34,6 +34,8 @@ export default function ForeignDocEditModal({ isLight, doc, onClose, onSaved }: 
   const [status, setStatus] = useState<DocStatus>(doc.status)
   const [basis, setBasis] = useState<RegistrationBasis | ''>(doc.registrationBasis ?? '')
   const [address, setAddress] = useState(doc.address ?? '')
+  const [landlordName, setLandlordName] = useState(doc.landlordName ?? '')
+  const [landlordPhone, setLandlordPhone] = useState(doc.landlordPhone ?? '')
   const [note, setNote] = useState(doc.note ?? '')
   const [verified, setVerified] = useState(Boolean(doc.verifiedAt))
   const [busy, setBusy] = useState(false)
@@ -47,6 +49,7 @@ export default function ForeignDocEditModal({ isLight, doc, onClose, onSaved }: 
   if (typeof document === 'undefined') return null
 
   const isVisa = doc.docType === 'visa'
+  const isLease = doc.docType === 'lease'
 
   const save = async () => {
     if (!expiresOn) {
@@ -62,6 +65,8 @@ export default function ForeignDocEditModal({ isLight, doc, onClose, onSaved }: 
         status,
         registrationBasis: isVisa ? null : (basis || null),
         address: isVisa ? null : address.trim() || null,
+        landlordName: isLease ? (landlordName.trim() || null) : null,
+        landlordPhone: isLease ? (landlordPhone.trim() || null) : null,
         note: note.trim() || null,
         verified,
       })
@@ -102,11 +107,11 @@ export default function ForeignDocEditModal({ isLight, doc, onClose, onSaved }: 
 
         <div className="space-y-4">
           <div>
-            <label className={label}>{isVisa ? 'Viza raqami' : "Ro'yxatga qo'yish (propiska) raqami"}</label>
+            <label className={label}>{isVisa ? 'Viza raqami' : isLease ? 'Shartnoma raqami' : "Ro'yxatga qo'yish (propiska) raqami"}</label>
             <input value={number} onChange={(e) => setNumber(e.target.value)} maxLength={60} className={field} />
           </div>
 
-          {!isVisa && (
+          {!isVisa && !isLease && (
             <div>
               <label className={label}>Ro&apos;yxatga qo&apos;yish turi</label>
               <CustomSelect
@@ -139,6 +144,19 @@ export default function ForeignDocEditModal({ isLight, doc, onClose, onSaved }: 
               className={field}
             />
           </div>
+
+          {isLease && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={label}>Uy egasi</label>
+                <input value={landlordName} onChange={(e) => setLandlordName(e.target.value)} maxLength={120} className={field} />
+              </div>
+              <div>
+                <label className={label}>Uy egasi telefoni</label>
+                <input value={landlordPhone} onChange={(e) => setLandlordPhone(e.target.value)} maxLength={30} className={field} />
+              </div>
+            </div>
+          )}
 
           {!isVisa && (
             <div>

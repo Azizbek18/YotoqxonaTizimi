@@ -459,8 +459,9 @@ export async function sendPermitDocumentsEmail(
 export async function sendForeignDocReminderEmail(
   to: string,
   fullName: string,
-  info: { docLabel: string; expiresOn: string; daysLeft: number },
+  info: { docLabel: string; expiresOn: string; daysLeft: number; kind?: string },
 ) {
+  const isLease = info.kind === 'lease'
   const when = new Date(info.expiresOn).toLocaleDateString('uz-UZ', {
     day: '2-digit',
     month: 'long',
@@ -480,7 +481,11 @@ export async function sendForeignDocReminderEmail(
     heading: `${fullName || 'Hurmatli talaba'}, ${info.docLabel.toLowerCase()} muddatiga e'tibor bering`,
     paragraphs: [
       lead,
-      expired
+      isLease
+        ? (expired
+          ? "Ijara shartnomasi muddati tugagan. Uy egasi bilan shartnomani zudlik bilan yangilang — propiska ham shu shartnomaga bog'liq bo'lishi mumkin."
+          : "Uy egasi bilan shartnomani oldindan uzaytiring va yangi muddatni «Hujjatlarim» bo'limiga kiriting.")
+        : expired
         ? "Muddati o'tgan hujjat jarima va O'zbekistondan chiqarib yuborilish (deportatsiya) xavfini keltiradi. Zudlik bilan universitet xalqaro bo'limi yoki fakultet dekanatiga murojaat qiling."
         : "Vizani yangilash yoki qaytadan ro'yxatga qo'yish uchun universitet xalqaro bo'limiga oldindan murojaat qiling — jarayon bir necha kun oladi.",
       "Yangilangач, yangi muddatni shaxsiy kabinetingizdagi «Hujjatlarim» bo'limiga kiriting.",

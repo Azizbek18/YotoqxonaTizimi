@@ -29,7 +29,7 @@ export default function StepProgress({ current, total, stepNames }: Props) {
   return (
     <div
       ref={scrollContainerRef}
-      className={`relative flex items-center justify-between gap-1 ${stepNames ? 'mb-4 pt-1 pb-2' : 'mb-2 pt-1 pb-4'} px-2 overflow-x-auto no-scrollbar`}
+      className={`relative flex items-center justify-between gap-1 ${stepNames ? 'mb-4 pt-1 pb-2' : 'mb-2 pt-1 pb-4'} px-0 sm:px-2 overflow-x-auto no-scrollbar`}
     >
 
       {Array.from({ length: total }, (_, i) => {
@@ -41,7 +41,7 @@ export default function StepProgress({ current, total, stepNames }: Props) {
           <React.Fragment key={n}>
             <div
               ref={isActive ? activeStepRef : null}
-              className="relative z-10 flex flex-col items-center shrink-0 min-w-[52px]"
+              className="relative z-10 flex flex-col items-center shrink-0 min-w-[44px] sm:min-w-[52px]"
             >
               {/* QADAM DOIRASI */}
               <motion.div
@@ -102,7 +102,7 @@ export default function StepProgress({ current, total, stepNames }: Props) {
 
             {/* QADAMLAR ORASIDAGI CHIZIQ */}
             {n < total && (
-              <div className={`flex-1 min-w-2 relative h-0.75 mx-1 overflow-hidden rounded-full ${isLight ? 'bg-slate-200' : 'bg-white/5'}`}>
+              <div className={`flex-1 min-w-2 relative h-0.75 mx-0.5 sm:mx-1overflow-hidden rounded-full ${isLight ? 'bg-slate-200' : 'bg-white/5'}`}>
                 <motion.div
                   initial={{ width: "0%" }}
                   animate={{ width: isDone ? "100%" : "0%" }}

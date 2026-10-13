@@ -37,7 +37,7 @@ export default function DeveloperContactLink() {
           </span>
         </span>
         <span className="font-bold text-sky-500 group-hover:text-sky-600 sm:hidden">
-          Muammo bo&apos;ldimi? Yordam
+          Yordam
         </span>
       </a>
     </div>

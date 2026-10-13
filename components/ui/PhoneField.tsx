@@ -111,6 +111,7 @@ export default function PhoneField({
         </div>
       ) : (
         <CustomSelect
+          triggerLabel={<span className="font-mono font-black tabular-nums">{KNOWN.has(dialCode) ? dialCode : DEFAULT_DIAL_CODE}</span>}
           value={KNOWN.has(dialCode) ? dialCode : DEFAULT_DIAL_CODE}
           onChange={(v) => {
             if (v === OTHER) { setOtherMode(true); return }
@@ -119,7 +120,7 @@ export default function PhoneField({
           }}
           options={options}
           disabled={disabled}
-          className={selectClassName || `w-[116px] shrink-0 rounded-xl px-3 py-3 text-[13px] ${isLight ? 'bg-white border border-slate-300 text-slate-900' : 'bg-white/[0.03] border border-white/12 text-white'}`}
+          className={selectClassName || `w-[92px] shrink-0 rounded-xl px-2.5 py-3 text-[13px] ${isLight ? 'bg-white border border-slate-300 text-slate-900' : 'bg-white/[0.03] border border-white/12 text-white'}`}
           menuClassName="w-60!"
         />
       )}

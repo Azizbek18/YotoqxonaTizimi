@@ -14,6 +14,5 @@ export function studyTypeLabel(value: string | null | undefined): string {
 // "Qadam 03 / 08" — the step list is now filtered per application type, so the
 // count must come from props, not a hardcoded string per step file.
 export function stepLabel(stepNumber: number, totalSteps: number): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `Qadam ${pad(stepNumber)} / ${pad(totalSteps)}`
+  return `${stepNumber}/${totalSteps}`
 }

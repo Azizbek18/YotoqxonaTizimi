@@ -22,6 +22,8 @@ interface CustomSelectProps {
   className?: string
   menuClassName?: string
   emptyText?: string
+  /** Compact stand-in shown in the closed trigger; the open menu still lists the full labels. */
+  triggerLabel?: React.ReactNode
   onFocus?: () => void
   onBlur?: () => void
 }
@@ -35,6 +37,7 @@ export default function CustomSelect({
   className = '',
   menuClassName = '',
   emptyText = "Variantlar yo'q",
+  triggerLabel,
   onFocus,
   onBlur,
 }: CustomSelectProps) {
@@ -122,7 +125,7 @@ export default function CustomSelect({
         className={`${baseTrigger} ${className}`}
       >
         <span className={`truncate ${!selected ? (isLight ? 'text-slate-400' : 'text-slate-500') : ''}`}>
-          {selected ? selected.label : placeholder}
+          {selected ? (triggerLabel ?? selected.label) : placeholder}
         </span>
         <ChevronDown
           size={14}

@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import {
   LayoutDashboard, Megaphone, ListOrdered, ShieldCheck,
-  UserCircle, Bell, Moon, Zap, Clock, CreditCard, FileText, Plane, BookOpen, FileCheck2,
+  UserCircle, Bell, Moon, Zap, Clock, CreditCard, FileText, Plane, BookOpen, FileCheck2, Home,
   X, AlertTriangle, CheckCircle2, AlertCircle, Upload, Sparkles,
   Code, Send, Phone, ExternalLink, Camera, ChevronRight
 } from 'lucide-react'
@@ -17,6 +17,8 @@ import ThemeToggle from '@/components/theme/ThemeToggle'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchStudentProfile, uploadStudentAvatar } from '@/features/profile/client/api'
+import { fetchMyLeaves } from '@/features/home-leave/client/api'
+import { tashkentDateString } from '@/lib/tashkent-time'
 import { createStudentApplication, fetchStudentApplications } from '@/features/applications/client/api'
 import dynamic from 'next/dynamic'
 import KvHome from '@/components/talaba/KvHome'
@@ -121,7 +123,8 @@ const KV_NAV = [
 ]
 const KV_BLOCKED_PATHS = ['/talaba/navbat', '/talaba/tolova', '/talaba/arizalar', '/talaba/yoqlama', '/talaba/qoidalar']
 
-const QUICK_ACTIONS = [
+const QUICK_ACTIONS: { label: string; icon: typeof Moon; bg: string; text: string; href?: string }[] = [
+  { label: 'Uyga ketish', icon: Home, bg: 'bg-sky-600', text: 'text-white', href: '/talaba/uyga-ketish' },
   { label: 'Tungi ruxsat', icon: Moon, bg: 'bg-purple-600', text: 'text-white' },
   { label: 'Navbat almashish', icon: Zap, bg: 'bg-amber-400', text: 'text-slate-900' },
   { label: 'Tozalik auditi', icon: ShieldCheck, bg: 'bg-emerald-600', text: 'text-white' },
@@ -144,6 +147,19 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
   const isKv = profile?.is_off_campus === true
   const navItems = isKv ? KV_NAV : NAV
   const [editingAddress, setEditingAddress] = useState(false)
+  // Faol "uyga ketish" arizasi bo'lsa sarlavhada "Uyda" ko'rinadi.
+  const [onLeave, setOnLeave] = useState(false)
+  useEffect(() => {
+    if (!profile || isKv) return
+    let alive = true
+    fetchMyLeaves()
+      .then((leaves) => {
+        const today = tashkentDateString()
+        if (alive) setOnLeave(leaves.some((l) => l.status === 'active' && l.startsOn <= today && today <= l.endsOn))
+      })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [profile, isKv, pathname])
   const kvBlocked = isKv && KV_BLOCKED_PATHS.some((p) => pathname.startsWith(p))
   const [stories, setStories] = useState<Story[]>([])
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
@@ -394,7 +410,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
               </h2>
               <div className={`flex items-center gap-1.5 text-[10px] sm:text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>
                 <Clock size={9} className="shrink-0" />
-                <span className="truncate">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {isKv ? 'Kvartirada' : profile?.room_number ? `${profile.room_number}-xona` : 'Yotoqxona'}</span>
+                <span className={`truncate ${onLeave ? 'font-bold text-sky-500' : ''}`}>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {isKv ? 'Kvartirada' : onLeave ? 'Uyda' : profile?.room_number ? `${profile.room_number}-xona` : 'Yotoqxona'}</span>
               </div>
             </div>
             <ChevronRight size={16} className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${isLight ? 'text-slate-400' : 'text-slate-600'}`} />
@@ -446,7 +462,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
               <motion.button
                 key={action.label}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => handleQuickAction(action.label)}
+                onClick={() => (action.href ? router.push(action.href) : handleQuickAction(action.label))}
                 className={`flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2.5 sm:py-3.5 rounded-2xl whitespace-nowrap transition-all text-xs sm:text-sm shrink-0 ${action.bg} ${action.text}`}
               >
                 <action.icon size={16} className="shrink-0" />

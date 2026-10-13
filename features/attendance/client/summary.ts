@@ -8,6 +8,7 @@ export type StudentAttendanceSummary = {
   hasOpen?: boolean
   closesAt?: string | null
   myState?: string | null
+  onLeave?: boolean
 }
 
 // The dashboard banner and the yo'qlama page read the same summary one after the
@@ -19,7 +20,7 @@ export function fetchAttendanceSummary(): Promise<StudentAttendanceSummary> {
     const headers = await getAuthHeaders()
     const res = await fetch('/api/attendance/summary', { headers, cache: 'no-store' })
     const data = await res.json()
-    return { ok: res.ok, hasOpen: data?.hasOpen, closesAt: data?.closesAt, myState: data?.myState }
+    return { ok: res.ok, hasOpen: data?.hasOpen, closesAt: data?.closesAt, myState: data?.myState, onLeave: data?.onLeave === true }
   })
 }
 

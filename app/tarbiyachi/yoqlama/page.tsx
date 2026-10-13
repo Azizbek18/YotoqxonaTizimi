@@ -16,6 +16,7 @@ import {
   Loader2,
   Search,
   CheckCircle2,
+  Home,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getAuthHeaders } from '@/lib/auth-session'
@@ -23,6 +24,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { useRoomFloors } from '@/lib/hooks/useRoomFloors'
 import { dekanUI } from '@/lib/dekan-ui'
 import { Skel } from '@/components/ui/skeletons'
+import LeavesPanel from '@/components/attendance/LeavesPanel'
 import type { AttendanceState, RosterView, RosterResident } from '@/features/attendance/types'
 
 type Flag = { recordId: string; studentId: string; roomNumber: string; note: string | null; sessionDate: string }
@@ -238,8 +240,15 @@ export default function TarbiyachiYoqlamaPage() {
   // instead of waiting for the debounced roster refetch.
   const s = useMemo(() => {
     if (!view) return null
-    const acc = { present: 0, absent: 0, excused: 0, unmarked: 0, total: 0 }
-    for (const room of view.rooms) for (const r of room.residents) { acc[r.state] += 1; acc.total += 1 }
+    const acc = { present: 0, absent: 0, excused: 0, unmarked: 0, total: 0, home: 0 }
+    for (const room of view.rooms) {
+      for (const r of room.residents) {
+        acc[r.state] += 1
+        acc.total += 1
+        // Uyga ketish arizasi bilan "Uyda" bo'lganlar alohida sanaladi.
+        if (r.source === 'leave') acc.home += 1
+      }
+    }
     return acc
   }, [view])
   const canWrite = view?.canWrite ?? false
@@ -345,10 +354,11 @@ export default function TarbiyachiYoqlamaPage() {
         {s && (
           <div className="relative mt-6 flex flex-wrap items-center gap-4 sm:gap-6">
             <HeroRing pct={pct} marked={s.present + s.excused + s.absent} total={s.total} />
-            <div className="grid flex-1 grid-cols-2 gap-2.5 sm:grid-cols-4 min-w-[240px]">
+            <div className="grid flex-1 grid-cols-2 gap-2.5 sm:grid-cols-5 min-w-[240px]">
               {([
                 ['Hozir', s.present, 'present', 'bg-emerald-400'],
-                ['Ruxsat', s.excused, 'excused', 'bg-amber-400'],
+                ['Ruxsat', s.excused - s.home, 'excused', 'bg-amber-400'],
+                ['Uyda', s.home, 'home', 'bg-sky-400'],
                 ['Yo‘q', s.absent, 'absent', 'bg-rose-400'],
                 ['Belgilanmagan', s.unmarked, 'unmarked', 'bg-slate-300'],
               ] as const).map(([label, val, , dotColor]) => (
@@ -517,6 +527,8 @@ export default function TarbiyachiYoqlamaPage() {
               ))
             )}
           </div>
+
+          <LeavesPanel isLight={isLight} />
 
           {/* Flags */}
           {flags.length > 0 && (
@@ -949,7 +961,16 @@ function ResidentRow({
         )}
       </div>
 
-      {canWrite ? (
+      {r.source === 'leave' ? (
+        <span
+          className={`no-shelf inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+            isLight ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-sky-500/30 bg-sky-500/15 text-sky-300'
+          }`}
+          title="Uyga ketish arizasi bilan"
+        >
+          <Home size={11} /> Uyda
+        </span>
+      ) : canWrite ? (
         <div
           className={`no-shelf inline-flex items-center p-0.5 rounded-xl border gap-0.5 shrink-0 transition-colors ${
             isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-950/70 border-slate-800/90'

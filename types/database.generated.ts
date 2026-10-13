@@ -380,6 +380,35 @@ export type CertificateRequestRow = {
   created_at: string
 }
 
+export type HomeLeaveRow = {
+  id: string
+  student_id: string
+  destination_kind: 'uy' | 'qarindosh' | 'boshqa'
+  destination_address: string
+  destination_lat: number | null
+  destination_lng: number | null
+  contact_name: string
+  contact_phone: string
+  reason: string | null
+  starts_on: string
+  ends_on: string
+  status: 'pending' | 'active' | 'returned' | 'cancelled' | 'rejected'
+  consented_at: string
+  loc_status: 'none' | 'near' | 'far' | 'shared'
+  loc_lat: number | null
+  loc_lng: number | null
+  loc_at: string | null
+  call_result: 'none' | 'ok' | 'no_answer' | 'denied'
+  call_by_name: string | null
+  call_at: string | null
+  decided_by: string | null
+  decided_by_name: string | null
+  decided_at: string | null
+  decision_note: string | null
+  returned_at: string | null
+  created_at: string
+}
+
 export type ForeignDocumentReminderRow = {
   document_id: string
   milestone: number
@@ -393,6 +422,7 @@ export interface Database {
       foreign_student_documents: Table<ForeignStudentDocumentRow>
       foreign_document_reminders: Table<ForeignDocumentReminderRow>
       student_certificate_requests: Table<CertificateRequestRow>
+      home_leaves: Table<HomeLeaveRow>
       staff: Table<StaffRow>
       arizalar: Table<ApplicationRow>
       ariza_signatures: Table<ArizaSignatureRow>

@@ -5,11 +5,16 @@ import { ApiError } from '@/server/http/api-error'
 const mocks = vi.hoisted(() => ({
   resolveAttendanceActor: vi.fn(),
   summary: vi.fn(),
+  isOnLeave: vi.fn(),
 }))
 
 vi.mock('@/features/attendance/server/actor', () => ({ resolveAttendanceActor: mocks.resolveAttendanceActor }))
 vi.mock('@/features/attendance/server/service', () => ({
   createAttendanceService: () => ({ summary: mocks.summary }),
+}))
+
+vi.mock('@/features/home-leave/server/service', () => ({
+  createHomeLeaveService: () => ({ isOnLeave: mocks.isOnLeave }),
 }))
 
 const { GET } = await import('./route')
@@ -21,6 +26,7 @@ function req() {
 beforeEach(() => {
   vi.resetAllMocks()
   mocks.resolveAttendanceActor.mockResolvedValue({ userId: 'u1', role: 'talaba', canWrite: false })
+  mocks.isOnLeave.mockResolvedValue(false)
 })
 
 describe('GET /api/attendance/summary', () => {
@@ -40,6 +46,6 @@ describe('GET /api/attendance/summary', () => {
     mocks.summary.mockResolvedValue({ status: 'checked_in' })
     const res = await GET(req())
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ status: 'checked_in' })
+    expect(await res.json()).toEqual({ status: 'checked_in', onLeave: false })
   })
 })

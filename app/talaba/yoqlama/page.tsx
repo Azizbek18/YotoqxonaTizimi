@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, Check, X, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowLeft, MapPin, Check, X, Loader2, RefreshCw, Home } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { getAuthHeaders } from '@/lib/auth-session'
 import { clearAttendanceSummary, fetchAttendanceSummary } from '@/features/attendance/client/summary'
 import type { CheckinResult } from '@/features/attendance/types'
 
-type Phase = 'idle' | 'locating' | 'sending' | 'done' | 'no_session'
+type Phase = 'idle' | 'locating' | 'sending' | 'done' | 'no_session' | 'on_leave'
 
 export default function TalabaYoqlamaPage() {
   const isLight = useThemeStore((s) => s.theme === 'light')
@@ -21,7 +21,10 @@ export default function TalabaYoqlamaPage() {
     setChecking(true)
     try {
       const data = await fetchAttendanceSummary()
-      if (data.ok && data.hasOpen && (data.myState === 'present' || data.myState === 'excused')) {
+      if (data.ok && data.onLeave) {
+        // Uyga ketish arizasi amalda — joylashuv tasdig'i kerak emas.
+        setPhase('on_leave')
+      } else if (data.ok && data.hasOpen && (data.myState === 'present' || data.myState === 'excused')) {
         // Already confirmed — show it again after a reload instead of the button.
         setResult({ status: 'already', state: data.myState })
         setPhase('done')
@@ -93,6 +96,23 @@ export default function TalabaYoqlamaPage() {
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           {checking ? (
             <Loader2 className="animate-spin text-slate-400" />
+          ) : phase === 'on_leave' ? (
+            <>
+              <div className="mb-5 flex h-24 w-24 items-center justify-center rounded-full bg-sky-500/15 text-sky-500">
+                <Home size={40} />
+              </div>
+              <h1 className="text-xl font-extrabold">Siz uyda deb belgilangansiz</h1>
+              <p className={`mt-2 max-w-xs text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                Uyga ketish arizangiz amalda — yo‘qlamada “kelmadi” hisoblanmaysiz. Yotoqxonaga qaytgach arizada «Qaytdim» tugmasini bosing.
+              </p>
+              <Link
+                href="/talaba/uyga-ketish"
+                prefetch={false}
+                className="mt-7 w-full rounded-2xl bg-sky-600 py-4 text-sm font-black uppercase tracking-widest text-white"
+              >
+                Arizani ko‘rish
+              </Link>
+            </>
           ) : phase === 'no_session' ? (
             <>
               <div className={`mb-4 flex h-16 w-16 items-center justify-center rounded-full ${isLight ? 'bg-slate-100 text-slate-400' : 'bg-white/5 text-slate-500'}`}>

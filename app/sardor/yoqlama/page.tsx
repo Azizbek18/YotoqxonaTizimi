@@ -4,17 +4,16 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ClipboardCheck, Loader2 } from 'lucide-react'
-import toast from 'react-hot-toast'
 import { getSafeUser, getAuthHeaders } from '@/lib/auth-session'
 import AttendanceBoard from '@/components/attendance/AttendanceBoard'
-import type { AttendanceState, RosterView } from '@/features/attendance/types'
+import LeavesPanel from '@/components/attendance/LeavesPanel'
+import type { RosterView } from '@/features/attendance/types'
 import LeaderBackdrop from '@/components/leader/LeaderBackdrop'
 import { getLeaderTheme } from '@/components/leader/leader-theme'
 
 export default function SardorYoqlamaPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
   const [view, setView] = useState<RosterView | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -47,45 +46,6 @@ export default function SardorYoqlamaPage() {
 
   useEffect(() => { bootstrap() }, [bootstrap])
 
-  const openSession = async () => {
-    setBusy(true)
-    try {
-      const headers = { ...(await getAuthHeaders()), 'Content-Type': 'application/json' }
-      const res = await fetch('/api/attendance/session', { method: 'POST', headers })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Yo‘qlamani ochib bo‘lmadi')
-      setView(data as RosterView)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Xatolik')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const mark = async (studentId: string, state: AttendanceState) => {
-    if (!view) return
-    const prev = view
-    setView({
-      ...view,
-      rooms: view.rooms.map((room) => ({
-        ...room,
-        residents: room.residents.map((r) => (r.id === studentId ? { ...r, state } : r)),
-      })),
-    })
-    try {
-      const headers = { ...(await getAuthHeaders()), 'Content-Type': 'application/json' }
-      const res = await fetch('/api/attendance/mark', {
-        method: 'PATCH', headers,
-        body: JSON.stringify({ sessionId: view.session.id, studentId, state }),
-      })
-      if (!res.ok) throw new Error((await res.json()).error || 'Belgilanmadi')
-      await loadRoster(view.session.id)
-    } catch (err) {
-      setView(prev)
-      toast.error(err instanceof Error ? err.message : 'Belgilanmadi')
-    }
-  }
-
   // text-slate-200, not -100: the light-mode override in globals.css only
   // lists text-{slate,gray,…}-{200..700}, so an inherited -100 stayed pale —
   // moot now that this page is permanently dark (leader-theme shell), but
@@ -106,7 +66,7 @@ export default function SardorYoqlamaPage() {
           </div>
           <div className="min-w-0">
             <h1 className="text-lg font-black tracking-tight text-white min-[360px]:text-xl">Yo‘qlama</h1>
-            <p className="text-[11px] leading-relaxed text-slate-400 min-[360px]:text-xs">O‘z qavatingizdagi talabalarni belgilang</p>
+            <p className="text-[11px] leading-relaxed text-slate-400 min-[360px]:text-xs">Qavatingizda kim yo‘qlamada o‘zini tasdiqlagan, kim yo‘q — shuni ko‘rasiz</p>
           </div>
         </div>
 
@@ -115,18 +75,14 @@ export default function SardorYoqlamaPage() {
         ) : error ? (
           <div className="rounded-2xl border border-rose-500/25 bg-rose-500/10 p-5 text-sm text-rose-200">{error}</div>
         ) : view ? (
-          <AttendanceBoard view={view} onMark={mark} busy={busy} />
+          <div className="space-y-4">
+            <LeavesPanel isLight={false} />
+            <AttendanceBoard view={view} onMark={async () => {}} busy={false} />
+          </div>
         ) : (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-center backdrop-blur-xl min-[360px]:p-8">
             <p className="text-sm text-slate-300">Hozircha ochiq yo‘qlama yo‘q.</p>
-            <button
-              type="button"
-              onClick={openSession}
-              disabled={busy}
-              className={`mt-4 rounded-xl px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:brightness-110 disabled:opacity-50 ${t.gradient}`}
-            >
-              {busy ? 'Ochilyapti…' : 'Yo‘qlama ochish'}
-            </button>
+            <p className="mt-2 text-xs leading-relaxed text-slate-500">Yo‘qlamani tarbiyachi ochadi. U ochilgach, bu yerda qavatingizdagi holat ko‘rinadi.</p>
           </div>
         )}
       </div>

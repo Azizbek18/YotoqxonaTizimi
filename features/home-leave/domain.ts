@@ -100,3 +100,30 @@ export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; ln
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2
   return 2 * 6371 * Math.asin(Math.sqrt(h))
 }
+
+export type PostLeaveRecord = {
+  student_id: string
+  state: string
+  scheduled_for: string
+  session_status: string
+}
+
+/**
+ * Muddati tugagan faol arizalar uchun: talaba qaytdimi yoki qaytmadimi.
+ * - qaytgan: ariza tugagach (ends_on dan keyin) birorta yo'qlamada "keldi";
+ * - qaytmagan: ariza tugagach kamida bitta yo'qlama YOPILGAN va hech birida "keldi" emas;
+ * - qolgani (yo'qlama hali bo'lmagan / ochiq): hukm yo'q — kutiladi.
+ */
+export function classifyOverdue(
+  leaves: { id: string; student_id: string; ends_on: string }[],
+  records: PostLeaveRecord[],
+): { returned: Set<string>; overdue: Set<string> } {
+  const returned = new Set<string>()
+  const overdue = new Set<string>()
+  for (const leave of leaves) {
+    const after = records.filter((r) => r.student_id === leave.student_id && r.scheduled_for > leave.ends_on)
+    if (after.some((r) => r.state === 'present')) returned.add(leave.id)
+    else if (after.some((r) => r.session_status === 'closed' || r.session_status === 'auto_closed')) overdue.add(leave.id)
+  }
+  return { returned, overdue }
+}

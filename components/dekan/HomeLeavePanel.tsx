@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarDays, Check, Home, Loader2, MapPin, Phone, ShieldAlert, X } from 'lucide-react'
+import { AlertTriangle, CalendarDays, Check, Home, Loader2, MapPin, Phone, ShieldAlert, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { dekanUI } from '@/lib/dekan-ui'
 import { decideLeave, fetchFacultyLeaves } from '@/features/home-leave/client/api'
@@ -18,13 +18,16 @@ function fmt(d: string): string {
 export default function HomeLeavePanel({ isLight }: { isLight: boolean }) {
   const ui = dekanUI(isLight)
   const [rows, setRows] = useState<HomeLeaveStaffRow[] | null>(null)
+  const [overdue, setOverdue] = useState<HomeLeaveStaffRow[]>([])
   const [busyId, setBusyId] = useState<string | null>(null)
   const [rejecting, setRejecting] = useState<string | null>(null)
   const [reason, setReason] = useState('')
 
   const load = useCallback(async () => {
     try {
-      setRows(await fetchFacultyLeaves())
+      const data = await fetchFacultyLeaves()
+      setRows(data.leaves)
+      setOverdue(data.overdue)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Arizalarni yuklab bo'lmadi")
       setRows([])
@@ -56,7 +59,7 @@ export default function HomeLeavePanel({ isLight }: { isLight: boolean }) {
 
   const pending = (rows ?? []).filter((r) => r.status === 'pending')
   const active = (rows ?? []).filter((r) => r.status === 'active')
-  if (rows === null || (pending.length === 0 && active.length === 0)) return null
+  if (rows === null || (pending.length === 0 && active.length === 0 && overdue.length === 0)) return null
 
   return (
     <div className={`no-shelf rounded-2xl border p-4 sm:p-5 ${ui.card}`}>
@@ -68,6 +71,29 @@ export default function HomeLeavePanel({ isLight }: { isLight: boolean }) {
           {active.length} ta faol{pending.length > 0 ? ` · ${pending.length} ta kutilmoqda` : ''}
         </span>
       </div>
+
+      {overdue.length > 0 && (
+        <div className={`no-shelf mb-3 rounded-xl border p-3 ${isLight ? 'border-rose-200 bg-rose-50' : 'border-rose-500/30 bg-rose-500/10'}`}>
+          <p className={`mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider ${isLight ? 'text-rose-700' : 'text-rose-300'}`}>
+            <AlertTriangle size={13} /> Qaytmaganlar ({overdue.length})
+          </p>
+          <div className="space-y-2">
+            {overdue.map((r) => (
+              <div key={r.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                <div className="min-w-0">
+                  <p className={`truncate text-sm font-bold ${ui.strong}`}>{r.studentName}</p>
+                  <p className={`text-[11px] ${ui.muted}`}>
+                    Muddati {fmt(r.endsOn)} da tugagan{r.roomNumber ? ` · ${r.roomNumber}-xona` : ''}
+                  </p>
+                </div>
+                <a href={`tel:${r.contactPhone}`} className="inline-flex items-center gap-1.5 text-xs font-bold text-sky-500">
+                  <Phone size={12} /> {r.contactName} · {r.contactPhone}
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {pending.length === 0 ? (
         <p className={`text-xs ${ui.muted}`}>

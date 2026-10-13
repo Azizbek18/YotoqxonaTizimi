@@ -65,9 +65,8 @@ export async function recordLeaveCall(id: string, result: Exclude<LeaveCallResul
   return data.leave
 }
 
-export async function fetchFacultyLeaves(): Promise<HomeLeaveStaffRow[]> {
-  const result = await apiRequest<{ leaves: HomeLeaveStaffRow[] }>('/api/dekan/home-leaves')
-  return result.leaves
+export async function fetchFacultyLeaves(): Promise<{ leaves: HomeLeaveStaffRow[]; overdue: HomeLeaveStaffRow[] }> {
+  return apiRequest<{ leaves: HomeLeaveStaffRow[]; overdue: HomeLeaveStaffRow[] }>('/api/dekan/home-leaves')
 }
 
 export async function decideLeave(id: string, input: { action: 'approve' | 'reject'; note?: string }): Promise<HomeLeave> {

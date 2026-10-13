@@ -2,7 +2,7 @@ import { ApiError } from '@/server/http/api-error'
 import { tashkentDateString } from '@/lib/tashkent-time'
 import type { HomeLeaveRow } from '@/types/database.generated'
 import type { AttendanceActor } from '@/features/attendance/types'
-import { distanceKm, initialLeaveStatus, leaveDays, leaveInEffect, parseLeaveInput } from '../domain'
+import { classifyOverdue, distanceKm, initialLeaveStatus, leaveDays, leaveInEffect, parseLeaveInput } from '../domain'
 import { LEAVE_NEAR_KM, type HomeLeave, type HomeLeaveStaffRow, type LeaveCallResult } from '../types'
 import { createHomeLeaveRepository, type HomeLeaveRepository, type LeaveWithStudent } from './repository'
 
@@ -39,6 +39,7 @@ function toStaffRow(row: LeaveWithStudent, today: string): HomeLeaveStaffRow {
     studentName: row.users?.full_name ?? 'Talaba',
     roomNumber: row.users?.room_number ?? null,
     floor: row.users?.assigned_floor ?? null,
+    faculty: row.users?.faculty ?? null,
     inEffect: leaveInEffect(row, today),
   }
 }
@@ -183,6 +184,27 @@ export function createHomeLeaveService(repo: HomeLeaveRepository = createHomeLea
       })
       if (!updated) throw new ApiError(409, 'Ariza yakunlangan')
       return toHomeLeave(updated)
+    },
+
+    /**
+     * Muddati tugagach qaytmagan talabalar (`faculty` bo'lmasa — hammasi).
+     * Ariza tugagach birorta yo'qlamada "keldi" bo'lgan talaba qaytgan hisoblanadi
+     * va uning arizasi `returned` ga o'tkaziladi; kamida bitta yopilgan yo'qlamada
+     * ham yo'q bo'lsa — qaytmagan.
+     */
+    async findOverdue(faculty?: string, now: Date = new Date()): Promise<HomeLeaveStaffRow[]> {
+      const today = tashkentDateString(now)
+      const ended = await repo.listEnded(today, faculty)
+      if (ended.length === 0) return []
+      const minEnd = ended.reduce((m, l) => (l.ends_on < m ? l.ends_on : m), ended[0].ends_on)
+      const records = await repo.recordsAfter([...new Set(ended.map((l) => l.student_id))], minEnd)
+      const { returned, overdue } = classifyOverdue(ended, records)
+      for (const leave of ended) {
+        if (returned.has(leave.id)) {
+          await repo.update(leave.id, ['active'], { status: 'returned', returned_at: now.toISOString() })
+        }
+      }
+      return ended.filter((l) => overdue.has(l.id)).map((l) => toStaffRow(l, today))
     },
 
     async listForFaculty(faculty: string, now: Date = new Date()): Promise<HomeLeaveStaffRow[]> {

@@ -3,17 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_client.dart';
 
-final navbatApiProvider = Provider((ref) => NavbatApi(ref.watch(apiClientProvider)));
+final navbatApiProvider = Provider(
+  (ref) => NavbatApi(ref.watch(apiClientProvider)),
+);
 
 class FloorCaptain {
-  FloorCaptain({required this.fullName, this.roomNumber, this.phoneNumber, this.avatarUrl});
+  FloorCaptain({
+    required this.fullName,
+    this.roomNumber,
+    this.phoneNumber,
+    this.avatarUrl,
+  });
 
   factory FloorCaptain.fromJson(Map<String, dynamic> json) => FloorCaptain(
-        fullName: json['full_name'] as String? ?? '',
-        roomNumber: json['room_number'] as String?,
-        phoneNumber: json['phone_number'] as String?,
-        avatarUrl: json['avatar_url'] as String?,
-      );
+    fullName: json['full_name'] as String? ?? '',
+    roomNumber: json['room_number'] as String?,
+    phoneNumber: json['phone_number'] as String?,
+    avatarUrl: json['avatar_url'] as String?,
+  );
 
   final String fullName;
   final String? roomNumber;
@@ -22,17 +29,41 @@ class FloorCaptain {
 }
 
 class DutyScheduleData {
-  DutyScheduleData({required this.floorCaptains, required this.schedule});
+  DutyScheduleData({
+    required this.floorCaptains,
+    required this.schedule,
+    required this.admins,
+  });
 
-  factory DutyScheduleData.fromJson(Map<String, dynamic> json) => DutyScheduleData(
+  factory DutyScheduleData.fromJson(Map<String, dynamic> json) =>
+      DutyScheduleData(
         floorCaptains: (json['floorCaptains'] as List<dynamic>? ?? [])
             .map((e) => FloorCaptain.fromJson(e as Map<String, dynamic>))
             .toList(),
         schedule: Map<String, dynamic>.from(json['schedule'] as Map? ?? {}),
+        admins: (json['admins'] as List<dynamic>? ?? [])
+            .whereType<Map>()
+            .map((e) => DutyAdmin.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
       );
 
   final List<FloorCaptain> floorCaptains;
   final Map<String, dynamic> schedule;
+  final List<DutyAdmin> admins;
+}
+
+class DutyAdmin {
+  const DutyAdmin({required this.id, required this.name, this.room});
+
+  factory DutyAdmin.fromJson(Map<String, dynamic> json) => DutyAdmin(
+    id: json['id']?.toString() ?? json['user_id']?.toString() ?? '',
+    name: json['name'] as String? ?? json['full_name'] as String? ?? '',
+    room: json['room'] as String? ?? json['room_number'] as String?,
+  );
+
+  final String id;
+  final String name;
+  final String? room;
 }
 
 class NavbatApi {
@@ -40,13 +71,18 @@ class NavbatApi {
   final Dio _dio;
 
   Future<DutyScheduleData> fetchDutySchedule() => guardApiCall(() async {
-        final response = await _dio.get<Map<String, dynamic>>('/api/student/duty-schedule');
-        return DutyScheduleData.fromJson(response.data!);
-      });
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/student/duty-schedule',
+    );
+    return DutyScheduleData.fromJson(response.data!);
+  });
 
   /// Raw cleaning-schedule map: day/slot label -> {id, name} or null.
-  Future<Map<String, dynamic>> fetchCleaningSchedule() => guardApiCall(() async {
-        final response = await _dio.get<Map<String, dynamic>>('/api/student/cleaning-schedule');
+  Future<Map<String, dynamic>> fetchCleaningSchedule() =>
+      guardApiCall(() async {
+        final response = await _dio.get<Map<String, dynamic>>(
+          '/api/student/cleaning-schedule',
+        );
         return response.data ?? {};
       });
 }

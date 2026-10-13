@@ -29,6 +29,7 @@ class _TolovaScreenState extends ConsumerState<TolovaScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -36,13 +37,17 @@ class _TolovaScreenState extends ConsumerState<TolovaScreen> {
     try {
       final payments = await ref.read(paymentApiProvider).fetchPayments();
       payments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      if (!mounted) return;
       setState(() {
         _payments = payments;
         _loading = false;
       });
     } catch (error) {
+      if (!mounted) return;
       setState(() {
-        _error = error is ApiException ? error.message : "To'lovlarni yuklab bo'lmadi";
+        _error = error is ApiException
+            ? error.message
+            : "To'lovlarni yuklab bo'lmadi";
         _loading = false;
       });
     }
@@ -54,7 +59,7 @@ class _TolovaScreenState extends ConsumerState<TolovaScreen> {
       isScrollControlled: true,
       builder: (_) => _SubmitPaymentSheet(api: ref.read(paymentApiProvider)),
     );
-    if (submitted == true) _load();
+    if (submitted == true && mounted) _load();
   }
 
   @override
@@ -70,31 +75,37 @@ class _TolovaScreenState extends ConsumerState<TolovaScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: _payments.isEmpty
-                      ? ListView(children: const [
-                          Padding(
-                            padding: EdgeInsets.all(32),
-                            child: Center(child: Text("Hali to'lov tarixi yo'q")),
-                          ),
-                        ])
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                          itemCount: _payments.length,
-                          itemBuilder: (context, index) {
-                            final payment = _payments[index];
-                            return Card(
-                              child: ListTile(
-                                title: Text('${payment.month} ${payment.year}'),
-                                subtitle: Text(NumberFormat('#,###').format(payment.amount)),
-                                trailing: Chip(label: Text(paymentStatusLabel(payment.status))),
-                              ),
-                            );
-                          },
+          ? Center(child: Text(_error!))
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: _payments.isEmpty
+                  ? ListView(
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Center(child: Text("Hali to'lov tarixi yo'q")),
                         ),
-                ),
+                      ],
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                      itemCount: _payments.length,
+                      itemBuilder: (context, index) {
+                        final payment = _payments[index];
+                        return Card(
+                          child: ListTile(
+                            title: Text('${payment.month} ${payment.year}'),
+                            subtitle: Text(
+                              NumberFormat('#,###').format(payment.amount),
+                            ),
+                            trailing: Chip(
+                              label: Text(paymentStatusLabel(payment.status)),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
     );
   }
 }
@@ -109,11 +120,16 @@ class _SubmitPaymentSheet extends StatefulWidget {
 
 class _SubmitPaymentSheetState extends State<_SubmitPaymentSheet> {
   final _amountController = TextEditingController();
-  final _transactionController = TextEditingController();
   final _selectedMonths = <String>{};
   File? _receipt;
   bool _submitting = false;
   String? _error;
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
 
   int get _academicYearStart {
     final now = DateTime.now();
@@ -123,12 +139,18 @@ class _SubmitPaymentSheetState extends State<_SubmitPaymentSheet> {
   }
 
   Future<void> _pickReceipt() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 2000, imageQuality: 90);
-    if (picked != null) setState(() => _receipt = File(picked.path));
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 2000,
+      imageQuality: 90,
+    );
+    if (picked != null && mounted) setState(() => _receipt = File(picked.path));
   }
 
   Future<void> _submit() async {
-    if (_receipt == null || _selectedMonths.isEmpty || _amountController.text.trim().isEmpty) {
+    if (_receipt == null ||
+        _selectedMonths.isEmpty ||
+        _amountController.text.trim().isEmpty) {
       setState(() => _error = "Oy, summa va chekni to'ldiring");
       return;
     }
@@ -137,16 +159,31 @@ class _SubmitPaymentSheetState extends State<_SubmitPaymentSheet> {
       _error = null;
     });
     try {
+      final amount = double.tryParse(_amountController.text.trim());
+      if (amount == null || !amount.isFinite || amount <= 0) {
+        throw ApiException('Summani to‘g‘ri kiriting.');
+      }
+      final check = await widget.api.verifyReceipt(
+        receipt: _receipt!,
+        amount: amount,
+      );
       await widget.api.submitPayment(
         receipt: _receipt!,
-        amount: double.parse(_amountController.text.trim()),
+        amount: amount,
         academicYearStart: _academicYearStart,
         months: _selectedMonths.toList(),
-        transactionId: _transactionController.text.trim(),
+        transactionId: check.transactionId,
+        validatedHash: check.claim!,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
-      setState(() => _error = error is ApiException ? error.message : 'Xatolik yuz berdi');
+      if (mounted) {
+        setState(
+          () => _error = error is ApiException
+              ? error.message
+              : 'Xatolik yuz berdi',
+        );
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -165,7 +202,10 @@ class _SubmitPaymentSheetState extends State<_SubmitPaymentSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text("To'lov cheki yuborish", style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              "To'lov cheki yuborish",
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -175,7 +215,9 @@ class _SubmitPaymentSheetState extends State<_SubmitPaymentSheet> {
                     label: Text(month),
                     selected: _selectedMonths.contains(month),
                     onSelected: (selected) => setState(() {
-                      selected ? _selectedMonths.add(month) : _selectedMonths.remove(month);
+                      selected
+                          ? _selectedMonths.add(month)
+                          : _selectedMonths.remove(month);
                     }),
                   ),
               ],
@@ -184,18 +226,23 @@ class _SubmitPaymentSheetState extends State<_SubmitPaymentSheet> {
             TextField(
               controller: _amountController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Summa', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Summa',
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _transactionController,
-              decoration: const InputDecoration(labelText: 'Tranzaksiya ID', border: OutlineInputBorder()),
+            Text(
+              'Chek yuborilganda undagi tranzaksiya raqami AI tomonidan aniqlanadi.',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: _pickReceipt,
               icon: const Icon(Icons.receipt_long),
-              label: Text(_receipt == null ? 'Chek rasmini tanlash' : 'Chek tanlandi ✓'),
+              label: Text(
+                _receipt == null ? 'Chek rasmini tanlash' : 'Chek tanlandi ✓',
+              ),
             ),
             if (_error != null)
               Padding(
@@ -206,7 +253,11 @@ class _SubmitPaymentSheetState extends State<_SubmitPaymentSheet> {
             FilledButton(
               onPressed: _submitting ? null : _submit,
               child: _submitting
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text('Yuborish'),
             ),
           ],

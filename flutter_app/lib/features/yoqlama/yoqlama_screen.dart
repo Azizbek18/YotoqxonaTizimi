@@ -26,19 +26,24 @@ class _YoqlamaScreenState extends ConsumerState<YoqlamaScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
       final summary = await ref.read(attendanceApiProvider).fetchSummary();
+      if (!mounted) return;
       setState(() {
         _summary = summary;
         _loading = false;
       });
     } catch (error) {
+      if (!mounted) return;
       setState(() {
-        _error = error is ApiException ? error.message : "Yo'qlama holatini yuklab bo'lmadi";
+        _error = error is ApiException
+            ? error.message
+            : "Yo'qlama holatini yuklab bo'lmadi";
         _loading = false;
       });
     }
@@ -55,7 +60,9 @@ class _YoqlamaScreenState extends ConsumerState<YoqlamaScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
         setState(() {
           _error = "Joylashuvga ruxsat berilmadi. Sozlamalardan ruxsat bering.";
           _checkingIn = false;
@@ -63,6 +70,7 @@ class _YoqlamaScreenState extends ConsumerState<YoqlamaScreen> {
         return;
       }
       if (!await Geolocator.isLocationServiceEnabled()) {
+        if (!mounted) return;
         setState(() {
           _error = "Qurilmada joylashuv (GPS) o'chirilgan.";
           _checkingIn = false;
@@ -71,21 +79,29 @@ class _YoqlamaScreenState extends ConsumerState<YoqlamaScreen> {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
-      final result = await ref.read(attendanceApiProvider).checkin(
+      final result = await ref
+          .read(attendanceApiProvider)
+          .checkin(
             lat: position.latitude,
             lng: position.longitude,
             accuracy: position.accuracy,
           );
+      if (!mounted) return;
       setState(() {
         _lastResult = result;
         _checkingIn = false;
       });
       await _load();
     } catch (error) {
+      if (!mounted) return;
       setState(() {
-        _error = error is ApiException ? error.message : "Tasdiqlashda xatolik yuz berdi";
+        _error = error is ApiException
+            ? error.message
+            : "Tasdiqlashda xatolik yuz berdi";
         _checkingIn = false;
       });
     }
@@ -128,23 +144,41 @@ class _YoqlamaScreenState extends ConsumerState<YoqlamaScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _summary?.hasOpen == true ? "Bugungi yo'qlama ochiq" : "Hozir ochiq yo'qlama yo'q",
+                            _summary?.hasOpen == true
+                                ? "Bugungi yo'qlama ochiq"
+                                : "Hozir ochiq yo'qlama yo'q",
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
-                          if (_summary?.hasOpen == true && _summary?.closesAt != null)
+                          if (_summary?.hasOpen == true &&
+                              _summary?.closesAt != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 4),
-                              child: Text('Yopilish vaqti: ${_summary!.closesAt}'),
+                              child: Text(
+                                'Yopilish vaqti: ${_summary!.closesAt}',
+                              ),
                             ),
-                          if (_summary?.hasOpen == true && _summary?.total != null)
+                          if (_summary?.hasOpen == true &&
+                              _summary?.total != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: Wrap(
                                 spacing: 8,
                                 children: [
-                                  Chip(label: Text('Bor: ${_summary!.present ?? 0}')),
-                                  Chip(label: Text("Yo'q: ${_summary!.absent ?? 0}")),
-                                  Chip(label: Text('Belgilanmagan: ${_summary!.unmarked ?? 0}')),
+                                  Chip(
+                                    label: Text(
+                                      'Bor: ${_summary!.present ?? 0}',
+                                    ),
+                                  ),
+                                  Chip(
+                                    label: Text(
+                                      "Yo'q: ${_summary!.absent ?? 0}",
+                                    ),
+                                  ),
+                                  Chip(
+                                    label: Text(
+                                      'Belgilanmagan: ${_summary!.unmarked ?? 0}',
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -154,21 +188,34 @@ class _YoqlamaScreenState extends ConsumerState<YoqlamaScreen> {
                   ),
                   const SizedBox(height: 24),
                   FilledButton.icon(
-                    onPressed: (_summary?.hasOpen == true && !_checkingIn) ? _checkin : null,
+                    onPressed: (_summary?.hasOpen == true && !_checkingIn)
+                        ? _checkin
+                        : null,
                     icon: _checkingIn
-                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : const Icon(Icons.location_on),
                     label: const Text("Men yotoqxonadaman"),
                   ),
                   if (_lastResult != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 16),
-                      child: Text(_resultMessage(_lastResult!), textAlign: TextAlign.center),
+                      child: Text(
+                        _resultMessage(_lastResult!),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   if (_error != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 16),
-                      child: Text(_error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                 ],
               ),

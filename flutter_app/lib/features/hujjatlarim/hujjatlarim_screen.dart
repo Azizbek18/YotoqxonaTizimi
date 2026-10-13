@@ -27,19 +27,24 @@ class _HujjatlarimScreenState extends ConsumerState<HujjatlarimScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
       final docs = await ref.read(foreignDocsApiProvider).fetchDocs();
+      if (!mounted) return;
       setState(() {
         _docs = docs;
         _loading = false;
       });
     } catch (error) {
+      if (!mounted) return;
       setState(() {
-        _error = error is ApiException ? error.message : "Hujjatlarni yuklab bo'lmadi";
+        _error = error is ApiException
+            ? error.message
+            : "Hujjatlarni yuklab bo'lmadi";
         _loading = false;
       });
     }
@@ -49,9 +54,12 @@ class _HujjatlarimScreenState extends ConsumerState<HujjatlarimScreen> {
     final changed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _DocEditorSheet(api: ref.read(foreignDocsApiProvider), existing: existing),
+      builder: (_) => _DocEditorSheet(
+        api: ref.read(foreignDocsApiProvider),
+        existing: existing,
+      ),
     );
-    if (changed == true) _load();
+    if (changed == true && mounted) _load();
   }
 
   Future<void> _viewFile(ForeignDoc doc) async {
@@ -60,8 +68,11 @@ class _HujjatlarimScreenState extends ConsumerState<HujjatlarimScreen> {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (error) {
       if (mounted) {
-        final message = error is ApiException ? error.message : "Faylni ochib bo'lmadi";
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        final message = error is ApiException
+            ? error.message
+            : "Faylni ochib bo'lmadi";
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
       }
     }
   }
@@ -69,11 +80,14 @@ class _HujjatlarimScreenState extends ConsumerState<HujjatlarimScreen> {
   Future<void> _delete(ForeignDoc doc) async {
     try {
       await ref.read(foreignDocsApiProvider).deleteDoc(doc.id);
-      _load();
+      if (mounted) _load();
     } catch (error) {
       if (mounted) {
-        final message = error is ApiException ? error.message : "O'chirib bo'lmadi";
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        final message = error is ApiException
+            ? error.message
+            : "O'chirib bo'lmadi";
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
       }
     }
   }
@@ -90,43 +104,57 @@ class _HujjatlarimScreenState extends ConsumerState<HujjatlarimScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: _docs.isEmpty
-                      ? ListView(children: const [
-                          Padding(
-                            padding: EdgeInsets.all(32),
-                            child: Center(child: Text("Hali hujjat qo'shilmagan")),
+          ? Center(child: Text(_error!))
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: _docs.isEmpty
+                  ? ListView(
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Center(
+                            child: Text("Hali hujjat qo'shilmagan"),
                           ),
-                        ])
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                          itemCount: _docs.length,
-                          itemBuilder: (context, index) {
-                            final doc = _docs[index];
-                            final expiringSoon = doc.daysLeft <= 15;
-                            return Card(
-                              child: ListTile(
-                                title: Text(docTypeLabels[doc.docType] ?? doc.docType),
-                                subtitle: Text(
-                                  '${docStatusLabels[doc.status] ?? doc.status} · ${doc.expiresOn} gacha (${doc.daysLeft} kun)',
-                                  style: expiringSoon ? const TextStyle(color: Colors.red) : null,
-                                ),
-                                onTap: () => _openEditor(doc),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (doc.hasFile)
-                                      IconButton(icon: const Icon(Icons.description), onPressed: () => _viewFile(doc)),
-                                    IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => _delete(doc)),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
                         ),
-                ),
+                      ],
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                      itemCount: _docs.length,
+                      itemBuilder: (context, index) {
+                        final doc = _docs[index];
+                        final expiringSoon = doc.daysLeft <= 15;
+                        return Card(
+                          child: ListTile(
+                            title: Text(
+                              docTypeLabels[doc.docType] ?? doc.docType,
+                            ),
+                            subtitle: Text(
+                              '${docStatusLabels[doc.status] ?? doc.status} · ${doc.expiresOn} gacha (${doc.daysLeft} kun)',
+                              style: expiringSoon
+                                  ? const TextStyle(color: Colors.red)
+                                  : null,
+                            ),
+                            onTap: () => _openEditor(doc),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (doc.hasFile)
+                                  IconButton(
+                                    icon: const Icon(Icons.description),
+                                    onPressed: () => _viewFile(doc),
+                                  ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline),
+                                  onPressed: () => _delete(doc),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
     );
   }
 }
@@ -154,7 +182,9 @@ class _DocEditorSheetState extends State<_DocEditorSheet> {
     super.initState();
     _numberController.text = widget.existing?.number ?? '';
     _addressController.text = widget.existing?.address ?? '';
-    _expiresOn = widget.existing?.expiresOn.isNotEmpty == true ? DateTime.tryParse(widget.existing!.expiresOn) : null;
+    _expiresOn = widget.existing?.expiresOn.isNotEmpty == true
+        ? DateTime.tryParse(widget.existing!.expiresOn)
+        : null;
   }
 
   Future<void> _pickDate() async {
@@ -164,12 +194,16 @@ class _DocEditorSheetState extends State<_DocEditorSheet> {
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
     );
-    if (picked != null) setState(() => _expiresOn = picked);
+    if (picked != null && mounted) setState(() => _expiresOn = picked);
   }
 
   Future<void> _pickFile() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 2000, imageQuality: 90);
-    if (picked != null) setState(() => _file = File(picked.path));
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 2000,
+      imageQuality: 90,
+    );
+    if (picked != null && mounted) setState(() => _file = File(picked.path));
   }
 
   Future<void> _submit() async {
@@ -185,14 +219,24 @@ class _DocEditorSheetState extends State<_DocEditorSheet> {
       await widget.api.saveDoc(
         id: widget.existing?.id,
         docType: _docType,
-        number: _numberController.text.trim().isEmpty ? null : _numberController.text.trim(),
+        number: _numberController.text.trim().isEmpty
+            ? null
+            : _numberController.text.trim(),
         expiresOn: _expiresOn!.toIso8601String().split('T').first,
-        address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+        address: _addressController.text.trim().isEmpty
+            ? null
+            : _addressController.text.trim(),
         file: _file,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
-      setState(() => _error = error is ApiException ? error.message : 'Xatolik yuz berdi');
+      if (mounted) {
+        setState(
+          () => _error = error is ApiException
+              ? error.message
+              : 'Xatolik yuz berdi',
+        );
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -211,31 +255,47 @@ class _DocEditorSheetState extends State<_DocEditorSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(widget.existing == null ? 'Yangi hujjat' : 'Hujjatni tahrirlash',
-                style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              widget.existing == null ? 'Yangi hujjat' : 'Hujjatni tahrirlash',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _docType,
               decoration: const InputDecoration(labelText: 'Turi'),
-              items: docTypeLabels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+              items: docTypeLabels.entries
+                  .map(
+                    (e) => DropdownMenuItem(value: e.key, child: Text(e.value)),
+                  )
+                  .toList(),
               onChanged: (value) => setState(() => _docType = value ?? 'visa'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _numberController,
-              decoration: const InputDecoration(labelText: 'Raqami', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Raqami',
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text(_expiresOn == null ? 'Muddati' : _expiresOn!.toIso8601String().split('T').first),
+              title: Text(
+                _expiresOn == null
+                    ? 'Muddati'
+                    : _expiresOn!.toIso8601String().split('T').first,
+              ),
               trailing: const Icon(Icons.calendar_today),
               onTap: _pickDate,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _addressController,
-              decoration: const InputDecoration(labelText: 'Manzil', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Manzil',
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
@@ -252,7 +312,11 @@ class _DocEditorSheetState extends State<_DocEditorSheet> {
             FilledButton(
               onPressed: _submitting ? null : _submit,
               child: _submitting
-                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text('Saqlash'),
             ),
           ],

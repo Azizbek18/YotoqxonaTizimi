@@ -46,8 +46,19 @@ class AuthController extends Notifier<AuthStatus> {
   void _applyResolvedRole(ResolvedRole resolved) {
     if (resolved.ok && resolved.role == 'talaba') {
       state = const AuthAuthenticated();
-      // Fire-and-forget: a push-registration hiccup must never block login.
-      ref.read(fcmServiceProvider).registerForCurrentUser().catchError((_) {});
+      // Scheduled on a fresh task, fully detached from this call stack: if
+      // this were awaited/called inline, any exception here — sync or
+      // async — would propagate back into signIn()'s try/catch and
+      // overwrite the AuthAuthenticated state we just set, turning a
+      // successful login into a spurious "sign-in failed". A push
+      // registration hiccup must never be able to do that.
+      Future(() async {
+        try {
+          await ref.read(fcmServiceProvider).registerForCurrentUser();
+        } catch (_) {
+          // ignore
+        }
+      });
       return;
     }
     // Wrong role or unresolved — this app is student-only.
@@ -69,8 +80,14 @@ class AuthController extends Notifier<AuthStatus> {
 
   Future<void> signOut() async {
     // Unregister the push token before the session goes away — the request
-    // needs the still-valid access token to authenticate.
-    await ref.read(fcmServiceProvider).unregister().catchError((_) {});
+    // needs the still-valid access token to authenticate. Guarded the same
+    // way as _applyResolvedRole: nothing here may stop sign-out from
+    // completing.
+    try {
+      await ref.read(fcmServiceProvider).unregister();
+    } catch (_) {
+      // ignore
+    }
     await _repository.signOut();
     state = const AuthUnauthenticated();
   }

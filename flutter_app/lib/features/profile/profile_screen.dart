@@ -39,14 +39,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
       final api = ref.read(profileApiProvider);
-      final results = await Future.wait([api.fetchProfile(), api.fetchSessions()]);
+      final results = await Future.wait([
+        api.fetchProfile(),
+        api.fetchSessions(),
+      ]);
       final payload = results[0] as StudentProfilePayload;
+      if (!mounted) return;
       setState(() {
         _payload = payload;
         _sessions = results[1] as List<DeviceSession>;
@@ -54,8 +59,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _loading = false;
       });
     } catch (error) {
+      if (!mounted) return;
       setState(() {
-        _error = error is ApiException ? error.message : "Profilni yuklab bo'lmadi";
+        _error = error is ApiException
+            ? error.message
+            : "Profilni yuklab bo'lmadi";
         _loading = false;
       });
     }
@@ -64,15 +72,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _saveGroup() async {
     setState(() => _busy = true);
     try {
-      await ref.read(profileApiProvider).updateGroup(_groupController.text.trim());
+      await ref
+          .read(profileApiProvider)
+          .updateGroup(_groupController.text.trim());
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Guruh yangilandi")));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text("Guruh yangilandi")));
       }
       await _load();
     } catch (error) {
       if (mounted) {
-        final message = error is ApiException ? error.message : 'Xatolik yuz berdi';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        final message = error is ApiException
+            ? error.message
+            : 'Xatolik yuz berdi';
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -80,16 +94,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _pickAvatar() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1024, imageQuality: 85);
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      imageQuality: 85,
+    );
     if (picked == null) return;
+    if (!mounted) return;
     setState(() => _busy = true);
     try {
       await ref.read(profileApiProvider).uploadAvatar(File(picked.path));
       await _load();
     } catch (error) {
       if (mounted) {
-        final message = error is ApiException ? error.message : 'Rasmni yuklab bo\'lmadi';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        final message = error is ApiException
+            ? error.message
+            : 'Rasmni yuklab bo\'lmadi';
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -102,8 +124,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       await _load();
     } catch (error) {
       if (mounted) {
-        final message = error is ApiException ? error.message : 'Xatolik yuz berdi';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        final message = error is ApiException
+            ? error.message
+            : 'Xatolik yuz berdi';
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
       }
     }
   }
@@ -117,7 +142,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           IconButton(
             tooltip: 'Chiqish',
             icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
+            onPressed: () =>
+                ref.read(authControllerProvider.notifier).signOut(),
           ),
         ],
       ),
@@ -125,22 +151,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _ErrorView(message: _error!, onRetry: _load)
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      _buildHeader(),
-                      const SizedBox(height: 24),
-                      _buildGroupEditor(),
-                      const SizedBox(height: 24),
-                      _buildInfo(),
-                      const SizedBox(height: 24),
-                      _buildSessions(),
-                    ],
-                  ),
-                ),
+          ? _ErrorView(message: _error!, onRetry: _load)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 24),
+                  _buildGroupEditor(),
+                  const SizedBox(height: 24),
+                  _buildInfo(),
+                  const SizedBox(height: 24),
+                  _buildSessions(),
+                ],
+              ),
+            ),
     );
   }
 
@@ -152,8 +178,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           children: [
             CircleAvatar(
               radius: 48,
-              backgroundImage: profile.avatarUrl != null ? CachedNetworkImageProvider(profile.avatarUrl!) : null,
-              child: profile.avatarUrl == null ? const Icon(Icons.person, size: 48) : null,
+              backgroundImage: profile.avatarUrl != null
+                  ? CachedNetworkImageProvider(profile.avatarUrl!)
+                  : null,
+              child: profile.avatarUrl == null
+                  ? const Icon(Icons.person, size: 48)
+                  : null,
             ),
             Positioned(
               right: 0,
@@ -163,7 +193,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 child: CircleAvatar(
                   radius: 16,
                   child: _busy
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Icon(Icons.camera_alt, size: 16),
                 ),
               ),
@@ -171,8 +205,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        Text(profile.fullName, style: Theme.of(context).textTheme.titleLarge, textAlign: TextAlign.center),
-        if (profile.faculty != null) Text(profile.faculty!, style: Theme.of(context).textTheme.bodyMedium),
+        Text(
+          profile.fullName,
+          style: Theme.of(context).textTheme.titleLarge,
+          textAlign: TextAlign.center,
+        ),
+        if (profile.faculty != null)
+          Text(profile.faculty!, style: Theme.of(context).textTheme.bodyMedium),
         if (profile.warningCount > 0)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -194,11 +233,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Expanded(
               child: TextField(
                 controller: _groupController,
-                decoration: const InputDecoration(labelText: 'Guruh', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Guruh',
+                  border: OutlineInputBorder(),
+                ),
               ),
             ),
             const SizedBox(width: 8),
-            FilledButton(onPressed: _busy ? null : _saveGroup, child: const Text('Saqlash')),
+            FilledButton(
+              onPressed: _busy ? null : _saveGroup,
+              child: const Text('Saqlash'),
+            ),
           ],
         ),
       ),
@@ -245,14 +290,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ulangan qurilmalar', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Ulangan qurilmalar',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             for (final session in _sessions)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.devices_other),
                 title: Text('${session.browser} · ${session.os}'),
-                subtitle: Text(session.current ? 'Joriy qurilma' : session.lastActiveAt),
+                subtitle: Text(
+                  session.current ? 'Joriy qurilma' : session.lastActiveAt,
+                ),
                 trailing: session.current
                     ? null
                     : IconButton(
@@ -282,7 +332,10 @@ class _ErrorView extends StatelessWidget {
           children: [
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 12),
-            FilledButton(onPressed: onRetry, child: const Text("Qayta urinish")),
+            FilledButton(
+              onPressed: onRetry,
+              child: const Text("Qayta urinish"),
+            ),
           ],
         ),
       ),

@@ -25,20 +25,27 @@ class _ArizalarScreenState extends ConsumerState<ArizalarScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final applications = await ref.read(applicationApiProvider).fetchApplications();
+      final applications = await ref
+          .read(applicationApiProvider)
+          .fetchApplications();
       applications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      if (!mounted) return;
       setState(() {
         _applications = applications;
         _loading = false;
       });
     } catch (error) {
+      if (!mounted) return;
       setState(() {
-        _error = error is ApiException ? error.message : "Arizalarni yuklab bo'lmadi";
+        _error = error is ApiException
+            ? error.message
+            : "Arizalarni yuklab bo'lmadi";
         _loading = false;
       });
     }
@@ -47,18 +54,22 @@ class _ArizalarScreenState extends ConsumerState<ArizalarScreen> {
   Future<void> _openCreateDialog() async {
     final created = await showDialog<bool>(
       context: context,
-      builder: (_) => _CreateApplicationDialog(api: ref.read(applicationApiProvider)),
+      builder: (_) =>
+          _CreateApplicationDialog(api: ref.read(applicationApiProvider)),
     );
-    if (created == true) _load();
+    if (created == true && mounted) _load();
   }
 
   Future<void> _openDetail(StudentApplication application) async {
     final changed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _ApplicationDetailSheet(application: application, api: ref.read(applicationApiProvider)),
+      builder: (_) => _ApplicationDetailSheet(
+        application: application,
+        api: ref.read(applicationApiProvider),
+      ),
     );
-    if (changed == true) _load();
+    if (changed == true && mounted) _load();
   }
 
   @override
@@ -74,32 +85,46 @@ class _ArizalarScreenState extends ConsumerState<ArizalarScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: _applications.isEmpty
-                      ? ListView(children: const [
-                          Padding(
-                            padding: EdgeInsets.all(32),
-                            child: Center(child: Text('Hali arizalar yo\'q')),
-                          ),
-                        ])
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                          itemCount: _applications.length,
-                          itemBuilder: (context, index) {
-                            final application = _applications[index];
-                            return Card(
-                              child: ListTile(
-                                title: Text(application.title ?? applicationTypeLabels[application.type] ?? 'Ariza'),
-                                subtitle: Text(application.text, maxLines: 2, overflow: TextOverflow.ellipsis),
-                                trailing: Chip(label: Text(applicationStatusLabel(application.status))),
-                                onTap: () => _openDetail(application),
-                              ),
-                            );
-                          },
+          ? Center(child: Text(_error!))
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: _applications.isEmpty
+                  ? ListView(
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Center(child: Text('Hali arizalar yo\'q')),
                         ),
-                ),
+                      ],
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                      itemCount: _applications.length,
+                      itemBuilder: (context, index) {
+                        final application = _applications[index];
+                        return Card(
+                          child: ListTile(
+                            title: Text(
+                              application.title ??
+                                  applicationTypeLabels[application.type] ??
+                                  'Ariza',
+                            ),
+                            subtitle: Text(
+                              application.text,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: Chip(
+                              label: Text(
+                                applicationStatusLabel(application.status),
+                              ),
+                            ),
+                            onTap: () => _openDetail(application),
+                          ),
+                        );
+                      },
+                    ),
+            ),
     );
   }
 }
@@ -109,7 +134,8 @@ class _CreateApplicationDialog extends StatefulWidget {
   final ApplicationApi api;
 
   @override
-  State<_CreateApplicationDialog> createState() => _CreateApplicationDialogState();
+  State<_CreateApplicationDialog> createState() =>
+      _CreateApplicationDialogState();
 }
 
 class _CreateApplicationDialogState extends State<_CreateApplicationDialog> {
@@ -120,7 +146,8 @@ class _CreateApplicationDialogState extends State<_CreateApplicationDialog> {
   String? _error;
 
   Future<void> _submit() async {
-    if (_titleController.text.trim().isEmpty || _textController.text.trim().isEmpty) {
+    if (_titleController.text.trim().isEmpty ||
+        _textController.text.trim().isEmpty) {
       setState(() => _error = "Sarlavha va matnni to'ldiring");
       return;
     }
@@ -137,7 +164,13 @@ class _CreateApplicationDialogState extends State<_CreateApplicationDialog> {
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
-      setState(() => _error = error is ApiException ? error.message : 'Xatolik yuz berdi');
+      if (mounted) {
+        setState(
+          () => _error = error is ApiException
+              ? error.message
+              : 'Xatolik yuz berdi',
+        );
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -156,20 +189,28 @@ class _CreateApplicationDialogState extends State<_CreateApplicationDialog> {
               initialValue: _type,
               decoration: const InputDecoration(labelText: 'Turi'),
               items: applicationTypeLabels.entries
-                  .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                  .map(
+                    (e) => DropdownMenuItem(value: e.key, child: Text(e.value)),
+                  )
                   .toList(),
               onChanged: (value) => setState(() => _type = value ?? 'ariza'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Sarlavha', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Sarlavha',
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _textController,
               maxLines: 5,
-              decoration: const InputDecoration(labelText: 'Matn', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Matn',
+                border: OutlineInputBorder(),
+              ),
             ),
             if (_error != null)
               Padding(
@@ -180,11 +221,18 @@ class _CreateApplicationDialogState extends State<_CreateApplicationDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Bekor qilish')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Bekor qilish'),
+        ),
         FilledButton(
           onPressed: _submitting ? null : _submit,
           child: _submitting
-              ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : const Text('Saqlash'),
         ),
       ],
@@ -198,7 +246,8 @@ class _ApplicationDetailSheet extends StatefulWidget {
   final ApplicationApi api;
 
   @override
-  State<_ApplicationDetailSheet> createState() => _ApplicationDetailSheetState();
+  State<_ApplicationDetailSheet> createState() =>
+      _ApplicationDetailSheetState();
 }
 
 class _ApplicationDetailSheetState extends State<_ApplicationDetailSheet> {
@@ -206,7 +255,8 @@ class _ApplicationDetailSheetState extends State<_ApplicationDetailSheet> {
   bool _busy = false;
   String? _error;
 
-  bool get _isDraft => widget.application.status == 'draft' || widget.application.status == null;
+  bool get _isDraft =>
+      widget.application.status == 'draft' || widget.application.status == null;
 
   Future<void> _sign() async {
     if (_nameController.text.trim().isEmpty) {
@@ -218,10 +268,19 @@ class _ApplicationDetailSheetState extends State<_ApplicationDetailSheet> {
       _error = null;
     });
     try {
-      await widget.api.submitApplication(widget.application.id, _nameController.text.trim());
+      await widget.api.submitApplication(
+        widget.application.id,
+        _nameController.text.trim(),
+      );
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
-      setState(() => _error = error is ApiException ? error.message : 'Xatolik yuz berdi');
+      if (mounted) {
+        setState(
+          () => _error = error is ApiException
+              ? error.message
+              : 'Xatolik yuz berdi',
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -233,8 +292,12 @@ class _ApplicationDetailSheetState extends State<_ApplicationDetailSheet> {
       await widget.api.deleteApplication(widget.application.id);
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
-      setState(() => _error = error is ApiException ? error.message : 'Xatolik yuz berdi');
-      setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _error = error is ApiException ? error.message : 'Xatolik yuz berdi';
+          _busy = false;
+        });
+      }
     }
   }
 
@@ -252,7 +315,10 @@ class _ApplicationDetailSheetState extends State<_ApplicationDetailSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(application.title ?? '', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              application.title ?? '',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 4),
             Chip(label: Text(applicationStatusLabel(application.status))),
             const SizedBox(height: 12),
@@ -268,12 +334,18 @@ class _ApplicationDetailSheetState extends State<_ApplicationDetailSheet> {
               const SizedBox(height: 8),
               TextField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: 'F.I.Sh', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'F.I.Sh',
+                  border: OutlineInputBorder(),
+                ),
               ),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
                 ),
               const SizedBox(height: 12),
               Row(
@@ -289,7 +361,11 @@ class _ApplicationDetailSheetState extends State<_ApplicationDetailSheet> {
                     child: FilledButton(
                       onPressed: _busy ? null : _sign,
                       child: _busy
-                          ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Text('Imzolab yuborish'),
                     ),
                   ),

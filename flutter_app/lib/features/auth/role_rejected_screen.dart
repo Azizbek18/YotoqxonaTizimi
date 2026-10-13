@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/auth/auth_state.dart';
+import '../../core/theme/app_colors.dart';
+import '../../shared/widgets/app_button.dart';
 
 const _staffRoles = {'dekan', 'tarbiyachi', 'admin', 'sardor', 'kengash'};
 
@@ -31,6 +33,7 @@ class RoleRejectedScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
     final reason = auth is AuthRoleRejected ? auth.reason : 'no_role';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: SafeArea(
@@ -39,17 +42,27 @@ class RoleRejectedScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.lock_outline, size: 56, color: Colors.grey),
-              const SizedBox(height: 16),
+              Container(
+                width: 84,
+                height: 84,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.dangerTop.withValues(alpha: 0.12) : const Color(0xFFFFF1F2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.lock_outline_rounded, size: 38, color: AppColors.dangerBottom),
+              ),
+              const SizedBox(height: 24),
               Text(
                 _messageFor(reason),
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14.5, height: 1.5),
               ),
-              const SizedBox(height: 24),
-              FilledButton(
+              const SizedBox(height: 28),
+              AppButton(
+                label: 'KIRISH SAHIFASIGA QAYTISH',
+                icon: Icons.arrow_back_rounded,
+                expand: false,
                 onPressed: () => ref.read(authControllerProvider.notifier).resetToLogin(),
-                child: const Text('Kirish sahifasiga qaytish'),
               ),
             ],
           ),

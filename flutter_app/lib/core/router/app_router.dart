@@ -9,6 +9,7 @@ import '../../features/auth/role_rejected_screen.dart';
 import '../../features/auth/splash_screen.dart';
 import '../../features/arizalar/arizalar_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/elonlar/elonlar_screen.dart';
 import '../../features/hujjatlarim/hujjatlarim_screen.dart';
 import '../../features/navbat/navbat_screen.dart';
 import '../../features/profile/profile_screen.dart';
@@ -52,6 +53,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/role-rejected', builder: (context, state) => const RoleRejectedScreen()),
       GoRoute(path: '/dashboard', builder: (context, state) => const DashboardScreen()),
       GoRoute(path: '/arizalar', builder: (context, state) => const ArizalarScreen()),
+      GoRoute(path: '/elonlar', builder: (context, state) => const ElonlarScreen()),
       GoRoute(path: '/tolova', builder: (context, state) => const TolovaScreen()),
       GoRoute(path: '/navbat', builder: (context, state) => const NavbatScreen()),
       GoRoute(path: '/profil', builder: (context, state) => const ProfileScreen()),

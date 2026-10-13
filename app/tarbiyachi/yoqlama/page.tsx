@@ -834,7 +834,7 @@ function FloorPanel({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="grid grid-cols-1 gap-3 p-2.5 min-[360px]:p-3 sm:grid-cols-2 sm:gap-3.5 sm:p-4 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2.5 p-2 min-[360px]:gap-3 min-[360px]:p-3 sm:grid-cols-2 sm:gap-3.5 sm:p-4 xl:grid-cols-3">
               {floor.rooms.map((room) => (
                 <RoomCard
                   key={room.roomNumber}
@@ -875,7 +875,7 @@ function RoomCard({
 
   return (
     <div
-      className={`no-shelf min-w-0 rounded-2xl border p-3 sm:p-3.5 transition-all ${
+      className={`no-shelf min-w-0 rounded-2xl border p-2.5 min-[360px]:p-3 sm:p-3.5 transition-all ${
         isLight
           ? 'bg-slate-50/70 border-slate-200/80 hover:border-slate-300'
           : 'bg-slate-900/50 border-slate-800/80 hover:border-slate-700'
@@ -937,12 +937,12 @@ function ResidentRow({
 }) {
   return (
     <div
-      className={`flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5 p-1 rounded-xl transition-colors ${
+      className={`flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 py-1 min-[360px]:gap-x-2.5 min-[360px]:p-1 rounded-xl transition-colors ${
         pending ? 'opacity-50 pointer-events-none' : ''
       }`}
     >
       <div
-        className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 border transition-colors ${
+        className={`w-8 h-8 rounded-xl hidden min-[360px]:flex items-center justify-center font-bold text-xs shrink-0 border transition-colors ${
           isLight
             ? 'bg-slate-100 text-slate-700 border-slate-200/80'
             : 'bg-slate-800 text-slate-200 border-slate-700'
@@ -951,7 +951,7 @@ function ResidentRow({
         {initials(r.fullName)}
       </div>
 
-      <div className="min-w-0 flex-1 basis-28">
+      <div className="min-w-0 flex-1 basis-24">
         <span className={`block text-xs sm:text-sm font-semibold break-words line-clamp-2 ${ui.strong}`}>
           {r.fullName}
         </span>

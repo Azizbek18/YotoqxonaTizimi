@@ -16,6 +16,8 @@ export interface KvRegisterData {
   course: string
   group: string
   hemisStudentId: string
+  citizenship: 'uzbek' | 'foreign'
+  country: string
 }
 
 export const initialKvData: KvRegisterData = {
@@ -31,4 +33,6 @@ export const initialKvData: KvRegisterData = {
   course: '',
   group: '',
   hemisStudentId: '',
+  citizenship: 'uzbek',
+  country: '',
 }

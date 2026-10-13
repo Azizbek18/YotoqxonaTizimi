@@ -23,6 +23,7 @@ export default function Step1Name({ data, onChange, onNext }: Props) {
     const error = getNamePartError(data.lastName, 'Familiya')
       || getNamePartError(data.firstName, 'Ism')
       || (data.noMiddleName ? null : getNamePartError(data.middleName, 'Otasining ismi'))
+      || (data.citizenship === 'foreign' && data.country.trim().length < 3 ? 'Davlat nomini kiriting' : null)
     if (error) {
       toast.error(error)
       return
@@ -95,6 +96,45 @@ export default function Step1Name({ data, onChange, onNext }: Props) {
         />
         <span className="text-sm font-medium">Otasining ismi yo‘q</span>
       </label>
+
+      <div className="space-y-1.5">
+        <label className={s.label}>Fuqaroligi</label>
+        <div className="grid grid-cols-2 gap-2">
+          {([['uzbek', "O'zbekiston"], ['foreign', 'Boshqa davlat']] as const).map(([value, label]) => {
+            const active = data.citizenship === value
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onChange({ citizenship: value, ...(value === 'uzbek' ? { country: '' } : {}) })}
+                aria-pressed={active}
+                data-student-button="plain"
+                className={`no-shelf h-12 rounded-xl border text-sm font-bold transition-all ${
+                  active
+                    ? (isLight ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-blue-500 bg-blue-500/15 text-blue-200')
+                    : (isLight ? 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50' : 'border-white/12 bg-white/[0.04] text-slate-300 hover:bg-white/[0.07]')
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+        {data.citizenship === 'foreign' && (
+          <>
+            <input
+              type="text"
+              autoComplete="country-name"
+              value={data.country}
+              maxLength={60}
+              onChange={(e) => onChange({ country: e.target.value })}
+              placeholder="Davlat nomi (masalan, Turkmaniston)"
+              className={s.inputPlain}
+            />
+            <p className={s.hint}>Xorijiy fuqaro uchun viza muddati ham nazorat qilinadi.</p>
+          </>
+        )}
+      </div>
 
       <KvActions isLight={isLight} onNext={validate} />
     </motion.div>

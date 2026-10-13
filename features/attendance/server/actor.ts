@@ -5,12 +5,13 @@ import { normalizeFaculty } from '@/lib/faculties'
 import { resolveCallerFaculty } from '@/server/auth/faculty'
 import { ApiError } from '@/server/http/api-error'
 import { can } from '@/features/permissions/types'
+import { effectiveCaptainBlock } from '@/lib/captain-block'
 import { createAttendanceRepository } from './repository'
 import type { AttendanceActor } from '../types'
 
 /**
  * Who is acting on a yo'qlama session:
- *  - a floor captain (`users.is_floor_captain`) — scoped to their floor+gender,
+ *  - a floor captain (`users.is_floor_captain`) — READ-ONLY view of their floor+gender,
  *  - a tarbiyachi — the whole building (every faculty sharing the dorm),
  *  - a dekan/admin — read-only oversight of their faculty's building.
  * Every /api/attendance/* route resolves through this.
@@ -47,12 +48,14 @@ export async function resolveAttendanceActor(request: Request): Promise<Attendan
     return {
       userId: user.id,
       role: 'sardor',
-      block: student.block ?? null,
+      block: await effectiveCaptainBlock(supabase, dormId, student.block),
       dormId,
       faculties: [faculty],
       floor: student.assigned_floor,
       gender: student.gender,
-      canWrite: true,
+      // Sardor faqat ko'radi: kim yo'qlamada o'zini tasdiqlaganini. Ochish,
+      // belgilash va uyga ketish ruxsati — faqat tarbiyachi.
+      canWrite: false,
     }
   }
 

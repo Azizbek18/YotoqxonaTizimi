@@ -159,7 +159,7 @@ export function createAttendanceService(
 
     /** Start an unscheduled session for the actor's scope. */
     async openAdhoc(actor: AttendanceActor) {
-      if (!actor.canWrite) throw new ApiError(403, 'Faqat sardor yoki tarbiyachi yo‘qlama ocha oladi')
+      if (!actor.canWrite) throw new ApiError(403, 'Faqat tarbiyachi yo‘qlama ocha oladi')
       const dorm = await repo.dorm(actor.dormId)
       if (!dorm) throw new ApiError(409, 'Yotoqxona topilmadi')
 
@@ -199,7 +199,7 @@ export function createAttendanceService(
     },
 
     async mark(actor: AttendanceActor, sessionId: string, studentId: string, state: AttendanceState) {
-      if (!actor.canWrite) throw new ApiError(403, 'Sizda belgilash huquqi yo‘q')
+      if (!actor.canWrite) throw new ApiError(403, 'Faqat tarbiyachi talabani belgilay oladi')
       if (state === 'unmarked') throw new ApiError(400, 'Holat noto‘g‘ri')
 
       const session = await repo.sessionById(sessionId)

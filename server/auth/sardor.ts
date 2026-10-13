@@ -4,6 +4,7 @@ import { getServiceSupabase } from '@/lib/server-supabase'
 import { getRequestUser } from '@/lib/server-auth'
 import { normalizeFaculty } from '@/lib/faculties'
 import { can, type SardorPermission } from '@/features/permissions/types'
+import { effectiveCaptainBlock } from '@/lib/captain-block'
 
 export type FloorCaptain = {
   id: string
@@ -63,5 +64,6 @@ export async function requireFloorCaptain(request: NextRequest, permission?: Sar
     || !caller.assigned_floor || !['male', 'female'].includes(caller.gender ?? '')) {
     return { error: NextResponse.json({ error: 'Sardorning yotoqxona, xona, qavat yoki jinsi belgilanmagan' }, { status: 403 }) } as const
   }
-  return { caller: caller as FloorCaptain, serviceSupabase, faculty } as const
+  const block = await effectiveCaptainBlock(serviceSupabase, caller.dorm_id, caller.block)
+  return { caller: { ...caller, block } as FloorCaptain, serviceSupabase, faculty } as const
 }

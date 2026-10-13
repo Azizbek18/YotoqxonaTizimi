@@ -29,6 +29,7 @@ import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from
 import { prepareUploadFile } from '@/lib/prepare-upload'
 import StudentTelegramConnect from '@/components/talaba/StudentTelegramConnect'
 import ActiveSessionsCard from '@/components/account/ActiveSessionsCard'
+import { admissionYearFor } from '@/lib/admission-year'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Profile {
@@ -152,10 +153,11 @@ function Toast3D({ message, isLight }: Toast3DProps) {
 // ─── Timeline ─────────────────────────────────────────────────────────────────
 type StepState = 'done' | 'active' | 'todo'
 
-function Timeline({ course, isLight }: { course: number; isLight: boolean }) {
+function Timeline({ course, group, isLight }: { course: number; group?: string; isLight: boolean }) {
+  const admission = admissionYearFor(group, course)
   const steps = [1, 2, 3, 4].map((n) => ({
     n,
-    year: String(2023 + n),
+    year: `${admission + n - 1}-${admission + n}`,
     state: (course > n ? 'done' : course === n ? 'active' : 'todo') as StepState,
   }))
 
@@ -180,7 +182,7 @@ function Timeline({ course, isLight }: { course: number; isLight: boolean }) {
           <p className={`text-[10px] font-bold uppercase tracking-wider ${s.state === 'active' ? isLight ? 'text-blue-600' : 'text-indigo-400' : isLight ? 'text-slate-500' : 'text-slate-500'}`}>
             {s.n}-kurs
           </p>
-          <p className={`text-[10px] font-semibold mt-0.5 ${isLight ? 'text-slate-400' : 'text-slate-600'}`}>{s.year} - yil</p>
+          <p className={`text-[10px] font-semibold mt-0.5 ${isLight ? 'text-slate-400' : 'text-slate-600'}`}>{s.year}</p>
         </div>
       ))}
     </div>
@@ -859,7 +861,7 @@ export default function StudentProfile() {
             <span className={`block w-1.5 h-1.5 rounded-full ${isLight ? 'bg-violet-600' : 'bg-violet-500'}`} />
             <span>Ta&apos;lim olish davri</span>
           </h3>
-          <Timeline course={course} isLight={isLight} />
+          <Timeline course={course} group={group} isLight={isLight} />
         </motion.div>
 
         {/* Roommates section */}

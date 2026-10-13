@@ -28,6 +28,8 @@ import { useVisiblePoll } from '@/lib/hooks/useVisiblePoll'
 import { dekanUI, statusChip, type DekanStatusTone } from '@/lib/dekan-ui'
 import { Skel } from '@/components/ui/skeletons'
 import DayByDayAttendance from '@/components/dekan/DayByDayAttendance'
+import HomeLeavePanel from '@/components/dekan/HomeLeavePanel'
+import LeavesPanel from '@/components/attendance/LeavesPanel'
 import type {
   DekanDormCard,
   DekanOverview,
@@ -202,6 +204,9 @@ export default function DekanYoqlamaPage() {
         activeCount={activeCount}
         onRefresh={() => void refresh()}
       />
+
+      <HomeLeavePanel isLight={isLight} />
+      <LeavesPanel isLight={isLight} />
 
       {loading ? (
         <div className="space-y-3">

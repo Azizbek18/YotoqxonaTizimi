@@ -4,6 +4,9 @@ import { useMemo, useState } from 'react'
 import { Check, X, Home, CircleSlash, CalendarClock, Users } from 'lucide-react'
 import type { AttendanceState, RosterView } from '@/features/attendance/types'
 
+// Uyga ketish arizasi bilan "Uyda" bo'lgan talaba — alohida (ko'k) rang, qo'lda o'zgartirilmaydi.
+const HOME_META = { label: 'Uyda', dot: 'bg-sky-500', chip: 'bg-sky-500/15 text-sky-300 border-sky-500/30' }
+
 const STATE_META: Record<AttendanceState, { label: string; dot: string; chip: string }> = {
   present:  { label: 'Hozir',        dot: 'bg-emerald-500', chip: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
   absent:   { label: 'Uzrsiz yo‘q',  dot: 'bg-rose-500',    chip: 'bg-rose-500/15 text-rose-300 border-rose-500/30' },
@@ -56,6 +59,7 @@ export default function AttendanceBoard({
   }, [rooms, filter])
 
   const closed = session.status !== 'open'
+  const homeCount = rooms.reduce((n, r) => n + r.residents.filter((x) => x.source === 'leave').length, 0)
 
   return (
     <div className="min-w-0 space-y-4 min-[360px]:space-y-5">
@@ -74,7 +78,7 @@ export default function AttendanceBoard({
               <span className="ml-2 text-sm font-semibold text-slate-400">hozir</span>
             </p>
             <p className="mt-0.5 text-[11px] leading-relaxed text-slate-400 min-[360px]:text-xs">
-              {summary.excused} ruxsat · {summary.absent} yo‘q · {summary.unmarked} belgilanmagan
+              {summary.excused - homeCount} ruxsat{homeCount > 0 ? ` · ${homeCount} uyda` : ''} · {summary.absent} yo‘q · {summary.unmarked} belgilanmagan
             </p>
           </div>
           <ProgressRing pct={pct} />
@@ -121,9 +125,10 @@ export default function AttendanceBoard({
                   <button
                     key={r.id}
                     type="button"
-                    disabled={!canWrite || busy}
+                    disabled={!canWrite || busy || r.source === 'leave'}
                     onClick={() => onMark(r.id, nextState(r.state))}
-                    className={`flex items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition-colors disabled:opacity-70 disabled:cursor-default ${STATE_META[r.state].chip}`}
+                    className={`flex items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition-colors disabled:opacity-70 disabled:cursor-default ${r.source === 'leave' ? HOME_META.chip : STATE_META[r.state].chip}`}
+                    title={r.source === 'leave' ? 'Uyga ketish arizasi bilan' : undefined}
                   >
                     <StateIcon state={r.state} />
                     <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-white">{r.fullName}</span>
@@ -132,7 +137,7 @@ export default function AttendanceBoard({
                         {r.selfDistanceM != null ? `${r.selfDistanceM} m` : 'GPS'}
                       </span>
                     )}
-                    <span className="hidden shrink-0 text-[10px] font-bold uppercase tracking-wide min-[360px]:inline">{STATE_META[r.state].label}</span>
+                    <span className="hidden shrink-0 text-[10px] font-bold uppercase tracking-wide min-[360px]:inline">{r.source === 'leave' ? HOME_META.label : STATE_META[r.state].label}</span>
                   </button>
                 ))}
               </div>

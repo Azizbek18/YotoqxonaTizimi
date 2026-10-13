@@ -1,6 +1,7 @@
 import 'server-only'
 import { getServiceSupabase } from '@/lib/server-supabase'
 import type { AttendanceRecordRow, AttendanceSessionRow } from '@/types/database.generated'
+import { tashkentDateString } from '@/lib/tashkent-time'
 import type { AttendanceState } from '../types'
 
 // The nightly/adhoc flow (sardor + tarbiyachi) must NEVER see a dekan
@@ -50,6 +51,26 @@ const DORM_COLS =
 
 export function createAttendanceRepository() {
   const supabase = getServiceSupabase()
+
+  /** Bugun amalda uyga ketish arizasi bor talabalar (Toshkent sanasi bo'yicha). */
+  async function activeLeaveIds(studentIds: string[]): Promise<Set<string>> {
+    if (studentIds.length === 0) return new Set()
+    const today = tashkentDateString()
+    const found = new Set<string>()
+    // So'rov URL uzunligi chegarasi uchun bo'laklab.
+    for (let i = 0; i < studentIds.length; i += 200) {
+      const { data, error } = await supabase
+        .from('home_leaves')
+        .select('student_id')
+        .in('student_id', studentIds.slice(i, i + 200))
+        .eq('status', 'active')
+        .lte('starts_on', today)
+        .gte('ends_on', today)
+      if (error) throw error
+      for (const r of data ?? []) found.add((r as { student_id: string }).student_id)
+    }
+    return found
+  }
 
   return {
     async dormIdForFaculty(faculty: string): Promise<string | null> {
@@ -188,13 +209,19 @@ export function createAttendanceRepository() {
       residents: ResidentRow[],
     ): Promise<void> {
       if (residents.length === 0) return
+      // Uyga ketish arizasi amalda bo'lgan talaba yo'qlamada darrov "Uyda"
+      // (excused + source 'leave') bo'lib seed qilinadi — eslatma ham bormaydi.
+      const onLeave = await activeLeaveIds(residents.map((r) => r.id))
+      const now = new Date().toISOString()
       const rows = residents.map((r) => ({
         session_id: sessionId,
         student_id: r.id,
         room_number: r.room_number ?? '',
         floor_number: r.assigned_floor,
         gender: r.gender,
-        state: 'unmarked' as const,
+        ...(onLeave.has(r.id)
+          ? { state: 'excused' as const, source: 'leave' as const, marked_at: now }
+          : { state: 'unmarked' as const }),
       }))
       const { error } = await supabase
         .from('attendance_records')

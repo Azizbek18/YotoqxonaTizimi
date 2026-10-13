@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import {
   LayoutDashboard, Megaphone, ListOrdered, ShieldCheck,
-  UserCircle, Bell, Moon, Zap, Clock, CreditCard, FileText,
+  UserCircle, Bell, Moon, Zap, Clock, CreditCard, FileText, Plane,
   X, AlertTriangle, CheckCircle2, AlertCircle, Upload, Sparkles,
   Code, Send, Phone, ExternalLink, Camera, ChevronRight
 } from 'lucide-react'
@@ -18,6 +18,8 @@ import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchStudentProfile, uploadStudentAvatar } from '@/features/profile/client/api'
 import { createStudentApplication, fetchStudentApplications } from '@/features/applications/client/api'
+import dynamic from 'next/dynamic'
+import KvHome from '@/components/talaba/KvHome'
 import TelegramLinkGate from '@/components/talaba/TelegramLinkGate'
 import SignArizaModal from '@/components/applications/SignArizaModal'
 import { useArizaSigning } from '@/lib/hooks/useArizaSigning'
@@ -33,6 +35,9 @@ import { getSafeUser } from '@/lib/auth-session'
 import { useToastOffset } from '@/lib/hooks/useToastOffset'
 import { prepareUploadFile } from '@/lib/prepare-upload'
 import toast from 'react-hot-toast'
+
+// Leaflet faqat KV-talabaga kerak — qolganlar uchun bundle'ga kirmasin.
+const KvAddressModal = dynamic(() => import('@/components/talaba/KvAddressModal'), { ssr: false })
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 interface Profile {
@@ -52,6 +57,9 @@ interface Profile {
   warning_count?: number
   blacklisted?: boolean
   direction?: string
+  is_off_campus?: boolean | null
+  country?: string | null
+  residence_address?: string | null
 }
 
 type NotificationLevel = 'info' | 'warning' | 'danger' | 'success'
@@ -102,6 +110,15 @@ const NAV = [
   { icon: FileText, label: 'Arizalar', href: '/talaba/arizalar' },
 ]
 
+// Kvartirada turuvchi (KV) talaba: xona, navbatchilik, to'lov, yo'qlama va
+// ariza unga tegishli emas. Asosiysi — viza va propiska muddati.
+const KV_NAV = [
+  { icon: LayoutDashboard, label: 'Asosiy', href: '/talaba/dashboard' },
+  { icon: Plane, label: 'Hujjatlar', href: '/talaba/hujjatlarim' },
+  { icon: Megaphone, label: "E'lonlar", href: '/talaba/elonlar' },
+]
+const KV_BLOCKED_PATHS = ['/talaba/navbat', '/talaba/tolova', '/talaba/arizalar', '/talaba/yoqlama', '/talaba/qoidalar']
+
 const QUICK_ACTIONS = [
   { label: 'Tungi ruxsat', icon: Moon, bg: 'bg-purple-600', text: 'text-white' },
   { label: 'Navbat almashish', icon: Zap, bg: 'bg-amber-400', text: 'text-slate-900' },
@@ -122,6 +139,10 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
 
   // Instagram-style news tray — only on the home page, above Tezkor amallar.
   const isHome = pathname === '/talaba/dashboard'
+  const isKv = profile?.is_off_campus === true
+  const navItems = isKv ? KV_NAV : NAV
+  const [editingAddress, setEditingAddress] = useState(false)
+  const kvBlocked = isKv && KV_BLOCKED_PATHS.some((p) => pathname.startsWith(p))
   const [stories, setStories] = useState<Story[]>([])
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const { isSeen, markSeen } = useSeenStories()
@@ -254,6 +275,10 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
     return () => { active = false }
   }, [mounted, isHome])
 
+  useEffect(() => {
+    if (kvBlocked) router.replace('/talaba/dashboard')
+  }, [kvBlocked, router])
+
   const markAllAsRead = () => {
     const readIds = notifications.map(n => n.id)
     localStorage.setItem('read_notifications', JSON.stringify(readIds))
@@ -282,6 +307,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
   // hamda mavjud qiymatni tasodifan almashtirmaydi — bu yerda faqat rasm
   // majburiy.
   const isProfileIncomplete = mounted && profile !== null && !profile.avatar_url
+  const kvNeedsAddress = mounted && isKv && !isProfileIncomplete && !profile?.residence_address
 
   if (!mounted) return null
 
@@ -366,7 +392,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
               </h2>
               <div className={`flex items-center gap-1.5 text-[10px] sm:text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>
                 <Clock size={9} className="shrink-0" />
-                <span className="truncate">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {profile?.room_number ? `${profile.room_number}-xona` : 'Yotoqxona'}</span>
+                <span className="truncate">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {isKv ? 'Kvartirada' : profile?.room_number ? `${profile.room_number}-xona` : 'Yotoqxona'}</span>
               </div>
             </div>
             <ChevronRight size={16} className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${isLight ? 'text-slate-400' : 'text-slate-600'}`} />
@@ -405,11 +431,12 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
       <main className="relative z-10 w-full max-w-6xl mx-auto px-3 max-[359px]:px-2 sm:px-6 pt-[80px] sm:pt-[104px] pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:pb-40">
 
         {/* News tray (home only) — above the quick actions */}
-        {isHome && stories.length > 0 && (
+        {isHome && !isKv && stories.length > 0 && (
           <StoriesBar isLight={isLight} stories={stories} isSeen={isSeen} onOpen={setViewerIndex} />
         )}
 
         {/* Quick Actions Scrollable Row */}
+        {!isKv && (
         <section className="mb-6 sm:mb-8">
           <p className={`text-[11px] sm:text-xs font-semibold mb-2.5 sm:mb-3 ml-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Tezkor amallar</p>
           <div className="flex gap-2 sm:gap-4 overflow-x-auto no-scrollbar pb-2">
@@ -426,9 +453,12 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
             ))}
           </div>
         </section>
+        )}
 
         {/* Page Content with Animation */}
-        <PageTransition>{children}</PageTransition>
+        <PageTransition>
+          {kvBlocked ? null : isKv && isHome ? <KvHome profile={profile} isLight={isLight} onEditAddress={() => setEditingAddress(true)} /> : children}
+        </PageTransition>
       </main>
 
       {/* Fullscreen story viewer (self-portals to body) */}
@@ -454,7 +484,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
               prefetch fired a serverless invocation per tab on EVERY page load
               (Vercel Hobby compute budget). Each route has a loading.tsx, so a
               tap still shows its skeleton immediately. */}
-          {NAV.map((item) => {
+          {navItems.map((item) => {
             const isActive = pathname.startsWith(item.href)
             return (
               <Link key={item.href} href={item.href} prefetch={false} aria-label={item.label} aria-current={isActive ? 'page' : undefined} className="relative shrink-0 flex-1 min-w-0 group">
@@ -625,7 +655,20 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
 
       {/* --- 8. MANDATORY PROFILE SETUP MODAL FOR FIRST TIME USERS --- */}
       {/* Shown only once the avatar step is done, so the two blocking dialogs never stack. */}
-      {mounted && profile !== null && !isProfileIncomplete && <TelegramLinkGate isLight={isLight} />}
+      {/* KV-talaba: avatar → turgan manzil → Telegram. */}
+      {mounted && profile !== null && !isProfileIncomplete && !kvNeedsAddress && <TelegramLinkGate isLight={isLight} />}
+
+      {(kvNeedsAddress || editingAddress) && (
+        <KvAddressModal
+          isLight={isLight}
+          initialAddress={profile?.residence_address}
+          onClose={kvNeedsAddress ? undefined : () => setEditingAddress(false)}
+          onSaved={() => {
+            setEditingAddress(false)
+            void refreshProfileData()
+          }}
+        />
+      )}
 
       {isProfileIncomplete && typeof document !== 'undefined' && createPortal(
         <ProfileSetupModal profile={profile} onComplete={refreshProfileData} isLight={isLight} />,

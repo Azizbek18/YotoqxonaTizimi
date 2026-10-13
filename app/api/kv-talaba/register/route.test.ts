@@ -96,6 +96,18 @@ describe('POST /api/kv-talaba/register', () => {
     }))
   })
 
+  it('stores the country only for a foreign citizen', async () => {
+    await POST(request({ ...VALID, citizenship: 'foreign', country: 'Turkmaniston' }))
+    expect(insert).toHaveBeenLastCalledWith(expect.objectContaining({ country: 'Turkmaniston' }))
+    await POST(request({ ...VALID, citizenship: 'uzbek', country: 'Turkmaniston' }))
+    expect(insert).toHaveBeenLastCalledWith(expect.objectContaining({ country: null }))
+  })
+
+  it('400s when a foreign citizen gives no country', async () => {
+    const response = await POST(request({ ...VALID, citizenship: 'foreign', country: '' }))
+    expect(response.status).toBe(400)
+  })
+
   it('400s when a name part is missing', async () => {
     const response = await POST(request({ ...VALID, lastName: '' }))
     expect(response.status).toBe(400)

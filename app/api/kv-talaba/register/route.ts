@@ -46,6 +46,7 @@ export async function POST(request: Request) {
     const course = Number(body.course)
     const group = typeof body.group === 'string' ? body.group.trim() : ''
     const hemisStudentId = typeof body.hemisStudentId === 'string' ? body.hemisStudentId.trim() : ''
+    const country = body.citizenship === 'foreign' ? text(body, 'country', 60) : ''
     const password = typeof body.password === 'string' ? body.password : ''
     const confirmPassword = typeof body.confirmPassword === 'string' ? body.confirmPassword : ''
 
@@ -69,6 +70,9 @@ export async function POST(request: Request) {
     }
     if (!directionBelongsToFaculty(faculty, direction)) {
       return NextResponse.json({ ok: false, error: "Yo'nalish tanlanmagan" }, { status: 400 })
+    }
+    if (body.citizenship === 'foreign' && country.length < 3) {
+      return NextResponse.json({ ok: false, error: 'Davlat nomini kiriting' }, { status: 400 })
     }
     if (!Number.isInteger(course) || course < 1 || course > 6) {
       return NextResponse.json({ ok: false, error: "Kurs noto'g'ri" }, { status: 400 })
@@ -135,6 +139,7 @@ export async function POST(request: Request) {
       course,
       group: group || null,
       hemis_student_id: hemisStudentId || null,
+      country: country || null,
       is_off_campus: true,
       room_number: null,
       dorm_id: null,

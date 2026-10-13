@@ -37,6 +37,24 @@ export function createProfileService(repository: ProfileRepository = createProfi
       const updates: Partial<UserRow> = {}
       const group = optionalText(input.group, 40)
       if (group !== undefined) updates.group = group
+
+      if (input.residenceAddress !== undefined) {
+        const address = optionalText(input.residenceAddress, 300)
+        if (!address || address.length < 5) throw new ApiError(400, 'Manzilni kiriting (kamida 5 ta belgi)')
+        const current = await repository.findStudent(studentId)
+        if (!current) throw new ApiError(404, 'Talaba profili topilmadi')
+        if (current.is_off_campus !== true) {
+          throw new ApiError(403, 'Yashash manzili faqat kvartirada turuvchi talaba uchun')
+        }
+        const lat = Number(input.residenceLat)
+        const lng = Number(input.residenceLng)
+        const hasCoords = input.residenceLat != null && input.residenceLng != null
+          && Number.isFinite(lat) && Number.isFinite(lng)
+          && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+        updates.residence_address = address
+        updates.residence_lat = hasCoords ? lat : null
+        updates.residence_lng = hasCoords ? lng : null
+      }
       if (Object.keys(updates).length === 0) {
         throw new ApiError(400, 'Yangilash uchun ruxsat etilgan ma’lumot topilmadi')
       }

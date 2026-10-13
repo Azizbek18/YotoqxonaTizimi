@@ -37,6 +37,8 @@ type Props = {
   isLight: boolean
   /** Called with the resolved place name every time a pin is dropped, moved, or picked from search. */
   onResolved: (address: string) => void
+  /** Optional: the pinned coordinates, reported alongside every `onResolved`. */
+  onCoords?: (lat: number, lng: number) => void
 }
 
 /**
@@ -49,7 +51,7 @@ type Props = {
  * /api/student/geocode. Trimmed twin of components/dekan/DormLocationPicker
  * (no check-in radius circle here).
  */
-export default function AddressMapPicker({ isLight, onResolved }: Props) {
+export default function AddressMapPicker({ isLight, onResolved, onCoords }: Props) {
   const boxRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<LeafletNS.Map | null>(null)
   const markerRef = useRef<LeafletNS.Marker | null>(null)
@@ -66,6 +68,7 @@ export default function AddressMapPicker({ isLight, onResolved }: Props) {
 
   const resolve = useCallback(async (la: number, ln: number) => {
     setResolving(true)
+    onCoords?.(la, ln)
     try {
       const name = await reverseGeocodeAddress(la, ln)
       if (name) {
@@ -78,7 +81,7 @@ export default function AddressMapPicker({ isLight, onResolved }: Props) {
     } finally {
       setResolving(false)
     }
-  }, [onResolved])
+  }, [onResolved, onCoords])
 
   const placePin = useCallback((la: number, ln: number, fly = true) => {
     const L = LRef.current
@@ -162,6 +165,7 @@ export default function AddressMapPicker({ isLight, onResolved }: Props) {
     setResults([])
     setQuery(r.name.split(',')[0])
     placePin(r.lat, r.lng, true)
+    onCoords?.(r.lat, r.lng)
     setResolvedName(r.name)
     onResolved(r.name)
   }

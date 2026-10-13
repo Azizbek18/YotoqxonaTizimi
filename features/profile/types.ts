@@ -11,6 +11,7 @@ export type StudentProfile = Pick<
   | 'mother_full_name' | 'mother_workplace' | 'mother_phone'
   | 'avatar_url' | 'warning_count' | 'assigned_floor'
   | 'is_floor_captain' | 'is_council_chair' | 'is_off_campus' | 'created_at'
+  | 'residence_address' | 'residence_lat' | 'residence_lng'
 >
 
 export type RoommateProfile = Pick<
@@ -34,4 +35,8 @@ export type StudentProfilePayload = {
 // them from their own profile was never intended and has been removed.
 export type StudentProfileUpdate = {
   group?: string
+  // KV-talaba only — enforced server-side.
+  residenceAddress?: string
+  residenceLat?: number | null
+  residenceLng?: number | null
 }

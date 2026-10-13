@@ -42,6 +42,7 @@ interface Profile {
   course?: string | number
   group?: string | number
   avatar_url?: string
+  is_off_campus?: boolean
 }
 
 function toProfile(data: {
@@ -55,6 +56,7 @@ function toProfile(data: {
   course?: number | null
   group?: string | null
   avatar_url?: string | null
+  is_off_campus?: boolean | null
 }): Profile {
   return {
     id: data.id,
@@ -67,6 +69,7 @@ function toProfile(data: {
     course: data.course ?? undefined,
     group: data.group ?? undefined,
     avatar_url: data.avatar_url ?? undefined,
+    is_off_campus: data.is_off_campus === true,
   }
 }
 
@@ -564,7 +567,7 @@ export default function StudentProfile() {
   const role = profile?.role || 'Talaba'
   const email = profile?.email || '—'
   const phone = profile?.phone || '+998 -- --- -- --'
-  const roomNumber = profile?.room_number || 'Biriktirilmagan'
+  const roomNumber = profile?.is_off_campus ? 'Kvartira' : (profile?.room_number || 'Biriktirilmagan')
   const course = Number(profile?.course ?? 1)
   const group = profile?.group ? String(profile.group) : '—'
   const initials = getInitials(fullName)
@@ -1245,7 +1248,7 @@ export default function StudentProfile() {
                       <input
                         type="text"
                         placeholder={placeholder}
-                        value={editForm[key as keyof Profile] || ''}
+                        value={(editForm[key as 'group'] as string | number | undefined) || ''}
                         onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
                         className={`w-full px-4 py-3.5 rounded-2xl border text-sm outline-none transition-all duration-200 font-semibold ${
                           isLight

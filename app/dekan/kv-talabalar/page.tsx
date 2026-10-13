@@ -45,6 +45,9 @@ type KvTalaba = {
   course: number | null
   group: string | null
   hemis_student_id: string | null
+  residence_address?: string | null
+  residence_lat?: number | null
+  residence_lng?: number | null
   status: string
   off_campus_verified_by?: string | null
   off_campus_verified_at?: string | null
@@ -1284,6 +1287,19 @@ export default function KvTalabalarPage() {
                       <p className="mt-1 text-[11px] text-indigo-700/80 dark:text-indigo-300/80 leading-relaxed">
                         Talaba umumiy yotoqxonada istiqomat qilmaydi. Mustaqil ijarada yashash toifasida ro&apos;yxatga olingan.
                       </p>
+                      <p className="mt-2 text-[11px] font-bold text-indigo-900 dark:text-indigo-200 break-words">
+                        {selectedStudent.residence_address || 'Manzil hali kiritilmagan'}
+                      </p>
+                      {selectedStudent.residence_lat != null && selectedStudent.residence_lng != null && (
+                        <a
+                          href={`https://www.google.com/maps?q=${selectedStudent.residence_lat},${selectedStudent.residence_lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="no-shelf mt-1 inline-block text-[11px] font-bold text-indigo-600 underline dark:text-indigo-300"
+                        >
+                          Xaritada ochish
+                        </a>
+                      )}
                     </div>
                   </div>
 

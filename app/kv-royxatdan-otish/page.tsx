@@ -77,6 +77,8 @@ export default function KvRoyxatdanOtish() {
           course: Number(data.course),
           group: data.group,
           hemisStudentId: data.hemisStudentId,
+          citizenship: data.citizenship,
+          country: data.country,
           password,
           confirmPassword,
           emailProof,

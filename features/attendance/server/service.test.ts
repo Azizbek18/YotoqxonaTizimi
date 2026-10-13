@@ -20,7 +20,7 @@ import type { AttendanceActor } from '../types'
 
 const DORM = 'dorm-1'
 const sardor: AttendanceActor = {
-  userId: 'cap-1', role: 'sardor', dormId: DORM, faculties: ['amit'], floor: 3, gender: 'male', canWrite: true,
+  userId: 'cap-1', role: 'sardor', dormId: DORM, faculties: ['amit'], floor: 3, gender: 'male', canWrite: false,
 }
 const tarbiyachi: AttendanceActor = {
   userId: 'tar-1', role: 'tarbiyachi', dormId: DORM, faculties: ['amit', 'biologiya'], floor: null, gender: null, canWrite: true,
@@ -95,10 +95,10 @@ describe('block-scoped sessions', () => {
     const shared = repo({ sessionById: vi.fn(async () => blockSession(null)) })
     await expect(createAttendanceService(shared as never).roster({ ...sardor, block: 'B' }, 'sess-null')).resolves.toBeTruthy()
   })
-  it('opens an ad-hoc session stamped with the captain block', async () => {
+  it('never lets a sardor open a session (view-only)', async () => {
     const r = repo()
-    await createAttendanceService(r as never).openAdhoc({ ...sardor, block: 'B' })
-    expect(r.upsertSession).toHaveBeenCalledWith(expect.objectContaining({ kind: 'adhoc', floor: 3, block: 'B' }))
+    await expect(createAttendanceService(r as never).openAdhoc({ ...sardor, block: 'B' })).rejects.toMatchObject({ status: 403 })
+    expect(r.upsertSession).not.toHaveBeenCalled()
   })
 })
 
@@ -124,7 +124,7 @@ describe('roster', () => {
     expect(view.rooms.map((x) => x.roomNumber)).toEqual(['305', '312'])
     expect(view.rooms[0].residents).toHaveLength(2)
     expect(view.summary).toMatchObject({ present: 1, unmarked: 2, total: 3 })
-    expect(view.canWrite).toBe(true)
+    expect(view.canWrite).toBe(false)
   })
 
   it('lazily auto-closes a session past its close time', async () => {
@@ -140,10 +140,16 @@ describe('roster', () => {
 describe('mark', () => {
   it('flags an unexplained absence and stamps the source by role', async () => {
     const r = repo()
-    await createAttendanceService(r as never).mark(sardor, 'sess-1', 's3', 'absent')
+    await createAttendanceService(r as never).mark(tarbiyachi, 'sess-1', 's3', 'absent')
     expect(r.setRecordState).toHaveBeenCalledWith(expect.objectContaining({
-      studentId: 's3', state: 'absent', source: 'captain', softFlag: true,
+      studentId: 's3', state: 'absent', source: 'tarbiyachi', softFlag: true,
     }))
+  })
+
+  it('never lets a sardor mark a student (view-only)', async () => {
+    const r = repo()
+    await expect(createAttendanceService(r as never).mark(sardor, 'sess-1', 's3', 'present')).rejects.toMatchObject({ status: 403 })
+    expect(r.setRecordState).not.toHaveBeenCalled()
   })
 
   it('does not flag an excused absence', async () => {
@@ -156,13 +162,13 @@ describe('mark', () => {
 
   it('rejects a student outside the actor scope', async () => {
     const r = repo({ residents: vi.fn(async () => []) })
-    await expect(createAttendanceService(r as never).mark(sardor, 'sess-1', 'ghost', 'present'))
+    await expect(createAttendanceService(r as never).mark(tarbiyachi, 'sess-1', 'ghost', 'present'))
       .rejects.toThrow(/kirmaydi/)
   })
 
   it('rejects marking on a closed session', async () => {
     const r = repo({ sessionById: vi.fn(async () => ({ ...openSession, status: 'closed' })) })
-    await expect(createAttendanceService(r as never).mark(sardor, 'sess-1', 's1', 'present'))
+    await expect(createAttendanceService(r as never).mark(tarbiyachi, 'sess-1', 's1', 'present'))
       .rejects.toMatchObject({ status: 409 })
   })
 

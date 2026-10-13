@@ -557,7 +557,7 @@ export default function SardorDashboard() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-black tracking-tight text-white">Yo&apos;qlama</p>
-              <p className="text-xs text-slate-400">Qavatingizdagi talabalarni belgilang — kim bor, kim yo&apos;q</p>
+              <p className="text-xs text-slate-400">Qavatingizda kim yo&apos;qlamada o&apos;zini tasdiqlagan, kim yo&apos;q — ko&apos;rasiz</p>
             </div>
             <ChevronRight size={18} className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${t.textSoft}`} />
           </Link>

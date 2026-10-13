@@ -39,4 +39,6 @@ export type StudentProfileUpdate = {
   residenceAddress?: string
   residenceLat?: number | null
   residenceLng?: number | null
+  // KV-talaba only: null/'' = O'zbekiston fuqarosi, aks holda davlat nomi.
+  country?: string | null
 }

@@ -4,7 +4,7 @@ import { requireActiveStaff } from '@/server/auth/guards'
 import { requirePickedFaculty } from '@/server/auth/faculty'
 import { getApiError } from '@/server/http/api-error'
 
-const COLUMNS = 'id, full_name, email, phone_number, gender, faculty, direction, course, group, hemis_student_id, residence_address, residence_lat, residence_lng, status, off_campus_verified_by, off_campus_verified_at, created_at'
+const COLUMNS = 'id, full_name, email, phone_number, gender, faculty, direction, course, group, hemis_student_id, country, residence_address, residence_lat, residence_lng, status, off_campus_verified_by, off_campus_verified_at, created_at'
 
 // Dekan's read-only list of KV-talaba (off-campus student) accounts. They
 // register themselves and are active at once — there is no approval step, so

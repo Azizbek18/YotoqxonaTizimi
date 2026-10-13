@@ -662,6 +662,7 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
         <KvAddressModal
           isLight={isLight}
           initialAddress={profile?.residence_address}
+          initialCountry={profile?.country}
           onClose={kvNeedsAddress ? undefined : () => setEditingAddress(false)}
           onSaved={() => {
             setEditingAddress(false)

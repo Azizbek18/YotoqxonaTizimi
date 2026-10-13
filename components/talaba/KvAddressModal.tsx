@@ -10,6 +10,7 @@ import { updateStudentProfile } from '@/features/profile/client/api'
 type Props = {
   isLight: boolean
   initialAddress?: string | null
+  initialCountry?: string | null
   /** Without `onClose` the dialog is mandatory (first sign-in). */
   onClose?: () => void
   onSaved: () => void
@@ -17,12 +18,14 @@ type Props = {
 
 // KV-talaba (kvartirada turuvchi) birinchi kirishda turgan manzilini kiritadi:
 // qo'lda yozadi YOKI xaritadan belgilaydi (manzil matnga avtomatik tushadi).
-export default function KvAddressModal({ isLight, initialAddress, onClose, onSaved }: Props) {
+export default function KvAddressModal({ isLight, initialAddress, initialCountry, onClose, onSaved }: Props) {
   const [address, setAddress] = useState(initialAddress ?? '')
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [foreign, setForeign] = useState(Boolean(initialCountry))
+  const [country, setCountry] = useState(initialCountry ?? '')
   const [saving, setSaving] = useState(false)
 
-  const valid = address.trim().length >= 5
+  const valid = address.trim().length >= 5 && (!foreign || country.trim().length >= 3)
 
   const save = async () => {
     if (!valid || saving) return
@@ -32,6 +35,7 @@ export default function KvAddressModal({ isLight, initialAddress, onClose, onSav
         residenceAddress: address.trim(),
         residenceLat: coords?.lat ?? null,
         residenceLng: coords?.lng ?? null,
+        country: foreign ? country.trim() : null,
       })
       toast.success('Manzil saqlandi')
       onSaved()
@@ -105,6 +109,43 @@ export default function KvAddressModal({ isLight, initialAddress, onClose, onSav
         <p className={`mt-1 text-[11px] ${muted}`}>
           Xaritadan tanlasangiz, manzil shu yerga avtomatik tushadi — keyin o&apos;zingiz tuzatishingiz mumkin.
         </p>
+
+        <label className={`mb-1.5 mt-4 block text-xs font-semibold ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+          Fuqaroligi
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          {([[false, "O'zbekiston"], [true, 'Boshqa davlat']] as const).map(([value, label]) => {
+            const active = foreign === value
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setForeign(value)}
+                aria-pressed={active}
+                data-student-button="plain"
+                className={`no-shelf h-11 rounded-xl border text-sm font-bold transition-all ${
+                  active
+                    ? (isLight ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-blue-500 bg-blue-500/15 text-blue-200')
+                    : (isLight ? 'border-slate-300 bg-white text-slate-600' : 'border-white/12 bg-white/[0.04] text-slate-300')
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+        {foreign && (
+          <input
+            type="text"
+            value={country}
+            maxLength={60}
+            onChange={(e) => setCountry(e.target.value)}
+            placeholder="Davlat nomi (masalan, Turkmaniston)"
+            className={`mt-2 h-12 w-full rounded-xl border px-3.5 text-base outline-none ${
+              isLight ? 'border-slate-300 bg-white text-slate-900 focus:border-blue-600' : 'border-white/12 bg-white/[0.04] text-white focus:border-blue-500'
+            }`}
+          />
+        )}
 
         <button
           type="button"

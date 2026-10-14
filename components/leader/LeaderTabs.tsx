@@ -32,7 +32,7 @@ export default function LeaderTabs({
   const t = getLeaderTheme(role, isLight)
 
   return (
-    <div className="no-shelf flex w-full gap-1.5 overflow-x-auto no-scrollbar rounded-2xl border border-white/15 bg-slate-900/70 p-1.5 backdrop-blur-xl shadow-lg sm:w-fit">
+    <div className="no-shelf flex w-full gap-1.5 overflow-x-auto no-scrollbar scroll-smooth rounded-2xl border border-white/15 bg-slate-900/70 p-1.5 backdrop-blur-xl shadow-lg sm:w-fit">
       {tabs.map((tab) => {
         const isActive = tab.key === active
         const Icon = tab.icon
@@ -40,8 +40,9 @@ export default function LeaderTabs({
           <button
             key={tab.key}
             type="button"
+            data-student-button="plain"
             onClick={() => onChange(tab.key)}
-            className={`no-shelf cursor-pointer relative shrink-0 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${
+            className={`no-shelf cursor-pointer relative shrink-0 whitespace-nowrap rounded-xl px-3 py-2 min-[360px]:px-4 min-[360px]:py-2.5 text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${
               isActive ? 'text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
             }`}
           >
@@ -52,7 +53,7 @@ export default function LeaderTabs({
                 transition={{ type: 'spring', stiffness: 420, damping: 34 }}
               />
             )}
-            <span className="relative z-10 flex items-center gap-2">
+            <span className="relative z-10 flex items-center gap-1.5 min-[360px]:gap-2">
               <Icon size={14} className={isActive ? 'text-white' : 'text-slate-400'} />
               <span>{tab.label}</span>
               {tab.count !== undefined && (

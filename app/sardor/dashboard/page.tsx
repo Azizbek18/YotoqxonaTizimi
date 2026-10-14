@@ -81,7 +81,7 @@ function SardorStudentCard({
   return (
     <motion.div
       variants={cardIn}
-      className={`no-shelf group relative flex flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl border transition-all duration-300 hover:-translate-y-1 p-3.5 sm:p-4.5 ${
+      className={`no-shelf group relative flex flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl border transition-all duration-300 hover:-translate-y-1 p-3 min-[340px]:p-3.5 sm:p-4.5 min-w-0 ${
         isLight
           ? 'border-slate-200/90 bg-white/95 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:border-purple-300 hover:bg-white hover:shadow-[0_12px_32px_rgba(147,51,234,0.08)]'
           : 'border-white/10 bg-slate-900/60 shadow-[0_8px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl hover:border-purple-500/30 hover:bg-slate-900/90 hover:shadow-[0_12px_36px_rgba(147,51,234,0.12)]'
@@ -95,11 +95,11 @@ function SardorStudentCard({
       />
 
       {/* Top section: Avatar + Primary Identity */}
-      <div className="relative z-10 flex items-start gap-3 min-w-0">
+      <div className="relative z-10 flex items-start gap-2.5 min-[360px]:gap-3 min-w-0">
         {/* Avatar with smooth zoom or gradient initials */}
         <div
           onClick={() => student.avatar_url && setFullScreen(true)}
-          className={`no-shelf relative h-11 w-11 sm:h-12 sm:w-12 shrink-0 overflow-hidden rounded-2xl ring-1.5 transition-all duration-200 ${
+          className={`no-shelf relative h-10 w-10 min-[360px]:h-12 min-[360px]:w-12 shrink-0 overflow-hidden rounded-xl min-[360px]:rounded-2xl ring-1.5 transition-all duration-200 ${
             student.avatar_url ? 'cursor-zoom-in group-hover:ring-purple-400' : ''
           } ${
             isLight
@@ -126,7 +126,7 @@ function SardorStudentCard({
         {/* Name & Room Pill */}
         <div className="min-w-0 flex-1 space-y-1">
           <h4
-            className={`font-black text-sm sm:text-base tracking-tight leading-snug truncate transition-colors ${
+            className={`font-black text-xs min-[360px]:text-sm sm:text-base tracking-tight leading-snug truncate transition-colors ${
               isLight
                 ? 'text-slate-900 group-hover:text-purple-600'
                 : 'text-white group-hover:text-purple-300'
@@ -139,7 +139,7 @@ function SardorStudentCard({
           {/* Room Badge */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <span
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-bold border transition-colors ${
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-bold border transition-colors ${
                 student.room_number
                   ? isLight
                     ? 'bg-purple-50 text-purple-700 border-purple-200/80 shadow-xs'
@@ -149,7 +149,7 @@ function SardorStudentCard({
                     : 'bg-white/5 text-slate-400 border-white/10'
               }`}
             >
-              <DoorClosed size={11} className="shrink-0" />
+              <DoorClosed size={10} className="shrink-0" />
               <span>{student.room_number ? `${student.room_number}-xona` : 'Xonasiz'}</span>
             </span>
           </div>
@@ -157,7 +157,7 @@ function SardorStudentCard({
       </div>
 
       {/* Middle section: Academic Badges Grid (Course, Group, Faculty) */}
-      <div className={`relative z-10 my-3 pt-3 border-t flex flex-wrap items-center gap-1.5 text-xs ${
+      <div className={`relative z-10 my-2.5 pt-2.5 min-[360px]:my-3 min-[360px]:pt-3 border-t flex flex-wrap items-center gap-1.5 text-xs ${
         isLight ? 'border-slate-100' : 'border-white/5'
       }`}>
         {student.course && (
@@ -168,7 +168,7 @@ function SardorStudentCard({
                 : 'bg-blue-500/15 text-blue-300 border-blue-500/30'
             }`}
           >
-            <GraduationCap size={11} className="shrink-0" />
+            <GraduationCap size={10} className="shrink-0" />
             <span>{student.course}-kurs</span>
           </span>
         )}
@@ -187,7 +187,7 @@ function SardorStudentCard({
 
         {student.faculty && (
           <span
-            className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-medium border truncate max-w-[170px] sm:max-w-[220px] ${
+            className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-medium border truncate max-w-[130px] min-[360px]:max-w-[170px] sm:max-w-[220px] ${
               isLight
                 ? 'bg-slate-100/80 text-slate-600 border-slate-200'
                 : 'bg-white/[0.03] text-slate-400 border-white/5'
@@ -200,14 +200,15 @@ function SardorStudentCard({
       </div>
 
       {/* Bottom section: Quick Actions (Call & Email) */}
-      <div className={`relative z-10 flex items-center justify-between gap-2 pt-2.5 border-t ${
+      <div className={`relative z-10 flex items-center justify-between gap-1.5 min-[360px]:gap-2 pt-2.5 border-t ${
         isLight ? 'border-slate-100' : 'border-white/5'
       }`}>
         {student.phone_number ? (
           <a
             href={`tel:${student.phone_number.replace(/[^\d+]/g, '')}`}
             title={`Qo‘ng‘iroq: ${student.phone_number}`}
-            className={`no-shelf cursor-pointer flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl h-8.5 px-3 text-xs font-bold transition-all active:scale-95 shadow-xs whitespace-nowrap ${
+            data-student-button="plain"
+            className={`no-shelf cursor-pointer flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl h-8 min-[360px]:h-8.5 px-2.5 min-[360px]:px-3 text-[11px] min-[360px]:text-xs font-bold transition-all active:scale-95 shadow-xs whitespace-nowrap ${
               isLight
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
                 : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 hover:border-emerald-500/40'
@@ -227,13 +228,14 @@ function SardorStudentCard({
         <a
           href={`mailto:${student.email}`}
           title={`Email: ${student.email}`}
-          className={`no-shelf cursor-pointer inline-flex items-center justify-center h-8.5 w-8.5 shrink-0 rounded-xl border transition-all active:scale-95 shadow-xs ${
+          data-student-button="plain"
+          className={`no-shelf cursor-pointer inline-flex items-center justify-center h-8 w-8 min-[360px]:h-8.5 min-[360px]:w-8.5 shrink-0 rounded-xl border transition-all active:scale-95 shadow-xs ${
             isLight
               ? 'border-slate-200 bg-slate-100/90 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
               : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
           }`}
         >
-          <Mail size={13} />
+          <Mail size={12} />
         </a>
       </div>
 
@@ -530,7 +532,7 @@ export default function SardorDashboard() {
   return (
     <div className="relative min-h-screen min-w-0 overflow-x-clip bg-[#070b13] text-white">
       <LeaderBackdrop role="sardor" isLight={isLight} />
-      <div className="relative z-10 mx-auto min-w-0 max-w-6xl space-y-5 px-3 py-5 min-[360px]:px-4 min-[360px]:py-6 sm:space-y-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="relative z-10 mx-auto min-w-0 max-w-6xl space-y-4 min-[360px]:space-y-5 px-2.5 py-4 min-[360px]:px-4 min-[360px]:py-6 sm:space-y-6 sm:px-6 sm:py-8 lg:px-8">
         <LeaderHeader
           role="sardor"
           icon={ShieldHalf}
@@ -550,16 +552,17 @@ export default function SardorDashboard() {
         {allows('attendance.mark') && (
           <Link
             href="/sardor/yoqlama"
-            className={`group no-shelf cursor-pointer flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl border p-3 min-[360px]:gap-4 min-[360px]:p-4 transition-all active:scale-[0.99] ${t.softBorder} ${t.soft} hover:brightness-110`}
+            data-student-button="plain"
+            className={`group no-shelf cursor-pointer flex min-w-0 items-center gap-2.5 min-[360px]:gap-3 overflow-hidden rounded-2xl border p-2.5 min-[340px]:p-3 min-[360px]:p-4 transition-all active:scale-[0.99] ${t.softBorder} ${t.soft} hover:brightness-110`}
           >
-            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white min-[360px]:h-12 min-[360px]:w-12 ${t.gradient}`}>
-              <ClipboardCheck size={22} />
+            <div className={`flex h-9 w-9 min-[360px]:h-10 min-[360px]:w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl text-white ${t.gradient}`}>
+              <ClipboardCheck size={20} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-black tracking-tight text-white">Yo&apos;qlama</p>
-              <p className="text-xs text-slate-400">Qavatingizda kim yo&apos;qlamada o&apos;zini tasdiqlagan, kim yo&apos;q — ko&apos;rasiz</p>
+              <p className="text-xs min-[360px]:text-sm font-black tracking-tight text-white">Yo&apos;qlama</p>
+              <p className="text-[11px] min-[360px]:text-xs text-slate-400 line-clamp-2 leading-tight">Qavatingizda kim yo&apos;qlamada o&apos;zini tasdiqlagan, kim yo&apos;q — ko&apos;rasiz</p>
             </div>
-            <ChevronRight size={18} className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${t.textSoft}`} />
+            <ChevronRight size={16} className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${t.textSoft}`} />
           </Link>
         )}
 
@@ -622,7 +625,8 @@ export default function SardorDashboard() {
                   allows('floor.announcements') && (
                     <button
                       onClick={() => setNewElonOpen(true)}
-                      className={`no-shelf cursor-pointer flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl px-5 py-3 text-xs font-black uppercase tracking-wider text-white transition-all duration-300 active:scale-95 sm:w-auto ${t.gradient} hover:brightness-110`}
+                      data-student-button="plain"
+                      className={`no-shelf cursor-pointer flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl px-4 py-2.5 min-[360px]:px-5 min-[360px]:py-3 text-xs font-black uppercase tracking-wider text-white transition-all duration-300 active:scale-95 sm:w-auto ${t.gradient} hover:brightness-110`}
                     >
                       <Plus size={16} />
                       Yangi E&apos;lon
@@ -632,7 +636,7 @@ export default function SardorDashboard() {
               />
 
               {elonlar.length > 0 ? (
-                <motion.div variants={listStagger} initial="hidden" animate="show" className="space-y-4">
+                <motion.div variants={listStagger} initial="hidden" animate="show" className="space-y-3 min-[360px]:space-y-4">
                   {elonlar.map((elon) => {
                     const typeStyles =
                       elon.type === 'Muhim'
@@ -647,10 +651,10 @@ export default function SardorDashboard() {
                       <motion.div
                         variants={cardIn}
                         key={elon.id}
-                        className={`flex flex-col items-start justify-between gap-4 rounded-2xl border-l-[6px] border border-y-white/5 border-r-white/5 bg-white/[0.03] p-5 backdrop-blur-xl md:flex-row md:items-center ${typeStyles.border}`}
+                        className={`flex min-w-0 flex-col items-start justify-between gap-3 min-[360px]:gap-4 rounded-2xl border-l-[6px] border border-y-white/5 border-r-white/5 bg-white/[0.03] p-3 min-[340px]:p-3.5 min-[360px]:p-5 backdrop-blur-xl md:flex-row md:items-center ${typeStyles.border}`}
                       >
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${typeStyles.badge}`}>
                               {elon.type}
                             </span>
@@ -658,14 +662,15 @@ export default function SardorDashboard() {
                               <Clock size={11} /> {new Date(elon.created_at).toLocaleDateString('uz-UZ')}
                             </span>
                           </div>
-                          <h4 className="text-base font-extrabold tracking-tight text-white">{elon.title}</h4>
-                          <p className="text-xs text-slate-400 leading-relaxed">{elon.text}</p>
+                          <h4 className="break-words text-sm sm:text-base font-extrabold tracking-tight text-white">{elon.title}</h4>
+                          <p className="break-words text-xs text-slate-400 leading-relaxed">{elon.text}</p>
                         </div>
 
                         {allows('floor.announcements') && (
                           <button
                             onClick={() => handleDeleteElon(elon.id)}
-                            className="no-shelf cursor-pointer flex shrink-0 items-center justify-center self-end rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-rose-400 transition-all hover:bg-rose-500/20 active:scale-95 md:self-center"
+                            data-student-button="plain"
+                            className="no-shelf cursor-pointer flex shrink-0 items-center justify-center self-end rounded-xl border border-rose-500/20 bg-rose-500/10 p-2 min-[360px]:p-3 text-rose-400 transition-all hover:bg-rose-500/20 active:scale-95 md:self-center"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -694,7 +699,8 @@ export default function SardorDashboard() {
                     <button
                       onClick={handleSaveDuty}
                       disabled={savingDuty}
-                      className={`no-shelf cursor-pointer flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl px-5 py-3 text-xs font-black uppercase tracking-wider text-white transition-all duration-300 disabled:opacity-55 active:scale-95 sm:w-auto ${t.gradient} hover:brightness-110`}
+                      data-student-button="plain"
+                      className={`no-shelf cursor-pointer flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl px-4 py-2.5 min-[360px]:px-5 min-[360px]:py-3 text-xs font-black uppercase tracking-wider text-white transition-all duration-300 disabled:opacity-55 active:scale-95 sm:w-auto ${t.gradient} hover:brightness-110`}
                     >
                       <ShieldCheck size={16} />
                       {savingDuty ? 'Saqlanmoqda...' : 'Jadvalni Saqlash'}
@@ -703,11 +709,11 @@ export default function SardorDashboard() {
                 }
               />
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1 space-y-6">
-                  <div className={`${glassCard()} p-5`}>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-[360px]:gap-6">
+                <div className="lg:col-span-1 space-y-4 min-[360px]:space-y-6 min-w-0">
+                  <div className={`${glassCard()} p-3.5 min-[360px]:p-5 min-w-0`}>
                     <div className="relative z-10 mb-4 flex items-center justify-between">
-                      <h4 className={`flex items-center gap-2 text-sm font-black uppercase tracking-wider ${t.textSoft}`}>
+                      <h4 className={`flex items-center gap-2 text-xs sm:text-sm font-black uppercase tracking-wider ${t.textSoft}`}>
                         <ShieldCheck size={16} />
                         Yordamchi Adminlar
                       </h4>
@@ -717,6 +723,7 @@ export default function SardorDashboard() {
                             setActiveSelectAdmin(true);
                             setActiveSelectDay(null);
                           }}
+                          data-student-button="plain"
                           className={`flex items-center justify-center rounded-xl border px-2 py-2 transition-all ${t.softBorder} ${t.soft} ${t.text} hover:brightness-110`}
                         >
                           <Plus size={14} />
@@ -725,17 +732,18 @@ export default function SardorDashboard() {
                     </div>
 
                     {dutyAdmins.length > 0 ? (
-                      <div className="relative z-10 space-y-2">
+                      <div className="relative z-10 space-y-2 min-w-0">
                         {dutyAdmins.map((admin) => (
-                          <div key={admin.id} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.04] p-3">
-                            <div>
-                              <p className="text-xs font-extrabold text-white">{admin.name}</p>
-                              <p className="mt-0.5 text-[10px] font-semibold text-slate-500">Xona #{admin.room}</p>
+                          <div key={admin.id} className="flex min-w-0 items-center justify-between rounded-xl border border-white/5 bg-white/[0.04] p-2.5 min-[360px]:p-3 gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-extrabold text-white">{admin.name}</p>
+                              <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-500">Xona #{admin.room}</p>
                             </div>
                             {allows('duty.schedule') && (
                               <button
                                 onClick={() => setDutyAdmins(prev => prev.filter(a => a.id !== admin.id))}
-                                className="rounded-lg border border-rose-500/25 bg-rose-500/10 px-1.5 py-1.5 text-rose-400 transition-all hover:bg-rose-500/20"
+                                data-student-button="plain"
+                                className="shrink-0 rounded-lg border border-rose-500/25 bg-rose-500/10 p-1.5 text-rose-400 transition-all hover:bg-rose-500/20"
                               >
                                 <X size={10} />
                               </button>
@@ -750,7 +758,7 @@ export default function SardorDashboard() {
                     )}
                   </div>
 
-                  <div className={`${glassCard()} p-5`}>
+                  <div className={`${glassCard()} p-3.5 min-[360px]:p-5 min-w-0`}>
                     <div className={`pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full blur-[50px] ${t.auroraA}`} />
                     <h4 className={`relative z-10 mb-2 text-xs font-black uppercase tracking-wider ${t.textSoft}`}>Qanday ishlaydi?</h4>
                     <ul className="relative z-10 space-y-2 text-[11px] font-semibold leading-relaxed text-slate-400">
@@ -770,17 +778,17 @@ export default function SardorDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:col-span-2">
+                <div className="grid grid-cols-1 gap-3 min-[360px]:gap-4 md:grid-cols-2 lg:col-span-2 min-w-0">
                   {['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba'].map((day) => {
                     const dayDuties = dutySchedule[day] || [];
                     return (
-                      <div key={day} className={`${glassCard({ hover: true })} flex flex-col justify-between p-5`}>
+                      <div key={day} className={`${glassCard({ hover: true })} flex flex-col justify-between p-3.5 min-[360px]:p-5 min-w-0`}>
                         <div className={`pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-[40px] ${t.auroraA}`} />
 
-                        <div className="relative z-10 mb-4 flex items-center justify-between">
+                        <div className="relative z-10 mb-3 min-[360px]:mb-4 flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className={`h-6 w-1.5 rounded-full ${t.gradient}`} />
-                            <h4 className="text-sm font-black text-white">{day}</h4>
+                            <div className={`h-5 min-[360px]:h-6 w-1.5 rounded-full ${t.gradient}`} />
+                            <h4 className="text-xs sm:text-sm font-black text-white">{day}</h4>
                           </div>
                           {allows('duty.schedule') && (
                             <button
@@ -788,6 +796,7 @@ export default function SardorDashboard() {
                                 setActiveSelectDay(day);
                                 setActiveSelectAdmin(false);
                               }}
+                              data-student-button="plain"
                               className={`flex items-center justify-center rounded-xl border px-2 py-2 transition-all ${t.softBorder} ${t.soft} ${t.text} hover:brightness-110`}
                             >
                               <Plus size={12} />
@@ -795,13 +804,13 @@ export default function SardorDashboard() {
                           )}
                         </div>
 
-                        <div className="relative z-10 min-h-[100px] flex-1 space-y-2">
+                        <div className="relative z-10 min-h-[90px] min-[360px]:min-h-[100px] flex-1 space-y-2 min-w-0">
                           {dayDuties.length > 0 ? (
                             dayDuties.map((duty) => (
-                              <div key={duty.id} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.04] p-2.5 transition-all hover:bg-white/[0.07]">
-                                <div>
-                                  <p className="text-[11px] font-black text-white">{duty.name}</p>
-                                  <p className="mt-0.5 text-[9px] font-semibold text-slate-500">Xona #{duty.room}</p>
+                              <div key={duty.id} className="flex min-w-0 items-center justify-between rounded-xl border border-white/5 bg-white/[0.04] p-2 min-[360px]:p-2.5 transition-all hover:bg-white/[0.07] gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-[11px] font-black text-white">{duty.name}</p>
+                                  <p className="mt-0.5 truncate text-[9px] font-semibold text-slate-500">Xona #{duty.room}</p>
                                 </div>
                                 {allows('duty.schedule') && (
                                   <button
@@ -811,7 +820,8 @@ export default function SardorDashboard() {
                                         [day]: (prev[day] || []).filter(d => d.id !== duty.id)
                                       }));
                                     }}
-                                    className="rounded-lg border border-rose-500/25 bg-rose-500/10 px-1.5 py-1.5 text-rose-400 transition-all hover:bg-rose-500/20"
+                                    data-student-button="plain"
+                                    className="shrink-0 rounded-lg border border-rose-500/25 bg-rose-500/10 p-1.5 text-rose-400 transition-all hover:bg-rose-500/20"
                                   >
                                     <X size={9} />
                                   </button>
@@ -819,7 +829,7 @@ export default function SardorDashboard() {
                               </div>
                             ))
                           ) : (
-                            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-white/5 py-6">
+                            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-white/5 py-5 min-[360px]:py-6">
                               <p className="text-[9px] font-bold uppercase tracking-wider text-slate-600">Navbatchi belgilanmagan</p>
                             </div>
                           )}
@@ -854,6 +864,7 @@ export default function SardorDashboard() {
                           <button
                             key={student.id}
                             disabled={isAdded}
+                            data-student-button="plain"
                             onClick={() => {
                               const newMember = {
                                 id: student.id,
@@ -872,7 +883,7 @@ export default function SardorDashboard() {
                                 setActiveSelectDay(null);
                               }
                             }}
-                            className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-all ${
+                            className={`no-shelf flex w-full items-center justify-between rounded-xl border p-2.5 min-[360px]:p-3 text-left transition-all ${
                               isAdded
                                 ? 'cursor-not-allowed border-transparent bg-white/[0.02] opacity-40'
                                 : isLight
@@ -919,7 +930,7 @@ export default function SardorDashboard() {
                     required
                     value={newElonForm.title}
                     onChange={(e) => setNewElonForm(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition-all focus:border-purple-500/50 outline-none text-sm"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 min-[360px]:px-4 min-[360px]:py-2.5 text-white transition-all focus:border-purple-500/50 outline-none text-xs sm:text-sm"
                     placeholder="Masalan: Qavat tozalik qoidalari"
                   />
                 </div>
@@ -935,7 +946,7 @@ export default function SardorDashboard() {
                       { value: 'Muhim', label: 'Muhim' },
                       { value: 'Tadbir', label: 'Tadbir' },
                     ]}
-                    className="rounded-xl border border-white/10 bg-slate-900 px-4 py-2.5 text-sm"
+                    className="rounded-xl border border-white/10 bg-slate-900 px-3.5 py-2 min-[360px]:px-4 min-[360px]:py-2.5 text-xs sm:text-sm"
                   />
                 </div>
 
@@ -946,7 +957,7 @@ export default function SardorDashboard() {
                     rows={4}
                     value={newElonForm.text}
                     onChange={(e) => setNewElonForm(prev => ({ ...prev, text: e.target.value }))}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white transition-all focus:border-purple-500/50 outline-none text-sm resize-none"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 min-[360px]:px-4 min-[360px]:py-2.5 text-white transition-all focus:border-purple-500/50 outline-none text-xs sm:text-sm resize-none"
                     placeholder="E'lon tafsilotlarini batafsil kiriting..."
                   />
                 </div>
@@ -955,14 +966,16 @@ export default function SardorDashboard() {
                   <button
                     type="button"
                     onClick={() => setNewElonOpen(false)}
-                    className="flex-1 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-black uppercase tracking-wider transition-all"
+                    data-student-button="plain"
+                    className="no-shelf flex-1 py-2.5 min-[360px]:py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-black uppercase tracking-wider transition-all"
                   >
                     Bekor qilish
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className={`flex-1 py-3 rounded-xl text-white text-xs font-black uppercase tracking-wider transition-all duration-300 disabled:opacity-55 ${t.gradient} hover:brightness-110`}
+                    data-student-button="plain"
+                    className={`no-shelf flex-1 py-2.5 min-[360px]:py-3 rounded-xl text-white text-xs font-black uppercase tracking-wider transition-all duration-300 disabled:opacity-55 ${t.gradient} hover:brightness-110`}
                   >
                     {isSubmitting ? 'Chop etilmoqda...' : 'Chop etish'}
                   </button>

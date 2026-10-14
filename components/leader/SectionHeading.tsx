@@ -14,12 +14,12 @@ export default function SectionHeading({
   action?: ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h3 className="text-lg font-black tracking-tight text-white">{title}</h3>
-        {description && <p className="mt-0.5 text-xs text-slate-400">{description}</p>}
+    <div className="flex min-w-0 flex-col gap-2.5 min-[360px]:gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 flex-1">
+        <h3 className="break-words text-base font-black tracking-tight text-white sm:text-lg">{title}</h3>
+        {description && <p className="mt-0.5 break-words text-xs leading-relaxed text-slate-400">{description}</p>}
       </div>
-      {action}
+      {action && <div className="min-w-0 shrink-0">{action}</div>}
     </div>
   )
 }

@@ -54,7 +54,7 @@ export default function LeaderHeader({
 
   return (
     <header
-      className={`no-shelf relative min-w-0 overflow-hidden rounded-2xl border p-3 max-[340px]:p-2.5 min-[360px]:p-3.5 sm:rounded-[2rem] sm:p-7 backdrop-blur-2xl shadow-2xl ${
+      className={`no-shelf relative min-w-0 overflow-hidden rounded-2xl border p-2.5 min-[360px]:p-3.5 sm:rounded-[2rem] sm:p-7 backdrop-blur-2xl shadow-2xl ${
         isLight
           ? 'border-slate-200 bg-gradient-to-br from-white via-indigo-50/70 to-white shadow-slate-300/30'
           : 'border-white/15 bg-gradient-to-br from-slate-900/95 via-purple-950/40 to-slate-900/95 shadow-black/60'
@@ -63,32 +63,34 @@ export default function LeaderHeader({
       <div className={`pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full blur-[100px] ${isLight ? 'opacity-20' : 'opacity-40'} ${t.auroraA}`} />
       <div className={`pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full blur-[90px] ${isLight ? 'opacity-15' : 'opacity-25'} ${t.auroraB}`} />
 
-      <div className="relative z-10 flex flex-col gap-3 sm:gap-6">
+      <div className="relative z-10 flex flex-col gap-2.5 sm:gap-6">
         {/* Top Control Bar: Back button, Role badge, and Exit link */}
         <div className="flex min-w-0 items-center justify-between gap-1.5 min-[360px]:gap-2">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 min-[360px]:gap-2 min-w-0">
             <Link
               href={backHref}
-              className="no-shelf cursor-pointer flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 text-slate-300 transition-all hover:bg-white/15 hover:text-white active:scale-95 shadow-sm"
+              data-student-button="plain"
+              className="no-shelf cursor-pointer flex h-8.5 w-8.5 min-[360px]:h-9 min-[360px]:w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/15 bg-white/5 text-slate-300 transition-all hover:bg-white/15 hover:text-white active:scale-95 shadow-sm"
               title="Talaba paneliga qaytish"
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={15} />
             </Link>
 
-            <div className={`inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider max-[340px]:hidden sm:px-3 sm:text-[10px] ${t.badgeBorder} ${t.badgeBg} ${t.text}`}>
+            <div className={`inline-flex min-w-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider max-[340px]:hidden sm:px-3 sm:text-[10px] ${t.badgeBorder} ${t.badgeBg} ${t.text}`}>
               <span className="truncate">{badgeText}</span>
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5 min-[360px]:gap-2">
+          <div className="flex shrink-0 items-center gap-1 min-[360px]:gap-2">
             {themeToggle && (
-              <div className="no-shelf">
+              <div className="no-shelf shrink-0">
                 <ThemeToggle theme={themeToggle.theme} onToggle={themeToggle.onToggle} />
               </div>
             )}
             <Link
               href={backHref}
-              className="no-shelf cursor-pointer flex h-9 w-9 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 p-0 text-[10px] font-black uppercase tracking-wider text-slate-300 shadow-sm transition-all hover:bg-white/15 hover:text-white active:scale-95 min-[360px]:h-auto min-[360px]:w-auto min-[360px]:px-2.5 min-[360px]:py-1.5 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-xs"
+              data-student-button="plain"
+              className="no-shelf cursor-pointer flex h-8.5 w-8.5 min-[360px]:h-9 min-[360px]:w-9 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 p-0 text-[10px] font-black uppercase tracking-wider text-slate-300 shadow-sm transition-all hover:bg-white/15 hover:text-white active:scale-95 min-[360px]:h-auto min-[360px]:w-auto min-[360px]:px-2.5 min-[360px]:py-1.5 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-xs"
             >
               <LogOut size={12} />
               <span className="hidden sm:inline">Talaba paneliga</span>
@@ -98,19 +100,19 @@ export default function LeaderHeader({
         </div>
 
         {/* Identity Section: Icon Medallion + Name + Mandate Description */}
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-2.5 min-[360px]:gap-3 sm:gap-4 min-w-0">
           <motion.div
             initial={{ scale: 0.85, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-            className={`flex h-10 w-10 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl text-white ${t.gradient} ${t.glow} border border-white/20`}
+            className={`flex h-9 w-9 min-[360px]:h-10 min-[360px]:w-10 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl text-white ${t.gradient} ${t.glow} border border-white/20`}
           >
-            <Icon size={18} className="sm:hidden" />
+            <Icon size={16} className="sm:hidden" />
             <Icon size={26} className="hidden sm:block" />
           </motion.div>
 
           <div className="min-w-0 flex-1">
-            <h1 className="text-base sm:text-2xl font-black tracking-tight text-white drop-shadow-sm leading-tight truncate">
+            <h1 className="text-sm min-[360px]:text-base sm:text-2xl font-black tracking-tight text-white drop-shadow-sm leading-tight truncate">
               {name}
             </h1>
             <p className="mt-0.5 text-xs text-slate-400 font-medium leading-relaxed hidden sm:block max-w-xl">

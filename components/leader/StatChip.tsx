@@ -58,19 +58,20 @@ export default function StatChip({
   return (
     <Wrapper
       type={isButton ? 'button' : undefined}
+      data-student-button="plain"
       onClick={onClick}
-      className={`no-shelf group flex items-center gap-2 sm:gap-3 rounded-xl sm:rounded-2xl border p-2 sm:px-4 sm:py-3 backdrop-blur-xl transition-all text-left ${
+      className={`no-shelf group flex min-w-0 items-center gap-1.5 min-[360px]:gap-2 sm:gap-3 rounded-xl sm:rounded-2xl border p-1.5 min-[360px]:p-2 sm:px-4 sm:py-3 backdrop-blur-xl transition-all text-left ${
         active
           ? s.activeBorder
           : 'border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.07] active:scale-95'
       } ${isButton ? 'cursor-pointer' : ''}`}
     >
-      <div className={`flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl transition-transform group-hover:scale-105 shadow-xs ${s.iconBg}`}>
-        <Icon size={15} className="sm:hidden" />
+      <div className={`flex h-7 w-7 min-[360px]:h-8 min-[360px]:w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl transition-transform group-hover:scale-105 shadow-xs ${s.iconBg}`}>
+        <Icon size={14} className="sm:hidden" />
         <Icon size={18} className="hidden sm:block" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-base sm:text-xl font-black tracking-tight text-white leading-none">{value}</p>
+        <p className="text-sm sm:text-xl font-black tracking-tight text-white leading-none truncate">{value}</p>
         <p className="mt-0.5 sm:mt-1 truncate text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</p>
         {subtitle && (
           <p className="hidden sm:block text-[10px] text-slate-500 font-medium leading-none mt-0.5 truncate">{subtitle}</p>

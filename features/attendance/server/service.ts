@@ -68,6 +68,19 @@ function sessionMatchesActor(session: AttendanceSessionRow, actor: AttendanceAct
   return true
 }
 
+/**
+ * The one session a resident checks in to: the newest open dorm-wide one
+ * that has not run out (`open` comes newest-first). An older session left
+ * open — e.g. a past night whose close time was pushed out by hand — must
+ * not decide the student's verdict, or last night's "present" hides
+ * tonight's check-in button.
+ */
+function currentResidentSession(open: AttendanceSessionRow[], now: number): AttendanceSessionRow | null {
+  return open
+    .filter((s) => s.kind === 'nightly' || s.floor_number == null)
+    .find((s) => new Date(s.closes_at).getTime() >= now) ?? null
+}
+
 export function createAttendanceService(
   repo: AttendanceRepository = createAttendanceRepository(),
   dekanRepo?: DekanAttendanceRepository,
@@ -232,16 +245,15 @@ export function createAttendanceService(
       if (actor.role === 'talaba') {
         const faculty = actor.faculties[0]
         const dekanOpen = faculty ? await dekan().openForStudent(actor.dormId, faculty, new Date()) : null
-        if (open.length === 0 && !dekanOpen) return { hasOpen: false as const }
-        const closes = [...open.map((s) => s.closes_at), ...(dekanOpen ? [dekanOpen.closes_at] : [])]
+        const nightly = currentResidentSession(open, Date.now())
+        if (!nightly && !dekanOpen) return { hasOpen: false as const }
+        const closes = [...(nightly ? [nightly.closes_at] : []), ...(dekanOpen ? [dekanOpen.closes_at] : [])]
         closes.sort()
-        const records = (await Promise.all(open.map((s) => repo.records(s.id)))).flat()
+        const records = nightly ? await repo.records(nightly.id) : []
         // The student's OWN verdict, so the screen can say "you are confirmed"
-        // after a reload instead of offering the button again.
-        const mineIds = [
-          ...open.filter((s) => s.kind === 'nightly' || s.floor_number == null).map((s) => s.id),
-          ...(dekanOpen ? [dekanOpen.id] : []),
-        ]
+        // after a reload instead of offering the button again — from the same
+        // sessions checkin() writes to, never a stale one.
+        const mineIds = [...(nightly ? [nightly.id] : []), ...(dekanOpen ? [dekanOpen.id] : [])]
         const states = await repo.studentStates(actor.userId, mineIds)
         const myState: AttendanceState | null =
           states.includes('present') ? 'present'
@@ -380,8 +392,7 @@ export function createAttendanceService(
       const dorm = await repo.dorm(dormId)
       if (!dorm) return { status: 'no_session' }
 
-      const open = (await repo.openSessions(dormId)).filter((s) => s.kind === 'nightly' || s.floor_number == null)
-      const nightly = open.find((s) => new Date(s.closes_at).getTime() >= Date.now()) ?? null
+      const nightly = currentResidentSession(await repo.openSessions(dormId), Date.now())
       // The dekan's own roll-call for this student's dorm + faculty, if one
       // is running. Matched on BOTH — never another faculty's or dorm's.
       const dekanSession = await dekan().openForStudent(dormId, faculty, new Date())

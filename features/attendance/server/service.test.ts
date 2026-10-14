@@ -71,6 +71,7 @@ function repo(overrides: Record<string, unknown> = {}) {
     clearFlag: vi.fn(async () => undefined),
     flaggedRecords: vi.fn(async () => []),
     studentHistory: vi.fn(async () => []),
+    studentStates: vi.fn(async (_id: string, _ids: string[]) => [] as string[]),
     ...overrides,
   }
 }
@@ -281,6 +282,41 @@ describe('checkin', () => {
     })) })
     expect(await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.311, lng: 69.24, accuracy: 20 }))
       .toEqual({ status: 'unavailable' })
+  })
+})
+
+describe('student summary with a stale session left open', () => {
+  const student: AttendanceActor = {
+    userId: 's1', role: 'talaba', dormId: DORM, faculties: ['amit'], floor: 3, gender: 'male', canWrite: false,
+  }
+  // Last night's session, re-opened by hand with its close pushed past
+  // tonight's, alongside tonight's (newest-first, as the repository orders).
+  const tonight = { ...openSession, id: 'tonight', opened_at: '2026-10-14T17:00:00Z', closes_at: '2100-01-01T00:00:00Z' }
+  const lastNight = { ...openSession, id: 'last-night', opened_at: '2026-10-13T17:00:00Z', closes_at: '2100-01-02T00:00:00Z' }
+  const stateBySession: Record<string, string> = { 'last-night': 'present', tonight: 'unmarked' }
+  const mk = () => repo({
+    openSessions: vi.fn(async () => [tonight, lastNight]),
+    studentStates: vi.fn(async (_id: string, ids: string[]) => ids.map((id) => stateBySession[id])),
+  })
+
+  it("does not show last night's 'present' as tonight's verdict", async () => {
+    const r = mk()
+    const view = await createAttendanceService(r as never, noDekan as never).summary(student)
+    expect(r.studentStates).toHaveBeenCalledWith('s1', ['tonight'])
+    expect(view).toMatchObject({ hasOpen: true, myState: 'unmarked', closesAt: tonight.closes_at })
+  })
+
+  it('checks the student in to tonight, not last night', async () => {
+    const r = mk()
+    await createAttendanceService(r as never, noDekan as never).checkin('s1', 'amit', { lat: 41.3111, lng: 69.2401, accuracy: 25 })
+    expect(r.applySelfCheckin).toHaveBeenCalledTimes(1)
+    expect(r.applySelfCheckin).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'tonight' }))
+  })
+
+  it('reports nothing open when the only open session has run out', async () => {
+    const expired = { ...openSession, closes_at: '2000-01-01T00:00:00Z' }
+    const r = repo({ openSessions: vi.fn(async () => [expired]) })
+    expect(await createAttendanceService(r as never, noDekan as never).summary(student)).toEqual({ hasOpen: false })
   })
 })
 

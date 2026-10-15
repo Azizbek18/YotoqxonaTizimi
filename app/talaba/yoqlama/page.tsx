@@ -88,6 +88,67 @@ const FAILURE_COPY: Record<Failure, { title: string; body: string; tip: string }
   },
 }
 
+type Fix = { lat: number; lng: number; accuracy: number }
+
+type TelegramLocationData = { latitude: number; longitude: number; horizontal_accuracy?: number | null }
+type TelegramLocationManager = {
+  isInited: boolean
+  isLocationAvailable: boolean
+  init: (cb?: () => void) => void
+  getLocation: (cb: (data: TelegramLocationData | null) => void) => void
+}
+type TelegramWebApp = { initData: string; ready: () => void; LocationManager?: TelegramLocationManager }
+
+function isTelegramWebview() {
+  const w = window as unknown as Record<string, unknown>
+  return /Telegram/i.test(navigator.userAgent) || 'TelegramWebview' in w || 'TelegramWebviewProxy' in w
+}
+
+/** Loads Telegram's Mini App SDK (only used inside Telegram's webview). */
+function loadTelegramWebApp(): Promise<TelegramWebApp | null> {
+  const existing = (window as unknown as { Telegram?: { WebApp?: TelegramWebApp } }).Telegram?.WebApp
+  if (existing) return Promise.resolve(existing)
+  return new Promise((resolve) => {
+    const script = document.createElement('script')
+    script.src = 'https://telegram.org/js/telegram-web-app.js'
+    const timer = window.setTimeout(() => resolve(null), 4000)
+    script.onload = () => {
+      window.clearTimeout(timer)
+      resolve((window as unknown as { Telegram?: { WebApp?: TelegramWebApp } }).Telegram?.WebApp ?? null)
+    }
+    script.onerror = () => {
+      window.clearTimeout(timer)
+      resolve(null)
+    }
+    document.head.appendChild(script)
+  })
+}
+
+/** Location via Telegram's own permission (works where the webview's navigator.geolocation does not). */
+async function telegramLocation(): Promise<Fix | null> {
+  if (!isTelegramWebview()) return null
+  const lm = (await loadTelegramWebApp())?.LocationManager
+  if (!lm) return null
+  await new Promise<void>((resolve) => {
+    if (lm.isInited) return resolve()
+    const t = window.setTimeout(resolve, 3000)
+    lm.init(() => {
+      window.clearTimeout(t)
+      resolve()
+    })
+  })
+  if (!lm.isLocationAvailable) return null
+  return new Promise<Fix | null>((resolve) => {
+    const t = window.setTimeout(() => resolve(null), 15_000)
+    lm.getLocation((data) => {
+      window.clearTimeout(t)
+      resolve(
+        data ? { lat: data.latitude, lng: data.longitude, accuracy: data.horizontal_accuracy ?? 100 } : null,
+      )
+    })
+  })
+}
+
 type Phase = 'idle' | 'measuring' | 'measured' | 'sending' | 'done' | 'no_session' | 'on_leave'
 
 type ProbeData = {
@@ -114,8 +175,12 @@ export default function TalabaYoqlamaPage() {
   const submitting = useRef(false)
 
   useEffect(() => {
-    const w = window as unknown as Record<string, unknown>
-    setInTelegram(/Telegram/i.test(navigator.userAgent) || 'TelegramWebview' in w || 'TelegramWebviewProxy' in w)
+    if (!isTelegramWebview()) return
+    // A real Mini App has its own location API; only plain in-app browsers need the warning.
+    void loadTelegramWebApp().then((app) => {
+      if (app?.initData) app.ready()
+      setInTelegram(!app?.initData)
+    })
   }, [])
 
   // Telegram ichki brauzeri joylashuv ruxsatini bermaydi — sahifani tashqi brauzerda ochamiz.
@@ -198,7 +263,7 @@ export default function TalabaYoqlamaPage() {
     }
     const watchdog = window.setTimeout(() => fail('no_response'), 30_000)
 
-    const probe = async (pos: GeolocationPosition) => {
+    const probe = async (pos: Fix) => {
       if (settled) return
       settled = true
       window.clearTimeout(watchdog)
@@ -208,9 +273,9 @@ export default function TalabaYoqlamaPage() {
           method: 'POST',
           headers,
           body: JSON.stringify({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
+            lat: pos.lat,
+            lng: pos.lng,
+            accuracy: pos.accuracy,
             probe: true, // Only calculate distance, do not record attendance yet
           }),
         })
@@ -236,11 +301,7 @@ export default function TalabaYoqlamaPage() {
             radiusM: data.radiusM ?? 1000,
             isWithinRadius: data.isWithinRadius ?? data.distanceM <= (data.radiusM ?? 1000),
             dormName: data.dormName,
-            coords: {
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-              accuracy: pos.coords.accuracy,
-            },
+            coords: { lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy },
           })
           setPhase('measured')
         } else if (data.status === 'retry') {
@@ -274,7 +335,7 @@ export default function TalabaYoqlamaPage() {
       const finish = () => {
         if (done) return
         stop()
-        if (best) void probe(best)
+        if (best) void probe({ lat: best.coords.latitude, lng: best.coords.longitude, accuracy: best.coords.accuracy })
         else if (highAccuracy) locate(false)
         else fail('timeout')
       }
@@ -302,6 +363,11 @@ export default function TalabaYoqlamaPage() {
     }
 
     const start = async () => {
+      const tg = await telegramLocation().catch(() => null)
+      if (tg) {
+        setLiveAccuracy(Math.round(tg.accuracy))
+        return void probe(tg)
+      }
       try {
         const status = await navigator.permissions?.query({ name: 'geolocation' as PermissionName })
         if (status?.state === 'denied') return fail('denied')

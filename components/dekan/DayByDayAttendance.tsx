@@ -90,6 +90,7 @@ export default function DayByDayAttendance({
   useEffect(() => { setLimit(PAGE_SIZE) }, [query, onlyMissed, dormId, days])
 
   const ranDays = useMemo(() => view?.days.filter((d) => d.sessionIds.length > 0 || d.nightly).length ?? 0, [view])
+  const missedCount = useMemo(() => view?.students.filter((s) => s.unmarked + s.absent > 0).length ?? 0, [view])
 
   const rows = useMemo(() => {
     if (!view) return []
@@ -142,11 +143,11 @@ export default function DayByDayAttendance({
           </p>
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-1.5 min-[360px]:gap-2 w-full sm:w-auto">
           <div
             role="group"
             aria-label="Davr"
-            className={`no-shelf inline-flex items-center gap-1 rounded-xl border p-1 ${isLight ? 'border-slate-200/80 bg-slate-100/90' : 'border-slate-800/90 bg-slate-950/70'}`}
+            className={`no-shelf inline-flex items-center gap-0.5 min-[360px]:gap-1 rounded-xl border p-0.5 min-[360px]:p-1 ${isLight ? 'border-slate-200/80 bg-slate-100/90' : 'border-slate-800/90 bg-slate-950/70'}`}
           >
             {RANGES.map((r) => (
               <button
@@ -154,7 +155,7 @@ export default function DayByDayAttendance({
                 type="button"
                 onClick={() => setDays(r)}
                 aria-pressed={days === r}
-                className={`no-shelf rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                className={`no-shelf rounded-lg px-2 min-[360px]:px-2.5 sm:px-3 py-1 min-[360px]:py-1.5 text-[11px] min-[360px]:text-xs font-bold transition-colors ${
                   days === r
                     ? isLight ? 'bg-white text-indigo-600 shadow-xs' : 'bg-indigo-600 text-white'
                     : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-200'
@@ -169,17 +170,17 @@ export default function DayByDayAttendance({
             onClick={() => void load()}
             disabled={loading}
             aria-label="Yangilash"
-            className={`no-shelf rounded-xl p-2 ${ui.btnGhost}`}
+            className={`no-shelf rounded-xl p-1.5 sm:p-2 ${ui.btnGhost}`}
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
           </button>
           <button
             type="button"
             onClick={() => void exportXlsx()}
             disabled={exporting || !view || view.students.length === 0}
-            className={`no-shelf inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold ${ui.accentSolid}`}
+            className={`no-shelf inline-flex items-center gap-1 sm:gap-1.5 rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold ${ui.accentSolid}`}
           >
-            {exporting ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} />}
+            {exporting ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={13} />}
             Excel
           </button>
         </div>
@@ -205,8 +206,8 @@ export default function DayByDayAttendance({
             </p>
           ) : (
             <>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative min-w-[200px] max-w-xs flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                <div className="relative w-full sm:min-w-[200px] sm:max-w-xs flex-1">
                   <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
@@ -221,16 +222,16 @@ export default function DayByDayAttendance({
                     </button>
                   )}
                 </div>
-                <label className={`flex cursor-pointer items-center gap-2 text-xs font-semibold ${ui.body}`}>
-                  <input
-                    type="checkbox"
-                    checked={onlyMissed}
-                    onChange={(e) => setOnlyMissed(e.target.checked)}
-                    className="h-4 w-4 accent-indigo-600"
+                <div className="flex flex-wrap items-center justify-between sm:justify-end gap-x-3 gap-y-2 w-full sm:w-auto">
+                  <MissedToggle
+                    on={onlyMissed}
+                    count={missedCount}
+                    onToggle={() => setOnlyMissed((v) => !v)}
+                    isLight={isLight}
+                    ui={ui}
                   />
-                  Faqat belgilamaganlar
-                </label>
-                <span className={`ml-auto text-xs tabular-nums ${ui.muted}`}>{rows.length} / {view.students.length} talaba</span>
+                  <span className={`ml-auto text-[11px] sm:text-xs tabular-nums shrink-0 ${ui.muted}`}>{rows.length} / {view.students.length} talaba</span>
+                </div>
               </div>
 
               <Grid view={view} rows={rows.slice(0, limit)} isLight={isLight} ui={ui} />
@@ -301,7 +302,7 @@ function DayStrip({
             )}
           </>
         )
-        const base = `no-shelf w-[8.5rem] shrink-0 rounded-xl border p-3 text-left ${ui.inset}`
+        const base = `no-shelf w-[7.5rem] min-[360px]:w-[8.5rem] shrink-0 rounded-xl border p-2.5 sm:p-3 text-left ${ui.inset}`
         return openable ? (
           <button
             key={day.date}
@@ -317,6 +318,57 @@ function DayStrip({
         )
       })}
     </div>
+  )
+}
+
+/* ───────────────────────────── "only missed" filter ───────────────────────────── */
+
+/**
+ * A switch-chip instead of a bare checkbox: the amber matches the grid's
+ * "bosmagan" dot, and the count says how many students the filter keeps
+ * before it is even turned on.
+ */
+function MissedToggle({
+  on, count, onToggle, isLight, ui,
+}: {
+  on: boolean
+  count: number
+  onToggle: () => void
+  isLight: boolean
+  ui: UI
+}) {
+  const warn = statusChip('warning', isLight)
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={onToggle}
+      className={`no-shelf inline-flex items-center gap-2 rounded-xl border py-1.5 pl-1.5 pr-2 text-[11px] sm:text-xs font-semibold transition-all active:scale-[0.98] ${ui.ring} ${
+        on
+          ? isLight
+            ? 'border-amber-300 bg-amber-50 text-amber-800 shadow-[0_2px_8px_-2px_rgba(245,158,11,0.35)]'
+            : 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+          : ui.btnGhost
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`relative h-4 w-7 shrink-0 rounded-full transition-colors duration-200 ${on ? warn.dot : isLight ? 'bg-slate-300' : 'bg-slate-600'}`}
+      >
+        <span
+          className={`absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform duration-200 ${on ? 'translate-x-3' : ''}`}
+        />
+      </span>
+      <span className="hidden min-[360px]:inline">Faqat belgilamaganlar</span>
+      <span className="min-[360px]:hidden">Belgilamaganlar</span>
+      <span
+        className={`min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center text-[10px] font-bold tabular-nums ${on ? warn.dot : warn.chip}`}
+        style={on ? { color: '#fff' } : undefined}
+      >
+        {count}
+      </span>
+    </button>
   )
 }
 
@@ -339,11 +391,14 @@ function Grid({
 }) {
   const stick = isLight ? 'bg-white' : 'bg-slate-900'
   return (
-    <div className={`overflow-x-auto rounded-xl border ${ui.border}`}>
+    // `relative` keeps the cells' absolutely-positioned `sr-only` labels inside
+    // this scroller — without it they resolve against the page, escape the
+    // overflow clip and widen the whole document on a 320px phone.
+    <div className={`relative overflow-x-auto rounded-xl border max-w-full w-full ${ui.border}`}>
       <table className="w-full min-w-max border-collapse text-xs">
         <thead>
           <tr className={isLight ? 'bg-slate-50' : 'bg-slate-800/40'}>
-            <th className={`sticky left-0 z-10 px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider ${ui.muted} ${isLight ? 'bg-slate-50' : 'bg-slate-900'}`}>
+            <th className={`sticky left-0 z-10 px-2.5 sm:px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider ${ui.muted} ${isLight ? 'bg-slate-50' : 'bg-slate-900'}`}>
               Talaba
             </th>
             {view.dates.map((d) => {
@@ -364,9 +419,9 @@ function Grid({
         <tbody className={`divide-y ${ui.divide}`}>
           {rows.map((s) => (
             <tr key={s.id}>
-              <td className={`sticky left-0 z-10 max-w-[13rem] px-3 py-2 ${stick}`}>
+              <td className={`sticky left-0 z-10 max-w-[8rem] min-[360px]:max-w-[9.5rem] sm:max-w-[13rem] px-2.5 sm:px-3 py-2 ${stick}`}>
                 <span className={`block truncate text-xs font-semibold ${ui.strong}`}>{s.fullName}</span>
-                <span className={`block text-[10px] ${ui.muted}`}>
+                <span className={`block text-[10px] truncate ${ui.muted}`}>
                   {s.roomNumber}{s.floor != null && ` · ${s.floor}-qavat`}
                 </span>
               </td>

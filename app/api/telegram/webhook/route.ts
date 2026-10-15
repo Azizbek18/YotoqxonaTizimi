@@ -5,9 +5,10 @@ import { openInAppButton, sendTelegramChatMessage } from '@/lib/telegram'
 import { deliverPermitDocumentsSafely } from '@/lib/permit-documents'
 import { safeEqual } from '@/lib/security'
 import { sendPermitTelegramLinkedEmail } from '@/lib/email'
+import { handleTelegramLocation, promptTelegramCheckin, type TelegramLocationMessage } from '@/lib/telegram-checkin'
 
 type TelegramUpdate = {
-  message?: {
+  message?: TelegramLocationMessage & {
     text?: string
     chat?: { id?: number; type?: string }
   }
@@ -28,6 +29,15 @@ export async function POST(request: Request) {
     const chatType = update.message?.chat?.type
     const text = update.message?.text?.trim() ?? ''
     if (!chatId || chatType !== 'private') return NextResponse.json({ ok: true })
+
+    if (update.message?.location) {
+      await handleTelegramLocation(chatId, update.message)
+      return NextResponse.json({ ok: true })
+    }
+    if (/^\/yoqlama(?:@[A-Za-z0-9_]+)?$/i.test(text)) {
+      await promptTelegramCheckin(chatId)
+      return NextResponse.json({ ok: true })
+    }
 
     const match = text.match(/^\/start(?:@[A-Za-z0-9_]+)?(?:\s+([A-Za-z0-9_-]{20,64}))?$/)
     if (!match?.[1]) {

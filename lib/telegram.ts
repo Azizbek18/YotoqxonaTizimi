@@ -13,7 +13,14 @@ export function openInAppButton(text: string, url: string): InlineButton {
   return url.startsWith('https://') ? { text, web_app: { url } } : { text, url }
 }
 
-type SendOptions = { replyMarkup?: InlineKeyboard; parseMode?: 'HTML' }
+type ReplyKeyboard = {
+  keyboard: { text: string; request_location?: boolean }[][]
+  resize_keyboard?: boolean
+  one_time_keyboard?: boolean
+}
+type RemoveKeyboard = { remove_keyboard: true }
+
+type SendOptions = { replyMarkup?: InlineKeyboard | ReplyKeyboard | RemoveKeyboard; parseMode?: 'HTML' }
 
 export async function sendTelegramChatMessage(chatId: string, text: string, options: SendOptions = {}) {
   const token = process.env.TELEGRAM_BOT_TOKEN

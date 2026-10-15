@@ -11,18 +11,31 @@ import { getApiError } from '@/server/http/api-error'
 export async function POST(request: NextRequest) {
   try {
     const { student } = await requireActiveStudent(request)
-    const throttle = await checkRateLimit(`attendance-checkin:${student.id}:${getClientIp(request)}`, 8, 10 * 60_000)
-    if (!throttle.allowed) {
-      return NextResponse.json({ error: 'Juda ko‘p urinish. Birozdan keyin qayta uring.' }, { status: 429 })
+    const body = (await request.json().catch(() => ({}))) as {
+      lat?: unknown
+      lng?: unknown
+      accuracy?: unknown
+      probe?: unknown
+    }
+
+    if (!body.probe) {
+      const throttle = await checkRateLimit(`attendance-checkin:${student.id}:${getClientIp(request)}`, 8, 10 * 60_000)
+      if (!throttle.allowed) {
+        return NextResponse.json({ error: 'Juda ko‘p urinish. Birozdan keyin qayta uring.' }, { status: 429 })
+      }
+    } else {
+      const throttle = await checkRateLimit(`attendance-probe:${student.id}:${getClientIp(request)}`, 30, 5 * 60_000)
+      if (!throttle.allowed) {
+        return NextResponse.json({ error: 'Juda ko‘p tekshirildi. Biroz kuting.' }, { status: 429 })
+      }
     }
 
     const faculty = normalizeFaculty(student.faculty)
     if (!faculty) return NextResponse.json({ status: 'no_session' })
 
-    const body = await request.json().catch(() => ({})) as { lat?: unknown; lng?: unknown; accuracy?: unknown }
     const result = await createAttendanceService().checkin(student.id, faculty, body)
-    // Receipt on Telegram — never allowed to fail the check-in itself.
-    if (result.status === 'present') {
+    // Receipt on Telegram — only when actually confirmed (not probe)
+    if (!body.probe && result.status === 'present') {
       try {
         const chatId = (await createDekanAttendanceRepository().telegramChats([student.id])).get(student.id)
         if (chatId) await sendCheckinConfirmation(chatId)

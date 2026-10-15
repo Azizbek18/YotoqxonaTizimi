@@ -116,3 +116,26 @@ export async function sendStudentTelegram(
     return false
   }
 }
+
+/** The active student bound to a Telegram chat, or null (unlinked / not an
+ *  active student / expelled). Used by the bot's location check-in. */
+export async function findStudentByTelegramChat(
+  chatId: number,
+): Promise<{ id: string; faculty: string | null } | null> {
+  const supabase = getServiceSupabase()
+  const { data: link, error } = await supabase
+    .from('student_telegram_links')
+    .select('student_id')
+    .eq('chat_id', chatId)
+    .maybeSingle()
+  if (error) throw error
+  if (!link) return null
+  const { data: user, error: userErr } = await supabase
+    .from('users')
+    .select('id, role, status, faculty, blacklisted')
+    .eq('id', link.student_id)
+    .maybeSingle()
+  if (userErr) throw userErr
+  if (!user || user.role !== 'talaba' || user.status !== 'active' || user.blacklisted) return null
+  return { id: user.id, faculty: user.faculty ?? null }
+}

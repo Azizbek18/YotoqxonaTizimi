@@ -248,7 +248,7 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
   )
 
   return (
-    <div className={`min-h-screen ${ui.shell} transition-colors`}>
+    <div className={`min-h-screen ${ui.shell} transition-colors w-full overflow-x-clip`}>
       {mobileSidebarOpen && (
         <button
           type="button"
@@ -268,11 +268,13 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
         {renderNavContent(mobileSidebarOpen ? false : !sidebarOpen)}
       </aside>
 
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-[280px]' : 'lg:ml-[88px]'}`}>
-        <header className={`sticky top-0 z-30 border-b ${isLight ? 'border-slate-200 bg-white/85' : 'border-slate-800 bg-slate-950/80'} backdrop-blur`}>
+      {/* overflow-x-clip, not -hidden: -hidden turns this into a scroll
+          container and the sticky header below stops sticking. */}
+      <div className={`min-w-0 w-full max-w-full overflow-x-clip transition-all duration-300 ${sidebarOpen ? 'lg:ml-[280px]' : 'lg:ml-[88px]'}`}>
+        <header className={`sticky top-0 z-30 border-b w-full ${isLight ? 'border-slate-200 bg-white/85' : 'border-slate-800 bg-slate-950/80'} backdrop-blur`}>
           <span className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
-          <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
-            <div className="flex min-w-0 items-center gap-3">
+          <div className="flex items-center justify-between gap-3 px-3 py-3 sm:px-6 sm:py-4">
+            <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
               <button
                 type="button"
                 onClick={() => {
@@ -282,7 +284,7 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
                     setSidebarOpen((value) => !value)
                   }
                 }}
-                className={`inline-flex shrink-0 rounded-lg border p-2.5 transition-colors ${ui.btnGhost}`}
+                className={`inline-flex shrink-0 rounded-lg border p-2 sm:p-2.5 transition-colors ${ui.btnGhost}`}
               >
                 <Menu size={18} className="lg:hidden" />
                 <span className="hidden lg:block">
@@ -290,10 +292,10 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
                 </span>
               </button>
               <div className="min-w-0">
-                <p className={`text-[10px] font-bold uppercase tracking-[0.22em] ${ui.accentText}`}>
+                <p className={`text-[9px] min-[360px]:text-[10px] font-bold uppercase tracking-[0.2em] ${ui.accentText}`}>
                   Tarbiyachi paneli
                 </p>
-                <h1 className={`truncate text-base sm:text-lg font-bold tracking-tight ${ui.strong}`}>
+                <h1 className={`truncate text-sm min-[360px]:text-base sm:text-lg font-bold tracking-tight ${ui.strong}`}>
                   {activeItem?.label ?? 'Yotoqxona nazorati'}
                 </h1>
               </div>
@@ -308,7 +310,7 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
               <div className="relative" ref={notifRef}>
                 <button
                   onClick={() => setNotifOpen((prev) => !prev)}
-                  className={`relative rounded-lg border p-2.5 transition-colors ${ui.btnGhost}`}
+                  className={`relative rounded-lg border p-2 sm:p-2.5 transition-colors ${ui.btnGhost}`}
                 >
                   <Bell size={18} />
                   {pending.length > 0 && (
@@ -351,8 +353,8 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
           </div>
         </header>
 
-        <div className="min-h-screen p-3 sm:p-6 lg:p-8">
-          <div className={`min-h-[calc(100vh-7rem)] rounded-3xl border p-3 sm:p-6 lg:p-8 ${ui.cardElevated}`}>
+        <div className="min-h-screen p-2 min-[360px]:p-3 sm:p-6 lg:p-8 min-w-0 max-w-full">
+          <div className={`min-h-[calc(100vh-7rem)] rounded-2xl sm:rounded-3xl border p-2.5 min-[360px]:p-3.5 sm:p-6 lg:p-8 min-w-0 max-w-full ${ui.cardElevated}`}>
             {children}
           </div>
         </div>

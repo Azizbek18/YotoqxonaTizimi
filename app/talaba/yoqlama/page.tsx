@@ -108,7 +108,32 @@ export default function TalabaYoqlamaPage() {
   const [closesAt, setClosesAt] = useState<string | null>(null)
   const [profile, setProfile] = useState<StudentProfilePayload['profile'] | null>(null)
   const [confirmedTime, setConfirmedTime] = useState<string | null>(null)
+  const [liveAccuracy, setLiveAccuracy] = useState<number | null>(null)
+  const [inTelegram, setInTelegram] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
   const submitting = useRef(false)
+
+  useEffect(() => {
+    const w = window as unknown as Record<string, unknown>
+    setInTelegram(/Telegram/i.test(navigator.userAgent) || 'TelegramWebview' in w || 'TelegramWebviewProxy' in w)
+  }, [])
+
+  // Telegram ichki brauzeri joylashuv ruxsatini bermaydi — sahifani tashqi brauzerda ochamiz.
+  const openInBrowser = useCallback(async () => {
+    const url = window.location.href
+    if (/Android/i.test(navigator.userAgent)) {
+      const u = new URL(url)
+      window.location.href = `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=${u.protocol.replace(':', '')};package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(url)};end`
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setLinkCopied(true)
+      window.setTimeout(() => setLinkCopied(false), 3000)
+    } catch {
+      window.prompt('Havolani nusxalab Safari’da oching:', url)
+    }
+  }, [])
 
   const checkSession = useCallback(async () => {
     setChecking(true)
@@ -158,6 +183,7 @@ export default function TalabaYoqlamaPage() {
       return
     }
     submitting.current = true
+    setLiveAccuracy(null)
     setPhase('measuring')
 
     let settled = false
@@ -233,16 +259,46 @@ export default function TalabaYoqlamaPage() {
       }
     }
 
+    // watchPosition bilan bir necha soniya kuzatib, eng aniq nuqtani olamiz.
+    const GOOD_ACCURACY_M = 30
     const locate = (highAccuracy: boolean) => {
-      navigator.geolocation.getCurrentPosition(
-        probe,
+      let best: GeolocationPosition | null = null
+      let done = false
+      let watchId = -1
+      let timer = 0
+      const stop = () => {
+        done = true
+        navigator.geolocation.clearWatch(watchId)
+        window.clearTimeout(timer)
+      }
+      const finish = () => {
+        if (done) return
+        stop()
+        if (best) void probe(best)
+        else if (highAccuracy) locate(false)
+        else fail('timeout')
+      }
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          if (done) return
+          if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos
+          setLiveAccuracy(Math.round(best.coords.accuracy))
+          if (best.coords.accuracy <= GOOD_ACCURACY_M) finish()
+        },
         (err) => {
-          if (err.code === err.PERMISSION_DENIED) return fail('denied')
+          if (done) return
+          if (err.code === err.PERMISSION_DENIED) {
+            stop()
+            return fail('denied')
+          }
+          if (best) return finish()
+          stop()
           if (highAccuracy) return locate(false)
           fail(err.code === err.TIMEOUT ? 'timeout' : 'position')
         },
         { enableHighAccuracy: highAccuracy, timeout: highAccuracy ? 15_000 : 10_000, maximumAge: 0 },
       )
+      timer = window.setTimeout(finish, highAccuracy ? 12_000 : 8_000)
     }
 
     const start = async () => {
@@ -804,6 +860,33 @@ export default function TalabaYoqlamaPage() {
                         : 'Joylashuv orqali yotoqxonagacha masofa tekshiriladi, so‘ngra tasdiqlab yuborasiz.'}
                   </p>
                 </div>
+
+                {inTelegram && (phase === 'idle' || phase === 'measuring') && (
+                  <div
+                    className={`mt-3 rounded-xl border p-2.5 text-left text-xs ${
+                      isLight ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                    }`}
+                  >
+                    <p className="font-semibold">Telegram ichki brauzeridasiz</p>
+                    <p className="mt-0.5 leading-relaxed opacity-90">
+                      Bu yerda joylashuv ko‘pincha aniqlanmaydi. Sahifani Chrome yoki Safari’da oching.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void openInBrowser()}
+                      className="mt-2 w-full rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white"
+                    >
+                      {linkCopied ? 'Havola nusxalandi — Safari’ga qo‘ying' : 'Brauzerda ochish'}
+                    </button>
+                  </div>
+                )}
+
+                {phase === 'measuring' && liveAccuracy !== null && (
+                  <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    Aniqlik: ±{liveAccuracy} m
+                    {liveAccuracy > 100 ? ' — ochiq joyga yoki deraza yoniga o‘ting' : ''}
+                  </p>
+                )}
 
                 {/* Clean, Non-Breaking 2-Row Context Box */}
                 <div

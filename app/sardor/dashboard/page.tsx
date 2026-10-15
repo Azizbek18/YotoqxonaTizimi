@@ -295,6 +295,8 @@ export default function SardorDashboard() {
 
   // Search and Filter States
   const [studentSearch, setStudentSearch] = useState('')
+  // 'all' | course number | 'none' (students with no course on file)
+  const [courseFilter, setCourseFilter] = useState<'all' | 'none' | number>('all')
   const [newElonOpen, setNewElonOpen] = useState(false)
   const deleteElonModal = useConfirmModal<string>()
   const [newElonForm, setNewElonForm] = useState({
@@ -408,14 +410,42 @@ export default function SardorDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, permissions])
 
+  // Course chips: only courses that actually exist on this floor, with counts.
+  const courseOptions = useMemo(() => {
+    const counts = new Map<number, number>()
+    let none = 0
+    for (const s of students) {
+      if (s.course) counts.set(s.course, (counts.get(s.course) ?? 0) + 1)
+      else none += 1
+    }
+    return {
+      courses: [...counts.entries()].sort((a, b) => a[0] - b[0]),
+      none,
+    }
+  }, [students])
+
+  // A course that vanished (e.g. after a reload) must not leave an empty list behind.
+  useEffect(() => {
+    if (courseFilter === 'all') return
+    const exists = courseFilter === 'none'
+      ? courseOptions.none > 0
+      : courseOptions.courses.some(([c]) => c === courseFilter)
+    if (!exists) setCourseFilter('all')
+  }, [courseFilter, courseOptions])
+
   // Filtered Students List
   const filteredStudents = useMemo(() => {
-    return students.filter(s =>
-      s.full_name?.toLowerCase().includes(studentSearch.toLowerCase()) ||
-      s.room_number?.toLowerCase().includes(studentSearch.toLowerCase()) ||
-      s.group?.toLowerCase().includes(studentSearch.toLowerCase())
-    )
-  }, [students, studentSearch])
+    const q = studentSearch.toLowerCase()
+    return students
+      .filter((s) =>
+        courseFilter === 'all' ? true : courseFilter === 'none' ? !s.course : s.course === courseFilter,
+      )
+      .filter((s) =>
+        s.full_name?.toLowerCase().includes(q) ||
+        s.room_number?.toLowerCase().includes(q) ||
+        s.group?.toLowerCase().includes(q),
+      )
+  }, [students, studentSearch, courseFilter])
 
   // Create Announcement
   const handleCreateElon = async (e: React.FormEvent) => {
@@ -594,6 +624,67 @@ export default function SardorDashboard() {
                   }`}
                 />
               </div>
+
+              {(courseOptions.courses.length > 0 || courseOptions.none > 0) && students.length > 0 && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] ${
+                      isLight ? 'text-slate-500' : 'text-slate-400'
+                    }`}>
+                      <GraduationCap size={13} className={t.textSoft} />
+                      Kurs bo&apos;yicha saralash
+                    </p>
+                    <p className={`text-[11px] font-semibold tabular-nums ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      {filteredStudents.length} / {students.length} talaba
+                    </p>
+                  </div>
+                  <div
+                    role="tablist"
+                    aria-label="Kurs bo'yicha saralash"
+                    className={`no-shelf no-scrollbar flex w-full gap-1.5 overflow-x-auto rounded-2xl border p-1.5 sm:w-fit ${
+                      isLight ? 'border-slate-200 bg-white shadow-xs' : 'border-white/10 bg-white/[0.04]'
+                    }`}
+                  >
+                    {([
+                      { key: 'all' as const, label: 'Barchasi', count: students.length },
+                      ...courseOptions.courses.map(([c, n]) => ({ key: c, label: `${c}-kurs`, count: n })),
+                      ...(courseOptions.none > 0 ? [{ key: 'none' as const, label: 'Kursi yo‘q', count: courseOptions.none }] : []),
+                    ]).map((opt) => {
+                      const active = courseFilter === opt.key
+                      return (
+                        <button
+                          key={String(opt.key)}
+                          type="button"
+                          role="tab"
+                          aria-selected={active}
+                          data-student-button="plain"
+                          onClick={() => setCourseFilter(opt.key)}
+                          className={`no-shelf inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-bold transition-colors active:scale-95 ${
+                            active
+                              ? `${t.gradient} text-white shadow-md`
+                              : isLight
+                                ? 'text-slate-600 hover:bg-slate-100'
+                                : 'text-slate-300 hover:bg-white/10'
+                          }`}
+                        >
+                          {opt.label}
+                          <span
+                            className={`rounded-md px-1.5 py-px text-[10px] font-black tabular-nums ${
+                              active
+                                ? 'bg-white/25 text-white'
+                                : isLight
+                                  ? 'bg-slate-100 text-slate-500'
+                                  : 'bg-white/10 text-slate-400'
+                            }`}
+                          >
+                            {opt.count}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               {filteredStudents.length > 0 ? (
                 <motion.div

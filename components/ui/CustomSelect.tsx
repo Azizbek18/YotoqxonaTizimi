@@ -42,7 +42,7 @@ export default function CustomSelect({
   triggerLabel,
   onFocus,
   onBlur,
-  plain = false,
+  plain = true,
 }: CustomSelectProps) {
   const plainAttr = plain ? { 'data-student-button': 'plain' } : {}
   const theme = useThemeStore((state) => state.theme)
@@ -110,7 +110,7 @@ export default function CustomSelect({
   // winning unpredictably and stretching the dial-code select to swallow the
   // whole row, squeezing the phone-number input down to its icon.
   const hasCustomWidth = /(^|\s)w-/.test(className)
-  const baseTrigger = `${hasCustomWidth ? '' : 'w-full'} flex items-center justify-between gap-2 text-left transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+  const baseTrigger = `${hasCustomWidth ? '' : 'w-full'} no-shelf flex items-center justify-between gap-2 text-left transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
     isLight ? 'text-slate-800' : 'text-white'
   }`
 

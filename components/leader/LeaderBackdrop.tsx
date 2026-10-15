@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { LeaderRole } from './leader-theme'
 import { getLeaderTheme } from './leader-theme'
@@ -13,6 +14,19 @@ import { getLeaderTheme } from './leader-theme'
  */
 export default function LeaderBackdrop({ role, isLight }: { role: LeaderRole; isLight?: boolean }) {
   const t = getLeaderTheme(role, isLight)
+  // Phones: two 110px-blurred, continuously animated blobs repaint a huge
+  // layer every frame — the main reason the panels stutter on cheap Android.
+  // globals.css already hides such blobs on small screens, but that only
+  // stops painting; framer-motion would keep running its rAF loop. Don't mount it at all.
+  const [lite, setLite] = useState(true)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px), (hover: none) and (pointer: coarse)')
+    const update = () => setLite(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+  if (lite) return <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.03),transparent_60%)]" />
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
       <motion.div

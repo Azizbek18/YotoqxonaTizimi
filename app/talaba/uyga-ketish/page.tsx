@@ -1075,22 +1075,42 @@ export default function UygaKetishPage() {
           {/* Section 6: Responsibility and Consent */}
           <div className="pt-2 border-t border-slate-100 dark:border-white/5">
             <label
-              className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-xs transition-all ${
+              className={`relative flex cursor-pointer select-none items-start gap-3 rounded-xl border p-3 text-xs transition-all duration-200 ${
                 consent
                   ? isLight
-                    ? 'border-sky-300 bg-sky-50/70 text-slate-800'
-                    : 'border-sky-500/40 bg-sky-500/10 text-slate-200'
+                    ? 'border-sky-300 bg-sky-50 text-slate-800 shadow-[0_4px_14px_-6px_rgba(14,165,233,0.45)]'
+                    : 'border-sky-500/40 bg-sky-500/10 text-slate-200 shadow-[0_4px_14px_-6px_rgba(14,165,233,0.35)]'
                   : isLight
-                    ? 'border-slate-200 bg-slate-50/50 text-slate-600'
-                    : 'border-white/10 bg-white/[0.02] text-slate-400'
+                    ? 'border-slate-200 bg-slate-50/50 text-slate-600 hover:border-slate-300'
+                    : 'border-white/10 bg-white/[0.02] text-slate-400 hover:border-white/20'
               }`}
             >
+              {/* Real checkbox stays for keyboard + screen readers; the box
+                  next to it is the visual. Colours inline/branch-only so the
+                  light-mode class retrofit in globals.css can't repaint them. */}
               <input
                 type="checkbox"
                 checked={consent}
                 onChange={(e) => setConsent(e.target.checked)}
-                className="mt-0.5 size-4 rounded text-sky-600 focus:ring-sky-500 shrink-0"
+                className="peer sr-only"
               />
+              <span
+                aria-hidden
+                className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-500/50 ${
+                  consent
+                    ? 'border-transparent bg-gradient-to-br from-sky-500 to-blue-600 shadow-[0_2px_6px_rgba(14,165,233,0.45)]'
+                    : isLight
+                      ? 'border-slate-300 bg-white'
+                      : 'border-white/25'
+                }`}
+              >
+                <Check
+                  size={13}
+                  strokeWidth={3.5}
+                  style={{ color: '#fff' }}
+                  className={`transition-transform duration-200 ${consent ? 'scale-100' : 'scale-0'}`}
+                />
+              </span>
               <div className="space-y-0.5 min-w-0 flex-1">
                 <span className="font-bold text-xs flex items-center gap-1">
                   <ShieldCheck size={13} className="text-sky-500 shrink-0" />

@@ -410,6 +410,18 @@ export function createAttendanceService(
       if (accuracy > MAX_RELIABLE_ACCURACY_M) return { status: 'retry' }
 
       const distance = haversineMeters(point, { lat: dorm.latitude, lng: dorm.longitude })
+
+      // Probe mode: student is checking distance before committing.
+      if ((body as { probe?: unknown }).probe) {
+        return {
+          status: 'probe',
+          distanceM: distance,
+          radiusM: dorm.checkin_radius_m,
+          isWithinRadius: distance <= dorm.checkin_radius_m,
+          dormName: dorm.name,
+        }
+      }
+
       // The fix is a circle of `accuracy` metres around the reported point. If
       // that circle still reaches into the radius we cannot say they are outside.
       if (distance > dorm.checkin_radius_m && distance - accuracy <= dorm.checkin_radius_m) {

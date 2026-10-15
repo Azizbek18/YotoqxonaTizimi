@@ -64,6 +64,13 @@ export type CheckinResult =
   | { status: 'unavailable' }
   | { status: 'no_session' }
   | { status: 'already'; state: AttendanceState }
+  | {
+      status: 'probe'
+      distanceM: number
+      radiusM: number
+      isWithinRadius: boolean
+      dormName?: string | null
+    }
 
 export type FlaggedRecord = {
   recordId: string

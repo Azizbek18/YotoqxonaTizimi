@@ -427,51 +427,59 @@ export default function TarbiyachiYoqlamaPage() {
   }
 
   return (
-    <div className="space-y-6 pb-28 min-w-0">
+    <div className="space-y-4 sm:space-y-6 pb-28 min-w-0 max-w-full w-full">
       {/* ── Hero Banner (Immaculate Live State) ────────────────── */}
-      <div className="no-shelf relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-900 p-4 sm:p-7 shadow-xl shadow-indigo-950/25 border border-white/20 text-white">
+      <div className="no-shelf relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-900 p-3 min-[340px]:p-3.5 sm:p-6 shadow-xl shadow-indigo-950/25 border border-white/20 text-white">
         {/* Ambient atmospheric glows */}
         <div className="pointer-events-none absolute -right-24 -top-28 h-88 w-88 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -left-24 -bottom-28 h-80 w-80 rounded-full bg-violet-400/20 blur-3xl" />
 
         {/* Top bar inside hero */}
-        <div className="relative flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-white border border-white/30 shadow-inner shrink-0">
-              <ClipboardCheck size={26} strokeWidth={2.2} />
+        <div className="relative flex items-start justify-between gap-2 min-[360px]:gap-3 sm:gap-4">
+          <div className="flex items-start gap-2 min-[360px]:gap-3 min-w-0 flex-1">
+            <div className="flex h-10 w-10 min-[360px]:h-11 min-[360px]:w-11 sm:h-12 sm:w-12 items-center justify-center rounded-xl min-[360px]:rounded-2xl bg-white/20 backdrop-blur-md text-white border border-white/30 shadow-inner shrink-0 mt-0.5">
+              <ClipboardCheck size={20} className="min-[360px]:hidden" strokeWidth={2.2} />
+              <ClipboardCheck size={24} className="hidden min-[360px]:block" strokeWidth={2.2} />
             </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-xs">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5 min-[360px]:gap-2">
+                <h1 className="text-base min-[360px]:text-lg sm:text-2xl font-black tracking-tight text-white drop-shadow-xs">
                   Yo‘qlama
                 </h1>
                 {view ? (
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold backdrop-blur-md border ${
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 min-[360px]:px-2.5 min-[360px]:gap-1.5 rounded-full text-[10px] min-[360px]:text-[11px] font-bold backdrop-blur-md border ${
                       isSessionOpen
                         ? 'bg-emerald-500/25 text-emerald-100 border-emerald-400/40 shadow-xs shadow-emerald-900/30'
                         : 'bg-white/20 text-white border-white/25'
                     }`}
                   >
                     <span
-                      className={`h-2 w-2 rounded-full ${
+                      className={`h-1.5 w-1.5 min-[360px]:h-2 min-[360px]:w-2 rounded-full ${
                         isSessionOpen ? 'bg-emerald-400 animate-pulse' : 'bg-slate-300'
                       }`}
                     />
-                    {isSessionOpen
-                      ? view.session.kind === 'nightly'
-                        ? 'Jonli kechki yo‘qlama'
-                        : 'Ochiq tekshiruv sessiyasi'
-                      : 'Yo‘qlama yakunlangan'}
+                    {isSessionOpen ? (
+                      <>
+                        <span className="min-[440px]:hidden">
+                          <span className="hidden min-[340px]:inline">Jonli </span>yo‘qlama
+                        </span>
+                        <span className="hidden min-[440px]:inline">
+                          {view.session.kind === 'nightly' ? 'Jonli kechki yo‘qlama' : 'Ochiq tekshiruv sessiyasi'}
+                        </span>
+                      </>
+                    ) : (
+                      'Yo‘qlama yakunlangan'
+                    )}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white/15 text-white/90 backdrop-blur-md border border-white/20">
-                    <CalendarClock size={12} />
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] min-[360px]:text-[11px] font-bold bg-white/15 text-white/90 backdrop-blur-md border border-white/20">
+                    <CalendarClock size={11} />
                     <span>Rejali nazorat</span>
                   </span>
                 )}
               </div>
-              <p className="mt-0.5 text-xs sm:text-sm font-medium text-white/85 truncate">
+              <p className="mt-0.5 text-[11px] min-[360px]:text-xs sm:text-sm font-medium text-white/85 line-clamp-2 sm:line-clamp-none">
                 {isSessionOpen
                   ? 'Qavatlar va xonalar bo‘ylab talabalar davomatini tezkor qayd etish'
                   : 'Yotoqxona xonalarini qavatma-qavat tekshirish va talabalar davomatini qayd etish'}
@@ -479,14 +487,15 @@ export default function TarbiyachiYoqlamaPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {isSessionOpen && countdown && (
               <span
-                className="no-shelf inline-flex items-center gap-1.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 px-3.5 py-2 text-xs sm:text-sm font-bold text-white tabular-nums shadow-xs"
+                className="no-shelf inline-flex items-center gap-1 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 px-2 py-1 min-[360px]:px-2.5 min-[360px]:py-1.5 text-[10px] min-[360px]:text-xs font-bold text-white tabular-nums shadow-xs"
                 title="Yo‘qlama yakunlanishiga qolgan vaqt"
               >
-                <Clock size={15} className="text-emerald-300 animate-pulse" />
-                <span>{countdown} qoldi</span>
+                <Clock size={12} className="text-emerald-300 animate-pulse" />
+                <span>{countdown}</span>
+                <span className="hidden min-[360px]:inline"> qoldi</span>
               </span>
             )}
             <button
@@ -494,21 +503,51 @@ export default function TarbiyachiYoqlamaPage() {
               data-student-button="plain"
               onClick={() => void bootstrap()}
               disabled={loading}
-              className="no-shelf inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white transition-all active:scale-95 shadow-xs disabled:opacity-50"
+              className="no-shelf inline-flex items-center justify-center h-7 w-7 min-[360px]:h-8 min-[360px]:w-8 sm:h-9 sm:w-9 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white transition-all active:scale-95 shadow-xs disabled:opacity-50"
               title="Ro‘yxatni yangilash"
             >
-              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
         </div>
 
         {/* Hero Circular Progress & Interactive Metric Cards (When Session is Active) */}
         {s && (
-          <div className="relative mt-6 flex flex-col md:flex-row md:items-center gap-4 sm:gap-6">
-            <HeroRing pct={pct} marked={s.present + s.excused + s.absent} total={s.total} />
+          <div className="relative mt-3.5 sm:mt-5 space-y-3">
+            {/* Progress summary banner on mobile & desktop */}
+            <div className="flex items-center gap-2.5 min-[360px]:gap-3.5 sm:gap-5 rounded-2xl bg-white/[0.08] backdrop-blur-md border border-white/10 p-2.5 min-[360px]:p-3 sm:p-4">
+              <HeroRing pct={pct} marked={s.present + s.excused + s.absent} total={s.total} />
 
-            {/* Quick interactive metric cards */}
-            <div className="grid flex-1 grid-cols-2 min-[440px]:grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 min-w-0">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline gap-1.5">
+                  <span className="text-sm min-[360px]:text-base sm:text-lg font-black text-white tabular-nums">
+                    {s.present + s.excused + s.absent} / {s.total}
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-emerald-300">
+                    ({pct}% tasdiqlandi)
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[10px] min-[360px]:text-xs text-white/80 line-clamp-1">
+                  {s.present} hozir · {s.home} uyda · {s.excused - s.home} ruxsat · {s.absent} yo‘q
+                </p>
+                <div className="mt-1 flex items-center gap-1.5 text-[10px] min-[360px]:text-[11px] font-bold">
+                  {s.unmarked > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-amber-200">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      {s.unmarked} ta kutilmoqda
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-emerald-200">
+                      <CheckCircle2 size={12} className="text-emerald-300" />
+                      Barcha talabalar belgilandi
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick interactive metric cards: horizontal swipe on mobile, 5 cols on md+ */}
+            <div className="flex md:grid md:grid-cols-5 gap-1.5 min-[360px]:gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar scroll-smooth pb-1 pt-0.5 -mx-1 px-1 sm:mx-0 sm:px-0">
               {([
                 ['Hozir', s.present, 'present', 'bg-emerald-400', 'hover:border-emerald-300'],
                 ['Ruxsat', s.excused - s.home, 'excused', 'bg-amber-400', 'hover:border-amber-300'],
@@ -529,22 +568,22 @@ export default function TarbiyachiYoqlamaPage() {
                         handleStatCardClick(filterKey, 'roster')
                       }
                     }}
-                    className={`no-shelf group relative text-left rounded-2xl p-2.5 sm:p-3.5 transition-all duration-200 border cursor-pointer ${
+                    className={`no-shelf group relative shrink-0 min-w-[94px] min-[360px]:min-w-[102px] md:min-w-0 md:flex-1 text-left rounded-xl min-[360px]:rounded-2xl p-2 min-[360px]:p-2.5 sm:p-3 transition-all duration-200 border cursor-pointer ${
                       isActive
                         ? 'bg-white/35 border-white shadow-md ring-2 ring-white/50 scale-[1.02]'
                         : `bg-white/15 border-white/20 hover:bg-white/25 ${hoverBorder}`
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-white/90 truncate">
-                        <span className={`h-2 w-2 rounded-full shrink-0 ${dotColor}`} />
+                      <p className="flex items-center gap-1 min-[360px]:gap-1.5 text-[10px] min-[360px]:text-[11px] font-bold uppercase tracking-wider text-white/90 truncate">
+                        <span className={`h-1.5 w-1.5 min-[360px]:h-2 min-[360px]:w-2 rounded-full shrink-0 ${dotColor}`} />
                         <span>{label}</span>
                       </p>
                       {isActive && (
                         <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
                       )}
                     </div>
-                    <p className="mt-1 text-2xl sm:text-3xl font-black text-white tabular-nums tracking-tight">
+                    <p className="mt-0.5 min-[360px]:mt-1 text-lg min-[360px]:text-xl sm:text-2xl font-black text-white tabular-nums tracking-tight">
                       {val}
                     </p>
                   </button>
@@ -555,7 +594,7 @@ export default function TarbiyachiYoqlamaPage() {
         )}
 
         {view && !isSessionOpen && (
-          <p className="relative mt-4 rounded-xl bg-white/20 px-3.5 py-2 text-xs font-semibold text-white border border-white/25">
+          <p className="relative mt-3.5 rounded-xl bg-white/20 px-3.5 py-2 text-xs font-semibold text-white border border-white/25">
             {view.session.status === 'auto_closed' ? 'Yo‘qlama vaqti tugagan' : 'Yo‘qlama yakunlangan'} — ro‘yxat faqat ko‘rish rejimida.
           </p>
         )}
@@ -566,17 +605,35 @@ export default function TarbiyachiYoqlamaPage() {
         <div
           role="tablist"
           aria-label="Yo‘qlama bo‘limlari"
-          className={`no-shelf flex items-center gap-1.5 p-1.5 rounded-2xl border overflow-x-auto no-scrollbar scroll-smooth whitespace-nowrap ${
+          className={`no-shelf flex items-center gap-1 sm:gap-1.5 p-1 min-[360px]:p-1.5 rounded-2xl border overflow-x-auto no-scrollbar scroll-smooth whitespace-nowrap ${
             isLight ? 'bg-slate-100/90 border-slate-200/80 shadow-xs' : 'bg-slate-900/80 border-slate-800/90 shadow-xs'
           }`}
         >
           {([
-            { id: 'roster', label: 'Yo‘qlama & Xonalar', icon: ClipboardCheck, badge: view ? `${pct}%` : undefined },
-            { id: 'leaves', label: 'Uyga ketganlar', icon: Home, badge: s?.home || undefined },
-            { id: 'history', label: 'Kunlik tahlil & Eksport', icon: CalendarDays, badge: undefined },
+            {
+              id: 'roster',
+              label: 'Yo‘qlama',
+              subLabel: ' & Xonalar',
+              icon: ClipboardCheck,
+              badge: view ? `${pct}%` : undefined,
+            },
+            {
+              id: 'leaves',
+              label: 'Uyga ketganlar',
+              icon: Home,
+              badge: s?.home || undefined,
+            },
+            {
+              id: 'history',
+              label: 'Kunlik tahlil',
+              subLabel: ' & Eksport',
+              icon: CalendarDays,
+              badge: undefined,
+            },
             {
               id: 'flags',
-              label: 'Ogohlantirishlar',
+              label: 'Ogohlantirish',
+              subLabel: 'lar',
               icon: AlertTriangle,
               badge: flags.length || undefined,
               alert: flags.length > 0,
@@ -592,7 +649,7 @@ export default function TarbiyachiYoqlamaPage() {
                 aria-selected={active}
                 data-student-button="plain"
                 onClick={() => setActiveTab(tab.id)}
-                className={`no-shelf relative inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-150 shrink-0 select-none active:scale-[0.98] ${
+                className={`no-shelf relative inline-flex items-center gap-1.5 sm:gap-2 px-2.5 min-[360px]:px-3.5 py-1.5 min-[360px]:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-150 shrink-0 select-none active:scale-[0.98] ${
                   active
                     ? isLight
                       ? 'bg-white text-indigo-600 shadow-xs border border-slate-200/80 font-bold'
@@ -602,8 +659,11 @@ export default function TarbiyachiYoqlamaPage() {
                       : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] border border-transparent'
                 }`}
               >
-                <Icon size={16} className={active ? (isLight ? 'text-indigo-600' : 'text-white') : 'opacity-70'} />
-                <span>{tab.label}</span>
+                <Icon size={15} className={active ? (isLight ? 'text-indigo-600' : 'text-white') : 'opacity-70'} />
+                <span>
+                  {tab.label}
+                  {'subLabel' in tab && <span className="hidden min-[420px]:inline">{tab.subLabel}</span>}
+                </span>
                 {tab.badge !== undefined && (
                   <span
                     className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-black transition-colors ${
@@ -995,31 +1055,32 @@ export default function TarbiyachiYoqlamaPage() {
             initial={{ y: 80, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 80, opacity: 0 }}
-            className="fixed inset-x-0 bottom-3 z-40 px-3 sm:px-4 lg:pl-[290px] pointer-events-none"
+            className="fixed inset-x-0 bottom-3 z-40 px-2.5 min-[360px]:px-4 lg:pl-[290px] pointer-events-none"
           >
             <div
-              className={`no-shelf pointer-events-auto mx-auto flex max-w-xl items-center justify-between gap-3 rounded-2xl border p-2.5 sm:p-3 shadow-2xl backdrop-blur-xl ${
+              className={`no-shelf pointer-events-auto mx-auto flex max-w-xl items-center justify-between gap-2 min-[360px]:gap-3 rounded-2xl border p-2 min-[360px]:p-2.5 sm:p-3 shadow-2xl backdrop-blur-xl ${
                 isLight
                   ? 'bg-white/95 border-slate-200/90 shadow-slate-900/15'
                   : 'bg-slate-900/95 border-slate-700/90 shadow-black/50'
               }`}
             >
-              <div className="flex items-center gap-2.5 pl-1.5 min-w-0">
+              <div className="flex items-center gap-1.5 min-[360px]:gap-2 pl-1 min-w-0 flex-1">
                 {totalUnmarked > 0 ? (
                   <>
-                    <span className="flex h-3 w-3 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                    <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
                     <span className={`text-xs sm:text-sm font-semibold truncate ${ui.strong}`}>
                       <strong className="text-amber-600 dark:text-amber-400 font-black tabular-nums">
                         {totalUnmarked}
                       </strong>{' '}
-                      ta talaba kutilmoqda
+                      <span className="hidden min-[380px]:inline">ta talaba </span>
+                      <span>kutilmoqda</span>
                     </span>
                   </>
                 ) : (
-                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle2 size={18} className="shrink-0" />
+                  <div className="flex items-center gap-1.5 min-[360px]:gap-2 text-emerald-600 dark:text-emerald-400 min-w-0">
+                    <CheckCircle2 size={16} className="shrink-0" />
                     <span className="text-xs sm:text-sm font-bold truncate">
-                      Barcha talabalar belgilandi! Yo‘qlama to‘liq.
+                      Barcha talabalar belgilandi!
                     </span>
                   </div>
                 )}
@@ -1032,15 +1093,18 @@ export default function TarbiyachiYoqlamaPage() {
                     data-student-button="plain"
                     onClick={() => {
                       setActiveTab('roster')
-                      setStatusFilter('unmarked')
+                      setStatusFilter((prev) => (prev === 'unmarked' ? 'all' : 'unmarked'))
                     }}
-                    className={`no-shelf inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                      isLight
-                        ? 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100'
-                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'
+                    className={`no-shelf inline-flex items-center gap-1 px-2.5 py-1.5 min-[360px]:px-3 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                      statusFilter === 'unmarked' && activeTab === 'roster'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : isLight
+                          ? 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100'
+                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'
                     }`}
                   >
-                    <span>Faqat kutilayotganlar</span>
+                    <span className="hidden min-[340px]:inline">Faqat </span>
+                    <span>kutilayotganlar</span>
                   </button>
                 </div>
               )}
@@ -1055,26 +1119,26 @@ export default function TarbiyachiYoqlamaPage() {
 /* ───────────────────────── Sub-Components ───────────────────────── */
 
 function HeroRing({ pct, marked, total }: { pct: number; marked: number; total: number }) {
-  const r = 34
+  const r = 30
   const c = 2 * Math.PI * r
   return (
-    <div className="relative shrink-0 text-white self-center sm:self-auto">
-      <svg width="98" height="98" viewBox="0 0 98 98" className="-rotate-90">
+    <div className="relative shrink-0 text-white flex items-center justify-center">
+      <svg width="78" height="78" viewBox="0 0 78 78" className="-rotate-90 min-[360px]:w-[84px] min-[360px]:h-[84px] sm:w-[94px] sm:h-[94px]">
         <circle
-          cx="49"
-          cy="49"
+          cx="39"
+          cy="39"
           r={r}
           fill="none"
-          stroke="rgba(255, 255, 255, 0.25)"
-          strokeWidth="8"
+          stroke="rgba(255, 255, 255, 0.22)"
+          strokeWidth="7"
         />
         <circle
-          cx="49"
-          cy="49"
+          cx="39"
+          cy="39"
           r={r}
           fill="none"
           stroke="#ffffff"
-          strokeWidth="8"
+          strokeWidth="7"
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={c - (c * pct) / 100}
@@ -1082,12 +1146,11 @@ function HeroRing({ pct, marked, total }: { pct: number; marked: number; total: 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-        <span className="text-base sm:text-lg font-black text-white tabular-nums leading-none drop-shadow-xs">
-          {marked}
-          <span className="text-xs font-bold text-white/70">/{total}</span>
-        </span>
-        <span className="text-[10px] font-bold uppercase tracking-wider mt-0.5 text-white/90">
+        <span className="text-xs min-[360px]:text-sm sm:text-base font-black text-white tabular-nums leading-none drop-shadow-xs">
           {pct}%
+        </span>
+        <span className="text-[9px] min-[360px]:text-[10px] font-bold text-white/70 mt-0.5 tabular-nums">
+          {marked}/{total}
         </span>
       </div>
     </div>

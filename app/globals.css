@@ -962,7 +962,7 @@ html.theme-anim canvas {
      almost every frosted card — hiding the card and its contents. */
   [class~="blur-2xl"], [class~="blur-3xl"],
   [class~="blur-[40px]"], [class~="blur-[50px]"], [class~="blur-[60px]"],
-  [class~="blur-[80px]"], [class~="blur-[100px]"], [class~="blur-[120px]"],
+  [class~="blur-[80px]"], [class~="blur-[90px]"], [class~="blur-[100px]"], [class~="blur-[110px]"], [class~="blur-[120px]"],
   [class~="blur-[130px]"], [class~="blur-[140px]"], [class~="blur-[150px]"],
   [class~="blur-[160px]"] {
     display: none !important;

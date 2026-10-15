@@ -15,7 +15,11 @@ import {
   X,
   MapPin,
   User,
-  Info
+  Info,
+  Building2,
+  Phone,
+  CheckCircle2,
+  RotateCcw
 } from 'lucide-react';
 import { useThemeStore } from '@/lib/stores/theme-store';
 import { fetchStudentAnnouncements } from '@/features/announcements/client/api';
@@ -62,34 +66,40 @@ type FilterType = 'Barchasi' | Elon['type'];
 
 const FILTERS: FilterType[] = ['Barchasi', 'Muhim', 'Tadbir', 'Yangilik', 'Ogohlantirish'];
 
-const typeStyles: Record<Elon['type'], { badge: string; border: string; bg: string; rail: string; icon: React.ReactNode }> = {
+const typeStyles: Record<Elon['type'], {
+  badge: string;
+  border: string;
+  dot: string;
+  rail: string;
+  icon: React.ReactNode;
+}> = {
   Muhim: {
-    badge: 'border-red-500/30 bg-red-500/10 text-red-400',
-    border: 'border-l-red-500',
-    bg: 'bg-red-500/5',
-    rail: 'from-red-500 to-rose-600',
-    icon: <Bell size={16} />,
+    badge: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300',
+    border: 'border-l-rose-500',
+    dot: 'bg-rose-500',
+    rail: 'from-rose-600 to-red-600',
+    icon: <Bell size={14} className="shrink-0" />,
   },
   Tadbir: {
-    badge: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+    badge: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300',
     border: 'border-l-emerald-500',
-    bg: 'bg-emerald-500/5',
-    rail: 'from-emerald-500 to-teal-600',
-    icon: <CalendarDays size={16} />,
+    dot: 'bg-emerald-500',
+    rail: 'from-emerald-600 to-teal-600',
+    icon: <CalendarDays size={14} className="shrink-0" />,
   },
   Yangilik: {
-    badge: 'border-sky-500/30 bg-sky-500/10 text-sky-400',
-    border: 'border-l-sky-500',
-    bg: 'bg-sky-500/5',
-    rail: 'from-sky-500 to-blue-600',
-    icon: <Megaphone size={16} />,
+    badge: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300',
+    border: 'border-l-blue-500',
+    dot: 'bg-blue-500',
+    rail: 'from-blue-600 to-indigo-600',
+    icon: <Megaphone size={14} className="shrink-0" />,
   },
   Ogohlantirish: {
-    badge: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+    badge: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300',
     border: 'border-l-amber-500',
-    bg: 'bg-amber-500/5',
+    dot: 'bg-amber-500',
     rail: 'from-amber-500 to-orange-600',
-    icon: <Clock3 size={16} />,
+    icon: <Clock3 size={14} className="shrink-0" />,
   },
 };
 
@@ -106,7 +116,7 @@ function formatElonDate(value: string | null | undefined) {
   if (diffDays === 1) return 'Kecha';
   if (diffDays < 7) return `${diffDays} kun avval`;
   if (diffDays < 14) return '1 hafta avval';
-  return date.toLocaleDateString('uz-UZ');
+  return date.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit' });
 }
 
 function mapDbElon(elon: DbElon): Elon {
@@ -163,7 +173,7 @@ export default function ElonlarPage() {
     void loadSettings();
   }, [loadSettings]);
 
-  // Lock body scroll when any modal is open
+  // Lock body scroll when modal is open
   useEffect(() => {
     if (selectedElon) {
       document.body.style.overflow = 'hidden';
@@ -175,10 +185,7 @@ export default function ElonlarPage() {
     };
   }, [selectedElon]);
 
-  // Direct Realtime subscriptions require a broad SELECT policy on `elonlar`,
-  // which would expose faculty/floor-targeted announcements to other
-  // students. Poll the audience-filtered server API instead — but only while
-  // the tab is visible, and once more on re-focus.
+  // Audience-filtered server API visible polling
   useVisiblePoll(async (silent) => {
     try {
       const result = await fetchStudentAnnouncements();
@@ -194,22 +201,18 @@ export default function ElonlarPage() {
     }
   }, 90_000);
 
-  // 'system' — a superadmin's university-wide notice; shown in the general
-  // (dorm) view alongside building-wide announcements.
   const dormElonlar = useMemo(
     () => elonlar.filter((elon) => elon.audience === 'all' || elon.audience === 'system'),
     [elonlar]
   );
-  // 'floor' (sardor) and 'council' (kengash raisi) rows the server already
-  // scoped to this reader (gender/floor match) before returning them — they
-  // belong here too, not just a bare 'faculty' (dekan) notice, or a sardor's
-  // and a raisi's own announcements would never show up on this page at all.
+
   const facultyElonlar = useMemo(
     () => elonlar.filter((elon) =>
       (elon.audience === 'faculty' || elon.audience === 'floor' || elon.audience === 'council')
-      && currentFaculty && elon.faculty === currentFaculty),
+      && currentFaculty && elon.faculty?.toLowerCase() === currentFaculty.toLowerCase()),
     [currentFaculty, elonlar]
   );
+
   const activeList = view === 'faculty' ? facultyElonlar : dormElonlar;
 
   const filteredElonlar = useMemo(() => {
@@ -224,148 +227,170 @@ export default function ElonlarPage() {
 
   const importantCount = activeList.filter((elon) => elon.type === 'Muhim' || elon.type === 'Ogohlantirish').length;
 
-  const pageBg = isLight
-    ? 'bg-linear-to-br from-slate-50 to-slate-100 text-slate-900'
-    : 'bg-[#02040a] text-white';
-  const panel = isLight
-    ? 'border-slate-200 bg-white/80 shadow-xl shadow-slate-100/40'
-    : 'border-white/5 bg-slate-950/30 backdrop-blur-xl shadow-2xl';
-  const cardBg = isLight
-    ? 'bg-white border-slate-200 hover:border-blue-400 hover:bg-slate-50/35'
-    : 'bg-[#0f172a]/30 border-white/5 hover:border-indigo-500/30 hover:bg-[#0f172a]/50';
-  const textMuted = isLight ? 'text-slate-500' : 'text-slate-400';
-  const textStrong = isLight ? 'text-slate-900' : 'text-white';
-
   const switchView = (nextView: ViewMode) => {
     setSearch('');
     setFilter('Barchasi');
     setView(nextView);
   };
 
-  return (
-    <div className={`relative min-h-screen p-3 sm:p-5 md:p-6 transition-colors duration-300 ${pageBg}`}>
-      
-      {/* Decorative Glow Elements */}
-      <div className="pointer-events-none absolute inset-0 z-0">
-        {!isLight && (
-          <>
-            <div className="absolute top-[-10%] left-[-5%] w-[60%] h-[50%] bg-blue-600/5 blur-[120px] rounded-full" />
-            <div className="absolute bottom-[-10%] right-[-5%] w-[50%] h-[50%] bg-emerald-600/5 blur-[120px] rounded-full" />
-          </>
-        )}
-      </div>
+  const facultyLabel = currentFaculty ? currentFaculty.toUpperCase() : 'FAKULTET';
 
-      <div className="relative z-10 mx-auto w-full max-w-6xl space-y-6 sm:space-y-8">
+  return (
+    <div className={`relative min-h-screen px-2.5 py-3 sm:p-5 md:p-6 transition-colors duration-300 ${
+      isLight ? 'bg-slate-50/70 text-slate-900' : 'bg-[#060a12] text-slate-100'
+    }`}>
+      
+      <div className="relative z-10 mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
         
         {/* Header Section */}
-        <section className={`relative overflow-hidden rounded-[32px] border p-6 sm:p-8 ${panel}`}>
-          <div className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-sky-400 via-emerald-400 to-amber-300" />
+        <header className={`relative overflow-hidden rounded-2xl sm:rounded-3xl border p-4 sm:p-6 no-shelf outline-none ${
+          isLight
+            ? 'border-slate-200/90 bg-white shadow-xs'
+            : 'border-slate-800 bg-slate-900/90'
+        }`}>
+          {/* Academic top line accent */}
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-sky-400" />
           
-          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-2.5">
-              <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
-                isLight ? 'border-blue-100 bg-blue-50 text-blue-600' : 'border-blue-500/20 bg-blue-500/10 text-cyan-400'
-              }`}>
-                <Sparkles size={12} />
-                <span>E&apos;lonlar Boshqaruvi</span>
+          <div className="flex flex-col gap-3.5 sm:gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1 min-w-0">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-200/80 bg-blue-50/80 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300 no-shelf">
+                <Sparkles size={11} className="shrink-0 text-blue-600 dark:text-blue-400" />
+                <span>Rasmiy xabarlar</span>
               </div>
-              <h1 className={`text-3xl font-extrabold tracking-tight sm:text-5xl ${textStrong}`}>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                 E&apos;lonlar markazi
               </h1>
-              <p className={`max-w-2xl text-xs sm:text-sm leading-relaxed ${textMuted}`}>
-                Yotoqxona umumiy yangiliklari va faqat sizning fakultetingizga tegishli xabarnomalar. O&apos;zingizga kerakli turdagi e&apos;lonlarni osongina qidiring va o&apos;qing.
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-xl">
+                Talabalar turar joyi va fakultet ma&apos;muriyatining rasmiy xabarnomalari hamda muhim eslatmalari.
               </p>
             </div>
 
-            <div className="flex gap-3 shrink-0">
-              <div className={`rounded-2xl border p-4 text-center min-w-20 ${isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/5 bg-white/5'}`}>
-                <p className={`text-[10px] font-bold uppercase tracking-wider ${textMuted}`}>Jami</p>
-                <p className="mt-1 text-2xl font-black">{activeList.length}</p>
+            {/* Stat Badges */}
+            <div className="flex items-center gap-2 shrink-0 pt-0.5 sm:pt-0">
+              <div className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 no-shelf ${
+                isLight ? 'border-slate-200/90 bg-slate-50/80' : 'border-slate-800 bg-slate-800/60'
+              }`}>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 shrink-0">
+                  <Megaphone size={15} />
+                </div>
+                <div className="leading-tight">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Jami</div>
+                  <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">{activeList.length} ta</div>
+                </div>
               </div>
-              <div className={`rounded-2xl border p-4 text-center min-w-20 ${isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/5 bg-white/5'}`}>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-rose-500">Muhim</p>
-                <p className="mt-1 text-2xl font-black text-rose-500">{importantCount}</p>
+
+              <div className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 no-shelf ${
+                isLight ? 'border-rose-200/80 bg-rose-50/60' : 'border-rose-900/50 bg-rose-950/30'
+              }`}>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300 shrink-0">
+                  <Bell size={15} />
+                </div>
+                <div className="leading-tight">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Muhim</div>
+                  <div className="text-sm sm:text-base font-extrabold text-rose-700 dark:text-rose-300">{importantCount} ta</div>
+                </div>
               </div>
             </div>
           </div>
-        </section>
+        </header>
 
         {/* View Switchers & Controls Panel */}
-        <section className={`rounded-3xl border p-4 space-y-4 ${panel}`}>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <section className={`rounded-2xl border p-3 sm:p-4 space-y-3 no-shelf outline-none ${
+          isLight ? 'border-slate-200/90 bg-white shadow-xs' : 'border-slate-800 bg-slate-900/90'
+        }`}>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             
-            {/* Left Tabs (Dorm vs Faculty) */}
-            {/* Two mutually exclusive views = a segmented control, so it
-                carries one shared track and opts out of the panel-wide
-                button paint (which made both halves look selected). */}
-            <div className={`inline-flex shrink-0 gap-1 rounded-2xl border p-1 ${
-              isLight ? 'border-slate-200 bg-slate-100/70' : 'border-white/10 bg-white/5'
+            {/* Segmented Control Tabs */}
+            <div className={`grid grid-cols-2 gap-1 rounded-xl border p-1 no-shelf shrink-0 ${
+              isLight ? 'border-slate-200 bg-slate-100/80' : 'border-slate-800 bg-slate-950/60'
             }`}>
-              {([
-                { key: 'dorm' as const, icon: Megaphone, label: "Yotoqxona e'lonlari" },
-                { key: 'faculty' as const, icon: GraduationCap, label: currentFaculty ?? 'Mening fakultetim' },
-              ]).map((tab) => {
-                const active = view === tab.key
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    data-student-button="plain"
-                    aria-pressed={active}
-                    onClick={() => switchView(tab.key)}
-                    className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold tracking-tight transition-colors duration-200 ${
-                      active
-                        ? isLight
-                          ? 'bg-white text-indigo-700 shadow-sm'
-                          : 'bg-indigo-500/20 text-indigo-200'
-                        : isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <tab.icon size={14} className="shrink-0" />
-                    <span className="truncate">{tab.label}</span>
-                  </button>
-                )
-              })}
+              <button
+                type="button"
+                data-student-button="plain"
+                aria-pressed={view === 'dorm'}
+                onClick={() => switchView('dorm')}
+                className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2 px-3 text-xs font-bold transition-all no-shelf ${
+                  view === 'dorm'
+                    ? isLight
+                      ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80'
+                      : 'bg-slate-800 text-blue-400 shadow-xs border border-slate-700/80'
+                    : isLight
+                      ? 'text-slate-600 hover:text-slate-900'
+                      : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Building2 size={13} className="shrink-0" />
+                <span className="truncate">Umumiy</span>
+              </button>
+
+              <button
+                type="button"
+                data-student-button="plain"
+                aria-pressed={view === 'faculty'}
+                onClick={() => switchView('faculty')}
+                className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2 px-3 text-xs font-bold transition-all no-shelf ${
+                  view === 'faculty'
+                    ? isLight
+                      ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80'
+                      : 'bg-slate-800 text-blue-400 shadow-xs border border-slate-700/80'
+                    : isLight
+                      ? 'text-slate-600 hover:text-slate-900'
+                      : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <GraduationCap size={13} className="shrink-0" />
+                <span className="truncate">{facultyLabel}</span>
+              </button>
             </div>
 
-            {/* Right side Search & Filter badges */}
-            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center min-w-0 flex-1 justify-end">
+            {/* Search bar & Filter pills */}
+            <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center min-w-0 flex-1 justify-end">
               {/* Search bar */}
-              <div className={`flex items-center gap-2 rounded-2xl border px-3.5 py-1 min-w-0 md:w-64 shrink-0 ${
-                isLight ? 'border-slate-200 bg-white' : 'border-white/5 bg-slate-950/30'
+              <div className={`relative flex items-center gap-2 rounded-xl border px-3 py-1.5 min-w-0 sm:w-60 shrink-0 no-shelf ${
+                isLight ? 'border-slate-200/90 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10' : 'border-slate-800 bg-slate-950/60 focus-within:border-blue-500'
               }`}>
-                <Search size={14} className={textMuted} />
+                <Search size={14} className="shrink-0 text-slate-400" />
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="E'lonlardan qidirish..."
-                  className={`h-10 w-full min-w-0 bg-transparent text-xs font-bold outline-none placeholder:font-medium ${textStrong}`}
+                  className="h-7 w-full min-w-0 bg-transparent text-xs font-medium outline-none placeholder:text-slate-400 text-slate-900 dark:text-white"
                 />
-              </div>
-
-              {/* Filter pills — wrap rather than scroll: the row hid
-                  "Ogohlantirish" past its right edge with no scrollbar
-                  (no-scrollbar) and no fade to hint at it, so the filter was
-                  unreachable unless you guessed it was there. */}
-              <div className="flex flex-wrap gap-1.5 pb-1">
-                {FILTERS.map((item) => (
+                {search && (
                   <button
                     type="button"
-                    key={item}
                     data-student-button="plain"
-                    aria-pressed={filter === item}
-                    onClick={() => setFilter(item)}
-                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-bold tracking-tight transition-colors ${
-                      filter === item
-                        ? isLight
-                          ? 'border-indigo-600 bg-indigo-600 text-white'
-                          : 'border-indigo-400 bg-indigo-500 text-white'
-                        : isLight ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
-                    }`}
+                    onClick={() => setSearch('')}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 no-shelf"
                   >
-                    {item}
+                    <X size={13} />
                   </button>
-                ))}
+                )}
+              </div>
+
+              {/* Filter pills */}
+              <div className="flex flex-wrap gap-1.5">
+                {FILTERS.map((item) => {
+                  const active = filter === item;
+                  return (
+                    <button
+                      type="button"
+                      key={item}
+                      data-student-button="plain"
+                      aria-pressed={active}
+                      onClick={() => setFilter(item)}
+                      className={`shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-all no-shelf ${
+                        active
+                          ? 'border-blue-600 bg-blue-600 text-white shadow-xs'
+                          : isLight
+                            ? 'border-slate-200 bg-slate-50/80 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                            : 'border-slate-800 bg-slate-800/60 text-slate-300 hover:bg-slate-800'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -373,124 +398,162 @@ export default function ElonlarPage() {
         </section>
 
         {/* Notices Board Content */}
-        <section className="grid gap-6 lg:grid-cols-12 items-start">
+        <section className="grid gap-4 sm:gap-6 lg:grid-cols-12 items-start">
           
           {/* Main List Column */}
-          <div className="lg:col-span-8 space-y-4">
+          <div className="lg:col-span-8 space-y-3 sm:space-y-4">
             {loading && view === 'dorm' ? (
               <TalabaElonlarSkeleton />
             ) : filteredElonlar.length === 0 ? (
-              <div className={`rounded-[28px] border p-12 text-center ${panel} space-y-4`}>
-                <Megaphone className={`mx-auto opacity-35 ${textMuted}`} size={40} />
-                <div className="space-y-1">
-                  <p className={`text-base font-black uppercase tracking-wider ${textStrong}`}>Hech qanday e&apos;lon topilmadi</p>
-                  <p className={`text-xs ${textMuted}`}>
-                    {view === 'faculty'
-                      ? `${currentFaculty ?? 'Fakultetingiz'} uchun hozircha xabarlar e'lon qilinmagan.`
-                      : "Qidiruv so'rovi yoki filtr turini o'zgartirib ko'ring."}
-                  </p>
+              <div className={`rounded-2xl border p-8 sm:p-12 text-center no-shelf outline-none ${
+                isLight ? 'border-slate-200/90 bg-white shadow-xs' : 'border-slate-800 bg-slate-900/90'
+              }`}>
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 mb-3">
+                  <Megaphone size={22} />
                 </div>
-              </div>
-            ) : (
-              <StaggerList className="space-y-4">
-                {filteredElonlar.map((elon) => {
-                const styles = typeStyles[elon.type];
-                return (
-                  <StaggerItem key={elon.id}>
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                  Hech qanday e&apos;lon topilmadi
+                </h3>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
+                  {search || filter !== 'Barchasi'
+                    ? "Qidiruv so'rovi yoki filtr turini o'zgartirib ko'ring."
+                    : view === 'faculty'
+                      ? `${facultyLabel} fakulteti uchun hozircha xabarnomalar mavjud emas.`
+                      : "Yotoqxona bo'yicha hozircha faol e'lonlar kiritilmagan."}
+                </p>
+                {(search || filter !== 'Barchasi') && (
                   <button
                     type="button"
-                    onClick={() => setSelectedElon(elon)}
-                    className={`relative overflow-hidden w-full rounded-2xl border-l-[6px] border border-y-transparent border-r-transparent p-5 text-left transition-all duration-200 hover:translate-x-1 group flex flex-col justify-between gap-4 ${styles.border} ${cardBg}`}
+                    data-student-button="plain"
+                    onClick={() => {
+                      setSearch('');
+                      setFilter('Barchasi');
+                    }}
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 no-shelf"
                   >
-                    {/* Header info */}
-                    <div className="space-y-2.5 w-full">
-                      <div className="flex flex-wrap justify-between items-center gap-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className={`rounded-md border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${styles.badge}`}>
-                            {elon.type}
-                          </span>
-                          {elon.is_from_captain && (
-                            <span className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-purple-400">
-                              🌟 Qavat Sardori
-                            </span>
-                          )}
-                          {elon.is_from_council_chair && (
-                            <span className="rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-400">
-                              🎓 Kengash Raisi
-                            </span>
-                          )}
-                        </div>
-                        <div className={`flex items-center gap-1 text-[10px] font-semibold ${textMuted}`}>
-                          <Clock3 size={11} />
-                          <span>{elon.date}</span>
-                        </div>
-                      </div>
-
-                      {/* Title & Body */}
-                      <h3 className={`text-base font-extrabold tracking-tight group-hover:text-blue-600 transition-colors leading-snug ${textStrong}`}>
-                        {elon.title}
-                      </h3>
-                      <p className={`text-xs leading-relaxed line-clamp-2 ${textMuted}`}>
-                        {elon.text}
-                      </p>
-                    </div>
-
-                    {/* Metadata Footer */}
-                    <div className="flex justify-between items-center w-full pt-3.5 border-t border-white/5">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1">
-                          <User size={12} className={isLight ? 'text-slate-400' : 'text-gray-500'} />
-                          <span className={`text-[10px] font-bold ${textStrong}`}>{elon.teacher || "Tizim ma'muri"}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <MapPin size={12} className={isLight ? 'text-slate-400' : 'text-gray-500'} />
-                          <span className={`text-[10px] font-bold ${textMuted}`}>{elon.room || "—"}</span>
-                        </div>
-                      </div>
-
-                      <div className={`flex items-center gap-0.5 text-xs font-black uppercase tracking-wider ${isLight ? 'text-blue-600' : 'text-cyan-400'}`}>
-                        <span>Ochish</span>
-                        <ChevronRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
-                      </div>
-                    </div>
+                    <RotateCcw size={12} />
+                    <span>Filtrlarni tozalash</span>
                   </button>
-                  </StaggerItem>
-                );
+                )}
+              </div>
+            ) : (
+              <StaggerList className="space-y-3">
+                {filteredElonlar.map((elon) => {
+                  const styles = typeStyles[elon.type];
+                  return (
+                    <StaggerItem key={elon.id}>
+                      <button
+                        type="button"
+                        data-student-button="plain"
+                        onClick={() => setSelectedElon(elon)}
+                        className={`group relative w-full overflow-hidden rounded-2xl border border-l-4 p-4 text-left transition-all duration-200 hover:shadow-md flex flex-col justify-between gap-3 no-shelf outline-none ${styles.border} ${
+                          isLight
+                            ? 'bg-white border-slate-200/90 hover:border-slate-300'
+                            : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        {/* Header info */}
+                        <div className="space-y-2 w-full min-w-0">
+                          <div className="flex flex-wrap justify-between items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${styles.badge} no-shelf`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${styles.dot}`} />
+                                <span>{elon.type}</span>
+                              </span>
+                              {elon.is_from_captain && (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300 no-shelf">
+                                  <span>⭐ Sardor</span>
+                                </span>
+                              )}
+                              {elon.is_from_council_chair && (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-300 no-shelf">
+                                  <span>🎓 Kengash raisi</span>
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 shrink-0">
+                              <Clock3 size={12} className="shrink-0 text-slate-400" />
+                              <span>{elon.date}</span>
+                            </div>
+                          </div>
+
+                          {/* Title & Preview */}
+                          <h3 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-snug line-clamp-2">
+                            {elon.title}
+                          </h3>
+                          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2">
+                            {elon.text}
+                          </p>
+                        </div>
+
+                        {/* Metadata Footer */}
+                        <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 w-full min-w-0">
+                          <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 min-w-0">
+                            <div className="flex items-center gap-1 truncate">
+                              <User size={12} className="shrink-0 text-slate-400" />
+                              <span className="truncate font-semibold text-slate-700 dark:text-slate-300">{elon.teacher || "Tizim ma'muri"}</span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <MapPin size={12} className="shrink-0 text-slate-400" />
+                              <span className="truncate">{elon.room || "—"}</span>
+                            </div>
+                          </div>
+
+                          <div className="inline-flex items-center gap-0.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 shrink-0 group-hover:translate-x-0.5 transition-transform">
+                            <span>Batafsil</span>
+                            <ChevronRight size={13} />
+                          </div>
+                        </div>
+                      </button>
+                    </StaggerItem>
+                  );
                 })}
               </StaggerList>
             )}
           </div>
 
           {/* Right Sidebar Column */}
-          <div className="lg:col-span-4 space-y-6">
+          <div className="lg:col-span-4 space-y-4">
             
             {/* Filters count widget */}
-            <div className={`rounded-[28px] border p-5 space-y-4 ${panel}`}>
-              <h3 className={`text-[10px] font-extrabold tracking-[0.2em] ${textStrong}`}>
+            <div className={`rounded-2xl border p-4 space-y-3 no-shelf outline-none ${
+              isLight ? 'border-slate-200/90 bg-white shadow-xs' : 'border-slate-800 bg-slate-900/90'
+            }`}>
+              <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Toifalar bo&apos;yicha
               </h3>
               
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {FILTERS.slice(1).map((item) => {
                   const count = activeList.filter((elon) => elon.type === item).length;
                   const styles = typeStyles[item as Elon['type']];
+                  const isSelected = filter === item;
                   
                   return (
                     <button
                       type="button"
                       key={item}
-                      onClick={() => setFilter(item)}
-                      className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-all ${
-                        filter === item 
-                          ? styles.badge
-                          : isLight ? 'border-slate-100 bg-slate-50/50 hover:bg-slate-100/50' : 'border-white/5 bg-white/5 hover:bg-white/10'
+                      data-student-button="plain"
+                      onClick={() => setFilter(isSelected ? 'Barchasi' : item)}
+                      className={`flex w-full items-center justify-between rounded-xl border p-2.5 text-left transition-all no-shelf ${
+                        isSelected 
+                          ? `${styles.badge} shadow-xs font-bold`
+                          : isLight 
+                            ? 'border-slate-100 bg-slate-50/70 hover:bg-slate-100/70 text-slate-700' 
+                            : 'border-slate-800 bg-slate-800/40 hover:bg-slate-800/80 text-slate-300'
                       }`}
                     >
-                      <div className="flex items-center gap-2 text-xs font-bold">
-                        <span className={filter === item ? '' : isLight ? 'text-slate-500' : 'text-gray-400'}>{styles.icon}</span>
+                      <div className="flex items-center gap-2 text-xs font-semibold">
+                        <span className={isSelected ? '' : 'text-slate-400'}>{styles.icon}</span>
                         <span>{item}</span>
                       </div>
-                      <span className="text-xs font-black">{count} ta</span>
+                      <span className={`text-[11px] font-extrabold rounded-full px-2 py-0.5 ${
+                        isSelected
+                          ? 'bg-white/80 dark:bg-black/30'
+                          : isLight ? 'bg-slate-200/70 text-slate-700' : 'bg-slate-700 text-slate-300'
+                      }`}>
+                        {count} ta
+                      </span>
                     </button>
                   );
                 })}
@@ -498,41 +561,64 @@ export default function ElonlarPage() {
             </div>
 
             {/* Emergency Hotline Info Widget */}
-            <div className={`rounded-[28px] border p-6 space-y-4 ${panel}`}>
-              <div className="flex items-center gap-2 text-rose-500">
+            <div className={`rounded-2xl border p-4 space-y-3 no-shelf outline-none ${
+              isLight ? 'border-slate-200/90 bg-white shadow-xs' : 'border-slate-800 bg-slate-900/90'
+            }`}>
+              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
                 <Info size={16} />
-                <h4 className="text-xs font-extrabold tracking-wider">Favqulodda Aloqa</h4>
+                <h4 className="text-xs font-extrabold uppercase tracking-wider">Favqulodda Aloqa</h4>
               </div>
-              <p className={`text-xs leading-relaxed ${textMuted}`}>
-                Agarda yotoqxonada texnik yoki boshqa xavfli holatlar yuzaga kelsa, zudlik bilan navbatchi tarbiyachiga yoki xavfsizlik bo&apos;limiga xabar bering.
+              <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Texnik nosozlik yoki favqulodda holatlar yuzaga kelsa, mas&apos;ul xodimlarga zudlik bilan qo&apos;ng&apos;iroq qiling:
               </p>
+              
               {emergencyContacts ? (
-                <div className="space-y-1.5 pt-2 text-xs font-bold">
-                  <div className="flex justify-between">
-                    <span className="opacity-60">Xavfsizlik:</span>
+                <div className="space-y-2 pt-1 text-xs">
+                  <div className={`flex items-center justify-between p-2 rounded-xl border no-shelf ${
+                    isLight ? 'border-slate-100 bg-slate-50/70' : 'border-slate-800 bg-slate-800/40'
+                  }`}>
+                    <span className="font-semibold text-slate-600 dark:text-slate-300">Xavfsizlik bo&apos;limi:</span>
                     {emergencyContacts.securityPhone ? (
-                      <a href={`tel:${emergencyContacts.securityPhone}`} className="text-rose-500 hover:underline">{emergencyContacts.securityPhone}</a>
+                      <a
+                        href={`tel:${emergencyContacts.securityPhone}`}
+                        className="inline-flex items-center gap-1 font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 no-shelf"
+                      >
+                        <Phone size={11} />
+                        <span>{emergencyContacts.securityPhone}</span>
+                      </a>
                     ) : (
-                      <span className="opacity-50">Kiritilmagan</span>
+                      <span className="text-slate-400">Mavjud emas</span>
                     )}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="opacity-60">Shifokor:</span>
+
+                  <div className={`flex items-center justify-between p-2 rounded-xl border no-shelf ${
+                    isLight ? 'border-slate-100 bg-slate-50/70' : 'border-slate-800 bg-slate-800/40'
+                  }`}>
+                    <span className="font-semibold text-slate-600 dark:text-slate-300">Tibbiyot xonasi:</span>
                     {emergencyContacts.doctorPhone ? (
-                      <a href={`tel:${emergencyContacts.doctorPhone}`} className="text-blue-500 hover:underline">{emergencyContacts.doctorPhone}</a>
+                      <a
+                        href={`tel:${emergencyContacts.doctorPhone}`}
+                        className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 no-shelf"
+                      >
+                        <Phone size={11} />
+                        <span>{emergencyContacts.doctorPhone}</span>
+                      </a>
                     ) : (
-                      <span className="opacity-50">Kiritilmagan</span>
+                      <span className="text-slate-400">Mavjud emas</span>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="pt-2 text-xs">
-                  <p className="opacity-60">{settingsStatus === 'loading' ? 'Kontaktlar yuklanmoqda...' : 'Kontaktlarni yuklab bo‘lmadi.'}</p>
+                <div className="pt-1 text-xs">
+                  <p className="text-slate-400">
+                    {settingsStatus === 'loading' ? 'Kontaktlar yuklanmoqda...' : 'Kontaktlarni yuklab bo‘lmadi.'}
+                  </p>
                   {settingsStatus === 'error' && (
                     <button
                       type="button"
+                      data-student-button="plain"
                       onClick={() => void loadSettings()}
-                      className="mt-2 rounded-lg bg-rose-500/10 px-3 py-2 font-black text-rose-500 hover:bg-rose-500/20"
+                      className="mt-2 rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 no-shelf"
                     >
                       Qayta urinish
                     </button>
@@ -547,79 +633,104 @@ export default function ElonlarPage() {
 
       </div>
 
-      {/* Frosted Detail Modal */}
+      {/* Detail Modal */}
       {mounted && typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {selectedElon && (
-        <motion.div
-          {...(reduceMotion ? {} : { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } })}
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
-          onClick={() => setSelectedElon(null)}
-        >
-          <motion.div
-            {...(reduceMotion ? {} : {
-              initial: { scale: 0.9, y: 20, opacity: 0 },
-              animate: { scale: 1, y: 0, opacity: 1 },
-              exit: { scale: 0.9, y: 20, opacity: 0 },
-              transition: { type: 'spring' as const, duration: 0.5 },
-            })}
-            className={`relative w-full max-w-lg overflow-hidden rounded-[36px] border p-0 shadow-2xl ${panel}`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Banner element corresponding to announcement type */}
-            <div className={`p-6 sm:p-8 text-white relative bg-gradient-to-r ${typeStyles[selectedElon.type].rail}`}>
-              <button
-                type="button"
-                onClick={() => setSelectedElon(null)}
-                className="absolute right-6 top-6 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all"
-                aria-label="Yopish"
+            <motion.div
+              {...(reduceMotion ? {} : { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } })}
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm"
+              onClick={() => setSelectedElon(null)}
+            >
+              <motion.div
+                {...(reduceMotion ? {} : {
+                  initial: { scale: 0.95, y: 16, opacity: 0 },
+                  animate: { scale: 1, y: 0, opacity: 1 },
+                  exit: { scale: 0.95, y: 16, opacity: 0 },
+                  transition: { type: 'spring' as const, duration: 0.4 },
+                })}
+                className={`relative w-full max-w-lg overflow-hidden rounded-2xl sm:rounded-3xl border shadow-2xl no-shelf outline-none ${
+                  isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
+                }`}
+                onClick={(e) => e.stopPropagation()}
               >
-                <X size={16} />
-              </button>
-              
-              <div className="space-y-3">
-                <span className="rounded-md bg-white/20 border border-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest inline-block">
-                  {selectedElon.type}
-                </span>
-                <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">{selectedElon.title}</h2>
-              </div>
-            </div>
-
-            {/* Body contents */}
-            <div className="p-6 sm:p-7 space-y-5">
-              
-              {/* Metadata strip */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className={`p-3 rounded-xl border ${isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/5 bg-white/5'}`}>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider block ${textMuted} mb-0.5`}>Mas&apos;ul</span>
-                  <span className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-500 inline-block">{selectedElon.teacher || "Tizim ma'muri"}</span>
+                {/* Header Bar */}
+                <div className={`p-4 sm:p-5 text-white relative bg-gradient-to-r ${typeStyles[selectedElon.type].rail}`}>
+                  <button
+                    type="button"
+                    data-student-button="plain"
+                    onClick={() => setSelectedElon(null)}
+                    className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full bg-black/20 hover:bg-black/35 text-white transition-all no-shelf"
+                    aria-label="Yopish"
+                  >
+                    <X size={15} />
+                  </button>
+                  
+                  <div className="space-y-2 pr-8">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-white/20 backdrop-blur-xs border border-white/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white no-shelf">
+                      {selectedElon.type}
+                    </span>
+                    <h2 className="text-base sm:text-lg font-bold tracking-tight leading-snug">
+                      {selectedElon.title}
+                    </h2>
+                  </div>
                 </div>
-                <div className={`p-3 rounded-xl border ${isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/5 bg-white/5'}`}>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider block ${textMuted} mb-0.5`}>Sana / Joy</span>
-                  <span className={`text-xs font-bold ${textStrong}`}>{selectedElon.date} • {selectedElon.room || "—"}</span>
-                </div>
-              </div>
 
-              {/* Text content details */}
-              <div className="space-y-1.5">
-                <span className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Batafsil ma&apos;lumot</span>
-                <div className={`p-4 rounded-xl border italic text-xs sm:text-sm leading-relaxed ${
-                  isLight ? 'bg-slate-50/50 border-slate-100 text-slate-700' : 'bg-white/5 border-white/5 text-gray-300'
-                }`}>
-                  &quot;{selectedElon.text}&quot;
-                </div>
-              </div>
+                {/* Modal Body */}
+                <div className="p-4 sm:p-5 space-y-4">
+                  
+                  {/* Meta Info Grid */}
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className={`p-2.5 sm:p-3 rounded-xl border no-shelf ${
+                      isLight ? 'border-slate-200/80 bg-slate-50/80' : 'border-slate-800 bg-slate-800/60'
+                    }`}>
+                      <span className="text-[10px] font-bold uppercase tracking-wider block text-slate-500 dark:text-slate-400 mb-0.5">
+                        Mas&apos;ul
+                      </span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">
+                        {selectedElon.teacher || "Tizim ma'muri"}
+                      </span>
+                    </div>
+                    
+                    <div className={`p-2.5 sm:p-3 rounded-xl border no-shelf ${
+                      isLight ? 'border-slate-200/80 bg-slate-50/80' : 'border-slate-800 bg-slate-800/60'
+                    }`}>
+                      <span className="text-[10px] font-bold uppercase tracking-wider block text-slate-500 dark:text-slate-400 mb-0.5">
+                        Sana va Joy
+                      </span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">
+                        {selectedElon.date} • {selectedElon.room || "—"}
+                      </span>
+                    </div>
+                  </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedElon(null)}
-                className="w-full mt-4 rounded-xl bg-blue-600 hover:bg-blue-700 py-3.5 text-xs font-black text-white transition uppercase tracking-widest"
-              >
-                Tushunarli
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
+                  {/* Announcement full body */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Xabarnoma matni
+                    </span>
+                    <div className={`p-3.5 sm:p-4 rounded-xl border text-xs sm:text-sm leading-relaxed max-h-[45vh] overflow-y-auto no-shelf ${
+                      isLight
+                        ? 'bg-slate-50/70 border-slate-200/80 text-slate-800'
+                        : 'bg-slate-950/50 border-slate-800 text-slate-200'
+                    }`}>
+                      {selectedElon.text}
+                    </div>
+                  </div>
+
+                  {/* Bottom confirmation action */}
+                  <button
+                    type="button"
+                    data-student-button="plain"
+                    onClick={() => setSelectedElon(null)}
+                    className="w-full py-2.5 sm:py-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-xs no-shelf flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle2 size={15} />
+                    <span>Tushunarli</span>
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
           )}
         </AnimatePresence>,
         document.body

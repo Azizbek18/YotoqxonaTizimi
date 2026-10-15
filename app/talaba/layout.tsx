@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import {
   LayoutDashboard, Megaphone, ListOrdered, ShieldCheck,
-  UserCircle, Bell, Moon, Zap, Clock, CreditCard, FileText, Plane, BookOpen, FileCheck2, Home,
+  UserCircle, Bell, Moon, Zap, CreditCard, FileText, Plane, BookOpen, FileCheck2, Home,
   X, AlertTriangle, CheckCircle2, AlertCircle, Upload, Sparkles,
   Code, Send, Phone, ExternalLink, Camera, ChevronRight
 } from 'lucide-react'
@@ -375,8 +375,12 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
       {/* `fixed` instead of `sticky`: an ancestor further up sets overflow-x-hidden,
           which per spec forces overflow-y to auto and turns that ancestor into the
           sticky containing block instead of the viewport, breaking `sticky top-0`. */}
-      <header className={`fixed top-0 left-0 right-0 z-50 px-3 max-[359px]:px-2 sm:px-6 py-3 sm:py-4 transition-all ${isLight ? 'bg-white border-b border-slate-200' : 'bg-[#02040a] border-b border-white/5'}`}>
-        <div className="max-w-6xl mx-auto flex justify-between items-center gap-2 sm:gap-3">
+      <header className={`fixed top-0 left-0 right-0 z-50 px-2.5 sm:px-6 py-2 sm:py-2.5 transition-all no-shelf outline-none ${
+        isLight
+          ? 'bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-xs'
+          : 'bg-[#060a12]/95 backdrop-blur-md border-b border-slate-800/90 shadow-xs'
+      }`}>
+        <div className="max-w-6xl mx-auto flex justify-between items-center gap-1.5 sm:gap-3">
           {/* The avatar is now the way into Profil (it left the tab bar), so
               it has to actually be a link on every page — it used to be an
               inert <div>. */}
@@ -385,59 +389,99 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
             prefetch={false}
             aria-label="Profil"
             aria-current={pathname.startsWith('/talaba/profil') ? 'page' : undefined}
-            className={`group flex items-center gap-2 sm:gap-3 min-w-0 flex-1 -my-1 py-1 pr-2 rounded-2xl transition-colors ${
-              isLight ? 'hover:bg-slate-100' : 'hover:bg-white/5'
-            }`}
+            className={`group flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 -my-0.5 py-1 px-1.5 rounded-xl transition-all ${
+              isLight ? 'hover:bg-slate-100/80 active:bg-slate-200/60' : 'hover:bg-slate-900/80 active:bg-slate-800/60'
+            } no-shelf`}
           >
-            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-linear-to-tr p-px shrink-0 transition-transform group-hover:scale-105 ${isLight ? 'from-indigo-600 to-indigo-400' : 'from-indigo-600 to-cyan-400'}`}>
-              <div className={`relative w-full h-full rounded-[15px] flex items-center justify-center overflow-hidden ${isLight ? 'bg-white' : 'bg-[#02040a]'}`}>
+            {/* Avatar with academic border */}
+            <div className="relative shrink-0">
+              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden border p-px ${
+                isLight ? 'border-slate-200 bg-white shadow-xs' : 'border-slate-800 bg-slate-900'
+              }`}>
                 {profile?.avatar_url ? (
                   <Image
                     src={profile.avatar_url}
                     alt={profile.full_name}
-                    fill
+                    width={36}
+                    height={36}
                     unoptimized
-                    className="rounded-[15px] object-cover"
+                    className="w-full h-full rounded-[10px] object-cover"
                   />
                 ) : (
-                  <UserCircle className={isLight ? 'text-indigo-600' : 'text-cyan-400'} size={20} />
+                  <div className="w-full h-full rounded-[10px] flex items-center justify-center bg-blue-50 dark:bg-blue-950/50">
+                    <UserCircle className={isLight ? 'text-blue-600' : 'text-blue-400'} size={18} />
+                  </div>
                 )}
               </div>
+              {/* Online / Active status dot */}
+              <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#060a12]" />
             </div>
+
+            {/* Student Info */}
             <div className="min-w-0 flex-1">
-              <h2 className={`text-xs sm:text-sm font-bold tracking-tight truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                {profile?.full_name ? `${profile.full_name.split(' ')[0]} 👋` : 'Talaba 👋'}
-              </h2>
-              <div className={`flex items-center gap-1.5 text-[10px] sm:text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>
-                <Clock size={9} className="shrink-0" />
-                <span className={`truncate ${onLeave ? 'font-bold text-sky-500' : ''}`}>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {isKv ? 'Kvartirada' : onLeave ? 'Uyda' : profile?.room_number ? `${profile.room_number}-xona` : 'Yotoqxona'}</span>
+              <div className="flex items-center gap-1 leading-tight">
+                <h2 className="text-xs sm:text-sm font-bold tracking-tight truncate text-slate-900 dark:text-white">
+                  {profile?.full_name ? profile.full_name.split(' ')[0] : 'Talaba'}
+                </h2>
+                <span className="text-[11px] shrink-0">👋</span>
+              </div>
+              
+              <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-none mt-1">
+                <span className="shrink-0 font-mono text-[9.5px] opacity-80">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="opacity-40">•</span>
+                <span className={`truncate font-semibold ${
+                  onLeave
+                    ? 'text-sky-600 dark:text-sky-400'
+                    : isLight
+                      ? 'text-slate-700'
+                      : 'text-slate-300'
+                }`}>
+                  {isKv ? 'Kvartira' : onLeave ? 'Uyda' : profile?.room_number ? `${profile.room_number}-xona` : 'Yotoqxona'}
+                </span>
               </div>
             </div>
-            <ChevronRight size={16} className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${isLight ? 'text-slate-400' : 'text-slate-600'}`} />
+
+            <ChevronRight size={14} className="shrink-0 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
           </Link>
 
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <div className="max-[359px]:scale-90 max-[359px]:-mx-1">
-              <ThemeToggle />
-            </div>
+          {/* Action buttons on the right */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            <ThemeToggle />
+
+            {/* Dasturchi & Takliflar Button */}
             <button
+              type="button"
+              data-student-button="plain"
               onClick={() => setIsDevModalOpen(true)}
-              className={`relative p-2 sm:p-2.5 rounded-xl transition-all group flex items-center justify-center ${
-                isLight 
-                  ? 'bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-600 hover:text-slate-900' 
-                  : 'bg-white/5 border border-white/10 hover:bg-white/10 text-slate-400 hover:text-white'
+              className={`no-shelf h-8 w-8 sm:h-8.5 sm:w-8.5 rounded-xl border flex items-center justify-center transition-all ${
+                isLight
+                  ? 'border-slate-200/90 bg-slate-50/90 hover:bg-slate-100 text-slate-600 hover:text-amber-600 shadow-xs'
+                  : 'border-slate-800 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-amber-400 shadow-xs'
               }`}
               title="Dasturchi va takliflar"
+              aria-label="Dasturchi va takliflar"
             >
-              <Sparkles size={18} className="animate-pulse text-amber-500" />
+              <Sparkles size={15} className="text-amber-500 shrink-0" />
             </button>
+
+            {/* Notifications Button */}
             <button
+              type="button"
+              data-student-button="plain"
               onClick={handleOpenNotifications}
-              className={`relative p-2 sm:p-2.5 rounded-xl transition-all group ${isLight ? 'bg-slate-100 border border-slate-300 hover:bg-slate-200' : 'bg-white/5 border border-white/10 hover:bg-white/10'}`}
+              className={`no-shelf relative h-8 w-8 sm:h-8.5 sm:w-8.5 rounded-xl border flex items-center justify-center transition-all ${
+                isLight
+                  ? 'border-slate-200/90 bg-slate-50/90 hover:bg-slate-100 text-slate-600 hover:text-blue-600 shadow-xs'
+                  : 'border-slate-800 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-blue-400 shadow-xs'
+              }`}
+              title="Bildirishnomalar"
+              aria-label="Bildirishnomalar"
             >
-              <Bell size={18} className={`group-hover:text-white ${isLight ? 'text-slate-600 group-hover:text-slate-900' : 'text-slate-400'}`} />
+              <Bell size={15} className="shrink-0" />
               {unreadCount > 0 && (
-                <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full border-2 animate-pulse ${isLight ? 'bg-blue-500 border-white' : 'bg-cyan-500 border-[#02040a]'}`} />
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-blue-600 text-[9px] font-black text-white ring-2 ring-white dark:ring-[#060a12]">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
               )}
             </button>
           </div>
@@ -592,21 +636,26 @@ export default function TalabaLayout({ children }: { children: React.ReactNode }
               <div className="flex items-center gap-2">
                 {notifications.length > 0 && (
                   <button
+                    type="button"
+                    data-student-button="plain"
                     onClick={markAllAsRead}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all border ${
+                    className={`no-shelf px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all border ${
                       isLight
                         ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                        : 'bg-white/5 border-white/5 text-gray-300 hover:bg-white/10'
+                        : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
                     }`}
                   >
                     O&apos;qilgan
                   </button>
                 )}
                 <button
+                  type="button"
+                  data-student-button="plain"
                   onClick={() => setIsNotificationsOpen(false)}
-                  className={`p-2 rounded-xl transition-all border ${
-                    isLight ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'
+                  className={`no-shelf p-1.5 rounded-xl transition-all border ${
+                    isLight ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                   }`}
+                  aria-label="Yopish"
                 >
                   <X size={16} />
                 </button>
@@ -1704,17 +1753,20 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
             <h3 className="text-lg font-black tracking-tight">Dasturchi & Takliflar</h3>
           </div>
           <button
+            type="button"
+            data-student-button="plain"
             onClick={onClose}
-            className={`p-1.5 rounded-lg transition-colors ${
+            className={`no-shelf p-1.5 rounded-lg transition-colors ${
               isLight ? 'hover:bg-slate-100 text-slate-500' : 'hover:bg-white/10 text-slate-400'
             }`}
+            aria-label="Yopish"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Developer Info Card */}
-        <div className={`rounded-xl border p-4 mb-5 flex flex-col gap-4 items-center sm:items-start sm:flex-row ${
+        <div className={`rounded-xl border p-4 mb-5 flex flex-col gap-4 items-center sm:items-start sm:flex-row no-shelf ${
           isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/5'
         }`}>
           {/* Developer Photo */}
@@ -1789,7 +1841,7 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
                 onChange={(e) => setFeedback(e.target.value)}
                 placeholder="Taklifingiz yoki fikringizni yozing..."
                 rows={3}
-                className={`w-full rounded-xl p-3 text-xs outline-none transition-all resize-none border ${
+                className={`w-full rounded-xl p-3 text-xs outline-none transition-all resize-none border no-shelf ${
                   isLight
                     ? 'bg-slate-50 border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500'
                     : 'bg-white/5 border-white/5 text-white focus:bg-white/10 focus:border-cyan-500'
@@ -1799,12 +1851,9 @@ function DeveloperModal({ onClose, profile, isLight }: ModalProps) {
 
             <button
               type="submit"
+              data-student-button="plain"
               disabled={submitting || !feedback.trim()}
-              className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all bg-gradient-to-r text-white flex items-center justify-center gap-1.5 ${
-                isLight
-                  ? 'from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600'
-                  : 'from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700'
-              } disabled:opacity-30 disabled:cursor-not-allowed`}
+              className="no-shelf w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Send size={12} />
               {submitting ? "Yuborilmoqda..." : "Taklifni Yuborish"}

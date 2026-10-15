@@ -615,22 +615,22 @@ html.theme-light [class*="border-[#0b1120]"] {
     box-shadow: 0 5px 0 0 var(--shelf-shadow-button-disabled);
   }
 
-  div[class*="rounded-xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  div[class*="rounded-2xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  div[class*="rounded-3xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  div[class*="rounded-4xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  div[class*="rounded-["][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *) {
+  div[class*="rounded-xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  div[class*="rounded-2xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  div[class*="rounded-3xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  div[class*="rounded-4xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  div[class*="rounded-["][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
       0 6px 0 0 var(--shelf-shadow-card),
       0 12px 26px -6px rgba(0, 0, 0, 0.32);
   }
 
-  html.theme-light div[class*="rounded-xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  html.theme-light div[class*="rounded-2xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  html.theme-light div[class*="rounded-3xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  html.theme-light div[class*="rounded-4xl"][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  html.theme-light div[class*="rounded-["][class*="border"]:not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *) {
+  html.theme-light div[class*="rounded-xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  html.theme-light div[class*="rounded-2xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  html.theme-light div[class*="rounded-3xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  html.theme-light div[class*="rounded-4xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
+  html.theme-light div[class*="rounded-["][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.6),
       0 6px 0 0 var(--shelf-shadow-card),

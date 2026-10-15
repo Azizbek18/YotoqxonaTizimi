@@ -22,26 +22,32 @@ export default function ThemeToggle({
   return (
     <motion.button
       type="button"
+      data-student-button="plain"
       onClick={toggleTheme}
       aria-label={isLight ? "Tungi rejimga o'tish" : "Kunduzgi rejimga o'tish"}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       whileTap={{ scale: 0.95 }}
       transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-      className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border px-1 transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isLight
-        ? 'border-amber-300 bg-amber-100 focus-visible:ring-amber-400 focus-visible:ring-offset-white'
-        : 'border-blue-500/60 bg-slate-800 focus-visible:ring-blue-400 focus-visible:ring-offset-slate-900'
-        }`}
+      className={`no-shelf relative inline-flex h-8 w-13 shrink-0 items-center rounded-full border p-0.5 transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+        isLight
+          ? 'border-slate-200 bg-slate-100 hover:bg-slate-200/80 focus-visible:ring-blue-500 focus-visible:ring-offset-white'
+          : 'border-slate-800 bg-slate-900 hover:bg-slate-800 focus-visible:ring-blue-400 focus-visible:ring-offset-slate-900'
+      }`}
     >
       {/* The knob carries the active icon, so it is never covered. */}
       <motion.span
-        animate={{ x: isLight ? 0 : 22 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md"
+        animate={{ x: isLight ? 0 : 20 }}
+        transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+        className={`flex h-6.5 w-6.5 items-center justify-center rounded-full shadow-xs border ${
+          isLight
+            ? 'bg-white border-slate-200/80 text-amber-500'
+            : 'bg-slate-800 border-slate-700 text-blue-400'
+        }`}
       >
         {isLight
-          ? <Sun size={14} className="text-amber-500" />
-          : <Moon size={14} className="text-blue-500" />}
+          ? <Sun size={13} className="text-amber-500" />
+          : <Moon size={13} className="text-blue-400" />}
       </motion.span>
     </motion.button>
   )

@@ -13,6 +13,11 @@ class PaymentApi {
   PaymentApi(this._dio);
   final Dio _dio;
 
+  Future<PaymentSettings> fetchSettings() => guardApiCall(() async {
+        final response = await _dio.get<Map<String, dynamic>>('/api/settings');
+        return PaymentSettings.fromJson(response.data!);
+      });
+
   Future<List<PaymentRecord>> fetchPayments() => guardApiCall(() async {
         final response = await _dio.get<Map<String, dynamic>>('/api/student/payments');
         return (response.data!['payments'] as List<dynamic>)
@@ -20,21 +25,56 @@ class PaymentApi {
             .toList();
       });
 
+  Future<AiCheckResult> precheckReceipt({
+    required File file,
+    required double amount,
+  }) =>
+      guardApiCall(() async {
+        final form = FormData.fromMap({
+          'file': await MultipartFile.fromFile(
+            file.path,
+            filename: file.path.split(Platform.pathSeparator).last,
+          ),
+          'amount': amount.toString(),
+        });
+        final response = await _dio.post<Map<String, dynamic>>(
+          '/api/ai/tekshiruv',
+          data: form,
+        );
+        return AiCheckResult.fromJson(response.data!);
+      });
+
   Future<void> submitPayment({
     required File receipt,
     required double amount,
     required int academicYearStart,
     required List<String> months,
-    required String transactionId,
+    String? validatedHash,
+    String? transactionId,
   }) =>
       guardApiCall(() async {
         final form = FormData.fromMap({
-          'file': await MultipartFile.fromFile(receipt.path, filename: receipt.path.split(Platform.pathSeparator).last),
+          'file': await MultipartFile.fromFile(
+            receipt.path,
+            filename: receipt.path.split(Platform.pathSeparator).last,
+          ),
           'amount': amount.toString(),
           'academicYearStart': academicYearStart.toString(),
           'months': jsonEncode(months),
-          'transactionId': transactionId,
+          if (validatedHash != null && validatedHash.isNotEmpty) 'validatedHash': validatedHash,
+          if (transactionId != null && transactionId.isNotEmpty) 'transactionId': transactionId,
         });
-        await _dio.post('/api/student/payments', data: form);
+        final response = await _dio.post<Map<String, dynamic>>('/api/student/payments', data: form);
+        final records = response.data?['records'] as List<dynamic>?;
+        if (records != null && records.isNotEmpty) {
+          final firstRecord = records.first as Map<String, dynamic>;
+          final paymentId = firstRecord['id'] as String?;
+          if (paymentId != null) {
+            // Fire-and-forget background AI analysis trigger (mirrors the web app)
+            try {
+              await _dio.post('/api/ai/tahlil', data: {'paymentId': paymentId});
+            } catch (_) {}
+          }
+        }
       });
 }

@@ -23,9 +23,15 @@ class AppConfig {
     defaultValue: 'https://www.meningyotoqxonam.uz',
   );
 
-  static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://qgnjhkvmuywlfdnjfpqg.supabase.co',
+  );
 
-  static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  static const supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: 'sb_publishable_pGbSRze0O9L-Oc6I9WZ6hA_j9kiIB3u',
+  );
 
   static bool get isConfigured => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 

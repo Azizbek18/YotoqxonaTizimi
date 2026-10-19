@@ -66,5 +66,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Yotoqxonada ekanligingizni tasdiqlash (yo'qlama) uchun joylashuv ma'lumotlari talab qilinadi.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>To'lov cheklari, profil rasmi va xorijiy hujjatlarni yuklash uchun fotosuratlarga ruxsat bering.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>To'lov cheklari va hujjatlarni to'g'ridan-to'g'ri suratga olish uchun kameraga ruxsat bering.</string>
 </dict>
 </plist>

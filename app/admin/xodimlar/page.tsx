@@ -22,7 +22,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 import { fetchStaffAccounts } from '@/features/staff-accounts/client/api'
 import { fetchStaffInvites, createStaffInvite, revokeStaffInvite } from '@/features/staff-invites/client/api'
 import type { StaffInviteRow } from '@/features/staff-invites/types'
-import { adminUI } from '@/lib/admin-ui'
+import { dekanUI } from '@/lib/dekan-ui'
 import type { ManagedStaffRole, StaffAccountRow } from '@/features/staff-accounts/types'
 
 const ROLE_LABELS: Record<ManagedStaffRole, string> = {
@@ -42,7 +42,7 @@ function getInitials(name: string) {
 export default function AdminXodimlarPage() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
-  const ui = adminUI(isLight)
+  const ui = dekanUI(isLight)
 
   const [staff, setStaff] = useState<StaffAccountRow[]>([])
   const [loading, setLoading] = useState(true)

@@ -31,7 +31,7 @@ import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
 import { useStaffPanel } from '@/lib/hooks/useStaffPanel'
-import { adminUI } from '@/lib/admin-ui'
+import { dekanUI } from '@/lib/dekan-ui'
 import ArizaPdfViewerModal from '@/components/applications/ArizaPdfViewerModal'
 
 interface ApplicationRequest {
@@ -81,7 +81,7 @@ export default function AdminArizalar() {
   const theme = useThemeStore((state) => state.theme)
   const isLight = theme === 'light'
 
-  const ui = adminUI(isLight)
+  const ui = dekanUI(isLight)
   const { isTarbiyachi, canDeleteArizalar } = useStaffPanel()
   const textMuted = ui.muted
   const textStrong = ui.strong
@@ -558,50 +558,51 @@ export default function AdminArizalar() {
         }}
       />
 
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2">
-        <div>
+      {/* Hero banner — same treatment as the other dekan/tarbiyachi pages */}
+      <div className="no-shelf relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-4 sm:p-5 shadow-lg shadow-indigo-950/15 border border-white/20 text-white">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -left-12 -bottom-16 h-48 w-48 rounded-full bg-violet-400/15 blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] opacity-[0.07]" />
+
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 text-white shadow-md shadow-indigo-500/20">
-              <FileText size={22} strokeWidth={2.4} />
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md text-white border border-white/25 shadow-inner shrink-0">
+              <FileText size={20} strokeWidth={2.2} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className={`text-xl sm:text-2xl font-black tracking-tight ${textStrong}`}>
-                  Arizalar boshqaruvi
-                </h1>
-                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
-                  isLight ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300'
-                }`}>
+              <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Jami: {requests.length}
                 </span>
               </div>
-              <p className={`text-xs mt-0.5 ${textMuted}`}>
+              <h1 className="text-lg sm:text-xl font-black tracking-tight text-white" style={{ color: '#ffffff' }}>
+                Arizalar boshqaruvi
+              </h1>
+              <p className="mt-0.5 text-xs text-indigo-100" style={{ color: '#e0e7ff' }}>
                 Talabalar murojaatlari va tushuntirish xatlarini ko‘rib chiqish paneli
               </p>
             </div>
           </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={loadRequests}
-          disabled={loading}
-          className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold transition-all disabled:opacity-50 self-start sm:self-auto shadow-xs active:scale-95 ${
-            isLight
-              ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300'
-              : 'border-slate-800 bg-slate-900 text-slate-200 hover:bg-slate-800'
-          }`}
-          title="Ma'lumotlarni yangilash"
-        >
-          <motion.div
-            animate={loading ? { rotate: 360 } : {}}
-            transition={loading ? { repeat: Infinity, duration: 1.2, ease: 'linear' } : {}}
-          >
-            <RotateCcw size={14} />
-          </motion.div>
-          <span>Yangilash</span>
-        </button>
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            <button
+              type="button"
+              onClick={loadRequests}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white text-xs font-bold transition-all disabled:opacity-50 no-shelf cursor-pointer active:scale-95 shadow-xs"
+              title="Ma'lumotlarni yangilash"
+            >
+              <motion.div
+                animate={loading ? { rotate: 360 } : {}}
+                transition={loading ? { repeat: Infinity, duration: 1.2, ease: 'linear' } : {}}
+              >
+                <RotateCcw size={14} />
+              </motion.div>
+              <span style={{ color: '#ffffff' }}>{loading ? '...' : 'Yangilash'}</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Interactive KPI Stat Cards */}

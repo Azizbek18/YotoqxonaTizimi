@@ -90,6 +90,7 @@ export default function UpdatePassword() {
                     destination =
                         roleResult.role === 'admin' ? '/dekan/dashboard'
                         : roleResult.role === 'tarbiyachi' ? '/tarbiyachi/dashboard'
+                        : roleResult.role === 'xalqaro' ? '/xalqaro/dashboard'
                         : roleResult.role === 'dekan' ? '/dekan/dashboard'
                         : roleResult.role === 'talaba' ? '/talaba/dashboard'
                         : '/login'

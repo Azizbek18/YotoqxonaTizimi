@@ -13,8 +13,11 @@ import {
   type ForeignDocDashboardRow,
   type ForeignDocInput,
   type ForeignDocStaffPatch,
+  type InternationalDoc,
+  type InternationalStudentRow,
   type RegistrationBasis,
 } from '../types'
+import { pickCurrentDoc } from '../domain/international'
 import { bucketOf, daysLeft, tashkentToday } from '../domain/expiry'
 import {
   createForeignDocsRepository,
@@ -235,6 +238,58 @@ export function createForeignDocsService(
         roomNumber: row.users?.room_number ?? null,
         dormId: row.users?.dorm_id ?? null,
       }))
+    },
+
+    // ── Xalqaro bo'lim: barcha fakultet, faqat ko'rish ───────────────────
+    // Har xorijiy talaba uchun bitta qator: joriy viza va joriy propiska
+    // (yoki null — kiritilmagan). Ataylab tor ma'lumot: hujjat fayli,
+    // ijara beruvchi va izoh qaytarilmaydi.
+    async listInternationalOverview(): Promise<InternationalStudentRow[]> {
+      const today = tashkentToday()
+      const [students, docs] = await Promise.all([
+        repository.listForeignStudents(),
+        repository.listVisaAndRegistrationDocs(),
+      ])
+
+      const byStudent = new Map<string, { visa: ForeignDoc[]; registration: ForeignDoc[] }>()
+      for (const row of docs) {
+        if (row.doc_type !== 'visa' && row.doc_type !== 'registration') continue
+        const bucket = byStudent.get(row.student_id) ?? { visa: [], registration: [] }
+        bucket[row.doc_type].push(mapRow(row, today))
+        byStudent.set(row.student_id, bucket)
+      }
+
+      const narrow = (doc: ForeignDoc | null): InternationalDoc | null =>
+        doc
+          ? {
+              id: doc.id,
+              number: doc.number,
+              issuedOn: doc.issuedOn,
+              expiresOn: doc.expiresOn,
+              status: doc.status,
+              registrationBasis: doc.registrationBasis,
+              address: doc.address,
+              verified: Boolean(doc.verifiedAt),
+              daysLeft: doc.daysLeft,
+              bucket: doc.bucket,
+            }
+          : null
+
+      return students
+        .map((student): InternationalStudentRow => {
+          const own = byStudent.get(student.id)
+          return {
+            studentId: student.id,
+            fullName: student.full_name?.trim() || '—',
+            faculty: student.faculty ?? null,
+            country: student.country ?? null,
+            course: student.course ?? null,
+            phone: student.phone_number ?? null,
+            visa: narrow(pickCurrentDoc(own?.visa ?? [])),
+            registration: narrow(pickCurrentDoc(own?.registration ?? [])),
+          }
+        })
+        .sort((a, b) => a.fullName.localeCompare(b.fullName, 'uz'))
     },
 
     async patchByStaff(

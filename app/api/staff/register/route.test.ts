@@ -204,6 +204,35 @@ describe('POST /api/staff/register', () => {
       await POST(request(INVITE_REG))
       expect(upsert).not.toHaveBeenCalled()
     })
+
+    describe('international-office (xalqaro) invite', () => {
+      beforeEach(() => {
+        rpc.mockResolvedValue({ data: [{ faculty: null, role: 'xalqaro', email: 'xalqaro@example.com' }], error: null })
+        invitePeek.mockResolvedValue({ data: { faculty: null, role: 'xalqaro', email: 'xalqaro@example.com', max_uses: 1, use_count: 0 }, error: null })
+      })
+
+      it('creates a faculty-less xalqaro account on the email the code carries', async () => {
+        const response = await POST(request(INVITE_REG))
+        expect(response.status).toBe(200)
+        expect(insert.mock.calls[0][0]).toMatchObject({
+          role: 'xalqaro', faculty: null, status: 'active', email: 'xalqaro@example.com',
+        })
+        expect(createAuthUserSafely).toHaveBeenCalledWith('xalqaro@example.com', expect.any(String), { role: 'xalqaro' })
+      })
+
+      it('ignores a faculty or email the client sends — the account stays cross-faculty and bound to the code', async () => {
+        await POST(request({ ...INVITE_REG, faculty: 'fizika', email: 'attacker@evil.com' }))
+        const inserted = insert.mock.calls[0][0]
+        expect(inserted.faculty).toBeNull()
+        expect(inserted.email).toBe('xalqaro@example.com')
+      })
+
+      it('does not seed app_settings or look for a dean', async () => {
+        await POST(request(INVITE_REG))
+        expect(upsert).not.toHaveBeenCalled()
+        expect(dekanMaybeSingle).not.toHaveBeenCalled()
+      })
+    })
   })
 
   describe('shared dekan link (faculty-less code, dean picks their faculty)', () => {

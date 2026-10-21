@@ -9,6 +9,8 @@ const ROLE_HOME: Record<Exclude<AppRole, null>, string> = {
   // AMIT-scoped faculty dashboard.
   admin: '/dekan/dekanlar',
   tarbiyachi: '/tarbiyachi/dashboard',
+  // International office: read-only visa / registration (propiska) overview.
+  xalqaro: '/xalqaro/dashboard',
   dekan: '/dekan/dashboard',
   talaba: '/talaba/dashboard',
 }
@@ -213,6 +215,15 @@ export async function proxy(request: NextRequest) {
   // ========================
   const tarbiyachiGuard = guardRole('/tarbiyachi', 'tarbiyachi', '/login')
   if (tarbiyachiGuard) return tarbiyachiGuard
+
+  // ========================
+  // XALQARO BO'LIM HIMOYASI
+  // ========================
+  // The international-office role sees only /xalqaro (every other prefix
+  // already bounces a non-matching role to its own home). `admin` may open it
+  // too, to check exactly what the office sees.
+  const xalqaroGuard = guardRole('/xalqaro', ['xalqaro', 'admin'], '/login', '/login')
+  if (xalqaroGuard) return xalqaroGuard
 
   // ========================
   // DEKAN ROUTES HIMOYASI

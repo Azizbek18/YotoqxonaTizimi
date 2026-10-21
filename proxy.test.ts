@@ -16,6 +16,9 @@ describe('public entry auth redirects', () => {
     expect(publicEntryRedirectTarget(true, 'admin', '/login')).toBe('/dekan/dekanlar')
     expect(publicEntryRedirectTarget(true, 'dekan', '/login')).toBe('/dekan/dashboard')
     expect(publicEntryRedirectTarget(true, 'talaba', '/')).toBe('/talaba/dashboard')
+    // The international office has its own read-only panel and nothing else.
+    expect(publicEntryRedirectTarget(true, 'xalqaro', '/login')).toBe('/xalqaro/dashboard')
+    expect(publicEntryRedirectTarget(true, 'xalqaro', '/')).toBe('/xalqaro/dashboard')
   })
 
   it('does not redirect signed-out visitors', () => {

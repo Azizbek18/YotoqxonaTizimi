@@ -120,3 +120,32 @@ export type ForeignDocDashboardRow = ForeignDoc & {
   roomNumber: string | null
   dormId: string | null
 }
+
+// ── Xalqaro bo'lim (faqat ko'rish) ──────────────────────────────────────────
+// Bir xorijiy talaba uchun joriy viza va propiska. Ataylab tor: hujjat
+// fayli, ijara beruvchi ma'lumotlari va izoh bu yerga CHIQMAYDI.
+export type InternationalDoc = {
+  id: string
+  number: string | null
+  issuedOn: string | null
+  expiresOn: string
+  status: DocStatus
+  registrationBasis: RegistrationBasis | null
+  address: string | null
+  verified: boolean
+  daysLeft: number
+  bucket: ExpiryBucket
+}
+
+export type InternationalStudentRow = {
+  studentId: string
+  fullName: string
+  faculty: string | null
+  country: string | null
+  course: number | null
+  phone: string | null
+  /** null = talaba hali viza kiritmagan. */
+  visa: InternationalDoc | null
+  /** null = talaba hali propiska kiritmagan. */
+  registration: InternationalDoc | null
+}

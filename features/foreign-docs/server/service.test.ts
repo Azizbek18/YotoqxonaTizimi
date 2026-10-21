@@ -68,3 +68,69 @@ describe('lease documents', () => {
     await expect(svc.saveForStudent('student1', input)).rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe('listInternationalOverview (international office, read-only)', () => {
+  const baseDoc = {
+    created_by_role: 'talaba', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
+    issued_on: null, registration_basis: null, address: null, number: null, verified_at: null,
+    verified_by: null, landlord_name: null, landlord_phone: null, note: null, file_path: null,
+  }
+  const student = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
+    id, full_name: name, faculty: 'amit', country: 'Turkmaniston', course: 1, phone_number: '+99361000000', ...extra,
+  })
+
+  function build(students: unknown[], docs: unknown[]) {
+    const repository = {
+      listForeignStudents: vi.fn().mockResolvedValue(students),
+      listVisaAndRegistrationDocs: vi.fn().mockResolvedValue(docs),
+    }
+    return createForeignDocsService(repository as never)
+  }
+
+  it('returns one row per foreign student with the current visa and propiska, null when absent', async () => {
+    const svc = build(
+      [student('s1', 'Bekov A'), student('s2', 'Alov B')],
+      [
+        { ...baseDoc, id: 'v-old', student_id: 's1', doc_type: 'visa', status: 'active', expires_on: '2026-01-01' },
+        { ...baseDoc, id: 'v-new', student_id: 's1', doc_type: 'visa', status: 'active', expires_on: '2099-01-01' },
+        { ...baseDoc, id: 'r1', student_id: 's1', doc_type: 'registration', status: 'active', expires_on: '2099-06-01', registration_basis: 'ttj' },
+      ],
+    )
+    const rows = await svc.listInternationalOverview()
+    expect(rows.map((r) => r.fullName)).toEqual(['Alov B', 'Bekov A']) // sorted by name
+    const [alov, bekov] = rows
+    expect(alov.visa).toBeNull()
+    expect(alov.registration).toBeNull()
+    expect(bekov.visa?.id).toBe('v-new')
+    expect(bekov.registration?.registrationBasis).toBe('ttj')
+  })
+
+  it('never exposes the document scan, landlord details or staff notes', async () => {
+    const svc = build(
+      [student('s1', 'Bekov A')],
+      [{
+        ...baseDoc, id: 'r1', student_id: 's1', doc_type: 'registration', status: 'active', expires_on: '2099-06-01',
+        file_path: 'foreign-docs/s1/r1/scan.jpg', landlord_name: 'Karim aka', landlord_phone: '+998901234567',
+        note: 'internal staff note', created_by_role: 'dekan',
+      }],
+    )
+    const [row] = await svc.listInternationalOverview()
+    const serialized = JSON.stringify(row)
+    for (const secret of ['scan.jpg', 'Karim aka', '+998901234567', 'internal staff note', 'landlord', 'file']) {
+      expect(serialized).not.toContain(secret)
+    }
+    expect(Object.keys(row.registration ?? {}).sort()).toEqual([
+      'address', 'bucket', 'daysLeft', 'expiresOn', 'id', 'issuedOn', 'number', 'registrationBasis', 'status', 'verified',
+    ])
+  })
+
+  it('ignores lease contracts and any other doc type', async () => {
+    const svc = build(
+      [student('s1', 'Bekov A')],
+      [{ ...baseDoc, id: 'l1', student_id: 's1', doc_type: 'lease', status: 'active', expires_on: '2099-01-01' }],
+    )
+    const [row] = await svc.listInternationalOverview()
+    expect(row.visa).toBeNull()
+    expect(row.registration).toBeNull()
+  })
+})

@@ -141,6 +141,8 @@ function LoginContent() {
           router.push('/dekan/dashboard')
         } else if (userRole === 'tarbiyachi') {
           router.push('/tarbiyachi/dashboard')
+        } else if (userRole === 'xalqaro') {
+          router.push('/xalqaro/dashboard')
         } else {
           router.push('/talaba/dashboard')
         }

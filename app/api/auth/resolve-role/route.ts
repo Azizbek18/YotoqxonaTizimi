@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
     if (
       staffUser?.status === 'active'
-      && ['admin', 'tarbiyachi', 'dekan'].includes(staffUser.role)
+      && ['admin', 'tarbiyachi', 'dekan', 'xalqaro'].includes(staffUser.role)
     ) {
       return NextResponse.json({ ok: true, role: staffUser.role })
     }

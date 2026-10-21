@@ -38,6 +38,33 @@ export type StudentContextRow = {
 
 export type DashboardDocRow = ForeignStudentDocumentRow & { users: StudentContextRow | null }
 
+// Xalqaro bo'lim ro'yxati uchun talaba qatori (faqat kerakli ustunlar).
+export type ForeignStudentRow = {
+  id: string
+  full_name: string | null
+  faculty: string | null
+  country: string | null
+  course: number | null
+  phone_number: string | null
+}
+
+// PostgREST bir so'rovda ko'pi bilan 1000 qator qaytaradi; xorijiy talabalar
+// soni shu chegaraga yaqin, shuning uchun sahifalab o'qiymiz.
+const PAGE_SIZE = 1000
+
+async function fetchAllPages<T>(
+  fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  const all: T[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await fetchPage(from, from + PAGE_SIZE - 1)
+    if (error) throw error
+    all.push(...(data ?? []))
+    if ((data?.length ?? 0) < PAGE_SIZE) break
+  }
+  return all
+}
+
 export type ReminderDocRow = Pick<
   ForeignStudentDocumentRow,
   'id' | 'student_id' | 'doc_type' | 'number' | 'expires_on'
@@ -153,6 +180,34 @@ export function createForeignDocsRepository() {
         .order('expires_on', { ascending: true })
       if (error) throw error
       return (data ?? []) as unknown as DashboardDocRow[]
+    },
+
+    // ── Xalqaro bo'lim (faqat o'qish, barcha fakultetlar) ────────────────
+    /** Faol xorijiy talabalar (users.country to'ldirilgan). */
+    async listForeignStudents(): Promise<ForeignStudentRow[]> {
+      return fetchAllPages<ForeignStudentRow>((from, to) =>
+        supabase
+          .from('users')
+          .select('id, full_name, faculty, country, course, phone_number')
+          .eq('role', 'talaba')
+          .eq('status', 'active')
+          .not('country', 'is', null)
+          .neq('country', '')
+          .order('id', { ascending: true })
+          .range(from, to) as unknown as PromiseLike<{ data: ForeignStudentRow[] | null; error: unknown }>,
+      )
+    },
+
+    /** Barcha viza va propiska yozuvlari (ijara shartnomasi emas). */
+    async listVisaAndRegistrationDocs(): Promise<ForeignStudentDocumentRow[]> {
+      return fetchAllPages<ForeignStudentDocumentRow>((from, to) =>
+        supabase
+          .from('foreign_student_documents')
+          .select(DOC_COLUMNS)
+          .in('doc_type', ['visa', 'registration'])
+          .order('id', { ascending: true })
+          .range(from, to) as unknown as PromiseLike<{ data: ForeignStudentDocumentRow[] | null; error: unknown }>,
+      )
     },
 
     // ── Eslatma cron ──────────────────────────────────────────────────────

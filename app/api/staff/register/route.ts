@@ -20,7 +20,8 @@ type StaffInsert = {
   gender: string | null
   role: string
   status: 'active'
-  faculty: string
+  // null for the cross-faculty international-office role.
+  faculty: string | null
   staff_id?: string
 }
 
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
     const supabase = getServiceSupabase()
 
     let role: string
-    let faculty: string
+    let faculty: string | null
     let email: string
     let staffInsert: StaffInsert
 
@@ -120,6 +121,10 @@ export async function POST(request: Request) {
 
       if (claimedFaculty) {
         faculty = claimedFaculty
+      } else if (role === 'xalqaro') {
+        // The international office works across every faculty: neither the code
+        // nor the account carries one (minted only by the superadmin).
+        faculty = null
       } else {
         const picked = typeof body.faculty === 'string' ? body.faculty.trim() : ''
         if (!isPermitFacultyValue(picked)) {
@@ -234,7 +239,7 @@ export async function POST(request: Request) {
     // instead of silently falling back to the primary building's numbers.
     // The dekan then fills TTJ name / fees / contacts in /dekan/sozlamalar.
     // ignoreDuplicates: a row already exists if this faculty was set up before.
-    if (role === 'dekan') {
+    if (role === 'dekan' && faculty) {
       const { error: settingsError } = await supabase
         .from('app_settings')
         .upsert({ faculty }, { onConflict: 'faculty', ignoreDuplicates: true })

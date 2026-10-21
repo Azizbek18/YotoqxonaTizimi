@@ -1,14 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Download, Phone, RotateCcw, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, FileSearch, Phone, RotateCcw, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { dekanUI, statusChip, type DekanStatusTone } from '@/lib/dekan-ui'
 import { downloadXlsx } from '@/lib/spreadsheet-export'
 import { PERMIT_FACULTIES, permitFacultyLabel } from '@/lib/faculties'
-import { fetchInternationalOverview } from '@/features/foreign-docs/client/api'
+import { fetchInternationalOverview, internationalDocFileUrl } from '@/features/foreign-docs/client/api'
 import {
   REGISTRATION_BASIS_LABELS,
   type InternationalDoc,
@@ -143,6 +143,25 @@ export default function XalqaroDashboardPage() {
     }
   }
 
+  // The tab is opened synchronously (inside the click) and pointed at the
+  // short-lived signed URL once it arrives — opening after an await would be
+  // blocked as a popup.
+  const openScan = async (docId: string) => {
+    const tab = window.open('', '_blank')
+    if (!tab) {
+      toast.error('Brauzer yangi oynani blokladi. Ruxsat bering va qayta urining.')
+      return
+    }
+    try {
+      const url = await internationalDocFileUrl(docId)
+      tab.opener = null
+      tab.location.href = url
+    } catch (error) {
+      tab.close()
+      toast.error(error instanceof Error ? error.message : 'Faylni ochib bo‘lmadi')
+    }
+  }
+
   const docCell = (doc: InternationalDoc | null, showBasis: boolean) => {
     const health = docHealth(doc)
     const chip = statusChip(HEALTH_TONE[health], isLight)
@@ -160,6 +179,15 @@ export default function XalqaroDashboardPage() {
         {doc && doc.number && <p className={`text-[11px] ${ui.muted}`}>№ {doc.number}</p>}
         {doc && showBasis && doc.registrationBasis && (
           <p className={`text-[11px] ${ui.muted}`}>{REGISTRATION_BASIS_LABELS[doc.registrationBasis]}</p>
+        )}
+        {doc && doc.hasFile && (
+          <button
+            type="button"
+            onClick={() => void openScan(doc.id)}
+            className={`inline-flex items-center gap-1 text-[11px] font-bold hover:underline ${ui.accentText}`}
+          >
+            <FileSearch size={12} /> Hujjatni ko‘rish
+          </button>
         )}
       </div>
     )

@@ -224,6 +224,18 @@ export function createForeignDocsService(
       return { filePath: doc.file_path, studentId: doc.student_id }
     },
 
+    // Xalqaro bo'lim: barcha fakultet bo'yicha faqat VIZA va PROPISKA skanerini
+    // ochadi — ijara shartnomasi (ijara beruvchi ma'lumoti bor) va xorijiy
+    // bo'lmagan talabaning hujjati ochilmaydi.
+    async getForInternationalFileAccess(id: string): Promise<{ filePath: string; studentId: string }> {
+      const doc = await repository.getById(id)
+      if (!doc || !doc.file_path) throw new ApiError(404, 'Fayl topilmadi')
+      if (doc.doc_type !== 'visa' && doc.doc_type !== 'registration') throw new ApiError(403, 'Ruxsat berilmadi')
+      const context = await repository.findStudentContext(doc.student_id)
+      if (!context || !context.country) throw new ApiError(403, 'Ruxsat berilmadi')
+      return { filePath: doc.file_path, studentId: doc.student_id }
+    },
+
     // ── Dekan / superadmin ────────────────────────────────────────────────
     async listForFaculty(facultyValue: string | null): Promise<ForeignDocDashboardRow[]> {
       const faculty = requireFaculty(facultyValue)
@@ -270,6 +282,7 @@ export function createForeignDocsService(
               registrationBasis: doc.registrationBasis,
               address: doc.address,
               verified: Boolean(doc.verifiedAt),
+              hasFile: doc.hasFile,
               daysLeft: doc.daysLeft,
               bucket: doc.bucket,
             }

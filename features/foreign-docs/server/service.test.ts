@@ -120,7 +120,7 @@ describe('listInternationalOverview (international office, read-only)', () => {
       expect(serialized).not.toContain(secret)
     }
     expect(Object.keys(row.registration ?? {}).sort()).toEqual([
-      'address', 'bucket', 'daysLeft', 'expiresOn', 'id', 'issuedOn', 'number', 'registrationBasis', 'status', 'verified',
+      'address', 'bucket', 'daysLeft', 'expiresOn', 'hasFile', 'id', 'issuedOn', 'number', 'registrationBasis', 'status', 'verified',
     ])
   })
 
@@ -132,5 +132,41 @@ describe('listInternationalOverview (international office, read-only)', () => {
     const [row] = await svc.listInternationalOverview()
     expect(row.visa).toBeNull()
     expect(row.registration).toBeNull()
+  })
+})
+
+describe('getForInternationalFileAccess (international office)', () => {
+  function build(doc: Record<string, unknown> | null, context: Record<string, unknown> | null) {
+    const repository = {
+      getById: vi.fn().mockResolvedValue(doc),
+      findStudentContext: vi.fn().mockResolvedValue(context),
+    }
+    return createForeignDocsService(repository as never)
+  }
+  const FILE = 'foreign-docs/s1/d1/scan.jpg'
+
+  it('opens a foreign student’s visa or propiska scan from any faculty', async () => {
+    for (const doc_type of ['visa', 'registration']) {
+      const svc = build({ id: 'd1', student_id: 's1', doc_type, file_path: FILE }, { faculty: 'iqtisodiyot', country: 'Turkmaniston' })
+      await expect(svc.getForInternationalFileAccess('d1')).resolves.toEqual({ filePath: FILE, studentId: 's1' })
+    }
+  })
+
+  it('refuses a lease contract (it carries landlord details)', async () => {
+    const svc = build({ id: 'd1', student_id: 's1', doc_type: 'lease', file_path: FILE }, { faculty: 'amit', country: 'Turkmaniston' })
+    await expect(svc.getForInternationalFileAccess('d1')).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('refuses a student who is not foreign (no country)', async () => {
+    const svc = build({ id: 'd1', student_id: 's1', doc_type: 'registration', file_path: FILE }, { faculty: 'amit', country: null })
+    await expect(svc.getForInternationalFileAccess('d1')).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('404s a missing document or one with no file; refuses when the student is gone', async () => {
+    await expect(build(null, null).getForInternationalFileAccess('d1')).rejects.toMatchObject({ status: 404 })
+    await expect(build({ id: 'd1', student_id: 's1', doc_type: 'visa', file_path: null }, { country: 'X' }).getForInternationalFileAccess('d1'))
+      .rejects.toMatchObject({ status: 404 })
+    await expect(build({ id: 'd1', student_id: 's1', doc_type: 'visa', file_path: FILE }, null).getForInternationalFileAccess('d1'))
+      .rejects.toMatchObject({ status: 403 })
   })
 })

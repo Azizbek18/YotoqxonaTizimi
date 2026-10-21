@@ -133,6 +133,8 @@ export type InternationalDoc = {
   registrationBasis: RegistrationBasis | null
   address: string | null
   verified: boolean
+  /** Skaner yuklangan — faylning o'zi alohida, qisqa muddatli havola bilan ochiladi. */
+  hasFile: boolean
   daysLeft: number
   bucket: ExpiryBucket
 }

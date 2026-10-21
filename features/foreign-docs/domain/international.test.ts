@@ -35,7 +35,7 @@ import type { InternationalDoc, InternationalStudentRow } from '../types'
 
 const intl = (daysLeft: number, status: 'active' | 'renewing' | 'cancelled' = 'active'): InternationalDoc => ({
   id: 'd', number: null, issuedOn: null, expiresOn: '2026-12-31', status,
-  registrationBasis: null, address: null, verified: false, daysLeft,
+  registrationBasis: null, address: null, verified: false, hasFile: false, daysLeft,
   bucket: daysLeft < 0 ? 'expired' : 'ok',
 })
 const student = (visa: InternationalDoc | null, registration: InternationalDoc | null): InternationalStudentRow => ({

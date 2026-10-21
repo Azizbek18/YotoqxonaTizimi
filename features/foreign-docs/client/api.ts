@@ -7,6 +7,7 @@ import type {
   ForeignDocDashboardRow,
   ForeignDocInput,
   ForeignDocStaffPatch,
+  InternationalStudentRow,
 } from '../types'
 
 // Re-read on every dashboard visit; only the student's own save/delete changes
@@ -118,4 +119,18 @@ export async function dekanForeignDocFileUrl(id: string): Promise<string> {
     `/api/dekan/foreign-docs/file?id=${encodeURIComponent(id)}`,
   )
   return result.url
+}
+
+/** Xalqaro bo'lim: viza/propiska skanerining 60 soniyalik havolasi. */
+export async function internationalDocFileUrl(id: string): Promise<string> {
+  const result = await apiRequest<{ url: string }>(
+    `/api/xalqaro/foreign-docs/file?id=${encodeURIComponent(id)}`,
+  )
+  return result.url
+}
+
+/** Xalqaro bo'lim: barcha fakultetlardagi xorijiy talabalar, joriy viza va propiska (faqat o'qish). */
+export async function fetchInternationalOverview(): Promise<InternationalStudentRow[]> {
+  const result = await apiRequest<{ students: InternationalStudentRow[] }>('/api/xalqaro/overview')
+  return result.students
 }

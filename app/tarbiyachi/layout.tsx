@@ -270,7 +270,9 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
 
       {/* overflow-x-clip, not -hidden: -hidden turns this into a scroll
           container and the sticky header below stops sticking. */}
-      <div className={`min-w-0 w-full max-w-full overflow-x-clip transition-all duration-300 ${sidebarOpen ? 'lg:ml-[280px]' : 'lg:ml-[88px]'}`}>
+      {/* No `w-full` here: with the sidebar's lg:ml-* offset it makes the column
+          100% wide *plus* the margin, so overflow-x-clip cut the right 280px off. */}
+      <div className={`min-w-0 max-w-full overflow-x-clip transition-all duration-300 ${sidebarOpen ? 'lg:ml-[280px]' : 'lg:ml-[88px]'}`}>
         <header className={`sticky top-0 z-30 border-b w-full ${isLight ? 'border-slate-200 bg-white/85' : 'border-slate-800 bg-slate-950/80'} backdrop-blur`}>
           <span className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
           <div className="flex items-center justify-between gap-3 px-3 py-3 sm:px-6 sm:py-4">

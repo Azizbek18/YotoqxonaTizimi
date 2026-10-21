@@ -17,7 +17,7 @@ import {
   type InternationalStudentRow,
   type RegistrationBasis,
 } from '../types'
-import { pickCurrentDoc } from '../domain/international'
+import { isUzbekCountry, pickCurrentDoc } from '../domain/international'
 import { bucketOf, daysLeft, tashkentToday } from '../domain/expiry'
 import {
   createForeignDocsRepository,
@@ -288,7 +288,10 @@ export function createForeignDocsService(
             }
           : null
 
+      // O'zbekiston fuqarolari (country erkin matn bo'lgani uchun ular ham
+      // to'ldirilgan) xalqaro bo'lim ro'yxatiga kirmaydi.
       return students
+        .filter((student) => !isUzbekCountry(student.country))
         .map((student): InternationalStudentRow => {
           const own = byStudent.get(student.id)
           return {

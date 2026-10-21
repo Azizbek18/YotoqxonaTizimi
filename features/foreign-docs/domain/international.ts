@@ -20,6 +20,28 @@ export function pickCurrentDoc<T extends Pickable>(docs: readonly T[]): T | null
   })[0]
 }
 
+/**
+ * `users.country` — erkin matn. O'zbekiston fuqarolari ham uni "O'zbekiston",
+ * "Oʻzbekiston", "Qoraqalpogʻiston" kabi turlicha yozib qo'ygan (bazada ~110 ta),
+ * ular xalqaro bo'lim uchun xorijiy talaba EMAS. Diakritika, tutuq belgisi va
+ * katta-kichik harf farqini olib tashlab, o'zbek / qoraqalpoq yozilishlarini
+ * aniqlaymiz. Bo'sh qiymat (mamlakat kiritilmagan) false qaytaradi.
+ */
+export function isUzbekCountry(country: string | null | undefined): boolean {
+  if (!country) return false
+  const letters = country
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-zа-яё]/g, '')
+  if (!letters) return false
+  // o'zbek / uzbek (+ imlo xatolari: "ozbkeiston", "ozbekistkn")
+  if (/^(o?z|u)b(e|k)/.test(letters) || /^uzbek/.test(letters)) return true
+  // Qoraqalpog'iston / Qaraqalpaqstan / Каракалпакстан ("Рес" prefiksi bilan ham)
+  if (/(qora|qara|kara|каракалп|қорақалп)/.test(letters) && /(qalp|qolp|калп)/.test(letters)) return true
+  return false
+}
+
 /** Hujjat holati: kiritilmagan (yoki bekor qilingan) / muddati o'tgan / 30 kun ichida / amalda. */
 export type DocHealth = 'missing' | 'expired' | 'soon' | 'ok'
 

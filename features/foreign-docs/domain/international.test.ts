@@ -80,3 +80,32 @@ describe('matchesIssue / summarize', () => {
     })
   })
 })
+
+import { isUzbekCountry } from './international'
+
+describe('isUzbekCountry (free-text users.country)', () => {
+  it('recognises every way Uzbek citizens were seen writing their own country', () => {
+    const uzbek = [
+      "O'zbekiston", 'Oʻzbekiston', 'O’zbekiston', 'OʻZBEKISTON', 'Ozbekiston', 'Uzbekiston', 'Uzbekistan', 'Uzbek', 'O’zbek',
+      'Õzbekiston', 'Ózbekiston', 'Òzbekiston', 'Ozbkeiston', 'Ozbekistkn', 'Oʻzbekiston Respublikasi',
+      'Qoraqalpogiston', 'Qoraqalpog’iston', 'Qoraqalpogʻiston Respublikasi', 'Qoraqalpoqiston', 'Qoraqalpoģiston',
+      'Qoraqolpogiston', 'Qaraqalpaqstan Respublikasi', 'Рес Каракалпакстан',
+    ]
+    for (const country of uzbek) expect(isUzbekCountry(country), country).toBe(true)
+  })
+
+  it('keeps real foreign countries and misspellings of them', () => {
+    const foreign = [
+      'Turkmaniston', 'Turkmenistan', 'TURKMENISTAN', 'Türkmenistan', 'TÜRKMENİSTAN', 'Turkmeniston', 'Turkmanistan',
+      'Turkman', 'Turkmen', 'Tutkmenistan', 'Turmaniston', 'Turkmenistanda', 'masalan: Turkmaniston',
+      'Azerbaijan', 'Azərbaycan', 'Azarbayjan', 'Xitoy', 'Yaponiya', 'Japan', 'Turkey', 'Turkiy', 'Tojikiston',
+    ]
+    for (const country of foreign) expect(isUzbekCountry(country), country).toBe(false)
+  })
+
+  it('treats a missing country as not Uzbek (the caller decides what that means)', () => {
+    expect(isUzbekCountry(null)).toBe(false)
+    expect(isUzbekCountry('')).toBe(false)
+    expect(isUzbekCountry('  ')).toBe(false)
+  })
+})

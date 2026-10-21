@@ -170,3 +170,20 @@ describe('getForInternationalFileAccess (international office)', () => {
       .rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe('listInternationalOverview — Uzbek citizens', () => {
+  it('leaves out students whose free-text country is Uzbekistan (any spelling) or Karakalpakstan', async () => {
+    const repository = {
+      listForeignStudents: vi.fn().mockResolvedValue([
+        { id: 's1', full_name: 'Turkman A', faculty: 'amit', country: 'Turkmaniston', course: 1, phone_number: null },
+        { id: 's2', full_name: 'Uzbek B', faculty: 'amit', country: "O'zbekiston", course: 1, phone_number: null },
+        { id: 's3', full_name: 'Uzbek C', faculty: 'amit', country: 'Oʻzbekiston', course: 1, phone_number: null },
+        { id: 's4', full_name: 'Qoraqalpoq D', faculty: 'amit', country: 'Qoraqalpogʻiston', course: 1, phone_number: null },
+        { id: 's5', full_name: 'Xitoy E', faculty: 'amit', country: 'Xitoy', course: 1, phone_number: null },
+      ]),
+      listVisaAndRegistrationDocs: vi.fn().mockResolvedValue([]),
+    }
+    const rows = await createForeignDocsService(repository as never).listInternationalOverview()
+    expect(rows.map((r) => r.fullName)).toEqual(['Turkman A', 'Xitoy E'])
+  })
+})

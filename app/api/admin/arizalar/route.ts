@@ -6,6 +6,12 @@ import { getApiError } from '@/server/http/api-error'
 
 type ApplicationLevel = 'info' | 'warning' | 'critical'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const MAX_BULK_IDS = 500
+// `.in('id', …)` becomes part of the request URL; keep each chunk well under
+// PostgREST's URL length limit.
+const BULK_CHUNK = 100
+
 // A dekan/admin falls back to the primary building when unscoped (the
 // admin -> dekan transition); a tarbiyachi must have a real faculty — the
 // silent 'amit' fallback would otherwise leak the primary building's
@@ -101,10 +107,19 @@ export async function PATCH(request: NextRequest) {
 
     const body = await request.json()
     const id = typeof body.id === 'string' ? body.id : ''
+    const bulkIds: unknown[] | null = Array.isArray(body.ids) ? body.ids : null
+    if (bulkIds && bulkIds.length > MAX_BULK_IDS) {
+      return jsonError(`Bir vaqtda ${MAX_BULK_IDS} tadan ortiq ariza yangilab bo'lmaydi`, 400)
+    }
+    // Bulk: only well-formed, de-duplicated ids reach the query — a malformed
+    // value would make PostgREST throw a type error (500) for the whole batch.
+    const ids = bulkIds
+      ? [...new Set(bulkIds.filter((x): x is string => typeof x === 'string' && UUID_RE.test(x)))]
+      : id ? [id] : []
     const level = body.level as ApplicationLevel | undefined
     const status = body.status as string | undefined
 
-    if (!id) return jsonError("So'rov ma'lumotlari noto'g'ri", 400)
+    if (ids.length === 0) return jsonError("So'rov ma'lumotlari noto'g'ri", 400)
 
     // 'draft'/'submitted' are student-only pre-submission states — staff
     // may only ever set a decided/pending outcome, never those two.
@@ -129,20 +144,36 @@ export async function PATCH(request: NextRequest) {
 
     if (Object.keys(updateFields).length === 0) return jsonError("Yangilash uchun ma'lumot yo'q", 400)
 
-    let query = getServiceSupabase()
-      .from('arizalar')
-      .update(updateFields)
-      .eq('id', id)
-      .eq('faculty', faculty)
-    // A tarbiyachi may only act on a still-pending application.
-    if (isTarbiyachi) query = query.eq('status', 'pending')
+    // A fresh builder per call: postgrest-js filters mutate the builder, so
+    // reusing one across chunks would AND the chunks' `in` filters together.
+    const buildUpdate = () => {
+      let query = getServiceSupabase()
+        .from('arizalar')
+        .update(updateFields)
+        .eq('faculty', faculty)
+      // A tarbiyachi may only act on a still-pending application.
+      if (isTarbiyachi) query = query.eq('status', 'pending')
+      return query
+    }
 
-    const { data, error } = await query.select('id').maybeSingle()
+    if (ids.length === 1) {
+      const { data, error } = await buildUpdate().eq('id', ids[0]).select('id').maybeSingle()
+      if (error) throw error
+      if (!data) return jsonError(isTarbiyachi ? "Bu ariza allaqachon ko'rib chiqilgan" : 'Ariza topilmadi', isTarbiyachi ? 409 : 404)
+      return NextResponse.json({ ok: true, count: 1 })
+    }
 
-    if (error) throw error
-    if (!data) return jsonError(isTarbiyachi ? "Bu ariza allaqachon ko'rib chiqilgan" : 'Ariza topilmadi', isTarbiyachi ? 409 : 404)
+    let count = 0
+    for (let i = 0; i < ids.length; i += BULK_CHUNK) {
+      const { data, error } = await buildUpdate().in('id', ids.slice(i, i + BULK_CHUNK)).select('id')
+      if (error) throw error
+      count += data?.length ?? 0
+    }
+    if (count === 0) {
+      return jsonError(isTarbiyachi ? "Arizalar allaqachon ko'rib chiqilgan" : 'Arizalar topilmadi', isTarbiyachi ? 409 : 404)
+    }
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, count })
   } catch (error) {
     return errorResponse(error, 'Ariza holatini yangilashda server xatosi yuz berdi')
   }

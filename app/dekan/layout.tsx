@@ -25,6 +25,7 @@ import {
   ShieldAlert,
   Stamp,
   UserRoundSearch,
+  UsersRound,
   Wallet,
   Home,
 } from 'lucide-react'
@@ -204,6 +205,7 @@ export default function DekanLayout({
       ...(isSuperadmin
         ? [
             { label: 'Bosh nazorat', caption: 'Barcha fakultetlar', href: '/dekan/dekanlar', icon: UserRoundSearch },
+            { label: 'Talabalar (global)', caption: 'Fakultetlararo boshqaruv', href: '/dekan/talabalar-global', icon: UsersRound },
             { label: 'Yotoqxonalar', caption: 'Barcha binolar', href: '/dekan/yotoqxonalar', icon: Building2 },
             { label: 'Tizim e‘lonlari', caption: 'Barcha talabaga', href: '/dekan/tizim-elonlari', icon: Megaphone },
             { label: 'Fakultet to‘lovlari', caption: 'Oylik / yillik tarif', href: '/dekan/fakultet-tolovlari', icon: Wallet },
@@ -216,7 +218,7 @@ export default function DekanLayout({
       { label: 'Xonalar xaritasi', caption: op('Joylashtirish holati'), href: '/dekan/xonalar', icon: Boxes },
       { label: 'Blok xonalari', caption: op('A/B qanotli bino'), href: '/dekan/blok-xonalar', icon: DoorClosed },
       { label: '3D Xonalar', caption: op('Qavat tarxi quruvchisi'), href: '/dekan/3d-xonalar', icon: Layers3 },
-      { label: 'Talabalar', caption: isSuperadmin ? 'Fakultetlararo boshqaruv' : op('Fakultet talabalari'), href: isSuperadmin ? '/dekan/talabalar-global' : '/dekan/talabalar', icon: Users },
+      { label: 'Talabalar', caption: op('Fakultet talabalari'), href: '/dekan/talabalar', icon: Users },
       { label: 'To‘lovlar', caption: op('Chek tasdiqlash'), href: '/dekan/tolovlar', icon: Wallet },
       { label: 'KV talabalar', caption: op('Ijarada turuvchi talabalar'), href: '/dekan/kv-talabalar', icon: Home },
       { label: 'Yo‘qlama', caption: op('Vaqt belgilab tekshirish'), href: '/dekan/yoqlama', icon: ClipboardCheck },

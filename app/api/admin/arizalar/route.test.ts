@@ -126,6 +126,64 @@ describe('PATCH', () => {
     expect(res.status).toBe(403)
   })
 
+  describe('bulk (ids)', () => {
+    const U1 = '11111111-1111-4111-8111-111111111111'
+    const U2 = '22222222-2222-4222-8222-222222222222'
+    const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+
+    it('decides several applications at once, scoped to faculty and (for a tarbiyachi) still-pending rows', async () => {
+      requireActiveStaff.mockResolvedValue(AUTH(AMIT_TARBIYACHI))
+      terminal = { data: [{ id: U1 }, { id: U2 }], error: null }
+      const res = await PATCH(req('PATCH', { ids: [U1, U2], status: 'approved' }))
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ ok: true, count: 2 })
+      expect(argsOf('in')).toContainEqual(['id', [U1, U2]])
+      expect(argsOf('eq')).toContainEqual(['faculty', 'amit'])
+      expect(argsOf('eq')).toContainEqual(['status', 'pending'])
+    })
+
+    it('403s a tarbiyachi bulk-reopening to pending, same as the single path', async () => {
+      requireActiveStaff.mockResolvedValue(AUTH(AMIT_TARBIYACHI))
+      const res = await PATCH(req('PATCH', { ids: [U1, U2], status: 'pending' }))
+      expect(res.status).toBe(403)
+      expect(from).not.toHaveBeenCalled()
+    })
+
+    it('drops malformed ids and duplicates before querying', async () => {
+      requireActiveStaff.mockResolvedValue(AUTH(AMIT_DEKAN))
+      terminal = { data: [{ id: U1 }, { id: U2 }], error: null }
+      await PATCH(req('PATCH', { ids: ['not-a-uuid', U1, U1, 42, U2], status: 'rejected' }))
+      expect(argsOf('in')).toContainEqual(['id', [U1, U2]])
+    })
+
+    it('400s when no valid id is left', async () => {
+      requireActiveStaff.mockResolvedValue(AUTH(AMIT_DEKAN))
+      const res = await PATCH(req('PATCH', { ids: ['x', 'y'], status: 'approved' }))
+      expect(res.status).toBe(400)
+      expect(from).not.toHaveBeenCalled()
+    })
+
+    it('rejects more than 500 ids', async () => {
+      requireActiveStaff.mockResolvedValue(AUTH(AMIT_DEKAN))
+      const ids = Array.from({ length: 501 }, (_, i) => uuid(i))
+      const res = await PATCH(req('PATCH', { ids, status: 'approved' }))
+      expect(res.status).toBe(400)
+      expect(from).not.toHaveBeenCalled()
+    })
+
+    it('splits a large batch into chunks of 100 so the URL stays short', async () => {
+      requireActiveStaff.mockResolvedValue(AUTH(AMIT_DEKAN))
+      terminal = { data: [{ id: 'row' }], error: null }
+      const ids = Array.from({ length: 250 }, (_, i) => uuid(i))
+      const res = await PATCH(req('PATCH', { ids, status: 'approved' }))
+      expect(res.status).toBe(200)
+      const chunks = argsOf('in').map((a) => (a[1] as string[]).length)
+      expect(chunks).toEqual([100, 100, 50])
+      // every chunk is its own faculty-scoped query
+      expect(argsOf('eq').filter(([col]) => col === 'faculty')).toHaveLength(3)
+    })
+  })
+
   it('still lets a dekan set severity and re-open to pending', async () => {
     requireActiveStaff.mockResolvedValue(AUTH(AMIT_DEKAN))
     terminal = { data: { id: 'a1' }, error: null }

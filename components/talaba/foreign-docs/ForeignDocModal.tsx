@@ -102,7 +102,7 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
             if (scan.issuedOn) setIssuedOn((cur) => cur || scan.issuedOn!)
             if (scan.expiresOn) setExpiresOn((cur) => cur || scan.expiresOn!)
             if (scan.address && !isVisa) setAddress((cur) => cur || scan.address!)
-            toast.success("Rasmdan o'qildi — sana va raqamni tekshirib oling", { icon: '✨' })
+            toast.success("Rasmdan o'qildi — kiritilgan ma'lumotni tekshirib oling", { icon: '✨' })
           } else {
             toast("Rasmdan o'qib bo'lmadi — qo'lda kiriting", { icon: 'ℹ️' })
           }
@@ -274,7 +274,9 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
                   </span>
                 </div>
                 <p className={`mt-0.5 text-[11px] leading-tight ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                  Hujjat rasmini yuklang — raqam va muddat avtomatik aniqlanadi.
+                  {isVisa || isLease
+                    ? 'Hujjat rasmini yuklang — raqam va muddat avtomatik aniqlanadi.'
+                    : 'Hujjat rasmini yuklang — sana va manzil avtomatik aniqlanadi.'}
                 </p>
               </div>
             </div>
@@ -324,19 +326,20 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
           </div>
 
           {/* Form fields */}
-          <div>
-            <label className={labelCls}>
-              {isVisa ? 'Viza raqami' : isLease ? 'Shartnoma raqami' : "Ro‘yxatga olish (propiska) raqami"}
-            </label>
-            <input
-              type="text"
-              value={number}
-              onChange={(e) => setNumber(e.target.value)}
-              placeholder={isVisa ? 'Masalan: E1234567' : isLease ? 'Masalan: 12/2026' : 'Masalan: 1234567890'}
-              maxLength={60}
-              className={fieldCls}
-            />
-          </div>
+          {/* Propiska qayd varag'ida alohida raqam yo'q — maydon faqat viza va ijara uchun. */}
+          {(isVisa || isLease) && (
+            <div>
+              <label className={labelCls}>{isVisa ? 'Viza raqami' : 'Shartnoma raqami'}</label>
+              <input
+                type="text"
+                value={number}
+                onChange={(e) => setNumber(e.target.value)}
+                placeholder={isVisa ? 'Masalan: E1234567' : 'Masalan: 12/2026'}
+                maxLength={60}
+                className={fieldCls}
+              />
+            </div>
+          )}
 
           {!isVisa && !isLease && (
             <div>

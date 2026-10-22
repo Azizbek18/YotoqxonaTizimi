@@ -17,7 +17,7 @@ const PROMPTS: Record<DocType, string> = {
 const FIELDS: Record<DocType, string> = {
   visa: '"number": viza raqami, "issuedOn": berilgan sana, "expiresOn": amal qilish muddati, "address": null',
   registration:
-    '"number": hujjat raqami, "issuedOn": ro\'yxatga qo\'yilgan sana, "expiresOn": amal qilish muddati, "address": ro\'yxatga qo\'yilgan manzil',
+    '"number": null, "issuedOn": ro\'yxatga qo\'yilgan sana, "expiresOn": amal qilish muddati, "address": ro\'yxatga qo\'yilgan manzil',
   lease:
     '"number": shartnoma raqami, "issuedOn": shartnoma sanasi yoki boshlanishi, "expiresOn": shartnoma tugash sanasi, "address": ijaraga olingan uy manzili',
 }

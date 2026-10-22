@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { X, Plane, Home, FileSignature, Upload, FileText, Trash2, Loader2, Sparkles, Check, Compass, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 import CustomSelect from '@/components/ui/CustomSelect'
-import { prepareUploadFile } from '@/lib/prepare-upload'
+import { prepareAiAnalysisFile, prepareUploadFile } from '@/lib/prepare-upload'
 import { saveForeignDoc, deleteForeignDoc, scanForeignDoc } from '@/features/foreign-docs/client/api'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 import AddressMapPicker from './AddressMapPicker'
@@ -82,17 +82,27 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
         return
       }
       setFile(prepared.file)
-      // Rasm bo'lsa — AI muddat/raqamni o'qib BO'SH maydonlarni to'ldiradi.
-      if (prepared.file.type.startsWith('image/')) {
+      // AI muddat/raqamni o'qib BO'SH maydonlarni to'ldiradi. PDF'ning faqat
+      // birinchi sahifasi rasmga aylantirilib o'qiladi; saqlanadigan fayl esa
+      // asl PDF'ligicha qoladi.
+      let scanFile: File | null = prepared.file.type.startsWith('image/') ? prepared.file : null
+      if (!scanFile && prepared.file.type === 'application/pdf') {
+        try {
+          scanFile = await prepareAiAnalysisFile(prepared.file)
+        } catch {
+          // PDF rasmga aylanmadi — forma qo'lda to'ldiriladi.
+        }
+      }
+      if (scanFile) {
         setScanning(true)
         try {
-          const scan = await scanForeignDoc(docType, prepared.file)
+          const scan = await scanForeignDoc(docType, scanFile)
           if (scan) {
             if (scan.number) setNumber((cur) => cur || scan.number!)
             if (scan.issuedOn) setIssuedOn((cur) => cur || scan.issuedOn!)
             if (scan.expiresOn) setExpiresOn((cur) => cur || scan.expiresOn!)
             if (scan.address && !isVisa) setAddress((cur) => cur || scan.address!)
-            toast.success("Rasmdan o'qildi — sana va raqamni tekshirib oling", { icon: '✨' })
+            toast.success("Rasmdan o'qildi — kiritilgan ma'lumotni tekshirib oling", { icon: '✨' })
           } else {
             toast("Rasmdan o'qib bo'lmadi — qo'lda kiriting", { icon: 'ℹ️' })
           }
@@ -264,7 +274,9 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
                   </span>
                 </div>
                 <p className={`mt-0.5 text-[11px] leading-tight ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                  Hujjat rasmini yuklang — raqam va muddat avtomatik aniqlanadi.
+                  {isVisa || isLease
+                    ? 'Hujjat rasmini yuklang — raqam va muddat avtomatik aniqlanadi.'
+                    : 'Hujjat rasmini yuklang — sana va manzil avtomatik aniqlanadi.'}
                 </p>
               </div>
             </div>
@@ -314,19 +326,20 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
           </div>
 
           {/* Form fields */}
-          <div>
-            <label className={labelCls}>
-              {isVisa ? 'Viza raqami' : isLease ? 'Shartnoma raqami' : "Ro‘yxatga olish (propiska) raqami"}
-            </label>
-            <input
-              type="text"
-              value={number}
-              onChange={(e) => setNumber(e.target.value)}
-              placeholder={isVisa ? 'Masalan: E1234567' : isLease ? 'Masalan: 12/2026' : 'Masalan: 1234567890'}
-              maxLength={60}
-              className={fieldCls}
-            />
-          </div>
+          {/* Propiska qayd varag'ida alohida raqam yo'q — maydon faqat viza va ijara uchun. */}
+          {(isVisa || isLease) && (
+            <div>
+              <label className={labelCls}>{isVisa ? 'Viza raqami' : 'Shartnoma raqami'}</label>
+              <input
+                type="text"
+                value={number}
+                onChange={(e) => setNumber(e.target.value)}
+                placeholder={isVisa ? 'Masalan: E1234567' : 'Masalan: 12/2026'}
+                maxLength={60}
+                className={fieldCls}
+              />
+            </div>
+          )}
 
           {!isVisa && !isLease && (
             <div>

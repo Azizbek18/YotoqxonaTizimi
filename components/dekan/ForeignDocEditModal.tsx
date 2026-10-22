@@ -106,10 +106,13 @@ export default function ForeignDocEditModal({ isLight, doc, onClose, onSaved }: 
         </div>
 
         <div className="space-y-4">
-          <div>
-            <label className={label}>{isVisa ? 'Viza raqami' : isLease ? 'Shartnoma raqami' : "Ro'yxatga qo'yish (propiska) raqami"}</label>
-            <input value={number} onChange={(e) => setNumber(e.target.value)} maxLength={60} className={field} />
-          </div>
+          {/* Propiska qayd varag'ida alohida raqam yo'q — maydon faqat viza va ijara uchun. */}
+          {(isVisa || isLease) && (
+            <div>
+              <label className={label}>{isVisa ? 'Viza raqami' : 'Shartnoma raqami'}</label>
+              <input value={number} onChange={(e) => setNumber(e.target.value)} maxLength={60} className={field} />
+            </div>
+          )}
 
           {!isVisa && !isLease && (
             <div>

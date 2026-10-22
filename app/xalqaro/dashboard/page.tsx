@@ -385,6 +385,16 @@ export default function XalqaroDashboardPage() {
   const [page, setPage] = useState(1)
   const [selectedStudent, setSelectedStudent] = useState<InternationalStudentRow | null>(null)
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null)
+  // Jadval (9 ustun) tor ekranga sig'maydi: md dan kichik ekranda doim kartalar.
+  const [isNarrow, setIsNarrow] = useState(false)
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 767px)')
+    const update = () => setIsNarrow(query.matches)
+    update()
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+  const activeView = isNarrow ? 'cards' : viewMode
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -577,18 +587,23 @@ export default function XalqaroDashboardPage() {
     }
   }
 
+  // Kompyuterda: bosish paytidayoq yangi oyna ochiladi (so'rovdan keyin ochilsa
+  // brauzer uni popup deb to'sadi), havola kelgach unga qo'yiladi.
+  // Telefonda (va oyna ochilmasa): ilova ichidagi brauzerlar bo'sh oynani to'sadi
+  // yoki bo'sh qoldiradi, shuning uchun havola shu oynada ochiladi. PDF yuklab
+  // olinadi (sahifa joyida qoladi), rasm esa ochiladi ("Orqaga" bilan qaytiladi).
   const openScan = async (docId: string) => {
-    const tab = window.open('', '_blank')
-    if (!tab) {
-      toast.error('Brauzer yangi oynani blokladi. Ruxsat bering va qayta urining.')
-      return
-    }
+    const tab = isNarrow ? null : window.open('', '_blank')
     try {
       const url = await internationalDocFileUrl(docId)
-      tab.opener = null
-      tab.location.href = url
+      if (tab && !tab.closed) {
+        tab.opener = null
+        tab.location.href = url
+      } else {
+        window.location.assign(url)
+      }
     } catch (error) {
-      tab.close()
+      tab?.close()
       toast.error(error instanceof Error ? error.message : 'Faylni ochib bo‘lmadi')
     }
   }
@@ -665,27 +680,27 @@ export default function XalqaroDashboardPage() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#94a3b8_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.07]" />
 
         <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start sm:items-center gap-3.5">
-            <div className={`flex h-12 w-12 sm:h-13 sm:w-13 items-center justify-center rounded-xl border shrink-0 ${
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3.5">
+            <div className={`flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-xl border shrink-0 ${
               isLight ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-800 text-slate-100 border-slate-700'
             }`}>
-              <Globe2 size={26} strokeWidth={2} />
+              <Globe2 size={24} strokeWidth={2} />
             </div>
             <div>
-              <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 sm:mb-1.5">
+                <span className={`inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${
                   isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-200 border-slate-700'
                 }`}>
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Jami: {summary.total} nafar xorijiy talaba
                 </span>
-                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${
+                <span className={`inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${
                   isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800/80 text-slate-300 border-slate-700'
                 }`}>
                   {distinctCountries.length} ta xorijiy davlat
                 </span>
                 {summary.anyIssue > 0 && (
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${
+                  <span className={`inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${
                     isLight
                       ? 'bg-amber-50 text-amber-800 border-amber-200'
                       : 'bg-amber-950/40 text-amber-300 border-amber-900/60'
@@ -695,7 +710,7 @@ export default function XalqaroDashboardPage() {
                   </span>
                 )}
               </div>
-              <h1 className={`text-xl sm:text-2xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              <h1 className={`text-lg sm:text-2xl leading-snug sm:leading-tight font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                 Xorijiy talabalar: Viza va Propiska monitoringi
               </h1>
               <p className={`mt-1 text-xs sm:text-sm ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
@@ -704,12 +719,12 @@ export default function XalqaroDashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 self-start md:self-center shrink-0">
+          <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:items-center md:gap-2.5 md:self-center md:shrink-0">
             <button
               type="button"
               onClick={load}
               disabled={loading}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold transition-colors disabled:opacity-50 no-shelf cursor-pointer ${
+              className={`inline-flex items-center justify-center gap-2 px-3.5 py-2.5 md:py-2 rounded-xl border text-xs font-bold transition-colors disabled:opacity-50 no-shelf cursor-pointer ${
                 isLight
                   ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
                   : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'
@@ -724,7 +739,7 @@ export default function XalqaroDashboardPage() {
               type="button"
               onClick={exportXlsx}
               disabled={loading || sortedAndFiltered.length === 0}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border font-bold text-xs transition-colors disabled:opacity-50 no-shelf cursor-pointer ${
+              className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 md:py-2 rounded-xl border font-bold text-xs transition-colors disabled:opacity-50 no-shelf cursor-pointer ${
                 isLight
                   ? 'bg-indigo-600 hover:bg-indigo-700 border-indigo-600 text-white'
                   : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-900'
@@ -793,11 +808,11 @@ export default function XalqaroDashboardPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <div className="flex w-full items-center gap-2 sm:w-auto sm:shrink-0 sm:self-center">
                 <button
                   type="button"
                   onClick={() => setIssue('expired')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 no-shelf cursor-pointer bg-rose-700 hover:bg-rose-800 text-white border border-rose-600/40"
+                  className="inline-flex w-full items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 no-shelf cursor-pointer sm:w-auto bg-rose-700 hover:bg-rose-800 text-white border border-rose-600/40"
                 >
                   <AlertOctagon size={13} />
                   <span>Muddati o‘tganlarni ko‘rsatish</span>
@@ -809,7 +824,7 @@ export default function XalqaroDashboardPage() {
       </AnimatePresence>
 
       {/* Executive KPI Indicator Cards (Uniform Institutional Styling) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {executiveStats.map((stat, idx) => {
           const Icon = stat.icon
           const isActive = issue === stat.activeFilter && stat.activeFilter !== ''
@@ -895,7 +910,7 @@ export default function XalqaroDashboardPage() {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:gap-2 sm:overflow-visible sm:pb-0">
           {[
             { id: '', label: 'Barchasi', count: summary.total },
             { id: 'any', label: 'Diqqat talab', count: summary.anyIssue, tone: 'warning' },
@@ -912,7 +927,7 @@ export default function XalqaroDashboardPage() {
                 key={item.id}
                 type="button"
                 onClick={() => setIssue(item.id as IssueFilter)}
-                className={`no-shelf inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 active:scale-95 ${
+                className={`no-shelf inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 active:scale-95 ${
                   isActive
                     ? isLight
                       ? 'bg-slate-900 text-white font-extrabold'
@@ -1023,17 +1038,17 @@ export default function XalqaroDashboardPage() {
               Kurs:
             </span>
             <div
-              className={`no-shelf inline-flex items-center p-1 rounded-xl border gap-1 ${
+              className={`no-shelf flex max-w-full items-center overflow-x-auto p-1 rounded-xl border gap-1 ${
                 isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-950/70 border-slate-800/90'
               }`}
             >
               {[
-                { id: '', label: 'Barchasi' },
-                { id: '1', label: '1-kurs' },
-                { id: '2', label: '2-kurs' },
-                { id: '3', label: '3-kurs' },
-                { id: '4', label: '4-kurs' },
-                { id: '5', label: 'Magistr' },
+                { id: '', label: 'Barchasi', short: 'Barchasi' },
+                { id: '1', label: '1-kurs', short: '1' },
+                { id: '2', label: '2-kurs', short: '2' },
+                { id: '3', label: '3-kurs', short: '3' },
+                { id: '4', label: '4-kurs', short: '4' },
+                { id: '5', label: 'Magistr', short: 'Mag.' },
               ].map((c) => {
                 const isActive = course === c.id
                 return (
@@ -1041,7 +1056,7 @@ export default function XalqaroDashboardPage() {
                     key={c.id}
                     type="button"
                     onClick={() => setCourse(c.id)}
-                    className={`no-shelf px-2.5 py-1 rounded-lg text-xs font-bold transition-all active:scale-95 ${
+                    className={`no-shelf shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition-all active:scale-95 ${
                       isActive
                         ? isLight
                           ? 'bg-slate-900 text-white font-black'
@@ -1051,7 +1066,8 @@ export default function XalqaroDashboardPage() {
                           : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    {c.label}
+                    <span className="sm:hidden">{c.short}</span>
+                    <span className="hidden sm:inline">{c.label}</span>
                   </button>
                 )
               })}
@@ -1077,7 +1093,7 @@ export default function XalqaroDashboardPage() {
 
             {/* View Switcher */}
             <div
-              className={`no-shelf inline-flex items-center p-1 rounded-xl border gap-1 ${
+              className={`no-shelf hidden items-center p-1 rounded-xl border gap-1 md:inline-flex ${
                 isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-950/70 border-slate-800/90'
               }`}
             >
@@ -1160,7 +1176,7 @@ export default function XalqaroDashboardPage() {
             </button>
           )}
         </div>
-      ) : viewMode === 'cards' ? (
+      ) : activeView === 'cards' ? (
         /* CARDS VIEW */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {pageRows.map((student) => {
@@ -1194,7 +1210,7 @@ export default function XalqaroDashboardPage() {
               >
                 {/* Top Card Row: Avatar + Country + Full Name */}
                 <div>
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
                     <div className="flex items-center gap-3 min-w-0">
                       <div
                         className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border transition-transform group-hover:scale-105 ${
@@ -1270,7 +1286,7 @@ export default function XalqaroDashboardPage() {
                   </div>
 
                   {/* Dual Meters: VISA & PROPISKA */}
-                  <div className="mt-3.5 grid grid-cols-2 gap-2">
+                  <div className="mt-3.5 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
                     {/* Visa Box */}
                     <div
                       className={`p-2.5 rounded-xl border flex flex-col justify-between ${
@@ -1399,7 +1415,7 @@ export default function XalqaroDashboardPage() {
                 </div>
 
                 {/* Bottom Card Footer */}
-                <div className="mt-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                <div className="mt-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
                   <DetailButton onOpen={() => setSelectedStudent(student)} isLight={isLight} />
                   {student.phone && (
                     <a
@@ -1741,28 +1757,28 @@ export default function XalqaroDashboardPage() {
             onClick={(e) => {
               if (e.target === e.currentTarget) setSelectedStudent(null)
             }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-950/70 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-0 backdrop-blur-md sm:items-center sm:p-4 md:p-6"
           >
             <motion.div
               role="dialog"
               aria-modal="true"
               aria-label={`${selectedStudent.fullName} — viza va propiska ma’lumotlari`}
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              initial={{ opacity: 0, scale: 0.97, y: 28 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              exit={{ opacity: 0, scale: 0.97, y: 28 }}
               transition={{ duration: 0.18 }}
-              className={`w-full max-w-2xl rounded-3xl border backdrop-blur-xl relative flex flex-col max-h-[92vh] shadow-2xl overflow-hidden ${
+              className={`w-full max-w-2xl rounded-t-3xl border border-b-0 backdrop-blur-xl relative flex flex-col max-h-[94vh] shadow-2xl overflow-hidden sm:rounded-3xl sm:border-b sm:max-h-[92vh] ${
                 isLight ? 'bg-white border-slate-200/90 shadow-slate-900/20' : 'bg-slate-950 border-slate-800/90 shadow-black'
               }`}
             >
               {/* Modal Header */}
               <div
-                className={`px-5 sm:px-6 py-4 border-b flex items-center justify-between gap-4 shrink-0 ${
+                className={`px-4 sm:px-6 py-3.5 sm:py-4 border-b flex items-center justify-between gap-3 sm:gap-4 shrink-0 ${
                   isLight ? 'border-slate-100 bg-slate-50/80' : 'border-slate-800/70 bg-slate-900/50'
                 }`}
               >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-base shrink-0 border ${
+                <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+                  <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center font-bold text-sm sm:text-base shrink-0 border ${
                     isLight ? 'bg-slate-900 text-white border-slate-700' : 'bg-slate-800 text-slate-100 border-slate-700'
                   }`}>
                     {getInitials(selectedStudent.fullName)}
@@ -1798,7 +1814,7 @@ export default function XalqaroDashboardPage() {
               </div>
 
               {/* Modal Body */}
-              <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
+              <div className="p-4 sm:p-6 overflow-y-auto space-y-3.5 sm:space-y-4">
                 {/* Contact & Faculty Row */}
                 <div className={`p-4 rounded-2xl border grid grid-cols-1 sm:grid-cols-2 gap-3 ${isLight ? 'bg-slate-50/60 border-slate-200/80' : 'bg-slate-900/40 border-slate-800/80'}`}>
                   <div>
@@ -1831,7 +1847,7 @@ export default function XalqaroDashboardPage() {
                     isLight ? 'bg-white border-slate-200/90' : 'bg-slate-900/70 border-slate-800'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 border-b pb-2.5 border-slate-100 dark:border-slate-800/80">
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b pb-2.5 border-slate-100 dark:border-slate-800/80">
                     <div className="flex items-center gap-2">
                       <div className={`w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs ${
                         isLight ? 'bg-slate-900 text-white' : 'bg-slate-800 text-slate-200'
@@ -1844,7 +1860,7 @@ export default function XalqaroDashboardPage() {
                     </div>
 
                     <span
-                      className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${
+                      className={`shrink-0 whitespace-nowrap px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${
                         docHealth(selectedStudent.visa) === 'expired'
                           ? 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-200 dark:border-rose-900'
                           : docHealth(selectedStudent.visa) === 'soon'
@@ -1892,7 +1908,7 @@ export default function XalqaroDashboardPage() {
                           <button
                             type="button"
                             onClick={() => void openScan(selectedStudent.visa!.id)}
-                            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 no-shelf cursor-pointer ${
+                            className={`inline-flex w-full items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 no-shelf cursor-pointer sm:w-auto sm:py-2 ${
                               isLight
                                 ? 'bg-slate-900 hover:bg-slate-800 text-white'
                                 : 'bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700'
@@ -1917,7 +1933,7 @@ export default function XalqaroDashboardPage() {
                     isLight ? 'bg-white border-slate-200/90' : 'bg-slate-900/70 border-slate-800'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 border-b pb-2.5 border-slate-100 dark:border-slate-800/80">
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b pb-2.5 border-slate-100 dark:border-slate-800/80">
                     <div className="flex items-center gap-2">
                       <div className={`w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs ${
                         isLight ? 'bg-slate-900 text-white' : 'bg-slate-800 text-slate-200'
@@ -1930,7 +1946,7 @@ export default function XalqaroDashboardPage() {
                     </div>
 
                     <span
-                      className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${
+                      className={`shrink-0 whitespace-nowrap px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${
                         docHealth(selectedStudent.registration) === 'expired'
                           ? 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-200 dark:border-rose-900'
                           : docHealth(selectedStudent.registration) === 'soon'
@@ -1992,7 +2008,7 @@ export default function XalqaroDashboardPage() {
                           <button
                             type="button"
                             onClick={() => void openScan(selectedStudent.registration!.id)}
-                            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 no-shelf cursor-pointer ${
+                            className={`inline-flex w-full items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 no-shelf cursor-pointer sm:w-auto sm:py-2 ${
                               isLight
                                 ? 'bg-slate-900 hover:bg-slate-800 text-white'
                                 : 'bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700'
@@ -2027,17 +2043,17 @@ export default function XalqaroDashboardPage() {
 
               {/* Modal Footer */}
               <div
-                className={`px-5 sm:px-6 py-3.5 border-t flex items-center justify-between gap-3 shrink-0 ${
+                className={`px-4 sm:px-6 pt-3 sm:py-3.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3.5 border-t flex items-center justify-between gap-3 shrink-0 ${
                   isLight ? 'border-slate-100 bg-slate-50/80' : 'border-slate-800/70 bg-slate-900/50'
                 }`}
               >
-                <span className="text-xs text-slate-500 italic">
+                <span className="hidden text-xs text-slate-500 italic sm:block">
                   O‘zMU Xalqaro bo‘lim · Faqat ko‘rish
                 </span>
                 <button
                   type="button"
                   onClick={() => setSelectedStudent(null)}
-                  className={`py-2 px-5 rounded-xl text-xs font-bold transition-all no-shelf cursor-pointer active:scale-95 ${
+                  className={`w-full py-2.5 px-5 rounded-xl text-xs font-bold transition-all no-shelf cursor-pointer active:scale-95 sm:w-auto sm:py-2 ${
                     isLight ? 'bg-slate-900 hover:bg-slate-800 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
                   }`}
                 >

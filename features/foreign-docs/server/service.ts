@@ -17,7 +17,7 @@ import {
   type InternationalStudentRow,
   type RegistrationBasis,
 } from '../types'
-import { isUzbekCountry, pickCurrentDoc } from '../domain/international'
+import { canonicalCountry, isUzbekCountry, pickCurrentDoc } from '../domain/international'
 import { bucketOf, daysLeft, tashkentToday } from '../domain/expiry'
 import {
   createForeignDocsRepository,
@@ -298,7 +298,7 @@ export function createForeignDocsService(
             studentId: student.id,
             fullName: student.full_name?.trim() || '—',
             faculty: student.faculty ?? null,
-            country: student.country ?? null,
+            country: canonicalCountry(student.country),
             course: student.course ?? null,
             phone: student.phone_number ?? null,
             visa: narrow(pickCurrentDoc(own?.visa ?? [])),

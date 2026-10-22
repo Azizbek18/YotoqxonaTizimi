@@ -57,6 +57,10 @@ export function docHealth(doc: InternationalDoc | null): DocHealth {
 export type IssueFilter =
   | ''
   | 'any'
+  /** Viza yoki propiskasidan biri muddati o'tgan talabalar. */
+  | 'expired'
+  /** Hujjati 30 kun ichida tugaydigan (va muddati o'tmagan) talabalar. */
+  | 'soon'
   | 'visa-expired'
   | 'visa-soon'
   | 'visa-missing'
@@ -72,6 +76,10 @@ export function matchesIssue(row: InternationalStudentRow, filter: IssueFilter):
       return true
     case 'any':
       return visa !== 'ok' || reg !== 'ok'
+    case 'expired':
+      return visa === 'expired' || reg === 'expired'
+    case 'soon':
+      return visa !== 'expired' && reg !== 'expired' && (visa === 'soon' || reg === 'soon')
     case 'visa-expired':
       return visa === 'expired'
     case 'visa-soon':
@@ -109,4 +117,59 @@ export function summarize(rows: readonly InternationalStudentRow[]): OverviewSum
     if (visa !== 'ok' || reg !== 'ok') summary.anyIssue += 1
   }
   return summary
+}
+
+// [naqsh, nom, ISO-2 kod]
+const COUNTRY_RULES: Array<[RegExp, string, string]> = [
+  [/^turk(ey|iy|iya|iye)$/, 'Turkiya', 'TR'],
+  // turkmaniston / turkmenistan / turmaniston / tukmaniston / turkaniston ...
+  // ("tu" + r/k/t sharti "Tunisia" kabi boshqa davlatlarni ushlamasligi uchun)
+  [/^tu[rkt][a-z]*(m[aei]n|nan|nis)/, 'Turkmaniston', 'TM'],
+  [/^az.{0,2}rb/, 'Ozarbayjon', 'AZ'],
+  [/^(yapon|japan)/, 'Yaponiya', 'JP'],
+  [/^(xitoy|kitay|china)/, 'Xitoy', 'CN'],
+  [/^(toj|taj)/, 'Tojikiston', 'TJ'],
+  [/^(qirg|kyrgyz|kirgiz)/, 'Qirgʻiziston', 'KG'],
+  [/^(qozoq|qazaq|kazakh)/, 'Qozogʻiston', 'KZ'],
+  [/^(rossiy|russia)/, 'Rossiya', 'RU'],
+  [/^afg/, 'Afgʻoniston', 'AF'],
+  [/^(hind|india)/, 'Hindiston', 'IN'],
+  [/^(pakis|pokis)/, 'Pokiston', 'PK'],
+  [/^(janubiykore|southkore|koreya)/, 'Koreya', 'KR'],
+]
+
+function countryLetters(country: string): string {
+  return country
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-zа-яё]/g, '')
+}
+
+/**
+ * `users.country` erkin matn: bir davlat "Turkmaniston", "TURKMENISTAN",
+ * "Türkmenistan", "Turmaniston" kabi o'nlab yozilishda uchraydi, "Japan" va
+ * "Yaponiya" ham alohida. Filtr va qidiruv bitta nomni ko'rsatishi uchun ma'lum
+ * davlatlarni yagona nomga keltiramiz; noma'lumi bo'sh joylari tozalangan,
+ * bosh harfli holda qoladi. Bo'sh qiymat null qaytaradi.
+ */
+export function canonicalCountry(country: string | null | undefined): string | null {
+  if (!country) return null
+  const cleaned = country.replace(/^\s*masalan\s*:\s*/i, '').replace(/\s+/g, ' ').trim()
+  if (!cleaned) return null
+  const letters = countryLetters(cleaned)
+  for (const [pattern, name] of COUNTRY_RULES) if (pattern.test(letters)) return name
+  const lower = cleaned.toLowerCase()
+  return lower.charAt(0).toUpperCase() + lower.slice(1)
+}
+
+/**
+ * Davlat nomi uchun ISO-2 kod (belgi sifatida ko'rsatiladi). Emoji bayroq
+ * Windows'da harflar bo'lib ko'rinadi, shuning uchun kod bilan ishlaymiz.
+ * Noma'lum davlat uchun null.
+ */
+export function countryCode(country: string | null | undefined): string | null {
+  const name = canonicalCountry(country)
+  if (!name) return null
+  return COUNTRY_RULES.find(([, ruleName]) => ruleName === name)?.[2] ?? null
 }

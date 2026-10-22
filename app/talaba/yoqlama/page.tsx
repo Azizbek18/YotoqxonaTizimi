@@ -39,6 +39,9 @@ type Failure =
   | 'auth'
   | 'server'
   | 'network'
+  | 'tg_denied'
+  | 'tg_off'
+  | 'tg_outdated'
 
 const FAILURE_COPY: Record<Failure, { title: string; body: string; tip: string }> = {
   no_response: {
@@ -86,6 +89,21 @@ const FAILURE_COPY: Record<Failure, { title: string; body: string; tip: string }
     body: 'Internet ulanishi uzilgani sababli so‘rov serverga yetib bormadi.',
     tip: 'Mobil internet yoki Wi-Fi ulanishini tekshirib, qayta urinib ko‘ring.',
   },
+  tg_denied: {
+    title: 'Telegram joylashuvga ruxsat bermagan',
+    body: 'Bot joylashuvingizdan foydalanishi oldin rad etilgan, shuning uchun Telegram qayta so‘ramaydi.',
+    tip: '«Telegram sozlamalarini ochish» tugmasini bosib, joylashuvga ruxsat bering, so‘ng qayta urining.',
+  },
+  tg_off: {
+    title: 'Telefonda joylashuv xizmati o‘chiq',
+    body: 'Telegram joylashuvni ololmadi, chunki telefonning GPS/Joylashuv xizmati o‘chirilgan.',
+    tip: 'Telefon sozlamalarida «Joylashuv» (Location) ni yoqing, so‘ng qayta urining.',
+  },
+  tg_outdated: {
+    title: 'Telegram eskirgan',
+    body: 'Telegramning bu versiyasi Mini App ichida joylashuvni qo‘llamaydi.',
+    tip: 'Telegramni Play Market/App Store’dan yangilang yoki sahifani Chrome/Safari’da oching.',
+  },
 }
 
 type Fix = { lat: number; lng: number; accuracy: number }
@@ -94,8 +112,11 @@ type TelegramLocationData = { latitude: number; longitude: number; horizontal_ac
 type TelegramLocationManager = {
   isInited: boolean
   isLocationAvailable: boolean
+  isAccessRequested?: boolean
+  isAccessGranted?: boolean
   init: (cb?: () => void) => void
   getLocation: (cb: (data: TelegramLocationData | null) => void) => void
+  openSettings?: () => void
 }
 type TelegramWebApp = { initData: string; ready: () => void; LocationManager?: TelegramLocationManager }
 
@@ -111,7 +132,7 @@ function loadTelegramWebApp(): Promise<TelegramWebApp | null> {
   return new Promise((resolve) => {
     const script = document.createElement('script')
     script.src = 'https://telegram.org/js/telegram-web-app.js'
-    const timer = window.setTimeout(() => resolve(null), 4000)
+    const timer = window.setTimeout(() => resolve(null), 8000)
     script.onload = () => {
       window.clearTimeout(timer)
       resolve((window as unknown as { Telegram?: { WebApp?: TelegramWebApp } }).Telegram?.WebApp ?? null)
@@ -124,11 +145,21 @@ function loadTelegramWebApp(): Promise<TelegramWebApp | null> {
   })
 }
 
-/** Location via Telegram's own permission (works where the webview's navigator.geolocation does not). */
-async function telegramLocation(): Promise<Fix | null> {
+type TelegramLocationResult = { fix: Fix } | { failure: Failure }
+
+/**
+ * Location via Telegram's own permission (works where the webview's navigator.geolocation does not).
+ * Returns null when this is not a Mini App, so the caller falls back to the browser API.
+ * Inside a Mini App the browser API is useless, so a refusal is reported as its own failure
+ * instead of falling through to a 30 s wait and advice to leave Telegram.
+ */
+async function telegramLocation(): Promise<TelegramLocationResult | null> {
   if (!isTelegramWebview()) return null
-  const lm = (await loadTelegramWebApp())?.LocationManager
-  if (!lm) return null
+  const app = await loadTelegramWebApp()
+  if (!app?.initData) return null
+  const lm = app.LocationManager
+  // Telegram older than Bot API 8.0 (Nov 2024) has no LocationManager.
+  if (!lm) return { failure: 'tg_outdated' }
   await new Promise<void>((resolve) => {
     if (lm.isInited) return resolve()
     const t = window.setTimeout(resolve, 3000)
@@ -137,16 +168,21 @@ async function telegramLocation(): Promise<Fix | null> {
       resolve()
     })
   })
-  if (!lm.isLocationAvailable) return null
-  return new Promise<Fix | null>((resolve) => {
-    const t = window.setTimeout(() => resolve(null), 15_000)
+  if (!lm.isLocationAvailable) return { failure: 'tg_off' }
+  return new Promise<TelegramLocationResult>((resolve) => {
+    const t = window.setTimeout(() => resolve({ failure: 'timeout' }), 15_000)
     lm.getLocation((data) => {
       window.clearTimeout(t)
-      resolve(
-        data ? { lat: data.latitude, lng: data.longitude, accuracy: data.horizontal_accuracy ?? 100 } : null,
-      )
+      if (data) return resolve({ fix: { lat: data.latitude, lng: data.longitude, accuracy: data.horizontal_accuracy ?? 100 } })
+      resolve({ failure: lm.isAccessRequested && !lm.isAccessGranted ? 'tg_denied' : 'position' })
     })
   })
+}
+
+/** Opens Telegram's own location-access settings for the bot (must run from a tap). */
+function openTelegramLocationSettings() {
+  const lm = (window as unknown as { Telegram?: { WebApp?: TelegramWebApp } }).Telegram?.WebApp?.LocationManager
+  lm?.openSettings?.()
 }
 
 type Phase = 'idle' | 'measuring' | 'measured' | 'sending' | 'done' | 'no_session' | 'on_leave'
@@ -365,8 +401,9 @@ export default function TalabaYoqlamaPage() {
     const start = async () => {
       const tg = await telegramLocation().catch(() => null)
       if (tg) {
-        setLiveAccuracy(Math.round(tg.accuracy))
-        return void probe(tg)
+        if ('failure' in tg) return fail(tg.failure)
+        setLiveAccuracy(Math.round(tg.fix.accuracy))
+        return void probe(tg.fix)
       }
       try {
         const status = await navigator.permissions?.query({ name: 'geolocation' as PermissionName })
@@ -1317,6 +1354,17 @@ function ResultView({
       )}
 
       <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:gap-2.5">
+        {failure === 'tg_denied' && (
+          <button
+            type="button"
+            onClick={openTelegramLocationSettings}
+            data-student-button="plain"
+            className="no-shelf inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-500 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-sm transition hover:bg-amber-400 active:scale-95"
+          >
+            <MapPin size={13} />
+            <span>Telegram sozlamalarini ochish</span>
+          </button>
+        )}
         <button
           type="button"
           onClick={onRetry}

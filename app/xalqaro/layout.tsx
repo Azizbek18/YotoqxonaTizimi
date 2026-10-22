@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Globe2, LogOut } from 'lucide-react'
+import { Globe2, KeyRound, LogOut, ShieldCheck, UserCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import ChangePasswordModal from '@/components/xalqaro/ChangePasswordModal'
 import { supabase } from '@/lib/supabase'
 import { getSafeUser } from '@/lib/auth-session'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -19,6 +20,7 @@ export default function XalqaroLayout({ children }: { children: React.ReactNode 
   const ui = dekanUI(isLight)
   const [email, setEmail] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [passwordOpen, setPasswordOpen] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -41,26 +43,84 @@ export default function XalqaroLayout({ children }: { children: React.ReactNode 
   }
 
   return (
-    <div className={`min-h-screen ${ui.shell}`}>
-      <header className={`sticky top-0 z-30 border-b backdrop-blur ${isLight ? 'border-slate-200 bg-white/85' : 'border-slate-800 bg-slate-950/80'}`}>
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-6">
+    // data-flat: bu panelda globals.css dagi qalin "shelf" (3D) soyalari o'chiriladi.
+    <div data-flat className={`min-h-screen ${ui.shell}`}>
+      <header
+        className={`sticky top-0 z-30 border-b backdrop-blur-xl transition-colors duration-200 ${
+          isLight
+            ? 'border-slate-200/80 bg-white/90'
+            : 'border-slate-800/80 bg-slate-950/90 shadow-sm shadow-black/20'
+        }`}
+      >
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3.5 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${ui.accentTile}`}>
-              <Globe2 size={18} />
+            <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-white ${
+              isLight ? 'bg-slate-900 border-slate-700' : 'bg-slate-800 border-slate-700'
+            }`}>
+              <Globe2 size={20} className="text-slate-200" />
+              <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
+              </span>
             </div>
             <div className="min-w-0">
-              <p className={`text-[10px] font-extrabold uppercase tracking-[0.18em] ${ui.accentText}`}>Xalqaro bo‘lim</p>
-              <p className={`truncate text-sm font-bold ${ui.strong}`}>Viza va propiska nazorati</p>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                  isLight
+                    ? 'bg-slate-100 text-slate-800 border-slate-300'
+                    : 'bg-slate-900 text-slate-200 border-slate-700'
+                }`}>
+                  O‘zMU · Xalqaro Bo‘lim
+                </span>
+                <span className={`hidden sm:inline-flex items-center gap-1 text-[10px] font-bold ${
+                  isLight ? 'text-slate-600' : 'text-slate-400'
+                }`}>
+                  <ShieldCheck size={11} className="text-emerald-600 dark:text-emerald-400" /> Markaziy nazorat
+                </span>
+              </div>
+              {/* Sahifaning o'zida katta <h1> bor, shuning uchun bu yerda oddiy matn. */}
+              <p className={`truncate text-sm sm:text-base font-black tracking-tight mt-0.5 ${ui.strong}`}>
+                Viza va propiska nazorati
+              </p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {email && <span className={`hidden max-w-[220px] truncate text-xs sm:inline ${ui.muted}`}>{email}</span>}
+
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {email && (
+              <div
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold ${
+                  isLight
+                    ? 'bg-slate-100/90 border-slate-200/80 text-slate-700'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-300'
+                }`}
+              >
+                <UserCheck size={13} className="text-slate-500 dark:text-slate-400" />
+                <span className="max-w-[200px] truncate">{email}</span>
+              </div>
+            )}
             <ThemeToggle />
+            <button
+              type="button"
+              onClick={() => setPasswordOpen(true)}
+              className={`no-shelf inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-colors ${
+                isLight
+                  ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  : 'border-slate-800 bg-slate-900 text-slate-200 hover:bg-slate-800'
+              }`}
+              title="Parolni o‘zgartirish"
+            >
+              <KeyRound size={14} />
+              <span className="hidden sm:inline">Parol</span>
+            </button>
             <button
               type="button"
               onClick={() => void logout()}
               disabled={loggingOut}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold disabled:opacity-50 ${ui.btnGhost}`}
+              className={`no-shelf inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-all active:scale-95 disabled:opacity-50 ${
+                isLight
+                  ? 'border border-slate-200 bg-white text-rose-600 hover:bg-rose-50 hover:border-rose-200'
+                  : 'border border-slate-800 bg-slate-900 text-rose-400 hover:bg-rose-950/30 hover:border-rose-900/40'
+              }`}
+              title="Tizimdan chiqish"
             >
               <LogOut size={14} />
               <span className="hidden sm:inline">Chiqish</span>
@@ -68,7 +128,9 @@ export default function XalqaroLayout({ children }: { children: React.ReactNode 
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-3 py-5 sm:px-6 sm:py-8">{children}</main>
+      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6">{children}</main>
+      {/* Sarlavhadan tashqarida: u backdrop-blur ishlatadi va ichidagi fixed oyna siljib ketardi. */}
+      <ChangePasswordModal open={passwordOpen} email={email} isLight={isLight} onClose={() => setPasswordOpen(false)} />
     </div>
   )
 }

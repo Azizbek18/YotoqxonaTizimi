@@ -82,7 +82,7 @@ html.theme-dark {
   --shelf-shadow-card: rgba(51, 65, 85, 0.75);
 }
 
-html.theme-light {
+html.theme-light:where(:not([data-flat] *)) {
   --background: #edf4ff;
   --foreground: #10233f;
   --surface: rgba(255, 255, 255, 0.48);
@@ -146,7 +146,7 @@ body {
   100% { transform: translate3d(3%, -2%, 0) scale(1); }
 }
 
-html.theme-light #app-shell::before {
+html.theme-light #app-shell:where(:not([data-flat] *))::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -189,7 +189,7 @@ html.theme-dark #app-shell::after {
    containing block for any `position: fixed` descendant (e.g. the room
    occupants modal), so that modal stops tracking the viewport and instead
    scrolls away with the page. Relight it without `backdrop-filter`. */
-html.theme-light [class*="bg-[#070b13]"] {
+html.theme-light [class*="bg-[#070b13]"]:where(:not([data-flat] *)) {
   background-color: rgba(255, 255, 255, 0.34) !important;
   border-color: rgba(148, 163, 184, 0.18) !important;
   box-shadow:
@@ -197,44 +197,44 @@ html.theme-light [class*="bg-[#070b13]"] {
     0 18px 45px rgba(148, 163, 184, 0.18) !important;
 }
 
-html.theme-light [class*="bg-[#020617]"],
-html.theme-light [class*="bg-[#030712]"],
-html.theme-light [class*="bg-[#0b1120]"],
-html.theme-light [class*="bg-[#0f172a]"],
-html.theme-light [class*="bg-[#1e293b]"],
-html.theme-light [class*="bg-[#0b101d]"],
-html.theme-light [class*="bg-[#0a0f1d]"],
-html.theme-light [class*="bg-[#02040a]"],
-html.theme-light [class*="bg-[#020409]"],
-html.theme-light [class*="bg-[#02040c]"],
-html.theme-light [class*="bg-[#060a17]"],
-html.theme-light [class*="bg-[#0e1621]"],
-html.theme-light [class*="bg-[#0b0f19]"],
-html.theme-light [class*="bg-[#0c1222]"],
-html.theme-light [class*="bg-[#090d16]"],
-html.theme-light [class*="bg-[#020817]"],
-html.theme-light [class*="bg-[#06101f]"],
-html.theme-light [class*="bg-[#111827]"],
-html.theme-light [class*="bg-slate-950"],
-html.theme-light [class*="bg-slate-900"],
-html.theme-light [class*="bg-slate-800"],
-html.theme-light [class*="bg-slate-700"],
-html.theme-light [class*="bg-gray-950"],
-html.theme-light [class*="bg-gray-900"],
-html.theme-light [class*="bg-gray-800"],
-html.theme-light [class*="bg-gray-700"],
-html.theme-light [class*="bg-zinc-950"],
-html.theme-light [class*="bg-zinc-900"],
-html.theme-light [class*="bg-zinc-800"],
-html.theme-light [class*="bg-neutral-950"],
-html.theme-light [class*="bg-neutral-900"],
-html.theme-light [class*="bg-neutral-800"],
-html.theme-light [class*="bg-stone-950"],
-html.theme-light [class*="bg-stone-900"],
-html.theme-light [class*="bg-stone-800"],
-html.theme-light [class*="bg-black/"],
-html.theme-light [class*="bg-white/5"],
-html.theme-light [class*="bg-white/10"] {
+html.theme-light [class*="bg-[#020617]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#030712]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#0b1120]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#0f172a]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#1e293b]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#0b101d]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#0a0f1d]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#02040a]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#020409]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#02040c]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#060a17]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#0e1621]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#0b0f19]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#0c1222]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#090d16]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#020817]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#06101f]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-[#111827]"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-slate-950"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-slate-900"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-slate-800"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-slate-700"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-gray-950"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-gray-900"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-gray-800"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-gray-700"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-zinc-950"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-zinc-900"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-zinc-800"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-neutral-950"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-neutral-900"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-neutral-800"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-stone-950"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-stone-900"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-stone-800"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-black/"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-white/5"]:where(:not([data-flat] *)),
+html.theme-light [class*="bg-white/10"]:where(:not([data-flat] *)) {
   background-color: rgba(255, 255, 255, 0.34) !important;
   border-color: rgba(148, 163, 184, 0.18) !important;
   box-shadow:
@@ -243,34 +243,34 @@ html.theme-light [class*="bg-white/10"] {
   backdrop-filter: blur(24px) saturate(180%);
 }
 
-html.theme-light [class*="text-white"],
-html.theme-light [class*="text-slate-200"],
-html.theme-light [class*="text-slate-300"],
-html.theme-light [class*="text-slate-400"],
-html.theme-light [class*="text-slate-500"],
-html.theme-light [class*="text-slate-600"],
-html.theme-light [class*="text-slate-700"],
-html.theme-light [class*="text-gray-200"],
-html.theme-light [class*="text-gray-300"],
-html.theme-light [class*="text-gray-400"],
-html.theme-light [class*="text-gray-500"],
-html.theme-light [class*="text-gray-600"],
-html.theme-light [class*="text-gray-700"],
-html.theme-light [class*="text-zinc-200"],
-html.theme-light [class*="text-zinc-300"],
-html.theme-light [class*="text-zinc-400"],
-html.theme-light [class*="text-zinc-500"],
-html.theme-light [class*="text-zinc-600"],
-html.theme-light [class*="text-neutral-200"],
-html.theme-light [class*="text-neutral-300"],
-html.theme-light [class*="text-neutral-400"],
-html.theme-light [class*="text-neutral-500"],
-html.theme-light [class*="text-neutral-600"],
-html.theme-light [class*="text-stone-200"],
-html.theme-light [class*="text-stone-300"],
-html.theme-light [class*="text-stone-400"],
-html.theme-light [class*="text-stone-500"],
-html.theme-light [class*="text-stone-600"] {
+html.theme-light [class*="text-white"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-slate-200"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-slate-300"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-slate-400"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-slate-500"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-slate-600"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-slate-700"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-gray-200"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-gray-300"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-gray-400"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-gray-500"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-gray-600"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-gray-700"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-zinc-200"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-zinc-300"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-zinc-400"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-zinc-500"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-zinc-600"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-neutral-200"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-neutral-300"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-neutral-400"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-neutral-500"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-neutral-600"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-stone-200"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-stone-300"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-stone-400"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-stone-500"]:where(:not([data-flat] *)),
+html.theme-light [class*="text-stone-600"]:where(:not([data-flat] *)) {
   color: #173154 !important;
   text-shadow: none !important;
 }
@@ -283,27 +283,27 @@ html.theme-light [class*="text-stone-600"] {
    #173154 (reported: dekan dashboard title unreadable in light mode). Scoped
    to the exact hero gradient so no other surface is affected; `text-indigo-700`
    on the nested white "Yangilash" button is untouched (not text-white). */
-html.theme-light :is(div, section, header, [class*="rounded"])[class*="from-indigo-"] [class*="text-white"],
-html.theme-light :is(div, section, header, [class*="rounded"])[class*="from-indigo-"] [class*="text-indigo-100"] {
+html.theme-light :is(div, section, header, [class*="rounded"])[class*="from-indigo-"] [class*="text-white"]:where(:not([data-flat] *)),
+html.theme-light :is(div, section, header, [class*="rounded"])[class*="from-indigo-"] [class*="text-indigo-100"]:where(:not([data-flat] *)) {
   color: #ffffff !important;
 }
 
-html.theme-light [class*="placeholder:text-slate-400"]::placeholder,
-html.theme-light [class*="placeholder:text-slate-500"]::placeholder,
-html.theme-light [class*="placeholder:text-slate-600"]::placeholder,
-html.theme-light [class*="placeholder:text-slate-700"]::placeholder,
-html.theme-light [class*="placeholder:text-gray-400"]::placeholder,
-html.theme-light [class*="placeholder:text-gray-500"]::placeholder,
-html.theme-light [class*="placeholder-slate-400"]::placeholder,
-html.theme-light [class*="placeholder-slate-500"]::placeholder,
-html.theme-light [class*="placeholder-gray-400"]::placeholder,
-html.theme-light [class*="placeholder-gray-500"]::placeholder {
+html.theme-light [class*="placeholder:text-slate-400"]:where(:not([data-flat] *))::placeholder,
+html.theme-light [class*="placeholder:text-slate-500"]:where(:not([data-flat] *))::placeholder,
+html.theme-light [class*="placeholder:text-slate-600"]:where(:not([data-flat] *))::placeholder,
+html.theme-light [class*="placeholder:text-slate-700"]:where(:not([data-flat] *))::placeholder,
+html.theme-light [class*="placeholder:text-gray-400"]:where(:not([data-flat] *))::placeholder,
+html.theme-light [class*="placeholder:text-gray-500"]:where(:not([data-flat] *))::placeholder,
+html.theme-light [class*="placeholder-slate-400"]:where(:not([data-flat] *))::placeholder,
+html.theme-light [class*="placeholder-slate-500"]:where(:not([data-flat] *))::placeholder,
+html.theme-light [class*="placeholder-gray-400"]:where(:not([data-flat] *))::placeholder,
+html.theme-light [class*="placeholder-gray-500"]:where(:not([data-flat] *))::placeholder {
   color: rgba(23, 49, 84, 0.46) !important;
 }
 
-html.theme-light input,
-html.theme-light select,
-html.theme-light textarea {
+html.theme-light input:where(:not([data-flat] *)),
+html.theme-light select:where(:not([data-flat] *)),
+html.theme-light textarea:where(:not([data-flat] *)) {
   color: #10233f;
   border-color: rgba(148, 163, 184, 0.18) !important;
   box-shadow:
@@ -311,9 +311,9 @@ html.theme-light textarea {
     0 12px 30px rgba(148, 163, 184, 0.12);
 }
 
-html.theme-light [class*="shadow-2xl"],
-html.theme-light [class*="shadow-xl"],
-html.theme-light [class*="shadow-lg"] {
+html.theme-light [class*="shadow-2xl"]:where(:not([data-flat] *)),
+html.theme-light [class*="shadow-xl"]:where(:not([data-flat] *)),
+html.theme-light [class*="shadow-lg"]:where(:not([data-flat] *)) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
     0 26px 60px rgba(148, 163, 184, 0.18) !important;
@@ -334,7 +334,7 @@ html.theme-light :is(
   a[class*="border"][class*="shadow-2xl"],
   a[class*="border"][class*="shadow-xl"],
   a[class*="border"][class*="shadow-lg"]
-):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *) {
+):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
     0 5px 0 0 var(--shelf-shadow-button),
@@ -348,7 +348,7 @@ html.theme-light :is(
   a[class*="border"][class*="shadow-2xl"],
   a[class*="border"][class*="shadow-xl"],
   a[class*="border"][class*="shadow-lg"]
-):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active {
+):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 0 0 0 var(--shelf-shadow-button) !important;
 }
 
@@ -356,18 +356,18 @@ html.theme-light :is(
    clipped text fill, not a painted rectangle; box-shadow still outlines the
    full element box regardless of clip, so without this exclusion gradient
    headings got a floating glow/highlight box behind transparent text. */
-html.theme-light [class*="bg-gradient-to-r"]:not([class*="bg-clip-text"]),
-html.theme-light [class*="bg-gradient-to-br"]:not([class*="bg-clip-text"]),
-html.theme-light [class*="bg-gradient-to-tr"]:not([class*="bg-clip-text"]),
-html.theme-light [class*="bg-linear-to-r"]:not([class*="bg-clip-text"]),
-html.theme-light [class*="bg-linear-to-br"]:not([class*="bg-clip-text"]),
-html.theme-light [class*="bg-linear-to-tr"]:not([class*="bg-clip-text"]),
-html.theme-light [class*="from-blue-600"]:not([class*="bg-clip-text"]),
-html.theme-light [class*="from-blue-500"]:not([class*="bg-clip-text"]),
-html.theme-light [class*="from-indigo-600"]:not([class*="bg-clip-text"]),
-html.theme-light [class*="from-indigo-700"]:not([class*="bg-clip-text"]),
-html.theme-light [class*="from-emerald-500"]:not([class*="bg-clip-text"]),
-html.theme-light [class*="from-red-500"]:not([class*="bg-clip-text"]) {
+html.theme-light [class*="bg-gradient-to-r"]:not([class*="bg-clip-text"]):where(:not([data-flat] *)),
+html.theme-light [class*="bg-gradient-to-br"]:not([class*="bg-clip-text"]):where(:not([data-flat] *)),
+html.theme-light [class*="bg-gradient-to-tr"]:not([class*="bg-clip-text"]):where(:not([data-flat] *)),
+html.theme-light [class*="bg-linear-to-r"]:not([class*="bg-clip-text"]):where(:not([data-flat] *)),
+html.theme-light [class*="bg-linear-to-br"]:not([class*="bg-clip-text"]):where(:not([data-flat] *)),
+html.theme-light [class*="bg-linear-to-tr"]:not([class*="bg-clip-text"]):where(:not([data-flat] *)),
+html.theme-light [class*="from-blue-600"]:not([class*="bg-clip-text"]):where(:not([data-flat] *)),
+html.theme-light [class*="from-blue-500"]:not([class*="bg-clip-text"]):where(:not([data-flat] *)),
+html.theme-light [class*="from-indigo-600"]:not([class*="bg-clip-text"]):where(:not([data-flat] *)),
+html.theme-light [class*="from-indigo-700"]:not([class*="bg-clip-text"]):where(:not([data-flat] *)),
+html.theme-light [class*="from-emerald-500"]:not([class*="bg-clip-text"]):where(:not([data-flat] *)),
+html.theme-light [class*="from-red-500"]:not([class*="bg-clip-text"]):where(:not([data-flat] *)) {
   box-shadow:
     0 14px 30px rgba(96, 165, 250, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
@@ -396,7 +396,7 @@ html.theme-light :is(
   a[class*="border"][class*="bg-linear-to-r"],
   a[class*="border"][class*="bg-linear-to-br"],
   a[class*="border"][class*="bg-linear-to-tr"]
-):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *) {
+):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
     0 5px 0 0 var(--shelf-shadow-button),
@@ -416,62 +416,74 @@ html.theme-light :is(
   a[class*="border"][class*="bg-linear-to-r"],
   a[class*="border"][class*="bg-linear-to-br"],
   a[class*="border"][class*="bg-linear-to-tr"]
-):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active {
+):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 0 0 var(--shelf-shadow-button) !important;
 }
 
-html.theme-light button[class*="bg-gradient"],
-html.theme-light button[class~="bg-blue-600"],
-html.theme-light a[class*="bg-gradient"],
-html.theme-light [class~="bg-blue-600"],
-html.theme-light [class~="bg-indigo-600"],
-html.theme-light [class~="bg-indigo-700"],
-html.theme-light [class~="bg-emerald-500"],
-html.theme-light [class~="bg-rose-500"],
-html.theme-light [class~="bg-red-500"] {
+html.theme-light button[class*="bg-gradient"]:where(:not([data-flat] *)),
+html.theme-light button[class~="bg-blue-600"]:where(:not([data-flat] *)),
+html.theme-light a[class*="bg-gradient"]:where(:not([data-flat] *)),
+html.theme-light [class~="bg-blue-600"]:where(:not([data-flat] *)),
+html.theme-light [class~="bg-indigo-600"]:where(:not([data-flat] *)),
+html.theme-light [class~="bg-indigo-700"]:where(:not([data-flat] *)),
+html.theme-light [class~="bg-emerald-500"]:where(:not([data-flat] *)),
+html.theme-light [class~="bg-rose-500"]:where(:not([data-flat] *)),
+html.theme-light [class~="bg-rose-600"]:where(:not([data-flat] *)),
+html.theme-light [class~="bg-rose-700"]:where(:not([data-flat] *)),
+html.theme-light [class~="bg-rose-800"]:where(:not([data-flat] *)),
+html.theme-light [class~="bg-rose-900"]:where(:not([data-flat] *)),
+html.theme-light [class~="bg-red-500"]:where(:not([data-flat] *)),
+html.theme-light [class~="bg-red-600"]:where(:not([data-flat] *)),
+html.theme-light [class~="bg-red-700"]:where(:not([data-flat] *)) {
   color: #eff6ff !important;
 }
 
-html.theme-light button[class*="bg-gradient"] *,
-html.theme-light button[class~="bg-blue-600"] *,
-html.theme-light a[class*="bg-gradient"] *,
-html.theme-light [class~="bg-blue-600"] *,
-html.theme-light [class~="bg-indigo-600"] *,
-html.theme-light [class~="bg-indigo-700"] *,
-html.theme-light [class~="bg-emerald-500"] *,
-html.theme-light [class~="bg-rose-500"] *,
-html.theme-light [class~="bg-red-500"] * {
+html.theme-light button[class*="bg-gradient"] *:where(:not([data-flat] *)),
+html.theme-light button[class~="bg-blue-600"] *:where(:not([data-flat] *)),
+html.theme-light a[class*="bg-gradient"] *:where(:not([data-flat] *)),
+html.theme-light [class~="bg-blue-600"] *:where(:not([data-flat] *)),
+html.theme-light [class~="bg-indigo-600"] *:where(:not([data-flat] *)),
+html.theme-light [class~="bg-indigo-700"] *:where(:not([data-flat] *)),
+html.theme-light [class~="bg-emerald-500"] *:where(:not([data-flat] *)),
+html.theme-light [class~="bg-rose-500"] *:where(:not([data-flat] *)),
+html.theme-light [class~="bg-rose-600"] *:where(:not([data-flat] *)),
+html.theme-light [class~="bg-rose-700"] *:where(:not([data-flat] *)),
+html.theme-light [class~="bg-rose-800"] *:where(:not([data-flat] *)),
+html.theme-light [class~="bg-rose-900"] *:where(:not([data-flat] *)),
+html.theme-light [class~="bg-red-500"] *:where(:not([data-flat] *)),
+html.theme-light [class~="bg-red-600"] *:where(:not([data-flat] *)),
+html.theme-light [class~="bg-red-700"] *:where(:not([data-flat] *)) {
   color: inherit !important;
 }
 
 /* `~=` not `*=`: keep this off `backdrop-blur-[…]` utilities (see the
    mobile blur-orb rule for the full story). */
-html.theme-light [class~="blur-[100px]"],
-html.theme-light [class~="blur-[120px]"],
-html.theme-light [class~="blur-[110px]"],
-html.theme-light [class~="blur-[90px]"],
-html.theme-light [class~="blur-[80px]"] {
+html.theme-light [class~="blur-[100px]"]:where(:not([data-flat] *)),
+html.theme-light [class~="blur-[120px]"]:where(:not([data-flat] *)),
+html.theme-light [class~="blur-[110px]"]:where(:not([data-flat] *)),
+html.theme-light [class~="blur-[90px]"]:where(:not([data-flat] *)),
+html.theme-light [class~="blur-[80px]"]:where(:not([data-flat] *)) {
   opacity: 0.42;
 }
 
-html.theme-light [class*="border-white/10"],
-html.theme-light [class*="border-white/15"],
-html.theme-light [class*="border-white/5"],
-html.theme-light [class*="border-slate-600"],
-html.theme-light [class*="border-slate-700"],
-html.theme-light [class*="border-slate-800"],
-html.theme-light [class*="border-slate-900"],
-html.theme-light [class*="border-gray-600"],
-html.theme-light [class*="border-gray-700"],
-html.theme-light [class*="border-gray-800"],
-html.theme-light [class*="border-gray-900"],
-html.theme-light [class*="border-zinc-700"],
-html.theme-light [class*="border-zinc-800"],
-html.theme-light [class*="border-neutral-700"],
-html.theme-light [class*="border-neutral-800"],
-html.theme-light [class*="border-[#02040a]"],
-html.theme-light [class*="border-[#020617]"],
-html.theme-light [class*="border-[#0b1120]"] {
+html.theme-light [class*="border-white/10"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-white/15"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-white/5"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-slate-600"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-slate-700"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-slate-800"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-slate-900"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-gray-600"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-gray-700"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-gray-800"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-gray-900"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-zinc-700"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-zinc-800"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-neutral-700"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-neutral-800"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-[#02040a]"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-[#020617]"]:where(:not([data-flat] *)),
+html.theme-light [class*="border-[#0b1120]"]:where(:not([data-flat] *)) {
   border-color: rgba(148, 163, 184, 0.18) !important;
 }
 
@@ -547,12 +559,12 @@ html.theme-light [class*="border-[#0b1120]"] {
    ============================================================ */
 
 @layer components {
-  button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
-  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
-  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
-  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
-  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
-  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *) {
+  button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.22),
       0 5px 0 0 var(--shelf-shadow-button),
@@ -564,21 +576,21 @@ html.theme-light [class*="border-[#0b1120]"] {
       filter 0.15s ease !important;
   }
 
-  button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):hover:not(:active):not(:disabled),
-  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):hover:not(:active),
-  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):hover:not(:active),
-  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):hover:not(:active),
-  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):hover:not(:active),
-  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):hover:not(:active) {
+  button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):hover:not(:active):not(:disabled),
+  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):hover:not(:active),
+  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):hover:not(:active),
+  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):hover:not(:active),
+  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):hover:not(:active),
+  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):hover:not(:active) {
     filter: brightness(1.06);
   }
 
-  button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active:not(:disabled),
-  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
-  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
-  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
-  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
-  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active {
+  button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active:not(:disabled),
+  a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active,
+  a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active,
+  a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active,
+  a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active,
+  a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active {
     transform: translateY(5px) !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 0 0 var(--shelf-shadow-button);
     transition:
@@ -586,51 +598,51 @@ html.theme-light [class*="border-[#0b1120]"] {
       box-shadow 0.05s ease !important;
   }
 
-  button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):disabled {
+  button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):disabled {
     box-shadow: 0 5px 0 0 var(--shelf-shadow-button-disabled);
   }
 
-  html.theme-light button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
-  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
-  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
-  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
-  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *),
-  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *) {
+  html.theme-light button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.5),
       0 5px 0 0 var(--shelf-shadow-button),
       0 9px 16px -6px rgba(15, 23, 42, 0.22);
   }
 
-  html.theme-light button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active:not(:disabled),
-  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
-  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
-  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
-  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active,
-  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):active {
+  html.theme-light button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active:not(:disabled),
+  html.theme-light a[class*="border"][class*="rounded-xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active,
+  html.theme-light a[class*="border"][class*="rounded-2xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active,
+  html.theme-light a[class*="border"][class*="rounded-3xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active,
+  html.theme-light a[class*="border"][class*="rounded-4xl"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active,
+  html.theme-light a[class*="border"][class*="rounded-["]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):active {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 0 0 var(--shelf-shadow-button);
   }
 
-  html.theme-light button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):disabled {
+  html.theme-light button[class*="rounded"]:not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not([class*="rounded-full"]):not([class*="no-shelf"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)):disabled {
     box-shadow: 0 5px 0 0 var(--shelf-shadow-button-disabled);
   }
 
-  div[class*="rounded-xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  div[class*="rounded-2xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  div[class*="rounded-3xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  div[class*="rounded-4xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  div[class*="rounded-["][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *) {
+  div[class*="rounded-xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  div[class*="rounded-2xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  div[class*="rounded-3xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  div[class*="rounded-4xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  div[class*="rounded-["][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
       0 6px 0 0 var(--shelf-shadow-card),
       0 12px 26px -6px rgba(0, 0, 0, 0.32);
   }
 
-  html.theme-light div[class*="rounded-xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  html.theme-light div[class*="rounded-2xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  html.theme-light div[class*="rounded-3xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  html.theme-light div[class*="rounded-4xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *),
-  html.theme-light div[class*="rounded-["][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *) {
+  html.theme-light div[class*="rounded-xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  html.theme-light div[class*="rounded-2xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  html.theme-light div[class*="rounded-3xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  html.theme-light div[class*="rounded-4xl"][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)),
+  html.theme-light div[class*="rounded-["][class*="border"]:not([class*="no-shelf"]):not([class*="outline-none"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class~="p-2.5"]):not(aside *):not([data-sidebar] *):where(:not([data-flat] *)) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.6),
       0 6px 0 0 var(--shelf-shadow-card),
@@ -839,7 +851,7 @@ html.theme-light [class*="border-[#0b1120]"] {
   animation: sweep 2s linear infinite;
   box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
 }
-html.theme-light .cyber-border.focused {
+html.theme-light .cyber-border.focused:where(:not([data-flat] *)) {
   box-shadow: 0 0 8px rgba(99, 102, 241, 0.08);
 }
 .cyber-input-inner {
@@ -848,7 +860,7 @@ html.theme-light .cyber-border.focused {
   border-radius: 11px;
   transition: all 0.3s ease;
 }
-html.theme-light .cyber-input-inner {
+html.theme-light .cyber-input-inner:where(:not([data-flat] *)) {
   background: rgba(255, 255, 255, 0.95);
 }
 
@@ -1064,7 +1076,7 @@ html.theme-anim canvas {
   /* faint indigo cast so a screen full of blocks reads as "the app", not "grey boxes" */
   background-color: rgb(129 140 248 / 0.11);
 }
-html.theme-light .skeleton {
+html.theme-light .skeleton:where(:not([data-flat] *)) {
   background-color: rgb(148 163 184 / 0.2);
 }
 /* static top-light — gives each block a hint of glassy depth */
@@ -1074,7 +1086,7 @@ html.theme-light .skeleton {
   inset: 0;
   background-image: linear-gradient(180deg, rgb(255 255 255 / 0.05), transparent 55%);
 }
-html.theme-light .skeleton::before {
+html.theme-light .skeleton:where(:not([data-flat] *))::before {
   background-image: linear-gradient(180deg, rgb(255 255 255 / 0.5), transparent 55%);
 }
 /* travelling highlight — the part that catches the eye */
@@ -1093,7 +1105,7 @@ html.theme-light .skeleton::before {
   );
   animation: skeleton-sheen 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
-html.theme-light .skeleton::after {
+html.theme-light .skeleton:where(:not([data-flat] *))::after {
   background-image: linear-gradient(
     90deg,
     transparent 0%,
@@ -1152,7 +1164,7 @@ html.theme-light .skeleton::after {
   filter: blur(10px);
   animation: loader-halo 2.6s ease-in-out infinite;
 }
-html.theme-light .brand-loader__halo {
+html.theme-light .brand-loader__halo:where(:not([data-flat] *)) {
   background: radial-gradient(circle, rgb(129 140 248 / 0.5), transparent 62%);
 }
 /* Rotating two-tone rim. Plain border arcs — renders everywhere. */

@@ -71,6 +71,18 @@ describe('matchesIssue / summarize', () => {
     expect(ids('reg-missing')).toEqual([3])
   })
 
+  it('"expired"/"soon" are per student, not per document, and do not overlap', () => {
+    const more = [
+      ...rows,
+      student(intl(-3), intl(-9)),   // both expired: still one student
+      student(intl(5), intl(200)),   // visa soon only
+    ]
+    const ids = (f: Parameters<typeof matchesIssue>[1]) => more.map((r, i) => (matchesIssue(r, f) ? i : -1)).filter((i) => i >= 0)
+    expect(ids('expired')).toEqual([2, 4])
+    // row 2 has a soon registration but is already counted as expired
+    expect(ids('soon')).toEqual([5])
+  })
+
   it('counts the same buckets the filters select', () => {
     expect(summarize(rows)).toEqual({
       total: 4,
@@ -81,7 +93,7 @@ describe('matchesIssue / summarize', () => {
   })
 })
 
-import { isUzbekCountry } from './international'
+import { canonicalCountry, countryCode, isUzbekCountry } from './international'
 
 describe('isUzbekCountry (free-text users.country)', () => {
   it('recognises every way Uzbek citizens were seen writing their own country', () => {
@@ -107,5 +119,43 @@ describe('isUzbekCountry (free-text users.country)', () => {
     expect(isUzbekCountry(null)).toBe(false)
     expect(isUzbekCountry('')).toBe(false)
     expect(isUzbekCountry('  ')).toBe(false)
+  })
+})
+
+describe('canonicalCountry (one name per country for the filter)', () => {
+  it('merges every Turkmenistan spelling seen in the data', () => {
+    const variants = [
+      'Turkmaniston', 'Turkmenistan', 'TURKMENISTAN', 'Türkmenistan', 'TÜRKMENİSTAN', 'Turkmeniston', 'Turkmanistan', 'Turkman',
+      'Turkmen', 'Tutkmenistan', 'Turmaniston', 'Turkmenistanda', 'masalan: Turkmaniston', 'Turnaniston', 'Tukmaniston',
+      'Turukmaniston', 'Turkministan', 'Turkaniston', 'Turkmanisdan', 'Turkemenistan', 'Turmeniston', 'Turkmenistn', 'Turkmanistin',
+      'TURKMANISTON', 'turkmaniston',
+    ]
+    for (const v of variants) expect(canonicalCountry(v), v).toBe('Turkmaniston')
+  })
+
+  it('merges Japan/Yaponiya, Azerbaijan spellings and keeps other countries apart', () => {
+    expect(canonicalCountry('Japan')).toBe('Yaponiya')
+    expect(canonicalCountry('Yaponiya')).toBe('Yaponiya')
+    for (const v of ['Azerbaijan', 'Azarbayjan', 'Azərbaycan']) expect(canonicalCountry(v), v).toBe('Ozarbayjon')
+    expect(canonicalCountry('Xitoy')).toBe('Xitoy')
+    expect(canonicalCountry('Tojikiston')).toBe('Tojikiston')
+    expect(canonicalCountry('Turkey')).toBe('Turkiya')
+    expect(canonicalCountry('Turkiy')).toBe('Turkiya')
+  })
+
+  it('does not mistake other countries for Turkmenistan, and gives ISO codes', () => {
+    expect(canonicalCountry('Tunisia')).toBe('Tunisia')
+    expect(canonicalCountry('Tanzania')).toBe('Tanzania')
+    expect(countryCode('TURKMENISTAN')).toBe('TM')
+    expect(countryCode('Japan')).toBe('JP')
+    expect(countryCode('Azərbaycan')).toBe('AZ')
+    expect(countryCode('Germany')).toBeNull()
+    expect(countryCode(null)).toBeNull()
+  })
+
+  it('tidies unknown countries and returns null for blanks', () => {
+    expect(canonicalCountry('  GERMANY ')).toBe('Germany')
+    expect(canonicalCountry(null)).toBeNull()
+    expect(canonicalCountry('  ')).toBeNull()
   })
 })

@@ -52,9 +52,9 @@ export default function XalqaroLayout({ children }: { children: React.ReactNode 
             : 'border-slate-800/80 bg-slate-950/90 shadow-sm shadow-black/20'
         }`}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3.5 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-white ${
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2.5 sm:px-6 sm:py-3">
+          <div className="flex min-w-0 flex-1 basis-[170px] items-center gap-2.5 sm:gap-3">
+            <div className={`relative flex h-9 w-9 shrink-0 items-center sm:h-10 sm:w-10 justify-center rounded-xl border text-white ${
               isLight ? 'bg-slate-900 border-slate-700' : 'bg-slate-800 border-slate-700'
             }`}>
               <Globe2 size={20} className="text-slate-200" />
@@ -64,12 +64,12 @@ export default function XalqaroLayout({ children }: { children: React.ReactNode 
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                <span className={`whitespace-nowrap text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
                   isLight
                     ? 'bg-slate-100 text-slate-800 border-slate-300'
                     : 'bg-slate-900 text-slate-200 border-slate-700'
                 }`}>
-                  O‘zMU · Xalqaro Bo‘lim
+                  <span className="hidden min-[380px]:inline">O‘zMU · </span>Xalqaro bo‘lim
                 </span>
                 <span className={`hidden sm:inline-flex items-center gap-1 text-[10px] font-bold ${
                   isLight ? 'text-slate-600' : 'text-slate-400'
@@ -78,13 +78,13 @@ export default function XalqaroLayout({ children }: { children: React.ReactNode 
                 </span>
               </div>
               {/* Sahifaning o'zida katta <h1> bor, shuning uchun bu yerda oddiy matn. */}
-              <p className={`truncate text-sm sm:text-base font-black tracking-tight mt-0.5 ${ui.strong}`}>
+              <p className={`truncate text-[13px] sm:text-base font-black tracking-tight mt-0.5 ${ui.strong}`}>
                 Viza va propiska nazorati
               </p>
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
             {email && (
               <div
                 className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold ${
@@ -101,7 +101,7 @@ export default function XalqaroLayout({ children }: { children: React.ReactNode 
             <button
               type="button"
               onClick={() => setPasswordOpen(true)}
-              className={`no-shelf inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-colors ${
+              className={`no-shelf inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-bold transition-colors sm:px-3 ${
                 isLight
                   ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   : 'border-slate-800 bg-slate-900 text-slate-200 hover:bg-slate-800'
@@ -115,7 +115,7 @@ export default function XalqaroLayout({ children }: { children: React.ReactNode 
               type="button"
               onClick={() => void logout()}
               disabled={loggingOut}
-              className={`no-shelf inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-all active:scale-95 disabled:opacity-50 ${
+              className={`no-shelf inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-bold transition-all active:scale-95 sm:px-3 disabled:opacity-50 ${
                 isLight
                   ? 'border border-slate-200 bg-white text-rose-600 hover:bg-rose-50 hover:border-rose-200'
                   : 'border border-slate-800 bg-slate-900 text-rose-400 hover:bg-rose-950/30 hover:border-rose-900/40'

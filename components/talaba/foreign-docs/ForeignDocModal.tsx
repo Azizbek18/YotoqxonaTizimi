@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { X, Plane, Home, FileSignature, Upload, FileText, Trash2, Loader2, Sparkles, Check, Compass, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 import CustomSelect from '@/components/ui/CustomSelect'
-import { prepareUploadFile } from '@/lib/prepare-upload'
+import { prepareAiAnalysisFile, prepareUploadFile } from '@/lib/prepare-upload'
 import { saveForeignDoc, deleteForeignDoc, scanForeignDoc } from '@/features/foreign-docs/client/api'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 import AddressMapPicker from './AddressMapPicker'
@@ -82,11 +82,21 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
         return
       }
       setFile(prepared.file)
-      // Rasm bo'lsa — AI muddat/raqamni o'qib BO'SH maydonlarni to'ldiradi.
-      if (prepared.file.type.startsWith('image/')) {
+      // AI muddat/raqamni o'qib BO'SH maydonlarni to'ldiradi. PDF'ning faqat
+      // birinchi sahifasi rasmga aylantirilib o'qiladi; saqlanadigan fayl esa
+      // asl PDF'ligicha qoladi.
+      let scanFile: File | null = prepared.file.type.startsWith('image/') ? prepared.file : null
+      if (!scanFile && prepared.file.type === 'application/pdf') {
+        try {
+          scanFile = await prepareAiAnalysisFile(prepared.file)
+        } catch {
+          // PDF rasmga aylanmadi — forma qo'lda to'ldiriladi.
+        }
+      }
+      if (scanFile) {
         setScanning(true)
         try {
-          const scan = await scanForeignDoc(docType, prepared.file)
+          const scan = await scanForeignDoc(docType, scanFile)
           if (scan) {
             if (scan.number) setNumber((cur) => cur || scan.number!)
             if (scan.issuedOn) setIssuedOn((cur) => cur || scan.issuedOn!)

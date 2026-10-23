@@ -21,7 +21,14 @@ export function fetchMyForeignDocs(): Promise<ForeignDoc[]> {
   })
 }
 
-export type DocScan = { number: string | null; issuedOn: string | null; expiresOn: string | null; address: string | null }
+export type DocScan = {
+  number: string | null
+  issuedOn: string | null
+  expiresOn: string | null
+  address: string | null
+  /** The AI read a term far over a year for a visa: the photo is a passport, nothing was filled. */
+  notVisa?: boolean
+}
 
 /** Rasmdan muddat/raqamni AI o'qiydi (hech narsa saqlanmaydi). null = o'qilmadi. */
 export async function scanForeignDoc(docType: ForeignDoc['docType'], file: File): Promise<DocScan | null> {

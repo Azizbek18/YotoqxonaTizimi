@@ -9,6 +9,8 @@
 // Sof funksiya — client (dashboard/hujjatlarim) va server (service.ts,
 // dekan/talaba API route'lari) bir xil qoidadan foydalanadi.
 
+import { isUzbekCountry } from './international'
+
 export type DocsMode = 'foreign' | 'registration' | null
 
 const normalize = (value: string) => value.trim().toLowerCase()
@@ -21,7 +23,8 @@ export function resolveDocsMode(
   student: { country?: string | null; region?: string | null },
   homeRegions: readonly string[],
 ): DocsMode {
-  if (student.country) return 'foreign'
+  // users.country is free text: an Uzbek citizen who typed "O'zbekiston" there is not foreign.
+  if (student.country?.trim() && !isUzbekCountry(student.country)) return 'foreign'
   if (!student.region || homeRegions.length === 0) return null
   const isHome = homeRegions.some((r) => normalize(r) === normalize(student.region!))
   return isHome ? null : 'registration'

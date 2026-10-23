@@ -18,7 +18,7 @@ import {
   type RegistrationBasis,
 } from '../types'
 import { canonicalCountry, isUzbekCountry, pickCurrentDoc } from '../domain/international'
-import { bucketOf, daysLeft, tashkentToday } from '../domain/expiry'
+import { bucketOf, daysLeft, tashkentToday, VISA_TERM_TOO_LONG_MESSAGE, visaTermTooLong } from '../domain/expiry'
 import {
   createForeignDocsRepository,
   type DocWriteFields,
@@ -77,6 +77,11 @@ function mapRow(row: ForeignStudentDocumentRow, today: string): ForeignDoc {
  * nomidan avto to'ldirish. `faculty` — TTJ nomi per-fakultet sozlamasidan
  * olinadi.
  */
+/** users.country is free text: an Uzbek citizen often typed "O'zbekiston" there, which is not foreign. */
+function isForeignCitizen(country: string | null | undefined) {
+  return Boolean(country?.trim()) && !isUzbekCountry(country)
+}
+
 async function toWriteFields(
   input: ForeignDocInput,
   faculty: string | null,
@@ -107,6 +112,9 @@ async function toWriteFields(
     if (issuedOn > expiresOn) {
       throw new ApiError(400, "Berilgan sana amal qilish muddatidan keyin bo'lolmaydi")
     }
+  }
+  if (docType === 'visa' && visaTermTooLong(issuedOn, expiresOn)) {
+    throw new ApiError(400, VISA_TERM_TOO_LONG_MESSAGE)
   }
 
   const status: DocStatus = DOC_STATUSES.includes(input.status as DocStatus)
@@ -173,7 +181,7 @@ export function createForeignDocsService(
     async saveForStudent(studentId: string, input: ForeignDocInput): Promise<ForeignDoc> {
       const context = await repository.findStudentContext(studentId)
       if (!context) throw new ApiError(404, 'Talaba profili topilmadi')
-      const fields = await toWriteFields(input, context.faculty, Boolean(context.country), context.is_off_campus === true)
+      const fields = await toWriteFields(input, context.faculty, isForeignCitizen(context.country), context.is_off_campus === true)
       const today = tashkentToday()
 
       if (input.id) {
@@ -353,6 +361,12 @@ export function createForeignDocsService(
         fields.verified_by = patch.verified ? staffId : null
       }
       if (Object.keys(fields).length === 0) throw new ApiError(400, "Yangilash uchun ma'lumot yo'q")
+      // Only a date change is checked, so an old bad record can still get its status or note edited.
+      if (doc.doc_type === 'visa' && (patch.issuedOn !== undefined || patch.expiresOn !== undefined)) {
+        const issued = fields.issued_on !== undefined ? fields.issued_on : doc.issued_on
+        const expires = fields.expires_on ?? doc.expires_on
+        if (visaTermTooLong(issued, expires)) throw new ApiError(400, VISA_TERM_TOO_LONG_MESSAGE)
+      }
 
       const updated = await repository.patchByStaff(id, fields)
       if (!updated) throw new ApiError(404, 'Hujjat topilmadi')
@@ -372,7 +386,7 @@ export function createForeignDocsService(
       if (normalizeFaculty(context.faculty) !== faculty) {
         throw new ApiError(403, 'Boshqa fakultet talabasiga hujjat qo‘shib bo‘lmaydi')
       }
-      const fields = await toWriteFields(input, context.faculty, Boolean(context.country), context.is_off_campus === true)
+      const fields = await toWriteFields(input, context.faculty, isForeignCitizen(context.country), context.is_off_campus === true)
       const created = await repository.insert(studentId, fields, role)
       return mapRow(created, tashkentToday())
     },

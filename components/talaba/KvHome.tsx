@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { GraduationCap, Home, Megaphone, ChevronRight, Phone, MapPin, Pencil } from 'lucide-react'
 import ForeignDocsCard from '@/components/talaba/foreign-docs/ForeignDocsCard'
+import { isUzbekCountry } from '@/features/foreign-docs/domain/international'
 import { directionLabel } from '@/lib/directions'
 import { permitFacultyLabel } from '@/lib/faculties'
 
@@ -21,6 +22,8 @@ type KvProfile = {
 // (xona, navbatchilik, to'lov, yo'qlama, ariza) unga tegishli emas — asosiysi
 // viza (faqat xorijiy fuqaro) va propiska muddati nazorati.
 export default function KvHome({ profile, isLight, onEditAddress }: { profile: KvProfile | null; isLight: boolean; onEditAddress: () => void }) {
+  // Same rule as the server: a typed "O'zbekiston" is not a foreign citizenship.
+  const isForeign = Boolean(profile?.country?.trim()) && !isUzbekCountry(profile?.country)
   const card = isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.03]'
   const muted = isLight ? 'text-slate-500' : 'text-slate-400'
   const strong = isLight ? 'text-slate-900' : 'text-white'
@@ -72,7 +75,7 @@ export default function KvHome({ profile, isLight, onEditAddress }: { profile: K
           <p className={`text-[10px] font-semibold uppercase ${muted}`}>Turgan manzil va fuqarolik</p>
           <p className={`mt-0.5 break-words text-sm font-bold ${strong}`}>{profile?.residence_address || '—'}</p>
           <p className={`mt-1 text-xs font-semibold ${muted}`}>
-            {profile?.country ? `Xorijiy fuqaro — ${profile.country}` : "O'zbekiston fuqarosi"}
+            {isForeign ? `Xorijiy fuqaro — ${profile?.country}` : "O'zbekiston fuqarosi"}
           </p>
         </div>
         <button
@@ -85,7 +88,7 @@ export default function KvHome({ profile, isLight, onEditAddress }: { profile: K
         </button>
       </div>
 
-      <ForeignDocsCard mode={profile?.country ? 'foreign' : 'registration'} isLight={isLight} showLease />
+      <ForeignDocsCard mode={isForeign ? 'foreign' : 'registration'} isLight={isLight} showLease />
 
       <Link
         href="/talaba/elonlar"

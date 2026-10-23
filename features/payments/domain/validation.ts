@@ -74,11 +74,14 @@ export function parsePaymentAmount(value: unknown): number {
   return amount
 }
 
+/** One review call may decide at most this many payments (the page sends 50 per call). */
+export const MAX_REVIEW_IDS = 100
+
 export function validatePaymentReview(input: { ids: unknown; status: unknown; message: unknown }) {
   const ids = Array.isArray(input.ids) ? Array.from(new Set(input.ids.map(String))) : []
   const status = input.status
   const message = String(input.message ?? '').trim().slice(0, 500)
-  if (ids.length === 0 || ids.length > 24 || ids.some((id) => !/^[0-9a-f-]{36}$/i.test(id))) {
+  if (ids.length === 0 || ids.length > MAX_REVIEW_IDS || ids.some((id) => !/^[0-9a-f-]{36}$/i.test(id))) {
     throw new PaymentValidationError('INVALID_PAYMENT_IDS', 'To‘lov identifikatorlari noto‘g‘ri')
   }
   if (status !== 'approved' && status !== 'rejected') {

@@ -5,6 +5,18 @@ import type { StudentScope, StudentWarningLevel } from '../types'
 const STUDENT_PROFILE_COLUMNS =
   'id, full_name, middle_name, email, phone_number, avatar_url, gender, faculty, direction, course, status, room_number, assigned_floor, is_floor_captain, is_council_chair, warning_count, blacklisted, birth_date, nationality, country, study_type, entry_date, region, district, mahalla, passport_series, jshshir, passport_date, father_full_name, father_workplace, father_phone, mother_full_name, mother_workplace, mother_phone, created_at'
 
+const PAGE = 1000
+// Every faculty student's id in one `.in()` grew the request URL past
+// PostgREST's ~16KB limit (HeadersOverflowError at ~450 students). 100 uuids
+// keep each request near 4KB.
+const ID_CHUNK = 100
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
+  return out
+}
+
 // ilike treats `_` and `%` as wildcards; an address like a_b@x.uz must match
 // literally, so escape them (and the escape char) before building the pattern.
 function escapeLike(value: string) {
@@ -89,26 +101,47 @@ export function createFacultyStudentsRepository() {
     // Every active student of the faculty, id column only — the payments
     // endpoint just needs an id set to filter `tolovlar` by, and a student
     // who paid before being assigned a room still has to be covered.
+    // Paged: PostgREST stops at 1000 rows per response.
     async listFacultyStudentIds(faculty: string) {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id')
-        .eq('role', 'talaba')
-        .eq('status', 'active')
-        .eq('is_off_campus', false)
-        .ilike('faculty', faculty)
-      if (error) throw error
-      return (data ?? []).map((row) => String(row.id))
+      const ids: string[] = []
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id')
+          .eq('role', 'talaba')
+          .eq('status', 'active')
+          .eq('is_off_campus', false)
+          .ilike('faculty', faculty)
+          .order('id')
+          .range(from, from + PAGE - 1)
+        if (error) throw error
+        ids.push(...(data ?? []).map((row) => String(row.id)))
+        if ((data?.length ?? 0) < PAGE) break
+      }
+      return ids
     },
 
+    // Ids in chunks (URL size), each chunk paged (1000-row cap), merged and
+    // sorted newest first as the single query used to return them.
     async listPayments(studentIds: string[]) {
-      const { data, error } = await supabase
-        .from('tolovlar')
-        .select('id, student_id, month, year, amount, status, admin_message, receipt_url, created_at')
-        .in('student_id', studentIds)
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      return data ?? []
+      const parts = await Promise.all(
+        chunk(studentIds, ID_CHUNK).map(async (part) => {
+          const rows = []
+          for (let from = 0; ; from += PAGE) {
+            const { data, error } = await supabase
+              .from('tolovlar')
+              .select('id, student_id, month, year, amount, status, admin_message, receipt_url, created_at')
+              .in('student_id', part)
+              .order('id')
+              .range(from, from + PAGE - 1)
+            if (error) throw error
+            rows.push(...(data ?? []))
+            if ((data?.length ?? 0) < PAGE) break
+          }
+          return rows
+        }),
+      )
+      return parts.flat().sort((a, b) => Date.parse(String(b.created_at)) - Date.parse(String(a.created_at)))
     },
 
     async findStudent(id: string) {

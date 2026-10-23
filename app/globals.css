@@ -1030,6 +1030,25 @@ html.theme-anim canvas {
   }
 }
 
+/* ===================================================================
+   Staff panels (dekan / tarbiyachi) on a phone: headings one step down.
+   The pages were sized for desktop; below 640px a text-base section title
+   wrapped to two lines beside its icon and hero / KPI numbers crowded the
+   tile. Scoped to the panel content wrapper (.staff-mobile-type), so the
+   student panel and landing pages are untouched. Unlayered, so it beats
+   Tailwind's utilities; v4 line-heights are ratios and follow the size.
+   `sm:` variants never apply below 640px, so this only replaces the phone
+   base size. Form fields keep 16px: iOS zooms into any smaller input.
+   =================================================================== */
+@media (max-width: 639px) {
+  .staff-mobile-type .text-base:not(input, textarea, select) { font-size: 0.9375rem; }
+  .staff-mobile-type .text-lg:not(input, textarea, select) { font-size: 1rem; }
+  .staff-mobile-type .text-xl { font-size: 1.125rem; }
+  .staff-mobile-type .text-2xl { font-size: 1.25rem; }
+  .staff-mobile-type .text-3xl { font-size: 1.5rem; }
+  .staff-mobile-type .text-4xl { font-size: 1.75rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

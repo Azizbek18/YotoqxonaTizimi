@@ -139,29 +139,31 @@ export default function AdminXodimlarPage() {
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* 1. Executive Hero Banner */}
-      <div className="no-shelf relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-5 sm:p-7 text-white shadow-xl shadow-indigo-950/15 border border-white/20">
-        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/20 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-200 border border-emerald-400/30">
-                <ShieldCheck size={11} /> Xodimlar Boshqaruvi
+      {/* Phone: badge with the two buttons on its right, the title, no tagline.
+          bg-white/15+ only — the light-mode retrofit turns bg-white/10 into pale glass. */}
+      <div className="no-shelf relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-4 sm:p-7 text-white shadow-xl shadow-indigo-950/15 border border-white/20">
+        <div className="relative z-10 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 lg:gap-x-4">
+          <div className="col-start-1 row-start-1 flex min-w-0 flex-wrap items-center gap-2 self-center lg:self-start">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur-md px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white border border-white/25">
+                <ShieldCheck size={11} className="text-emerald-300" /> Xodimlar Boshqaruvi
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/10 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-bold text-indigo-100 border border-white/15">
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-white/15 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-white border border-white/20">
                 <UserCog size={11} /> Pedagog-Tarbiyachilar
               </span>
-            </div>
+          </div>
+          <div className="col-span-2 min-w-0 lg:col-span-1">
             <h1
-              className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white drop-shadow-sm"
+              className="mt-2.5 text-lg leading-snug sm:mt-3 sm:text-2xl lg:text-3xl font-black tracking-tight text-white drop-shadow-sm"
               style={{ color: '#ffffff' }}
             >
-              Tarbiyachilar va Taklif Kodlari
+              Tarbiyachilar va taklif kodlari
             </h1>
-            <p className="text-xs sm:text-sm text-indigo-100 max-w-2xl font-medium leading-relaxed">
+            <p className="mt-1.5 hidden max-w-2xl text-sm font-medium leading-relaxed text-indigo-100 sm:block">
               Yotoqxona tarbiyachilari hisoblarini boshqarish va yangi xodimlar uchun bir martalik ro‘yxatdan o‘tish taklif kodlarini yaratish tizimi.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="col-start-2 row-start-1 flex items-center gap-1.5 sm:gap-2 lg:row-span-2 lg:self-center">
             {/* Kod yaratish tugmasi */}
             <button
               type="button"
@@ -171,10 +173,11 @@ export default function AdminXodimlarPage() {
                 setInviteForm(initialInviteForm)
                 setInviteModalOpen(true)
               }}
-              className="no-shelf cursor-pointer inline-flex items-center gap-2 rounded-xl bg-white text-indigo-950 hover:bg-white/90 px-4 py-2.5 text-xs font-black uppercase tracking-wider shadow-md shadow-indigo-950/20 transition-all active:scale-95"
+              aria-label="Taklif kodi yaratish"
+              className="no-shelf cursor-pointer inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-white text-indigo-700 hover:bg-white/90 px-3 text-xs font-bold shadow-md shadow-indigo-950/20 transition-all active:scale-95 sm:h-10 sm:px-4"
             >
-              <Plus size={15} />
-              <span>Kod yaratish</span>
+              <Plus size={15} className="shrink-0" />
+              <span>Kod<span className="hidden sm:inline"> yaratish</span></span>
             </button>
 
             {/* Refresh */}
@@ -185,8 +188,9 @@ export default function AdminXodimlarPage() {
                 void loadInvites()
               }}
               disabled={loading}
-              className="no-shelf cursor-pointer inline-flex items-center justify-center h-10 w-10 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white transition-all active:scale-95 shadow-xs disabled:opacity-50"
+              className="no-shelf cursor-pointer inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white transition-all active:scale-95 shadow-xs disabled:opacity-50"
               title="Yangilash"
+              aria-label="Yangilash"
             >
               <RotateCcw size={15} className={loading ? 'animate-spin' : ''} />
             </button>
@@ -195,56 +199,56 @@ export default function AdminXodimlarPage() {
       </div>
 
       {/* 2. 3 Sleek KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {/* Card 1: Faol Tarbiyachilar */}
-        <div className={`no-shelf rounded-2xl border p-4 sm:p-5 flex items-center gap-4 shadow-xs ${ui.card}`}>
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/50">
+        <div className={`no-shelf rounded-2xl border p-3 sm:p-5 flex items-center gap-4 shadow-xs ${ui.card}`}>
+          <div className="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/50">
             <UserCog size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="block text-[9px] sm:text-[10px] font-black uppercase leading-tight tracking-wide sm:tracking-wider text-slate-400">
               Faol Tarbiyachilar
             </span>
-            <p className={`text-2xl font-black tracking-tight leading-tight mt-0.5 ${ui.strong}`}>
+            <p className={`text-xl sm:text-2xl font-black tracking-tight leading-tight mt-1 sm:mt-0.5 ${ui.strong}`}>
               {loading ? '…' : tarbiyachiStaff.length}
             </p>
-            <p className="text-[11px] font-medium text-slate-500 truncate">
+            <p className="hidden sm:block text-[11px] font-medium text-slate-500 truncate">
               Tizimda faol xodimlar
             </p>
           </div>
         </div>
 
         {/* Card 2: Faol (Kutilayotgan) Kodlar */}
-        <div className={`no-shelf rounded-2xl border p-4 sm:p-5 flex items-center gap-4 shadow-xs ${ui.card}`}>
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/50">
+        <div className={`no-shelf rounded-2xl border p-3 sm:p-5 flex items-center gap-4 shadow-xs ${ui.card}`}>
+          <div className="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/50">
             <KeyRound size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="block text-[9px] sm:text-[10px] font-black uppercase leading-tight tracking-wide sm:tracking-wider text-slate-400">
               Faol Taklif Kodlari
             </span>
-            <p className={`text-2xl font-black tracking-tight leading-tight mt-0.5 ${ui.strong}`}>
+            <p className={`text-xl sm:text-2xl font-black tracking-tight leading-tight mt-1 sm:mt-0.5 ${ui.strong}`}>
               {loading ? '…' : activeInvitesCount}
             </p>
-            <p className="text-[11px] font-medium text-slate-500 truncate">
+            <p className="hidden sm:block text-[11px] font-medium text-slate-500 truncate">
               Ro‘yxatdan o‘tishga tayyor
             </p>
           </div>
         </div>
 
         {/* Card 3: Jami Takliflar */}
-        <div className={`no-shelf rounded-2xl border p-4 sm:p-5 flex items-center gap-4 shadow-xs ${ui.card}`}>
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200/50 dark:border-purple-800/50">
+        <div className={`no-shelf rounded-2xl border p-3 sm:p-5 flex items-center gap-4 shadow-xs ${ui.card}`}>
+          <div className="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200/50 dark:border-purple-800/50">
             <CheckCircle2 size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="block text-[9px] sm:text-[10px] font-black uppercase leading-tight tracking-wide sm:tracking-wider text-slate-400">
               Jami Takliflar
             </span>
-            <p className={`text-2xl font-black tracking-tight leading-tight mt-0.5 ${ui.strong}`}>
+            <p className={`text-xl sm:text-2xl font-black tracking-tight leading-tight mt-1 sm:mt-0.5 ${ui.strong}`}>
               {loading ? '…' : invites.length}
             </p>
-            <p className="text-[11px] font-medium text-slate-500 truncate">
+            <p className="hidden sm:block text-[11px] font-medium text-slate-500 truncate">
               {usedInvitesCount} tasi ishlatilgan
             </p>
           </div>
@@ -276,7 +280,7 @@ export default function AdminXodimlarPage() {
               setInviteForm(initialInviteForm)
               setInviteModalOpen(true)
             }}
-            className="no-shelf cursor-pointer self-start sm:self-auto inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3.5 py-2 text-xs font-black uppercase tracking-wider shadow-md shadow-blue-500/20 transition-all active:scale-95"
+            className="no-shelf cursor-pointer w-full sm:w-auto inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white px-4 text-xs font-bold shadow-md shadow-indigo-600/20 transition-all active:scale-95 sm:h-auto sm:py-2"
           >
             <Plus size={14} />
             <span>Kod yaratish</span>
@@ -362,9 +366,9 @@ export default function AdminXodimlarPage() {
                       <button
                         type="button"
                         onClick={() => setRevokeTarget(inv)}
-                        className="no-shelf cursor-pointer inline-flex items-center gap-1 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
+                        className="no-shelf cursor-pointer inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 px-3 text-xs font-bold transition-all active:scale-95 sm:h-8 sm:w-auto"
                       >
-                        <Trash2 size={11} />
+                        <Trash2 size={13} />
                         <span>Bekor qilish</span>
                       </button>
                     </div>
@@ -378,9 +382,9 @@ export default function AdminXodimlarPage() {
 
       {/* 4. Section: Faol Tarbiyachilar Ro‘yxati */}
       <div className={`no-shelf rounded-3xl border p-4 sm:p-6 space-y-4 shadow-xs ${ui.card}`}>
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
               <UserCog size={16} />
             </span>
             <div>
@@ -423,10 +427,10 @@ export default function AdminXodimlarPage() {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className={`text-sm font-black truncate leading-tight ${ui.strong}`}>
-                        {row.full_name}
-                      </h4>
+                    <h4 className={`line-clamp-2 break-words text-sm font-black leading-snug ${ui.strong}`} title={row.full_name}>
+                      {row.full_name}
+                    </h4>
+                    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
                         {ROLE_LABELS[row.role]}
                       </span>
@@ -449,7 +453,7 @@ export default function AdminXodimlarPage() {
 
                 {/* Contacts & Quick Call */}
                 <div className="pt-2 border-t border-slate-200/50 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-1.5 text-slate-500 text-[11px] truncate max-w-[200px]">
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5 text-slate-500 text-[11px]">
                     <Mail size={12} className="shrink-0 text-slate-400" />
                     <span className="truncate">{row.email}</span>
                   </div>
@@ -457,7 +461,7 @@ export default function AdminXodimlarPage() {
                   {row.phone_number ? (
                     <a
                       href={`tel:${row.phone_number.replace(/[^\d+]/g, '')}`}
-                      className="no-shelf inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold transition-colors"
+                      className="no-shelf inline-flex h-8 shrink-0 items-center gap-1.5 px-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold tabular-nums transition-colors"
                       title="Qo‘ng‘iroq qilish"
                     >
                       <PhoneCall size={11} />

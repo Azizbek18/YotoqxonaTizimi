@@ -588,7 +588,7 @@ export default function DekanLayout({
               </p>
             </Link>
           )}
-          <div className={`min-h-[calc(100vh-7rem)] rounded-3xl border p-3 sm:p-6 lg:p-8 ${ui.cardElevated}`}>
+          <div className={`staff-mobile-type min-h-[calc(100vh-7rem)] rounded-3xl border p-3 sm:p-6 lg:p-8 ${ui.cardElevated}`}>
             {needsFacultyPick
               ? <div className="py-8"><PickFacultyGate title={activeItem?.label ?? "Bu bo'lim"} /></div>
               : children}

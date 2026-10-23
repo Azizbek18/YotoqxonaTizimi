@@ -277,6 +277,7 @@ export default function DekanSozlamalarPage() {
     const mainTabsConfig: Array<{
         id: MainTab
         label: string
+        short: string
         icon: typeof Building2
         hasDirty?: boolean
         badge?: string | number
@@ -285,24 +286,28 @@ export default function DekanSozlamalarPage() {
         {
             id: 'dorms',
             label: 'Yotoqxona binolari',
+            short: 'Binolar',
             icon: Building2,
             badge: dorms.length > 0 ? dorms.length : undefined,
         },
         {
             id: 'finance',
             label: "Moliya & To'lovlar",
+            short: 'Moliya',
             icon: Wallet,
             hasDirty: dirtyTabs.finance,
         },
         {
             id: 'documents',
             label: 'Hujjatlar & Propiska',
+            short: 'Hujjatlar',
             icon: Globe2,
             hasDirty: dirtyTabs.documents,
         },
         {
             id: 'contacts',
             label: 'Telegram & Aloqa',
+            short: 'Aloqa',
             icon: Phone,
             hasDirty: dirtyTabs.contacts || telegramChat.trim() !== savedTelegramChat.trim(),
             badge: savedTelegramChat ? 'Ulangan' : undefined,
@@ -311,6 +316,7 @@ export default function DekanSozlamalarPage() {
         {
             id: 'security',
             label: 'Imzo & Xavfsizlik',
+            short: 'Imzo',
             icon: KeyRound,
             hasDirty: dirtyTabs.security,
         },
@@ -360,47 +366,48 @@ export default function DekanSozlamalarPage() {
     ]
 
     return (
-        <div className="space-y-6 pb-4">
+        <div className="space-y-4 sm:space-y-6 pb-4">
             {/* 1. Academic Hero Header Banner.
                 data-flat: the hero is a dark surface in both themes; without it the light-mode
                 retrofit in globals.css turns its bg-white/10 cards into milky lavender glass. */}
             <div data-flat>
-            <div className="no-shelf relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-indigo-900 p-5 sm:p-7 shadow-xl shadow-indigo-950/20 border border-white/10 text-white">
+            <div className="no-shelf relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-indigo-900 p-4 sm:p-7 shadow-xl shadow-indigo-950/20 border border-white/10 text-white">
                 <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl" />
                 <div className="pointer-events-none absolute -left-16 -bottom-20 h-60 w-60 rounded-full bg-indigo-400/10 blur-3xl" />
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:20px_20px] opacity-[0.06]" />
 
-                <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5">
-                    <div className="flex items-start sm:items-center gap-4">
-                        <div className="flex h-13 w-13 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-white/10 text-white border border-white/15 shadow-lg shadow-black/20 shrink-0">
+                <div className="relative flex items-start justify-between gap-3 md:items-center md:gap-5">
+                    <div className="flex min-w-0 items-start sm:items-center gap-4">
+                        <div className="hidden sm:flex h-13 w-13 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-white/10 text-white border border-white/15 shadow-lg shadow-black/20 shrink-0">
                             <Sliders size={26} strokeWidth={2.2} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold bg-white/15 text-white backdrop-blur-md border border-white/20">
-                                    <Building2 size={12} className="text-white/80" />
-                                    {dekanFaculty ? permitFacultyLabel(dekanFaculty) : 'Fakultet boshqaruvi'}
+                                <span className="inline-flex max-w-full items-center gap-1.5 px-2.5 sm:px-3 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-white/15 text-white backdrop-blur-md border border-white/20">
+                                    <Building2 size={12} className="shrink-0 text-white/80" />
+                                    <span className="truncate">{dekanFaculty ? permitFacultyLabel(dekanFaculty) : 'Fakultet boshqaruvi'}</span>
                                 </span>
-                                <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[11px] font-bold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                                <span className="hidden sm:inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[11px] font-bold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
                                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                     Tizim konfiguratsiyasi faol
                                 </span>
                             </div>
-                            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                            <h1 className="text-lg sm:text-2xl font-black leading-snug tracking-tight text-white">
                                 Dekan tizim sozlamalari
                             </h1>
-                            <p className="text-xs text-indigo-100/90 mt-1 max-w-xl leading-relaxed">
+                            <p className="hidden sm:block text-xs text-indigo-100/90 mt-1 max-w-xl leading-relaxed">
                                 Binolar fondi, to‘lov tariflari, rasmiy blanklar, Telegram bildirishnomalari va xodimlar vakolatlarini markazlashgan boshqarish
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5 self-start md:self-center shrink-0">
+                    <div className="flex items-center gap-2.5 shrink-0">
                         <button
                             type="button"
                             onClick={() => void loadSettings()}
                             disabled={loading}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-bold transition-all disabled:opacity-50 no-shelf cursor-pointer active:scale-95 shadow-sm"
+                            aria-label="Ma'lumotlarni qayta yuklash"
+                            className="inline-flex h-9 w-9 items-center justify-center gap-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-bold transition-all disabled:opacity-50 no-shelf cursor-pointer active:scale-95 shadow-sm sm:h-auto sm:w-auto sm:px-4 sm:py-2.5"
                             title="Ma'lumotlarni qayta yuklash"
                         >
                             <motion.div
@@ -409,54 +416,54 @@ export default function DekanSozlamalarPage() {
                             >
                                 <RotateCcw size={14} />
                             </motion.div>
-                            <span>Yangilash</span>
+                            <span className="hidden sm:inline">Yangilash</span>
                         </button>
                     </div>
                 </div>
 
                 {/* Academic Quick Status Metrics Strip */}
                 {settings && (
-                    <div className="relative mt-6 pt-5 border-t border-white/15 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                        <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-3 transition-colors hover:bg-white/[0.07]">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-200 shrink-0">
+                    <div className="relative mt-4 pt-4 sm:mt-6 sm:pt-5 border-t border-white/15 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-xs">
+                        <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-2.5 sm:p-3 transition-colors hover:bg-white/[0.07]">
+                            <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-200 shrink-0">
                                 <Building2 size={18} />
                             </div>
                             <div className="min-w-0">
-                                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Binolar fondi</div>
+                                <div className="truncate text-[10px] uppercase font-bold text-slate-400 tracking-wide sm:tracking-wider">Binolar fondi</div>
                                 <div className="font-extrabold truncate text-white text-sm">{dorms.length} ta yotoqxona</div>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-3 transition-colors hover:bg-white/[0.07]">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-200 shrink-0">
+                        <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-2.5 sm:p-3 transition-colors hover:bg-white/[0.07]">
+                            <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-200 shrink-0">
                                 <Coins size={18} />
                             </div>
                             <div className="min-w-0">
-                                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Oylik to‘lov</div>
+                                <div className="truncate text-[10px] uppercase font-bold text-slate-400 tracking-wide sm:tracking-wider">Oylik to‘lov</div>
                                 <div className="font-extrabold truncate text-white text-sm">
                                     {Number(settings.monthlyFee).toLocaleString()} so‘m
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-3 transition-colors hover:bg-white/[0.07]">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-200 shrink-0">
+                        <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-2.5 sm:p-3 transition-colors hover:bg-white/[0.07]">
+                            <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-200 shrink-0">
                                 <Send size={18} />
                             </div>
                             <div className="min-w-0">
-                                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Telegram bildirishnoma</div>
+                                <div className="truncate text-[10px] uppercase font-bold text-slate-400 tracking-wide sm:tracking-wider">Telegram bildirishnoma</div>
                                 <div className="font-extrabold truncate text-white text-sm">
                                     {savedTelegramChat ? 'Faol ulangan' : 'Ulanmagan'}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-3 transition-colors hover:bg-white/[0.07]">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-200 shrink-0">
+                        <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-2.5 sm:p-3 transition-colors hover:bg-white/[0.07]">
+                            <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-400/15 text-indigo-200 shrink-0">
                                 <MapPinned size={18} />
                             </div>
                             <div className="min-w-0">
-                                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mahalliy hudud</div>
+                                <div className="truncate text-[10px] uppercase font-bold text-slate-400 tracking-wide sm:tracking-wider">Mahalliy hudud</div>
                                 <div className="font-extrabold truncate text-white text-sm">
                                     {settings.homeRegions.length} / {UZ_REGION_NAMES.length} viloyat
                                 </div>
@@ -489,11 +496,11 @@ export default function DekanSozlamalarPage() {
             ) : (
                 <>
                     {/* 2. Primary Navigation Tabs (Sleek Segmented Control) */}
-                    <div className="overflow-x-auto scrollbar-none py-1">
+                    <div className="sm:overflow-x-auto sm:scrollbar-none sm:py-1">
                         <div
                             role="tablist"
                             aria-label="Sozlamalar toifalari"
-                            className={`no-shelf inline-flex items-center gap-1.5 p-1.5 rounded-2xl border transition-all ${
+                            className={`no-shelf grid grid-cols-5 gap-1 p-1 rounded-2xl border transition-all sm:inline-flex sm:items-center sm:gap-1.5 sm:p-1.5 ${
                                 isLight
                                     ? 'bg-slate-100/90 border-slate-200/90'
                                     : 'bg-slate-900/90 border-slate-800'
@@ -509,7 +516,7 @@ export default function DekanSozlamalarPage() {
                                         role="tab"
                                         aria-selected={isActive}
                                         onClick={() => setActiveMainTab(tab.id)}
-                                        className={`no-shelf group relative inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all duration-150 shrink-0 cursor-pointer select-none active:scale-[0.98] ${
+                                        className={`no-shelf group relative flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[10px] transition-all duration-150 shrink-0 cursor-pointer select-none active:scale-[0.98] sm:inline-flex sm:flex-row sm:gap-2.5 sm:px-4 sm:py-2.5 sm:text-sm ${
                                             isActive
                                                 ? isLight
                                                     ? 'bg-white text-indigo-700 border border-slate-200/90 font-bold'
@@ -538,11 +545,12 @@ export default function DekanSozlamalarPage() {
                                                     : 'text-slate-500 group-hover:text-slate-300'
                                             }`}
                                         />
-                                        <span>{tab.label}</span>
+                                        <span className="max-w-full truncate sm:hidden">{tab.short}</span>
+                                        <span className="hidden sm:inline">{tab.label}</span>
 
                                         {tab.badge !== undefined && (
                                             <span
-                                                className={`no-shelf inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-black rounded-full shrink-0 transition-colors ${
+                                                className={`no-shelf hidden sm:inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-black rounded-full shrink-0 transition-colors ${
                                                     tab.badgeColor === 'emerald'
                                                         ? isActive
                                                             ? isLight
@@ -570,7 +578,7 @@ export default function DekanSozlamalarPage() {
                                         {tab.hasDirty && (
                                             <span
                                                 title="Saqlanmagan o'zgarish bor"
-                                                className="h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900 animate-pulse shrink-0"
+                                                className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900 animate-pulse shrink-0 sm:static"
                                             />
                                         )}
                                     </button>
@@ -634,7 +642,7 @@ export default function DekanSozlamalarPage() {
                                                     <button
                                                         type="button"
                                                         onClick={() => setSelectedDormId('__new__')}
-                                                        className={`inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-xl border transition-all cursor-pointer shadow-2xs ${
+                                                        className={`inline-flex h-9 items-center justify-center gap-1.5 text-xs font-bold px-3.5 rounded-xl border transition-all cursor-pointer shadow-2xs sm:h-auto sm:py-1.5 ${
                                                             isLight
                                                                 ? 'border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-300'
                                                                 : 'border-indigo-500/30 text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20'
@@ -770,13 +778,13 @@ export default function DekanSozlamalarPage() {
                                             >
                                                 {/* Selected Building Context Strip */}
                                                 <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl border ${ui.card}`}>
-                                                    <div className="flex items-center gap-3.5">
-                                                        <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${ui.accentTile}`}>
+                                                    <div className="flex min-w-0 items-center gap-3.5">
+                                                        <div className={`hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${ui.accentTile}`}>
                                                             <Building2 size={20} />
                                                         </div>
                                                         <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <h2 className={`text-base font-black ${ui.strong}`}>
+                                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                                <h2 className={`text-[15px] sm:text-base font-black leading-snug ${ui.strong}`}>
                                                                     {activeDorm.number}-sonli yotoqxona sozlamalari
                                                                 </h2>
                                                                 {activeDorm.isPrimary && (
@@ -792,11 +800,11 @@ export default function DekanSozlamalarPage() {
                                                     </div>
 
                                                     {/* Building Sub-Tabs / View Mode Filter */}
-                                                    <div className={`no-shelf flex items-center p-1 rounded-xl border self-start sm:self-center ${isLight ? 'bg-slate-100/90 border-slate-200/90' : 'bg-slate-800/80 border-slate-700'}`}>
+                                                    <div className={`no-shelf grid auto-cols-fr grid-flow-col p-1 rounded-xl border sm:flex sm:items-center sm:self-center ${isLight ? 'bg-slate-100/90 border-slate-200/90' : 'bg-slate-800/80 border-slate-700'}`}>
                                                         <button
                                                             type="button"
                                                             onClick={() => setBuildingSubTab('all')}
-                                                            className={`no-shelf px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                                            className={`no-shelf whitespace-nowrap px-1.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                                                                 buildingSubTab === 'all'
                                                                     ? isLight
                                                                         ? 'bg-white text-indigo-700 border border-slate-200/90 font-bold'
@@ -810,7 +818,7 @@ export default function DekanSozlamalarPage() {
                                                         <button
                                                             type="button"
                                                             onClick={() => setBuildingSubTab('floors')}
-                                                            className={`no-shelf px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                                            className={`no-shelf whitespace-nowrap px-1.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                                                                 buildingSubTab === 'floors'
                                                                     ? isLight
                                                                         ? 'bg-white text-indigo-700 border border-slate-200/90 font-bold'
@@ -825,7 +833,7 @@ export default function DekanSozlamalarPage() {
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setBuildingSubTab('rooms')}
-                                                                className={`no-shelf px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                                                className={`no-shelf whitespace-nowrap px-1.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                                                                     buildingSubTab === 'rooms'
                                                                         ? isLight
                                                                             ? 'bg-white text-indigo-700 border border-slate-200/90 font-bold'
@@ -840,7 +848,7 @@ export default function DekanSozlamalarPage() {
                                                         <button
                                                             type="button"
                                                             onClick={() => setBuildingSubTab('attendance')}
-                                                            className={`no-shelf px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                                            className={`no-shelf whitespace-nowrap px-1.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                                                                 buildingSubTab === 'attendance'
                                                                     ? isLight
                                                                         ? 'bg-white text-indigo-700 border border-slate-200/90 font-bold'
@@ -911,16 +919,16 @@ export default function DekanSozlamalarPage() {
                                 className="space-y-6"
                             >
                                 <div className={`rounded-3xl border overflow-hidden ${ui.card}`}>
-                                    <div className={`flex items-center gap-3 border-b p-5 sm:px-6 ${ui.border}`}>
-                                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${ui.accentTile}`}>
+                                    <div className={`flex items-center gap-3 border-b p-4 sm:p-5 sm:px-6 ${ui.border}`}>
+                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${ui.accentTile}`}>
                                             <Wallet size={19} strokeWidth={2.2} />
                                         </div>
                                         <div>
                                             <h2 className={`text-base font-bold ${ui.strong}`}>To‘lov va tarif stavkalari</h2>
-                                            <p className={`text-xs ${ui.muted}`}>Talabalar uchun oylik badal va rasmiy shartnoma qiymatlari</p>
+                                            <p className={`mt-0.5 text-[11px] leading-snug line-clamp-2 sm:line-clamp-none sm:text-xs ${ui.muted}`}>Talabalar uchun oylik badal va rasmiy shartnoma qiymatlari</p>
                                         </div>
                                     </div>
-                                    <div className="p-5 sm:p-7 space-y-7">
+                                    <div className="p-4 sm:p-7 space-y-7">
                                         {/* Financial Highlights */}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className={`p-4.5 rounded-2xl border transition-all ${
@@ -963,7 +971,7 @@ export default function DekanSozlamalarPage() {
                                         {/* Input form with presets */}
                                         <div className="space-y-6 pt-2">
                                             {/* 1. Monthly fee field */}
-                                            <div className={`p-5 rounded-2xl border ${isLight ? 'bg-slate-50/60 border-slate-200' : 'bg-slate-800/30 border-slate-700/80'}`}>
+                                            <div className={`p-4 sm:p-5 rounded-2xl border ${isLight ? 'bg-slate-50/60 border-slate-200' : 'bg-slate-800/30 border-slate-700/80'}`}>
                                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                                     <div>
                                                         <h3 className={`text-sm font-black ${ui.strong}`}>Oylik to‘lov summasi</h3>
@@ -1013,7 +1021,7 @@ export default function DekanSozlamalarPage() {
                                             </div>
 
                                             {/* 2. Yearly contract fee field */}
-                                            <div className={`p-5 rounded-2xl border ${isLight ? 'bg-slate-50/60 border-slate-200' : 'bg-slate-800/30 border-slate-700/80'}`}>
+                                            <div className={`p-4 sm:p-5 rounded-2xl border ${isLight ? 'bg-slate-50/60 border-slate-200' : 'bg-slate-800/30 border-slate-700/80'}`}>
                                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                                     <div>
                                                         <h3 className={`text-sm font-black ${ui.strong}`}>Yillik shartnoma summasi</h3>
@@ -1042,7 +1050,7 @@ export default function DekanSozlamalarPage() {
                                                     <button
                                                         type="button"
                                                         onClick={() => handleChange('yearlyContractFee', settings.monthlyFee * 10)}
-                                                        className={`no-shelf inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                                                        className={`no-shelf inline-flex items-start gap-1.5 text-left text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
                                                             isLight ? 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100' : 'bg-violet-950/40 text-violet-300 border-violet-500/30 hover:bg-violet-900/40'
                                                         }`}
                                                         style={{ boxShadow: 'none' }}
@@ -1079,16 +1087,16 @@ export default function DekanSozlamalarPage() {
                             >
                                 {/* TTJ Name Section with Live Document Preview */}
                                 <div className={`rounded-3xl border overflow-hidden ${ui.card}`}>
-                                    <div className={`flex items-center gap-3 border-b p-5 sm:px-6 ${ui.border}`}>
-                                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${ui.accentTile}`}>
+                                    <div className={`flex items-center gap-3 border-b p-4 sm:p-5 sm:px-6 ${ui.border}`}>
+                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${ui.accentTile}`}>
                                             <Globe2 size={19} strokeWidth={2.2} />
                                         </div>
                                         <div>
                                             <h2 className={`text-base font-bold ${ui.strong}`}>Xorijlik va imtiyozli talabalar me&apos;yoriy arizasi</h2>
-                                            <p className={`text-xs ${ui.muted}`}>Ariza va Tilxat blanklarida ko&apos;rsatiladigan rasmiy TTJ nomi va raqami</p>
+                                            <p className={`mt-0.5 text-[11px] leading-snug line-clamp-2 sm:line-clamp-none sm:text-xs ${ui.muted}`}>Ariza va Tilxat blanklarida ko&apos;rsatiladigan rasmiy TTJ nomi va raqami</p>
                                         </div>
                                     </div>
-                                    <div className="p-5 sm:p-7 space-y-6">
+                                    <div className="p-4 sm:p-7 space-y-6">
                                         {!settings.ttjName.trim() && (
                                             <div className={`flex items-start gap-3 rounded-2xl border p-4.5 ${isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/25 bg-amber-500/10'}`}>
                                                 <ShieldAlert size={19} className={`mt-0.5 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
@@ -1142,45 +1150,45 @@ export default function DekanSozlamalarPage() {
 
                                 {/* Propiska & Regional Supervision Section */}
                                 <div className={`rounded-3xl border overflow-hidden ${ui.card}`}>
-                                    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b p-5 sm:px-6 ${ui.border}`}>
+                                    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b p-4 sm:p-5 sm:px-6 ${ui.border}`}>
                                         <div className="flex items-center gap-3">
-                                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${ui.accentTile}`}>
+                                            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${ui.accentTile}`}>
                                                 <MapPinned size={19} strokeWidth={2.2} />
                                             </div>
                                             <div>
                                                 <h2 className={`text-base font-bold ${ui.strong}`}>Boshqa viloyat talabalari — Propiska nazorati</h2>
-                                                <p className={`text-xs ${ui.muted}`}>
+                                                <p className={`mt-0.5 text-[11px] leading-snug line-clamp-2 sm:line-clamp-none sm:text-xs ${ui.muted}`}>
                                                     Mahalliy deb belgilanmagan viloyat talabalari uchun vaqtinchalik ro‘yxat muddati nazorati
                                                 </p>
                                             </div>
                                         </div>
 
                                         {/* Quick selection helpers */}
-                                        <div className="flex items-center gap-2">
+                                        <div className="grid grid-cols-3 gap-1.5 sm:flex sm:items-center sm:gap-2">
                                             <button
                                                 type="button"
                                                 onClick={selectTashkentOnly}
-                                                className={`no-shelf text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-colors cursor-pointer ${
+                                                className={`no-shelf h-9 whitespace-nowrap text-[11px] font-bold px-2 sm:px-3 rounded-xl border transition-colors cursor-pointer sm:h-auto sm:py-1.5 ${
                                                     isLight ? 'border-slate-300 hover:bg-slate-100 text-slate-700' : 'border-slate-700 hover:bg-slate-800 text-slate-300'
                                                 }`}
                                                 style={{ boxShadow: 'none' }}
                                             >
-                                                Faqat Toshkent
+                                                <span className="sm:hidden">Toshkent</span><span className="hidden sm:inline">Faqat Toshkent</span>
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={selectAllRegions}
-                                                className={`no-shelf text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-colors cursor-pointer ${
+                                                className={`no-shelf h-9 whitespace-nowrap text-[11px] font-bold px-2 sm:px-3 rounded-xl border transition-colors cursor-pointer sm:h-auto sm:py-1.5 ${
                                                     isLight ? 'border-slate-300 hover:bg-slate-100 text-slate-700' : 'border-slate-700 hover:bg-slate-800 text-slate-300'
                                                 }`}
                                                 style={{ boxShadow: 'none' }}
                                             >
-                                                Barchasini tanlash
+                                                <span className="sm:hidden">Barchasi</span><span className="hidden sm:inline">Barchasini tanlash</span>
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={clearAllRegions}
-                                                className={`no-shelf text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-colors cursor-pointer ${
+                                                className={`no-shelf h-9 whitespace-nowrap text-[11px] font-bold px-2 sm:px-3 rounded-xl border transition-colors cursor-pointer sm:h-auto sm:py-1.5 ${
                                                     isLight ? 'border-slate-300 hover:bg-slate-100 text-slate-700' : 'border-slate-700 hover:bg-slate-800 text-slate-300'
                                                 }`}
                                                 style={{ boxShadow: 'none' }}
@@ -1189,7 +1197,7 @@ export default function DekanSozlamalarPage() {
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="p-5 sm:p-7 space-y-5">
+                                    <div className="p-4 sm:p-7 space-y-5">
                                         <p className={`text-xs leading-relaxed ${ui.muted}`}>
                                             O&apos;zbekiston fuqarosi bo&apos;lgan, lekin ro&apos;yxatga olingan doimiy viloyati pastda belgilanmagan
                                             talabaga &laquo;Hujjatlarim&raquo; bo&apos;limida propiska (vaqtinchalik ro&apos;yxatga qo&apos;yish)
@@ -1207,7 +1215,7 @@ export default function DekanSozlamalarPage() {
                                             </div>
                                         )}
 
-                                        <div className="flex flex-wrap gap-2.5 pt-2">
+                                        <div className="grid grid-cols-2 gap-2 pt-1 sm:flex sm:flex-wrap sm:gap-2.5 sm:pt-2">
                                             {UZ_REGION_NAMES.map((region) => {
                                                 const active = settings.homeRegions.includes(region)
                                                 return (
@@ -1215,7 +1223,7 @@ export default function DekanSozlamalarPage() {
                                                         key={region}
                                                         type="button"
                                                         onClick={() => toggleHomeRegion(region)}
-                                                        className={`no-shelf rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-2 ${
+                                                        className={`no-shelf rounded-xl sm:rounded-2xl border px-2.5 sm:px-4 py-2.5 text-left text-xs font-bold leading-tight transition-all cursor-pointer active:scale-95 flex items-center gap-2 ${
                                                             active
                                                                 ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-600/30'
                                                                 : isLight
@@ -1240,8 +1248,8 @@ export default function DekanSozlamalarPage() {
                                         </div>
 
                                         <div className="pt-2">
-                                            <div className="flex items-center justify-between text-xs font-bold mb-1.5">
-                                                <span className={ui.muted}>Mahalliy deb belgilangan hududlar qamrovi:</span>
+                                            <div className="flex items-center justify-between gap-2 text-xs font-bold mb-1.5">
+                                                <span className={ui.muted}><span className="sm:hidden">Mahalliy hududlar:</span><span className="hidden sm:inline">Mahalliy deb belgilangan hududlar qamrovi:</span></span>
                                                 <span className={ui.strong}>{settings.homeRegions.length} / {UZ_REGION_NAMES.length} viloyat</span>
                                             </div>
                                             <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
@@ -1270,18 +1278,18 @@ export default function DekanSozlamalarPage() {
                             >
                                 {/* Telegram Notifications Section */}
                                 <div className={`rounded-3xl border overflow-hidden ${ui.card}`}>
-                                    <div className={`flex items-center gap-3 border-b p-5 sm:px-6 ${ui.border}`}>
-                                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${ui.accentTile}`}>
+                                    <div className={`flex items-center gap-3 border-b p-4 sm:p-5 sm:px-6 ${ui.border}`}>
+                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${ui.accentTile}`}>
                                             <Send size={19} strokeWidth={2.2} />
                                         </div>
                                         <div>
                                             <h2 className={`text-base font-bold ${ui.strong}`}>Yangi arizalar — Telegram bildirishnomasi</h2>
-                                            <p className={`text-xs ${ui.muted}`}>Talabalar yo‘llanma va arizalar yuborganda bot orqali darhol xabar olish</p>
+                                            <p className={`mt-0.5 text-[11px] leading-snug line-clamp-2 sm:line-clamp-none sm:text-xs ${ui.muted}`}>Talabalar yo‘llanma va arizalar yuborganda bot orqali darhol xabar olish</p>
                                         </div>
                                     </div>
-                                    <div className="p-5 sm:p-7 space-y-6">
+                                    <div className="p-4 sm:p-7 space-y-6">
                                         {/* Status banner */}
-                                        <div className={`flex items-center justify-between p-4 rounded-2xl border ${
+                                        <div className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-2 p-4 rounded-2xl border ${
                                             savedTelegramChat
                                                 ? isLight ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900' : 'bg-emerald-950/30 border-emerald-500/30 text-emerald-200'
                                                 : isLight ? 'bg-amber-50/80 border-amber-200 text-amber-900' : 'bg-amber-950/30 border-amber-500/30 text-amber-200'
@@ -1313,7 +1321,7 @@ export default function DekanSozlamalarPage() {
                                         {/* Step by step connection cards */}
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className={`p-4.5 rounded-2xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-800/40 border-slate-700'}`}>
-                                                <div className="flex items-center justify-between mb-2">
+                                                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 mb-2">
                                                     <div className="flex items-center gap-2">
                                                         <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-white font-black text-xs">
                                                             1
@@ -1373,7 +1381,7 @@ export default function DekanSozlamalarPage() {
                                                 type="button"
                                                 onClick={handleSaveTelegram}
                                                 disabled={telegramSaving || telegramChat.trim() === savedTelegramChat.trim()}
-                                                className={`no-shelf shrink-0 rounded-xl px-6 py-2.5 text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${ui.accentSolid}`}
+                                                className={`no-shelf h-11 shrink-0 rounded-xl px-6 text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer sm:h-auto sm:py-2.5 ${ui.accentSolid}`}
                                                 style={{ boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)' }}
                                             >
                                                 {telegramSaving ? 'Saqlanmoqda...' : 'Telegram ID saqlash'}
@@ -1384,16 +1392,16 @@ export default function DekanSozlamalarPage() {
 
                                 {/* Emergency & Staff Contacts Section */}
                                 <div className={`rounded-3xl border overflow-hidden ${ui.card}`}>
-                                    <div className={`flex items-center gap-3 border-b p-5 sm:px-6 ${ui.border}`}>
-                                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${ui.accentTile}`}>
+                                    <div className={`flex items-center gap-3 border-b p-4 sm:p-5 sm:px-6 ${ui.border}`}>
+                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${ui.accentTile}`}>
                                             <Phone size={19} strokeWidth={2.2} />
                                         </div>
                                         <div>
                                             <h2 className={`text-base font-bold ${ui.strong}`}>Aloqa va favqulodda xizmatlar telefonlari</h2>
-                                            <p className={`text-xs ${ui.muted}`}>Talabalar mobil ilovasida favqulodda vaziyatlar uchun ko‘rsatiladigan rasmiy kontaktlar</p>
+                                            <p className={`mt-0.5 text-[11px] leading-snug line-clamp-2 sm:line-clamp-none sm:text-xs ${ui.muted}`}>Talabalar mobil ilovasida favqulodda vaziyatlar uchun ko‘rsatiladigan rasmiy kontaktlar</p>
                                         </div>
                                     </div>
-                                    <div className="p-5 sm:p-7 space-y-6">
+                                    <div className="p-4 sm:p-7 space-y-6">
                                         <div className={`rounded-2xl border p-4 text-xs leading-relaxed ${isLight ? 'border-indigo-200 bg-indigo-50/70 text-indigo-900' : 'border-indigo-500/25 bg-indigo-500/10 text-indigo-200'}`}>
                                             <span className="font-black">Talaba kengashi raisi</span> ma&apos;lumotlari alohida tizim rolida boshqariladi. Talabalar sahifasida kerakli talabani tanlab, kontekst menyudan &laquo;Kengash raisi tayinlash&raquo; tugmasini bosing.
                                         </div>
@@ -1405,7 +1413,7 @@ export default function DekanSozlamalarPage() {
                                                 return (
                                                     <div
                                                         key={contact.title}
-                                                        className={`p-5 rounded-2xl border transition-all ${
+                                                        className={`p-4 sm:p-5 rounded-2xl border transition-all ${
                                                             isLight ? 'bg-slate-50/60 border-slate-200 hover:border-slate-300' : 'bg-slate-800/30 border-slate-700/80 hover:border-slate-700'
                                                         }`}
                                                     >
@@ -1501,19 +1509,19 @@ export default function DekanSozlamalarPage() {
 
                                 {/* System Limits & Warnings Threshold Section */}
                                 <div className={`rounded-3xl border overflow-hidden ${ui.card}`}>
-                                    <div className={`flex items-center gap-3 border-b p-5 sm:px-6 ${ui.border}`}>
-                                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${ui.accentTile}`}>
+                                    <div className={`flex items-center gap-3 border-b p-4 sm:p-5 sm:px-6 ${ui.border}`}>
+                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${ui.accentTile}`}>
                                             <ShieldAlert size={19} strokeWidth={2.2} />
                                         </div>
                                         <div>
                                             <h2 className={`text-base font-bold ${ui.strong}`}>Fayl yuklash va talabalar intizomi chegaralari</h2>
-                                            <p className={`text-xs ${ui.muted}`}>Xavfsizlik choralari va avtomatik nazorat qoidalari</p>
+                                            <p className={`mt-0.5 text-[11px] leading-snug line-clamp-2 sm:line-clamp-none sm:text-xs ${ui.muted}`}>Xavfsizlik choralari va avtomatik nazorat qoidalari</p>
                                         </div>
                                     </div>
-                                    <div className="p-5 sm:p-7 space-y-6">
+                                    <div className="p-4 sm:p-7 space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                             {/* Max upload size */}
-                                            <div className={`p-5 rounded-2xl border ${isLight ? 'bg-slate-50/60 border-slate-200' : 'bg-slate-800/30 border-slate-700/80'}`}>
+                                            <div className={`p-4 sm:p-5 rounded-2xl border ${isLight ? 'bg-slate-50/60 border-slate-200' : 'bg-slate-800/30 border-slate-700/80'}`}>
                                                 <div className="flex items-start justify-between gap-3 mb-3">
                                                     <div>
                                                         <h3 className={`text-sm font-bold ${ui.strong}`}>Maksimal fayl hajmi chegarasi</h3>
@@ -1522,24 +1530,29 @@ export default function DekanSozlamalarPage() {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-3 mt-4">
-                                                    <input
-                                                        type="number"
-                                                        min={1}
-                                                        max={100}
-                                                        value={settings.maxUploadSizeMb}
-                                                        onChange={(e) => handleChange('maxUploadSizeMb', Math.max(1, Number(e.target.value)))}
-                                                        className={`${inputCls} w-28 font-bold text-base`}
-                                                    />
-                                                    <span className={`text-xs font-black px-3 py-2 rounded-xl ${isLight ? 'bg-slate-200 text-slate-800' : 'bg-slate-800 text-slate-200'}`}>
-                                                        Megabayt (MB)
-                                                    </span>
-                                                    <span className="text-xs text-slate-400">Tavsiya: 10 - 25 MB</span>
+                                                {/* Unit inside the field (like "so'm" on the fee inputs), hint beside it —
+                                                    a separate unit chip wrapped the row into three lines on a phone. */}
+                                                <div className="mt-3 flex items-center gap-3">
+                                                    <div className="relative w-32 shrink-0">
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            max={100}
+                                                            value={settings.maxUploadSizeMb}
+                                                            onChange={(e) => handleChange('maxUploadSizeMb', Math.max(1, Number(e.target.value)))}
+                                                            aria-label="Maksimal fayl hajmi, megabayt"
+                                                            className={`${inputCls} w-full pr-11 font-bold text-base`}
+                                                        />
+                                                        <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                                                            MB
+                                                        </span>
+                                                    </div>
+                                                    <span className={`text-[11px] leading-snug ${ui.muted}`}>Tavsiya: 10–25 MB</span>
                                                 </div>
                                             </div>
 
                                             {/* Warning threshold */}
-                                            <div className={`p-5 rounded-2xl border ${isLight ? 'bg-slate-50/60 border-slate-200' : 'bg-slate-800/30 border-slate-700/80'}`}>
+                                            <div className={`p-4 sm:p-5 rounded-2xl border ${isLight ? 'bg-slate-50/60 border-slate-200' : 'bg-slate-800/30 border-slate-700/80'}`}>
                                                 <div className="flex items-start justify-between gap-3 mb-3">
                                                     <div>
                                                         <h3 className={`text-sm font-bold ${ui.strong}`}>Ogohlantirish chegarasi</h3>
@@ -1548,19 +1561,22 @@ export default function DekanSozlamalarPage() {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-3 mt-4">
-                                                    <input
-                                                        type="number"
-                                                        min={1}
-                                                        max={10}
-                                                        value={settings.warningThreshold}
-                                                        onChange={(e) => handleChange('warningThreshold', Math.max(1, Number(e.target.value)))}
-                                                        className={`${inputCls} w-28 font-bold text-base`}
-                                                    />
-                                                    <span className={`text-xs font-black px-3 py-2 rounded-xl ${isLight ? 'bg-slate-200 text-slate-800' : 'bg-slate-800 text-slate-200'}`}>
-                                                        ta ogohlantirish
-                                                    </span>
-                                                    <span className="text-xs text-slate-400">Standart: 3 ta</span>
+                                                <div className="mt-3 flex items-center gap-3">
+                                                    <div className="relative w-32 shrink-0">
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            max={10}
+                                                            value={settings.warningThreshold}
+                                                            onChange={(e) => handleChange('warningThreshold', Math.max(1, Number(e.target.value)))}
+                                                            aria-label="Ogohlantirish chegarasi, soni"
+                                                            className={`${inputCls} w-full pr-9 font-bold text-base`}
+                                                        />
+                                                        <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                                                            ta
+                                                        </span>
+                                                    </div>
+                                                    <span className={`text-[11px] leading-snug ${ui.muted}`}>Standart: 3 ta</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1591,7 +1607,7 @@ export default function DekanSozlamalarPage() {
                                 type="button"
                                 onClick={handleCancel}
                                 disabled={!isDirty || saving}
-                                className={`no-shelf w-full sm:w-auto rounded-xl border px-6 py-2.5 text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${ui.btnGhost}`}
+                                className={`no-shelf h-11 w-full sm:h-auto sm:w-auto rounded-xl border px-6 sm:py-2.5 text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${ui.btnGhost}`}
                                 style={{ boxShadow: 'none' }}
                             >
                                 Bekor qilish
@@ -1600,7 +1616,7 @@ export default function DekanSozlamalarPage() {
                                 type="button"
                                 onClick={() => void handleSave()}
                                 disabled={!isDirty || saving}
-                                className={`no-shelf w-full sm:w-auto rounded-xl px-7 py-2.5 text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 ${ui.accentSolid}`}
+                                className={`no-shelf h-11 w-full sm:h-auto sm:w-auto rounded-xl px-7 sm:py-2.5 text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 ${ui.accentSolid}`}
                                 style={{ boxShadow: '0 4px 14px rgba(79, 70, 229, 0.35)' }}
                             >
                                 {saving ? (
@@ -1611,7 +1627,7 @@ export default function DekanSozlamalarPage() {
                                 ) : (
                                     <>
                                         <Save size={15} />
-                                        <span>Sozlamalarni saqlash (Ctrl+S)</span>
+                                        <span>Saqlash<span className="hidden sm:inline"> (Ctrl+S)</span></span>
                                     </>
                                 )}
                             </button>
@@ -1626,11 +1642,11 @@ export default function DekanSozlamalarPage() {
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: 30 }}
                                 transition={{ duration: 0.2 }}
-                                className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-xl w-[92%] sm:w-auto"
+                                className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-40 max-w-xl w-[94%] sm:bottom-6 sm:w-auto"
                             >
                                 {/* The global light-mode retrofit repaints dark `bg-slate-900` panels white
                                     but leaves pale text pale, so each theme gets its own explicit colours. */}
-                                <div className={`flex items-center justify-between gap-5 px-5 py-3.5 rounded-2xl border shadow-2xl backdrop-blur-xl ${
+                                <div className={`flex flex-wrap items-center justify-between gap-x-5 gap-y-2.5 px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl border shadow-2xl backdrop-blur-xl ${
                                     isLight
                                         ? 'bg-white border-slate-200 shadow-slate-400/30'
                                         : 'bg-slate-900/95 border-slate-700 text-white shadow-black/80'
@@ -1642,7 +1658,7 @@ export default function DekanSozlamalarPage() {
                                             <span className={`font-semibold ${isLight ? 'text-amber-700' : 'text-amber-300'}`}>{dirtyTabNames.join(', ')}</span>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2 shrink-0">
+                                    <div className="ml-auto flex items-center gap-2 shrink-0">
                                         <button
                                             type="button"
                                             onClick={handleCancel}
@@ -1660,7 +1676,7 @@ export default function DekanSozlamalarPage() {
                                             type="button"
                                             onClick={() => void handleSave()}
                                             disabled={saving}
-                                            className="no-shelf px-4 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-indigo-500 hover:bg-indigo-600 text-white transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                                            className="no-shelf px-4 py-1.5 rounded-xl text-xs font-extrabold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                                             style={{ boxShadow: '0 2px 8px rgba(99, 102, 241, 0.4)' }}
                                         >
                                             {saving ? (
@@ -1671,7 +1687,7 @@ export default function DekanSozlamalarPage() {
                                             ) : (
                                                 <>
                                                     <Save size={13} />
-                                                    <span>Saqlash (Ctrl+S)</span>
+                                                    <span>Saqlash<span className="hidden sm:inline"> (Ctrl+S)</span></span>
                                                 </>
                                             )}
                                         </button>

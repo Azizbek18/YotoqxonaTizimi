@@ -713,64 +713,67 @@ export default function DekanXonalarMap() {
   return (
     <div className="space-y-5">
       {/* Executive Hero Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-5 sm:p-6 text-white shadow-lg border border-white/20">
-        <div className="absolute -right-12 -top-12 h-64 w-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+      {/* Phone: title, dorm, chips, then the two actions side by side, full width.
+          The long tagline and the icon tile only from sm up. bg-white/15+ only:
+          the light-mode retrofit turns bg-white/10 into pale glass. */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-4 sm:p-6 text-white shadow-lg border border-white/20">
+        <div className="absolute -right-12 -top-12 h-64 w-64 rounded-full bg-white/15 blur-2xl pointer-events-none" />
         <div className="absolute -left-12 -bottom-12 h-48 w-48 rounded-full bg-indigo-500/20 blur-xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-inner">
+        <div className="relative z-10 flex flex-col gap-3.5 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <div className="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-inner">
               <LayoutGrid size={24} className="text-white" />
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-black tracking-tight" style={{ color: '#ffffff' }}>
-                  Xonalar xaritasi & Joylashuv
-                </h1>
-                <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-white/10 text-emerald-300 border border-white/20">
-                  <CheckCircle2 size={12} />
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-black leading-snug tracking-tight" style={{ color: '#ffffff' }}>
+                Xonalar xaritasi va joylashuv
+              </h1>
+              <p className="mt-0.5 text-xs sm:text-sm font-medium" style={{ color: '#e0e7ff' }}>
+                {activeDorm ? `${activeDorm.number}-yotoqxona` : 'Yotoqxona'}
+                <span className="hidden sm:inline"> · Qavatlar bo‘yicha xonalar taqsimoti, talabalar joylashuvi va gender balansi</span>
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-white/15 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                  <CheckCircle2 size={12} className="text-emerald-300" />
                   {rooms.length} ta xona
                 </span>
                 {totalRoomsWithMixedGenders > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-rose-500/20 text-rose-200 border border-rose-400/30 animate-pulse">
-                    <AlertTriangle size={12} />
+                  <span className="inline-flex items-center gap-1 rounded-full border border-rose-300/40 bg-rose-500/30 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                    <AlertTriangle size={12} className="text-rose-200" />
                     {totalRoomsWithMixedGenders} ta nomuvofiqlik
                   </span>
                 )}
               </div>
-              <p className="text-xs sm:text-sm font-medium mt-0.5" style={{ color: '#e0e7ff' }}>
-                {activeDorm ? `${activeDorm.number}-yotoqxona` : 'Yotoqxona'} · Qavatlar bo‘yicha xonalar taqsimoti, talabalar joylashuvi va gender balansi
-              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            {!readOnly && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
-                  className={`no-shelf inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
-                    selectMode
-                      ? 'bg-amber-400 text-slate-900 shadow-md ring-2 ring-amber-400/40'
-                      : 'border border-white/20 bg-white/10 text-white hover:bg-white/20'
-                  }`}
-                  style={{ color: selectMode ? undefined : '#ffffff' }}
-                >
-                  <MousePointerSquareDashed size={14} />
-                  <span>{selectMode ? 'Tanlashni tugatish' : 'Xonalarni tanlash'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGeneratorOpen(true)}
-                  className="no-shelf inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-black uppercase tracking-wider text-indigo-700 hover:bg-slate-100 transition-all shadow-md active:scale-95"
-                >
-                  <Plus size={14} />
-                  <span>Xona qo‘shish</span>
-                </button>
-              </>
-            )}
-          </div>
+          {!readOnly && (
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
+              <button
+                type="button"
+                onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+                className={`no-shelf inline-flex h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-3 sm:px-3.5 text-xs font-bold transition-all active:scale-95 ${
+                  selectMode
+                    ? 'bg-amber-400 text-slate-900 shadow-md ring-2 ring-amber-400/40'
+                    : 'border border-white/25 bg-white/15 text-white hover:bg-white/25'
+                }`}
+                style={{ color: selectMode ? undefined : '#ffffff' }}
+              >
+                <MousePointerSquareDashed size={14} className="shrink-0" />
+                <span className="sm:hidden">{selectMode ? 'Tugatish' : 'Tanlash'}</span>
+                <span className="hidden sm:inline">{selectMode ? 'Tanlashni tugatish' : 'Xonalarni tanlash'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setGeneratorOpen(true)}
+                className="no-shelf inline-flex h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-white px-3 sm:px-4 text-xs font-bold text-indigo-700 hover:bg-slate-100 transition-all shadow-md active:scale-95"
+              >
+                <Plus size={14} className="shrink-0" />
+                <span>Xona qo‘shish</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -823,15 +826,19 @@ export default function DekanXonalarMap() {
               ? isLight ? 'bg-rose-50/70 border-rose-100' : 'bg-rose-950/20 border-rose-900/40'
               : isLight ? 'bg-emerald-50/70 border-emerald-100' : 'bg-emerald-950/20 border-emerald-900/40',
           },
-        ].map((item) => {
+        ].map((item, idx, all) => {
           const Icon = item.icon
           return (
+            // Phone: icon on top so the value gets the tile's full width (it was
+            // truncating beside the icon); the odd fifth tile spans the row.
             <div
               key={item.label}
-              className={`flex items-center gap-3 rounded-2xl border p-3.5 shadow-xs transition-all ${item.bg}`}
+              className={`flex flex-col items-start gap-2 rounded-2xl border p-3 shadow-xs transition-all sm:flex-row sm:items-center sm:gap-3 sm:p-3.5 ${
+                idx === all.length - 1 && all.length % 2 === 1 ? 'col-span-2 sm:col-span-1' : ''
+              } ${item.bg}`}
             >
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-800 shadow-2xs border border-slate-200/60 dark:border-slate-700/60 ${item.accent}`}>
-                <Icon size={18} strokeWidth={2.2} />
+              <div className={`flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-800 shadow-2xs border border-slate-200/60 dark:border-slate-700/60 ${item.accent}`}>
+                <Icon strokeWidth={2.2} className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className={`text-[9px] font-bold uppercase tracking-wider ${ui.faint}`}>
@@ -882,7 +889,7 @@ export default function DekanXonalarMap() {
 
           {/* Building Switcher (if > 1 dorm) */}
           {dorms.length > 1 && (
-            <div className={`flex gap-1 rounded-xl p-1 border shrink-0 ${isLight ? 'bg-slate-100 border-slate-200/60' : 'bg-slate-800/60 border-white/5'}`}>
+            <div className={`flex max-w-full gap-1 overflow-x-auto no-scrollbar rounded-xl p-1 border shrink-0 ${isLight ? 'bg-slate-100 border-slate-200/60' : 'bg-slate-800/60 border-white/5'}`}>
               {dorms.map((d) => {
                 const isActive = (activeDormId ?? primaryDormId) === d.dormId
                 return (
@@ -890,7 +897,7 @@ export default function DekanXonalarMap() {
                     key={d.dormId}
                     type="button"
                     onClick={() => setActiveDormId(d.dormId === primaryDormId ? undefined : d.dormId)}
-                    className={`no-shelf flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    className={`no-shelf flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       isActive
                         ? 'bg-indigo-600 text-white shadow-xs'
                         : isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -946,23 +953,23 @@ export default function DekanXonalarMap() {
       {/* 3. Main Occupancy Grid and Side Detail panel */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Rooms Grid (Left) */}
-        <div className={`lg:col-span-8 p-4 sm:p-5 rounded-2xl border ${surfaceBg}`}>
-          {/* Glassmorphic Status Legend */}
-          <div className={`flex flex-wrap items-center gap-2 mb-4 pb-3.5 border-b text-[11px] font-bold ${ui.border}`}>
-            <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-500/20">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" /> O‘g‘il bolalar xonasi
+        <div className={`lg:col-span-8 p-3 sm:p-5 rounded-2xl border ${surfaceBg}`}>
+          {/* Status legend — plain markers, so it stays one or two short lines on a phone */}
+          <div className={`flex flex-wrap items-center gap-x-3.5 gap-y-1.5 mb-3.5 pb-3 border-b text-[11px] font-semibold ${ui.border} ${textMuted}`}>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> O‘g‘il bolalar
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 bg-pink-50 dark:bg-pink-500/10 text-pink-700 dark:text-pink-400 border border-pink-200/60 dark:border-pink-500/20">
-              <span className="h-2 w-2 rounded-full bg-pink-500" /> Qizlar xonasi
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-pink-500" /> Qizlar
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700">
-              <span className="h-2 w-2 rounded-full bg-slate-400" /> Belgilanmagan
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-slate-400" /> Belgilanmagan
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-500/20">
-              <AlertTriangle size={12} className="text-amber-500" /> Jins nomuvofiqligi
+            <span className="inline-flex items-center gap-1.5">
+              <AlertTriangle size={12} className="text-amber-500" /> Nomuvofiq
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-200/60 dark:border-cyan-500/20">
-              <Snowflake size={12} className="text-cyan-500" /> Muzlatilgan (ta‘mirlash)
+            <span className="inline-flex items-center gap-1.5">
+              <Snowflake size={12} className="text-cyan-500" /> Muzlatilgan
             </span>
           </div>
 
@@ -1094,11 +1101,11 @@ export default function DekanXonalarMap() {
                         <h4 className={`text-xs sm:text-sm font-black tracking-tight ${textStrong}`}>
                           {room.roomNumber}-xona
                         </h4>
-                        <p className={`text-[9px] font-bold mt-0.5 ${textMuted}`}>
+                        <p className={`text-[9px] font-bold mt-0.5 truncate ${textMuted}`}>
                           {room.frozen
                             ? "Muzlatilgan"
                             : count === 0 && room.declaredGender
-                              ? (room.declaredGender === 'female' ? 'Qizlar xonasi' : "O'g'il bolalar xonasi")
+                              ? (room.declaredGender === 'female' ? 'Qizlar xonasi' : "O'g'il bolalar")
                               : `${count} / ${roomBeds(room)} o‘rin`}
                         </p>
                       </div>
@@ -1141,7 +1148,9 @@ export default function DekanXonalarMap() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className={`flex flex-col max-h-[calc(100vh-7.5rem)] p-4 sm:p-5 rounded-2xl border shadow-sm ${surfaceBg}`}
+                // The capped height + inner scroll only make sense for the sticky
+                // desktop sidebar; on a phone the panel just flows with the page.
+                className={`flex flex-col lg:max-h-[calc(100vh-7.5rem)] p-4 sm:p-5 rounded-2xl border shadow-sm ${surfaceBg}`}
               >
                 {/* Header */}
                 <div className={`flex items-center justify-between border-b pb-3.5 shrink-0 ${ui.border}`}>
@@ -1169,7 +1178,7 @@ export default function DekanXonalarMap() {
                   </button>
                 </div>
 
-                <div className="flex-1 min-h-0 space-y-3.5 overflow-y-auto custom-scrollbar pt-3.5 -mr-1 pr-1">
+                <div className="flex-1 min-h-0 space-y-3.5 pt-3.5 custom-scrollbar lg:overflow-y-auto lg:-mr-1 lg:pr-1">
                   {readOnly ? null : selectedRoom.gender === 'mixed' || selectedRoom.frozen ? null : selectedRoom.occupants.length >= roomBeds(selectedRoom) ? (
                     <div className={`p-2.5 rounded-xl text-center text-xs font-bold ${ui.inset} ${textMuted}`}>
                       Xona to‘liq to‘lgan — yangi talaba joylashtirib bo‘lmaydi
@@ -1177,9 +1186,9 @@ export default function DekanXonalarMap() {
                   ) : (
                     <button
                       onClick={() => setAssignModalOpen(true)}
-                      className={`no-shelf flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-black uppercase tracking-wider transition-all shadow-xs ${ui.accentSolid}`}
+                      className={`no-shelf flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-bold transition-all shadow-xs active:scale-[0.98] ${ui.accentSolid}`}
                     >
-                      <UserPlus size={15} /> Talaba joylashtirish
+                      <UserPlus size={16} /> Talaba joylashtirish
                     </button>
                   )}
 
@@ -1211,9 +1220,9 @@ export default function DekanXonalarMap() {
                   {!readOnly && selectedRoom.inLayout && !selectedRoom.frozen && (
                     <button
                       onClick={() => setFreezeModalOpen(true)}
-                      className={`no-shelf flex w-full items-center justify-center gap-2 rounded-xl border py-2 text-xs font-bold transition-colors ${ui.btnGhost}`}
+                      className={`no-shelf flex h-10 w-full items-center justify-center gap-2 rounded-xl border text-xs font-bold transition-colors ${ui.btnGhost}`}
                     >
-                      <Snowflake size={14} className="text-cyan-500" /> Xonani muzlatish (ta&apos;mirlash)
+                      <Snowflake size={14} className="shrink-0 text-cyan-500" /> Xonani muzlatish (ta&apos;mirlash)
                     </button>
                   )}
 
@@ -1246,7 +1255,7 @@ export default function DekanXonalarMap() {
                                 disabled={savingGender || clashes}
                                 onClick={() => handleSetGender(opt.value)}
                                 title={clashes ? 'Xonada boshqa jinsdagi talaba bor' : undefined}
-                                className={`no-shelf flex flex-col items-center gap-1 rounded-lg px-1.5 py-2 text-[10px] font-bold transition-all disabled:opacity-40 ${
+                                className={`no-shelf flex flex-col items-center gap-1 rounded-lg px-1.5 py-2 text-center text-[10px] font-bold leading-tight transition-all disabled:opacity-40 ${
                                   active
                                     ? opt.value === 'female'
                                       ? (isLight ? 'bg-pink-100 text-pink-700 font-black' : 'bg-pink-500/20 text-pink-300 font-black')
@@ -1488,7 +1497,7 @@ export default function DekanXonalarMap() {
                                   {occ.phone && (
                                     <a
                                       href={`tel:${occ.phone}`}
-                                      className={`no-shelf inline-flex flex-1 items-center justify-center gap-1 rounded-lg border py-1.5 text-[10px] font-bold transition-all ${
+                                      className={`no-shelf inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border text-[11px] font-bold transition-all ${
                                         isLight
                                           ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
                                           : 'bg-emerald-950/30 hover:bg-emerald-900/50 text-emerald-300 border-emerald-800/60'
@@ -1504,7 +1513,7 @@ export default function DekanXonalarMap() {
                                   {occ.id && (
                                     <Link
                                       href={`${base}/talabalar?student=${occ.id}`}
-                                      className={`no-shelf inline-flex flex-1 items-center justify-center gap-1 rounded-lg border py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${
+                                      className={`no-shelf inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border text-[11px] font-bold transition-all ${
                                         isTarbiyachiRole
                                           ? isLight
                                             ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
@@ -1523,7 +1532,8 @@ export default function DekanXonalarMap() {
                                     <button
                                       type="button"
                                       onClick={() => setConfirmRemoveId(occ.id)}
-                                      className={`no-shelf inline-flex items-center justify-center rounded-lg border p-1.5 text-[10px] font-bold transition-all ${
+                                      aria-label={occ.status === 'approved' ? 'Xona biriktirishni bekor qilish' : 'Xonadan chiqarish'}
+                                      className={`no-shelf inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-[10px] font-bold transition-all ${
                                         isLight
                                           ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
                                           : 'bg-red-950/30 hover:bg-red-900/50 text-red-300 border-red-800/60'
@@ -1683,7 +1693,7 @@ export default function DekanXonalarMap() {
                     Tezkor yo‘riqnoma:
                   </p>
                   <p className="text-[11px] leading-relaxed opacity-90">
-                    Chapdagi xaritadan istalgan xona kartasini bosing — xona yashovchilari, telefon raqamlari, gender belgisi va joylashtirish amallari ochiladi.
+                    Xaritadan istalgan xona kartasini bosing — xona yashovchilari, telefon raqamlari, gender belgisi va joylashtirish amallari ochiladi.
                   </p>
                 </div>
               </div>
@@ -1701,41 +1711,45 @@ export default function DekanXonalarMap() {
             exit={{ opacity: 0, y: 24 }}
             className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
           >
-            <div className={`flex w-full max-w-lg flex-wrap items-center gap-2 rounded-2xl border p-2.5 shadow-xl ${surfaceBg}`}>
-              <span className={`px-1.5 text-[11px] font-bold ${textStrong}`}>
-                {selectedRoomNumbers.size} ta xona
-              </span>
+            {/* Phone: count + close on top, the three choices as an even row below.
+                sm+: everything on one line. */}
+            <div className={`grid w-full max-w-lg grid-cols-3 items-center gap-2 rounded-2xl border p-2.5 shadow-xl sm:flex ${surfaceBg}`}>
+              <div className="col-span-3 flex items-center justify-between sm:contents">
+                <span className={`px-1.5 text-xs font-bold whitespace-nowrap ${textStrong}`}>
+                  {selectedRoomNumbers.size} ta xona tanlandi
+                </span>
+                <button
+                  onClick={exitSelectMode}
+                  className={`no-shelf rounded-lg p-2 sm:order-last ${textMuted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`}
+                  aria-label="Bekor qilish"
+                >
+                  <X size={15} />
+                </button>
+              </div>
               <button
                 onClick={() => handleBulkSetGender('male')}
                 disabled={savingBulkGender}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${
+                className={`no-shelf flex h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-[11px] font-bold transition-colors disabled:opacity-50 sm:flex-1 sm:px-3 ${
                   isLight ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
                 }`}
               >
-                <Mars size={13} /> O&apos;g&apos;il bolalar
+                <Mars size={14} className="shrink-0" /> O&apos;g&apos;il
               </button>
               <button
                 onClick={() => handleBulkSetGender('female')}
                 disabled={savingBulkGender}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${
+                className={`no-shelf flex h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-[11px] font-bold transition-colors disabled:opacity-50 sm:flex-1 sm:px-3 ${
                   isLight ? 'bg-pink-100 text-pink-700 hover:bg-pink-200' : 'bg-pink-500/15 text-pink-300 hover:bg-pink-500/25'
                 }`}
               >
-                <Venus size={13} /> Qizlar
+                <Venus size={14} className="shrink-0" /> Qizlar
               </button>
               <button
                 onClick={() => handleBulkSetGender(null)}
                 disabled={savingBulkGender}
-                className={`rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.btnGhost}`}
+                className={`no-shelf h-10 whitespace-nowrap rounded-lg border px-2 text-[11px] font-bold transition-colors disabled:opacity-50 sm:px-3 ${ui.btnGhost}`}
               >
                 Tozalash
-              </button>
-              <button
-                onClick={exitSelectMode}
-                className={`rounded-lg p-2 ${textMuted} ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`}
-                aria-label="Bekor qilish"
-              >
-                <X size={14} />
               </button>
             </div>
           </motion.div>
@@ -1799,7 +1813,7 @@ export default function DekanXonalarMap() {
                       )}
                       {courseOver && (
                         <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ${statusChip('warning', isLight).chip}`}>
-                          Bu qavatда ko&apos;p
+                          Bu qavatda ko&apos;p
                         </span>
                       )}
                     </div>
@@ -1840,13 +1854,13 @@ export default function DekanXonalarMap() {
           return (
             <div className={`space-y-2 text-[11px] leading-relaxed ${textMuted}`}>
               <p>
-                <span className="font-bold">{balanceWarn.floor}-qavatда {c}-kurs talabalar yetarli</span>
+                <span className="font-bold">{balanceWarn.floor}-qavatda {c}-kurs talabalar yetarli</span>
                 {row ? ` (${row.byCourse[c]} ta, ideal ${row.targetByCourse[c]} ta).` : '.'}
               </p>
               {balanceWarn.suggestion ? (
                 <p className={isLight ? 'text-indigo-700' : 'text-indigo-300'}>
                   Bu qavatga <span className="font-bold">{balanceWarn.suggestion.course}-kurs</span> kerak —
-                  {' '}{balanceWarn.suggestion.gap} ta kam. Roʻyxatда {balanceWarn.suggestion.available} ta mos talaba bor.
+                  {' '}{balanceWarn.suggestion.gap} ta kam. Roʻyxatda {balanceWarn.suggestion.available} ta mos talaba bor.
                 </p>
               ) : (
                 <p>Iloji boʻlsa boshqa kurs talabasini yoki boshqa qavatni tanlang.</p>

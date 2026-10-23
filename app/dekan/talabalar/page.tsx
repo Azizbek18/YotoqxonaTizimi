@@ -1480,10 +1480,11 @@ export default function DekanStudentsPage() {
           ) : (
             <>
               {/* Selected student header */}
-              <div className={`flex shrink-0 flex-col justify-between gap-3 border-b p-4 sm:flex-row sm:items-center ${
+              <div className={`flex shrink-0 flex-col justify-between gap-3 border-b p-3.5 sm:p-4 sm:flex-row sm:items-center ${
                 isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900 border-slate-800'
               }`}>
-                <div className="flex w-full min-w-0 items-center gap-3.5 sm:w-auto">
+                <div className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5 sm:gap-x-3.5">
+                  <div className="col-start-1 row-start-1 flex items-center gap-1.5">
                   <button
                     onClick={() => setSelectedStudent(null)}
                     className={`no-shelf -ml-1 rounded-xl p-2 md:hidden transition-colors ${
@@ -1518,21 +1519,28 @@ export default function DekanStudentsPage() {
                       </div>
                     )}
                   </div>
+                  </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h2 className={`truncate text-base sm:text-lg font-black tracking-tight ${ui.strong}`}>
+                  {/* Phone: the name takes columns 2–3 (the actions sit on the chip row
+                      below), otherwise two icon buttons leave it ~45px. */}
+                  <div className="col-span-2 col-start-2 row-start-1 min-w-0 sm:col-span-1">
+                    <div className="flex items-start gap-2">
+                      <h2
+                        title={selectedStudent.full_name}
+                        className={`line-clamp-2 break-words text-base leading-snug sm:line-clamp-1 sm:text-lg font-black tracking-tight ${ui.strong}`}
+                      >
                         {selectedStudent.full_name}
                       </h2>
                       {selectedStudent.gender && (
                         <span
-                          className={`h-2.5 w-2.5 rounded-full ${genderAccent(selectedStudent.gender).dot}`}
+                          className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${genderAccent(selectedStudent.gender).dot}`}
                           title={genderLabel(selectedStudent.gender)}
                         />
                       )}
                     </div>
+                  </div>
 
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <div className="col-span-2 col-start-1 row-start-2 flex flex-wrap items-center gap-1.5 sm:col-span-1 sm:col-start-2 sm:-mt-1.5">
                       {selectedStudent.room_number ? (
                         <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${statusChip('success', isLight).chip}`}>
                           <Home size={11} />
@@ -1595,21 +1603,20 @@ export default function DekanStudentsPage() {
                         </span>
                       )}
                     </div>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                <div className="col-start-3 row-start-2 flex items-center gap-1.5 self-start sm:row-start-1 sm:row-span-2 sm:gap-2 sm:self-center">
                   {selectedStudent.phone_number && (
                     <a
                       href={`tel:${selectedStudent.phone_number}`}
-                      className={`no-shelf inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                      className={`no-shelf inline-flex h-9 w-9 items-center justify-center gap-1.5 rounded-xl text-xs font-bold border transition-colors sm:w-auto sm:px-3 ${
                         isLight
                           ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
                           : 'bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border-emerald-800/60'
                       }`}
                       title="Qo'ng'iroq qilish"
+                      aria-label="Qo'ng'iroq qilish"
                     >
-                      <Phone size={13} />
+                      <Phone size={15} className="shrink-0" />
                       <span className="hidden sm:inline">Qo&apos;ng&apos;iroq</span>
                     </a>
                   )}
@@ -1621,7 +1628,7 @@ export default function DekanStudentsPage() {
                         onClick={() => (actionsMenuOpen ? setActionsMenuOpen(false) : openActionsMenu())}
                         aria-label="Amallar"
                         title="Boshqarish amallari"
-                        className={`no-shelf inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                        className={`no-shelf inline-flex h-9 w-9 items-center justify-center gap-1 rounded-xl border text-xs font-bold transition-all sm:w-auto sm:px-3 ${
                           actionsMenuOpen
                             ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
                             : isLight
@@ -1629,8 +1636,8 @@ export default function DekanStudentsPage() {
                               : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
                         }`}
                       >
-                        <MoreVertical size={14} />
-                        <span>Amallar</span>
+                        <MoreVertical size={15} className="shrink-0" />
+                        <span className="hidden sm:inline">Amallar</span>
                       </button>
                       {typeof document !== 'undefined' && createPortal(
                         <AnimatePresence>
@@ -1716,19 +1723,20 @@ export default function DekanStudentsPage() {
                     </div>
                   )}
                 </div>
+                </div>
               </div>
 
               {/* Details body */}
-              <div className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+              <div className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto p-3 sm:p-4">
                 {/* Segmented Tab Bar */}
                 <div className={`no-scrollbar flex flex-nowrap gap-1 overflow-x-auto rounded-xl border p-1 ${
                   isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-900 border-slate-800'
                 }`}>
                   {[
-                    { key: 'profil' as const, label: 'Profil', icon: User },
-                    { key: 'hujjatlar' as const, label: 'Hujjat & Manzil', icon: FileText },
-                    { key: 'oila' as const, label: 'Oila', icon: Users },
-                    { key: 'tolovlar' as const, label: "To'lovlar", icon: CreditCard },
+                    { key: 'profil' as const, label: 'Profil', short: 'Profil', icon: User },
+                    { key: 'hujjatlar' as const, label: 'Hujjat & Manzil', short: 'Hujjat', icon: FileText },
+                    { key: 'oila' as const, label: 'Oila', short: 'Oila', icon: Users },
+                    { key: 'tolovlar' as const, label: "To'lovlar", short: "To'lov", icon: CreditCard },
                   ].map((tab) => {
                     const Icon = tab.icon
                     const isActive = detailTab === tab.key
@@ -1737,7 +1745,7 @@ export default function DekanStudentsPage() {
                         key={tab.key}
                         type="button"
                         onClick={() => setDetailTab(tab.key)}
-                        className={`no-shelf flex-1 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 select-none ${
+                        className={`no-shelf flex-1 shrink-0 whitespace-nowrap rounded-lg px-2 sm:px-3 py-2 text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 select-none ${
                           isActive
                             ? 'bg-indigo-600 text-white shadow-xs font-black'
                             : isLight
@@ -1745,8 +1753,9 @@ export default function DekanStudentsPage() {
                               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                         }`}
                       >
-                        <Icon size={14} className={isActive ? 'text-white' : 'opacity-70'} />
-                        <span>{tab.label}</span>
+                        <Icon size={14} className={`hidden sm:block ${isActive ? 'text-white' : 'opacity-70'}`} />
+                        <span className="sm:hidden">{tab.short}</span>
+                        <span className="hidden sm:inline">{tab.label}</span>
                       </button>
                     )
                   })}

@@ -250,7 +250,7 @@ export default function DekanDashboard() {
     return (
       <div className="space-y-6">
         <DormTabs scope={dormScope} isLight={isLight} />
-        <Skel className="h-40 w-full rounded-3xl" />
+        <Skel className="h-28 sm:h-40 w-full rounded-3xl" />
         <SkelStatGrid count={4} />
         <div className="grid gap-4 lg:grid-cols-2">
           <SkelList count={4} />
@@ -269,21 +269,23 @@ export default function DekanDashboard() {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 p-6 sm:p-8"
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 p-4 sm:p-8"
       >
         <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_100%_0%,rgba(255,255,255,0.12),transparent_45%)]" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Phone: a compact banner — badge + refresh icon on one line, a smaller
+            title, no tagline. The full hero comes back from sm up. */}
+        <div className="relative flex items-start justify-between gap-3 sm:items-center sm:gap-4">
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white backdrop-blur-sm">
               {isGlobal ? 'Barcha fakultetlar' : 'Umumiy hisobot'}
             </span>
-            <h1 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            <h1 className="mt-2 text-lg leading-snug sm:mt-3 sm:text-3xl sm:leading-tight font-bold tracking-tight text-white">
               {isGlobal
                 ? 'Yotoqxona — umumiy holat'
                 : effectiveFaculty ? `${permitFacultyLabel(effectiveFaculty)} fakulteti` : 'Yotoqxona boshqaruvi'}
             </h1>
-            <p className="mt-1.5 max-w-xl text-xs sm:text-sm leading-relaxed text-indigo-100">
+            <p className="mt-1.5 hidden max-w-xl text-sm leading-relaxed text-indigo-100 sm:block">
               {isTarbiyachi
                 ? "Talabalar oqimi, xonalar bandligi va yotoqxona holatini shu yerdan kuzating."
                 : "Yo'llanmalar ko'rib chiqilishi, talabalar oqimi va xonalar taqsimotini shu yerdan boshqaring."}
@@ -291,9 +293,12 @@ export default function DekanDashboard() {
           </div>
           <button
             onClick={() => loadData(dekanFaculty)}
-            className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-white/95 px-4 py-2.5 text-xs font-bold text-indigo-700 shadow-lg shadow-black/10 transition-transform hover:bg-white active:scale-95"
+            aria-label="Yangilash"
+            title="Yangilash"
+            className="shrink-0 inline-flex h-9 w-9 items-center justify-center gap-2 rounded-xl bg-white/95 text-xs font-bold text-indigo-700 shadow-lg shadow-black/10 transition-transform hover:bg-white active:scale-95 sm:h-auto sm:w-auto sm:px-4 sm:py-2.5"
           >
-            <RefreshCw size={14} /> Yangilash
+            <RefreshCw size={14} />
+            <span className="hidden sm:inline">Yangilash</span>
           </button>
         </div>
       </motion.div>
@@ -310,14 +315,19 @@ export default function DekanDashboard() {
       )}
 
       {/* Stat cards */}
-      <div className={`grid grid-cols-1 gap-4 ${isTarbiyachi ? 'lg:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'}`}>
+      <div className={`grid grid-cols-2 gap-3 sm:gap-4 ${isTarbiyachi ? 'lg:grid-cols-3' : 'lg:grid-cols-3 xl:grid-cols-5'}`}>
         {statCards.map((card, idx) => (
           <motion.div
             key={idx}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.05, duration: 0.25 }}
-            className="flex h-full"
+            // An odd last card fills its two-column row instead of leaving a hole.
+            className={`flex h-full ${
+              idx === statCards.length - 1 && statCards.length % 2 === 1
+                ? isTarbiyachi ? 'col-span-2 lg:col-span-1' : 'col-span-2 xl:col-span-1'
+                : ''
+            }`}
           >
             <Link
               href={(() => {
@@ -328,34 +338,29 @@ export default function DekanDashboard() {
                 const query = params.toString()
                 return query ? `${card.link}?${query}` : card.link
               })()}
-              className={`group relative flex flex-col justify-between w-full h-full overflow-hidden rounded-2xl border p-4.5 transition-all duration-200 ${ui.card} ${card.color.hoverBorder} ${card.color.hoverGlow} hover:-translate-y-1`}
+              title={card.description}
+              className={`group relative flex flex-col justify-between w-full h-full overflow-hidden rounded-2xl border p-3 sm:p-4.5 transition-all duration-200 ${ui.card} ${card.color.hoverBorder} ${card.color.hoverGlow} hover:-translate-y-1`}
             >
               {/* Top ambient color strip on hover */}
               <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${card.color.topBar} opacity-0 transition-opacity duration-200 group-hover:opacity-100`} />
 
-              <div>
-                {/* Header row: Title + Themed Squircle Icon */}
-                <div className="flex items-start justify-between gap-2.5">
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-[11px] font-bold uppercase tracking-wider leading-snug line-clamp-2 ${ui.muted}`}>
-                      {card.title}
-                    </p>
-                  </div>
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${card.color.gradient} text-white shadow-md ${card.color.iconShadow} transition-transform duration-200 group-hover:scale-105`}>
-                    <card.icon size={19} strokeWidth={2.2} />
-                  </div>
+              {/* Phone: [icon][value] over the title. sm+: [title][icon] over the value.
+                  One markup, the grid cells swap places. */}
+              <div className="grid grid-cols-[auto_1fr] items-center gap-x-2.5 gap-y-2 sm:grid-cols-[1fr_auto] sm:items-start sm:gap-y-2.5">
+                <p className={`col-span-2 row-start-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-wide sm:tracking-wider leading-snug line-clamp-2 sm:col-span-1 sm:row-start-1 ${ui.muted}`}>
+                  {card.title}
+                </p>
+                <div className={`col-start-1 row-start-1 flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br ${card.color.gradient} text-white shadow-md ${card.color.iconShadow} transition-transform duration-200 group-hover:scale-105 sm:col-start-2`}>
+                  <card.icon strokeWidth={2.2} className="h-4 w-4 sm:h-[19px] sm:w-[19px]" />
                 </div>
-
-                {/* Counter value */}
-                <div className="mt-2.5">
-                  <h3 className={`text-2xl sm:text-3xl font-black leading-none tracking-tight tabular-nums ${ui.strong}`}>
-                    {card.value}
-                  </h3>
-                </div>
+                <h3 className={`col-start-2 row-start-1 text-xl sm:text-3xl font-black leading-none tracking-tight tabular-nums sm:col-span-2 sm:col-start-1 sm:row-start-2 ${ui.strong}`}>
+                  {card.value}
+                </h3>
               </div>
 
-              {/* Bottom footer: Aligned metadata description + Animated arrow */}
-              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 min-h-[38px]">
+              {/* Bottom footer: Aligned metadata description + Animated arrow (sm+; the
+                  phone tile keeps just the number and its name) */}
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 hidden sm:flex items-center justify-between gap-2 min-h-[38px]">
                 <p className={`text-[10.5px] font-medium leading-tight line-clamp-2 ${ui.muted}`}>
                   {card.description}
                 </p>

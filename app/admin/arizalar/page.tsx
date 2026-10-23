@@ -756,13 +756,13 @@ export default function AdminArizalar() {
 
       {/* Hero banner */}
       <div className="no-shelf relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-4 sm:p-5 shadow-lg shadow-indigo-950/15 border border-white/20 text-white">
-        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
         <div className="pointer-events-none absolute -left-12 -bottom-16 h-48 w-48 rounded-full bg-violet-400/15 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] opacity-[0.07]" />
 
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md text-white border border-white/25 shadow-inner shrink-0">
+        <div className="relative flex items-start justify-between gap-3 sm:items-center">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="hidden sm:flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md text-white border border-white/25 shadow-inner shrink-0">
               <FileText size={20} strokeWidth={2.2} />
             </div>
             <div>
@@ -781,18 +781,18 @@ export default function AdminArizalar() {
               <h1 className="text-lg sm:text-xl font-black tracking-tight text-white" style={{ color: '#ffffff' }}>
                 Arizalar boshqaruvi
               </h1>
-              <p className="mt-0.5 text-xs text-indigo-100" style={{ color: '#e0e7ff' }}>
+              <p className="mt-0.5 hidden text-xs text-indigo-100 sm:block" style={{ color: '#e0e7ff' }}>
                 Talabalar murojaatlari va tushuntirish xatlarini ko‘rib chiqish paneli
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             {pendingRequests.length > 0 && canModerateArizalar && (
               <button
                 type="button"
                 onClick={handleBatchAllPending}
-                className="no-shelf inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-extrabold transition-all active:scale-95 shadow-md shadow-emerald-950/20 border border-emerald-400/40 cursor-pointer"
+                className="no-shelf hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-extrabold transition-all active:scale-95 shadow-md shadow-emerald-950/20 border border-emerald-400/40 cursor-pointer"
                 title="Barcha kutilayotgan arizalarni bir bosishda tasdiqlash"
               >
                 <CheckCheck size={15} strokeWidth={2.8} />
@@ -804,8 +804,9 @@ export default function AdminArizalar() {
               type="button"
               onClick={loadRequests}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white text-xs font-bold transition-all disabled:opacity-50 no-shelf cursor-pointer active:scale-95 shadow-xs"
+              className="inline-flex h-9 w-9 items-center justify-center gap-1.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white text-xs font-bold transition-all disabled:opacity-50 no-shelf cursor-pointer active:scale-95 shadow-xs sm:w-auto sm:px-3.5"
               title="Ma'lumotlarni yangilash"
+              aria-label="Ma'lumotlarni yangilash"
             >
               <motion.div
                 animate={loading ? { rotate: 360 } : {}}
@@ -813,7 +814,7 @@ export default function AdminArizalar() {
               >
                 <RotateCcw size={14} />
               </motion.div>
-              <span style={{ color: '#ffffff' }}>{loading ? '...' : 'Yangilash'}</span>
+              <span className="hidden sm:inline" style={{ color: '#ffffff' }}>{loading ? '...' : 'Yangilash'}</span>
             </button>
           </div>
         </div>
@@ -836,28 +837,27 @@ export default function AdminArizalar() {
                 setFilterStatus(isCurrentActive && card.key !== 'all' ? 'all' : card.key)
                 setCurrentPage(1)
               }}
-              className={`no-shelf p-4 rounded-2xl border text-left transition-all relative overflow-hidden group active:scale-[0.98] ${
+              className={`no-shelf p-3 sm:p-4 rounded-2xl border text-left transition-all relative overflow-hidden group active:scale-[0.98] ${
                 isCurrentActive ? card.activeClass : ui.card
               } ${ui.hoverLift}`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className={`text-[11px] font-bold uppercase tracking-wider ${textMuted}`}>
-                    {card.title}
-                  </p>
-                  <p className={`text-2xl sm:text-3xl font-black mt-1.5 leading-none ${textStrong}`}>
-                    {loading ? '—' : card.count}
-                  </p>
-                </div>
+              {/* Phone: [icon][count] over the title; sm+: [title / count][icon]. Cells swap. */}
+              <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                <p className={`col-span-2 row-start-2 truncate text-[10px] sm:text-[11px] font-bold uppercase tracking-wide sm:tracking-wider sm:col-span-1 sm:col-start-1 sm:row-start-1 ${textMuted}`}>
+                  {card.title}
+                </p>
                 <div
-                  className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.gradient} text-white flex items-center justify-center shrink-0 shadow-md shadow-black/10 group-hover:scale-105 transition-transform`}
+                  className={`col-start-1 row-start-1 w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${card.gradient} text-white flex items-center justify-center shrink-0 shadow-md shadow-black/10 group-hover:scale-105 transition-transform sm:col-start-2 sm:row-span-2`}
                 >
-                  <Icon size={18} strokeWidth={2.4} />
+                  <Icon strokeWidth={2.4} className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
                 </div>
+                <p className={`col-start-2 row-start-1 text-2xl sm:text-3xl font-black leading-none tabular-nums sm:col-start-1 sm:row-start-2 ${textStrong}`}>
+                  {loading ? '—' : card.count}
+                </p>
               </div>
 
               {/* Progress track */}
-              <div className="mt-3.5">
+              <div className="mt-2.5 sm:mt-3.5">
                 <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-1">
                   <span>Ulush</span>
                   <span>{loading ? '—' : `${card.percentage}%`}</span>
@@ -883,6 +883,7 @@ export default function AdminArizalar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
+            data-flat
             className={`p-3 sm:p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
               selectedIds.length > 0
                 ? isLight
@@ -915,13 +916,13 @@ export default function AdminArizalar() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
               {selectedIds.length > 0 ? (
                 <>
                   <button
                     type="button"
                     onClick={() => handleBatchSelected('approved')}
-                    className="no-shelf inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-extrabold shadow-sm hover:from-emerald-500 hover:to-teal-500 active:scale-95 transition-all"
+                    className="no-shelf inline-flex h-10 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-extrabold shadow-sm hover:from-emerald-500 hover:to-teal-500 active:scale-95 transition-all sm:h-auto sm:py-2"
                   >
                     <Check size={14} strokeWidth={2.8} />
                     <span>Tanlanganlarni tasdiqlash ({selectedIds.length})</span>
@@ -929,7 +930,7 @@ export default function AdminArizalar() {
                   <button
                     type="button"
                     onClick={() => handleBatchSelected('rejected')}
-                    className="no-shelf inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300 text-xs font-bold hover:bg-rose-100 active:scale-95 transition-all"
+                    className="no-shelf inline-flex h-10 items-center justify-center gap-1.5 px-3 rounded-xl border border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300 text-xs font-bold hover:bg-rose-100 active:scale-95 transition-all sm:h-auto sm:py-2"
                   >
                     <XIcon size={14} strokeWidth={2.6} />
                     <span>Rad etish</span>
@@ -937,7 +938,7 @@ export default function AdminArizalar() {
                   <button
                     type="button"
                     onClick={() => setSelectedIds([])}
-                    className={`no-shelf text-xs font-bold px-2.5 py-2 rounded-xl transition-colors ${
+                    className={`no-shelf h-9 text-xs font-bold px-2.5 rounded-xl transition-colors sm:h-auto sm:py-2 ${
                       isLight ? 'text-slate-600 hover:bg-white' : 'text-slate-300 hover:bg-slate-800'
                     }`}
                   >
@@ -953,7 +954,7 @@ export default function AdminArizalar() {
                         const first = pendingRequests[0]
                         setPdfModal({ id: first.id, name: first.student_name })
                       }}
-                      className={`no-shelf inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-bold transition-all active:scale-95 ${
+                      className={`no-shelf inline-flex h-10 items-center justify-center gap-1.5 px-3.5 rounded-xl border text-xs font-bold transition-all active:scale-95 sm:h-auto sm:py-2 ${
                         isLight
                           ? 'border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50'
                           : 'border-indigo-500/40 bg-slate-800 text-indigo-300 hover:bg-slate-700'
@@ -966,7 +967,7 @@ export default function AdminArizalar() {
                   <button
                     type="button"
                     onClick={handleBatchAllPending}
-                    className="no-shelf inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-extrabold shadow-sm hover:from-emerald-500 hover:to-teal-500 active:scale-95 transition-all"
+                    className="no-shelf inline-flex h-10 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-extrabold shadow-sm hover:from-emerald-500 hover:to-teal-500 active:scale-95 transition-all sm:h-auto sm:py-2"
                   >
                     <CheckCheck size={15} strokeWidth={2.8} />
                     <span>Barchasini tasdiqlash ({pendingRequests.length})</span>
@@ -1066,11 +1067,11 @@ export default function AdminArizalar() {
         {/* Quick Segmented Filter Tabs */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-100 dark:border-slate-800/80">
           {/* Status Tabs */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
             <span className={`text-[11px] font-bold uppercase tracking-wider mr-0.5 ${textMuted}`}>
               Holat:
             </span>
-            <div className={`no-shelf inline-flex items-center p-1 rounded-xl border gap-1 transition-colors ${
+            <div className={`no-shelf grid grid-cols-2 p-1 rounded-xl border gap-1 transition-colors sm:inline-flex sm:items-center ${
               isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-950/70 border-slate-800/90'
             }`}>
               {[
@@ -1088,7 +1089,7 @@ export default function AdminArizalar() {
                       setFilterStatus(tab.id as typeof filterStatus)
                       setCurrentPage(1)
                     }}
-                    className={`no-shelf relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 active:scale-95 ${
+                    className={`no-shelf relative flex items-center justify-between gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 active:scale-95 sm:inline-flex sm:justify-start ${
                       isActive
                         ? isLight
                           ? 'bg-white text-indigo-600 shadow-xs border border-slate-200/70 font-black'
@@ -1122,17 +1123,17 @@ export default function AdminArizalar() {
           </div>
 
           {/* Type Tabs */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
             <span className={`text-[11px] font-bold uppercase tracking-wider mr-0.5 ${textMuted}`}>
               Turi:
             </span>
-            <div className={`no-shelf inline-flex items-center p-1 rounded-xl border gap-1 transition-colors ${
+            <div className={`no-shelf grid grid-cols-3 p-1 rounded-xl border gap-1 transition-colors sm:inline-flex sm:items-center ${
               isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-950/70 border-slate-800/90'
             }`}>
               {[
                 { id: 'all', label: 'Barchasi' },
                 { id: 'ariza', label: 'Ariza' },
-                { id: 'tushuntirish', label: 'Tushuntirish xati' },
+                { id: 'tushuntirish', label: 'Tushuntirish' },
               ].map((t) => {
                 const isActive = filterType === t.id
                 return (
@@ -1143,7 +1144,7 @@ export default function AdminArizalar() {
                       setFilterType(t.id as typeof filterType)
                       setCurrentPage(1)
                     }}
-                    className={`no-shelf relative inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 active:scale-95 ${
+                    className={`no-shelf relative inline-flex items-center justify-center whitespace-nowrap px-2 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 active:scale-95 sm:px-3 ${
                       isActive
                         ? isLight
                           ? 'bg-white text-slate-900 shadow-xs border border-slate-200/70 font-black'
@@ -1178,7 +1179,8 @@ export default function AdminArizalar() {
                 }`}
               >
                 <CheckCheck size={13} />
-                <span>Sahifadagi barcha kutilayotganlarni tanlash</span>
+                <span className="sm:hidden">Kutilayotganlarni tanlash</span>
+                <span className="hidden sm:inline">Sahifadagi barcha kutilayotganlarni tanlash</span>
               </button>
               <span className={textMuted}>
                 Jami: {filteredRequests.length} ta ariza
@@ -1253,7 +1255,7 @@ export default function AdminArizalar() {
                             />
                           )}
                           <div
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 border shadow-xs ${
+                            className={`hidden sm:flex w-10 h-10 rounded-xl items-center justify-center font-bold text-xs shrink-0 border shadow-xs ${
                               isLight
                                 ? 'bg-slate-100 text-slate-700 border-slate-200/80'
                                 : 'bg-slate-800 text-slate-200 border-slate-700'
@@ -1282,8 +1284,8 @@ export default function AdminArizalar() {
                           </div>
                         </div>
 
-                        {/* Status Badge */}
-                        <div className="shrink-0">
+                        {/* Status Badge — top-right from sm; on a phone it sits in the meta row */}
+                        <div className="hidden shrink-0 sm:block">
                           {isApproved && (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/25">
                               <Check size={11} strokeWidth={3} />
@@ -1315,6 +1317,21 @@ export default function AdminArizalar() {
 
                       {/* Metadata pills */}
                       <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-xs">
+                        <span className="sm:hidden">
+                          {isApproved ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                              <Check size={11} strokeWidth={3} /> Tasdiqlangan
+                            </span>
+                          ) : isRejected ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                              <XIcon size={11} strokeWidth={3} /> Rad etilgan
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Kutilmoqda
+                            </span>
+                          )}
+                        </span>
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md font-bold text-[11px] ${
                           isAriza
                             ? isLight ? 'bg-blue-50 text-blue-700' : 'bg-blue-500/15 text-blue-300'
@@ -1340,11 +1357,11 @@ export default function AdminArizalar() {
                     </div>
 
                     {/* Card Actions Bottom Toolbar */}
-                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:justify-between">
                       <button
                         type="button"
                         onClick={() => setPdfModal({ id: req.id, name: req.student_name })}
-                        className={`no-shelf inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all active:scale-95 shadow-2xs ${
+                        className={`no-shelf inline-flex h-9 items-center justify-self-start gap-1.5 px-3 rounded-xl border text-xs font-bold transition-all active:scale-95 shadow-2xs sm:h-auto sm:py-2 ${
                           isLight
                             ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-indigo-600'
                             : 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-indigo-300'
@@ -1355,12 +1372,12 @@ export default function AdminArizalar() {
                       </button>
 
                       {isPending && canModerateArizalar ? (
-                        <div className="flex items-center gap-1.5">
+                        <div className="order-first col-span-2 grid grid-cols-2 gap-2 sm:order-none sm:flex sm:items-center sm:gap-1.5">
                           <button
                             type="button"
                             onClick={() => quickDecide(req, 'approved')}
                             disabled={decidingId === req.id}
-                            className="no-shelf inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-black shadow-md shadow-emerald-600/20 hover:from-emerald-500 hover:to-teal-500 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+                            className="no-shelf inline-flex h-10 items-center justify-center gap-1.5 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-black shadow-md shadow-emerald-600/20 hover:from-emerald-500 hover:to-teal-500 active:scale-95 disabled:opacity-50 transition-all cursor-pointer sm:h-auto sm:py-2"
                           >
                             {decidingId === req.id ? (
                               <Loader2 size={13} className="animate-spin" />
@@ -1373,7 +1390,7 @@ export default function AdminArizalar() {
                             type="button"
                             onClick={() => quickDecide(req, 'rejected')}
                             disabled={decidingId === req.id}
-                            className="no-shelf inline-flex items-center gap-1 px-2.5 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 active:scale-95 disabled:opacity-50 text-xs font-bold transition-all dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300"
+                            className="no-shelf inline-flex h-10 items-center justify-center gap-1 px-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 active:scale-95 disabled:opacity-50 text-xs font-bold transition-all dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300 sm:h-auto sm:py-2"
                             title="Rad etish"
                           >
                             {decidingId === req.id ? (
@@ -1381,13 +1398,13 @@ export default function AdminArizalar() {
                             ) : (
                               <XIcon size={14} strokeWidth={2.6} />
                             )}
-                            <span>Rad</span>
+                            <span><span className="sm:hidden">Rad etish</span><span className="hidden sm:inline">Rad</span></span>
                           </button>
                         </div>
                       ) : null}
 
                       {!isTarbiyachi ? (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center justify-self-end gap-1">
                           <button
                             type="button"
                             onClick={() => {
@@ -1420,7 +1437,7 @@ export default function AdminArizalar() {
                           )}
                         </div>
                       ) : !isPending ? (
-                        <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 italic px-1">
+                        <span className="justify-self-end text-[11px] font-medium text-slate-400 dark:text-slate-500 italic px-1">
                           Ko‘rib chiqilgan
                         </span>
                       ) : null}

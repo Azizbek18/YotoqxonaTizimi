@@ -102,40 +102,35 @@ function CourseCell({
   const bigNumber = mode === 'over' ? `+${placed - target}` : mode === 'need' ? `+${gap}` : '✓'
   const badgeLabel = mode === 'over' ? 'Ortiqcha' : mode === 'need' ? 'Kerak' : 'Yetarli'
 
+  // A row, not a tile: the action number on the left, course + verdict and the
+  // fill bar beside it. Fits a ~190px cell, so a 300px phone never truncates.
   return (
-    <div className={`flex flex-col justify-between rounded-xl ring-1 ring-inset ${compact ? 'p-2' : 'p-2.5'} ${cellTone} transition-all`}>
-      {/* Header: Course + Badge */}
-      <div className="flex items-center justify-between gap-1">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: ramp[colorIndex] }} />
-          <span className={`text-[11px] font-black uppercase tracking-wider truncate ${ui.strong}`}>
-            {course}-kurs
+    <div className={`flex items-center gap-3 rounded-xl ring-1 ring-inset ${compact ? 'px-2.5 py-2' : 'px-3 py-2.5'} ${cellTone} transition-colors`}>
+      <span className={`min-w-10 shrink-0 text-xl font-black leading-none tabular-nums ${chip.text}`}>
+        {bigNumber}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: ramp[colorIndex] }} />
+            <span className={`whitespace-nowrap text-[11px] font-bold ${ui.strong}`}>{course}-kurs</span>
+          </span>
+          <span className={`shrink-0 inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none ${chip.chip}`}>
+            {badgeLabel}
           </span>
         </div>
-        <span
-          className={`shrink-0 inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${chip.chip}`}
-        >
-          {badgeLabel}
-        </span>
-      </div>
 
-      {/* Main Metric: Big Action Number & Ratio */}
-      <div className="mt-2 flex items-baseline justify-between gap-1">
-        <span className={`text-xl font-black leading-none tabular-nums ${chip.text}`}>
-          {bigNumber}
-        </span>
-        <span className={`text-[10px] font-semibold tabular-nums whitespace-nowrap ${ui.faint}`}>
-          <b className={ui.strong}>{placed}</b> / {target} ta
-        </span>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="mt-2">
-        <div className={`h-1.5 w-full rounded-full overflow-hidden ${isLight ? 'bg-slate-200/80' : 'bg-slate-700/60'}`}>
-          <div
-            className={`h-full rounded-full transition-all duration-300 ${barColor}`}
-            style={{ width: `${Math.max(barPct, placed > 0 ? 6 : 0)}%` }}
-          />
+        <div className="mt-1.5 flex items-center gap-2">
+          <div className={`h-1.5 min-w-0 flex-1 rounded-full overflow-hidden ${isLight ? 'bg-slate-200/80' : 'bg-slate-700/60'}`}>
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+              style={{ width: `${Math.max(barPct, placed > 0 ? 6 : 0)}%` }}
+            />
+          </div>
+          <span className={`shrink-0 text-[10px] font-semibold tabular-nums whitespace-nowrap ${ui.faint}`}>
+            <b className={ui.strong}>{placed}</b> / {target} ta
+          </span>
         </div>
       </div>
     </div>
@@ -160,32 +155,33 @@ function FloorBlock({
   const free = Math.max(0, row.capacity - row.placed)
 
   return (
-    <div className={`rounded-2xl border p-3.5 ${ui.inset}`}>
-      {/* Header section */}
+    <div className={`@container/floor rounded-2xl border p-3 sm:p-3.5 ${ui.inset}`}>
+      {/* Header: the verdict chip drops under the title when they don't fit on one line */}
       <div className="flex flex-col gap-1.5 pb-2.5 border-b border-slate-200/70 dark:border-slate-700/60">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
           <span className={`text-xs font-black uppercase tracking-wider ${ui.strong}`}>
             {row.floor}-qavat kursi balansi
           </span>
           <span
-            className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${chip.chip}`}
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${chip.chip}`}
           >
-            <head.Icon size={11} /> {head.label}
+            <head.Icon size={11} className="shrink-0" /> {head.label}
           </span>
         </div>
-        <div className="flex items-center justify-between text-[11px] font-medium">
-          <span className={ui.muted}>Bandlik holati:</span>
-          <span className={`tabular-nums font-semibold ${ui.strong}`}>
-            {row.placed} / {row.capacity} joy{' '}
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px] font-medium">
+          <span className={ui.muted}>Bandlik</span>
+          <span className={`ml-auto whitespace-nowrap tabular-nums font-semibold ${ui.strong}`}>
+            {row.placed} / {row.capacity} joy ·{' '}
             <span className={free > 0 ? 'text-emerald-600 font-bold' : ui.faint}>
-              ({free > 0 ? `${free} ta boʻsh` : 'to‘la'})
+              {free > 0 ? `${free} ta boʻsh` : 'to‘la'}
             </span>
           </span>
         </div>
       </div>
 
-      {/* Grid: 2 columns in compact mode, or 2 cols on mobile / 4 cols on tablet+ */}
-      <div className={`mt-2.5 grid gap-2 ${compact ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>
+      {/* Columns follow this block's own width (not the viewport): a list on a phone,
+          2 columns once a row has ~220px, 4 on a wide desktop. */}
+      <div className="mt-2.5 grid grid-cols-1 gap-2 @md/floor:grid-cols-2 @4xl/floor:grid-cols-4">
         {COURSES.map((c, i) => (
           <CourseCell
             key={c}
@@ -247,7 +243,7 @@ export default function FloorBalanceCard({
   const totalCap = rows.reduce((sum, r) => sum + r.capacity, 0)
 
   return (
-    <div className={`rounded-2xl border p-5 ${ui.card} ${className}`}>
+    <div className={`rounded-2xl border p-4 sm:p-5 ${ui.card} ${className}`}>
       <div className="flex items-start gap-3">
         <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${ui.accentTileSoft}`}>
           <Layers size={16} />

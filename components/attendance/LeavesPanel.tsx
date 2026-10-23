@@ -178,7 +178,7 @@ export default function LeavesPanel({
                 )}
 
                 {canWrite && !pending && (
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  <div data-flat className="mt-2.5 grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap">
                     {CALL_BUTTONS.map((b) => (
                       <button
                         key={b.result}
@@ -186,7 +186,7 @@ export default function LeavesPanel({
                         disabled={busyId === r.id}
                         onClick={() => call(r.id, b.result)}
                         data-student-button="plain"
-                        className={`no-shelf inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2.5 text-[11px] font-bold disabled:opacity-50 ${b.tone} ${
+                        className={`no-shelf inline-flex h-9 cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-lg px-1.5 text-[11px] font-bold disabled:opacity-50 sm:h-8 sm:px-2.5 ${b.tone} ${
                           r.callResult === b.result ? 'ring-2 ring-offset-1 ring-sky-400' : 'opacity-90'
                         }`}
                       >

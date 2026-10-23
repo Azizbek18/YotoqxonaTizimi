@@ -87,6 +87,22 @@ const STATUS_META: Record<PermitRequest['status'], { label: string; tone: DekanS
   registered: { label: 'Ro‘yxatdan o‘tgan', tone: 'info' },
 }
 
+/** Shared shape of the detail panel's action buttons; colour is added per button. */
+const actionBase =
+  'no-shelf cursor-pointer inline-flex h-11 items-center justify-center gap-2 rounded-xl px-3 text-[13px] font-bold whitespace-nowrap transition-all active:scale-[0.98]'
+
+/** Shared shape of the small chips on a request card; colour comes from statusChip. */
+const chipBase = 'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none'
+
+const UZ_MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr']
+
+function submittedShort(iso: string) {
+  const d = new Date(iso)
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  const year = d.getFullYear() !== new Date().getFullYear() ? ` ${d.getFullYear()}` : ''
+  return `${d.getDate()}-${UZ_MONTHS[d.getMonth()]}${year}, ${time}`
+}
+
 function submittedDate(iso: string) {
   return new Date(iso).toLocaleDateString('uz-UZ')
 }
@@ -99,6 +115,61 @@ function submittedDateTime(iso: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+/**
+ * A labelled segmented control. On a phone the label sits above a full-width
+ * track whose segments share the width; from sm up the label is inline.
+ */
+function FilterSegment<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  isLight,
+}: {
+  label: string
+  value: T
+  options: { id: T; label: React.ReactNode }[]
+  onChange: (value: T) => void
+  isLight: boolean
+}) {
+  const ui = dekanUI(isLight)
+  return (
+    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+      <span className={`text-[10px] font-bold uppercase tracking-wider sm:w-20 lg:w-auto ${ui.faint}`}>{label}</span>
+      <div
+        role="group"
+        aria-label={label}
+        className={`flex w-full gap-0.5 rounded-xl p-1 ring-1 ring-inset sm:w-auto ${
+          isLight ? 'bg-slate-100/90 ring-slate-200/70' : 'bg-slate-950/60 ring-slate-800'
+        }`}
+      >
+        {options.map((option) => {
+          const isActive = value === option.id
+          return (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={isActive}
+              onClick={() => onChange(option.id)}
+              className={`no-shelf cursor-pointer flex-1 sm:flex-none whitespace-nowrap h-7 px-2 sm:px-3 rounded-lg text-[11px] font-bold transition-colors ${
+                isActive
+                  ? isLight
+                    ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-slate-200/80'
+                    : 'bg-indigo-600 text-white'
+                  : isLight
+                    ? 'text-slate-500 hover:text-slate-800'
+                    : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 function getInitials(name: string): string {
@@ -136,6 +207,26 @@ function ArizalarContent() {
   // Selected Request
   const [selectedRequest, setSelectedReq] = useState<PermitRequest | null>(null)
   const selectedReq = requests.find((request) => request.id === selectedRequest?.id) ?? null
+
+  // Below lg the detail panel sits under the list: a tap on a card brings the
+  // panel into view, and closing it takes the reader back to that card.
+  const detailRef = useRef<HTMLDivElement>(null)
+  const isStackedLayout = () => window.matchMedia('(max-width: 1023px)').matches
+  const openRequest = (req: PermitRequest) => {
+    setSelectedReq(req)
+    if (isStackedLayout()) {
+      requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    }
+  }
+  const closeRequest = () => {
+    const id = selectedReq?.id
+    setSelectedReq(null)
+    if (id && isStackedLayout()) {
+      requestAnimationFrame(() =>
+        document.getElementById(`ariza-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+      )
+    }
+  }
 
   const {
     faculty: dekanFaculty,
@@ -221,20 +312,22 @@ function ArizalarContent() {
       )
     : []
 
-  // KPI Statistics
+  // KPI Statistics — the KPI cards double as the status filter, so they count
+  // within the superadmin's faculty pick like the list does.
   const stats = useMemo(() => {
-    const pending = requests.filter((r) => r.status === 'pending').length
-    const approved = requests.filter((r) => r.status === 'approved').length
-    const rejected = requests.filter((r) => r.status === 'rejected').length
-    const registered = requests.filter((r) => r.status === 'registered').length
+    const scoped = facultyFilter ? requests.filter((r) => r.faculty === facultyFilter) : requests
+    const pending = scoped.filter((r) => r.status === 'pending').length
+    const approved = scoped.filter((r) => r.status === 'approved').length
+    const rejected = scoped.filter((r) => r.status === 'rejected').length
+    const registered = scoped.filter((r) => r.status === 'registered').length
     return {
       pending,
       approved,
       rejected,
       registered,
-      total: requests.length,
+      total: scoped.length,
     }
-  }, [requests])
+  }, [requests, facultyFilter])
 
   // Filtered & Ordered Requests
   const filteredRequests = useMemo(() => {
@@ -410,44 +503,63 @@ function ArizalarContent() {
   return (
     <div className="space-y-5">
       {/* 1. Executive Hero Banner */}
-      <div className="no-shelf relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-5 sm:p-7 text-white shadow-xl shadow-indigo-950/15 border border-white/20">
+      <div className="no-shelf relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-4 sm:p-7 text-white shadow-xl shadow-indigo-950/15 border border-white/20">
         <div className="pointer-events-none absolute -right-12 -top-12 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -left-12 -bottom-12 h-64 w-64 rounded-full bg-indigo-400/20 blur-3xl" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur-md px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white border border-white/25 shadow-xs">
-                <Sparkles size={12} className="text-amber-300" />
-                {isGlobal ? 'Superadmin boshqaruvi' : 'Dekan Paneli'}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-900/40 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-bold text-indigo-100 border border-white/10">
-                {stats.pending > 0 ? `${stats.pending} ta yangi ariza kutilmoqda` : 'Barcha arizalar ko‘rib chiqilgan'}
-              </span>
-            </div>
+        {/* Phone: badge with two icon buttons on its right, then the title and a
+            one-line queue status, no tagline. md+: text column on the left,
+            buttons centred on the right. */}
+        <div className="relative z-10 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 md:gap-x-4">
+          <span className="col-start-1 row-start-1 self-center justify-self-start inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur-md px-2.5 py-1 text-[10px] sm:px-3 sm:text-[11px] font-bold uppercase tracking-wider text-white border border-white/25 shadow-xs md:self-start">
+            <Sparkles size={12} className="text-amber-300" />
+            {isGlobal ? 'Superadmin boshqaruvi' : 'Dekan Paneli'}
+          </span>
 
-            <h1 className="mt-2.5 text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white drop-shadow-sm">
-              Yo‘llanmalar va Arizalar Nazorati
-            </h1>
-            <p className="mt-1 text-xs sm:text-sm text-indigo-100/90 max-w-2xl leading-relaxed">
-              {isGlobal
-                ? 'Barcha fakultetlar bo‘yicha talabalar arizalari — markaziy tekshiruv va navbat'
-                : effectiveFaculty
-                  ? `${permitFacultyLabel(effectiveFaculty)} fakulteti bo‘yicha kelib tushgan ruxsatnomalar`
-                  : 'Kelib tushgan ruxsatnomalarni tekshirish, tasdiqlash va xonalarga joylashtirish navbati'}
-            </p>
-          </div>
+          <h1 className="col-span-2 mt-2.5 text-lg leading-snug sm:mt-3 sm:text-2xl lg:text-3xl font-black tracking-tight text-white drop-shadow-sm md:col-span-1">
+            Yo‘llanmalar va Arizalar Nazorati
+          </h1>
 
-          <div className="relative z-10 flex flex-wrap items-center gap-2">
-            {/* Export Button */}
+          {/* Queue status — a plain line, so it never wraps inside a pill */}
+          <p className="col-span-2 mt-1.5 flex items-center gap-2 text-xs sm:text-[13px] font-semibold text-indigo-100 md:col-span-1">
+            {stats.pending > 0 ? (
+              <>
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-300 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-300" />
+                </span>
+                <span>
+                  <b className="font-black text-white">{stats.pending} ta</b> yangi ariza kutilmoqda
+                </span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={14} className="shrink-0 text-emerald-300" />
+                <span>Barcha arizalar ko‘rib chiqilgan</span>
+              </>
+            )}
+          </p>
+
+          <p className="col-span-2 mt-1 hidden text-sm text-indigo-100/90 max-w-2xl leading-relaxed sm:block md:col-span-1">
+            {isGlobal
+              ? 'Barcha fakultetlar bo‘yicha talabalar arizalari — markaziy tekshiruv va navbat'
+              : effectiveFaculty
+                ? `${permitFacultyLabel(effectiveFaculty)} fakulteti bo‘yicha kelib tushgan ruxsatnomalar`
+                : 'Kelib tushgan ruxsatnomalarni tekshirish, tasdiqlash va xonalarga joylashtirish navbati'}
+          </p>
+
+          <div className="col-start-2 row-start-1 flex items-center gap-1.5 sm:gap-2 md:row-span-4 md:self-center">
+            {/* Export Button — icon only on a phone */}
             <button
               type="button"
               onClick={() => exportToExcel(filteredRequests)}
               disabled={filteredRequests.length === 0}
-              className="no-shelf cursor-pointer inline-flex items-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 px-4 py-2.5 text-xs font-bold text-white transition-all active:scale-95 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Excel yuklab olish"
+              title="Excel yuklab olish"
+              className="no-shelf cursor-pointer inline-flex h-9 w-9 items-center justify-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-xs font-bold text-white transition-all active:scale-95 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed sm:h-10 sm:w-auto sm:px-4"
             >
               <Download size={14} />
-              <span>Excel yuklab olish</span>
+              <span className="hidden sm:inline">Excel yuklab olish</span>
             </button>
 
             {/* Refresh Button */}
@@ -455,7 +567,8 @@ function ArizalarContent() {
               type="button"
               onClick={() => void fetchRequests(dekanFaculty, true)}
               disabled={refreshing}
-              className="no-shelf cursor-pointer inline-flex items-center justify-center h-10 w-10 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white transition-all active:scale-95 shadow-xs disabled:opacity-50"
+              aria-label="Ma’lumotlarni yangilash"
+              className="no-shelf cursor-pointer inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white transition-all active:scale-95 shadow-xs disabled:opacity-50"
               title="Ma’lumotlarni yangilash"
             >
               <RotateCcw size={15} className={refreshing ? 'animate-spin' : ''} />
@@ -465,10 +578,11 @@ function ArizalarContent() {
 
         {/* Multi-Dorm Tabs if faculty owns multiple buildings */}
         {!dormScope.global && dormScope.dorms.length > 0 && (
-          <div className="relative z-10 mt-5 pt-4 border-t border-white/15">
+          <div className="relative z-10 mt-3.5 pt-3.5 sm:mt-5 sm:pt-4 border-t border-white/15">
             <DormTabs
               scope={dormScope}
               isLight={isLight}
+              variant="onBrand"
               onChange={() => {
                 setSelectedReq(null)
                 setApproveModalOpen(false)
@@ -622,7 +736,7 @@ function ArizalarContent() {
       )}
 
       {/* 3. Combined Filtering Toolbar (Spacious Multi-tier Layout) */}
-      <div className={`no-shelf rounded-2xl border p-3.5 shadow-2xs space-y-3 ${ui.card}`}>
+      <div className={`no-shelf rounded-2xl border p-3 sm:p-3.5 shadow-2xs space-y-3 ${ui.card}`}>
         {/* Row 1: Search + Global Faculty Filter */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
           <div className="relative flex-1">
@@ -671,119 +785,49 @@ function ArizalarContent() {
           )}
         </div>
 
-        {/* Row 2: Status Filter Tabs (Dedicated spacious row) */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-          {(Object.keys(STATUS_META) as PermitRequest['status'][]).map((status) => {
-            const count = requests.filter(
-              (r) => r.status === status && (!facultyFilter || r.faculty === facultyFilter),
-            ).length
-            const meta = STATUS_META[status]
-            const isActive = statusFilter === status
-            return (
-              <button
-                key={status}
-                type="button"
-                onClick={() => {
-                  setStatusFilter(status)
-                  setSelectedReq(null)
-                }}
-                className={`no-shelf cursor-pointer px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5 ${
-                  isActive
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs shadow-blue-500/20'
-                    : isLight
-                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                      : 'bg-slate-800 hover:bg-slate-750 text-slate-300'
-                }`}
-              >
-                <span>{meta.label}</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-md text-[10px] font-black ${
-                    isActive ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Row 3: Secondary Filters: Kurs & Ariza Turi (Separate spacious row) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-          {/* Kurs Filter */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className={`text-[10px] font-bold uppercase tracking-wider mr-1 ${ui.faint}`}>Kurs:</span>
-            {(['all', '1', '2', '3', '4'] as const).map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCourseFilter(c)}
-                className={`no-shelf cursor-pointer h-7 px-2.5 rounded-lg text-[11px] font-bold transition-all ${
-                  courseFilter === c
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : isLight
-                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                }`}
-              >
-                {c === 'all' ? 'Barchasi' : `${c}-kurs`}
-              </button>
-            ))}
-          </div>
-
-          {/* Application Type Filter */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className={`text-[10px] font-bold uppercase tracking-wider mr-1 ${ui.faint}`}>Ariza turi:</span>
-            {(
-              [
-                { id: 'all', label: 'Barchasi' },
-                { id: 'yollanma', label: 'Yo‘llanma' },
-                { id: 'imtiyozli', label: 'Ariza/Tilxat' },
-              ] as const
-            ).map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTypeFilter(t.id)}
-                className={`no-shelf cursor-pointer h-7 px-2.5 rounded-lg text-[11px] font-bold transition-all ${
-                  typeFilter === t.id
-                    ? 'bg-purple-600 text-white shadow-xs'
-                    : isLight
-                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                      : 'bg-slate-800 hover:bg-slate-750 text-slate-300'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Gender Filter */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className={`text-[10px] font-bold uppercase tracking-wider mr-1 ${ui.faint}`}>Jins:</span>
-            {(
-              [
-                { id: 'all', label: 'Barchasi' },
-                { id: 'male', label: 'O‘g‘il bolalar' },
-                { id: 'female', label: 'Qizlar' },
-              ] as const
-            ).map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() => setGenderFilter(g.id)}
-                className={`no-shelf cursor-pointer h-7 px-2.5 rounded-lg text-[11px] font-bold transition-all ${
-                  genderFilter === g.id
-                    ? 'bg-teal-600 text-white shadow-xs'
-                    : isLight
-                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                }`}
-              >
-                {g.label}
-              </button>
-            ))}
-          </div>
+        {/* Row 2: Kurs / Ariza turi / Jins — one segmented control each, single accent.
+            Status is picked with the KPI cards above. */}
+        <div className="flex flex-col gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between lg:gap-x-6">
+          <FilterSegment
+            label="Kurs"
+            isLight={isLight}
+            value={courseFilter}
+            onChange={setCourseFilter}
+            options={[
+              { id: 'all', label: 'Barchasi' },
+              ...(['1', '2', '3', '4'] as const).map((c) => ({
+                id: c,
+                label: (
+                  <>
+                    <span className="sm:hidden">{c}</span>
+                    <span className="hidden sm:inline">{c}-kurs</span>
+                  </>
+                ),
+              })),
+            ]}
+          />
+          <FilterSegment
+            label="Ariza turi"
+            isLight={isLight}
+            value={typeFilter}
+            onChange={setTypeFilter}
+            options={[
+              { id: 'all', label: 'Barchasi' },
+              { id: 'yollanma', label: 'Yo‘llanma' },
+              { id: 'imtiyozli', label: 'Ariza/Tilxat' },
+            ]}
+          />
+          <FilterSegment
+            label="Jins"
+            isLight={isLight}
+            value={genderFilter}
+            onChange={setGenderFilter}
+            options={[
+              { id: 'all', label: 'Barchasi' },
+              { id: 'male', label: 'Yigitlar' },
+              { id: 'female', label: 'Qizlar' },
+            ]}
+          />
         </div>
       </div>
 
@@ -814,25 +858,27 @@ function ArizalarContent() {
                 return (
                   <button
                     key={req.id}
+                    id={`ariza-${req.id}`}
                     type="button"
-                    onClick={() => setSelectedReq(req)}
-                    className={`no-shelf cursor-pointer w-full text-left rounded-2xl border p-3.5 sm:p-4 transition-all active:scale-[0.99] select-none ${
+                    aria-pressed={isSelected}
+                    onClick={() => openRequest(req)}
+                    className={`no-shelf cursor-pointer w-full overflow-hidden text-left rounded-2xl border transition-all active:scale-[0.99] select-none ${
                       isSelected
                         ? isLight
                           ? 'border-indigo-600 bg-indigo-50/60 shadow-md ring-2 ring-indigo-500/20'
                           : 'border-indigo-500 bg-indigo-950/40 shadow-md ring-2 ring-indigo-500/30'
-                        : `${ui.card} hover:border-indigo-300 dark:hover:border-indigo-800`
+                        : `${ui.card} hover:-translate-y-px hover:border-indigo-300 hover:shadow-md dark:hover:border-indigo-800`
                     }`}
                   >
-                    <div className="flex items-start sm:items-center justify-between gap-3">
-                      {/* Left: Avatar + Details */}
-                      <div className="flex items-start gap-3 min-w-0">
-                        {/* Initials Avatar */}
+                    {/* Body: avatar, the full name (up to two lines), direction · course and chips.
+                        Footer strip: submission time and room. Nothing fights the name for width. */}
+                    <div className="flex items-start gap-3 p-3.5 sm:p-4">
+                        {/* Initials Avatar — soft tint by gender */}
                         <div
-                          className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xs font-black shadow-xs ${
+                          className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-[13px] font-black tracking-tight ring-1 ring-inset ${
                             isFemale
-                              ? 'bg-gradient-to-br from-pink-500 to-rose-600 text-white'
-                              : 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white'
+                              ? isLight ? 'bg-rose-100/80 text-rose-600 ring-rose-200/70' : 'bg-rose-500/15 text-rose-300 ring-rose-500/25'
+                              : isLight ? 'bg-indigo-100/80 text-indigo-600 ring-indigo-200/70' : 'bg-indigo-500/15 text-indigo-300 ring-indigo-500/25'
                           }`}
                         >
                           {getInitials(req.full_name)}
@@ -848,91 +894,85 @@ function ArizalarContent() {
                         </div>
 
                         {/* Text details */}
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <h3 className={`text-xs sm:text-sm font-black tracking-tight truncate ${ui.strong}`}>
-                              {req.full_name}
-                            </h3>
+                        <div className="min-w-0 flex-1">
+                          <h3
+                            title={req.full_name}
+                            className={`text-sm font-bold leading-snug tracking-tight line-clamp-2 break-words ${ui.strong}`}
+                          >
+                            {req.full_name}
+                          </h3>
+                          <p className={`mt-1 flex min-w-0 items-center gap-1.5 text-xs font-medium ${ui.muted}`}>
+                            <GraduationCap size={13} className="shrink-0 text-indigo-500 dark:text-indigo-400" />
+                            <span className="truncate" title={directionLabel(req.direction) || permitFacultyLabel(req.faculty)}>
+                              {directionLabel(req.direction) || permitFacultyLabel(req.faculty)}
+                            </span>
+                            <span className={`shrink-0 ${ui.faint}`}>·</span>
+                            <span className="shrink-0 font-bold text-indigo-600 dark:text-indigo-400">{req.course}-kurs</span>
+                          </p>
 
-                            {/* Application Type Chip */}
-                            {req.application_type === 'imtiyozli' ? (
-                              <span className="rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-1.5 py-0.5 text-[9px] font-black uppercase">
-                                Ariza/Tilxat
-                              </span>
-                            ) : (
-                              <span className="rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 px-1.5 py-0.5 text-[9px] font-black uppercase">
-                                Yo‘llanma
+                          {/* Application type, study type, then any alerts */}
+                          <div className="mt-2 flex flex-wrap items-center gap-1">
+                            <span
+                              className={`${chipBase} ${statusChip(req.application_type === 'imtiyozli' ? 'warning' : 'neutral', isLight).chip}`}
+                            >
+                              {req.application_type === 'imtiyozli' ? 'Ariza/Tilxat' : 'Yo‘llanma'}
+                            </span>
+                            {req.study_type && (
+                              <span className={`${chipBase} ${statusChip('neutral', isLight).chip}`}>
+                                {req.study_type === 'grant' ? 'Grant' : 'Kontrakt'}
                               </span>
                             )}
-
-                            {/* Alerts / Badges */}
                             {req.blacklisted && (
-                              <span className="rounded-md bg-rose-600 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
-                                Qora ro‘yxat
-                              </span>
+                              <span className={`${chipBase} ${statusChip('danger', isLight).chip}`}>Qora ro‘yxat</span>
                             )}
                             {req.blocked && (
-                              <span className="inline-flex items-center gap-0.5 rounded-md bg-rose-600 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
-                                <Ban size={9} /> Bloklangan
+                              <span className={`${chipBase} ${statusChip('danger', isLight).chip}`}>
+                                <Ban size={10} className="shrink-0" /> Bloklangan
                               </span>
                             )}
                             {req.warning_count && req.warning_count > 0 ? (
-                              <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 px-1.5 py-0.5 text-[9px] font-bold">
-                                <AlertTriangle size={9} /> {req.warning_count} ogohlantirish
+                              <span className={`${chipBase} ${statusChip('warning', isLight).chip}`}>
+                                <AlertTriangle size={10} className="shrink-0" /> {req.warning_count} ogohlantirish
                               </span>
                             ) : null}
                             {req.ai_review === 'manual' && (
-                              <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 px-1.5 py-0.5 text-[9px] font-bold">
-                                <AlertTriangle size={9} /> AI tekshirmagan
+                              <span className={`${chipBase} ${statusChip('warning', isLight).chip}`}>
+                                <AlertTriangle size={10} className="shrink-0" /> AI tekshirmagan
                               </span>
                             )}
                           </div>
-
-                          {/* Faculty, Direction, Course */}
-                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
-                            <span className={`font-semibold ${ui.muted}`}>
-                              {directionLabel(req.direction) || permitFacultyLabel(req.faculty)}
-                            </span>
-                            <span className={ui.faint}>•</span>
-                            <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                              {req.course}-kurs
-                            </span>
-                            {req.study_type && (
-                              <>
-                                <span className={ui.faint}>•</span>
-                                <span className={`text-[11px] font-medium ${ui.faint}`}>
-                                  {req.study_type === 'grant' ? 'Davlat granti' : 'Kontrakt'}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: Room status & Submission time */}
-                      <div className="flex items-center gap-3 shrink-0">
-                        <div className="text-right">
-                          {req.room_number ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 px-2.5 py-0.5 text-[10px] font-bold">
-                              <DoorClosed size={10} /> № {req.room_number}
-                            </span>
-                          ) : (
-                            <span className={`text-[10px] font-medium ${ui.faint}`}>
-                              Xona kutmoqda
-                            </span>
-                          )}
-                          <p className={`mt-1 text-[10px] font-medium tabular-nums ${ui.faint}`}>
-                            {submittedDateTime(req.created_at)}
-                          </p>
                         </div>
 
                         <ChevronRight
                           size={16}
-                          className={`transition-transform duration-150 ${
+                          className={`mt-0.5 shrink-0 transition-transform duration-150 ${
                             isSelected ? 'translate-x-0.5 text-indigo-600 dark:text-indigo-400' : ui.faint
                           }`}
                         />
-                      </div>
+                    </div>
+
+                    {/* Bottom strip: when it came in, and where the student is placed */}
+                    <div
+                      className={`flex items-center justify-between gap-2 border-t px-3.5 py-2 sm:px-4 ${
+                        isSelected
+                          ? isLight ? 'border-indigo-100 bg-indigo-100/40' : 'border-indigo-500/20 bg-indigo-500/10'
+                          : isLight ? 'border-slate-100 bg-slate-50/80' : 'border-slate-800 bg-slate-800/30'
+                      }`}
+                    >
+                      <span className={`inline-flex min-w-0 items-center gap-1.5 text-[11px] font-medium tabular-nums ${ui.faint}`}>
+                        <Clock size={12} className="shrink-0" />
+                        <span className="truncate" title={submittedDateTime(req.created_at)}>{submittedShort(req.created_at)}</span>
+                      </span>
+                      {req.room_number ? (
+                        <span className={`${chipBase} shrink-0 ${statusChip('success', isLight).chip}`}>
+                          <DoorClosed size={11} className="shrink-0" /> № {req.room_number}
+                        </span>
+                      ) : (
+                        <span className={`${chipBase} shrink-0 ${statusChip('neutral', isLight).chip}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${statusChip('neutral', isLight).dot}`} />
+                          Xona kutmoqda
+                        </span>
+                      )}
                     </div>
                   </button>
                 )
@@ -942,7 +982,7 @@ function ArizalarContent() {
         </div>
 
         {/* Right Column: Sticky Detail Panel */}
-        <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-20 lg:self-start">
+        <div ref={detailRef} className="scroll-mt-20 lg:col-span-5 xl:col-span-4 lg:sticky lg:top-20 lg:self-start lg:scroll-mt-0">
           <AnimatePresence mode="wait">
             {selectedReq ? (
               <motion.div
@@ -951,7 +991,7 @@ function ArizalarContent() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.2 }}
-                className={`no-shelf rounded-3xl border p-4 sm:p-5 space-y-4 lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto shadow-sm ${ui.card}`}
+                className={`@container/panel no-shelf rounded-3xl border p-4 sm:p-5 space-y-4 lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto shadow-sm ${ui.card}`}
               >
                 {/* Panel Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -965,7 +1005,9 @@ function ArizalarContent() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setSelectedReq(null)}
+                    onClick={closeRequest}
+                    aria-label="Yopish va ro‘yxatga qaytish"
+                    title="Yopish"
                     className={`no-shelf p-1.5 rounded-xl ${ui.btnGhost}`}
                   >
                     <X size={15} />
@@ -1176,84 +1218,102 @@ function ArizalarContent() {
                   </div>
                 )}
 
-                {/* Documents Row */}
-                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-                  <button
-                    type="button"
-                    onClick={handleViewDocument}
-                    className={`no-shelf cursor-pointer flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95 ${ui.btnGhost}`}
-                  >
-                    <FileText size={13} />
-                    <span className="truncate">Ruxsatnoma</span>
-                    <ExternalLink size={10} />
-                  </button>
-
-                  {(selectedReq.application_type === 'imtiyozli' || selectedReq.study_type || selectedReq.origin_region) && (
+                {/* Documents + decision. data-flat keeps the light-mode retrofit off these
+                    buttons, so each one shows exactly the colours written here. One column
+                    in a narrow panel (phone), two once the panel has ~320px. */}
+                <div data-flat className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="grid grid-cols-1 gap-2 @xs/panel:grid-cols-2">
                     <button
                       type="button"
-                      onClick={() =>
-                        window.open(`/dekan/hujjat?id=${selectedReq.id}`, '_blank', 'noopener,noreferrer')
-                      }
-                      className="no-shelf cursor-pointer flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 py-2.5 text-[11px] font-black uppercase tracking-wider text-white shadow-xs transition-all active:scale-95"
+                      onClick={handleViewDocument}
+                      className={`${actionBase} @xs/panel:only:col-span-2 ${
+                        isLight
+                          ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                          : 'border border-slate-700 bg-slate-800/60 text-slate-200 hover:bg-slate-800'
+                      }`}
                     >
-                      <BookOpen size={13} />
-                      <span className="truncate">Tilxat / Ariza</span>
-                      <ExternalLink size={10} />
+                      <FileText size={15} className="shrink-0" />
+                      <span>Ruxsatnoma</span>
+                      <ExternalLink size={12} className="shrink-0 opacity-60" />
                     </button>
+
+                    {(selectedReq.application_type === 'imtiyozli' || selectedReq.study_type || selectedReq.origin_region) && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.open(`/dekan/hujjat?id=${selectedReq.id}`, '_blank', 'noopener,noreferrer')
+                        }
+                        className={`${actionBase} ${
+                          isLight
+                            ? 'border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                            : 'border border-indigo-500/30 bg-indigo-500/15 text-indigo-200 hover:bg-indigo-500/25'
+                        }`}
+                      >
+                        <BookOpen size={15} className="shrink-0" />
+                        <span>Tilxat / Ariza</span>
+                        <ExternalLink size={12} className="shrink-0 opacity-60" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Decision: on a phone the approve button comes first, full width */}
+                  {selectedReq.status === 'pending' && (
+                    <div className="grid grid-cols-1 gap-2 @xs/panel:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => setRejectModalOpen(true)}
+                        className={`${actionBase} order-2 @xs/panel:order-1 ${
+                          isLight
+                            ? 'border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                            : 'border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20'
+                        }`}
+                      >
+                        <XCircle size={15} className="shrink-0" />
+                        <span>Rad etish</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setApproveModalOpen(true)}
+                        className={`${actionBase} order-1 @xs/panel:order-2 bg-emerald-600 text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-500`}
+                      >
+                        <CheckCircle2 size={15} className="shrink-0" />
+                        <span>Tasdiqlash</span>
+                      </button>
+                    </div>
                   )}
-                </div>
 
-                {/* Decision Actions */}
-                {selectedReq.status === 'pending' && (
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <button
-                      type="button"
-                      onClick={() => setRejectModalOpen(true)}
-                      className="no-shelf cursor-pointer flex items-center justify-center gap-1.5 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 py-2.5 text-xs font-black uppercase tracking-wider transition-all active:scale-95"
-                    >
-                      <XCircle size={14} />
-                      <span>Rad etish</span>
-                    </button>
+                  {selectedReq.status === 'approved' && (
+                    <div className="space-y-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCancelModalOpen(true)}
+                        className={`${actionBase} w-full ${
+                          isLight
+                            ? 'border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                            : 'border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20'
+                        }`}
+                      >
+                        <Undo2 size={15} className="shrink-0" />
+                        <span>Tasdiqni bekor qilish</span>
+                      </button>
+                      <p className={`text-center text-[10px] leading-tight ${ui.faint}`}>
+                        Ariza qayta &laquo;Kutilmoqda&raquo; holatiga qaytariladi.
+                      </p>
+                    </div>
+                  )}
 
-                    <button
-                      type="button"
-                      onClick={() => setApproveModalOpen(true)}
-                      className="no-shelf cursor-pointer flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white py-2.5 text-xs font-black uppercase tracking-wider shadow-md shadow-emerald-600/20 transition-all active:scale-95"
-                    >
-                      <CheckCircle2 size={14} />
-                      <span>Tasdiqlash</span>
-                    </button>
-                  </div>
-                )}
-
-                {selectedReq.status === 'approved' && (
-                  <div className="pt-1 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setCancelModalOpen(true)}
-                      className="no-shelf cursor-pointer flex w-full items-center justify-center gap-1.5 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 py-2 text-xs font-black uppercase tracking-wider transition-all active:scale-95"
-                    >
-                      <Undo2 size={13} />
-                      <span>Tasdiqni bekor qilish</span>
-                    </button>
-                    <p className={`text-center text-[9px] leading-tight ${ui.faint}`}>
-                      Ariza qayta &laquo;Kutilmoqda&raquo; holatiga qaytariladi.
-                    </p>
-                  </div>
-                )}
-
-                {selectedReq.status === 'rejected' && selectedReq.blocked && (
-                  <div className="pt-1 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+                  {selectedReq.status === 'rejected' && selectedReq.blocked && (
                     <button
                       type="button"
                       onClick={() => setUnblockModalOpen(true)}
-                      className="no-shelf cursor-pointer flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2 text-xs font-black uppercase tracking-wider transition-all active:scale-95 shadow-md shadow-blue-500/20"
+                      className={`${actionBase} w-full bg-indigo-600 text-white shadow-md shadow-indigo-600/20 hover:bg-indigo-500`}
                     >
-                      <ShieldOff size={13} />
+                      <ShieldOff size={15} className="shrink-0" />
                       <span>Blokni yechish</span>
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </motion.div>
             ) : (
               /* Empty State Widget */

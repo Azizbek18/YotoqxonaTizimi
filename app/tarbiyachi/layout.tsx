@@ -356,7 +356,7 @@ export default function TarbiyachiLayout({ children }: { children: React.ReactNo
         </header>
 
         <div className="min-h-screen p-2 min-[360px]:p-3 sm:p-6 lg:p-8 min-w-0 max-w-full">
-          <div className={`min-h-[calc(100vh-7rem)] rounded-2xl sm:rounded-3xl border p-2.5 min-[360px]:p-3.5 sm:p-6 lg:p-8 min-w-0 max-w-full ${ui.cardElevated}`}>
+          <div className={`staff-mobile-type min-h-[calc(100vh-7rem)] rounded-2xl sm:rounded-3xl border p-2.5 min-[360px]:p-3.5 sm:p-6 lg:p-8 min-w-0 max-w-full ${ui.cardElevated}`}>
             {children}
           </div>
         </div>

@@ -57,10 +57,99 @@ type KvTalaba = {
   residence_lng?: number | null
   docs_worst_days?: number | null
   docs_count?: number
+  visa?: KvDocTerm | null
+  registration?: KvDocTerm | null
+  needs_visa?: boolean
   status: string
   off_campus_verified_by?: string | null
   off_campus_verified_at?: string | null
   created_at: string
+}
+
+type KvDocTerm = { expires_on: string; days_left: number; status: 'active' | 'renewing' | 'cancelled' }
+type TermState = 'missing' | 'expired' | 'soon' | 'ok'
+
+const termState = (term: KvDocTerm | null | undefined): TermState =>
+  !term ? 'missing' : term.days_left < 0 ? 'expired' : term.days_left <= 30 ? 'soon' : 'ok'
+
+/** "2026-03-15" → "15.03.2026" without a Date round-trip (no timezone shift). */
+const formatTermDate = (iso: string) => {
+  const [y, m, d] = iso.split('-')
+  return d && m && y ? `${d}.${m}.${y}` : iso
+}
+
+const TERM_TONE: Record<TermState, { light: string; dark: string; bar: string }> = {
+  ok: { light: 'border-emerald-200 bg-emerald-50/60', dark: 'border-emerald-500/25 bg-emerald-500/[0.06]', bar: 'bg-emerald-500' },
+  soon: { light: 'border-amber-200 bg-amber-50/70', dark: 'border-amber-500/30 bg-amber-500/[0.07]', bar: 'bg-amber-500' },
+  expired: { light: 'border-rose-200 bg-rose-50/70', dark: 'border-rose-500/30 bg-rose-500/[0.07]', bar: 'bg-rose-500' },
+  missing: { light: 'border-dashed border-slate-300 bg-slate-50/60', dark: 'border-dashed border-slate-700 bg-slate-800/30', bar: 'bg-slate-400' },
+}
+
+/** Lower = more urgent; the card's top strip shows the most urgent document. */
+const TERM_RANK: Record<TermState, number> = { expired: 0, missing: 1, soon: 2, ok: 3 }
+
+function DocTermTile({ label, term, isLight }: { label: string; term: KvDocTerm | null | undefined; isLight: boolean }) {
+  const state = termState(term)
+  const tone = TERM_TONE[state]
+  const badge =
+    state === 'missing'
+      ? 'Kiritilmagan'
+      : state === 'expired'
+        ? `${Math.abs(term!.days_left)} kun o‘tdi`
+        : term!.days_left === 0
+          ? 'Bugun tugaydi'
+          : `${term!.days_left} kun qoldi`
+  const badgeColor =
+    state === 'ok'
+      ? isLight ? 'text-emerald-700' : 'text-emerald-300'
+      : state === 'soon'
+        ? isLight ? 'text-amber-700' : 'text-amber-300'
+        : state === 'expired'
+          ? isLight ? 'text-rose-700' : 'text-rose-300'
+          : isLight ? 'text-slate-500' : 'text-slate-400'
+  return (
+    <div className={`relative overflow-hidden rounded-xl border py-2 pl-3 pr-2.5 ${isLight ? tone.light : tone.dark}`}>
+      <span className={`absolute inset-y-0 left-0 w-1 ${tone.bar}`} aria-hidden="true" />
+      <p className={`text-[9px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
+      <p className={`mt-0.5 font-mono text-[13px] font-extrabold tabular-nums ${isLight ? 'text-slate-900' : 'text-white'}`}>
+        {term ? formatTermDate(term.expires_on) : '—'}
+      </p>
+      <p className={`mt-0.5 text-[10px] font-bold ${badgeColor}`}>
+        {badge}
+        {term?.status === 'renewing' && <span className={isLight ? 'text-slate-500' : 'text-slate-400'}> · yangilanmoqda</span>}
+      </p>
+    </div>
+  )
+}
+
+/** Compact table version of DocTermTile: date over a coloured days-left badge. */
+function DocTermCell({ term, isLight }: { term: KvDocTerm | null | undefined; isLight: boolean }) {
+  const state = termState(term)
+  if (state === 'missing') {
+    return (
+      <span className={`inline-flex rounded-md border border-dashed px-2 py-0.5 text-[10px] font-semibold ${
+        isLight ? 'border-slate-300 text-slate-500' : 'border-slate-600 text-slate-400'
+      }`}>
+        Kiritilmagan
+      </span>
+    )
+  }
+  const badge = state === 'expired'
+    ? isLight ? 'bg-rose-100 text-rose-700' : 'bg-rose-500/15 text-rose-300'
+    : state === 'soon'
+      ? isLight ? 'bg-amber-100 text-amber-700' : 'bg-amber-500/15 text-amber-300'
+      : isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-500/15 text-emerald-300'
+  const days = term!.days_left
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <span className={`font-mono text-xs font-bold tabular-nums ${isLight ? 'text-slate-900' : 'text-white'}`}>
+        {formatTermDate(term!.expires_on)}
+      </span>
+      <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${badge}`}>
+        {days < 0 ? `${Math.abs(days)} kun o‘tdi` : days === 0 ? 'Bugun' : `${days} kun`}
+      </span>
+    </div>
+  )
 }
 
 type SortOption = 'newest' | 'name-asc' | 'course-asc' | 'group-asc'
@@ -240,7 +329,13 @@ export default function KvTalabalarPage() {
       const safe = /^[=@]/.test(text) ? `'${text}` : text
       return `"${safe.replace(/"/g, '""')}"`
     }
-    const headers = ['№', 'F.I.SH.', 'HEMIS ID', 'Jinsi', 'Kurs', 'Guruh', "Yo'nalish", 'Telefon', 'Email', "Ro'yxatdan o'tgan sana"]
+    const headers = [
+      '№', 'F.I.SH.', 'HEMIS ID', 'Jinsi', 'Kurs', 'Guruh', "Yo'nalish", 'Telefon', 'Email',
+      'Viza muddati', 'Viza (kun)', 'Propiska muddati', 'Propiska (kun)', "Ro'yxatdan o'tgan sana",
+    ]
+    // Days stay plain numbers (a negative one is just a number, not a formula); a missing term is "—".
+    const termCells = (term: KvDocTerm | null | undefined, applies = true) =>
+      !applies ? [cell('Kerak emas'), cell('')] : term ? [cell(formatTermDate(term.expires_on)), term.days_left] : [cell('—'), cell('—')]
     const rows = list.map((s, idx) => [
       idx + 1,
       cell(s.full_name),
@@ -251,6 +346,8 @@ export default function KvTalabalarPage() {
       cell(directionLabel(s.direction)),
       cell(s.phone_number),
       cell(s.email),
+      ...termCells(s.visa, Boolean(s.needs_visa)),
+      ...termCells(s.registration),
       cell(formatDate(s.created_at)),
     ])
     const csv = '\uFEFF' + [headers.map(cell).join(','), ...rows.map((r) => r.join(','))].join('\r\n')
@@ -740,10 +837,17 @@ export default function KvTalabalarPage() {
                   ui.card
                 } ${isLight ? 'hover:shadow-xl hover:border-indigo-300' : 'hover:shadow-2xl hover:border-indigo-500/40'}`}
               >
-                {/* Ambient Soft Glow */}
-                <div className={`pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full blur-[40px] opacity-40 group-hover:opacity-100 transition-opacity ${
-                  isLight ? 'bg-indigo-200/50' : 'bg-indigo-600/15'
-                }`} />
+                {/* Top strip: the worst document state at a glance (dekan UI: no decorative glows) */}
+                <div
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute inset-x-0 top-0 h-1 ${
+                    TERM_TONE[
+                      [student.needs_visa ? termState(student.visa) : null, termState(student.registration)]
+                        .filter((s): s is TermState => s !== null)
+                        .sort((a, b) => TERM_RANK[a] - TERM_RANK[b])[0]
+                    ].bar
+                  }`}
+                />
 
                 <div>
                   {/* Top section: Avatar + Identity + Status */}
@@ -844,6 +948,15 @@ export default function KvTalabalarPage() {
                         </button>
                       </div>
                     )}
+                  </div>
+
+                  {/* Document terms: visa (foreign citizens only) and propiska */}
+                  <div className="relative z-10 mt-3">
+                    <p className={`mb-1.5 text-[9px] font-bold uppercase tracking-wider ${ui.faint}`}>Hujjat muddatlari</p>
+                    <div className={`grid gap-2 ${student.needs_visa ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                      {student.needs_visa && <DocTermTile label="Viza" term={student.visa} isLight={isLight} />}
+                      <DocTermTile label="Propiska" term={student.registration} isLight={isLight} />
+                    </div>
                   </div>
 
                   {/* Contact Info Preview */}
@@ -979,6 +1092,8 @@ export default function KvTalabalarPage() {
                   <th className="py-3 px-3.5 w-36 whitespace-nowrap">Kurs & Guruh</th>
                   <th className="py-3 px-3.5 min-w-[150px]">Ta&apos;lim Yo&apos;nalishi</th>
                   <th className="py-3 px-3.5 min-w-[170px] whitespace-nowrap">Aloqa</th>
+                  <th className="py-3 px-3.5 w-32 whitespace-nowrap">Viza</th>
+                  <th className="py-3 px-3.5 w-32 whitespace-nowrap">Propiska</th>
                   <th className="py-3 px-3.5 w-28 whitespace-nowrap">Sana</th>
                   <th className="py-3 px-3.5 w-28 text-right whitespace-nowrap">Amallar</th>
                 </tr>
@@ -1111,6 +1226,20 @@ export default function KvTalabalarPage() {
                             </a>
                           </div>
                         </div>
+                      </td>
+
+                      {/* Viza / Propiska muddatlari */}
+                      <td className="py-2.5 px-3.5 whitespace-nowrap">
+                        {student.needs_visa ? (
+                          <DocTermCell term={student.visa} isLight={isLight} />
+                        ) : (
+                          <span className={`text-[10px] font-semibold ${ui.faint}`} title="O‘zbekiston fuqarosiga viza kerak emas">
+                            Kerak emas
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3.5 whitespace-nowrap">
+                        <DocTermCell term={student.registration} isLight={isLight} />
                       </td>
 
                       {/* 7. Sana */}

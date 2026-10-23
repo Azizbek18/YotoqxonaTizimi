@@ -113,3 +113,28 @@ describe('dueReminder', () => {
     expect(dueReminder(-3, new Set([-3]))).toEqual({ send: false, mark: [], postExpiryDay: null })
   })
 })
+
+import { MAX_VISA_TERM_DAYS, visaTermTooLong } from './expiry'
+
+describe('visaTermTooLong (Uzbek visas are issued for at most 1 year)', () => {
+  it('accepts a normal one-year visa, including a leap year', () => {
+    expect(visaTermTooLong('2026-09-01', '2027-08-31')).toBe(false)
+    expect(visaTermTooLong('2027-09-01', '2028-08-31')).toBe(false)
+  })
+
+  it('flags passport data typed as a visa (exactly 5 years)', () => {
+    expect(visaTermTooLong('2026-04-16', '2031-04-16')).toBe(true)
+  })
+
+  it('measures from today when the issue date is missing', () => {
+    const today = '2026-10-23'
+    expect(visaTermTooLong(null, '2027-06-01', today)).toBe(false)
+    expect(visaTermTooLong(null, '2031-02-10', today)).toBe(true)
+  })
+
+  it('draws the line at MAX_VISA_TERM_DAYS', () => {
+    expect(visaTermTooLong('2026-01-01', '2027-02-05')).toBe(false) // 400 days
+    expect(visaTermTooLong('2026-01-01', '2027-02-06')).toBe(true) // 401 days
+    expect(MAX_VISA_TERM_DAYS).toBe(400)
+  })
+})

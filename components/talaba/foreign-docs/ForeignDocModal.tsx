@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { prepareAiAnalysisFile, prepareUploadFile } from '@/lib/prepare-upload'
 import { saveForeignDoc, deleteForeignDoc, scanForeignDoc } from '@/features/foreign-docs/client/api'
+import { VISA_TERM_TOO_LONG_MESSAGE, visaTermTooLong } from '@/features/foreign-docs/domain/expiry'
 import { fetchStudentProfile } from '@/features/profile/client/api'
 import AddressMapPicker from './AddressMapPicker'
 import {
@@ -97,7 +98,9 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
         setScanning(true)
         try {
           const scan = await scanForeignDoc(docType, scanFile)
-          if (scan) {
+          if (scan?.notVisa) {
+            toast.error("Bu rasm vizaga o'xshamaydi (muddati 1 yildan uzoq) — pasport emas, viza stikerini yuklang", { duration: 6000 })
+          } else if (scan) {
             if (scan.number) setNumber((cur) => cur || scan.number!)
             if (scan.issuedOn) setIssuedOn((cur) => cur || scan.issuedOn!)
             if (scan.expiresOn) setExpiresOn((cur) => cur || scan.expiresOn!)
@@ -154,6 +157,10 @@ export default function ForeignDocModal({ open, isLight, docType, existing, onCl
     }
     if (issuedOn && issuedOn > expiresOn) {
       toast.error("Berilgan sana amal qilish muddatidan keyin bo'lolmaydi")
+      return
+    }
+    if (isVisa && visaTermTooLong(issuedOn || null, expiresOn)) {
+      toast.error(VISA_TERM_TOO_LONG_MESSAGE, { duration: 6000 })
       return
     }
     setBusy(true)

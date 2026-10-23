@@ -19,6 +19,21 @@ function daysBetween(fromIso: string, toIso: string): number {
 }
 
 /**
+ * O'zbekiston kirish (shu jumladan o'qish) vizasini 1 yildan ortiq muddatga
+ * bermaydi (gov.uz). 400 kun — kabisa yili va uzaytirish kunlari uchun zaxira.
+ * Bundan uzoq "viza" amalda pasport bo'lib chiqqan: A1234567 raqam, aniq 5 yil.
+ */
+export const MAX_VISA_TERM_DAYS = 400
+
+export const VISA_TERM_TOO_LONG_MESSAGE =
+  "Viza 1 yildan ortiq muddatga berilmaydi — bu pasport ma'lumoti bo'lishi mumkin. Viza stikeridagi sanalarni kiriting."
+
+/** Berilgan sanadan (u bo'lmasa bugundan) tugashgacha 1 yildan ancha ko'p bo'lsa — viza emas. */
+export function visaTermTooLong(issuedOn: string | null, expiresOn: string, today: string = tashkentToday()): boolean {
+  return daysBetween(issuedOn || today, expiresOn) > MAX_VISA_TERM_DAYS
+}
+
+/**
  * Muddatga necha kun qolgan. Bugun tugasa 0, kecha tugagan bo'lsa -1.
  * `today` berilmasa Toshkent buguni olinadi.
  */

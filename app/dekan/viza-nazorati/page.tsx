@@ -45,7 +45,7 @@ import {
   type ExpiryBucket,
   type ForeignDocDashboardRow,
 } from '@/features/foreign-docs/types'
-import { matchesMilestoneFilter, type MilestoneFilter } from '@/features/foreign-docs/domain/expiry'
+import { matchesMilestoneFilter, visaTermTooLong, type MilestoneFilter } from '@/features/foreign-docs/domain/expiry'
 
 type DocTypeFilter = '' | 'visa' | 'registration' | 'lease'
 type VerifiedFilter = '' | 'yes' | 'no'
@@ -649,14 +649,13 @@ export default function VizaNazoratiPage() {
             <table className="w-full min-w-[900px] text-left text-xs">
               <thead>
                 <tr className={`border-b border-slate-200/80 dark:border-slate-800 ${isLight ? 'bg-slate-50/70' : 'bg-slate-900/40'}`}>
-                  <th className={`px-4 py-3 text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>Talaba (F.I.Sh.)</th>
+                  {/* The name column gets the room: date+days and status+basis share a column each. */}
+                  <th className={`min-w-[260px] px-4 py-3 text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>Talaba (F.I.Sh.)</th>
                   <th className={`px-3 py-3 text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>Kurs & Xona</th>
-                  <th className={`px-3 py-3 text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>Hujjat Turi</th>
+                  <th className={`px-3 py-3 text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>Hujjat</th>
                   <th className={`px-3 py-3 text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>Raqami</th>
-                  <th className={`px-3 py-3 text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>Tugash Sanasi</th>
-                  <th className={`px-3 py-3 text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>Qolgan Vaqt</th>
-                  <th className={`px-3 py-3 text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>Holati</th>
-                  <th className={`px-3 py-3 text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>Asos</th>
+                  <th className={`px-3 py-3 text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>Muddat</th>
+                  <th className={`px-3 py-3 text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>Holat / Asos</th>
                   <th className={`px-4 py-3 text-right text-[10px] font-black uppercase tracking-wider ${ui.muted}`}>Amallar</th>
                 </tr>
               </thead>
@@ -676,14 +675,18 @@ export default function VizaNazoratiPage() {
                       }`}
                     >
                       {/* 1. Student Name & Country */}
-                      <td className="px-4 py-3">
+                      <td className="min-w-[260px] px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-black text-white shadow-xs">
                             {getInitials(row.studentName)}
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <span className={`font-bold leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors ${ui.strong}`}>
+                              {/* One line for typical names; a very long one wraps once at most, full text in the tooltip. */}
+                              <span
+                                title={row.studentName}
+                                className={`line-clamp-2 font-bold leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors ${ui.strong}`}
+                              >
                                 {row.studentName}
                               </span>
                               {row.verifiedAt && (
@@ -731,35 +734,43 @@ export default function VizaNazoratiPage() {
                         </span>
                       </td>
 
-                      {/* 5. Expiry Date */}
+                      {/* 5. Term: expiry date over the days-left badge */}
                       <td className="whitespace-nowrap px-3 py-3">
-                        <span className={`font-semibold text-slate-700 dark:text-slate-300`}>
-                          {fmtDate(row.expiresOn)}
-                        </span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="font-mono text-xs font-bold tabular-nums text-slate-700 dark:text-slate-300">
+                            {fmtDate(row.expiresOn)}
+                          </span>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${cfg.badge}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                            {row.daysLeft < 0
+                              ? `${Math.abs(row.daysLeft)} kun o‘tdi`
+                              : row.daysLeft === 0
+                                ? 'Bugun tugaydi'
+                                : `${row.daysLeft} kun qoldi`}
+                          </span>
+                          {row.docType === 'visa' && visaTermTooLong(row.issuedOn, row.expiresOn) && (
+                            <span
+                              title="O'zbekiston vizasi 1 yildan ortiq berilmaydi. Bu sanalar pasportnikiga o'xshaydi — talabadan viza stikerini qayta yuklashni so'rang."
+                              className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${
+                                isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                              }`}
+                            >
+                              <AlertTriangle size={10} /> Tekshiring: pasport?
+                            </span>
+                          )}
+                        </div>
                       </td>
 
-                      {/* 6. Remaining Time */}
+                      {/* 6. Status over registration basis */}
                       <td className="whitespace-nowrap px-3 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${cfg.badge}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-                          {row.daysLeft < 0
-                            ? `Muddati o‘tgan (${Math.abs(row.daysLeft)} kun)`
-                            : `${row.daysLeft} kun qoldi`}
-                        </span>
-                      </td>
-
-                      {/* 7. Status */}
-                      <td className="whitespace-nowrap px-3 py-3">
-                        <span className={`text-[11px] font-medium ${ui.muted}`}>
-                          {DOC_STATUS_LABELS[row.status]}
-                        </span>
-                      </td>
-
-                      {/* 8. Registration Basis */}
-                      <td className="whitespace-nowrap px-3 py-3">
-                        <span className={`text-[11px] ${ui.muted}`}>
-                          {row.registrationBasis ? REGISTRATION_BASIS_LABELS[row.registrationBasis] : '—'}
-                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className={`text-[11px] font-semibold ${ui.body}`}>
+                            {DOC_STATUS_LABELS[row.status]}
+                          </span>
+                          <span className={`text-[10px] ${ui.muted}`}>
+                            {row.registrationBasis ? REGISTRATION_BASIS_LABELS[row.registrationBasis] : '—'}
+                          </span>
+                        </div>
                       </td>
 
                       {/* 9. Actions */}

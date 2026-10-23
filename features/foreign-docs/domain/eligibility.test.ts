@@ -31,3 +31,10 @@ describe('resolveDocsMode', () => {
     expect(resolveDocsMode({ country: null, region: null }, ['Toshkent shahri'])).toBeNull()
   })
 })
+
+describe('resolveDocsMode with an Uzbek country typed in users.country', () => {
+  it('treats "O‘zbekiston" as a citizen, not a foreigner (no visa slot)', () => {
+    expect(resolveDocsMode({ country: "O'zbekiston", region: 'Xorazm viloyati' }, ['Toshkent shahri'])).toBe('registration')
+    expect(resolveDocsMode({ country: 'Uzbekistan', region: 'Toshkent shahri' }, ['Toshkent shahri'])).toBeNull()
+  })
+})

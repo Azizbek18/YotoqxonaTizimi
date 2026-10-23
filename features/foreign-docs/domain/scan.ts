@@ -1,12 +1,15 @@
 // AI rasm o'qish natijasini tozalaydi: faqat haqiqiy sana va oqilona
 // matnlar qoladi, qolgani null. Talaba baribir ko'rib tasdiqlaydi.
 import type { DocType } from '../types'
+import { visaTermTooLong } from './expiry'
 
 export type ScanResult = {
   number: string | null
   issuedOn: string | null
   expiresOn: string | null
   address: string | null
+  /** Set when a "visa" scan has a term far over a year: it is almost surely a passport page. */
+  notVisa?: true
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -44,6 +47,10 @@ export function parseScanResult(raw: string, docType: DocType): ScanResult | nul
   let expiresOn = cleanDate(json.expiresOn)
   // Tugash sanasi berilgan sanadan oldin bo'lolmaydi — bunday natija ishonchsiz.
   if (issuedOn && expiresOn && issuedOn > expiresOn) expiresOn = null
+  // Viza 1 yildan ortiq berilmaydi: bunday natija pasport sahifasi — hech narsani to'ldirmaymiz.
+  if (docType === 'visa' && issuedOn && expiresOn && visaTermTooLong(issuedOn, expiresOn)) {
+    return { number: null, issuedOn: null, expiresOn: null, address: null, notVisa: true }
+  }
   const result: ScanResult = {
     number: cleanText(json.number, 60),
     issuedOn,

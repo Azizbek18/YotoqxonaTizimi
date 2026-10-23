@@ -50,6 +50,7 @@ import {
   type DocHealth,
   type IssueFilter,
 } from '@/features/foreign-docs/domain/international'
+import { visaTermTooLong } from '@/features/foreign-docs/domain/expiry'
 
 const PAGE_SIZE = 24
 
@@ -163,6 +164,24 @@ function getUrgencyScore(row: InternationalStudentRow): number {
   return 0
 }
 
+/**
+ * Uzbek visas run at most a year; a "visa" far longer than that is almost surely the
+ * student's passport (A1234567, exactly 5 years) typed or scanned into the visa slot.
+ */
+function SuspectVisaChip({ doc, isLight }: { doc: InternationalDoc | null; isLight: boolean }) {
+  if (!doc || !visaTermTooLong(doc.issuedOn, doc.expiresOn)) return null
+  return (
+    <span
+      title="O‘zbekiston vizasi 1 yildan ortiq berilmaydi. Bu sanalar pasportnikiga o‘xshaydi — viza stikerini qayta tekshiring."
+      className={`mt-1 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${
+        isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+      }`}
+    >
+      <AlertTriangle size={10} /> Tekshiring: pasport?
+    </span>
+  )
+}
+
 // Unified Document Cell for spacious, elegant table representation
 function UnifiedDocCell({
   doc,
@@ -254,6 +273,8 @@ function UnifiedDocCell({
                 : `${doc.daysLeft} kun qoldi`
               : 'Amalda'}
         </span>
+
+        {type === 'visa' && <SuspectVisaChip doc={doc} isLight={isLight} />}
 
         {extra && (
           <span
@@ -1328,6 +1349,7 @@ export default function XalqaroDashboardPage() {
                           >
                             {daysText(student.visa.daysLeft)}
                           </p>
+                          <SuspectVisaChip doc={student.visa} isLight={isLight} />
                         </div>
                       ) : (
                         <p className="text-[11px] text-slate-400 italic">Viza kiritilmagan</p>

@@ -25,3 +25,15 @@ describe('parseScanResult', () => {
     expect(parseScanResult('sorry', 'visa')).toBeNull()
   })
 })
+
+describe('parseScanResult on a passport read as a visa', () => {
+  it('drops the dates and number and flags notVisa when the term is far over a year', () => {
+    expect(parseScanResult('{"number":"A3574782","issuedOn":"2026-04-16","expiresOn":"2031-04-16"}', 'visa'))
+      .toEqual({ number: null, issuedOn: null, expiresOn: null, address: null, notVisa: true })
+  })
+
+  it('keeps a long term on a propiska (only visas are capped at a year)', () => {
+    expect(parseScanResult('{"number":"11-1","issuedOn":"2026-04-16","expiresOn":"2031-04-16"}', 'registration'))
+      .toEqual({ number: '11-1', issuedOn: '2026-04-16', expiresOn: '2031-04-16', address: null })
+  })
+})

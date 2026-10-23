@@ -187,3 +187,34 @@ describe('listInternationalOverview — Uzbek citizens', () => {
     expect(rows.map((r) => r.fullName)).toEqual(['Turkman A', 'Xitoy E'])
   })
 })
+
+describe('visa saves', () => {
+  function visaService(context: Record<string, unknown>) {
+    const insert = vi.fn(async (_id: string, fields: Record<string, unknown>) => ({
+      id: 'new', student_id: 'student1', created_by_role: 'talaba', file_path: null,
+      verified_at: null, created_at: '', updated_at: '', ...fields,
+    }))
+    const repository = { findStudentContext: vi.fn().mockResolvedValue(context), insert }
+    return { svc: createForeignDocsService(repository as never), insert }
+  }
+  const foreign = { faculty: 'amit', country: 'Turkmaniston', is_off_campus: false }
+
+  it('accepts a one-year visa', async () => {
+    const { svc, insert } = visaService(foreign)
+    await svc.saveForStudent('student1', { docType: 'visa', issuedOn: '2026-09-01', expiresOn: '2027-08-31' })
+    expect(insert).toHaveBeenCalledOnce()
+  })
+
+  it('refuses passport data typed as a visa (5-year term)', async () => {
+    const { svc, insert } = visaService(foreign)
+    await expect(svc.saveForStudent('student1', { docType: 'visa', issuedOn: '2026-04-16', expiresOn: '2031-04-16' }))
+      .rejects.toMatchObject({ status: 400 })
+    expect(insert).not.toHaveBeenCalled()
+  })
+
+  it('refuses a visa for an Uzbek citizen who typed their own country', async () => {
+    const { svc } = visaService({ ...foreign, country: "O'zbekiston" })
+    await expect(svc.saveForStudent('student1', { docType: 'visa', issuedOn: '2026-09-01', expiresOn: '2027-08-31' }))
+      .rejects.toMatchObject({ status: 403 })
+  })
+})

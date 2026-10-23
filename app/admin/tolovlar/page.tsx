@@ -64,6 +64,19 @@ function isAiMatched(g: GroupedPayment) {
   return g.ai_extracted_amount === g.totalAmount && (g.ai_confidence ?? 0) >= 70
 }
 
+/** Short AI line for cards/table, consistent with isAiMatched (which drives the quick approve). */
+function aiStatusLabel(g: GroupedPayment) {
+  if (isAiMatched(g)) return 'AI: summa mos'
+  if (g.ai_extracted_amount === g.totalAmount) return `AI: summa mos, ishonch ${g.ai_confidence ?? 0}%`
+  return `AI: ${g.ai_confidence ?? 0}%`
+}
+
+function aiStatusTitle(g: GroupedPayment) {
+  if (isAiMatched(g)) return 'AI chekdagi summani aniq o‘qidi — darhol tasdiqlash mumkin'
+  if (g.ai_extracted_amount === g.totalAmount) return 'Summa mos, lekin AI ishonchi 70% dan past — chekni ko‘rib tasdiqlang'
+  return 'AI o‘qigan summa to‘lov summasiga mos emas — chekni ko‘rib chiqing'
+}
+
 /** Server accepts at most 100 ids per review call; smaller chunks keep each notification burst modest. */
 const REVIEW_CHUNK_SIZE = 50
 
@@ -480,6 +493,11 @@ export default function AdminTolovlarPage() {
           })
         }
         await loadPayments()
+      } else if (res.status === 409) {
+        // Decided (here or by another reviewer) while the AI was reading the receipt: not an error,
+        // the AI result is simply discarded. Refresh so the card shows its real status.
+        toast("Bu to‘lov AI tahlili tugashidan oldin ko‘rib chiqilgan — ro‘yxat yangilandi", { icon: 'ℹ️' })
+        await loadPayments()
       } else {
         throw new Error(data.error || "Noma'lum xato")
       }
@@ -610,7 +628,7 @@ export default function AdminTolovlarPage() {
           },
           {
             key: 'ai_matched',
-            title: 'AI 100% Mos',
+            title: 'AI mos',
             count: aiMatchedGroups.length,
             sum: aiMatchedGroups.reduce((acc, g) => acc + g.totalAmount, 0),
             icon: Sparkles,
@@ -885,7 +903,7 @@ export default function AdminTolovlarPage() {
             {[
               { id: 'all', label: 'Barchasi', count: allGroups.length },
               { id: 'waiting', label: 'Kutilmoqda', count: countWaiting, highlight: countWaiting > 0 },
-              { id: 'ai_matched', label: 'AI 100% Mos', count: aiMatchedGroups.length, icon: Sparkles },
+              { id: 'ai_matched', label: 'AI mos', count: aiMatchedGroups.length, icon: Sparkles },
               { id: 'approved', label: 'Tasdiqlangan', count: countApproved },
               { id: 'rejected', label: 'Rad etilgan', count: countRejected },
             ].map((tab) => {
@@ -1117,13 +1135,14 @@ export default function AdminTolovlarPage() {
                               <AlertCircle size={10} className="shrink-0" /> Qo‘lda tekshiruv
                             </span>
                           ) : group.ai_confidence !== undefined ? (
-                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${
-                              group.ai_extracted_amount === group.totalAmount
-                                ? 'text-emerald-600 dark:text-emerald-400'
-                                : 'text-amber-600 dark:text-amber-400'
-                            }`}>
+                            <span
+                              title={aiStatusTitle(group)}
+                              className={`inline-flex items-center gap-1 text-[10px] font-bold ${
+                                isAiMatched(group) ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                              }`}
+                            >
                               <Sparkles size={10} className="shrink-0" />
-                              {group.ai_extracted_amount === group.totalAmount ? 'AI: 100% Mos' : `AI: ${group.ai_confidence}%`}
+                              {aiStatusLabel(group)}
                             </span>
                           ) : (
                             <span className="text-[10px] text-slate-400">Tekshirilmagan</span>
@@ -1133,11 +1152,23 @@ export default function AdminTolovlarPage() {
                     </div>
 
                     {/* Bottom Action Toolbar */}
-                    <div className="mt-2 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                    <div className="mt-2 pt-3 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-2 gap-2">
+                      {isWaiting && (
+                        <button
+                          type="button"
+                          onClick={() => (isAiMatched(group) ? void handleApprove(group) : setSelectedGroup(group))}
+                          disabled={isApproving}
+                          className="no-shelf col-span-2 inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-black shadow-md shadow-emerald-600/20 hover:from-emerald-500 hover:to-teal-500 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+                          title={isAiMatched(group) ? "AI summani tasdiqlagan — darhol tasdiqlash" : "Avval chekni ochib ko‘rib, keyin tasdiqlash"}
+                        >
+                          {isApproving ? <Loader2 size={13} className="animate-spin" /> : <Check size={14} strokeWidth={3} />}
+                          <span>{isAiMatched(group) ? 'Tasdiqlash' : 'Ko‘rib tasdiqlash'}</span>
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => setSelectedGroup(group)}
-                        className={`no-shelf inline-flex items-center gap-1 px-3 py-2 rounded-xl border text-xs font-bold transition-all active:scale-95 shadow-2xs ${
+                        className={`no-shelf ${isWaiting ? '' : 'col-span-2'} inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-xl border text-xs font-bold transition-all active:scale-95 shadow-2xs ${
                           isLight
                             ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-indigo-600'
                             : 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-indigo-300'
@@ -1146,38 +1177,21 @@ export default function AdminTolovlarPage() {
                         <Eye size={13} className="text-indigo-500" />
                         <span>Chekni ko‘rish</span>
                       </button>
-
                       {isWaiting ? (
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => (isAiMatched(group) ? void handleApprove(group) : setSelectedGroup(group))}
-                            disabled={isApproving}
-                            className="no-shelf inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-black shadow-md shadow-emerald-600/20 hover:from-emerald-500 hover:to-teal-500 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
-                            title={isAiMatched(group) ? "AI summani tasdiqlagan — darhol tasdiqlash" : "Avval chekni ochib ko‘rib, keyin tasdiqlash"}
-                          >
-                            {isApproving ? (
-                              <Loader2 size={13} className="animate-spin" />
-                            ) : (
-                              <Check size={14} strokeWidth={3} />
-                            )}
-                            <span>{isAiMatched(group) ? "Tasdiqlash" : "Ko‘rib tasdiqlash"}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedGroup(group)
-                              setRejectMode(true)
-                            }}
-                            className="no-shelf inline-flex items-center gap-1 px-2.5 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 active:scale-95 disabled:opacity-50 text-xs font-bold transition-all dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300"
-                            title="Rad etish"
-                          >
-                            <X size={14} strokeWidth={2.6} />
-                            <span>Rad</span>
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedGroup(group)
+                            setRejectMode(true)
+                          }}
+                          className="no-shelf inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 active:scale-95 text-xs font-bold transition-all dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300"
+                          title="Rad etish"
+                        >
+                          <X size={14} strokeWidth={2.6} />
+                          <span>Rad etish</span>
+                        </button>
                       ) : (
-                        <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 italic px-1">
+                        <span className="col-span-2 text-center text-[11px] font-medium text-slate-400 dark:text-slate-500 italic">
                           Ko‘rib chiqilgan
                         </span>
                       )}
@@ -1308,13 +1322,14 @@ export default function AdminTolovlarPage() {
                           {group.totalAmount.toLocaleString()} UZS
                         </td>
                         <td className="px-4 py-3">
-                          {group.ai_extracted_amount === group.totalAmount ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                              <Sparkles size={11} /> 100% Mos
-                            </span>
-                          ) : group.ai_confidence !== undefined ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                              {group.ai_confidence}%
+                          {group.ai_confidence !== undefined ? (
+                            <span
+                              title={aiStatusTitle(group)}
+                              className={`inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-bold ${
+                                isAiMatched(group) ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                              }`}
+                            >
+                              <Sparkles size={11} /> {aiStatusLabel(group).replace('AI: ', '')}
                             </span>
                           ) : (
                             <span className="text-[11px] text-slate-400">—</span>
@@ -1726,7 +1741,7 @@ export default function AdminTolovlarPage() {
                       <button
                         type="button"
                         onClick={() => handleRunAI(selectedGroup)}
-                        disabled={analyzing}
+                        disabled={analyzing || submitting}
                         className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 mx-auto bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs no-shelf cursor-pointer active:scale-95 disabled:opacity-50"
                       >
                         {analyzing ? (
@@ -1780,7 +1795,7 @@ export default function AdminTolovlarPage() {
                       <button
                         type="button"
                         onClick={() => handleRunAI(selectedGroup)}
-                        disabled={analyzing}
+                        disabled={analyzing || submitting}
                         className={`text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 opacity-70 hover:opacity-100 no-shelf cursor-pointer ${
                           isLight ? 'text-indigo-600' : 'text-indigo-400'
                         }`}
@@ -1855,7 +1870,7 @@ export default function AdminTolovlarPage() {
                   <button
                     type="button"
                     onClick={handleModalReject}
-                    disabled={submitting || !rejectReason.trim()}
+                    disabled={submitting || analyzing || !rejectReason.trim()}
                     className={`flex-1 py-2.5 sm:py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all text-white no-shelf cursor-pointer flex items-center justify-center gap-1.5 ${
                       !rejectReason.trim()
                         ? 'bg-rose-400 cursor-not-allowed opacity-60'
@@ -1882,7 +1897,7 @@ export default function AdminTolovlarPage() {
                       <button
                         type="button"
                         onClick={handleModalApprove}
-                        disabled={submitting}
+                        disabled={submitting || analyzing}
                         className="flex-1 py-2.5 sm:py-3 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all text-white flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/25 no-shelf cursor-pointer active:scale-95 disabled:opacity-50"
                       >
                         {submitting ? (

@@ -34,6 +34,7 @@ import {
 import toast from 'react-hot-toast'
 import AdminTable, { type TableColumn } from '@/components/admin/AdminTable'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import CustomCheckbox from '@/components/ui/CustomCheckbox'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { useThemeStore } from '@/lib/stores/theme-store'
 import { useConfirmModal } from '@/lib/hooks/useConfirmModal'
@@ -1242,13 +1243,13 @@ export default function AdminArizalar() {
                     {/* Top Row: Avatar + Name + Checkbox & Status */}
                     <div>
                       <div className="flex items-start justify-between gap-2.5">
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex flex-1 items-center gap-3 min-w-0">
                           {isPending && (
-                            <input
-                              type="checkbox"
+                            <CustomCheckbox
                               checked={isSelected}
                               onChange={() => toggleSelect(req.id)}
-                              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700 cursor-pointer shrink-0"
+                              aria-label={`${req.student_name} arizasini tanlash`}
+                              className="shrink-0"
                             />
                           )}
                           <div
@@ -1261,10 +1262,12 @@ export default function AdminArizalar() {
                             {getInitials(req.student_name)}
                           </div>
                           <div className="min-w-0 flex-1">
+                            {/* w-full: a button is as wide as its text, so without it the name ran under the status badge. */}
                             <button
                               type="button"
                               onClick={() => setPdfModal({ id: req.id, name: req.student_name })}
-                              className={`text-left font-black text-sm tracking-tight transition-colors truncate block ${
+                              title={req.student_name}
+                              className={`block w-full text-left font-black text-sm leading-snug tracking-tight transition-colors line-clamp-2 break-words ${
                                 isLight ? 'text-slate-900 hover:text-indigo-600' : 'text-slate-100 hover:text-indigo-400'
                               }`}
                             >

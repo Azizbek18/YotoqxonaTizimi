@@ -130,6 +130,12 @@ function fmtDate(value: string | null) {
   return new Date(value).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+function daysLeftLabel(daysLeft: number) {
+  if (daysLeft < 0) return `${Math.abs(daysLeft)} kun o‘tdi`
+  if (daysLeft === 0) return 'Bugun tugaydi'
+  return `${daysLeft} kun qoldi`
+}
+
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
@@ -270,38 +276,42 @@ export default function VizaNazoratiPage() {
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* 1. Executive Hero Banner */}
-      <div className="no-shelf relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-5 sm:p-7 text-white shadow-xl shadow-indigo-950/15 border border-white/20">
-        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/20 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-200 border border-emerald-400/30">
-                <Globe size={11} /> Xorijiy Talabalar Monitoringi
+      {/* Phone: badge with three icon buttons on its right, the title, no tagline.
+          bg-white/15+ only — the light-mode retrofit turns bg-white/10 into pale glass. */}
+      <div className="no-shelf relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-4 sm:p-7 text-white shadow-xl shadow-indigo-950/15 border border-white/20">
+        <div className="relative z-10 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 lg:gap-x-4">
+          <div className="col-start-1 row-start-1 flex min-w-0 flex-wrap items-center gap-2 self-center lg:self-start">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur-md px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white border border-white/25">
+                <Globe size={11} className="text-emerald-300" /> <span className="sm:hidden">Xorijiy talabalar</span><span className="hidden sm:inline">Xorijiy Talabalar Monitoringi</span>
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/10 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-bold text-indigo-100 border border-white/15">
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-white/15 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-white border border-white/20">
                 <Plane size={11} /> Viza & Propiska
               </span>
-            </div>
+          </div>
+          <div className="col-span-2 min-w-0 lg:col-span-1">
             <h1
-              className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white drop-shadow-sm"
+              className="mt-2.5 text-lg leading-snug sm:mt-3 sm:text-2xl lg:text-3xl font-black tracking-tight text-white drop-shadow-sm"
               style={{ color: '#ffffff' }}
             >
-              Viza va Propiska Nazorati
+              Viza va propiska nazorati
             </h1>
-            <p className="text-xs sm:text-sm text-indigo-100 max-w-2xl font-medium leading-relaxed">
+            <p className="mt-1.5 hidden max-w-2xl text-sm font-medium leading-relaxed text-indigo-100 sm:block">
               Xorijiy va boshqa hududlardan kelgan talabalarning viza, vaqtincha propiska muddatlari va qonuniy maqomini tezkor monitoring qilish tizimi.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="col-start-2 row-start-1 flex items-center gap-1.5 sm:gap-2 lg:row-span-2 lg:self-center">
             {/* Excel export */}
             <button
               type="button"
               onClick={() => exportTable('excel')}
               disabled={loading || filtered.length === 0}
-              className="no-shelf cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 px-3.5 py-2 text-xs font-bold text-white transition-all active:scale-95 shadow-xs disabled:opacity-40"
+              aria-label="Excel yuklab olish"
+              title="Excel yuklab olish"
+              className="no-shelf cursor-pointer inline-flex h-9 w-9 items-center justify-center gap-1.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-xs font-bold text-white transition-all active:scale-95 shadow-xs disabled:opacity-40 sm:w-auto sm:px-3.5"
             >
-              <FileSpreadsheet size={14} />
-              <span>Excel yuklab olish</span>
+              <FileSpreadsheet size={14} className="shrink-0" />
+              <span className="hidden sm:inline">Excel yuklab olish</span>
             </button>
 
             {/* CSV export */}
@@ -309,10 +319,12 @@ export default function VizaNazoratiPage() {
               type="button"
               onClick={() => exportTable('csv')}
               disabled={loading || filtered.length === 0}
-              className="no-shelf cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 px-3 py-2 text-xs font-bold text-white transition-all active:scale-95 shadow-xs disabled:opacity-40"
+              aria-label="CSV yuklab olish"
+              title="CSV yuklab olish"
+              className="no-shelf cursor-pointer inline-flex h-9 w-9 items-center justify-center gap-1.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-xs font-bold text-white transition-all active:scale-95 shadow-xs disabled:opacity-40 sm:w-auto sm:px-3"
             >
-              <Download size={14} />
-              <span>CSV</span>
+              <Download size={14} className="shrink-0" />
+              <span className="hidden sm:inline">CSV</span>
             </button>
 
             {/* Refresh */}
@@ -322,6 +334,7 @@ export default function VizaNazoratiPage() {
               disabled={loading}
               className="no-shelf cursor-pointer inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white transition-all active:scale-95 shadow-xs disabled:opacity-50"
               title="Yangilash"
+              aria-label="Yangilash"
             >
               <motion.div
                 animate={loading ? { rotate: 360 } : {}}
@@ -334,14 +347,14 @@ export default function VizaNazoratiPage() {
         </div>
 
         {/* Dorm selector if applicable */}
-        <div className="relative z-10 mt-4 pt-3 border-t border-white/15">
-          <DormTabs scope={dormScope} isLight={false} onChange={() => { setEditing(null); setSearch('') }} />
+        <div className="relative z-10 mt-3.5 pt-3.5 sm:mt-4 border-t border-white/15">
+          <DormTabs scope={dormScope} isLight={isLight} variant="onBrand" onChange={() => { setEditing(null); setSearch('') }} />
         </div>
       </div>
 
       {/* 2. 5 Sleek KPI Cards (Expiry Buckets) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
-        {BUCKET_ORDER.map((b) => {
+        {BUCKET_ORDER.map((b, idx) => {
           const cfg = BUCKET_CONFIG[b]
           const Icon = cfg.icon
           const count = counts[b]
@@ -352,17 +365,19 @@ export default function VizaNazoratiPage() {
               type="button"
               onClick={() => setBucket(isActive ? '' : b)}
               className={`no-shelf cursor-pointer rounded-2xl border p-3 sm:p-3.5 text-left transition-all relative overflow-hidden active:scale-95 ${
+                idx === BUCKET_ORDER.length - 1 ? 'col-span-2 sm:col-span-1' : ''
+              } ${
                 isActive
                   ? `${cfg.activeRing} ${isLight ? 'bg-white shadow-md' : 'bg-slate-900 shadow-md'}`
                   : `${ui.card} ${ui.hoverLift}`
               }`}
             >
               <div className="flex items-center justify-between gap-1">
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${cfg.badge}`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-                  {cfg.label}
+                <span className={`inline-flex min-w-0 items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${cfg.badge}`}>
+                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
+                  <span className="truncate">{cfg.label}</span>
                 </span>
-                <span className={`p-1 rounded-lg ${cfg.bg} ${cfg.text}`}>
+                <span className={`shrink-0 p-1 rounded-lg ${cfg.bg} ${cfg.text}`}>
                   <Icon size={13} />
                 </span>
               </div>
@@ -397,7 +412,7 @@ export default function VizaNazoratiPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="F.I.Sh., viza raqami yoki talaba ID bo‘yicha qidirish..."
-              className={`no-shelf w-full rounded-xl border py-2 pl-10 pr-9 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${ui.input}`}
+              className={`no-shelf h-10 w-full rounded-xl border pl-10 pr-9 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${ui.input}`}
             />
             {search && (
               <button
@@ -410,60 +425,50 @@ export default function VizaNazoratiPage() {
             )}
           </div>
 
-          {/* Quick Segmented Document Type Pills */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className={`no-shelf flex items-center gap-1 rounded-xl p-1 border ${isLight ? 'bg-slate-100/80 border-slate-200' : 'bg-slate-800/80 border-slate-700'}`}>
-              <button
-                type="button"
-                onClick={() => setDocType('')}
-                className={`no-shelf cursor-pointer px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
-                  docType === ''
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : `${ui.muted} hover:text-slate-900 dark:hover:text-white`
-                }`}
-              >
-                Hammasi ({rows.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setDocType('visa')}
-                className={`no-shelf cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
-                  docType === 'visa'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : `${ui.muted} hover:text-slate-900 dark:hover:text-white`
-                }`}
-              >
-                <Plane size={11} /> Viza ({rows.filter((r) => r.docType === 'visa').length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setDocType('registration')}
-                className={`no-shelf cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
-                  docType === 'registration'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : `${ui.muted} hover:text-slate-900 dark:hover:text-white`
-                }`}
-              >
-                <Home size={11} /> Propiska ({rows.filter((r) => r.docType === 'registration').length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setDocType('lease')}
-                className={`no-shelf cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
-                  docType === 'lease'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : `${ui.muted} hover:text-slate-900 dark:hover:text-white`
-                }`}
-              >
-                <FileSignature size={11} /> Ijara ({rows.filter((r) => r.docType === 'lease').length})
-              </button>
+          {/* Document type — one segmented track; 2×2 on a phone, inline from sm */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <div
+              role="group"
+              aria-label="Hujjat turi"
+              className={`no-shelf grid grid-cols-2 gap-0.5 rounded-xl p-1 ring-1 ring-inset sm:inline-flex ${
+                isLight ? 'bg-slate-100/90 ring-slate-200/70' : 'bg-slate-950/60 ring-slate-800'
+              }`}
+            >
+              {([
+                ['', 'Hammasi', null, rows.length],
+                ['visa', 'Viza', Plane, rows.filter((r) => r.docType === 'visa').length],
+                ['registration', 'Propiska', Home, rows.filter((r) => r.docType === 'registration').length],
+                ['lease', 'Ijara', FileSignature, rows.filter((r) => r.docType === 'lease').length],
+              ] as const).map(([value, label, Icon, count]) => {
+                const active = docType === value
+                return (
+                  <button
+                    key={value || 'all'}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setDocType(value)}
+                    className={`no-shelf flex h-8 cursor-pointer items-center justify-between gap-1.5 rounded-lg px-2.5 text-xs font-bold transition-colors sm:justify-start ${
+                      active
+                        ? isLight ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-slate-200/80' : 'bg-indigo-600 text-white'
+                        : isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      {Icon && <Icon size={12} className="shrink-0" />}
+                      {label}
+                    </span>
+                    <span className="tabular-nums opacity-70">{count}</span>
+                  </button>
+                )
+              })}
             </div>
 
+            <div className="flex items-center gap-2">
             {/* Advanced Filters Toggle Button */}
             <button
               type="button"
               onClick={() => setShowAdvanced((v) => !v)}
-              className={`no-shelf cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all active:scale-95 ${
+              className={`no-shelf cursor-pointer inline-flex h-9 flex-1 items-center justify-center gap-1.5 px-3 rounded-xl border text-xs font-bold transition-all active:scale-95 sm:h-auto sm:flex-none sm:py-1.5 ${
                 showAdvanced || hasAdvancedFilters
                   ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300'
                   : `${ui.btnGhost}`
@@ -484,12 +489,13 @@ export default function VizaNazoratiPage() {
               <button
                 type="button"
                 onClick={reset}
-                className="no-shelf cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 text-xs font-bold transition-all active:scale-95"
+                className="no-shelf cursor-pointer inline-flex h-9 items-center justify-center gap-1 px-3 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 text-xs font-bold transition-all active:scale-95 sm:h-auto sm:py-1.5"
               >
                 <X size={12} />
                 <span>Tozalash</span>
               </button>
             )}
+            </div>
           </div>
         </div>
 
@@ -645,7 +651,85 @@ export default function VizaNazoratiPage() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Phone: one card per document (the 900px table only scrolled sideways). */}
+          <ul className={`divide-y md:hidden ${isLight ? 'divide-slate-100' : 'divide-slate-800/60'}`}>
+            {filtered.map((row) => {
+              const cfg = BUCKET_CONFIG[row.bucket]
+              const urgent = row.bucket === 'expired' || row.bucket === 'critical'
+              return (
+                <li
+                  key={row.id}
+                  onClick={() => router.push(`/dekan/talabalar?student=${row.studentId}`)}
+                  className={`cursor-pointer p-3.5 transition-colors ${
+                    urgent ? (isLight ? 'bg-rose-50/40' : 'bg-rose-950/10') : isLight ? 'active:bg-slate-50' : 'active:bg-slate-800/40'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className={`flex items-start gap-1.5 text-sm font-bold leading-snug ${ui.strong}`}>
+                        <span className="line-clamp-2 break-words" title={row.studentName}>{row.studentName}</span>
+                        {row.verifiedAt && <ShieldCheck size={14} className="mt-0.5 shrink-0 text-emerald-500" aria-label="Tekshirilgan" />}
+                      </p>
+                      <p className={`mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] ${ui.muted}`}>
+                        <Globe size={11} className="shrink-0" />
+                        <span>{row.country || 'Davlat kiritilmagan'}</span>
+                        {row.course ? <span>· {row.course}-kurs</span> : null}
+                        <span>· {row.roomNumber ? `№ ${row.roomNumber}` : 'Xonasiz'}</span>
+                      </p>
+                    </div>
+                    <span className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-bold ${
+                      row.docType === 'visa'
+                        ? 'bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300'
+                        : 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300'
+                    }`}>
+                      {row.docType === 'visa' ? <Plane size={11} /> : row.docType === 'lease' ? <FileSignature size={11} /> : <Home size={11} />}
+                      {row.docType === 'visa' ? 'Viza' : row.docType === 'lease' ? 'Ijara' : 'Propiska'}
+                    </span>
+                  </div>
+
+                  <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[11px]">
+                      <span className={ui.muted}>Tugaydi:</span>{' '}
+                      <b className={`font-mono tabular-nums ${ui.strong}`}>{fmtDate(row.expiresOn)}</b>
+                      {row.number && <span className={`font-mono ${ui.muted}`}> · {row.number}</span>}
+                    </p>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${cfg.badge}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                      {daysLeftLabel(row.daysLeft)}
+                    </span>
+                  </div>
+
+                  {row.docType === 'visa' && visaTermTooLong(row.issuedOn, row.expiresOn) && (
+                    <p className={`mt-2 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${
+                      isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                    }`}>
+                      <AlertTriangle size={10} /> Tekshiring: pasport?
+                    </p>
+                  )}
+
+                  <div className="mt-2.5 flex items-center justify-between gap-2">
+                    <span className={`min-w-0 truncate text-[11px] ${ui.muted}`}>
+                      {DOC_STATUS_LABELS[row.status]}
+                      {row.registrationBasis ? ` · ${REGISTRATION_BASIS_LABELS[row.registrationBasis]}` : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditing(row)
+                      }}
+                      className={`no-shelf inline-flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-lg border px-2.5 text-[11px] font-bold transition-all active:scale-95 ${ui.btnGhost}`}
+                    >
+                      <Pencil size={12} /> Tahrir
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[900px] text-left text-xs">
               <thead>
                 <tr className={`border-b border-slate-200/80 dark:border-slate-800 ${isLight ? 'bg-slate-50/70' : 'bg-slate-900/40'}`}>
@@ -742,11 +826,7 @@ export default function VizaNazoratiPage() {
                           </span>
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${cfg.badge}`}>
                             <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-                            {row.daysLeft < 0
-                              ? `${Math.abs(row.daysLeft)} kun o‘tdi`
-                              : row.daysLeft === 0
-                                ? 'Bugun tugaydi'
-                                : `${row.daysLeft} kun qoldi`}
+                            {daysLeftLabel(row.daysLeft)}
                           </span>
                           {row.docType === 'visa' && visaTermTooLong(row.issuedOn, row.expiresOn) && (
                             <span
@@ -807,6 +887,7 @@ export default function VizaNazoratiPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

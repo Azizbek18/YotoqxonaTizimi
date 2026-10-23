@@ -114,6 +114,14 @@ function distinctValues(students: readonly StudentProfileRow[], pick: (row: Stud
   return [...seen].sort((a, b) => a.localeCompare(b, 'uz'))
 }
 
+function formatCompactSum(value: number) {
+  const abs = Math.abs(value)
+  if (abs >= 1e9) return `${(value / 1e9).toFixed(2).replace('.', ',')} mlrd`
+  if (abs >= 1e6) return `${(value / 1e6).toFixed(1).replace('.', ',')} mln`
+  if (abs >= 1e3) return `${Math.round(value / 1e3)} ming`
+  return String(value)
+}
+
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/)
   if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
@@ -424,30 +432,30 @@ export default function DekanReportsPage() {
   const inputCls = `rounded-xl border text-xs sm:text-sm px-3.5 py-2.5 transition-colors ${ui.input} ${ui.ring}`
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-4 sm:space-y-6 pb-12">
       {/* ── Executive Multi-Layered Hero Banner (Compact) ─────────── */}
       <div className="no-shelf relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-4 sm:p-5 shadow-lg shadow-indigo-950/15 border border-white/20 text-white">
         {/* Ambient lighting & subtle micro-dot texture */}
-        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
         <div className="pointer-events-none absolute -left-12 -bottom-16 h-48 w-48 rounded-full bg-violet-400/15 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] opacity-[0.07]" />
 
         {/* Top bar inside hero */}
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md text-white border border-white/25 shadow-inner shrink-0">
+        <div className="relative flex items-start justify-between gap-3 sm:items-center">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="hidden sm:flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md text-white border border-white/25 shadow-inner shrink-0">
               <FileSpreadsheet size={20} strokeWidth={2.2} />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
                 <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/15 text-white backdrop-blur-md border border-white/20"
+                  className="inline-flex max-w-full items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/15 text-white backdrop-blur-md border border-white/20"
                   style={{ color: '#ffffff' }}
                 >
-                  <Building2 size={11} className="text-white/80" />
-                  {dekanFaculty ? permitFacultyLabel(dekanFaculty) : "Fakultet hisoboti"}
+                  <Building2 size={11} className="shrink-0 text-white/80" />
+                  <span className="truncate">{dekanFaculty ? permitFacultyLabel(dekanFaculty) : "Fakultet hisoboti"}</span>
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400/25 text-white border border-emerald-300/40">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   32 ustunli format
                 </span>
@@ -458,10 +466,11 @@ export default function DekanReportsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               type="button"
               onClick={() => void load()}
+              aria-label="Yangilash"
               disabled={loading}
               className="inline-flex items-center justify-center h-8.5 w-8.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white transition-all disabled:opacity-50 no-shelf cursor-pointer active:scale-95 shadow-xs"
               title="Yangilash"
@@ -477,73 +486,78 @@ export default function DekanReportsPage() {
               type="button"
               onClick={() => exportTable('excel')}
               disabled={loading || filteredStudents.length === 0}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-white hover:bg-indigo-50 px-3.5 py-2 text-xs font-black uppercase tracking-wider text-indigo-700 transition-all shadow-md active:scale-95 no-shelf cursor-pointer disabled:opacity-50"
+              className="inline-flex h-8.5 items-center gap-1.5 rounded-xl bg-white hover:bg-indigo-50 px-3 text-xs font-bold text-indigo-700 transition-all shadow-md active:scale-95 no-shelf cursor-pointer disabled:opacity-50 sm:px-3.5"
             >
-              <FileSpreadsheet size={15} strokeWidth={2.5} />
-              <span>Excel yuklab olish</span>
+              <FileSpreadsheet size={15} strokeWidth={2.5} className="shrink-0" />
+              <span>Excel<span className="hidden sm:inline"> yuklab olish</span></span>
             </button>
           </div>
         </div>
 
         {/* Hero KPI Stat Cards (Compact Horizontal Row) */}
-        <div className="relative mt-3.5 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div className="relative mt-3.5 grid grid-cols-3 gap-2 sm:gap-2.5">
           {/* Card 1: Jami talabalar */}
-          <div className="relative text-left rounded-xl px-3.5 py-2.5 backdrop-blur-md transition-all no-shelf flex items-center justify-between gap-3 border bg-white/10 border-white/15">
+          <div className="relative text-left rounded-xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 backdrop-blur-md transition-all no-shelf flex items-center justify-between gap-3 border bg-white/15 border-white/20">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 text-white shrink-0">
+              <div className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 text-white shrink-0">
                 <Users size={15} strokeWidth={2.2} />
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold text-indigo-100 truncate" style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
-                  Jami talabalar
+                  <span className="sm:hidden">Jami</span><span className="hidden sm:inline">Jami talabalar</span>
                 </p>
                 <p className="text-lg sm:text-xl font-black text-white tabular-nums tracking-tight leading-tight" style={{ color: '#ffffff' }}>
                   {loading ? '...' : students.length}
                 </p>
               </div>
             </div>
-            <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/15 text-white">
+            <span className="hidden sm:inline-flex shrink-0 items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/20 text-white">
               {placedCount} joylashgan
             </span>
           </div>
 
           {/* Card 2: Filtrlangan natija */}
-          <div className="relative text-left rounded-xl px-3.5 py-2.5 backdrop-blur-md transition-all no-shelf flex items-center justify-between gap-3 border bg-white/15 border-white/30 ring-1 ring-white/30">
+          <div className="relative text-left rounded-xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 backdrop-blur-md transition-all no-shelf flex items-center justify-between gap-3 border bg-white/20 border-white/30 ring-1 ring-white/30">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400/25 text-emerald-200 shrink-0">
+              <div className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400/30 text-white shrink-0">
                 <Filter size={15} strokeWidth={2.2} />
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold text-indigo-100 truncate" style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
-                  Tanlangan talabalar
+                  <span className="sm:hidden">Tanlangan</span><span className="hidden sm:inline">Tanlangan talabalar</span>
                 </p>
                 <p className="text-lg sm:text-xl font-black text-white tabular-nums tracking-tight leading-tight" style={{ color: '#ffffff' }}>
                   {loading ? '...' : filteredStudents.length}
                 </p>
               </div>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
+            <span className="hidden sm:inline-flex shrink-0 items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-400/25 text-white border border-emerald-300/40">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Eksportga tayyor
             </span>
           </div>
 
           {/* Card 3: Jami hisoblangan qarz */}
-          <div className="relative text-left rounded-xl px-3.5 py-2.5 backdrop-blur-md transition-all no-shelf flex items-center justify-between gap-3 border bg-white/10 border-white/15">
+          <div className="relative text-left rounded-xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 backdrop-blur-md transition-all no-shelf flex items-center justify-between gap-3 border bg-white/15 border-white/20">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/25 text-amber-200 shrink-0">
+              <div className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/30 text-white shrink-0">
                 <DollarSign size={15} strokeWidth={2.2} />
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold text-indigo-100 truncate" style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
-                  Tanlanganlar qarzi
+                  <span className="sm:hidden">Qarz</span><span className="hidden sm:inline">Tanlanganlar qarzi</span>
                 </p>
                 <p className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight leading-tight truncate" style={{ color: '#ffffff' }}>
-                  {loading ? '...' : selectionDebt !== null ? formatSum(selectionDebt) : '0 UZS'}
+                  {loading ? '...' : selectionDebt !== null ? (
+                    <>
+                      <span className="sm:hidden">{formatCompactSum(selectionDebt)}</span>
+                      <span className="hidden sm:inline">{formatSum(selectionDebt)}</span>
+                    </>
+                  ) : '0 UZS'}
                 </p>
               </div>
             </div>
-            <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-400/20 text-amber-200 border border-amber-400/30">
+            <span className="hidden sm:inline-flex shrink-0 items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-400/25 text-white border border-amber-300/40">
               Qarzdorlik
             </span>
           </div>
@@ -554,7 +568,7 @@ export default function DekanReportsPage() {
       <DormTabs scope={dormScope} isLight={isLight} onChange={() => setFilters(EMPTY_FILTERS)} />
 
       {/* ── Yagona Saralash va Filtrlar Markazi ───────────── */}
-      <div className={`rounded-3xl border p-5 sm:p-6 backdrop-blur-xl transition-all ${ui.card} space-y-5 shadow-xs`}>
+      <div className={`rounded-3xl border p-4 sm:p-6 backdrop-blur-xl transition-all ${ui.card} space-y-4 sm:space-y-5 shadow-xs`}>
         {/* Top Header of Filter Hub */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4 dark:border-slate-800 border-slate-200/80">
           <div className="flex items-center gap-2.5">
@@ -596,7 +610,7 @@ export default function DekanReportsPage() {
             placeholder="F.I.Sh., xona raqami yoki email bo'yicha tezkor qidirish..."
             value={filters.search}
             onChange={(event) => setFilter('search', event.target.value)}
-            className={`w-full rounded-xl border py-2.5 pl-10 pr-10 text-xs sm:text-sm font-semibold transition-all ${ui.input} ${ui.ring}`}
+            className={`h-10 w-full rounded-xl border pl-10 pr-10 text-xs sm:text-sm font-semibold transition-all ${ui.input} ${ui.ring}`}
           />
           {filters.search && (
             <button
@@ -617,7 +631,7 @@ export default function DekanReportsPage() {
               Tezkor tanlovlar
             </label>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="-mx-4 flex snap-x gap-2 overflow-x-auto no-scrollbar px-4 pb-0.5 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
             {presetItems.map((preset) => {
               const Icon = preset.icon
               const isActive = preset.isActive
@@ -626,7 +640,8 @@ export default function DekanReportsPage() {
                   key={preset.label}
                   type="button"
                   onClick={preset.toggle}
-                  className={`no-shelf inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer active:scale-95 ${
+                  aria-pressed={isActive}
+                  className={`no-shelf inline-flex h-9 shrink-0 snap-start items-center gap-1.5 whitespace-nowrap px-3 rounded-xl text-xs font-semibold transition-all border cursor-pointer active:scale-95 sm:h-auto sm:py-1.5 ${
                     isActive
                       ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs font-bold'
                       : isLight
@@ -862,7 +877,7 @@ export default function DekanReportsPage() {
       </div>
 
       {/* ── Selection Summary & Export Action Card ────────── */}
-      <div className={`rounded-3xl border p-5 sm:p-6 backdrop-blur-xl ${ui.card} shadow-sm space-y-5`}>
+      <div className={`rounded-3xl border p-4 sm:p-6 backdrop-blur-xl ${ui.card} shadow-sm space-y-4 sm:space-y-5`}>
         {/* Summary tiles */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className={`flex items-center gap-3.5 rounded-2xl border p-4 ${isLight ? 'bg-slate-50/70 border-slate-200/80' : 'bg-slate-900/40 border-slate-800'}`}>
@@ -936,23 +951,23 @@ export default function DekanReportsPage() {
             ))}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 pt-1">
+          <div className="grid grid-cols-[1fr_auto] gap-2 pt-1 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
             <button
               type="button"
               onClick={() => exportTable('excel')}
               disabled={loading || filteredStudents.length === 0}
-              className={`no-shelf inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer ${ui.btnGhost}`}
+              className={`no-shelf inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-4 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer ${ui.btnGhost}`}
             >
-              <FileSpreadsheet size={15} />
+              <FileSpreadsheet size={15} className="shrink-0" />
               <span>Hammasi bitta Excelda ({filteredStudents.length})</span>
             </button>
             <button
               type="button"
               onClick={() => exportTable('csv')}
               disabled={loading || filteredStudents.length === 0}
-              className={`no-shelf inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer ${ui.btnGhost}`}
+              className={`no-shelf inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-4 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer ${ui.btnGhost}`}
             >
-              <Download size={15} />
+              <Download size={15} className="shrink-0" />
               <span>CSV</span>
             </button>
           </div>
@@ -969,15 +984,15 @@ export default function DekanReportsPage() {
       </div>
 
       {/* ── Preview Table (Ko'rib chiqish) ────────────────── */}
-      <div className={`rounded-3xl border p-5 sm:p-6 backdrop-blur-xl ${ui.card} shadow-xs`}>
-        <div className="mb-4 flex items-center justify-between">
+      <div className={`rounded-3xl border p-4 sm:p-6 backdrop-blur-xl ${ui.card} shadow-xs`}>
+        <div className="mb-3 sm:mb-4 flex items-center justify-between">
           <h3 className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${ui.strong}`}>
             <FileText size={15} className="text-indigo-600 dark:text-indigo-400" />
             Ko&apos;rib chiqish
-            <span className={`font-normal lowercase ${ui.muted}`}>
-              (dastlabki {Math.min(previewRows.length, filteredStudents.length)} ta yozuv)
-            </span>
           </h3>
+          <span className={`text-[11px] font-medium ${ui.muted}`}>
+            Dastlabki {Math.min(previewRows.length, filteredStudents.length)} ta yozuv
+          </span>
         </div>
 
         {loading ? (
@@ -996,7 +1011,39 @@ export default function DekanReportsPage() {
           </p>
         ) : (
           <>
-            <div className="overflow-x-auto rounded-2xl border dark:border-slate-800 border-slate-200/80">
+            {/* Phone: one row card per student (the 720px table only scrolled sideways). */}
+            <ul className={`-mx-1 divide-y md:hidden ${isLight ? 'divide-slate-100' : 'divide-slate-800'}`}>
+              {previewRows.map((student) => {
+                const summary = paySummaries?.get(student.id)
+                return (
+                  <li key={student.id} className="px-1 py-2.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className={`min-w-0 break-words text-[13px] font-bold leading-snug ${ui.strong}`}>{student.full_name}</p>
+                      <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
+                        isLight ? 'bg-slate-100 text-slate-600' : 'bg-slate-800 text-slate-300'
+                      }`}>
+                        {student.room_number ? `${student.room_number}-xona` : 'Xonasiz'}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className={`text-[11px] ${ui.muted}`}>
+                        {[student.course ? `${student.course}-kurs` : null, genderLabel(student.gender), student.nationality || null]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                      {summary && (
+                        <span className={`rounded-md border px-1.5 py-px text-[10px] font-bold ${PAY_STATE_BADGE_CLASSES[summary.state]}`}>
+                          {PAY_STATE_LABELS[summary.state]}
+                          {summary.state !== 'paid' && ` · ${formatSum(summary.remaining)}`}
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+
+            <div className="hidden overflow-x-auto rounded-2xl border dark:border-slate-800 border-slate-200/80 md:block">
               <table className="w-full min-w-[720px] text-left text-xs">
                 <thead>
                   <tr className={`border-b ${isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-slate-900/50 border-slate-800'}`}>

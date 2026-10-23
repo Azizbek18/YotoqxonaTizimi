@@ -532,12 +532,12 @@ export default function Dekan3DXonalarPage() {
     const bedsKnown = defaultRoomCapacity !== null || filled.every((b) => b.capacity !== null)
     const panelOpen = capPanelSide === side
     return (
-      <div className={`rounded-2xl border p-4 transition-all ${
+      <div className={`rounded-2xl border p-2.5 sm:p-4 transition-all ${
         isLight ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900/60 border-slate-800 shadow-md'
       }`}>
-        <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-100 dark:border-white/5">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-100 dark:border-white/5">
           <div className="flex items-center gap-2.5">
-            <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${
+            <div className={`hidden sm:flex h-8 w-8 items-center justify-center rounded-xl ${
               side === 'left' ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-violet-500/10 text-violet-600 dark:text-violet-400'
             }`}>
               {side === 'left' ? <ArrowLeft size={16} /> : <ArrowRight size={16} />}
@@ -551,7 +551,7 @@ export default function Dekan3DXonalarPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => setCapPanelSide(panelOpen ? null : side)}
@@ -701,44 +701,48 @@ export default function Dekan3DXonalarPage() {
   return (
     <div className="space-y-5">
       {/* Executive Hero Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-5 sm:p-6 text-white shadow-lg border border-white/20">
-        <div className="absolute -right-12 -top-12 h-64 w-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+      {/* Phone: title, dorm · floor, status chip, then the two actions side by side.
+          Tagline and icon tile from sm up. bg-white/15+ only: the light-mode
+          retrofit turns bg-white/10 into pale glass. */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-4 sm:p-6 text-white shadow-lg border border-white/20">
+        <div className="absolute -right-12 -top-12 h-64 w-64 rounded-full bg-white/15 blur-2xl pointer-events-none" />
         <div className="absolute -left-12 -bottom-12 h-48 w-48 rounded-full bg-indigo-500/20 blur-xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-inner">
+        <div className="relative z-10 flex flex-col gap-3.5 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <div className="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-inner">
               <Layers3 size={24} className="text-white" />
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-black tracking-tight" style={{ color: '#ffffff' }}>
-                  {readOnly ? '3D Qavat maketi' : '3D Qavat tarxi quruvchisi'}
-                </h1>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-black leading-snug tracking-tight" style={{ color: '#ffffff' }}>
+                {readOnly ? '3D qavat maketi' : '3D qavat tarxi quruvchisi'}
+              </h1>
+              <p className="mt-0.5 text-xs sm:text-sm font-medium" style={{ color: '#e0e7ff' }}>
+                {activeDorm ? `${activeDorm.number}-yotoqxona` : 'Yotoqxona'} · {activeFloor}-qavat
+                <span className="hidden sm:inline"> arxitekturasi va xonalar bandligi jonli 3D maketda</span>
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 {isDirty ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-amber-400/20 text-amber-200 border border-amber-400/40">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-amber-400/25 text-white border border-amber-300/50">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" />
                     Saqlanmagan o‘zgarishlar bor
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-white/10 text-emerald-300 border border-white/20">
-                    <CheckCircle2 size={12} />
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-white/15 text-white border border-white/25">
+                    <CheckCircle2 size={12} className="text-emerald-300" />
                     Saqlangan
                   </span>
                 )}
               </div>
-              <p className="text-xs sm:text-sm font-medium mt-0.5" style={{ color: '#e0e7ff' }}>
-                {activeDorm ? `${activeDorm.number}-yotoqxona` : 'Yotoqxona'} · {activeFloor}-qavat arxitekturasi va xonalar bandligi jonli 3D maketda
-              </p>
             </div>
           </div>
 
           {!readOnly && (
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
               <button
                 type="button"
                 onClick={() => void loadFloorLayout(activeFloor)}
-                className="no-shelf inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3.5 py-2 text-xs font-bold transition-all hover:bg-white/20 active:scale-95"
+                className="no-shelf inline-flex h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-white/25 bg-white/15 px-3.5 text-xs font-bold transition-all hover:bg-white/25 active:scale-95"
                 style={{ color: '#ffffff' }}
                 title="Saqlangan holatga qaytarish"
               >
@@ -749,7 +753,7 @@ export default function Dekan3DXonalarPage() {
                 type="button"
                 onClick={handleSave}
                 disabled={saving || !isDirty}
-                className={`no-shelf inline-flex items-center gap-2 rounded-xl px-5 py-2 text-xs font-black uppercase tracking-wider transition-all shadow-md active:scale-95 ${
+                className={`no-shelf inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-5 text-xs font-bold transition-all shadow-md active:scale-95 ${
                   isDirty
                     ? 'bg-amber-400 text-slate-900 hover:bg-amber-300 ring-2 ring-amber-400/40 shadow-amber-400/20'
                     : 'bg-white text-indigo-700 hover:bg-slate-100 disabled:opacity-60'
@@ -803,13 +807,13 @@ export default function Dekan3DXonalarPage() {
           return (
             <div
               key={item.label}
-              className={`flex items-center gap-3.5 rounded-2xl border p-3.5 shadow-xs transition-all ${item.bg}`}
+              className={`flex flex-col items-start gap-2 rounded-2xl border p-3 shadow-xs transition-all sm:flex-row sm:items-center sm:gap-3.5 sm:p-3.5 ${item.bg}`}
             >
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-800 shadow-2xs border border-slate-200/60 dark:border-slate-700/60 ${item.accent}`}>
-                <Icon size={18} />
+              <div className={`flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-800 shadow-2xs border border-slate-200/60 dark:border-slate-700/60 ${item.accent}`}>
+                <Icon className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className={`text-[10px] font-bold uppercase tracking-wider ${ui.faint}`}>
+                <p className={`truncate text-[10px] font-bold uppercase tracking-wider ${ui.faint}`}>
                   {item.label}
                 </p>
                 <p className={`truncate text-lg font-black leading-tight ${ui.strong}`}>
@@ -828,10 +832,10 @@ export default function Dekan3DXonalarPage() {
       <div className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-2.5 shadow-xs ${
         isLight ? 'bg-white border-slate-200/80' : 'bg-slate-900/60 border-slate-800'
       }`}>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
           {/* Building switcher (if > 1 dorm) */}
           {dorms.length > 1 && (
-            <div className={`flex gap-1 rounded-xl p-1 border ${isLight ? 'bg-slate-100 border-slate-200/60' : 'bg-slate-800/60 border-white/5'}`}>
+            <div className={`flex max-w-full gap-1 overflow-x-auto no-scrollbar rounded-xl p-1 border ${isLight ? 'bg-slate-100 border-slate-200/60' : 'bg-slate-800/60 border-white/5'}`}>
               {dorms.map((d) => {
                 const isActive = (activeDormId ?? primaryDormId) === d.dormId
                 return (
@@ -843,7 +847,7 @@ export default function Dekan3DXonalarPage() {
                       if (isDirty) { setPendingDormId(d.dormId); return }
                       setActiveDormId(d.dormId)
                     }}
-                    className={`no-shelf flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    className={`no-shelf flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       isActive
                         ? 'bg-indigo-600 text-white shadow-xs'
                         : isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-white/60' : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -858,7 +862,7 @@ export default function Dekan3DXonalarPage() {
           )}
 
           {/* Floor Selection Tabs */}
-          <div className="flex gap-1 overflow-x-auto no-scrollbar">
+          <div className="flex min-w-0 max-w-full gap-1 overflow-x-auto no-scrollbar">
             {floors.map((fl) => {
               const active = fl === activeFloor
               return (
@@ -923,12 +927,12 @@ export default function Dekan3DXonalarPage() {
         <>
           {/* Editor — hidden in the tarbiyachi (view-only) panel */}
           {!readOnly && (
-            <div className={`border rounded-2xl p-5 space-y-4 shadow-sm ${
+            <div className={`border rounded-2xl p-3 sm:p-5 space-y-3 sm:space-y-4 shadow-sm ${
               isLight ? 'bg-slate-50/50 border-slate-200/80' : 'bg-slate-900/40 border-slate-800'
             }`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className={`text-base font-black tracking-tight ${textStrong}`}>
+                  <h2 className={`text-sm sm:text-base font-black leading-snug tracking-tight ${textStrong}`}>
                     {activeFloor}-qavat arxitekturasi va xonalar joylashuvi
                   </h2>
                   <p className={`text-xs mt-0.5 ${textMuted}`}>
@@ -1049,7 +1053,7 @@ function RoomRow({
       value={block.id}
       dragListener={false}
       dragControls={controls}
-      className={`no-shelf relative flex items-center gap-1.5 rounded-xl border pl-1 pr-1.5 h-10 transition-all ${
+      className={`no-shelf relative flex items-center gap-1 sm:gap-1.5 rounded-xl border pl-1 pr-1 sm:pr-1.5 h-10 transition-all ${
         isLight
           ? 'border-slate-200/80 bg-white hover:border-slate-300 shadow-2xs'
           : 'border-white/10 bg-slate-800/40 hover:border-white/20'
@@ -1093,7 +1097,7 @@ function RoomRow({
             />
           ))}
         </span>
-        {SIZE_LABELS[block.size]}
+        <span className="hidden min-[400px]:inline truncate">{SIZE_LABELS[block.size]}</span>
       </button>
 
       {/* Sig'im: bo'sh = standartdan meros (xira), override = indigo halqa. */}
@@ -1137,9 +1141,9 @@ function RoomRow({
         )}
       </div>
 
-      <span className="shrink-0 flex items-center justify-end gap-1 w-[52px]">
+      <span className="shrink-0 flex items-center justify-end gap-1 sm:w-[52px]" title={occText || undefined}>
         <span className={`h-2 w-2 rounded-full ${toneDot}`} />
-        <span className={`text-[9px] font-bold tabular-nums ${over ? 'text-rose-500' : textMuted}`}>{occText}</span>
+        <span className={`hidden sm:inline text-[9px] font-bold tabular-nums ${over ? 'text-rose-500' : textMuted}`}>{occText}</span>
       </span>
 
       {/* Send the room to the other side of the corridor */}

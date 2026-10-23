@@ -458,18 +458,21 @@ export default function RoomScene3D({
     }
   })()
 
-  const canvasHeightClass = isExpanded ? 'h-[620px]' : 'h-[440px]'
+  const canvasHeightClass = isExpanded ? 'h-[520px] sm:h-[620px]' : 'h-[360px] sm:h-[440px]'
 
   return (
     <div className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
       className ?? (isLight ? 'border-slate-200/90 bg-white/90 shadow-sm' : 'border-slate-800 bg-slate-900/60 shadow-lg')
     }`}>
+      {/* Phone: legend + toolbar stack in a bar above the canvas (as overlays they
+          covered each other and the scene). sm+: `contents` lets them float as before. */}
+      <div className="flex flex-col items-start gap-2 p-2.5 pb-0 sm:contents">
       {/* Top Left: Glassmorphic Status Legend */}
-      <div className="pointer-events-none absolute left-3.5 top-3.5 z-10 flex flex-wrap items-center gap-1.5 backdrop-blur-md rounded-xl p-1 bg-white/60 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/10 shadow-xs">
+      <div className="pointer-events-none z-10 flex max-w-full flex-wrap items-center gap-1 backdrop-blur-md rounded-xl p-1 bg-white/60 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/10 shadow-xs sm:absolute sm:left-3.5 sm:top-3.5 sm:gap-1.5">
         {legend.map(([c, label]) => (
           <div
             key={label}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
               isLight ? 'text-slate-700' : 'text-slate-200'
             }`}
           >
@@ -481,7 +484,7 @@ export default function RoomScene3D({
 
       {/* Top Right: Advanced Interactive 3D Toolbar */}
       {rooms.length > 0 && (
-        <div className="absolute right-3.5 top-3.5 z-10 flex flex-wrap items-center gap-1 backdrop-blur-md rounded-xl p-1 bg-white/70 dark:bg-slate-900/70 border border-slate-200/70 dark:border-white/10 shadow-xs">
+        <div className="z-10 flex max-w-full items-center gap-1 overflow-x-auto no-scrollbar backdrop-blur-md rounded-xl p-1 bg-white/70 dark:bg-slate-900/70 border border-slate-200/70 dark:border-white/10 shadow-xs [&>*]:shrink-0 sm:absolute sm:right-3.5 sm:top-3.5 sm:flex-wrap sm:overflow-visible">
           {/* Camera View Mode Presets */}
           <div className="flex items-center gap-0.5 border-r border-slate-200 dark:border-white/10 pr-1 mr-0.5">
             <button
@@ -611,6 +614,7 @@ export default function RoomScene3D({
           </button>
         </div>
       )}
+      </div>
 
       {/* 3D Canvas or Empty State */}
       {rooms.length === 0 ? (
@@ -658,8 +662,9 @@ export default function RoomScene3D({
         <p className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest backdrop-blur-md rounded-lg px-2.5 py-1 ${
           isLight ? 'bg-white/60 text-slate-500 border border-slate-200/50' : 'bg-slate-900/60 text-slate-400 border border-white/5'
         }`}>
-          <MousePointer2 size={12} className="text-indigo-500" />
-          Aylantirish uchun sudrang · Kattalashtirish uchun g‘ildirakni burang · Xonani bosing
+          <MousePointer2 size={12} className="shrink-0 text-indigo-500" />
+          <span className="sm:hidden">Sudrang · Chimdib kattalashtiring · Xonani bosing</span>
+          <span className="hidden sm:inline">Aylantirish uchun sudrang · Kattalashtirish uchun g‘ildirakni burang · Xonani bosing</span>
         </p>
       </div>
     </div>
@@ -720,7 +725,7 @@ function RoomInfoCard({
   }
 
   return (
-    <div className={`w-[268px] overflow-hidden rounded-2xl border backdrop-blur-xl ${
+    <div className={`w-[268px] max-w-full overflow-hidden rounded-2xl border backdrop-blur-xl ${
       isLight
         ? 'border-slate-200/80 bg-white/95 shadow-[0_10px_34px_-10px_rgba(79,70,229,0.30),0_2px_8px_rgba(15,23,42,0.06)]'
         : 'border-slate-700/70 bg-slate-900/95 shadow-[0_18px_44px_-14px_rgba(0,0,0,0.65)]'

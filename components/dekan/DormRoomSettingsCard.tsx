@@ -69,15 +69,17 @@ export default function DormRoomSettingsCard({ dorm }: { dorm: DekanDorm }) {
   return (
     <section className={`rounded-2xl border overflow-hidden ${ui.card}`}>
       <div className={`flex items-center gap-3 border-b p-4 sm:px-6 ${ui.border}`}>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${ui.accentTile}`}>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${ui.accentTile}`}>
           <Boxes size={18} strokeWidth={2.2} />
         </div>
+        {/* The building sits under the title, like the other settings cards: as a
+            shrink-0 column on the right it squeezed the title to a word per line. */}
         <div className="min-w-0 flex-1">
           <h2 className={`text-sm font-bold ${ui.strong}`}>Xona va qavat sozlamalari</h2>
-        </div>
-        <div className={`flex shrink-0 items-center gap-1.5 text-xs font-semibold ${ui.muted}`}>
-          <Building2 size={13} />
-          {dorm.number}-yotoqxona{dorm.isPrimary ? ' (asosiy)' : ''}
+          <p className={`mt-0.5 flex items-center gap-1.5 text-[11px] font-semibold ${ui.muted}`}>
+            <Building2 size={12} className="shrink-0" />
+            {dorm.number}-yotoqxona{dorm.isPrimary ? ' (asosiy)' : ''}
+          </p>
         </div>
       </div>
 
@@ -107,7 +109,7 @@ export default function DormRoomSettingsCard({ dorm }: { dorm: DekanDorm }) {
                   &laquo;3D Xonalar&raquo; yoki &laquo;Xonalar xaritasi&raquo;da alohida belgilaysiz.
                 </p>
               </div>
-              <div className="sm:ml-4 shrink-0 flex items-center gap-2 w-full sm:w-auto">
+              <div className="sm:ml-4 shrink-0 flex items-center gap-2">
                 <input
                   type="number"
                   min={1}
@@ -116,7 +118,7 @@ export default function DormRoomSettingsCard({ dorm }: { dorm: DekanDorm }) {
                   value={capacityInput}
                   onChange={(e) => setCapacityInput(e.target.value)}
                   onBlur={saveCapacity}
-                  className={`rounded-lg border text-sm px-3 py-2 transition-colors w-full sm:w-24 disabled:opacity-60 ${ui.input} ${ui.ring}`}
+                  className={`h-10 w-24 rounded-lg border text-sm font-bold px-3 transition-colors disabled:opacity-60 ${ui.input} ${ui.ring}`}
                 />
                 <span className={`text-xs font-semibold shrink-0 ${ui.muted}`}>kishi</span>
               </div>

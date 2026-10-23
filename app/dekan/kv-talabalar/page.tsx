@@ -36,6 +36,7 @@ import { permitFacultyLabel } from '@/lib/faculties'
 import { genderAccent, genderLabel, normalizeGender } from '@/lib/gender'
 import KvOverview, { matchesKvQuickFilter, type KvQuickFilter } from '@/components/dekan/KvOverview'
 import KvCertificatePanel from '@/components/dekan/KvCertificatePanel'
+import CustomSelect from '@/components/ui/CustomSelect'
 
 // Leaflet faqat shu sahifada kerak.
 const KvStudentsMap = dynamic(() => import('@/components/dekan/KvStudentsMap'), { ssr: false })
@@ -393,53 +394,63 @@ export default function KvTalabalarPage() {
 
   const info = statusChip('info', isLight)
   const good = statusChip('success', isLight)
+  const segTrack = isLight ? 'bg-slate-100/90 ring-slate-200/70' : 'bg-slate-950/60 ring-slate-800'
+  const segActive = isLight ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-slate-200/80' : 'bg-indigo-600 text-white'
+  const segIdle = isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
 
   return (
     <div className="space-y-6 pb-12">
       {/* 1. Academic Hero & Institutional Command Bar */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-6 sm:p-8 text-white shadow-xl shadow-indigo-900/15">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-4 sm:p-8 text-white shadow-xl shadow-indigo-900/15">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_100%_0%,rgba(255,255,255,0.18),transparent_50%)]" />
         <div className="pointer-events-none absolute -bottom-10 -right-10 h-64 w-64 rounded-full bg-white/5 blur-2xl" />
 
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0 max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider backdrop-blur-md">
-                <GraduationCap size={13} className="text-indigo-200" /> OTM Talabalar Monitoringi
+        {/* Phone: badge with the three icon buttons on its right, then the title and a
+            one-line summary; the long tagline only from sm up. */}
+        <div className="relative grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 lg:gap-x-6">
+          <div className="col-start-1 row-start-1 flex min-w-0 flex-wrap items-center gap-2 self-center lg:self-start">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] sm:px-3 sm:text-[11px] font-bold uppercase tracking-wider backdrop-blur-md">
+                <GraduationCap size={13} className="text-indigo-200" /> <span className="sm:hidden">KV-talabalar</span><span className="hidden sm:inline">OTM Talabalar Monitoringi</span>
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/20 px-3 py-1 text-[11px] font-bold text-indigo-200 backdrop-blur-md border border-indigo-400/30">
+              <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-indigo-500/20 px-3 py-1 text-[11px] font-bold text-indigo-100 backdrop-blur-md border border-indigo-400/30">
                 <Home size={12} /> Kvartira & Ijara Sektori
               </span>
-            </div>
+          </div>
 
-            <h1 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl lg:text-4xl text-white">
-              KV-Talabalar Nazorati
+          <div className="col-span-2 min-w-0 max-w-2xl lg:col-span-1">
+            <h1 className="mt-2.5 text-lg leading-snug font-black tracking-tight sm:mt-3 sm:text-3xl lg:text-4xl text-white">
+              KV-talabalar nazorati
             </h1>
-            <p className="mt-2 text-xs leading-relaxed text-indigo-100 sm:text-sm">
+            <p className="mt-1 text-xs font-medium text-indigo-100 sm:hidden">
+              Kvartira va ijarada yashovchi talabalar · {students.length} ta
+            </p>
+            <p className="mt-2 hidden text-sm leading-relaxed text-indigo-100 sm:block">
               Universitet yotoqxonasidan tashqarida — ijarada yoki shaxsiy kvartirada istiqomat qiluvchi talabalarning
               yashash joyi, akademik holati va aloqa ma&apos;lumotlari monitoringi. Ular yotoqxona o&apos;rinlariga da&apos;vogar emas.
             </p>
           </div>
 
-          {/* Quick Action Toolbar */}
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {/* Quick Action Toolbar — icon buttons on a phone */}
+          <div className="col-start-2 row-start-1 flex items-center gap-1.5 sm:gap-2.5 lg:row-span-2 lg:self-center">
             <button
               type="button"
               onClick={() => void load()}
               disabled={loading}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/95 px-3.5 py-2.5 text-xs font-bold text-indigo-700 shadow-lg shadow-black/10 transition-all hover:bg-white hover:scale-[1.02] active:scale-95 disabled:opacity-60"
+              aria-label="Ro'yxatni yangilash"
+              className="inline-flex h-9 w-9 items-center justify-center gap-2 rounded-xl bg-white/95 text-xs font-bold text-indigo-700 shadow-lg shadow-black/10 transition-all hover:bg-white hover:scale-[1.02] active:scale-95 disabled:opacity-60 sm:h-auto sm:w-auto sm:px-3.5 sm:py-2.5"
               title="Ro'yxatni yangilash"
             >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              <span>Yangilash</span>
+              <span className="hidden sm:inline">Yangilash</span>
             </button>
 
             <button
               type="button"
               onClick={handleExportCSV}
               disabled={students.length === 0}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/15 px-3.5 py-2.5 text-xs font-bold text-white border border-white/20 backdrop-blur-md transition-all hover:bg-white/25 active:scale-95 disabled:opacity-50"
+              className="inline-flex h-9 w-9 items-center justify-center gap-2 rounded-xl bg-white/15 text-xs font-bold text-white border border-white/20 backdrop-blur-md transition-all hover:bg-white/25 active:scale-95 disabled:opacity-50 sm:h-auto sm:w-auto sm:px-3.5 sm:py-2.5"
               title="CSV (Excel) formatida yuklab olish"
+              aria-label="Excel yuklab olish"
             >
               <Download size={14} />
               <span className="hidden sm:inline">Excel</span>
@@ -449,8 +460,9 @@ export default function KvTalabalarPage() {
               type="button"
               onClick={handleCopyList}
               disabled={list.length === 0}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/15 px-3.5 py-2.5 text-xs font-bold text-white border border-white/20 backdrop-blur-md transition-all hover:bg-white/25 active:scale-95 disabled:opacity-50"
+              className="inline-flex h-9 w-9 items-center justify-center gap-2 rounded-xl bg-white/15 text-xs font-bold text-white border border-white/20 backdrop-blur-md transition-all hover:bg-white/25 active:scale-95 disabled:opacity-50 sm:h-auto sm:w-auto sm:px-3.5 sm:py-2.5"
               title="Filtrlangan ro'yxatni nusxalash"
+              aria-label="Ro'yxatni nusxalash"
             >
               <Copy size={14} />
               <span className="hidden sm:inline">Nusxalash</span>
@@ -467,47 +479,47 @@ export default function KvTalabalarPage() {
       </div>
 
       {/* 2. Executive Academic Analytics Dashboard */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {/* Total Students */}
-        <div className={`relative overflow-hidden rounded-2xl border p-5 transition-all ${ui.card}`}>
-          <div className="flex items-start justify-between gap-3">
+        <div className={`relative overflow-hidden rounded-2xl border p-3 sm:p-5 transition-all ${ui.card}`}>
+          <div className="flex items-start justify-between gap-2 sm:gap-3">
             <div className="min-w-0">
-              <span className={`text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>Jami KV-Talabalar</span>
+              <span className={`block text-[10px] font-bold uppercase leading-tight tracking-wide sm:tracking-wider ${ui.muted}`}>Jami KV-Talabalar</span>
               {loading ? (
                 <Skel className="mt-2.5 h-8 w-16" />
               ) : (
-                <div className="mt-1 flex items-baseline gap-2">
-                  <p className={`text-3xl font-black tracking-tight ${ui.strong}`}>{students.length}</p>
+                <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+                  <p className={`text-2xl sm:text-3xl font-black tracking-tight ${ui.strong}`}>{students.length}</p>
                   <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">faol hisob</span>
                 </div>
               )}
             </div>
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-500/25">
+            <div className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-500/25">
               <Users size={20} strokeWidth={2.2} />
             </div>
           </div>
-          <p className={`mt-3 text-[11px] font-medium leading-relaxed ${ui.faint}`}>
+          <p className={`mt-2 sm:mt-3 text-[10px] sm:text-[11px] font-medium leading-snug sm:leading-relaxed ${ui.faint}`}>
             Fakultet bo&apos;yicha ijarada turuvchi talabalar ro&apos;yxati
           </p>
         </div>
 
         {/* Girls count */}
-        <div className={`relative overflow-hidden rounded-2xl border p-5 transition-all ${ui.card}`}>
-          <div className="flex items-start justify-between gap-3">
+        <div className={`relative overflow-hidden rounded-2xl border p-3 sm:p-5 transition-all ${ui.card}`}>
+          <div className="flex items-start justify-between gap-2 sm:gap-3">
             <div className="min-w-0">
-              <span className={`text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>Talaba qizlar</span>
+              <span className={`block text-[10px] font-bold uppercase leading-tight tracking-wide sm:tracking-wider ${ui.muted}`}>Talaba qizlar</span>
               {loading ? (
                 <Skel className="mt-2.5 h-8 w-16" />
               ) : (
-                <div className="mt-1 flex items-baseline gap-2">
-                  <p className={`text-3xl font-black tracking-tight ${ui.strong}`}>{femaleCount}</p>
+                <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+                  <p className={`text-2xl sm:text-3xl font-black tracking-tight ${ui.strong}`}>{femaleCount}</p>
                   <span className="text-[11px] font-semibold text-indigo-500">
                     {students.length ? Math.round((femaleCount / students.length) * 100) : 0}% ulush
                   </span>
                 </div>
               )}
             </div>
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-500/25">
+            <div className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-500/25">
               <UserRound size={20} strokeWidth={2.2} />
             </div>
           </div>
@@ -520,22 +532,22 @@ export default function KvTalabalarPage() {
         </div>
 
         {/* Boys count */}
-        <div className={`relative overflow-hidden rounded-2xl border p-5 transition-all ${ui.card}`}>
-          <div className="flex items-start justify-between gap-3">
+        <div className={`relative overflow-hidden rounded-2xl border p-3 sm:p-5 transition-all ${ui.card}`}>
+          <div className="flex items-start justify-between gap-2 sm:gap-3">
             <div className="min-w-0">
-              <span className={`text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>Talaba o&apos;g&apos;illar</span>
+              <span className={`block text-[10px] font-bold uppercase leading-tight tracking-wide sm:tracking-wider ${ui.muted}`}>Talaba o&apos;g&apos;illar</span>
               {loading ? (
                 <Skel className="mt-2.5 h-8 w-16" />
               ) : (
-                <div className="mt-1 flex items-baseline gap-2">
-                  <p className={`text-3xl font-black tracking-tight ${ui.strong}`}>{maleCount}</p>
+                <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+                  <p className={`text-2xl sm:text-3xl font-black tracking-tight ${ui.strong}`}>{maleCount}</p>
                   <span className="text-[11px] font-semibold text-indigo-500">
                     {students.length ? Math.round((maleCount / students.length) * 100) : 0}% ulush
                   </span>
                 </div>
               )}
             </div>
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-500/25">
+            <div className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-500/25">
               <UserRound size={20} strokeWidth={2.2} />
             </div>
           </div>
@@ -548,26 +560,26 @@ export default function KvTalabalarPage() {
         </div>
 
         {/* HEMIS & Contact completeness */}
-        <div className={`relative overflow-hidden rounded-2xl border p-5 transition-all ${ui.card}`}>
-          <div className="flex items-start justify-between gap-3">
+        <div className={`relative overflow-hidden rounded-2xl border p-3 sm:p-5 transition-all ${ui.card}`}>
+          <div className="flex items-start justify-between gap-2 sm:gap-3">
             <div className="min-w-0">
-              <span className={`text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>Aloqa & HEMIS Bazasi</span>
+              <span className={`block text-[10px] font-bold uppercase leading-tight tracking-wide sm:tracking-wider ${ui.muted}`}>Aloqa & HEMIS Bazasi</span>
               {loading ? (
                 <Skel className="mt-2.5 h-8 w-16" />
               ) : (
-                <div className="mt-1 flex items-baseline gap-2">
-                  <p className={`text-3xl font-black tracking-tight ${ui.strong}`}>{withHemisCount}</p>
+                <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+                  <p className={`text-2xl sm:text-3xl font-black tracking-tight ${ui.strong}`}>{withHemisCount}</p>
                   <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
                     {students.length ? Math.round((withHemisCount / students.length) * 100) : 0}% biriktirilgan
                   </span>
                 </div>
               )}
             </div>
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-500/25">
+            <div className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-500/25">
               <IdCard size={20} strokeWidth={2.2} />
             </div>
           </div>
-          <p className={`mt-3 text-[11px] font-medium leading-relaxed ${ui.faint}`}>
+          <p className={`mt-2 sm:mt-3 text-[10px] sm:text-[11px] font-medium leading-snug sm:leading-relaxed ${ui.faint}`}>
             {withPhoneCount} ta talabada telefon raqami mavjud
           </p>
         </div>
@@ -580,7 +592,7 @@ export default function KvTalabalarPage() {
             <GraduationCap size={16} className="text-indigo-600 dark:text-indigo-400" />
             <span className={`text-xs font-bold ${ui.strong}`}>Kurslar bo&apos;yicha taqsimot</span>
           </div>
-          <span className={`text-[11px] ${ui.muted}`}>Tezkor filtr uchun kursni tanlang</span>
+          <span className={`hidden sm:inline text-[11px] ${ui.muted}`}>Tezkor filtr uchun kursni tanlang</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {breakdownCourses.map((c) => {
@@ -602,12 +614,12 @@ export default function KvTalabalarPage() {
                 }`}
               >
                 <div className="min-w-0">
-                  <span className="text-[11px] font-bold block">{c}-kurs talabalari</span>
+                  <span className="text-[11px] font-bold block">{c}-kurs<span className="hidden sm:inline"> talabalari</span></span>
                   <span className={`text-[10px] ${ui.muted}`}>
                     {students.length ? Math.round((count / students.length) * 100) : 0}% ulush
                   </span>
                 </div>
-                <span className="text-base font-black px-2 py-0.5 rounded-lg bg-white dark:bg-slate-900 shadow-xs border border-slate-200/60 dark:border-slate-700">
+                <span className="shrink-0 text-base font-black px-2 py-0.5 rounded-lg bg-white dark:bg-slate-900 shadow-xs border border-slate-200/60 dark:border-slate-700">
                   {count}
                 </span>
               </button>
@@ -616,18 +628,19 @@ export default function KvTalabalarPage() {
         </div>
       </div>
 
-      {/* 3. Multi-Dimensional Search & Filter Controller */}
-      <div className={`p-4 sm:p-5 rounded-2xl border space-y-3.5 ${ui.card}`}>
-        {/* Row 1: Search, View Mode, Sorting */}
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+      {/* 3. Search & filters. Phone: search, then [view | sort], then Jinsi and
+          Yo'nalish as labelled full-width rows. sm+: two rows. Selects are the
+          shared CustomSelect (the native ones looked like bare browser widgets). */}
+      <div className={`p-3 sm:p-5 rounded-2xl border space-y-3 ${ui.card}`}>
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
           {/* Search bar */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative min-w-0 flex-1 sm:max-w-md">
             <Search size={15} className={`pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 ${ui.faint}`} />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Ism, HEMIS ID, telefon, guruh yoki yo'nalish..."
-              className={`w-full rounded-xl border py-2.5 pl-10 pr-9 text-xs font-medium outline-none transition-all ${ui.input} ${ui.ring}`}
+              className={`h-10 w-full rounded-xl border pl-10 pr-9 text-xs font-medium outline-none transition-all ${ui.input} ${ui.ring}`}
             />
             {search && (
               <button
@@ -641,123 +654,98 @@ export default function KvTalabalarPage() {
             )}
           </div>
 
-          {/* Right controls: View Toggle & Sort */}
-          <div className="flex items-center gap-2 self-end sm:self-center">
+          <div className="flex items-center gap-2 sm:ml-auto">
             {/* View Mode Switch */}
-            <div className={`flex items-center p-1 rounded-xl border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-800 border-slate-700'}`}>
-              <button
-                type="button"
-                onClick={() => setViewMode('cards')}
-                className={`no-shelf flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  viewMode === 'cards'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                    : `${ui.muted} hover:text-slate-900 dark:hover:text-white`
-                }`}
-                title="Kartalar ko'rinishi"
-              >
-                <LayoutGrid size={13} />
-                <span className="hidden sm:inline">Kartalar</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`no-shelf flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  viewMode === 'table'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                    : `${ui.muted} hover:text-slate-900 dark:hover:text-white`
-                }`}
-                title="Jadval ko'rinishi"
-              >
-                <List size={13} />
-                <span className="hidden sm:inline">Jadval</span>
-              </button>
+            <div role="group" aria-label="Ko'rinish" className={`flex shrink-0 items-center gap-0.5 rounded-xl p-1 ring-1 ring-inset ${segTrack}`}>
+              {([
+                ['cards', LayoutGrid, 'Kartalar'],
+                ['table', List, 'Jadval'],
+              ] as const).map(([mode, Icon, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={viewMode === mode}
+                  aria-label={`${label} ko'rinishi`}
+                  title={`${label} ko'rinishi`}
+                  onClick={() => setViewMode(mode)}
+                  className={`no-shelf flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-bold transition-colors ${
+                    viewMode === mode ? segActive : segIdle
+                  }`}
+                >
+                  <Icon size={14} className="shrink-0" />
+                  <span className="hidden lg:inline">{label}</span>
+                </button>
+              ))}
             </div>
 
             {/* Sort selector */}
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                aria-label="Tartiblash usuli"
-                className={`rounded-xl border py-2 pl-3 pr-8 text-xs font-bold cursor-pointer outline-none ${ui.input} ${ui.ring}`}
-              >
-                <option value="newest">Yangi qo&apos;shilganlar</option>
-                <option value="name-asc">Alifbo bo&apos;yicha (A-Z)</option>
-                <option value="course-asc">Kurs bo&apos;yicha (1→4)</option>
-                <option value="group-asc">Guruh bo&apos;yicha</option>
-              </select>
-            </div>
+            <CustomSelect
+              value={sortBy}
+              onChange={(value) => setSortBy(value as SortOption)}
+              className={`h-10 min-w-0 flex-1 rounded-xl border px-3 text-xs font-bold sm:w-52 sm:flex-none ${ui.input} ${ui.ring}`}
+              options={[
+                { value: 'newest', label: "Yangi qo'shilganlar" },
+                { value: 'name-asc', label: "Alifbo bo'yicha (A-Z)" },
+                { value: 'course-asc', label: "Kurs bo'yicha (1→4)" },
+                { value: 'group-asc', label: "Guruh bo'yicha" },
+              ]}
+            />
           </div>
         </div>
 
-        {/* Row 2: Secondary Quick Filter Chips (Course, Gender, Direction) */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+        <div className={`flex flex-col gap-2.5 border-t pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5 ${ui.border}`}>
           {/* Gender filter */}
-          <div className="flex items-center gap-1">
-            <span className={`text-[11px] font-bold mr-1 ${ui.muted}`}>Jinsi:</span>
-            {(['all', 'female', 'male'] as const).map((g) => {
-              const active = gender === g
-              return (
+          <div className="flex items-center gap-2.5">
+            <span className={`w-16 shrink-0 text-[10px] font-bold uppercase tracking-wider sm:w-auto ${ui.faint}`}>Jinsi</span>
+            <div role="group" aria-label="Jinsi" className={`grid flex-1 grid-cols-3 gap-0.5 rounded-xl p-1 ring-1 ring-inset sm:flex sm:flex-none ${segTrack}`}>
+              {(['all', 'female', 'male'] as const).map((g) => (
                 <button
                   key={g}
                   type="button"
+                  aria-pressed={gender === g}
                   onClick={() => setGender(g)}
-                  className={`no-shelf rounded-lg px-2.5 py-1 text-[11px] font-bold border transition-colors ${
-                    active
-                      ? isLight
-                        ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                        : 'bg-indigo-500/20 border-indigo-500/40 text-indigo-200'
-                      : `${ui.inset} ${ui.muted} hover:text-slate-800 dark:hover:text-slate-200`
+                  className={`no-shelf h-8 whitespace-nowrap rounded-lg px-3 text-xs font-bold transition-colors ${
+                    gender === g ? segActive : segIdle
                   }`}
                 >
                   {g === 'all' ? 'Barchasi' : g === 'female' ? 'Qizlar' : "O'g'illar"}
                 </button>
-              )
-            })}
+              ))}
+            </div>
           </div>
 
           {/* Direction selector if directions exist */}
           {directions.length > 0 && (
-            <div className="flex items-center gap-1 ml-auto">
-              <span className={`text-[11px] font-bold mr-1 hidden sm:inline ${ui.muted}`}>Yo&apos;nalish:</span>
-              <select
+            <div className="flex min-w-0 items-center gap-2.5 sm:flex-1 sm:justify-end">
+              <span className={`w-16 shrink-0 text-[10px] font-bold uppercase tracking-wider sm:w-auto ${ui.faint}`}>Yo&apos;nalish</span>
+              <CustomSelect
                 value={direction}
-                onChange={(e) => setDirection(e.target.value)}
-                aria-label="Ta'lim yo'nalishi bo'yicha filter"
-                className={`max-w-[200px] truncate rounded-lg border py-1 px-2.5 text-[11px] font-semibold outline-none ${ui.input} ${ui.ring}`}
-              >
-                <option value="all">Barcha yo&apos;nalishlar</option>
-                {directions.map((d) => (
-                  <option key={d} value={d}>
-                    {directionLabel(d)}
-                  </option>
-                ))}
-              </select>
+                onChange={setDirection}
+                className={`h-10 min-w-0 flex-1 rounded-xl border px-3 text-xs font-semibold sm:max-w-xs ${ui.input} ${ui.ring}`}
+                options={[
+                  { value: 'all', label: "Barcha yo'nalishlar" },
+                  ...directions.map((d) => ({ value: d, label: directionLabel(d) })),
+                ]}
+              />
             </div>
           )}
+        </div>
 
-          {/* Results summary and reset button */}
+        {/* Results counter + reset */}
+        <div className="flex items-center justify-between gap-2 text-xs">
+          <p className={ui.muted}>
+            Ko&apos;rsatilmoqda: <span className={`font-black ${ui.strong}`}>{list.length}</span> ta talaba
+            {filtering && <span className="hidden sm:inline"> (jami {students.length} tadan saralandi)</span>}
+          </p>
           {filtering && (
             <button
               type="button"
               onClick={resetFilters}
-              className={`no-shelf ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-indigo-500 hover:text-indigo-600 transition-colors`}
+              className="no-shelf inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-indigo-500 hover:text-indigo-600 transition-colors"
             >
-              <X size={12} /> Filtrlarni tozalash
+              <X size={12} /> Tozalash
             </button>
           )}
-        </div>
-
-        {/* Results counter badge */}
-        <div className="flex items-center justify-between text-xs pt-1">
-          <p className={ui.muted}>
-            Ko&apos;rsatilmoqda: <span className={`font-black ${ui.strong}`}>{list.length}</span> ta talaba
-            {filtering && ` (jami ${students.length} tadan saralandi)`}
-          </p>
-          <span className={`text-[11px] ${ui.faint}`}>
-            {viewMode === 'cards' ? "Kartalar rejimi" : "Jadval rejimi"}
-          </span>
         </div>
       </div>
 
@@ -873,7 +861,7 @@ export default function KvTalabalarPage() {
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-1.5">
                         <h3
-                          className={`font-black text-sm sm:text-base tracking-tight leading-snug truncate transition-colors ${
+                          className={`font-black text-sm sm:text-base tracking-tight leading-snug line-clamp-2 break-words transition-colors ${
                             ui.strong
                           } group-hover:text-indigo-600 dark:group-hover:text-indigo-400`}
                           title={student.full_name}
@@ -1319,7 +1307,7 @@ export default function KvTalabalarPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedStudent(null)}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto"
+              className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4 overflow-y-auto"
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0, y: 15 }}
@@ -1327,20 +1315,20 @@ export default function KvTalabalarPage() {
                 exit={{ scale: 0.95, opacity: 0, y: 15 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}
-                className={`relative w-full max-w-xl rounded-3xl border shadow-2xl overflow-hidden my-auto ${
+                className={`relative w-full max-w-xl rounded-t-3xl sm:rounded-3xl border shadow-2xl overflow-hidden sm:my-auto ${
                   isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
                 }`}
               >
                 {/* Modal Top Banner with Academic Pattern */}
-                <div className="relative bg-gradient-to-r from-indigo-700 via-indigo-600 to-violet-700 p-5 sm:p-6 text-white">
+                <div className="relative bg-gradient-to-r from-indigo-700 via-indigo-600 to-violet-700 p-4 sm:p-6 text-white">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white font-black text-lg shadow-inner backdrop-blur-md">
+                      <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white font-black text-base sm:text-lg shadow-inner backdrop-blur-md">
                         {initials(selectedStudent.full_name)}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h2 className="text-lg sm:text-xl font-black tracking-tight truncate text-white">
+                          <h2 className="text-base sm:text-xl font-black leading-snug tracking-tight line-clamp-2 break-words text-white">
                             {selectedStudent.full_name}
                           </h2>
                         </div>
@@ -1367,7 +1355,7 @@ export default function KvTalabalarPage() {
                 </div>
 
                 {/* Modal Body: Structured Academic Dossier */}
-                <div className="p-5 sm:p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+                <div className="p-4 sm:p-6 space-y-5 max-h-[62dvh] sm:max-h-[75vh] overflow-y-auto">
                   {/* Academic Identity Details */}
                   <div className="space-y-2">
                     <span className={`text-[10px] font-bold uppercase tracking-wider ${ui.muted}`}>
@@ -1551,7 +1539,7 @@ export default function KvTalabalarPage() {
                 </div>
 
                 {/* Modal Footer Actions */}
-                <div className={`p-4 sm:p-5 border-t flex flex-wrap items-center justify-between gap-2.5 ${
+                <div data-flat className={`p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5 border-t flex flex-wrap items-center justify-between gap-2.5 ${
                   isLight ? 'bg-slate-50/70 border-slate-200' : 'bg-slate-800/50 border-slate-800'
                 }`}>
                   <div className="flex items-center gap-2">

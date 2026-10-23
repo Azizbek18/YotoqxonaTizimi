@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ShieldCheck, Search, Loader2, Check } from 'lucide-react'
+import { ShieldCheck, Search, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { dekanUI } from '@/lib/dekan-ui'
 import { useThemeStore } from '@/lib/stores/theme-store'
@@ -100,30 +100,30 @@ export default function MemberPermissionsCard({ delay = 0 }: { delay?: number })
 
   return (
     <section
-      className={`rounded-2xl border p-5 sm:p-6 ${ui.card}`}
+      className={`rounded-2xl border p-4 sm:p-6 ${ui.card}`}
       style={{ animationDelay: `${delay}s` }}
     >
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className={`rounded-xl p-2.5 ${ui.accentTile}`}>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:mb-5">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <div className={`shrink-0 rounded-xl p-2.5 ${ui.accentTile}`}>
             <ShieldCheck size={18} />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className={`text-base font-bold ${ui.strong}`}>Ruxsatlar</h3>
-            <p className={`mt-0.5 text-xs ${ui.muted}`}>
+            <p className={`mt-0.5 text-[11px] leading-snug line-clamp-2 sm:line-clamp-none sm:text-xs ${ui.muted}`}>
               Tarbiyachi va qavat sardorlarining huquqlarini istalgan vaqtda olib qo&apos;yish
               yoki qaytarish. Ruxsat olinganda bo&apos;lim ularga umuman ko&apos;rinmaydi.
             </p>
           </div>
         </div>
 
-        <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${ui.input}`}>
-          <Search size={14} className={ui.muted} />
+        <div className={`flex h-10 w-full items-center gap-2 rounded-lg border px-3 sm:w-auto ${ui.input}`}>
+          <Search size={14} className={`shrink-0 ${ui.muted}`} />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Ism bo'yicha qidirish…"
-            className="w-40 bg-transparent text-sm outline-none sm:w-56"
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none sm:w-56 sm:flex-none"
           />
         </div>
       </div>
@@ -144,8 +144,8 @@ export default function MemberPermissionsCard({ delay = 0 }: { delay?: number })
             const keys = permissionsForSubject(member.subject)
             const revoked = keys.filter((k) => member.permissions[k] === false).length
             return (
-              <div key={`${member.subject}:${member.id}`} className={`rounded-xl border p-4 ${ui.inset}`}>
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div key={`${member.subject}:${member.id}`} className={`rounded-xl border px-3.5 pt-3.5 pb-1 sm:px-4 sm:pt-4 ${ui.inset}`}>
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className={`truncate text-sm font-bold ${ui.strong}`}>{member.fullName}</p>
                     <p className={`truncate text-xs ${ui.muted}`}>
@@ -162,75 +162,53 @@ export default function MemberPermissionsCard({ delay = 0 }: { delay?: number })
                   </span>
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-2">
+                {/* Rows, not boxes: name + hint on the left, a switch on the right.
+                    (Each permission used to be its own bordered card — a frame in a
+                    frame in a frame.) */}
+                <ul className={`divide-y sm:grid sm:grid-cols-2 sm:gap-x-6 sm:divide-y-0 ${isLight ? 'divide-slate-200/70' : 'divide-slate-700/60'}`}>
                   {keys.map((key) => {
                     const allowed = member.permissions[key] !== false
                     const busy = savingId === member.id
                     return (
-                      <button
-                        key={key}
-                        type="button"
-                        role="switch"
-                        aria-checked={allowed}
-                        disabled={busy}
-                        onClick={() => void toggle(member, key)}
-                        className={`no-shelf group flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 active:scale-[0.99] disabled:cursor-wait disabled:opacity-70 ${
-                          allowed
-                            ? isLight
-                              ? 'border-indigo-200 bg-indigo-50/40 hover:border-indigo-300 hover:bg-indigo-50/80'
-                              : 'border-indigo-500/30 bg-indigo-500/[0.06] hover:border-indigo-400/50 hover:bg-indigo-500/10'
-                            : isLight
-                              ? 'border-slate-200 bg-slate-50/80 hover:border-slate-300'
-                              : 'border-slate-700 bg-slate-900/30 hover:border-slate-600'
-                        }`}
-                        style={{ boxShadow: 'none' }}
-                      >
-                        {/* Tick painted via the SVG stroke attribute: the light-mode retrofit in
-                            globals.css overrides text colours inside coloured surfaces. */}
-                        <span
-                          aria-hidden="true"
-                          className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-lg border-2 transition-all duration-200 ${
-                            allowed
-                              ? 'border-indigo-600 bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md shadow-indigo-600/30'
-                              : isLight
-                                ? 'border-slate-300 bg-white group-hover:border-indigo-400'
-                                : 'border-slate-600 bg-slate-800 group-hover:border-indigo-400'
-                          }`}
+                      <li key={key} className={`sm:border-t ${isLight ? 'sm:border-slate-200/70' : 'sm:border-slate-700/60'}`}>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={allowed}
+                          disabled={busy}
+                          onClick={() => void toggle(member, key)}
+                          className="no-shelf flex w-full items-center gap-3 py-3 text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 rounded-lg disabled:cursor-wait disabled:opacity-70"
+                          style={{ boxShadow: 'none' }}
                         >
-                          {busy ? (
-                            <Loader2 size={13} strokeWidth={3} className="animate-spin" color={allowed ? '#ffffff' : '#6366f1'} />
-                          ) : (
-                            <Check
-                              size={14}
-                              strokeWidth={3.5}
-                              color="#ffffff"
-                              className={`transition-all duration-200 ${allowed ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}
-                            />
-                          )}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-start justify-between gap-2">
-                            <span className={`block text-xs font-bold ${allowed ? ui.strong : ui.muted}`}>
+                          <span className="min-w-0 flex-1">
+                            <span className={`block text-[13px] font-bold leading-snug ${allowed ? ui.strong : ui.muted}`}>
                               {PERMISSION_LABELS[key].title}
                             </span>
-                            <span
-                              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                                allowed
-                                  ? isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-500/15 text-emerald-300'
-                                  : isLight ? 'bg-slate-200/80 text-slate-500' : 'bg-slate-700/60 text-slate-400'
-                              }`}
-                            >
-                              {allowed ? 'Ruxsat' : 'Yopiq'}
+                            <span className={`mt-0.5 block text-[11px] leading-snug ${ui.muted}`}>
+                              {PERMISSION_LABELS[key].hint}
                             </span>
                           </span>
-                          <span className={`mt-1 block text-[11px] leading-snug ${ui.muted}`}>
-                            {PERMISSION_LABELS[key].hint}
+                          {/* Switch. The knob is a white disc, so no text colour is involved
+                              (the light-mode retrofit repaints text inside coloured surfaces). */}
+                          <span
+                            aria-hidden="true"
+                            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ${
+                              allowed ? 'bg-indigo-600' : isLight ? 'bg-slate-300' : 'bg-slate-600'
+                            }`}
+                          >
+                            <span
+                              className={`absolute left-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                                allowed ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            >
+                              {busy && <Loader2 size={11} strokeWidth={3} className="animate-spin" color="#6366f1" />}
+                            </span>
                           </span>
-                        </span>
-                      </button>
+                        </button>
+                      </li>
                     )
                   })}
-                </div>
+                </ul>
               </div>
             )
           })}

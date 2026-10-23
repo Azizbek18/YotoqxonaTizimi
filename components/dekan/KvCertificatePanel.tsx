@@ -57,7 +57,7 @@ export default function KvCertificatePanel({ isLight }: { isLight: boolean }) {
 
   return (
     <div className={`flex flex-col rounded-2xl border p-4 sm:p-5 ${ui.card}`}>
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <h3 className={`flex items-center gap-2 text-sm font-bold ${ui.strong}`}>
           <FileCheck2 size={15} className="text-indigo-500" /> Ma‘lumotnoma so‘rovlari
         </h3>
@@ -105,7 +105,7 @@ export default function KvCertificatePanel({ isLight }: { isLight: boolean }) {
                   </p>
                 </div>
                 {rejecting !== r.id && (
-                  <div className="flex shrink-0 gap-2">
+                  <div data-flat className="flex shrink-0 gap-2">
                     <button
                       type="button"
                       disabled={busyId === r.id}
@@ -134,7 +134,7 @@ export default function KvCertificatePanel({ isLight }: { isLight: boolean }) {
                     placeholder="Rad etish sababi"
                     className={`min-w-0 flex-1 rounded-lg border px-3 py-2 text-xs ${ui.input} ${ui.ring}`}
                   />
-                  <div className="flex gap-2">
+                  <div data-flat className="flex gap-2">
                     <button
                       type="button"
                       disabled={busyId === r.id}

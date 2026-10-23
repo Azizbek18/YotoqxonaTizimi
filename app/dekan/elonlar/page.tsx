@@ -218,30 +218,30 @@ export default function DekanAnnouncementsPage() {
   const inputCls = `rounded-xl border text-sm px-4 py-3 transition-colors ${ui.input} ${ui.ring}`
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-5 sm:space-y-8 pb-12">
       {/* Hero Banner (Compact) */}
       <div className="no-shelf relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-800 p-4 sm:p-5 shadow-lg shadow-indigo-950/15 border border-white/20 text-white">
         {/* Decorative ambient lighting & subtle micro-dot texture */}
-        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
         <div className="pointer-events-none absolute -left-12 -bottom-16 h-48 w-48 rounded-full bg-violet-400/15 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] opacity-[0.07]" />
 
         {/* Top bar inside hero */}
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md text-white border border-white/25 shadow-inner shrink-0">
+        <div className="relative flex items-start justify-between gap-3 sm:items-center">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="hidden sm:flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md text-white border border-white/25 shadow-inner shrink-0">
               <Megaphone size={20} strokeWidth={2.2} />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
                 <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/15 text-white backdrop-blur-md border border-white/20"
+                  className="inline-flex max-w-full items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/15 text-white backdrop-blur-md border border-white/20"
                   style={{ color: '#ffffff' }}
                 >
-                  <Building2 size={11} className="text-white/80" />
-                  {dekanFaculty ? permitFacultyLabel(dekanFaculty) : "Fakultet ma'muriyati"}
+                  <Building2 size={11} className="shrink-0 text-white/80" />
+                  <span className="truncate">{dekanFaculty ? permitFacultyLabel(dekanFaculty) : "Fakultet ma'muriyati"}</span>
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400/25 text-white border border-emerald-300/40">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Talabalar bilan aloqa
                 </span>
@@ -252,10 +252,11 @@ export default function DekanAnnouncementsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               type="button"
               onClick={() => void load()}
+              aria-label="Yangilash"
               disabled={loading}
               className="inline-flex items-center justify-center h-8.5 w-8.5 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white transition-all disabled:opacity-50 no-shelf cursor-pointer active:scale-95 shadow-xs"
               title="Yangilash"
@@ -270,47 +271,51 @@ export default function DekanAnnouncementsPage() {
             <button
               type="button"
               onClick={openCreate}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-white hover:bg-indigo-50 px-3.5 py-2 text-xs font-black uppercase tracking-wider text-indigo-700 transition-all shadow-md active:scale-95 no-shelf cursor-pointer"
+              className="inline-flex h-8.5 items-center gap-1.5 rounded-xl bg-white hover:bg-indigo-50 px-3 text-xs font-bold text-indigo-700 transition-all shadow-md active:scale-95 no-shelf cursor-pointer sm:px-3.5"
             >
               <Plus size={15} strokeWidth={2.5} />
-              <span>Yangi e&apos;lon</span>
+              <span><span className="hidden min-[360px]:inline">Yangi </span>e&apos;lon</span>
             </button>
           </div>
         </div>
 
         {/* Click-to-filter Hero KPI stats (Compact Horizontal Row) */}
-        <div className="relative mt-3.5 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div className="relative mt-3.5 grid grid-cols-3 gap-2 sm:gap-2.5">
           {([
             {
               label: "Jami e'lonlar",
+              short: 'Jami',
               count: announcements.length,
               icon: Megaphone,
               key: 'all',
               tag: 'Barchasi',
               badgeColor: 'bg-white/20 text-white',
-              tagColor: 'bg-white/15 text-white',
+              tagColor: 'bg-white/20 text-white',
             },
             {
               label: "Talabalarga ko'rinmoqda",
+              short: 'Faol',
               count: publishedCount,
               icon: Radio,
               key: 'published',
               tag: 'Faol',
-              badgeColor: 'bg-emerald-400/25 text-emerald-200',
-              tagColor: 'bg-emerald-400/20 text-emerald-200 border border-emerald-400/30',
+              badgeColor: 'bg-emerald-400/30 text-white',
+              tagColor: 'bg-emerald-400/25 text-white border border-emerald-300/40',
               hasPulse: true,
             },
             {
               label: 'Qoralamalar',
+              short: 'Qoralama',
               count: draftCount,
               icon: FileEdit,
               key: 'draft',
               tag: 'Yashirin',
-              badgeColor: 'bg-amber-400/25 text-amber-200',
-              tagColor: 'bg-amber-400/20 text-amber-200 border border-amber-400/30',
+              badgeColor: 'bg-amber-400/30 text-white',
+              tagColor: 'bg-amber-400/25 text-white border border-amber-300/40',
             },
           ] satisfies Array<{
             label: string
+            short: string
             count: number
             icon: React.ComponentType<{ size?: number; strokeWidth?: number }>
             key: AnnouncementStatusFilter
@@ -326,19 +331,21 @@ export default function DekanAnnouncementsPage() {
                 key={card.label}
                 type="button"
                 onClick={() => setStatusFilter(card.key)}
-                className={`relative text-left rounded-xl px-3.5 py-2.5 backdrop-blur-md transition-all duration-150 cursor-pointer no-shelf flex items-center justify-between gap-3 border ${
+                aria-pressed={isCardActive}
+                className={`relative text-left rounded-xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 backdrop-blur-md transition-all duration-150 cursor-pointer no-shelf flex items-center justify-between gap-3 border ${
                   isCardActive
                     ? 'bg-white/25 border-white/50 ring-1.5 ring-white/80 shadow-md'
-                    : 'bg-white/10 hover:bg-white/15 border-white/15'
+                    : 'bg-white/15 hover:bg-white/20 border-white/20'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${card.badgeColor} shrink-0`}>
+                  <div className={`hidden sm:flex h-8 w-8 items-center justify-center rounded-lg ${card.badgeColor} shrink-0`}>
                     <Icon size={15} strokeWidth={2.2} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-[11px] font-semibold text-indigo-100 truncate" style={{ color: 'rgba(255, 255, 255, 0.85)' }}>
-                      {card.label}
+                      <span className="sm:hidden">{card.short}</span>
+                      <span className="hidden sm:inline">{card.label}</span>
                     </p>
                     <p className="text-lg sm:text-xl font-black text-white tabular-nums tracking-tight leading-tight" style={{ color: '#ffffff' }}>
                       {loading ? '...' : card.count}
@@ -346,7 +353,7 @@ export default function DekanAnnouncementsPage() {
                   </div>
                 </div>
 
-                <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${card.tagColor}`}>
+                <span className={`hidden sm:inline-flex shrink-0 items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${card.tagColor}`}>
                   {card.hasPulse && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />}
                   {isCardActive ? '✓ ' + card.tag : card.tag}
                 </span>
@@ -357,7 +364,7 @@ export default function DekanAnnouncementsPage() {
       </div>
 
       {/* Search & Segmented Filter Bar */}
-      <div className={`p-4 rounded-2xl border backdrop-blur-xl ${ui.card} flex flex-col md:flex-row md:items-center justify-between gap-4`}>
+      <div className={`p-3 sm:p-4 rounded-2xl border backdrop-blur-xl ${ui.card} flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4`}>
         {/* Search */}
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -368,7 +375,7 @@ export default function DekanAnnouncementsPage() {
             placeholder="Sarlavha yoki matn bo'yicha qidirish..."
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-xs font-semibold focus:outline-hidden focus:border-indigo-500 transition-all ${ui.input}`}
+            className={`h-10 w-full pl-10 pr-10 rounded-xl border text-xs font-semibold focus:outline-hidden focus:border-indigo-500 transition-all ${ui.input}`}
           />
           {searchTerm && (
             <button
@@ -383,8 +390,8 @@ export default function DekanAnnouncementsPage() {
         </div>
 
         {/* Segmented Type Filters */}
-        <div className={`flex p-1 rounded-2xl border shrink-0 max-w-full overflow-x-auto no-scrollbar flex-nowrap ${
-          isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-800/80 border-slate-700/80'
+        <div role="group" aria-label="E'lon turi" className={`grid grid-cols-6 gap-0.5 p-1 rounded-2xl border shrink-0 sm:flex sm:max-w-full sm:overflow-x-auto sm:no-scrollbar sm:flex-nowrap ${
+          isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-950/60 border-slate-800'
         }`}>
           {([
             { value: '', label: 'Barchasi' },
@@ -392,16 +399,17 @@ export default function DekanAnnouncementsPage() {
             { value: 'Muhim', label: 'Muhim' },
             { value: 'Tadbir', label: 'Tadbir' },
             { value: 'Ogohlantirish', label: 'Ogohlantirish' },
-          ] satisfies Array<{ value: '' | AnnouncementType; label: string }>).map((t) => {
+          ] satisfies Array<{ value: '' | AnnouncementType; label: string }>).map((t, idx) => {
             const isActive = typeFilter === t.value
             return (
               <button
                 key={t.value}
                 type="button"
+                aria-pressed={isActive}
                 onClick={() => setTypeFilter(t.value)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap no-shelf cursor-pointer ${
+                className={`${idx < 3 ? 'col-span-2' : 'col-span-3'} h-8 px-2 sm:px-3.5 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap no-shelf cursor-pointer ${
                   isActive
-                    ? 'bg-white text-indigo-700 shadow-xs dark:bg-slate-900 dark:text-white'
+                    ? isLight ? 'bg-white text-indigo-700 shadow-xs' : 'bg-indigo-600 text-white'
                     : isLight
                       ? 'text-slate-600 hover:text-slate-900'
                       : 'text-slate-400 hover:text-slate-200'
@@ -434,7 +442,7 @@ export default function DekanAnnouncementsPage() {
             <button
               type="button"
               onClick={openCreate}
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all shadow-xs no-shelf cursor-pointer"
+              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-5 py-2.5 text-xs font-bold text-white transition-all shadow-xs no-shelf cursor-pointer"
             >
               <Plus size={15} />
               <span>Birinchi e&apos;lonni yozish</span>
@@ -442,7 +450,7 @@ export default function DekanAnnouncementsPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:gap-5 lg:grid-cols-2">
           <AnimatePresence initial={false}>
             {filtered.map((item) => {
               const meta = TYPE_META[item.type] ?? TYPE_META.Yangilik
@@ -456,11 +464,11 @@ export default function DekanAnnouncementsPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.98 }}
-                  className={`flex flex-col justify-between rounded-2xl border p-5 backdrop-blur-xl transition-all duration-200 hover:shadow-md ${ui.card} ${item.is_published ? '' : 'opacity-75'}`}
+                  className={`flex flex-col justify-between rounded-2xl border p-4 sm:p-5 backdrop-blur-xl transition-all duration-200 hover:shadow-md ${ui.card} ${item.is_published ? '' : 'opacity-75'}`}
                 >
                   <div>
                     {/* Card Header: Type badge & Status */}
-                    <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5 mb-3">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${chip.chip}`}>
                         <Icon size={13} />
                         {item.type}

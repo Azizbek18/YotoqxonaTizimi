@@ -676,27 +676,28 @@ export default function AdminTolovlarPage() {
                 setActiveTab(isCurrentActive && card.key !== 'all' ? 'all' : (card.key as PaymentTab))
                 setCurrentPage(1)
               }}
-              className={`no-shelf p-4 rounded-2xl border text-left transition-all relative overflow-hidden group active:scale-[0.98] ${
+              className={`no-shelf p-3 sm:p-4 rounded-2xl border text-left transition-all relative overflow-hidden group active:scale-[0.98] ${
                 isCurrentActive ? card.activeClass : ui.card
               } ${ui.hoverLift}`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className={`text-[11px] font-bold uppercase tracking-wider ${textMuted}`}>
-                    {card.title}
-                  </p>
-                  <p className={`text-2xl sm:text-3xl font-black mt-1.5 leading-none ${textStrong}`}>
-                    {loading ? '—' : card.count}
-                  </p>
+              {/* Phone: [icon][count] over the title, so a long one-word title
+                  ("Tasdiqlangan") no longer pushes the icon off the tile.
+                  sm+: [title / count][icon] as before. One markup, cells swap. */}
+              <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-y-1.5">
+                <p className={`col-span-2 row-start-2 truncate text-[10px] sm:text-[11px] font-bold uppercase tracking-wide sm:tracking-wider sm:col-span-1 sm:col-start-1 sm:row-start-1 ${textMuted}`}>
+                  {card.title}
+                </p>
+                <div className={`col-start-1 row-start-1 w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${card.gradient} text-white flex items-center justify-center shrink-0 shadow-md shadow-black/10 group-hover:scale-105 transition-transform sm:col-start-2 sm:row-span-2`}>
+                  <Icon strokeWidth={2.4} className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
                 </div>
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.gradient} text-white flex items-center justify-center shrink-0 shadow-md shadow-black/10 group-hover:scale-105 transition-transform`}>
-                  <Icon size={18} strokeWidth={2.4} />
-                </div>
+                <p className={`col-start-2 row-start-1 text-2xl sm:text-3xl font-black leading-none tabular-nums sm:col-start-1 sm:row-start-2 ${textStrong}`}>
+                  {loading ? '—' : card.count}
+                </p>
               </div>
 
-              <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
-                <span className={textMuted}>Summa:</span>
-                <span className={`font-bold ${textStrong}`}>
+              <div className="mt-2.5 sm:mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-[11px]">
+                <span className={`hidden sm:inline ${textMuted}`}>Summa:</span>
+                <span className={`truncate font-bold tabular-nums ${textStrong}`}>
                   {loading ? '—' : `${card.sum.toLocaleString()} UZS`}
                 </span>
               </div>
@@ -897,7 +898,9 @@ export default function AdminTolovlarPage() {
           <span className={`text-[11px] font-bold uppercase tracking-wider mr-1 ${textMuted}`}>
             Filtr:
           </span>
-          <div className={`no-shelf inline-flex items-center p-1 rounded-xl border gap-1 transition-colors flex-wrap ${
+          {/* Phone: an even grid — «Barchasi» across the top, the four statuses
+              2×2 below, each label left / count right. sm+: one inline track. */}
+          <div className={`no-shelf grid w-full grid-cols-2 p-1 rounded-xl border gap-1 transition-colors sm:inline-flex sm:w-auto sm:flex-wrap sm:items-center ${
             isLight ? 'bg-slate-100/90 border-slate-200/80' : 'bg-slate-950/70 border-slate-800/90'
           }`}>
             {[
@@ -917,7 +920,10 @@ export default function AdminTolovlarPage() {
                     setActiveTab(tab.id as PaymentTab)
                     setCurrentPage(1)
                   }}
-                  className={`no-shelf relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 active:scale-95 ${
+                  aria-pressed={isActive}
+                  className={`no-shelf relative flex items-center justify-between gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all duration-150 active:scale-95 sm:inline-flex sm:justify-start sm:py-1.5 ${
+                    tab.id === 'all' ? 'col-span-2' : ''
+                  } ${
                     isActive
                       ? isLight
                         ? 'bg-white text-indigo-600 shadow-xs border border-slate-200/70 font-black'
@@ -927,8 +933,16 @@ export default function AdminTolovlarPage() {
                         : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] border border-transparent'
                   }`}
                 >
-                  {TabIcon && <TabIcon size={12} className={isActive ? 'text-white' : 'text-indigo-500'} />}
-                  <span>{tab.label}</span>
+                  {/* Active light tab is white, so its icon must not be white too */}
+                  <span className="inline-flex min-w-0 items-center gap-1.5">
+                    {TabIcon && (
+                      <TabIcon
+                        size={12}
+                        className={`shrink-0 ${isActive ? (isLight ? 'text-indigo-600' : 'text-white') : 'text-indigo-500'}`}
+                      />
+                    )}
+                    <span className="truncate">{tab.label}</span>
+                  </span>
                   <span
                     className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors ${
                       isActive

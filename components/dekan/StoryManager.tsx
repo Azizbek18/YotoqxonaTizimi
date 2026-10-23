@@ -141,15 +141,15 @@ export default function StoryManager({ isLight }: { isLight: boolean }) {
   )
 
   return (
-    <div className={`rounded-3xl border p-5 sm:p-7 backdrop-blur-xl transition-all duration-200 ${ui.card}`}>
+    <div className={`rounded-3xl border p-4 sm:p-7 backdrop-blur-xl transition-all duration-200 ${ui.card}`}>
       {/* Section Header */}
       <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3.5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-xs">
+        <div className="flex items-start gap-3 sm:items-center sm:gap-3.5">
+          <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-xs">
             <Sparkles size={20} strokeWidth={2.3} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <h2 className={`text-base sm:text-lg font-black tracking-tight ${ui.strong}`}>
                 Yangiliklar lentasi (Stories)
               </h2>
@@ -174,7 +174,7 @@ export default function StoryManager({ isLight }: { isLight: boolean }) {
       {/* Story Creator Box */}
       <div className={`rounded-2xl border p-4 sm:p-5 ${isLight ? 'bg-slate-50/70 border-slate-200/80' : 'bg-slate-900/40 border-slate-800/80'} grid gap-5 sm:grid-cols-12`}>
         {/* Left Column: Image Picker */}
-        <div className="sm:col-span-4 lg:col-span-3">
+        <div className="mx-auto w-full max-w-[200px] sm:col-span-4 sm:max-w-none lg:col-span-3">
           <input
             ref={fileInputRef}
             type="file"
@@ -267,16 +267,23 @@ export default function StoryManager({ isLight }: { isLight: boolean }) {
               <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${ui.muted}`}>
                 Story turi
               </label>
-              <div className={`grid grid-cols-2 gap-1 rounded-2xl border p-1 sm:grid-cols-4 ${ui.inset}`}>
+              <div
+                role="group"
+                aria-label="Story turi"
+                className={`grid grid-cols-2 gap-1 rounded-xl p-1 ring-1 ring-inset sm:grid-cols-4 ${
+                  isLight ? 'bg-slate-100/90 ring-slate-200/70' : 'bg-slate-950/60 ring-slate-800'
+                }`}
+              >
                 {ANNOUNCEMENT_TYPES.map((t) => (
                   <button
                     key={t}
                     type="button"
+                    aria-pressed={type === t}
                     onClick={() => setType(t)}
-                    className={`rounded-xl px-2.5 py-2 text-xs font-bold uppercase tracking-wider transition-all no-shelf cursor-pointer ${
+                    className={`h-9 whitespace-nowrap rounded-lg px-2 text-xs font-bold transition-colors no-shelf cursor-pointer ${
                       type === t
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : `${ui.muted} ${isLight ? 'hover:text-slate-900 hover:bg-slate-200/60' : 'hover:text-white hover:bg-slate-800/60'}`
+                        ? isLight ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-slate-200/80' : 'bg-indigo-600 text-white'
+                        : isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
                     {t}
@@ -299,12 +306,12 @@ export default function StoryManager({ isLight }: { isLight: boolean }) {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+          <div className="flex flex-col-reverse gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60 sm:flex-row sm:items-center sm:justify-end sm:gap-2.5">
             {(file || title || caption || linkUrl) && (
               <button
                 type="button"
                 onClick={resetForm}
-                className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold uppercase tracking-wider transition-all no-shelf cursor-pointer ${ui.btnGhost}`}
+                className={`inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border px-3.5 text-xs font-bold transition-all no-shelf cursor-pointer sm:h-auto sm:py-2 ${ui.btnGhost}`}
               >
                 <X size={14} /> <span>Tozalash</span>
               </button>
@@ -313,7 +320,7 @@ export default function StoryManager({ isLight }: { isLight: boolean }) {
               type="button"
               onClick={handleSubmit}
               disabled={saving}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all shadow-xs no-shelf cursor-pointer disabled:opacity-50"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white px-5 text-[13px] font-bold transition-all shadow-xs no-shelf cursor-pointer disabled:opacity-50 sm:h-auto sm:py-2.5 sm:text-xs"
             >
               <Send size={14} />
               <span>{saving ? 'Joylanmoqda...' : 'Joylash va yuborish'}</span>
@@ -323,11 +330,11 @@ export default function StoryManager({ isLight }: { isLight: boolean }) {
       </div>
 
       {/* Active stories */}
-      <div className="mt-8 pt-6 border-t border-slate-200/60 dark:border-slate-800/60">
-        <div className="flex items-center justify-between mb-4">
+      <div className="mt-6 pt-5 sm:mt-8 sm:pt-6 border-t border-slate-200/60 dark:border-slate-800/60">
+        <div className="mb-3 flex flex-col gap-0.5 sm:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <div className="flex items-center gap-2">
             <h3 className={`text-xs font-black uppercase tracking-wider ${ui.strong}`}>
-              Faol Stories (24 soatlik)
+              Faol stories
             </h3>
             {stories.length > 0 && (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
@@ -336,7 +343,7 @@ export default function StoryManager({ isLight }: { isLight: boolean }) {
             )}
           </div>
           <span className={`text-[11px] ${ui.muted}`}>
-            24 soatdan so&apos;ng avtomatik arxivlanadi
+            Har biri 24 soatdan so&apos;ng avtomatik arxivlanadi
           </span>
         </div>
 
@@ -347,14 +354,14 @@ export default function StoryManager({ isLight }: { isLight: boolean }) {
             ))}
           </div>
         ) : stories.length === 0 ? (
-          <div className={`rounded-2xl border border-dashed py-10 text-center ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-slate-800 bg-slate-900/20'}`}>
+          <div className={`rounded-2xl border border-dashed px-5 py-8 text-center sm:py-10 ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-slate-800 bg-slate-900/20'}`}>
             <Sparkles size={24} className="mx-auto text-indigo-400/80 mb-2" />
-            <p className={`text-xs font-semibold ${ui.muted}`}>
+            <p className={`mx-auto max-w-xs text-xs font-semibold leading-relaxed ${ui.muted}`}>
               Hozircha faol story mavjud emas. Yuqoridagi formadan foydalanib yangi story joylang.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {stories.map((story) => {
               return (
                 <div

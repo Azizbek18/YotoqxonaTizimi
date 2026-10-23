@@ -72,6 +72,11 @@ function fmtDateTime(iso: string) {
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+function fmtDurationShort(min: number) {
+  if (min < 60) return `${min} daq`
+  return `${String(min / 60).replace('.', ',')} soat`
+}
+
 function fmtDuration(min: number) {
   if (min < 60) return `${min} daq`
   const h = Math.floor(min / 60)
@@ -198,6 +203,15 @@ export default function DekanYoqlamaPage() {
 
   const activeCount = overview?.dorms.filter((d) => d.active).length ?? 0
 
+  // Two tabs: the roll-call itself, and students on home leave (dekan approvals,
+  // overdue returns, call checks) — those used to sit stacked above the roll.
+  const [tab, setTab] = useState<'yoqlama' | 'uyga'>('yoqlama')
+  const [leaveAttention, setLeaveAttention] = useState(0)
+  const onLeaveSummary = useCallback(
+    (s: { pending: number; overdue: number }) => setLeaveAttention(s.pending + s.overdue),
+    [],
+  )
+
   return (
     <div className="space-y-6 pb-16">
       <Hero
@@ -207,10 +221,62 @@ export default function DekanYoqlamaPage() {
         onRefresh={() => void refresh()}
       />
 
-      <HomeLeavePanel isLight={isLight} />
-      <LeavesPanel isLight={isLight} />
+      <div
+        role="tablist"
+        aria-label="Yo‘qlama bo‘limlari"
+        className={`grid grid-cols-2 gap-1 rounded-2xl p-1 ring-1 ring-inset sm:inline-flex ${
+          isLight ? 'bg-slate-100/90 ring-slate-200/70' : 'bg-slate-950/60 ring-slate-800'
+        }`}
+      >
+        {([
+          { key: 'yoqlama', label: 'Yo‘qlama', icon: ClipboardCheck },
+          { key: 'uyga', label: 'Uyga ketganlar', icon: Home },
+        ] as const).map(({ key, label, icon: Icon }) => {
+          const selected = tab === key
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => setTab(key)}
+              className={`no-shelf flex h-10 min-w-0 items-center justify-center gap-2 rounded-xl px-3 sm:px-5 text-[13px] font-bold transition-colors ${
+                selected
+                  ? isLight
+                    ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-slate-200/80'
+                    : 'bg-indigo-600 text-white'
+                  : isLight
+                    ? 'text-slate-500 hover:text-slate-800'
+                    : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Icon size={16} className="shrink-0" />
+              <span className="truncate">{label}</span>
+              {key === 'yoqlama' && activeCount > 0 && (
+                <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" title="Faol yo‘qlama bor" />
+              )}
+              {key === 'uyga' && leaveAttention > 0 && (
+                <span
+                  className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-black tabular-nums ${
+                    isLight ? 'bg-amber-100 text-amber-800' : 'bg-amber-500/20 text-amber-300'
+                  }`}
+                  title="Tasdiq kutayotgan yoki qaytmagan talabalar"
+                >
+                  {leaveAttention}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
 
-      {loading ? (
+      {/* Kept mounted while hidden so the tab badge stays current. */}
+      <div role="tabpanel" className={tab === 'uyga' ? 'space-y-6' : 'hidden'}>
+        <HomeLeavePanel isLight={isLight} onSummary={onLeaveSummary} />
+        <LeavesPanel isLight={isLight} showEmptyState />
+      </div>
+
+      {tab !== 'yoqlama' ? null : loading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => <Skel key={i} className="h-28 rounded-2xl" />)}
         </div>
@@ -291,6 +357,14 @@ export default function DekanYoqlamaPage() {
   )
 }
 
+function segTokens(isLight: boolean) {
+  return {
+    track: isLight ? 'bg-slate-100/90 ring-slate-200/70' : 'bg-slate-950/60 ring-slate-800',
+    active: isLight ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-slate-200/80' : 'bg-indigo-600 text-white',
+    idle: isLight ? 'text-slate-500 hover:text-slate-800' : 'text-slate-400 hover:text-slate-200',
+  }
+}
+
 /* ───────────────────────────── hero ───────────────────────────── */
 
 function Hero({
@@ -310,16 +384,16 @@ function Hero({
   const pct = expected > 0 ? Math.round((answered / expected) * 100) : 0
 
   return (
-    <div className="no-shelf relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 p-5 text-white shadow-xl shadow-indigo-950/20 sm:p-7">
+    <div className="no-shelf relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 p-4 text-white shadow-xl shadow-indigo-950/20 sm:p-7">
       <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-20 -left-16 h-60 w-60 rounded-full bg-violet-400/10 blur-3xl" />
 
-      <div className="relative flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/25 bg-white/20 text-white shadow-inner backdrop-blur-md">
+      <div className="relative flex items-start justify-between gap-3 sm:gap-4">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/25 bg-white/20 text-white shadow-inner backdrop-blur-md">
             <ClipboardCheck size={24} strokeWidth={2.2} />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-black tracking-tight sm:text-2xl" style={{ color: '#ffffff' }}>Yo‘qlama</h1>
               <span
@@ -330,15 +404,15 @@ function Hero({
                 {roster ? `${roster.session.dormLabel}` : dormLabel ?? 'Dekan nazorati'}
               </span>
             </div>
-            <p className="mt-0.5 text-xs font-medium sm:text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>
+            <p className="mt-0.5 hidden text-sm font-medium sm:block" style={{ color: 'rgba(255,255,255,0.85)' }}>
               Vaqtni o‘zingiz belgilaysiz — talabalar tasdiqlaydi, kim bor-yo‘qligini shu yerda ko‘rasiz
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {open && countdown && (
-            <span className="no-shelf inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/15 px-3.5 py-2 text-xs font-bold tabular-nums backdrop-blur-md sm:text-sm" style={{ color: '#ffffff' }}>
+            <span className="no-shelf inline-flex h-9 items-center gap-1.5 rounded-xl border border-white/20 bg-white/15 px-2.5 text-xs font-bold tabular-nums backdrop-blur-md sm:px-3.5 sm:text-sm" style={{ color: '#ffffff' }}>
               <Clock size={15} className="text-white/80" />
               {countdown}
             </span>
@@ -347,6 +421,7 @@ function Hero({
             type="button"
             onClick={onRefresh}
             title="Yangilash"
+            aria-label="Yangilash"
             className="no-shelf inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 bg-white/15 text-white backdrop-blur-md transition-all hover:bg-white/25 active:scale-95"
             style={{ color: '#ffffff' }}
           >
@@ -356,9 +431,9 @@ function Hero({
       </div>
 
       {s && (
-        <div className="relative mt-6 flex flex-wrap items-center gap-4 sm:gap-6">
+        <div className="relative mt-4 flex items-center gap-3 sm:mt-6 sm:gap-6">
           <Ring pct={pct} answered={answered} total={expected} />
-          <div className="grid min-w-[240px] flex-1 grid-cols-2 gap-2.5 sm:grid-cols-5">
+          <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-2.5">
             {([
               ['Borman', s.present, 'bg-emerald-400'],
               ['Yo‘q', s.absent, 'bg-rose-400'],
@@ -366,11 +441,11 @@ function Hero({
               ['Uyda', s.excused, 'bg-sky-400'],
               ['Jami', s.total, 'bg-slate-300'],
             ] as const).map(([label, val, dot]) => (
-              <div key={label} className="no-shelf rounded-2xl border border-white/20 bg-white/15 p-3 backdrop-blur-md transition-all hover:bg-white/20 sm:p-3.5">
-                <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.9)' }}>
-                  <span className={`h-2 w-2 rounded-full ${dot}`} />{label}
+              <div key={label} className={`no-shelf rounded-xl border border-white/20 bg-white/15 p-2.5 backdrop-blur-md transition-all hover:bg-white/20 sm:rounded-2xl sm:p-3.5 ${label === 'Jami' ? 'hidden sm:block' : ''}`}>
+                <p className="flex items-center gap-1.5 truncate text-[10px] font-bold uppercase tracking-wide sm:text-[11px] sm:tracking-wider" style={{ color: 'rgba(255,255,255,0.9)' }}>
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} />{label}
                 </p>
-                <p className="mt-1 text-2xl font-black tabular-nums tracking-tight sm:text-3xl" style={{ color: '#ffffff' }}>{val}</p>
+                <p className="mt-0.5 text-xl font-black tabular-nums tracking-tight sm:mt-1 sm:text-3xl" style={{ color: '#ffffff' }}>{val}</p>
               </div>
             ))}
           </div>
@@ -385,7 +460,7 @@ function Ring({ pct, answered, total }: { pct: number; answered: number; total: 
   const c = 2 * Math.PI * r
   return (
     <div className="relative shrink-0 text-white">
-      <svg width="92" height="92" viewBox="0 0 92 92" className="-rotate-90">
+      <svg width="92" height="92" viewBox="0 0 92 92" className="h-[78px] w-[78px] -rotate-90 sm:h-[92px] sm:w-[92px]">
         <circle cx="46" cy="46" r={r} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="7" />
         <circle
           cx="46" cy="46" r={r} fill="none" stroke="#ffffff" strokeWidth="7" strokeLinecap="round"
@@ -514,16 +589,17 @@ function StartPanel({
     }
   }
 
-  const field = `no-shelf w-full rounded-xl border px-3 py-2.5 text-sm font-medium ${ui.input} ${ui.ring}`
+  const field = `no-shelf h-11 w-full rounded-xl border px-3 text-sm font-medium ${ui.input} ${ui.ring}`
+  const seg = segTokens(isLight)
 
   return (
-    <section className={`no-shelf rounded-3xl border p-5 sm:p-7 ${ui.card}`}>
-      <div className="flex flex-wrap items-center gap-3">
-        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${ui.accentTileSoft}`}>
+    <section className={`no-shelf rounded-3xl border p-4 sm:p-7 ${ui.card}`}>
+      <div className="flex items-center gap-3">
+        <div className={`flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl ${ui.accentTileSoft}`}>
           <Play size={20} />
         </div>
         <div className="min-w-0">
-          <h2 className={`text-base font-black ${ui.strong}`}>Yangi yo‘qlama — {dorm.label}</h2>
+          <h2 className={`text-[15px] sm:text-base font-black leading-snug ${ui.strong}`}>Yangi yo‘qlama — {dorm.label}</h2>
           <p className={`text-xs ${ui.muted}`}>
             Faqat shu yotoqxonadagi fakultetingiz talabalari ({dorm.residentCount} ta) ishtirok etadi
           </p>
@@ -537,20 +613,24 @@ function StartPanel({
         </div>
       )}
 
-      <div className="mt-5 grid grid-cols-2 gap-2">
+      {/* Mode: one segmented track (two bordered boxes wrapped their labels on a phone) */}
+      <div role="group" aria-label="Boshlanish" className={`mt-4 grid grid-cols-2 gap-1 rounded-xl p-1 ring-1 ring-inset sm:mt-5 ${seg.track}`}>
         {([
-          ['now', 'Hozir boshlash', Play],
-          ['later', 'Vaqtni belgilash', CalendarClock],
-        ] as const).map(([key, label, Icon]) => (
+          ['now', 'Hozir boshlash', 'Hozir', Play],
+          ['later', 'Vaqtni belgilash', 'Keyinroq', CalendarClock],
+        ] as const).map(([key, label, short, Icon]) => (
           <button
             key={key}
             type="button"
+            aria-pressed={mode === key}
             onClick={() => setMode(key)}
-            className={`no-shelf flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold transition-all active:scale-[0.98] ${
-              mode === key ? `${ui.accentBorder} ${ui.accentSoft}` : `${ui.border} ${ui.muted} ${ui.inset}`
+            className={`no-shelf flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-2 text-[13px] font-bold transition-colors ${
+              mode === key ? seg.active : seg.idle
             }`}
           >
-            <Icon size={16} /> {label}
+            <Icon size={15} className="shrink-0" />
+            <span className="sm:hidden">{short}</span>
+            <span className="hidden sm:inline">{label}</span>
           </button>
         ))}
       </div>
@@ -568,19 +648,25 @@ function StartPanel({
         </label>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className={`text-xs font-semibold ${ui.muted}`}>Davomiyligi:</span>
-        {DURATIONS.map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => pickDuration(m)}
-            aria-pressed={!customEnd && duration === m}
-            className={`no-shelf rounded-lg px-2.5 py-1 text-xs font-bold ${ui.accentSoft} ${!customEnd && duration === m ? `ring-2 ring-inset ${isLight ? 'ring-indigo-400' : 'ring-indigo-500/60'}` : ''}`}
-          >
-            {fmtDuration(m)}
-          </button>
-        ))}
+      <div className="mt-3">
+        <span className={`mb-1 block text-[11px] font-bold uppercase tracking-wider ${ui.muted}`}>Davomiyligi</span>
+        <div role="group" aria-label="Davomiyligi" className={`grid grid-cols-4 gap-1 rounded-xl p-1 ring-1 ring-inset sm:inline-grid ${seg.track}`}>
+          {DURATIONS.map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => pickDuration(m)}
+              aria-pressed={!customEnd && duration === m}
+              title={fmtDuration(m)}
+              className={`no-shelf h-8 whitespace-nowrap rounded-lg px-1.5 text-xs font-bold transition-colors sm:px-3 ${
+                !customEnd && duration === m ? seg.active : seg.idle
+              }`}
+            >
+              <span className="sm:hidden">{fmtDurationShort(m)}</span>
+              <span className="hidden sm:inline">{fmtDuration(m)}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className={`mt-5 flex items-start gap-2.5 rounded-xl border p-3 text-xs ${ui.inset} ${ui.body}`}>
@@ -708,23 +794,23 @@ function Board({
           {session.reminderCount > 0 && ` · ${session.reminderCount} marta eslatma`}
         </span>
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap sm:items-center">
           {!isScheduled && (
             <>
               <button
                 type="button"
                 disabled={exporting}
                 onClick={() => void exportXlsx(true)}
-                className={`no-shelf inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold ${ui.accentSolid}`}
+                className={`no-shelf inline-flex h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-3 text-xs font-bold sm:h-auto sm:py-2 ${ui.accentSolid}`}
               >
                 {exporting ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} />}
-                Bosmaganlar (Excel)
+                Bosmaganlar<span className="hidden sm:inline"> (Excel)</span>
               </button>
               <button
                 type="button"
                 disabled={exporting}
                 onClick={() => void exportXlsx(false)}
-                className={`no-shelf inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold ${ui.btnGhost}`}
+                className={`no-shelf inline-flex h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-3 text-xs font-bold sm:h-auto sm:py-2 ${ui.btnGhost}`}
               >
                 <FileSpreadsheet size={14} /> To‘liq ro‘yxat
               </button>
@@ -732,16 +818,16 @@ function Board({
           )}
           {(isOpen || isScheduled) && (
             confirmEnd ? (
-              <span className="inline-flex items-center gap-1.5">
-                <button type="button" disabled={busy} onClick={onEnd} className={`no-shelf rounded-xl px-3 py-2 text-xs font-bold ${ui.btnDanger}`}>
+              <span className="col-span-2 grid grid-cols-2 gap-2 sm:inline-flex sm:items-center sm:gap-1.5">
+                <button type="button" disabled={busy} onClick={onEnd} className={`no-shelf inline-flex h-10 items-center justify-center rounded-xl px-3 text-xs font-bold sm:h-auto sm:py-2 ${ui.btnDanger}`}>
                   {busy ? <Loader2 size={14} className="animate-spin" /> : isScheduled ? 'Ha, bekor qilish' : 'Ha, yakunlash'}
                 </button>
-                <button type="button" onClick={() => setConfirmEnd(false)} className={`no-shelf rounded-xl px-3 py-2 text-xs font-bold ${ui.btnGhost}`}>
+                <button type="button" onClick={() => setConfirmEnd(false)} className={`no-shelf inline-flex h-10 items-center justify-center rounded-xl px-3 text-xs font-bold sm:h-auto sm:py-2 ${ui.btnGhost}`}>
                   Yo‘q
                 </button>
               </span>
             ) : (
-              <button type="button" onClick={() => setConfirmEnd(true)} className={`no-shelf rounded-xl px-3 py-2 text-xs font-bold ${ui.dangerSoft}`}>
+              <button type="button" onClick={() => setConfirmEnd(true)} className={`no-shelf col-span-2 inline-flex h-10 items-center justify-center rounded-xl px-3 text-xs font-bold sm:h-auto sm:py-2 ${ui.dangerSoft}`}>
                 {isScheduled ? 'Bekor qilish' : 'Yakunlash'}
               </button>
             )
@@ -759,7 +845,7 @@ function Board({
         <>
           {/* filters */}
           <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
-            <div className={`no-shelf inline-flex max-w-full items-center gap-1.5 overflow-x-auto rounded-2xl border p-1.5 ${isLight ? 'border-slate-200/80 bg-slate-100/90' : 'border-slate-800/90 bg-slate-950/70'}`}>
+            <div className={`no-shelf flex w-full max-w-full items-center gap-1.5 overflow-x-auto no-scrollbar rounded-2xl border p-1.5 lg:inline-flex lg:w-auto ${isLight ? 'border-slate-200/80 bg-slate-100/90' : 'border-slate-800/90 bg-slate-950/70'}`}>
               {([
                 ['all', 'Hammasi', session.summary.total],
                 ['present', 'Borman', session.summary.present],
@@ -771,14 +857,14 @@ function Board({
               ))}
             </div>
 
-            <div className="relative min-w-[200px] max-w-xs flex-1 self-stretch lg:self-auto">
+            <div className="relative w-full lg:w-auto lg:min-w-[200px] lg:max-w-xs lg:flex-1">
               <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Talaba yoki xona qidirish..."
-                className={`no-shelf w-full rounded-xl border py-2 pl-9 pr-8 text-xs font-medium ${ui.input} ${ui.ring}`}
+                className={`no-shelf h-10 w-full rounded-xl border pl-9 pr-8 text-xs font-medium ${ui.input} ${ui.ring}`}
               />
               {query && (
                 <button type="button" onClick={() => setQuery('')} className="no-shelf absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
@@ -900,7 +986,7 @@ function FloorPanel({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="grid gap-3.5 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-3 p-3 sm:gap-3.5 sm:p-4 sm:grid-cols-2 xl:grid-cols-3">
               {rooms.map(([room, residents]) => (
                 <RoomCard key={room} room={room} residents={residents} isLight={isLight} ui={ui} />
               ))}
@@ -1001,7 +1087,7 @@ function History({
             <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${s.kind === 'nightly' ? (isLight ? 'bg-slate-100 text-slate-600' : 'bg-slate-700/60 text-slate-300') : (isLight ? 'bg-indigo-50 text-indigo-700' : 'bg-indigo-500/15 text-indigo-300')}`}>
               {s.kind === 'nightly' ? 'Kechki' : 'Dekan'}
             </span>
-            <span className="ml-auto flex items-center gap-3 text-xs font-bold tabular-nums">
+            <span className="flex basis-full flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold tabular-nums sm:ml-auto sm:basis-auto">
               <span className="text-emerald-600 dark:text-emerald-400">{s.summary.present} bor</span>
               <span className="text-rose-600 dark:text-rose-400">{s.summary.absent} yo‘q</span>
               <span className="text-amber-600 dark:text-amber-400">{s.summary.unmarked} bosmagan</span>

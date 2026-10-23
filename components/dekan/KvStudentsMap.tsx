@@ -131,7 +131,7 @@ export default function KvStudentsMap({
 
   return (
     <div className={`flex flex-col overflow-hidden rounded-2xl border ${ui.card}`}>
-      <div className="flex items-center justify-between gap-3 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3">
         <h3 className={`flex items-center gap-2 text-sm font-bold ${ui.strong}`}>
           <MapPin size={15} className="text-indigo-500" /> Yashash joylari xaritasi
         </h3>
@@ -140,7 +140,7 @@ export default function KvStudentsMap({
         </span>
       </div>
       <div className="relative flex-1">
-        <div ref={boxRef} className="h-full min-h-[320px] w-full" />
+        <div ref={boxRef} className="h-full min-h-[280px] w-full sm:min-h-[320px]" />
         {!ready && (
           <div className={`absolute inset-0 z-[400] flex items-center justify-center text-xs ${isLight ? 'bg-slate-100 text-slate-500' : 'bg-slate-900 text-slate-400'}`}>
             <Loader2 size={16} className="mr-2 animate-spin" /> Xarita yuklanmoqda…

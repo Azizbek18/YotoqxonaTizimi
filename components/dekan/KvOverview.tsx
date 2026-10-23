@@ -78,18 +78,18 @@ export default function KvOverview({
             type="button"
             onClick={() => onSelect(isActive && tile.key !== 'all' ? 'all' : tile.key)}
             aria-pressed={isActive}
-            className={`no-shelf cursor-pointer rounded-2xl border p-4 text-left transition-all ${ui.card} ${ui.hoverLift} ${isActive ? TONE_ACTIVE[tile.tone] : ''}`}
+            className={`no-shelf cursor-pointer rounded-2xl border p-3 sm:p-4 text-left transition-all ${ui.card} ${ui.hoverLift} ${isActive ? TONE_ACTIVE[tile.tone] : ''}`}
           >
-            <div className="flex items-center gap-3">
-              <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${(isLight ? TONE_ICON_LIGHT : TONE_ICON_DARK)[tile.tone]}`}>
-                <Icon size={18} />
+            {/* Phone: [icon][count] over a full-width label ("30 kunda tugaydi" was
+                truncated beside the icon). sm+: [icon][count / label] as before. */}
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1.5 sm:gap-x-3 sm:gap-y-1">
+              <span className={`col-start-1 row-start-1 flex size-8 sm:size-10 shrink-0 items-center justify-center rounded-xl sm:row-span-2 ${(isLight ? TONE_ICON_LIGHT : TONE_ICON_DARK)[tile.tone]}`}>
+                <Icon className="size-4 sm:size-[18px]" />
               </span>
-              <div className="min-w-0">
-                <p className={`text-2xl font-black leading-none tabular-nums ${ui.strong}`}>{count}</p>
-                <p className={`mt-1 truncate text-[11px] font-bold ${ui.body}`}>{tile.label}</p>
-              </div>
+              <p className={`col-start-2 row-start-1 text-2xl font-black leading-none tabular-nums sm:self-end ${ui.strong}`}>{count}</p>
+              <p className={`col-span-2 row-start-2 truncate text-[11px] font-bold sm:col-span-1 sm:col-start-2 sm:self-start ${ui.body}`}>{tile.label}</p>
             </div>
-            <p className={`mt-2 truncate text-[10px] ${ui.faint}`}>{tile.hint}</p>
+            <p className={`mt-2 hidden sm:block truncate text-[10px] ${ui.faint}`}>{tile.hint}</p>
           </button>
         )
       })}

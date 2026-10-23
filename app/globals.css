@@ -288,6 +288,18 @@ html.theme-light :is(div, section, header, [class*="rounded"])[class*="from-indi
   color: #ffffff !important;
 }
 
+/* Gradient icon tiles (dekanUI.accentTile, KPI/status badges) carry
+   `bg-gradient-* … text-white` on the SAME element. The carve-out above only
+   reaches text-white nested INSIDE a gradient, so the tile itself fell into
+   the generic text-white → #173154 rule and its icon rendered dark navy on
+   violet (reported on dekan Sozlamalar). A <div>/<span> that sets both a
+   gradient background and text-white means white text — keep it white, and
+   keep white-marked children inside it white too. */
+html.theme-light :is(div, span)[class*="bg-gradient"][class*="text-white"]:where(:not([data-flat] *)),
+html.theme-light :is(div, span)[class*="bg-gradient"][class*="text-white"] [class*="text-white"]:where(:not([data-flat] *)) {
+  color: #ffffff !important;
+}
+
 html.theme-light [class*="placeholder:text-slate-400"]:where(:not([data-flat] *))::placeholder,
 html.theme-light [class*="placeholder:text-slate-500"]:where(:not([data-flat] *))::placeholder,
 html.theme-light [class*="placeholder:text-slate-600"]:where(:not([data-flat] *))::placeholder,

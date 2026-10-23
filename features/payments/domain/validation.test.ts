@@ -7,6 +7,7 @@ import {
   PAYMENT_MONTHS_ORDER,
   PaymentValidationError,
   validatePaymentReview,
+  MAX_REVIEW_IDS,
 } from './validation'
 
 const paymentId = '123e4567-e89b-12d3-a456-426614174000'
@@ -19,6 +20,13 @@ describe('payment review validation', () => {
 
   it('rejects malformed identifiers', () => {
     expect(() => validatePaymentReview({ ids: ['bad-id'], status: 'approved', message: 'ok' }))
+      .toThrowError(PaymentValidationError)
+  })
+
+  it('accepts a batch up to MAX_REVIEW_IDS and refuses one more', () => {
+    const ids = (n: number) => Array.from({ length: n }, (_, i) => `123e4567-e89b-12d3-a456-${String(i).padStart(12, '0')}`)
+    expect(validatePaymentReview({ ids: ids(MAX_REVIEW_IDS), status: 'approved', message: 'ok' }).ids).toHaveLength(MAX_REVIEW_IDS)
+    expect(() => validatePaymentReview({ ids: ids(MAX_REVIEW_IDS + 1), status: 'approved', message: 'ok' }))
       .toThrowError(PaymentValidationError)
   })
 

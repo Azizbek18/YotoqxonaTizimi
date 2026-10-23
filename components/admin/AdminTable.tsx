@@ -7,7 +7,7 @@ import { useThemeStore } from '@/lib/stores/theme-store'
 
 export interface TableColumn<T> {
   key: string
-  label: string
+  label: React.ReactNode
   sortable?: boolean
   width?: string
   align?: 'left' | 'center' | 'right'

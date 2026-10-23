@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  BedDouble,
   Box,
   Compass,
   DoorClosed,
@@ -23,6 +24,7 @@ import * as THREE from 'three'
 import { getRoomOccupancyTone } from '@/features/app-settings/presentation'
 import { useScopedFontFamily } from '@/lib/font-scope-context'
 import { dekanUI } from '@/lib/dekan-ui'
+import { FURNITURE_COLORS, roomFurniture, type FurnitureBox, type FurnitureKind } from '@/lib/room-furniture'
 
 /** One room already positioned on the floor slab (units = three.js world). */
 export type SceneRoom = {
@@ -58,6 +60,53 @@ interface Props {
 const ROOM_COLOR = { empty: 0x10b981, partial: 0xf59e0b, full: 0xef4444, unknown: 0x64748b } as const
 const FROZEN_COLOR = 0x06b6d4
 
+/** Glass walls while the furniture is shown, so the room interior reads through them. */
+const WALL_OPACITY_WITH_FURNITURE = 0.16
+const wallOpacity = (frozen: boolean, withFurniture: boolean) =>
+  withFurniture ? WALL_OPACITY_WITH_FURNITURE : frozen ? 0.55 : 0.85
+
+/** One InstancedMesh per furniture kind keeps the draw calls constant however many rooms there are. */
+function buildFurniture(boxes: FurnitureBox[]) {
+  const geometry = new THREE.BoxGeometry(1, 1, 1)
+  const materials: Record<FurnitureKind, THREE.MeshStandardMaterial> = {
+    frame: new THREE.MeshStandardMaterial({ color: FURNITURE_COLORS.frame, roughness: 0.45, metalness: 0.5 }),
+    // White base colour: the per-instance colour carries the free/taken state.
+    mattress: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }),
+    pillow: new THREE.MeshStandardMaterial({ color: FURNITURE_COLORS.pillow, roughness: 0.95 }),
+    wood: new THREE.MeshStandardMaterial({ color: FURNITURE_COLORS.wood, roughness: 0.7 }),
+    chair: new THREE.MeshStandardMaterial({ color: FURNITURE_COLORS.chair, roughness: 0.6 }),
+    floor: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, transparent: true, opacity: 0.35, depthWrite: false }),
+  }
+  const group = new THREE.Group()
+  const byKind = new Map<FurnitureKind, FurnitureBox[]>()
+  for (const box of boxes) {
+    const list = byKind.get(box.kind)
+    if (list) list.push(box)
+    else byKind.set(box.kind, [box])
+  }
+  const matrix = new THREE.Matrix4()
+  const position = new THREE.Vector3()
+  const scale = new THREE.Vector3()
+  const rotation = new THREE.Quaternion()
+  const color = new THREE.Color()
+  for (const [kind, list] of byKind) {
+    const mesh = new THREE.InstancedMesh(geometry, materials[kind], list.length)
+    list.forEach((box, i) => {
+      matrix.compose(position.set(box.x, box.y, box.z), rotation, scale.set(box.sx, box.sy, box.sz))
+      mesh.setMatrixAt(i, matrix)
+      if (box.color !== undefined) mesh.setColorAt(i, color.setHex(box.color))
+    })
+    mesh.instanceMatrix.needsUpdate = true
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+    group.add(mesh)
+  }
+  const dispose = () => {
+    geometry.dispose()
+    Object.values(materials).forEach((m) => m.dispose())
+  }
+  return { group, dispose }
+}
+
 type Hover = { roomNumber: string; clientX: number; clientY: number } | null
 
 const freePlaces = (r: SceneRoom) =>
@@ -74,6 +123,10 @@ export default function RoomScene3D({
   const [autoRotate, setAutoRotate] = useState(true)
   const [isExpanded, setIsExpanded] = useState(false)
   const [cameraPreset, setCameraPreset] = useState<'3d' | 'topdown' | 'corridor'>('3d')
+  const [showFurniture, setShowFurniture] = useState(true)
+  const showFurnitureRef = useRef(showFurniture)
+  const furnitureGroupRef = useRef<THREE.Group | null>(null)
+  const wallMaterialsRef = useRef<{ material: THREE.MeshStandardMaterial; frozen: boolean }[]>([])
 
   const roomByNumber = useMemo(() => {
     const m = new Map<string, SceneRoom>()
@@ -89,6 +142,17 @@ export default function RoomScene3D({
 
   useEffect(() => { autoRotateRef.current = autoRotate }, [autoRotate])
   useEffect(() => { pauseForInteractionRef.current = Boolean(hovered) || selected !== null }, [hovered, selected])
+
+  // Toggling the furniture flips visibility and wall opacity in place — no scene rebuild.
+  useEffect(() => {
+    showFurnitureRef.current = showFurniture
+    if (furnitureGroupRef.current) furnitureGroupRef.current.visible = showFurniture
+    for (const { material, frozen } of wallMaterialsRef.current) {
+      material.opacity = wallOpacity(frozen, showFurniture)
+      material.depthWrite = !showFurniture
+      material.needsUpdate = true
+    }
+  }, [showFurniture])
 
   // A room that vanished from the data (floor switch) must not stay selected.
   useEffect(() => {
@@ -160,10 +224,14 @@ export default function RoomScene3D({
 
     const meshes: THREE.Mesh[] = []
     const disposables: { geo: THREE.BufferGeometry; mat: THREE.Material }[] = []
+    const wallMaterials: { material: THREE.MeshStandardMaterial; frozen: boolean }[] = []
+    const furnitureBoxes: FurnitureBox[] = []
+    const withFurniture = showFurnitureRef.current
 
     rooms.forEach((room) => {
       const tone = getRoomOccupancyTone(room.occupied, room.capacity)
       const color = room.frozen ? FROZEN_COLOR : ROOM_COLOR[tone]
+      furnitureBoxes.push(...roomFurniture(room, color))
 
       const geo = new THREE.BoxGeometry(room.width, room.height, room.depth)
       const material = new THREE.MeshStandardMaterial({
@@ -171,8 +239,10 @@ export default function RoomScene3D({
         roughness: 0.2,
         metalness: 0.1,
         transparent: true,
-        opacity: room.frozen ? 0.55 : 0.85,
+        opacity: wallOpacity(room.frozen, withFurniture),
+        depthWrite: !withFurniture,
       })
+      wallMaterials.push({ material, frozen: room.frozen })
       const mesh = new THREE.Mesh(geo, material)
       mesh.position.set(room.x, room.height / 2, room.z)
       mesh.name = room.roomNumber
@@ -185,6 +255,14 @@ export default function RoomScene3D({
       mesh.add(new THREE.LineSegments(edges, lineMat))
       disposables.push({ geo: edges, mat: lineMat })
     })
+    wallMaterialsRef.current = wallMaterials
+
+    // Furniture lives in its own group (not under the room meshes) so the hover/click
+    // raycast keeps hitting the room box and the click pulse does not scale the beds.
+    const furniture = buildFurniture(furnitureBoxes)
+    furniture.group.visible = withFurniture
+    roomGroup.add(furniture.group)
+    furnitureGroupRef.current = furniture.group
 
     let isDragging = false
     let prevMouse = { x: 0, y: 0 }
@@ -300,6 +378,9 @@ export default function RoomScene3D({
       window.removeEventListener('mouseup', onMouseUp)
       setHovered(null)
       disposables.forEach(({ geo, mat }) => { geo.dispose(); mat.dispose() })
+      furniture.dispose()
+      furnitureGroupRef.current = null
+      wallMaterialsRef.current = []
       slabGeo.dispose()
       slabMat.dispose()
       slabEdges.dispose()
@@ -360,6 +441,7 @@ export default function RoomScene3D({
   if (capacityKnown) legend.push(['#f59e0b', 'Qisman'], ['#ef4444', 'To‘la'])
   else legend.push(['#64748b', 'Sig‘im noma‘lum'])
   if (anyFrozen) legend.push(['#06b6d4', 'Muzlatilgan'])
+  if (showFurniture && capacityKnown) legend.push(['#6366f1', 'Band joy'], ['#e2e8f0', 'Bo‘sh joy'])
 
   const hoverRoom = hovered ? roomByNumber.get(hovered.roomNumber) : undefined
   const selectedRoom = selected ? roomByNumber.get(selected) : undefined
@@ -468,6 +550,22 @@ export default function RoomScene3D({
               <ZoomOut size={13} />
             </button>
           </div>
+
+          {/* Furniture Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowFurniture((v) => !v)}
+            aria-pressed={showFurniture}
+            className={`no-shelf flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+              showFurniture
+                ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border border-indigo-500/20'
+                : isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-white/10'
+            }`}
+            title={showFurniture ? 'Mebelni yashirish' : 'Xona ichidagi mebelni ko‘rsatish'}
+          >
+            <BedDouble size={12} />
+            <span className="hidden sm:inline">Mebel</span>
+          </button>
 
           {/* Auto-rotate Toggle */}
           <button

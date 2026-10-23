@@ -98,7 +98,8 @@ export default function AddDormCard({ onAdded }: { onAdded: (dorm: DekanDorm) =>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed p-4 text-xs font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+        className={`no-shelf flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed p-4 text-xs font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+        style={{ boxShadow: 'none' }}
       >
         <Plus size={14} /> Yana bino qo&apos;shish
       </button>
@@ -138,7 +139,8 @@ export default function AddDormCard({ onAdded }: { onAdded: (dorm: DekanDorm) =>
         <button
           onClick={check}
           disabled={checking || !numberInput.trim()}
-          className={`shrink-0 rounded-xl px-4 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.btnGhost}`}
+          className={`no-shelf shrink-0 rounded-xl px-4 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.btnGhost}`}
+          style={{ boxShadow: 'none' }}
         >
           {checking ? <Loader2 size={14} className="animate-spin" /> : 'Tekshirish'}
         </button>
@@ -183,13 +185,16 @@ export default function AddDormCard({ onAdded }: { onAdded: (dorm: DekanDorm) =>
                     disabled={f.taken}
                     onClick={() => toggle(f.floor)}
                     title={label}
-                    className={`flex h-14 flex-col items-center justify-center rounded-xl border text-center text-[10px] font-bold transition-colors ${
+                    className={`no-shelf flex h-14 flex-col items-center justify-center rounded-xl border text-center text-[10px] font-bold transition-colors ${
                       f.taken
                         ? `${isLight ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-slate-800/60 text-slate-500 border-slate-700'} cursor-not-allowed`
                         : active
-                          ? 'border-transparent bg-gradient-to-br from-indigo-500 to-violet-600 text-white'
+                          ? 'border-indigo-600 bg-indigo-600 text-white'
                           : `${ui.card} ${ui.body}`
                     }`}
+                    style={{
+                      boxShadow: active ? '0 1px 3px rgba(79, 70, 229, 0.3)' : 'none',
+                    }}
                   >
                     <span className="text-sm">{f.floor}</span>
                     <span className="truncate px-0.5 leading-tight opacity-80">{f.taken ? 'band' : active ? 'meniki' : ''}</span>
@@ -211,7 +216,8 @@ export default function AddDormCard({ onAdded }: { onAdded: (dorm: DekanDorm) =>
             <button
               onClick={submit}
               disabled={submitting || selected.size === 0}
-              className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.accentSolid}`}
+              className={`no-shelf flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.accentSolid}`}
+              style={{ boxShadow: '0 4px 14px rgba(79, 70, 229, 0.35)' }}
             >
               {submitting ? <Loader2 size={14} className="animate-spin" /> : <>Qo&apos;shish <Check size={14} /></>}
             </button>

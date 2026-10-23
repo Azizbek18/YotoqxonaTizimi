@@ -15,8 +15,22 @@ export type KvMapStudent = {
 }
 
 const DEFAULT_CENTER: [number, number] = [41.311081, 69.240562]
-const ESRI_BASE = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas'
-const ESRI_ATTRIBUTION = '&copy; Esri &mdash; Esri, HERE, Garmin, OpenStreetMap contributors'
+/** A lone student is shown at district level, not street level (nothing around it to read). */
+const SINGLE_POINT_ZOOM = 13
+// Same light street map as the student's own address picker; the gray "Canvas" base had no
+// street names and read as an empty grey sheet. Both hosts are already in the img-src CSP.
+const TILES = {
+  light: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; Esri &mdash; Esri, DeLorme, HERE, USGS, OpenStreetMap contributors',
+    maxNativeZoom: 18,
+  },
+  dark: {
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    maxNativeZoom: 19,
+  },
+} as const
 
 const escapeHtml = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -70,11 +84,11 @@ export default function KvStudentsMap({
     const map = mapRef.current
     if (!ready || !L || !map) return
     tileRef.current?.remove()
-    const style = isLight ? 'World_Light_Gray_Base' : 'World_Dark_Gray_Base'
-    tileRef.current = L.tileLayer(`${ESRI_BASE}/${style}/MapServer/tile/{z}/{y}/{x}`, {
-      attribution: ESRI_ATTRIBUTION,
+    const tile = isLight ? TILES.light : TILES.dark
+    tileRef.current = L.tileLayer(tile.url, {
+      attribution: tile.attribution,
       maxZoom: 18,
-      maxNativeZoom: 16,
+      maxNativeZoom: tile.maxNativeZoom,
     }).addTo(map)
   }, [ready, isLight])
 
@@ -89,24 +103,34 @@ export default function KvStudentsMap({
     for (const s of located) {
       const pos: LeafletNS.LatLngExpression = [s.residence_lat!, s.residence_lng!]
       points.push(pos)
+      // Soft halo under the dot so it stays visible on a busy street map.
+      L.circleMarker(pos, {
+        radius: 16,
+        stroke: false,
+        fillColor: '#6366f1',
+        fillOpacity: 0.18,
+        interactive: false,
+      }).addTo(layer)
       const marker = L.circleMarker(pos, {
         radius: 8,
         color: '#ffffff',
-        weight: 2,
-        fillColor: '#6366f1',
-        fillOpacity: 0.95,
+        weight: 3,
+        fillColor: '#4f46e5',
+        fillOpacity: 1,
       }).addTo(layer)
+      marker.bindTooltip(escapeHtml(s.full_name), { direction: 'top', offset: [0, -10] })
       marker.bindPopup(
         `<strong>${escapeHtml(s.full_name)}</strong><br/><span style="font-size:11px">${escapeHtml(s.residence_address ?? '')}</span>`,
       )
       if (onOpen) marker.on('dblclick', () => onOpen(s.id))
     }
-    if (points.length > 0) map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 15 })
+    if (points.length === 1) map.setView(points[0], SINGLE_POINT_ZOOM)
+    else if (points.length > 1) map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 14 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, students])
 
   return (
-    <div className={`overflow-hidden rounded-2xl border ${ui.card}`}>
+    <div className={`flex flex-col overflow-hidden rounded-2xl border ${ui.card}`}>
       <div className="flex items-center justify-between gap-3 px-4 py-3">
         <h3 className={`flex items-center gap-2 text-sm font-bold ${ui.strong}`}>
           <MapPin size={15} className="text-indigo-500" /> Yashash joylari xaritasi
@@ -115,8 +139,8 @@ export default function KvStudentsMap({
           {located.length} / {students.length} ta talaba xaritada
         </span>
       </div>
-      <div className="relative">
-        <div ref={boxRef} className="h-[320px] w-full" />
+      <div className="relative flex-1">
+        <div ref={boxRef} className="h-full min-h-[320px] w-full" />
         {!ready && (
           <div className={`absolute inset-0 z-[400] flex items-center justify-center text-xs ${isLight ? 'bg-slate-100 text-slate-500' : 'bg-slate-900 text-slate-400'}`}>
             <Loader2 size={16} className="mr-2 animate-spin" /> Xarita yuklanmoqda…

@@ -56,7 +56,7 @@ export default function KvCertificatePanel({ isLight }: { isLight: boolean }) {
   const recent = (rows ?? []).filter((r) => r.status !== 'pending').slice(0, 5)
 
   return (
-    <div className={`rounded-2xl border p-4 sm:p-5 ${ui.card}`}>
+    <div className={`flex flex-col rounded-2xl border p-4 sm:p-5 ${ui.card}`}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className={`flex items-center gap-2 text-sm font-bold ${ui.strong}`}>
           <FileCheck2 size={15} className="text-indigo-500" /> Ma‘lumotnoma so‘rovlari
@@ -73,7 +73,23 @@ export default function KvCertificatePanel({ isLight }: { isLight: boolean }) {
           <Loader2 size={14} className="animate-spin" /> Yuklanmoqda…
         </div>
       ) : pending.length === 0 ? (
-        <p className={`py-3 text-center text-xs ${ui.muted}`}>Kutilayotgan so‘rov yo‘q</p>
+        // Fills the card (it is stretched to the map's height next to it) instead of one lost line.
+        <div className="flex flex-1 flex-col items-center justify-center px-4 py-8 text-center">
+          <div className={`mb-3 flex h-14 w-14 items-center justify-center rounded-2xl ${ui.accentTileSoft}`}>
+            <FileCheck2 size={26} strokeWidth={2} />
+          </div>
+          <p className={`text-sm font-bold ${ui.strong}`}>Kutilayotgan so‘rov yo‘q</p>
+          <p className={`mt-1.5 max-w-xs text-xs leading-relaxed ${ui.muted}`}>
+            KV talaba ma‘lumotnoma so‘raganda u shu yerda paydo bo‘ladi. Tasdiqlasangiz, talabaga avtomatik xabar yuboriladi.
+          </p>
+          <div className={`mt-4 flex flex-wrap justify-center gap-1.5 text-[10px] font-semibold ${ui.muted}`}>
+            {(['approved', 'rejected'] as const).map((status) => (
+              <span key={status} className={`rounded-full px-2.5 py-1 ${statusChip(status === 'approved' ? 'success' : 'danger', isLight).chip}`}>
+                {CERTIFICATE_STATUS_LABELS[status]}: {(rows ?? []).filter((r) => r.status === status).length}
+              </span>
+            ))}
+          </div>
+        </div>
       ) : (
         <div className="space-y-2.5">
           {pending.map((r) => (

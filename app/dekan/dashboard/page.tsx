@@ -74,6 +74,8 @@ export default function DekanDashboard() {
   const dormKey = dormScope.global ? 'global' : dormScope.dormId ?? 'unassigned'
   const [loadedDormKey, setLoadedDormKey] = useState<string | null>(null)
   const [dataError, setDataError] = useState<string | null>(null)
+  // Hovered donut slice: its numbers replace the centre label (a tooltip landed on top of it).
+  const [pieHover, setPieHover] = useState<number | null>(null)
   const requestSequence = useRef(0)
 
   const [stats, setStats] = useState<DashboardStats>({
@@ -395,17 +397,36 @@ export default function DekanDashboard() {
                   paddingAngle={3}
                   dataKey="value"
                   strokeWidth={0}
+                  onMouseEnter={(_, index) => setPieHover(index)}
+                  onMouseLeave={() => setPieHover(null)}
                 >
                   {occupancyPieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index === 0 ? 'url(#dekanPieFill)' : entry.color} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={index === 0 ? 'url(#dekanPieFill)' : entry.color}
+                      opacity={pieHover === null || pieHover === index ? 1 : 0.45}
+                      style={{ cursor: 'pointer', transition: 'opacity 150ms' }}
+                    />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={dekanChart.tooltip(isLight)} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute flex flex-col items-center justify-center">
-              <span className={`text-2xl font-bold tracking-tight ${ui.strong}`}>{occupancyRate}%</span>
-              <span className={`text-[8px] font-semibold uppercase tracking-wider ${ui.muted}`}>Band</span>
+            <div className="pointer-events-none absolute flex flex-col items-center justify-center text-center">
+              {pieHover === null ? (
+                <>
+                  <span className={`text-2xl font-bold tracking-tight ${ui.strong}`}>{occupancyRate}%</span>
+                  <span className={`text-[8px] font-semibold uppercase tracking-wider ${ui.muted}`}>Band</span>
+                </>
+              ) : (
+                <>
+                  <span className={`text-2xl font-bold tracking-tight tabular-nums ${ui.strong}`}>
+                    {occupancyPieData[pieHover]?.value ?? 0}
+                  </span>
+                  <span className={`text-[9px] font-semibold uppercase tracking-wider ${ui.muted}`}>
+                    {occupancyPieData[pieHover]?.name}
+                  </span>
+                </>
+              )}
             </div>
           </div>
           <div className="space-y-2 mt-2">

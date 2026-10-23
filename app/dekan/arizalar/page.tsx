@@ -838,8 +838,11 @@ function ArizalarContent() {
                           {getInitials(req.full_name)}
                           {/* FIFO Queue Order Badge for pending status */}
                           {statusFilter === 'pending' && (
-                            <span className="absolute -top-1.5 -left-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-900 text-[9px] font-black text-white px-1 shadow-xs border border-white/20">
-                              #{idx + 1}
+                            /* White pill with dark text. The light-mode retrofit in globals.css matches class
+                               SUBSTRINGS (bg-slate-9xx -> pale glass, text-white -> forced white), and it also
+                               catches dark:-prefixed classes, so none of those may appear here. */
+                            <span className="absolute -top-2 -left-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[10px] font-black tabular-nums text-slate-900 shadow-md ring-2 ring-slate-900/10 dark:bg-black dark:text-slate-50 dark:ring-slate-50/20">
+                              {idx + 1}
                             </span>
                           )}
                         </div>

@@ -58,12 +58,26 @@ export default function DormFloorsCard({
   const freeFloors = useMemo(() => dorm.floors.filter((f) => f.state === 'free').map((f) => f.floor), [dorm])
 
   const toneClass = (tone: string, on: boolean) => {
-    if (tone === 'mine') return 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white border-transparent'
-    if (tone === 'pending') return isLight ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-amber-500/10 text-amber-300 border-amber-500/25'
-    if (tone === 'incoming') return isLight ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-rose-500/10 text-rose-300 border-rose-500/25'
-    if (tone === 'other') return isLight ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-slate-800/60 text-slate-500 border-slate-700'
+    if (tone === 'mine')
+      return isLight
+        ? 'bg-indigo-50/90 text-indigo-700 border-indigo-200/90 shadow-2xs'
+        : 'bg-indigo-500/15 text-indigo-200 border-indigo-500/30'
+    if (tone === 'pending')
+      return isLight
+        ? 'bg-amber-50 text-amber-700 border-amber-200 shadow-2xs'
+        : 'bg-amber-500/10 text-amber-300 border-amber-500/25'
+    if (tone === 'incoming')
+      return isLight
+        ? 'bg-rose-50 text-rose-700 border-rose-200 shadow-2xs'
+        : 'bg-rose-500/10 text-rose-300 border-rose-500/25'
+    if (tone === 'other')
+      return isLight
+        ? 'bg-slate-100 text-slate-400 border-slate-200 shadow-none'
+        : 'bg-slate-800/60 text-slate-500 border-slate-700 shadow-none'
     return on
-      ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white border-transparent'
+      ? isLight
+        ? 'bg-indigo-600 text-white border-transparent shadow-xs'
+        : 'bg-indigo-500 text-white border-transparent shadow-xs'
       : `${ui.card} ${ui.body}`
   }
 
@@ -232,15 +246,17 @@ export default function DormFloorsCard({
             <div
               key={f.floor}
               title={`${f.floor}-qavat — ${meta.label}`}
-              className={`flex h-14 flex-col items-center justify-center rounded-xl border text-center text-[9px] font-bold ${toneClass(meta.tone, false)}`}
+              className={`no-shelf flex h-14 flex-col items-center justify-center rounded-xl border text-center transition-all ${toneClass(meta.tone, false)}`}
+              style={{ boxShadow: 'none' }}
             >
-              <span className="text-sm">{f.floor}</span>
-              <span className="truncate px-0.5 leading-tight opacity-85">{meta.label}</span>
+              <span className="text-base font-black tabular-nums">{f.floor}</span>
+              <span className="truncate px-0.5 text-[10px] font-bold leading-tight opacity-90">{meta.label}</span>
               {f.state === 'mine_pending' && (
                 <button
                   onClick={() => withdraw(f.floor)}
                   disabled={busyFloor === f.floor}
-                  className="mt-0.5 text-[8px] uppercase underline opacity-90 disabled:opacity-40"
+                  className="no-shelf mt-0.5 text-[8px] uppercase underline opacity-90 disabled:opacity-40"
+                  style={{ boxShadow: 'none' }}
                 >
                   bekor
                 </button>
@@ -254,7 +270,8 @@ export default function DormFloorsCard({
       {freeFloors.length > 0 && !adding && (
         <button
           onClick={() => setAdding(true)}
-          className={`mt-3 flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+          className={`no-shelf mt-3 flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+          style={{ boxShadow: 'none' }}
         >
           <Plus size={12} /> Qavat qo&apos;shish
         </button>
@@ -276,9 +293,10 @@ export default function DormFloorsCard({
                       return n
                     })
                   }
-                  className={`rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors ${
-                    on ? 'border-transparent bg-gradient-to-br from-indigo-500 to-violet-600 text-white' : `${ui.card} ${ui.body}`
+                  className={`no-shelf rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                    on ? 'border-transparent bg-indigo-600 text-white shadow-2xs' : `${ui.card} ${ui.body}`
                   }`}
+                  style={{ boxShadow: 'none' }}
                 >
                   {floor}
                 </button>
@@ -289,7 +307,8 @@ export default function DormFloorsCard({
             <button
               onClick={submitAdd}
               disabled={saving || picked.size === 0}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.accentSolid}`}
+              className={`no-shelf flex items-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${ui.accentSolid}`}
+              style={{ boxShadow: 'none' }}
             >
               {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} So&apos;rash
             </button>
@@ -298,7 +317,8 @@ export default function DormFloorsCard({
                 setAdding(false)
                 setPicked(new Set())
               }}
-              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+              className={`no-shelf flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${ui.btnGhost}`}
+              style={{ boxShadow: 'none' }}
             >
               <X size={12} /> Bekor
             </button>

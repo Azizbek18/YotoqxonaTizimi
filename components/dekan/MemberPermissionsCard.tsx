@@ -174,24 +174,56 @@ export default function MemberPermissionsCard({ delay = 0 }: { delay?: number })
                         aria-checked={allowed}
                         disabled={busy}
                         onClick={() => void toggle(member, key)}
-                        className={`flex items-start gap-3 rounded-lg border p-3 text-left transition-colors disabled:opacity-60 ${
+                        className={`no-shelf group flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 active:scale-[0.99] disabled:cursor-wait disabled:opacity-70 ${
                           allowed
-                            ? isLight ? 'border-indigo-200 bg-white hover:bg-indigo-50/60' : 'border-indigo-500/25 bg-slate-900/50 hover:bg-indigo-500/10'
-                            : isLight ? 'border-slate-200 bg-slate-100/70' : 'border-slate-700 bg-slate-900/30'
+                            ? isLight
+                              ? 'border-indigo-200 bg-indigo-50/40 hover:border-indigo-300 hover:bg-indigo-50/80'
+                              : 'border-indigo-500/30 bg-indigo-500/[0.06] hover:border-indigo-400/50 hover:bg-indigo-500/10'
+                            : isLight
+                              ? 'border-slate-200 bg-slate-50/80 hover:border-slate-300'
+                              : 'border-slate-700 bg-slate-900/30 hover:border-slate-600'
                         }`}
+                        style={{ boxShadow: 'none' }}
                       >
-                        <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
-                          allowed
-                            ? 'border-indigo-500 bg-indigo-500 text-white'
-                            : isLight ? 'border-slate-300 bg-white' : 'border-slate-600 bg-slate-800'
-                        }`}>
-                          {allowed && <Check size={13} strokeWidth={3} />}
+                        {/* Tick painted via the SVG stroke attribute: the light-mode retrofit in
+                            globals.css overrides text colours inside coloured surfaces. */}
+                        <span
+                          aria-hidden="true"
+                          className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-lg border-2 transition-all duration-200 ${
+                            allowed
+                              ? 'border-indigo-600 bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md shadow-indigo-600/30'
+                              : isLight
+                                ? 'border-slate-300 bg-white group-hover:border-indigo-400'
+                                : 'border-slate-600 bg-slate-800 group-hover:border-indigo-400'
+                          }`}
+                        >
+                          {busy ? (
+                            <Loader2 size={13} strokeWidth={3} className="animate-spin" color={allowed ? '#ffffff' : '#6366f1'} />
+                          ) : (
+                            <Check
+                              size={14}
+                              strokeWidth={3.5}
+                              color="#ffffff"
+                              className={`transition-all duration-200 ${allowed ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}
+                            />
+                          )}
                         </span>
-                        <span className="min-w-0">
-                          <span className={`block text-xs font-semibold ${allowed ? ui.strong : ui.muted}`}>
-                            {PERMISSION_LABELS[key].title}
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-start justify-between gap-2">
+                            <span className={`block text-xs font-bold ${allowed ? ui.strong : ui.muted}`}>
+                              {PERMISSION_LABELS[key].title}
+                            </span>
+                            <span
+                              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                                allowed
+                                  ? isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-500/15 text-emerald-300'
+                                  : isLight ? 'bg-slate-200/80 text-slate-500' : 'bg-slate-700/60 text-slate-400'
+                              }`}
+                            >
+                              {allowed ? 'Ruxsat' : 'Yopiq'}
+                            </span>
                           </span>
-                          <span className={`mt-0.5 block text-[11px] leading-snug ${ui.muted}`}>
+                          <span className={`mt-1 block text-[11px] leading-snug ${ui.muted}`}>
                             {PERMISSION_LABELS[key].hint}
                           </span>
                         </span>
